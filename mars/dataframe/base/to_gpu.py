@@ -21,7 +21,7 @@ class DataFrameToGPU(DataFrameDeviceConversionBase):
     _op_type_ = OperandDef.TO_GPU
 
     def __init__(self, dtypes=None, gpu=None, sparse=None, object_type=None, **kw):
-        super(DataFrameToGPU, self).__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse,
+        super().__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse,
                                              _object_type=object_type, **kw)
         if not self._gpu:
             self._gpu = True

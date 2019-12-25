@@ -25,7 +25,7 @@ class ProcessHelperActor(WorkerActor):
     Actor handling utils on every process
     """
     def __init__(self):
-        super(ProcessHelperActor, self).__init__()
+        super().__init__()
         self._dispatch_ref = None
         self._daemon_ref = None
 
@@ -33,7 +33,7 @@ class ProcessHelperActor(WorkerActor):
         from .dispatcher import DispatchActor
         from .daemon import WorkerDaemonActor
 
-        super(ProcessHelperActor, self).post_create()
+        super().post_create()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'process_helper')
 

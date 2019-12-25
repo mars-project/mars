@@ -67,7 +67,7 @@ class WorkerEvent(object):
 
 class EventsActor(WorkerActor):
     def __init__(self):
-        super(EventsActor, self).__init__()
+        super().__init__()
         self._event_timelines = defaultdict(deque)
         self._id_to_open_event = dict()
 

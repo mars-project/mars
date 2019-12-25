@@ -27,7 +27,7 @@ class SchedulerApplication(BaseApplication):
     service_logger = logger
 
     def __init__(self):
-        super(SchedulerApplication, self).__init__()
+        super().__init__()
         self._service = None
 
     def config_args(self, parser):
@@ -37,7 +37,7 @@ class SchedulerApplication(BaseApplication):
         self._service = SchedulerService()
         self.n_process = int(self.args.nproc or resource.cpu_count())
         kwargs['distributor'] = MarsDistributor(self.n_process, 's:h1:')
-        return super(SchedulerApplication, self).create_pool(*args, **kwargs)
+        return super().create_pool(*args, **kwargs)
 
     def create_scheduler_discoverer(self):
         advertise_endpoint = self.args.advertise or self.endpoint
@@ -49,7 +49,7 @@ class SchedulerApplication(BaseApplication):
             all_schedulers.update(self.args.schedulers.split(','))
         self.args.schedulers = ','.join(all_schedulers)
 
-        super(SchedulerApplication, self).create_scheduler_discoverer()
+        super().create_scheduler_discoverer()
 
     def start(self):
         self._service.start(self.endpoint, self.scheduler_discoverer, self.pool)

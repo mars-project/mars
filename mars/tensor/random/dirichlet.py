@@ -35,7 +35,7 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
 
     def __init__(self, alpha=None, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super(TensorDirichlet, self).__init__(_alpha=alpha, _state=state, _size=size,
+        super().__init__(_alpha=alpha, _state=state, _size=size,
                                               _dtype=dtype, _gpu=gpu, **kw)
 
     @property
@@ -43,7 +43,7 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
         return self._alpha
 
     def _calc_shape(self, shapes):
-        shape = super(TensorDirichlet, self)._calc_shape(shapes)
+        shape = super()._calc_shape(shapes)
         return shape + (len(self._alpha),)
 
     def __call__(self, chunk_size=None):

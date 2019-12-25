@@ -27,7 +27,7 @@ from mars.worker.tests.base import WorkerCase
 
 class TaskActor(PromiseActor):
     def __init__(self, queue_name, call_records):
-        super(TaskActor, self).__init__()
+        super().__init__()
         self._queue_name = queue_name
         self._call_records = call_records
         self._dispatch_ref = None

@@ -90,7 +90,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, path=None, names=None, sep=None, header=None, index_col=None, compression=None,
                  usecols=None, offset=None, size=None, gpu=None, storage_options=None, **kw):
-        super(DataFrameReadCSV, self).__init__(_path=path, _names=names, _sep=sep, _header=header,
+        super().__init__(_path=path, _names=names, _sep=sep, _header=header,
                                                _index_col=index_col, _compression=compression,
                                                _usecols=usecols, _offset=offset, _size=size, _gpu=gpu,
                                                _storage_options=storage_options,

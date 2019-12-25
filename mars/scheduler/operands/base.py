@@ -29,7 +29,7 @@ class BaseOperandActor(SchedulerActor):
 
     def __init__(self, session_id, graph_id, op_key, op_info, worker=None,
                  with_kvstore=True, schedulers=None):
-        super(BaseOperandActor, self).__init__()
+        super().__init__()
         self._session_id = session_id
         self._graph_ids = [graph_id]
         self._info = op_info

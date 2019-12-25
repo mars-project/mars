@@ -45,7 +45,7 @@ class TensorTileDBDataStore(TensorDataStore):
 
     def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None,
                  tiledb_timestamp=None, dtype=None, sparse=None, **kw):
-        super(TensorTileDBDataStore, self).__init__(
+        super().__init__(
             _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri, _tiledb_key=tiledb_key,
             _tiledb_timestamp=tiledb_timestamp, _dtype=dtype, _sparse=sparse, **kw)
 
@@ -97,7 +97,7 @@ class TensorTileDBDataStore(TensorDataStore):
     def tile(cls, op):
         import tiledb
 
-        tensor = super(TensorTileDBDataStore, cls).tile(op)[0]
+        tensor = super().tile(op)[0]
 
         ctx = tiledb.Ctx(op.tiledb_config)
         tiledb_array_type = tiledb.SparseArray if tensor.issparse() else tiledb.DenseArray
@@ -160,7 +160,7 @@ class TensorTileDBConsolidate(Operand, TensorOperandMixin):
 
     def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None,
                  dtype=None, sparse=None, **kw):
-        super(TensorTileDBConsolidate, self).__init__(
+        super().__init__(
             _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri, _tiledb_key=tiledb_key,
             _dtype=dtype, _sparse=sparse, **kw)
 

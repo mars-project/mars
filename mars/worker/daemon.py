@@ -26,7 +26,7 @@ class WorkerDaemonActor(WorkerActor):
     unprecedentedly, this actor restarts actors previously started
     """
     def __init__(self):
-        super(WorkerDaemonActor, self).__init__()
+        super().__init__()
         self._proc_actors = defaultdict(dict)
         self._proc_pids = dict()
         self._killed_pids = set()

@@ -33,7 +33,7 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
     _casting = StringField('casting')
 
     def __init__(self, dtype=None, order=None, casting=None, sparse=False, **kw):
-        super(TensorAstype, self).__init__(_dtype=dtype, _order=order,
+        super().__init__(_dtype=dtype, _order=order,
                                            _casting=casting, _sparse=sparse, **kw)
 
     @property
@@ -49,7 +49,7 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
         return self._casting
 
     def _set_inputs(self, inputs):
-        super(TensorAstype, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, tensor, order=None):

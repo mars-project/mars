@@ -39,7 +39,7 @@ from mars.tensor.datasource.from_dataframe import from_dataframe
 
 class Test(TestBase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self.executor = Executor()
 
     def testCreateSparseExecution(self):

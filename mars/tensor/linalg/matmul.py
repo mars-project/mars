@@ -39,7 +39,7 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
     _order = StringField('order')
 
     def __init__(self, dtype=None, sparse=False, casting=None, order=None,  **kw):
-        super(TensorMatmul, self).__init__(_dtype=dtype, _sparse=sparse,
+        super().__init__(_dtype=dtype, _sparse=sparse,
                                            _casting=casting, _order=order, **kw)
         if self._casting is None:
             self._casting = 'same_kind'
@@ -64,7 +64,7 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
         return self._order
 
     def _set_inputs(self, inputs):
-        super(TensorMatmul, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._a = self._inputs[0]
         self._b = self._inputs[1]
 

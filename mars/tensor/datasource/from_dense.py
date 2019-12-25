@@ -28,7 +28,7 @@ class DenseToSparse(TensorHasInput):
     _input = KeyField('_input')
 
     def __init__(self, dtype=None, gpu=None, **kw):
-        super(DenseToSparse, self).__init__(_dtype=dtype, _gpu=gpu,
+        super().__init__(_dtype=dtype, _gpu=gpu,
                                             _sparse=True, **kw)
 
     @classmethod

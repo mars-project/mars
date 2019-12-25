@@ -25,7 +25,7 @@ class TensorIHFFT(TensorHermitianFFT, TensorFFTMixin):
     _op_type_ = OperandDef.IHFFT
 
     def __init__(self, n=None, axis=-1, norm=None, dtype=None, **kw):
-        super(TensorIHFFT, self).__init__(_n=n, _axis=axis, _norm=norm,
+        super().__init__(_n=n, _axis=axis, _norm=norm,
                                           _dtype=dtype, **kw)
 
     @classmethod

@@ -39,7 +39,7 @@ class DataFrameBinOp(DataFrameOperand):
     _rhs = AnyField('rhs')
 
     def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
-        super(DataFrameBinOp, self).__init__(_axis=axis, _level=level,
+        super().__init__(_axis=axis, _level=level,
                                              _fill_value=fill_value,
                                              _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
 
@@ -64,7 +64,7 @@ class DataFrameBinOp(DataFrameOperand):
         return self._rhs
 
     def _set_inputs(self, inputs):
-        super(DataFrameBinOp, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         if len(self._inputs) == 2:
             self._lhs = self._inputs[0]
             self._rhs = self._inputs[1]
@@ -400,7 +400,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if kw.get(prop, None) is None:
                 kw[prop] = value
 
-        return super(DataFrameBinOpMixin, self)._new_chunks(
+        return super()._new_chunks(
             inputs, shape=shape, kws=kws, **kw)
 
     @staticmethod

@@ -32,7 +32,7 @@ class TensorNonzero(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, dtype=None, **kw):
-        super(TensorNonzero, self).__init__(_dtype=dtype, **kw)
+        super().__init__(_dtype=dtype, **kw)
 
     @property
     def output_limit(self):

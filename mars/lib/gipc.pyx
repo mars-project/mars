@@ -502,7 +502,7 @@ class _GProcess(ForkProcess):
             # Start grabbing SIGCHLD within libev event loop.
             gevent.get_hub().loop.install_sigchld()
             # Run new process (based on `fork()` on POSIX-compliant systems).
-            super(_GProcess, self).start()
+            super().start()
             # The occurrence of SIGCHLD is recorded asynchronously in libev.
             # This guarantees proper behavior even if the child watcher is
             # started after the child exits. Start child watcher now.
@@ -602,7 +602,7 @@ class _GProcess(ForkProcess):
                 # This frequency seems reasonable, but that's not 100 % certain.
                 gevent.sleep(0.01)
         # Clean up after child as designed by Process class (non-blocking).
-        super(_GProcess, self).join(timeout=0)
+        super().join(timeout=0)
 
 
 cdef class _GIPCHandle:

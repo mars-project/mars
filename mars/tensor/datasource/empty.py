@@ -30,7 +30,7 @@ class TensorEmptyBase(object):
     __slots__ = ()
 
     def __init__(self, *args, **kwargs):
-        super(TensorEmptyBase, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._gen_rand()
 
     def _gen_rand(self):
@@ -52,7 +52,7 @@ class TensorEmpty(TensorEmptyBase, TensorNoInput):
 
     def __init__(self, dtype=None, gpu=None, order=None, **kw):
         dtype = np.dtype(dtype or 'f8')
-        super(TensorEmpty, self).__init__(_dtype=dtype, _gpu=gpu, _order=order, **kw)
+        super().__init__(_dtype=dtype, _gpu=gpu, _order=order, **kw)
 
     @property
     def order(self):
@@ -122,7 +122,7 @@ class TensorEmptyLike(TensorEmptyBase, TensorLike):
 
     def __init__(self, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else None
-        super(TensorEmptyLike, self).__init__(_dtype=dtype, _gpu=gpu,
+        super().__init__(_dtype=dtype, _gpu=gpu,
                                               _order=order, _sparse=sparse, **kw)
 
     @property

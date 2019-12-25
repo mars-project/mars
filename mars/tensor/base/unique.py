@@ -39,7 +39,7 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
 
     def __init__(self, return_index=None, return_inverse=None, return_counts=None,
                  axis=None, dtype=None, gpu=None, aggregate_size=None, **kw):
-        super(TensorUnique, self).__init__(_return_index=return_index,
+        super().__init__(_return_index=return_index,
                                            _return_inverse=return_inverse,
                                            _return_counts=return_counts, _axis=axis,
                                            _aggregate_size=aggregate_size,
@@ -274,7 +274,7 @@ class TensorUniqueShuffleMap(TensorShuffleMap, TensorOperandMixin):
     def __init__(self, return_index=None, return_inverse=None, return_counts=None,
                  axis=None, aggregate_size=None, start_pos=None,
                  dtype=None, gpu=None, **kw):
-        super(TensorUniqueShuffleMap, self).__init__(_return_index=return_index,
+        super().__init__(_return_index=return_index,
                                                      _return_inverse=return_inverse,
                                                      _return_counts=return_counts, _axis=axis,
                                                      _aggregate_size=aggregate_size,
@@ -360,7 +360,7 @@ class TensorUniqueShuffleReduce(TensorShuffleReduce, TensorOperandMixin):
 
     def __init__(self, return_index=None, return_inverse=None, return_counts=None,
                  axis=None, dtype=None, gpu=None, aggregate_id=None, shuffle_key=None, **kw):
-        super(TensorUniqueShuffleReduce, self).__init__(_return_index=return_index,
+        super().__init__(_return_index=return_index,
                                                         _return_inverse=return_inverse,
                                                         _return_counts=return_counts, _axis=axis,
                                                         _aggregate_id=aggregate_id,
@@ -475,7 +475,7 @@ class TensorUniqueInverseReduce(TensorShuffleReduce, TensorOperandMixin):
     _op_type_ = OperandDef.UNIQUE_INVERSE_REDUCE
 
     def __init__(self, shuffle_key=None, dtype=None, gpu=None, **kw):
-        super(TensorUniqueInverseReduce, self).__init__(_shuffle_key=shuffle_key,
+        super().__init__(_shuffle_key=shuffle_key,
                                                         _dtype=dtype, _gpu=gpu, **kw)
 
     @classmethod

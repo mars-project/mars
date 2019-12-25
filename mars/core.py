@@ -159,7 +159,7 @@ class Entity(object):
 
     def __setattr__(self, key, value):
         try:
-            super(Entity, self).__setattr__(key, value)
+            super().__setattr__(key, value)
         except AttributeError:
             return setattr(self._data, key, value)
 
@@ -185,7 +185,7 @@ class EntityData(SerializableWithKey):
     def __init__(self, *args, **kwargs):
         extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
         kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
-        super(EntityData, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def op(self):
@@ -224,7 +224,7 @@ class ChunkData(EntityData):
         if provider.type == ProviderType.protobuf:
             from .serialize.protos.chunk_pb2 import ChunkDef
             return ChunkDef
-        return super(ChunkData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def index(self):
@@ -257,14 +257,14 @@ class ObjectChunkData(ChunkData):
     __slots__ = ()
 
     def __init__(self, op=None, index=None, **kw):
-        super(ObjectChunkData, self).__init__(_op=op, _index=index, **kw)
+        super().__init__(_op=op, _index=index, **kw)
 
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
             from .serialize.protos.object_pb2 import ObjectChunkDef
             return ObjectChunkDef
-        return super(ObjectChunkData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def params(self):
@@ -312,7 +312,7 @@ class FuseChunkData(ChunkData):
 
     def __init__(self, *args, **kwargs):
         self._inited = False
-        super(FuseChunkData, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._extra_params = {}
         self._inited = True
 
@@ -321,7 +321,7 @@ class FuseChunkData(ChunkData):
         if provider.type == ProviderType.protobuf:
             from .serialize.protos.fusechunk_pb2 import FuseChunkDef
             return FuseChunkDef
-        return super(FuseChunkData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def params(self):
@@ -361,7 +361,7 @@ class TileableData(EntityData, Tileable):
         if kwargs.get('_nsplits', None) is not None:
             kwargs['_nsplits'] = tuple(tuple(s) for s in kwargs['_nsplits'])
 
-        super(TileableData, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if hasattr(self, '_chunks') and self._chunks:
             self._chunks = sorted(self._chunks, key=attrgetter('index'))
@@ -441,7 +441,7 @@ class TileableEntity(Entity):
     __slots__ = '__weakref__',
 
     def __init__(self, data):
-        super(TileableEntity, self).__init__(data)
+        super().__init__(data)
         if self._data is not None:
             self._data.attach(self)
             if self._data.op.create_view:
@@ -451,7 +451,7 @@ class TileableEntity(Entity):
         return self.view()
 
     def view(self):
-        return super(TileableEntity, self).copy()
+        return super().copy()
 
     def copy(self):
         new_op = self.op.copy().reset_key()
@@ -527,14 +527,14 @@ class ObjectData(TileableData):
                         on_deserialize=lambda x: [ObjectChunk(it) for it in x] if x is not None else x)
 
     def __init__(self, op=None, nsplits=None, chunks=None, **kw):
-        super(ObjectData, self).__init__(_op=op, _nsplits=nsplits, _chunks=chunks, **kw)
+        super().__init__(_op=op, _nsplits=nsplits, _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
             from .serialize.protos.object_pb2 import ObjectDef
             return ObjectDef
-        return super(ObjectData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def params(self):

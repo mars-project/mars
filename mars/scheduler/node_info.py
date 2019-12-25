@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class NodeInfoActor(FunctionActor):
     def __init__(self):
-        super(NodeInfoActor, self).__init__()
+        super().__init__()
         self._node_info = None
 
     @classmethod

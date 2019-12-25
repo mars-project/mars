@@ -34,7 +34,7 @@ class WorkerApplication(BaseApplication):
     service_logger = logger
 
     def __init__(self):
-        super(WorkerApplication, self).__init__()
+        super().__init__()
         self._service = None
 
     def config_args(self, parser):
@@ -106,10 +106,10 @@ class WorkerApplication(BaseApplication):
 
         self.n_process = self._service.n_process
         kwargs['distributor'] = MarsDistributor(self.n_process, 'w:0:')
-        return super(WorkerApplication, self).create_pool(*args, **kwargs)
+        return super().create_pool(*args, **kwargs)
 
     def create_scheduler_discoverer(self):
-        super(WorkerApplication, self).create_scheduler_discoverer()
+        super().create_scheduler_discoverer()
         if self.scheduler_discoverer is None:
             raise StartArgumentError('either schedulers or url of kv store is required.')
 

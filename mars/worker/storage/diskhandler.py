@@ -61,7 +61,7 @@ class DiskIO(BytesStorageIO):
 
     def __init__(self, session_id, data_key, mode='r', nbytes=None, compress=None,
                  packed=False, handler=None):
-        super(DiskIO, self).__init__(session_id, data_key, mode=mode,
+        super().__init__(session_id, data_key, mode=mode,
                                      handler=handler)
         block_size = options.worker.copy_block_size
         dirs = options.worker.spill_directory = parse_spill_dirs(options.worker.spill_directory)
@@ -128,7 +128,7 @@ class DiskIO(BytesStorageIO):
         return self._dest_filename
 
     def get_io_pool(self, pool_name=None):
-        return super(DiskIO, self).get_io_pool(
+        return super().get_io_pool(
             '%s__%d' % (pool_name or '', _get_file_dir_id(self._session_id, self._data_key)))
 
     def read(self, size=-1):
@@ -173,14 +173,14 @@ class DiskIO(BytesStorageIO):
         if self._event_id:
             self._handler.events_ref.close_event(self._event_id, _tell=True, _wait=False)
 
-        super(DiskIO, self).close(finished=finished)
+        super().close(finished=finished)
 
 
 class DiskHandler(StorageHandler, BytesStorageMixin):
     storage_type = DataStorageDevice.DISK
 
     def __init__(self, storage_ctx, proc_id=None):
-        super(DiskHandler, self).__init__(storage_ctx, proc_id=proc_id)
+        super().__init__(storage_ctx, proc_id=proc_id)
         self._compress = dataserializer.CompressType(options.worker.disk_compression)
 
         self._status_ref = self._storage_ctx.actor_ref(StatusActor.default_uid())

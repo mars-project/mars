@@ -46,7 +46,7 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
-        super(TensorMoment, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                            _ddof=ddof, _combine_size=combine_size, **kw)
 
     @property
@@ -87,7 +87,7 @@ class TensorMomentMap(TensorReduction, TensorReductionMixin):
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
-        super(TensorMomentMap, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                               _combine_size=combine_size, **kw)
 
     @property
@@ -124,7 +124,7 @@ class TensorMomentCombine(TensorReduction, TensorReductionMixin):
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
-        super(TensorMomentCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                   _combine_size=combine_size, **kw)
 
     @property
@@ -160,7 +160,7 @@ class TensorVar(TensorReduction, TensorReductionMixin):
     _ddof = Int32Field('ddof')
 
     def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, **kw):
-        super(TensorVar, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
                                         _combine_size=combine_size, **kw)
 
     @property

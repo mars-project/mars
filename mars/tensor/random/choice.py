@@ -39,7 +39,7 @@ class TensorChoice(TensorSimpleRandomData, TensorRandomOperandMixin):
     def __init__(self, state=None, size=None, replace=None,
                  dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super(TensorChoice, self).__init__(_state=state, _size=size,
+        super().__init__(_state=state, _size=size,
                                            _replace=replace, _dtype=dtype, _gpu=gpu, **kw)
 
     @property

@@ -43,7 +43,7 @@ class QuotaActor(WorkerActor):
     Actor handling quota request and assignment
     """
     def __init__(self, total_size):
-        super(QuotaActor, self).__init__()
+        super().__init__()
         self._status_ref = None
 
         self._requests = OrderedDict()
@@ -61,7 +61,7 @@ class QuotaActor(WorkerActor):
     def post_create(self):
         from .status import StatusActor
 
-        super(QuotaActor, self).post_create()
+        super().post_create()
 
         status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if self.ctx.has_actor(status_ref):
@@ -395,7 +395,7 @@ class MemQuotaActor(QuotaActor):
     Actor handling worker memory quota
     """
     def __init__(self, total_size, overall_size=None, refresh_time=None):
-        super(MemQuotaActor, self).__init__(total_size)
+        super().__init__(total_size)
         self._overall_size = overall_size or total_size
         self._last_memory_available = 0
         self._refresh_time = refresh_time or 10
@@ -405,7 +405,7 @@ class MemQuotaActor(QuotaActor):
     def post_create(self):
         from .dispatcher import DispatchActor
 
-        super(MemQuotaActor, self).post_create()
+        super().post_create()
         self.update_mem_stats()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
 
@@ -433,7 +433,7 @@ class MemQuotaActor(QuotaActor):
             for slot in self._dispatch_ref.get_slots('process_helper'):
                 self.ctx.actor_ref(slot).free_mkl_buffers(_tell=True, _wait=False)
             return False
-        return super(MemQuotaActor, self)._has_space(delta)
+        return super()._has_space(delta)
 
     def _log_allocate(self, msg, *args, **kwargs):
         mem_stats = resource.virtual_memory()
@@ -455,7 +455,7 @@ class MemQuotaActor(QuotaActor):
 
     def alter_allocation(self, key, quota_size=None, handle_shrink=True, new_key=None,
                          allocate=False, process_quota=False):
-        ret = super(MemQuotaActor, self).alter_allocation(
+        ret = super().alter_allocation(
             key, quota_size, handle_shrink=handle_shrink, new_key=new_key,
             allocate=allocate, process_quota=process_quota)
         if quota_size:
@@ -464,6 +464,6 @@ class MemQuotaActor(QuotaActor):
         return ret
 
     def release_quotas(self, keys):
-        ret = super(MemQuotaActor, self).release_quotas(keys)
+        ret = super().release_quotas(keys)
         self._update_status(allocated=self._allocated_size, total=self._total_size)
         return ret

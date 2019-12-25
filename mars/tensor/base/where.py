@@ -38,7 +38,7 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
     _y = KeyField('y')
 
     def __init__(self, dtype=None, **kw):
-        super(TensorWhere, self).__init__(_dtype=dtype, **kw)
+        super().__init__(_dtype=dtype, **kw)
 
     @property
     def condition(self):
@@ -53,7 +53,7 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
         return self._y
 
     def _set_inputs(self, inputs):
-        super(TensorWhere, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._condition = self._inputs[0]
         self._x = self._inputs[1]
         self._y = self._inputs[2]

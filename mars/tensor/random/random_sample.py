@@ -28,7 +28,7 @@ class TensorRandomSample(TensorSimpleRandomData, TensorRandomOperandMixin):
     def __init__(self, state=None, size=None, dtype=None,
                  gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super(TensorRandomSample, self).__init__(_state=state, _size=size,
+        super().__init__(_state=state, _size=size,
                                                  _dtype=dtype, _gpu=gpu, **kw)
 
     def __call__(self, chunk_size):

@@ -184,7 +184,7 @@ class SparseArray(SparseNDArray):
         if attr == 'get' and is_cp:
             return lambda: SparseNDArray(self.spmatrix.get(), shape=self.shape)
 
-        return super(SparseArray, self).__getattribute__(attr)
+        return super().__getattribute__(attr)
 
     def astype(self, dtype, **_):
         dtype = np.dtype(dtype)

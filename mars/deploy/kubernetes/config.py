@@ -182,7 +182,7 @@ class HostPathVolumeConfig(VolumeConfig):
     Configuration builder for Kubernetes host volumes
     """
     def __init__(self, name, mount_path, host_path, volume_type=None):
-        super(HostPathVolumeConfig, self).__init__(name, mount_path)
+        super().__init__(name, mount_path)
         self._host_path = host_path
         self._volume_type = volume_type or 'DirectoryOrCreate'
 
@@ -198,7 +198,7 @@ class EmptyDirVolumeConfig(VolumeConfig):
     Configuration builder for Kubernetes empty-dir volumes
     """
     def __init__(self, name, mount_path, use_memory=False):
-        super(EmptyDirVolumeConfig, self).__init__(name, mount_path)
+        super().__init__(name, mount_path)
         self._medium = 'Memory' if use_memory else None
 
     def build(self):
@@ -256,14 +256,14 @@ class ExecProbeConfig(ProbeConfig):
     Configuration builder for Kubernetes probes by executing commands
     """
     def __init__(self, command, *args, **kwargs):
-        super(ExecProbeConfig, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._command = command
 
     def build(self):
         result = {
             'exec': {'command': self._command}
         }
-        result.update(super(ExecProbeConfig, self).build())
+        result.update(super().build())
         return result
 
 
@@ -272,14 +272,14 @@ class TcpProbeConfig(ProbeConfig):
     Configuration builder for Kubernetes probes by checking TCP ports
     """
     def __init__(self, port, *args, **kwargs):
-        super(TcpProbeConfig, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._port = port
 
     def build(self):
         result = {
             'tcpSocket': {'port': self._port}
         }
-        result.update(super(TcpProbeConfig, self).build())
+        result.update(super().build())
         return result
 
 
@@ -393,7 +393,7 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
 
         res = ResourceConfig(cpu, memory) if cpu or memory else None
 
-        super(MarsReplicationControllerConfig, self).__init__(
+        super().__init__(
             self.rc_name, image or DEFAULT_IMAGE, replicas,
             resource_request=res, resource_limit=res if limit_resources else None,
             readiness_probe=self.config_readiness_probe(), **kwargs
@@ -456,7 +456,7 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
         self._limit_resources = kwargs['limit_resources'] = kwargs.get('limit_resources', True)
         worker_cache_mem = kwargs.pop('worker_cache_mem', None)
 
-        super(MarsWorkersConfig, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._spill_volumes = []
         for idx, vol in enumerate(spill_volumes):

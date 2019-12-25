@@ -53,7 +53,7 @@ class OptimizeContext(weakref.WeakKeyDictionary):
 class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
     def __init__(self, **kw):
         self._optimizer_context = OptimizeContext()
-        super(OptimizeIntegratedTileableGraphBuilder, self).__init__(**kw)
+        super().__init__(**kw)
         self._node_processor = self._apply_rules(self._node_processor, self._optimizer_context)
 
     @staticmethod
@@ -103,7 +103,7 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
     @enter_build_mode
     def build(self, tileables, tileable_graph=None):
         self._optimizer_context.append_result_tileables(tileables)
-        graph = super(OptimizeIntegratedTileableGraphBuilder, self).build(tileables, tileable_graph=tileable_graph)
+        graph = super().build(tileables, tileable_graph=tileable_graph)
         graph = self._replace_copied_tilebale(graph)
         self._mapping_tileables(tileables)
         return graph

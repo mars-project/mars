@@ -34,12 +34,12 @@ class MockIORunnerActor(WorkerActor):
     _io_runner = True
 
     def __init__(self):
-        super(MockIORunnerActor, self).__init__()
+        super().__init__()
         self._work_items = dict()
         self._submissions = dict()
 
     def post_create(self):
-        super(MockIORunnerActor, self).post_create()
+        super().post_create()
 
         dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid())
         dispatch_ref.register_free_slot(self.uid, 'iorunner')
@@ -76,12 +76,12 @@ class MockIORunnerActor(WorkerActor):
 
 class Test(WorkerCase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self._old_min_spill_size = options.worker.min_spill_size
         options.worker.min_spill_size = 0
 
     def tearDown(self):
-        super(Test, self).tearDown()
+        super().tearDown()
         options.worker.min_spill_size = self._old_min_spill_size
 
     @contextlib.contextmanager

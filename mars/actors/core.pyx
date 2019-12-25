@@ -119,7 +119,7 @@ class FunctionActor(_FunctionActor):
         try:
             return _actor_implementation[id(cls)](*args, **kwargs)
         except KeyError:
-            return super(FunctionActor, cls).__new__(cls, *args, **kwargs)
+            return super().__new__(cls, *args, **kwargs)
 
 
 

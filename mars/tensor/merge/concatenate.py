@@ -55,7 +55,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
     _axis = AnyField('axis')
 
     def __init__(self, axis=None, dtype=None, sparse=False, gpu=None, **kw):
-        super(TensorConcatenate, self).__init__(_axis=axis, _dtype=dtype,
+        super().__init__(_axis=axis, _dtype=dtype,
                                                 _gpu=gpu, _sparse=sparse, **kw)
 
     @property

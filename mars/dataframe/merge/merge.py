@@ -45,7 +45,7 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
     def __init__(self, how=None, on=None, left_on=None, right_on=None,
                  left_index=False, right_index=False, sort=False, suffixes=('_x', '_y'),
                  copy=True, indicator=False, validate=None, sparse=False, object_type=None, **kw):
-        super(_DataFrameMergeBase, self).__init__(
+        super().__init__(
             _how=how, _on=on, _left_on=left_on, _right_on=right_on, _left_index=left_index, _right_index=right_index,
             _sort=sort, _suffixes=suffixes, _copy=copy, _indicator=indicator, _validate=validate,
             _sparse=sparse, _object_type=object_type, **kw)
@@ -116,7 +116,7 @@ class DataFrameMergeAlignMap(DataFrameShuffleMap, DataFrameOperandMixin):
     _shuffle_on = AnyField('shuffle_on')
 
     def __init__(self, index_shuffle_size=None, shuffle_on=None, sparse=None, **kw):
-        super(DataFrameMergeAlignMap, self).__init__(
+        super().__init__(
             _index_shuffle_size=index_shuffle_size, _shuffle_on=shuffle_on,
             _sparse=sparse, _object_type=ObjectType.dataframe, **kw)
 
@@ -150,11 +150,11 @@ class DataFrameMergeAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, shuffle_key=None, sparse=False, **kw):
-        super(DataFrameMergeAlignReduce, self).__init__(_shuffle_key=shuffle_key,
+        super().__init__(_shuffle_key=shuffle_key,
                                                         _object_type=ObjectType.dataframe, **kw)
 
     def _set_inputs(self, inputs):
-        super(DataFrameMergeAlignReduce, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     @classmethod
@@ -177,7 +177,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
     _op_type_ = OperandDef.DATAFRAME_SHUFFLE_MERGE
 
     def __init__(self, **kw):
-        super(DataFrameShuffleMerge, self).__init__(**kw)
+        super().__init__(**kw)
 
     @classmethod
     def _gen_shuffle_chunks(cls, op, out_shape, shuffle_on, df):

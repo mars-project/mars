@@ -37,7 +37,7 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
     _strict = BoolField('strict')
 
     def __init__(self, lower=None, dtype=None, sparse=False, strict=None, **kw):
-        super(TensorSolveTriangular, self).__init__(_lower=lower, _dtype=dtype, _sparse=sparse,
+        super().__init__(_lower=lower, _dtype=dtype, _sparse=sparse,
                                                     _strict=strict, **kw)
 
     @property
@@ -53,7 +53,7 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
         return self._lower
 
     def _set_inputs(self, inputs):
-        super(TensorSolveTriangular, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._a, self._b = self._inputs
 
     def __call__(self, a, b):

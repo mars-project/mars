@@ -23,7 +23,7 @@ from mars.dataframe.utils import sort_dataframe_inplace
 
 class Test(TestBase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self.executor = Executor()
 
     def testMerge(self):

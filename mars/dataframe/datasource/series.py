@@ -35,7 +35,7 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
     def __init__(self, data=None, dtype=None, gpu=None, sparse=None, **kw):
         if dtype is None and data is not None:
             dtype = data.dtype
-        super(SeriesDataSource, self).__init__(_data=data, _dtype=dtype,
+        super().__init__(_data=data, _dtype=dtype,
                                                _gpu=gpu, _sparse=sparse,
                                                _object_type=ObjectType.series, **kw)
 

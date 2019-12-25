@@ -41,7 +41,7 @@ from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
 
 class MockCpuCalcActor(WorkerActor):
     def __init__(self, session_id, mock_data, delay):
-        super(MockCpuCalcActor, self).__init__()
+        super().__init__()
         self._delay = delay
         self._session_id = session_id
         self._mock_data = mock_data
@@ -60,13 +60,13 @@ class MockCpuCalcActor(WorkerActor):
 
 class MockSenderActor(WorkerActor):
     def __init__(self, mock_data_list, mode=None):
-        super(MockSenderActor, self).__init__()
+        super().__init__()
         self._mode = mode or 'in'
         self._mock_data_list = mock_data_list
         self._dispatch_ref = None
 
     def post_create(self):
-        super(MockSenderActor, self).post_create()
+        super().post_create()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
 
@@ -89,7 +89,7 @@ class MockSenderActor(WorkerActor):
 
 class ExecutionTestActor(WorkerActor):
     def __init__(self):
-        super(ExecutionTestActor, self).__init__()
+        super().__init__()
         self._results = []
         self._session_id = None
         self._graph_key = None
@@ -129,7 +129,7 @@ class ExecutionTestActor(WorkerActor):
 
 class Test(WorkerCase):
     def tearDown(self):
-        super(Test, self).tearDown()
+        super().tearDown()
         logger = logging.getLogger(ExecutionActor.__module__)
         logger.setLevel(logging.WARNING)
         self.rm_spill_dirs()

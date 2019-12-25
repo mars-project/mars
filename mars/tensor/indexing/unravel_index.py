@@ -35,7 +35,7 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
     _order = StringField('order')
 
     def __init__(self, dims=None, dtype=None, order=None, **kw):
-        super(TensorUnravelIndex, self).__init__(_dims=dims, _dtype=dtype,
+        super().__init__(_dims=dims, _dtype=dtype,
                                                  _order=order, **kw)
         if self._order is None:
             self._order = 'C'
@@ -53,7 +53,7 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
         return float('inf')
 
     def _set_inputs(self, inputs):
-        super(TensorUnravelIndex, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, indices):

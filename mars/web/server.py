@@ -59,14 +59,14 @@ class BokehStaticFileHandler(web.StaticFileHandler):
         path_parts = path.rsplit('/', 1)
         if 'bokeh' in path_parts[-1]:
             root = os.path.join(os.path.dirname(server.__file__), "static")
-        return super(BokehStaticFileHandler, cls).get_absolute_path(root, path)
+        return super().get_absolute_path(root, path)
 
     def validate_absolute_path(self, root, absolute_path):
         from bokeh import server
         path_parts = absolute_path.rsplit('/', 1)
         if 'bokeh' in path_parts[-1]:
             root = os.path.join(os.path.dirname(server.__file__), "static")
-        return super(BokehStaticFileHandler, self).validate_absolute_path(root, absolute_path)
+        return super().validate_absolute_path(root, absolute_path)
 
 
 class MarsRequestHandler(web.RequestHandler):

@@ -50,7 +50,7 @@ class MockReceiverWorkerActor(WorkerActor):
     Actor handling receiving data from a SenderActor
     """
     def __init__(self):
-        super(MockReceiverWorkerActor, self).__init__()
+        super().__init__()
         self._dispatch_ref = None
         self._receiver_manager_ref = None
 
@@ -62,7 +62,7 @@ class MockReceiverWorkerActor(WorkerActor):
         self._receive_errors = set()
 
     def post_create(self):
-        super(MockReceiverWorkerActor, self).post_create()
+        super().post_create()
         self._dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'receiver')
         self._receiver_manager_ref = self.ctx.actor_ref(ReceiverManagerActor.default_uid())
@@ -208,12 +208,12 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
 
 class Test(WorkerCase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self._old_block_size = options.worker.transfer_block_size
         options.worker.transfer_block_size = 4 * 1024
 
     def tearDown(self):
-        super(Test, self).tearDown()
+        super().tearDown()
         options.worker.transfer_block_size = self._old_block_size
         self.rm_spill_dirs(options.worker.spill_directory)
 

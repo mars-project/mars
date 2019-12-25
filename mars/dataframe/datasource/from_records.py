@@ -36,7 +36,7 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
                  gpu=False, sparse=False, **kw):
         if index is not None or columns is not None:
             raise NotImplementedError('Specifying index value is not supported for now')
-        super(DataFrameFromRecords, self).__init__(_exclude=exclude, _columns=columns,
+        super().__init__(_exclude=exclude, _columns=columns,
                                                    _coerce_float=coerce_float, _nrows=nrows,
                                                    _gpu=gpu, _sparse=sparse,
                                                    _object_type=ObjectType.dataframe, **kw)

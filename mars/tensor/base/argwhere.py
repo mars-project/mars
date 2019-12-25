@@ -34,10 +34,10 @@ class TensorArgwhere(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, dtype=None, **kw):
-        super(TensorArgwhere, self).__init__(_dtype=dtype, **kw)
+        super().__init__(_dtype=dtype, **kw)
 
     def _set_inputs(self, inputs):
-        super(TensorArgwhere, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, a):

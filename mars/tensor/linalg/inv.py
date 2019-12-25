@@ -30,7 +30,7 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, dtype=None, sparse=False, **kw):
-        super(TensorInv, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_dtype=dtype, _sparse=sparse, **kw)
 
     def __call__(self, a):
         a = astensor(a)

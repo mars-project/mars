@@ -23,7 +23,7 @@ from ...distributor import MarsDistributor
 def gen_distributor(scheduler_n_process, worker_n_process):
     class LocalClusterDistributor(Distributor):
         def __init__(self, n_process):
-            super(LocalClusterDistributor, self).__init__(n_process)
+            super().__init__(n_process)
             self._scheduler_distributor = MarsDistributor(scheduler_n_process, 's:h1:')
             self._worker_distributor = MarsDistributor(worker_n_process, 'w:0:')
 

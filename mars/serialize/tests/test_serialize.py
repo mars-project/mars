@@ -78,7 +78,7 @@ class Node1(Serializable):
         if provider.type == ProviderType.protobuf:
             from mars.serialize.tests.testser_pb2 import Node1Def
             return Node1Def
-        return super(Node1, cls).cls(provider)
+        return super().cls(provider)
 
 
 class Node8(Node1):
@@ -101,7 +101,7 @@ class Node2(Base, Serializable):
         if provider.type == ProviderType.protobuf:
             from mars.serialize.tests.testser_pb2 import Node2Def
             return Node2Def
-        return super(Node2, cls).cls(provider)
+        return super().cls(provider)
 
 
 class Node3(Serializable):
@@ -112,7 +112,7 @@ class Node3(Serializable):
         if provider.type == ProviderType.protobuf:
             from mars.serialize.tests.testser_pb2 import Node3Def
             return Node3Def
-        return super(Node3, cls).cls(provider)
+        return super().cls(provider)
 
 
 class Node5(AttributeAsDict):
@@ -163,7 +163,7 @@ class Node4(AttributeAsDict):
         if provider.type == ProviderType.protobuf:
             from mars.serialize.tests.testser_pb2 import Node4Def
             return Node4Def
-        return super(Node4, cls).cls(provider)
+        return super().cls(provider)
 
 
 class Test(unittest.TestCase):

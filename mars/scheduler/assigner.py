@@ -103,7 +103,7 @@ class AssignerActor(SchedulerActor):
         return 's:h1:assigner$%s' % session_id
 
     def __init__(self):
-        super(AssignerActor, self).__init__()
+        super().__init__()
         self._requests = dict()
         self._req_heap = []
 
@@ -246,7 +246,7 @@ class AssignEvaluationActor(SchedulerActor):
         return 's:0:%s$%s' % (cls.__name__, session_id)
 
     def __init__(self, assigner_ref):
-        super(AssignEvaluationActor, self).__init__()
+        super().__init__()
         self._worker_metrics = None
         self._worker_metric_time = time.time() - 2
 

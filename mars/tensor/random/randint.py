@@ -34,7 +34,7 @@ class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
     def __init__(self, state=None, size=None, dtype=None,
                  low=None, high=None, sparse=False, density=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super(TensorRandint, self).__init__(_state=state, _size=size,
+        super().__init__(_state=state, _size=size,
                                             _low=low, _high=high, _dtype=dtype,
                                             _sparse=sparse, _density=density,
                                             _gpu=gpu, **kw)
@@ -59,7 +59,7 @@ class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
         if op.sparse:
             cls.execute_sparse(ctx, op)
         else:
-            super(TensorRandint, cls).execute(ctx, op)
+            super().execute(ctx, op)
 
     @classmethod
     def execute_sparse(cls, ctx, op):
@@ -99,7 +99,7 @@ class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
     def estimate_size(cls, ctx, op):
         chunk = op.outputs[0]
         if not op.sparse or not getattr(op, '_density', None):
-            super(TensorRandint, cls).estimate_size(ctx, op)
+            super().estimate_size(ctx, op)
         else:
             # use density to estimate real memory usage
             nbytes = int(chunk.nbytes * getattr(chunk.op, '_density'))

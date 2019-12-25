@@ -54,7 +54,7 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
         if column_min_max is not None:
             kw.update(dict(_column_min=column_min_max[0], _column_min_close=column_min_max[1],
                            _column_max=column_min_max[2], _column_max_close=column_min_max[3]))
-        super(DataFrameIndexAlignMap, self).__init__(
+        super().__init__(
             _index_shuffle_size=index_shuffle_size, _column_shuffle_size=column_shuffle_size,
             _column_shuffle_segments=column_shuffle_segments, _sparse=sparse,
             _dtype=dtype, _dtypes=dtypes, _gpu=gpu, _object_type=object_type, **kw)
@@ -147,7 +147,7 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
             kw['dtype'] = inputs[0].dtype
         if kw.get('name', None) and getattr(inputs[0], 'name', None) is not None:
             kw['name'] = inputs[0].dtype
-        return super(DataFrameIndexAlignMap, self)._create_chunk(output_idx, index, **kw)
+        return super()._create_chunk(output_idx, index, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -228,11 +228,11 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, shuffle_key=None, sparse=None, object_type=None, **kw):
-        super(DataFrameIndexAlignReduce, self).__init__(_shuffle_key=shuffle_key, _sparse=sparse,
+        super().__init__(_shuffle_key=shuffle_key, _sparse=sparse,
                                                         _object_type=object_type, **kw)
 
     def _set_inputs(self, inputs):
-        super(DataFrameIndexAlignReduce, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def _create_chunk(self, output_idx, index, **kw):
@@ -266,7 +266,7 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
             kw['dtype'] = inputs[0].inputs[0].dtype
         if kw.get('name', None) and getattr(inputs[0].inputs[0], 'name', None) is not None:
             kw['name'] = inputs[0].inputs[0].dtype
-        return super(DataFrameIndexAlignReduce, self)._create_chunk(output_idx, index, **kw)
+        return super()._create_chunk(output_idx, index, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

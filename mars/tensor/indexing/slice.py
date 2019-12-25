@@ -26,7 +26,7 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
     _slices = ListField('slices')
 
     def __init__(self, slices=None, dtype=None, sparse=False, **kw):
-        super(TensorSlice, self).__init__(_slices=slices, _dtype=dtype,
+        super().__init__(_slices=slices, _dtype=dtype,
                                           _sparse=sparse, **kw)
 
     @property
@@ -34,7 +34,7 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
         return self._slices
 
     def _set_inputs(self, inputs):
-        super(TensorSlice, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def _get_order(self, kw, i):

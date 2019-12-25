@@ -101,7 +101,7 @@ class TensorTriu(TensorTri):
     _k = Int32Field('k')
 
     def __init__(self, k=None, dtype=None, sparse=False, gpu=None, **kw):
-        super(TensorTriu, self).__init__(_k=k, _dtype=dtype, _sparse=sparse,
+        super().__init__(_k=k, _dtype=dtype, _sparse=sparse,
                                          _gpu=gpu, **kw)
 
     @property
@@ -146,7 +146,7 @@ class TensorTril(TensorTri):
     _k = Int32Field('k')
 
     def __init__(self, k=None, dtype=None, sparse=False, gpu=None, **kw):
-        super(TensorTril, self).__init__(_k=k, _dtype=dtype, _sparse=sparse,
+        super().__init__(_k=k, _dtype=dtype, _sparse=sparse,
                                          _gpu=gpu, **kw)
 
     @property

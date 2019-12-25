@@ -25,7 +25,7 @@ class DataFrameDeviceConversionBase(DataFrameOperand, DataFrameOperandMixin):
         return self._input
 
     def _set_inputs(self, inputs):
-        super(DataFrameDeviceConversionBase, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = inputs[0]
 
     def __call__(self, obj):

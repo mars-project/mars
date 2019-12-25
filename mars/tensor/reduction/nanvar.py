@@ -33,7 +33,7 @@ class TensorNanMoment(TensorReduction, TensorReductionMixin):
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
-        super(TensorNanMoment, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                               _ddof=ddof, _combine_size=combine_size, **kw)
 
     @property
@@ -74,7 +74,7 @@ class TensorNanMomentMap(TensorReduction, TensorReductionMixin):
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
-        super(TensorNanMomentMap, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                  _combine_size=combine_size, **kw)
 
     @property
@@ -110,7 +110,7 @@ class TensorNanMomentCombine(TensorReduction, TensorReductionMixin):
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
-        super(TensorNanMomentCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                      _combine_size=combine_size, **kw)
 
     @property
@@ -146,7 +146,7 @@ class TensorNanVar(TensorReduction, TensorReductionMixin):
     _ddof = Int32Field('ddof')
 
     def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, **kw):
-        super(TensorNanVar, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
                                            _combine_size=combine_size, **kw)
 
     @property

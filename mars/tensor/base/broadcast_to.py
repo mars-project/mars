@@ -28,7 +28,7 @@ class TensorBroadcastTo(TensorHasInput, TensorOperandMixin):
     _shape = TupleField('shape')
 
     def __init__(self, shape=None, dtype=None, sparse=False, **kw):
-        super(TensorBroadcastTo, self).__init__(_shape=shape, _dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_shape=shape, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def shape(self):

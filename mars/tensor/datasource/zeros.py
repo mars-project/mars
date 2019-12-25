@@ -34,7 +34,7 @@ class TensorZeros(TensorNoInput):
 
     def __init__(self, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype or 'f8')
-        super(TensorZeros, self).__init__(_dtype=dtype, _gpu=gpu,
+        super().__init__(_dtype=dtype, _gpu=gpu,
                                           _sparse=sparse, _order=order, **kw)
 
     @property
@@ -115,7 +115,7 @@ class TensorZerosLike(TensorLike):
 
     def __init__(self, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else None
-        super(TensorZerosLike, self).__init__(_dtype=dtype, _gpu=gpu,
+        super().__init__(_dtype=dtype, _gpu=gpu,
                                               _sparse=sparse, _order=order, **kw)
 
     @property

@@ -31,7 +31,7 @@ class MutableTensorActor(SchedulerActor):
         return 's:0:mutable-tensor$%s$%s' % (session_id, name)
 
     def __init__(self, session_id, name, shape, dtype, graph_key, fill_value=None, chunk_size=None, *args, **kwargs):
-        super(MutableTensorActor, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._session_id = session_id
         self._name = name
         self._shape = shape
@@ -57,7 +57,7 @@ class MutableTensorActor(SchedulerActor):
         from ..tensor.core import MutableTensor, MutableTensorData
         from ..tensor.utils import create_fetch_tensor
 
-        super(MutableTensorActor, self).post_create()
+        super().post_create()
         self.set_cluster_info_ref()
         self._resource_ref = self.ctx.actor_ref(ResourceActor.default_uid())
 

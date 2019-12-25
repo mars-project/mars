@@ -42,7 +42,7 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
     _order = StringField('order')
 
     def __init__(self, newshape=None, order=None, dtype=None, create_view=None, **kw):
-        super(TensorReshape, self).__init__(_newshape=newshape, _order=order, _dtype=dtype,
+        super().__init__(_newshape=newshape, _order=order, _dtype=dtype,
                                             _create_view=create_view, **kw)
 
     @property
@@ -54,7 +54,7 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
         return self._order
 
     def _set_inputs(self, inputs):
-        super(TensorReshape, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def on_output_modify(self, new_output):
@@ -265,7 +265,7 @@ class TensorReshapeMap(TensorShuffleMap, TensorOperandMixin):
     _new_chunk_size = TupleField('new_chunk_size', ValueType.uint64)
 
     def _set_inputs(self, inputs):
-        super(TensorReshapeMap, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     @property
@@ -371,7 +371,7 @@ class TensorReshapeReduce(TensorShuffleReduce, TensorOperandMixin):
     _input = KeyField('input')
 
     def _set_inputs(self, inputs):
-        super(TensorReshapeReduce, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     @classmethod

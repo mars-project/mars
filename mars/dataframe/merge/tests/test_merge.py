@@ -23,7 +23,7 @@ from mars.dataframe.merge import DataFrameMergeAlignMap, DataFrameMergeAlignRedu
 
 class Test(TestBase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self.executor = Executor()
 
     def testMerge(self):

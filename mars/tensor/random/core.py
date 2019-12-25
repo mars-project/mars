@@ -272,13 +272,13 @@ class TensorRandomOperandMixin(TensorOperandMixin):
         shape = self._get_shape(kws, kw)
         with self._get_inputs_shape_by_given_fields(inputs, shape, raw_chunk_size, True) as (inputs, shape):
             kw['shape'] = shape
-            return super(TensorRandomOperandMixin, self)._new_tileables(inputs, kws=kws, **kw)
+            return super()._new_tileables(inputs, kws=kws, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         shape = self._get_shape(kws, kw)
         with self._get_inputs_shape_by_given_fields(inputs, shape, None, False) as (inputs, shape):
             kw['shape'] = shape
-            return super(TensorRandomOperandMixin, self)._new_chunks(inputs, kws=kws, **kw)
+            return super()._new_chunks(inputs, kws=kws, **kw)
 
 
 def _on_serialize_random_state(rs):

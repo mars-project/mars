@@ -157,7 +157,7 @@ class HasClusterInfoActor(PromiseActor):
     cluster_info_uid = None
 
     def __init__(self):
-        super(HasClusterInfoActor, self).__init__()
+        super().__init__()
 
         # the scheduler list
         self._schedulers = None

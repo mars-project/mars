@@ -28,14 +28,14 @@ class DispatchActor(WorkerActor):
     Dispatcher for multiple actors belonging to one category
     """
     def __init__(self):
-        super(DispatchActor, self).__init__()
+        super().__init__()
         self._free_slots = dict()
         self._all_slots = dict()
         self._free_slot_requests = dict()
         self._status_ref = None
 
     def post_create(self):
-        super(DispatchActor, self).post_create()
+        super().post_create()
         try:
             self.set_cluster_info_ref()
         except ActorNotExist:

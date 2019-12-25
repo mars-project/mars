@@ -52,7 +52,7 @@ class TensorChunkData(ChunkData):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, op=None, index=None, shape=None, dtype=None, order=None, **kw):
-        super(TensorChunkData, self).__init__(_op=op, _index=index, _shape=shape,
+        super().__init__(_op=op, _index=index, _shape=shape,
                                               _dtype=dtype, _order=order, **kw)
 
     @classmethod
@@ -60,7 +60,7 @@ class TensorChunkData(ChunkData):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.tensor_pb2 import TensorChunkDef
             return TensorChunkDef
-        return super(TensorChunkData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def params(self):
@@ -125,7 +125,7 @@ class TensorData(HasShapeTileableData):
                         on_deserialize=lambda x: [TensorChunk(it) for it in x] if x is not None else x)
 
     def __init__(self, op=None, shape=None, dtype=None, order=None, nsplits=None, chunks=None, **kw):
-        super(TensorData, self).__init__(_op=op, _shape=shape, _dtype=dtype, _order=order,
+        super().__init__(_op=op, _shape=shape, _dtype=dtype, _order=order,
                                          _nsplits=nsplits, _chunks=chunks, **kw)
 
     @classmethod
@@ -133,7 +133,7 @@ class TensorData(HasShapeTileableData):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.tensor_pb2 import TensorDef
             return TensorDef
-        return super(TensorData, cls).cls(provider)
+        return super().cls(provider)
 
     def __str__(self):
         if is_eager_mode():
@@ -405,7 +405,7 @@ class Tensor(TileableEntity):
         return self._data.totiledb(uri, ctx=ctx, key=key, timestamp=timestamp)
 
     def copy(self, order='C'):
-        return super(Tensor, self).copy().astype(self.dtype, order=order, copy=False)
+        return super().copy().astype(self.dtype, order=order, copy=False)
 
     def sort(self, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None, order=None):
         """
@@ -534,7 +534,7 @@ class Indexes(Serializable):
 
     def __init__(self, indexes=None, **kw):
         self._indexes = indexes
-        super(Indexes, self).__init__(**kw)
+        super().__init__(**kw)
 
     @property
     def indexes(self):
@@ -551,12 +551,12 @@ class MutableTensorData(TensorData):
 
     def __init__(self, name=None, op=None, shape=None, dtype=None, key=None, chunk_eps=None,
                  nsplits=None, chunks=None, **kw):
-        super(MutableTensorData, self).__init__(op=op, shape=shape, dtype=dtype, nsplits=nsplits,
+        super().__init__(op=op, shape=shape, dtype=dtype, nsplits=nsplits,
                                                 chunks=chunks, _name=name, _key=key, _chunk_eps=chunk_eps, **kw)
 
     @classmethod
     def cls(cls, provider):
-        return super(MutableTensorData, cls).cls(provider)
+        return super().cls(provider)
 
     def __str__(self):
         return 'MutableTensor(op={0}, name={1}, shape={2})'.format(self.op.__class__.__name__,
@@ -598,7 +598,7 @@ class MutableTensor(Entity):
     _allow_data_type_ = (MutableTensorData,)
 
     def __init__(self, *args, **kwargs):
-        super(MutableTensor, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._chunk_buffers = defaultdict(lambda: [])
         self._record_type = np.dtype([("index", np.uint32), ("ts", np.dtype('datetime64[ns]')), ("value", self.dtype)])
         if self.chunks:

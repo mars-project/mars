@@ -32,11 +32,11 @@ logger = logging.getLogger(__name__)
 
 class ResourceHeartbeatActor(SchedulerActor):
     def __init__(self, resource_ref):
-        super(ResourceHeartbeatActor, self).__init__()
+        super().__init__()
         self._resource_ref = resource_ref
 
     def post_create(self):
-        super(ResourceHeartbeatActor, self).post_create()
+        super().post_create()
         self._resource_ref = self.ctx.actor_ref(self._resource_ref)
         self.ref().do_heartbeat(_tell=True)
 
@@ -50,7 +50,7 @@ class ResourceActor(SchedulerActor):
     Actor managing free resources on workers
     """
     def __init__(self):
-        super(ResourceActor, self).__init__()
+        super().__init__()
         self._meta_cache = dict()
         self._worker_blacklist = BlacklistSet(options.scheduler.worker_blacklist_time)
         self._worker_allocations = dict()
@@ -64,7 +64,7 @@ class ResourceActor(SchedulerActor):
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
-        super(ResourceActor, self).post_create()
+        super().post_create()
         self.set_cluster_info_ref()
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
@@ -85,7 +85,7 @@ class ResourceActor(SchedulerActor):
 
     def pre_destroy(self):
         self._heartbeat_ref.destroy()
-        super(ResourceActor, self).pre_destroy()
+        super().pre_destroy()
 
     def heartbeat(self):
         t = time.time()

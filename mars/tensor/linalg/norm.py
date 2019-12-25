@@ -38,7 +38,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
     _keepdims = BoolField('keepdims')
 
     def __init__(self, ord=None, axis=None, keepdims=None, dtype=None, sparse=False, **kw):
-        super(TensorNorm, self).__init__(_ord=ord, _axis=axis, _keepdims=keepdims,
+        super().__init__(_ord=ord, _axis=axis, _keepdims=keepdims,
                                          _dtype=dtype, _sparse=sparse, **kw)
 
     @property
@@ -54,7 +54,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
         return self._keepdims
 
     def _set_inputs(self, inputs):
-        super(TensorNorm, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, x):

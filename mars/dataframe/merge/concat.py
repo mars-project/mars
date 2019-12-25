@@ -40,7 +40,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     def __init__(self, axis=None, join=None, join_axes=None, ignore_index=None,
                  keys=None, levels=None, names=None, verify_integrity=None,
                  sort=None, copy=None, sparse=None, object_type=None, **kw):
-        super(DataFrameConcat, self).__init__(
+        super().__init__(
             _axis=axis, _join=join, _join_axes=join_axes, _ignore_index=ignore_index,
             _keys=keys, _levels=levels, _names=names,
             _verify_integrity=verify_integrity, _sort=sort, _copy=copy,
@@ -157,7 +157,7 @@ class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
     _by = AnyField('by')
 
     def __init__(self, by=None, object_type=None, **kw):
-        super(GroupByConcat, self).__init__(_by=by, _object_type=object_type, **kw)
+        super().__init__(_by=by, _object_type=object_type, **kw)
 
     @property
     def by(self):

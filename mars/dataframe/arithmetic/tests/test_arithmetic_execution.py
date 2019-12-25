@@ -526,7 +526,7 @@ class TestBinary(TestBase):
 
 class TestUnary(TestBase):
     def setUp(self):
-        super(TestUnary, self).setUp()
+        super().setUp()
         self.executor = Executor()
 
     def testAbs(self):

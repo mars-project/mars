@@ -37,7 +37,7 @@ class TensorArange(TensorNoInput):
             dtype = np.dtype(dtype)
         elif stop is not None and step is not None:
             dtype = np.dtype(dtype) if dtype is not None else np.arange(0, type(stop)(1), step).dtype
-        super(TensorArange, self).__init__(_start=start, _stop=stop, _step=step,
+        super().__init__(_start=start, _stop=stop, _step=step,
                                            _dtype=dtype, _gpu=gpu, **kw)
 
     @property

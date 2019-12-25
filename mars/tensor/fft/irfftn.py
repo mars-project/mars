@@ -25,7 +25,7 @@ class TensorIRFFTN(TensorRealFFTN, TensorRealIFFTNMixin):
     _op_type_ = OperandDef.IRFFTN
 
     def __init__(self, shape=None, axes=None, norm=None, dtype=None, **kw):
-        super(TensorIRFFTN, self).__init__(_shape=shape, _axes=axes, _norm=norm,
+        super().__init__(_shape=shape, _axes=axes, _norm=norm,
                                            _dtype=dtype, **kw)
 
 

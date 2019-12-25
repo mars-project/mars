@@ -70,12 +70,12 @@ class TensorElementWiseWithInputs(TensorElementWise):
 
     def _new_tileables(self, inputs, kws=None, **kw):
         self._set_sparse(inputs)
-        return super(TensorElementWiseWithInputs, self)._new_tileables(
+        return super()._new_tileables(
             inputs, kws=kws, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         self._set_sparse(inputs)
-        return super(TensorElementWiseWithInputs, self)._new_chunks(
+        return super()._new_chunks(
             inputs, kws=kws, **kw)
 
 
@@ -143,7 +143,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
     _err = DictField('err', ValueType.string, ValueType.string)
 
     def __init__(self, lhs=None, rhs=None, out=None, where=None, order=None, **kwargs):
-        super(TensorBinOp, self).__init__(_lhs=lhs, _rhs=rhs, _out=out,
+        super().__init__(_lhs=lhs, _rhs=rhs, _out=out,
                                           _where=where, _order=order, **kwargs)
         if self._order is None:
             self._order = 'K'
@@ -188,7 +188,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         setattr(self, '_sparse', self._is_sparse(x1, x2))
 
     def _set_inputs(self, inputs):
-        super(TensorBinOp, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
 
         self._lhs = self._lhs if np.isscalar(self._lhs) else next(inputs_iter)
@@ -327,7 +327,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
     _err = DictField('err', ValueType.string, ValueType.string)
 
     def __init__(self, out=None, where=None, order=None, **kwargs):
-        super(TensorUnaryOp, self).__init__(_out=out, _where=where,
+        super().__init__(_out=out, _where=where,
                                             _order=order, **kwargs)
         if self._order is None:
             self._order = 'K'
@@ -365,7 +365,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
             return False
 
     def _set_inputs(self, inputs):
-        super(TensorUnaryOp, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
 
         self._input = next(inputs_iter)
@@ -439,7 +439,7 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
     _casting = StringField('casting')
 
     def __init__(self, out1=None, out2=None, where=None, order=None, **kwargs):
-        super(TensorOutBinOp, self).__init__(_out1=out1, _out2=out2, _where=where,
+        super().__init__(_out1=out1, _out2=out2, _where=where,
                                              _order=order, **kwargs)
         if self._order is None:
             self._order = 'K'
@@ -474,7 +474,7 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
         return getattr(self, '_casting', None)
 
     def _set_inputs(self, inputs):
-        super(TensorOutBinOp, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
 
         self._input = next(inputs_iter)

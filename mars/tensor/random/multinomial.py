@@ -32,7 +32,7 @@ class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
     def __init__(self, n=None, pvals=None, state=None, size=None,
                  dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super(TensorMultinomial, self).__init__(_n=n, _pvals=pvals, _state=state,
+        super().__init__(_n=n, _pvals=pvals, _state=state,
                                                 _size=size, _dtype=dtype, _gpu=gpu, **kw)
 
     @property

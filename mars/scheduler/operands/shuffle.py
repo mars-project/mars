@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class ShuffleProxyActor(BaseOperandActor):
     def __init__(self, session_id, graph_id, op_key, op_info, **kwargs):
-        super(ShuffleProxyActor, self).__init__(session_id, graph_id, op_key, op_info, **kwargs)
+        super().__init__(session_id, graph_id, op_key, op_info, **kwargs)
         self._session_id = session_id
         self._graph_id = graph_id
         self._op_key = op_key
@@ -42,7 +42,7 @@ class ShuffleProxyActor(BaseOperandActor):
         self._reducer_to_mapper = defaultdict(dict)
 
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
-        super(ShuffleProxyActor, self).add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
+        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
 
         from ..chunkmeta import WorkerMeta
         chunk_key = next(iter(output_sizes.keys()))[0]
@@ -101,7 +101,7 @@ class ShuffleProxyActor(BaseOperandActor):
         self.ref().start_operand(OperandState.FINISHED, _tell=True)
 
     def add_finished_successor(self, op_key, worker):
-        super(ShuffleProxyActor, self).add_finished_successor(op_key, worker)
+        super().add_finished_successor(op_key, worker)
         shuffle_key = self._op_to_shuffle_keys[op_key]
 
         # input data in reduce nodes can be freed safely
@@ -181,7 +181,7 @@ class ShuffleProxyActor(BaseOperandActor):
             self._reducer_workers.update(self._graph_refs[0].assign_operand_workers(
                 missing_succs, input_chunk_metas=self._reducer_to_mapper))
 
-        super(ShuffleProxyActor, self).move_failover_state(
+        super().move_failover_state(
             from_states, state, new_target, dead_workers)
 
     def free_data(self, state=OperandState.FREED, check=True):

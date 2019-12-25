@@ -27,7 +27,7 @@ class TensorCpFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
     # use for cupy-fused operand
     def __init__(self, dtype=None, **kw):
-        super(TensorCpFuseChunk, self).__init__(_dtype=dtype, **kw)
+        super().__init__(_dtype=dtype, **kw)
 
     @property
     def dtype(self):

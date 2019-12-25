@@ -38,7 +38,7 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
     _axes = ListField('axes', ValueType.int32)
 
     def __init__(self, axes=None, dtype=None, sparse=False, **kw):
-        super(TensorTranspose, self).__init__(_axes=axes, _dtype=dtype,
+        super().__init__(_axes=axes, _dtype=dtype,
                                               _sparse=sparse,
                                               # transpose will create a view
                                               _create_view=True, **kw)
@@ -57,7 +57,7 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
         return self.new_tensor([a], shape, order=tensor_order)
 
     def _set_inputs(self, inputs):
-        super(TensorTranspose, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def on_output_modify(self, new_output):

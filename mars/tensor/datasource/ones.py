@@ -33,7 +33,7 @@ class TensorOnes(TensorNoInput):
 
     def __init__(self, dtype=None, gpu=None, order=None, **kw):
         dtype = np.dtype(dtype or 'f8')
-        super(TensorOnes, self).__init__(_dtype=dtype, _gpu=gpu, _order=order, **kw)
+        super().__init__(_dtype=dtype, _gpu=gpu, _order=order, **kw)
 
     @property
     def order(self):
@@ -112,7 +112,7 @@ class TensorOnesLike(TensorLike):
 
     def __init__(self, dtype=None, gpu=None, sparse=False, **kw):
         dtype = np.dtype(dtype) if dtype is not None else None
-        super(TensorOnesLike, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
 
     @classmethod
     def execute_sparse(cls, ctx, op):

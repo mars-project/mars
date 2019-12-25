@@ -36,7 +36,7 @@ class PlasmaKeyMapActor(FunctionActor):
         return 'w:0:' + cls.__name__
 
     def __init__(self):
-        super(PlasmaKeyMapActor, self).__init__()
+        super().__init__()
         self._mapping = dict()
 
     def put(self, session_id, chunk_key, obj_id):

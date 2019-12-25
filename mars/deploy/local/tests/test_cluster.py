@@ -58,19 +58,19 @@ class SerializeMustFailOperand(TensorOperand, TensorElementWise):
     _f = Int64Field('f', on_deserialize=_on_deserialize_fail)
 
     def __init__(self, f=None, **kw):
-        super(SerializeMustFailOperand, self).__init__(_f=f, **kw)
+        super().__init__(_f=f, **kw)
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
 class Test(unittest.TestCase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self._old_default_cpu_usage = options.scheduler.default_cpu_usage
         options.scheduler.default_cpu_usage = 0
 
     def tearDown(self):
-        super(Test, self).tearDown()
+        super().tearDown()
         options.scheduler.default_cpu_usage = self._old_default_cpu_usage
 
     def testLocalCluster(self, *_):

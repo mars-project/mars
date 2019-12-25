@@ -28,7 +28,7 @@ from mars.utils import get_next_port, serialize_graph
 
 class FakeExecutionActor(promise.PromiseActor):
     def __init__(self, exec_delay):
-        super(FakeExecutionActor, self).__init__()
+        super().__init__()
         self._exec_delay = exec_delay
         self._finished_keys = set()
         self._enqueue_callbacks = dict()

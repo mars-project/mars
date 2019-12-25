@@ -39,7 +39,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
     _axis = Int32Field('axis')
 
     def __init__(self, axis=None, dtype=None, sparse=False, **kw):
-        super(TensorRepeat, self).__init__(_axis=axis, _dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def repeats(self):
@@ -50,7 +50,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
         return self._axis
 
     def _set_inputs(self, inputs):
-        super(TensorRepeat, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
         if len(inputs) > 1:
             self._repeats = self._inputs[1]

@@ -58,7 +58,7 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _indexes = ListField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
-        super(DataFrameIlocGetItem, self).__init__(_indexes=indexes,
+        super().__init__(_indexes=indexes,
                                                    _gpu=gpu, _sparse=sparse,
                                                    _object_type=object_type, **kw)
 
@@ -213,7 +213,7 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
-        super(DataFrameIlocSetItem, self).__init__(_indexes=indexes, _value=value,
+        super().__init__(_indexes=indexes, _value=value,
                                                    _gpu=gpu, _sparse=sparse,
                                                    _object_type=object_type, **kw)
 
@@ -276,7 +276,7 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _indexes = AnyField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, **kw):
-        super(SeriesIlocGetItem, self).__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse,
+        super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse,
                                                 _object_type=ObjectType.series, **kw)
 
     @property
@@ -327,7 +327,7 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False, **kw):
-        super(SeriesIlocSetItem, self).__init__(_indexes=indexes, _value=value, _gpu=gpu, _sparse=sparse,
+        super().__init__(_indexes=indexes, _value=value, _gpu=gpu, _sparse=sparse,
                                                 _object_type=ObjectType.series, **kw)
 
     @property

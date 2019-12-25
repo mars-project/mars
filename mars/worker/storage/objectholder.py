@@ -34,7 +34,7 @@ class ObjectHolderActor(WorkerActor):
     _spill_devices = None
 
     def __init__(self, size_limit=0):
-        super(ObjectHolderActor, self).__init__()
+        super().__init__()
         self._size_limit = size_limit
 
         self._data_holder = OrderedDict()
@@ -56,7 +56,7 @@ class ObjectHolderActor(WorkerActor):
         from ..dispatcher import DispatchActor
         from ..status import StatusActor
 
-        super(ObjectHolderActor, self).post_create()
+        super().post_create()
         self.register_actors_down_handler()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
 
@@ -260,7 +260,7 @@ class ObjectHolderActor(WorkerActor):
 
 class SimpleObjectHolderActor(ObjectHolderActor):
     def post_create(self):
-        super(SimpleObjectHolderActor, self).post_create()
+        super().post_create()
         manager_ref = self.ctx.actor_ref(StorageManagerActor.default_uid())
         manager_ref.register_process_holder(
             self.proc_id, self._storage_device, self.ref())
@@ -293,7 +293,7 @@ class SharedHolderActor(ObjectHolderActor):
     _spill_devices = (DataStorageDevice.DISK,)
 
     def post_create(self):
-        super(SharedHolderActor, self).post_create()
+        super().post_create()
         self._size_limit = self._shared_store.get_actual_capacity(self._size_limit)
         logger.info('Detected actual plasma store size: %s', readable_size(self._size_limit))
 
@@ -333,7 +333,7 @@ class CudaHolderActor(SimpleObjectHolderActor):
     _spill_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
 
     def __init__(self, size_limit=0, device_id=None):
-        super(CudaHolderActor, self).__init__(size_limit=size_limit)
+        super().__init__(size_limit=size_limit)
         if device_id is not None:
             os.environ['CUDA_VISIBLE_DEVICES'] = str(device_id)
 

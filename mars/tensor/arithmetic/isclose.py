@@ -32,7 +32,7 @@ class TensorIsclose(TensorBinOp):
     def __init__(self, rtol=None, atol=None, equal_nan=None,
                  casting='same_kind', err=None, dtype=None, sparse=False, **kw):
         err = err if err is not None else np.geterr()
-        super(TensorIsclose, self).__init__(_rtol=rtol, _atol=atol, _equal_nan=equal_nan,
+        super().__init__(_rtol=rtol, _atol=atol, _equal_nan=equal_nan,
                                             _casting=casting, _err=err,
                                             _dtype=dtype, _sparse=sparse, **kw)
 

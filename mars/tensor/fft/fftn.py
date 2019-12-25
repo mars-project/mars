@@ -25,7 +25,7 @@ class TensorFFTN(TensorStandardFFTN, TensorComplexFFTNMixin):
     _op_type_ = OperandDef.FFTN
 
     def __init__(self, shape=None, axes=None, norm=None, dtype=None, **kw):
-        super(TensorFFTN, self).__init__(_shape=shape, _axes=axes, _norm=norm,
+        super().__init__(_shape=shape, _axes=axes, _norm=norm,
                                          _dtype=dtype, **kw)
 
 

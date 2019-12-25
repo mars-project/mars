@@ -29,7 +29,7 @@ class TensorLessEqual(TensorBinOp):
 
     def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
-        super(TensorLessEqual, self).__init__(_casting=casting, _err=err,
+        super().__init__(_casting=casting, _err=err,
                                               _dtype=dtype, _sparse=sparse, **kw)
 
 

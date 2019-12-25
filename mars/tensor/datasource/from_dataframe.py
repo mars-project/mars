@@ -29,7 +29,7 @@ class TensorFromDataFrame(TensorHasInput):
     _input = KeyField('_input')
 
     def __init__(self, dtype=None, gpu=None, sparse=None, **kw):
-        super(TensorFromDataFrame, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

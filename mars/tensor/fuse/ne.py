@@ -35,7 +35,7 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
     # use for numexpr-fused operand
     def __init__(self, dtype=None, **kw):
-        super(TensorNeFuseChunk, self).__init__(_dtype=dtype, **kw)
+        super().__init__(_dtype=dtype, **kw)
 
     @property
     def dtype(self):

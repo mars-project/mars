@@ -36,7 +36,7 @@ class XGBTrain(LearnMergeDictOperand):
 
     def __init__(self, params=None, dtrain=None, evals=None, kwargs=None,
                  tracker=None, merge=None, gpu=None, output_types=None, **kw):
-        super(XGBTrain, self).__init__(_params=params, _dtrain=dtrain, _evals=evals,
+        super().__init__(_params=params, _dtrain=dtrain, _evals=evals,
                                        _kwargs=kwargs, _tracker=tracker, _merge=merge,
                                        _gpu=gpu, _output_types=output_types, **kw)
         if self._output_types is None:
@@ -63,7 +63,7 @@ class XGBTrain(LearnMergeDictOperand):
         return self._tracker
 
     def _set_inputs(self, inputs):
-        super(XGBTrain, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._dtrain = self._inputs[0]
         rest = self._inputs[1:]
         if self._tracker is not None:
@@ -138,7 +138,7 @@ class XGBTrain(LearnMergeDictOperand):
     @classmethod
     def execute(cls, ctx, op):
         if op.merge:
-            return super(XGBTrain, cls).execute(ctx, op)
+            return super().execute(ctx, op)
 
         from xgboost import train, rabit
 

@@ -36,7 +36,7 @@ class BaseCalcActor(WorkerActor):
     _calc_dest_devices = None
 
     def __init__(self):
-        super(BaseCalcActor, self).__init__()
+        super().__init__()
         self._remove_intermediate = self._calc_intermediate_device not in self._calc_dest_devices
 
         self._dispatch_ref = None
@@ -49,7 +49,7 @@ class BaseCalcActor(WorkerActor):
         self._n_cpu = None
 
     def post_create(self):
-        super(BaseCalcActor, self).post_create()
+        super().post_create()
 
         from .quota import MemQuotaActor
         from .dispatcher import DispatchActor

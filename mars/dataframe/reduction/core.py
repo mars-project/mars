@@ -36,7 +36,7 @@ class DataFrameReductionOperand(DataFrameOperand):
 
     def __init__(self, axis=None, skipna=None, level=None, numeric_only=None, min_count=None, calc_with_count=None,
                  dtype=None, combine_size=None, gpu=None, sparse=None, object_type=None, **kw):
-        super(DataFrameReductionOperand, self).__init__(_axis=axis, _skipna=skipna, _level=level,
+        super().__init__(_axis=axis, _skipna=skipna, _level=level,
                                                         _numeric_only=numeric_only,
                                                         _min_count=min_count,
                                                         _calc_with_count=calc_with_count, _dtype=dtype,

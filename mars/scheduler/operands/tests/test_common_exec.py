@@ -36,7 +36,7 @@ class FakeExecutionActor(SchedulerActor):
     _retries = defaultdict(lambda: 0)
 
     def __init__(self, exec_delay=0.1, fail_count=0):
-        super(FakeExecutionActor, self).__init__()
+        super().__init__()
 
         self._fail_count = fail_count
         self._exec_delay = exec_delay
@@ -46,7 +46,7 @@ class FakeExecutionActor(SchedulerActor):
         self._graph_records = dict()  # type: dict[tuple, GraphExecutionRecord]
 
     def post_create(self):
-        super(FakeExecutionActor, self).post_create()
+        super().post_create()
         self.set_cluster_info_ref()
 
     @classmethod

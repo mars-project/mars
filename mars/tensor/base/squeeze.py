@@ -48,7 +48,7 @@ class TensorSqueeze(TensorHasInput, TensorOperandMixin):
     _axis = TupleField('axis', ValueType.int32)
 
     def __init__(self, axis=None, dtype=None, sparse=False, **kw):
-        super(TensorSqueeze, self).__init__(_axis=axis, _dtype=dtype,
+        super().__init__(_axis=axis, _dtype=dtype,
                                             _sparse=sparse, _create_view=True, **kw)
 
     def on_output_modify(self, new_output):

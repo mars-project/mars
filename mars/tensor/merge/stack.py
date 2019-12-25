@@ -33,7 +33,7 @@ class TensorStack(TensorOperand, TensorOperandMixin):
     _axis = Int32Field('axis')
 
     def __init__(self, axis=None, dtype=None, sparse=False, **kw):
-        super(TensorStack, self).__init__(_axis=axis, _dtype=dtype,
+        super().__init__(_axis=axis, _dtype=dtype,
                                           _sparse=sparse, **kw)
 
     @property

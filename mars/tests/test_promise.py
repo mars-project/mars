@@ -27,7 +27,7 @@ from mars import promise
 
 class ServeActor(promise.PromiseActor):
     def __init__(self):
-        super(ServeActor, self).__init__()
+        super().__init__()
         self._result_list = []
 
     @promise.reject_on_exception
@@ -48,7 +48,7 @@ class ServeActor(promise.PromiseActor):
 
 class PromiseTestActor(promise.PromiseActor):
     def __init__(self):
-        super(PromiseTestActor, self).__init__()
+        super().__init__()
         self._finished = False
 
     def get_finished(self):

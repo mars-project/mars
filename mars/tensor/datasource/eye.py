@@ -34,7 +34,7 @@ class TensorEye(TensorNoInput, TensorDiagBase):
 
     def __init__(self, k=None, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype or 'f8')
-        super(TensorEye, self).__init__(_k=k, _dtype=dtype, _gpu=gpu, _sparse=sparse,
+        super().__init__(_k=k, _dtype=dtype, _gpu=gpu, _sparse=sparse,
                                         _order=order, **kw)
 
     @property

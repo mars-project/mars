@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 class StatusReporterActor(WorkerActor):
     def __init__(self, endpoint):
-        super(StatusReporterActor, self).__init__()
+        super().__init__()
         self._endpoint = endpoint
 
         self._upload_status = False
@@ -39,7 +39,7 @@ class StatusReporterActor(WorkerActor):
     def post_create(self):
         from ..scheduler import ResourceActor
 
-        super(StatusReporterActor, self).post_create()
+        super().post_create()
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
         self.ref().collect_status(_tell=True)
@@ -160,7 +160,7 @@ class StatusReporterActor(WorkerActor):
 
 class StatusActor(WorkerActor):
     def __init__(self, endpoint):
-        super(StatusActor, self).__init__()
+        super().__init__()
         self._speed_holders = defaultdict(ExpMeanHolder)
         self._endpoint = endpoint
         self._reporter_ref = None
@@ -172,7 +172,7 @@ class StatusActor(WorkerActor):
         self._cache_allocations = {}
 
     def post_create(self):
-        super(StatusActor, self).post_create()
+        super().post_create()
         self._reporter_ref = self.ctx.create_actor(
             StatusReporterActor, self._endpoint, uid=StatusReporterActor.default_uid())
 

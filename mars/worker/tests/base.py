@@ -28,7 +28,7 @@ from mars.worker.utils import WorkerActor, parse_spill_dirs
 
 class WorkerTestActor(WorkerActor):
     def __init__(self):
-        super(WorkerTestActor, self).__init__()
+        super().__init__()
         self.test_obj = None
 
     def set_test_object(self, test_obj):
@@ -107,7 +107,7 @@ class WorkerCase(unittest.TestCase):
             os.unlink(cls.plasma_socket)
 
     def setUp(self):
-        super(WorkerCase, self).setUp()
+        super().setUp()
         self._test_pool = None
         self._test_actor = None
         self._test_actor_ref = None

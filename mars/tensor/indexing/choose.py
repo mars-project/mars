@@ -33,13 +33,13 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
     _mode = StringField('mode')
 
     def __init__(self, mode=None, dtype=None, **kw):
-        super(TensorChoose, self).__init__(_mode=mode, _dtype=dtype, **kw)
+        super().__init__(_mode=mode, _dtype=dtype, **kw)
 
     def __setattr__(self, key, value):
         if key == '_mode' and value not in ('raise', 'wrap', 'clip'):
             raise ValueError('mode should be raise, wrap or clip')
 
-        super(TensorChoose, self).__setattr__(key, value)
+        super().__setattr__(key, value)
 
     @property
     def a(self):
@@ -54,7 +54,7 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
         return self._mode
 
     def _set_inputs(self, inputs):
-        super(TensorChoose, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._a = self._inputs[0]
         self._choices = self._inputs[1:]
 

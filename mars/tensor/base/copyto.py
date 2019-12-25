@@ -38,7 +38,7 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
     _where = KeyField('where')
 
     def __init__(self, casting=None, dtype=None, gpu=None, sparse=None, **kw):
-        super(TensorCopyTo, self).__init__(_casting=casting, _dtype=dtype,
+        super().__init__(_casting=casting, _dtype=dtype,
                                            _gpu=gpu, _sparse=sparse, **kw)
 
     @property
@@ -62,7 +62,7 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
             raise ValueError("inputs' length must be 2 or 3")
 
     def _set_inputs(self, inputs):
-        super(TensorCopyTo, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
 
         self._src = self._inputs[0]
         self._dst = self._inputs[1]

@@ -26,7 +26,7 @@ from mars.utils import get_next_port
 
 class Test(unittest.TestCase):
     def tearDown(self):
-        super(Test, self).tearDown()
+        super().tearDown()
         options.kv_store = ':inproc:'
 
     @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')

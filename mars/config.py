@@ -65,7 +65,7 @@ class AttributeDict(dict):
         self._inited = False
         self._parent = kwargs.pop('_parent', None)
         self._root = None
-        super(AttributeDict, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._inited = True
 
     @property
@@ -130,17 +130,17 @@ class AttributeDict(dict):
 
     def __setattr__(self, key, value):
         if key == '_inited':
-            super(AttributeDict, self).__setattr__(key, value)
+            super().__setattr__(key, value)
             return
         try:
             object.__getattribute__(self, key)
-            super(AttributeDict, self).__setattr__(key, value)
+            super().__setattr__(key, value)
             return
         except AttributeError:
             pass
 
         if not self._inited:
-            super(AttributeDict, self).__setattr__(key, value)
+            super().__setattr__(key, value)
         else:
             self._setattr(key, value)
 

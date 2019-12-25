@@ -158,7 +158,7 @@ class LearnObjectFetch(Fetch, LearnObjectFetchMixin):
                               on_deserialize=_on_deserialize_output_types)
 
     def __init__(self, to_fetch_key=None, output_types=None, **kw):
-        super(LearnObjectFetch, self).__init__(_to_fetch_key=to_fetch_key,
+        super().__init__(_to_fetch_key=to_fetch_key,
                                                _output_types=output_types, **kw)
 
     @property
@@ -168,12 +168,12 @@ class LearnObjectFetch(Fetch, LearnObjectFetchMixin):
     def _new_chunks(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
             self._to_fetch_key = kw['_key']
-        return super(LearnObjectFetch, self)._new_chunks(inputs, kws=kws, **kw)
+        return super()._new_chunks(inputs, kws=kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
             self._to_fetch_key = kw['_key']
-        return super(LearnObjectFetch, self)._new_tileables(inputs, kws=kws, **kw)
+        return super()._new_tileables(inputs, kws=kws, **kw)
 
 
 class LearnObjectFuseChunkMixin(FuseChunkMixin, LearnOperandMixin):
@@ -192,7 +192,7 @@ class LearnShuffleProxy(ShuffleProxy, LearnOperandMixin):
                               on_deserialize=_on_deserialize_output_types)
 
     def __init__(self, output_types=None, **kw):
-        super(LearnShuffleProxy, self).__init__(_output_types=output_types, **kw)
+        super().__init__(_output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
 

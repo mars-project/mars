@@ -31,7 +31,7 @@ class TensorFFTFreq(TensorOperand, TensorOperandMixin):
     _d = Float64Field('d')
 
     def __init__(self, n=None, d=None, dtype=None, gpu=False, **kw):
-        super(TensorFFTFreq, self).__init__(_n=n, _d=d, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_n=n, _d=d, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def n(self):
@@ -73,7 +73,7 @@ class TensorFFTFreqChunk(TensorHasInput, TensorOperandMixin):
     _d = Float64Field('d')
 
     def __init__(self, n=None, d=None, dtype=None, **kw):
-        super(TensorFFTFreqChunk, self).__init__(_n=n, _d=d, _dtype=dtype, **kw)
+        super().__init__(_n=n, _d=d, _dtype=dtype, **kw)
 
     @property
     def n(self):
@@ -84,7 +84,7 @@ class TensorFFTFreqChunk(TensorHasInput, TensorOperandMixin):
         return self._d
 
     def _set_inputs(self, inputs):
-        super(TensorFFTFreqChunk, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     @classmethod

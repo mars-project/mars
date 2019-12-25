@@ -41,7 +41,7 @@ class ArrayDataSource(TensorNoInput):
             dtype = np.dtype(dtype)
         elif data is not None:
             dtype = np.dtype(data.dtype)
-        super(ArrayDataSource, self).__init__(_data=data, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_data=data, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def data(self):
@@ -75,7 +75,7 @@ class CSRMatrixDataSource(TensorNoInput):
 
     def __init__(self, indices=None, indptr=None, data=None, shape=None,
                  dtype=None, gpu=None, **kw):
-        super(CSRMatrixDataSource, self).__init__(_indices=indices, _indptr=indptr,
+        super().__init__(_indices=indices, _indptr=indptr,
                                                   _data=data, _shape=shape, _dtype=dtype,
                                                   _gpu=gpu, _sparse=True, **kw)
 

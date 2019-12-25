@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class WebApplication(BaseApplication):
     def __init__(self):
-        super(WebApplication, self).__init__()
+        super().__init__()
         self.mars_web = None
         self.require_pool = False
 
@@ -38,7 +38,7 @@ class WebApplication(BaseApplication):
         parser.add_argument('--ui-port', help=argparse.SUPPRESS, action=arg_deprecated_action('-p'))
 
     def create_scheduler_discoverer(self):
-        super(WebApplication, self).create_scheduler_discoverer()
+        super().create_scheduler_discoverer()
         if self.scheduler_discoverer is None:
             raise StartArgumentError('Either schedulers or url of kv store is required.')
 

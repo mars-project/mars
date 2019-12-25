@@ -28,12 +28,12 @@ class SealActor(WorkerActor):
         return 's:0:seal$%s$%s' % (session_id, chunk_key)
 
     def __init__(self):
-        super(SealActor, self).__init__()
+        super().__init__()
         self._mem_quota_ref = None
 
     def post_create(self):
         from .quota import MemQuotaActor
-        super(SealActor, self).post_create()
+        super().post_create()
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
     @log_unhandled

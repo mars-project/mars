@@ -39,7 +39,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     _is_intermediate = BoolField('is_intermediate')
 
     def __init__(self, labels=None, combine_size=None, is_intermediate=None, object_type=None, **kw):
-        super(SeriesIndex, self).__init__(_labels=labels, _combine_size=combine_size,
+        super().__init__(_labels=labels, _combine_size=combine_size,
                                           _is_intermediate=is_intermediate, _object_type=object_type, **kw)
 
     @property
@@ -73,7 +73,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         if not is_scalar:
             index_value = kw.pop('index_value', None) or parse_index(pd.Index(self._labels))
             kw['index_value'] = index_value
-        return super(SeriesIndex, self)._new_tileables(inputs, kws=kws, **kw)
+        return super()._new_tileables(inputs, kws=kws, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         # Override this method to automatically decide the output type,
@@ -90,7 +90,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         if not is_scalar:
             index_value = kw.pop('index_value', None) or parse_index(pd.Index(self._labels))
             kw['index_value'] = index_value
-        return super(SeriesIndex, self)._new_chunks(inputs, kws=kws, **kw)
+        return super()._new_chunks(inputs, kws=kws, **kw)
 
     @classmethod
     def _calc_chunk_index(cls, label, chunk_indexes):
@@ -203,7 +203,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
     _mask = AnyField('mask')
 
     def __init__(self, col_names=None, mask=None, object_type=ObjectType.series, **kw):
-        super(DataFrameIndex, self).__init__(_col_names=col_names, _mask=mask,
+        super().__init__(_col_names=col_names, _mask=mask,
                                              _object_type=object_type, **kw)
 
     @property

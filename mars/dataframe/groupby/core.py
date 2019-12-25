@@ -32,7 +32,7 @@ class DataFrameGroupByMap(DataFrameShuffleMap, DataFrameOperandMixin):
     _shuffle_size = Int32Field('shuffle_size')
 
     def __init__(self, by=None, shuffle_size=None, **kw):
-        super(DataFrameGroupByMap, self).__init__(_by=by, _shuffle_size=shuffle_size,
+        super().__init__(_by=by, _shuffle_size=shuffle_size,
                                                   _object_type=ObjectType.dataframe, **kw)
 
     @property
@@ -66,7 +66,7 @@ class DataFrameGroupByReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_REDUCE
 
     def __init__(self, shuffle_key=None, **kw):
-        super(DataFrameGroupByReduce, self).__init__(_shuffle_key=shuffle_key,
+        super().__init__(_shuffle_key=shuffle_key,
                                                      _object_type=ObjectType.dataframe, **kw)
 
     @classmethod
@@ -96,7 +96,7 @@ class DataFrameGroupByOperand(DataFrameOperand, DataFrameOperandMixin):
     _sort = BoolField('sort')
 
     def __init__(self, by=None, as_index=None, sort=None, object_type=ObjectType.groupby, **kw):
-        super(DataFrameGroupByOperand, self).__init__(_by=by, _as_index=as_index, _sort=sort,
+        super().__init__(_by=by, _as_index=as_index, _sort=sort,
                                                       _object_type=object_type, **kw)
 
     @property

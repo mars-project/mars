@@ -31,7 +31,7 @@ from mars.dataframe.datasource.from_records import from_records
 
 class Test(TestBase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self.executor = Executor()
 
     def testFromPandasDataFrameExecution(self):

@@ -26,7 +26,7 @@ class TensorAll(TensorReduction, TensorReductionMixin):
     _func_name = 'all'
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
-        super(TensorAll, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                         _combine_size=combine_size, **kw)
 
     @staticmethod

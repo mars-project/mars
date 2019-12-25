@@ -53,7 +53,7 @@ class TensorClip(TensorOperand, TensorElementWise):
         return getattr(self, '_out', None)
 
     def _set_inputs(self, inputs):
-        super(TensorClip, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
         self._a = next(inputs_iter)
         if isinstance(self._a_min, (Base, Entity)):
