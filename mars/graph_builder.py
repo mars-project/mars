@@ -66,8 +66,8 @@ class TileableGraphBuilder(GraphBuilder):
     def __init__(self, graph=None, graph_cls=DAG, node_processor=None,
                  inputs_selector=None):
         super().__init__(graph=graph, graph_cls=graph_cls,
-                                                   node_processor=node_processor,
-                                                   inputs_selector=inputs_selector)
+                         node_processor=node_processor,
+                         inputs_selector=inputs_selector)
 
     @kernel_mode
     @enter_build_mode

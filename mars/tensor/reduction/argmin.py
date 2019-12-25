@@ -30,9 +30,9 @@ class TensorArgminMap(TensorReduction, TensorArgMapMixin):
     _func_name = 'argmin'
     _agg_func_name = 'min'
 
-    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, offset=None, total_shape=None,**kw):
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, offset=None, total_shape=None, **kw):
         super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
-                                              _offset=offset, _total_shape=total_shape, **kw)
+                         _offset=offset, _total_shape=total_shape, **kw)
 
     @property
     def offset(self):

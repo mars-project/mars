@@ -31,8 +31,7 @@ class TensorZipf(TensorDistribution, TensorRandomOperandMixin):
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, _dtype=dtype,
-                                         _gpu=gpu, **kw)
+        super().__init__(_size=size, _state=state, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def a(self):

@@ -45,7 +45,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
 
     def __init__(self, dtype=None, sparse=False, indexes=None, create_view=False, **kw):
         super().__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes,
-                                          _create_view=create_view, **kw)
+                         _create_view=create_view, **kw)
 
     @property
     def indexes(self):

@@ -143,8 +143,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
     _err = DictField('err', ValueType.string, ValueType.string)
 
     def __init__(self, lhs=None, rhs=None, out=None, where=None, order=None, **kwargs):
-        super().__init__(_lhs=lhs, _rhs=rhs, _out=out,
-                                          _where=where, _order=order, **kwargs)
+        super().__init__(_lhs=lhs, _rhs=rhs, _out=out, _where=where, _order=order, **kwargs)
         if self._order is None:
             self._order = 'K'
         check_order(self._order)
@@ -327,8 +326,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
     _err = DictField('err', ValueType.string, ValueType.string)
 
     def __init__(self, out=None, where=None, order=None, **kwargs):
-        super().__init__(_out=out, _where=where,
-                                            _order=order, **kwargs)
+        super().__init__(_out=out, _where=where, _order=order, **kwargs)
         if self._order is None:
             self._order = 'K'
         check_order(self._order)
@@ -439,8 +437,7 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
     _casting = StringField('casting')
 
     def __init__(self, out1=None, out2=None, where=None, order=None, **kwargs):
-        super().__init__(_out1=out1, _out2=out2, _where=where,
-                                             _order=order, **kwargs)
+        super().__init__(_out1=out1, _out2=out2, _where=where, _order=order, **kwargs)
         if self._order is None:
             self._order = 'K'
         check_order(self._order)

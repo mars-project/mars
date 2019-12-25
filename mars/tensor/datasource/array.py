@@ -75,9 +75,8 @@ class CSRMatrixDataSource(TensorNoInput):
 
     def __init__(self, indices=None, indptr=None, data=None, shape=None,
                  dtype=None, gpu=None, **kw):
-        super().__init__(_indices=indices, _indptr=indptr,
-                                                  _data=data, _shape=shape, _dtype=dtype,
-                                                  _gpu=gpu, _sparse=True, **kw)
+        super().__init__(_indices=indices, _indptr=indptr, _data=data, _shape=shape,
+                         _dtype=dtype, _gpu=gpu, _sparse=True, **kw)
 
     def to_chunk_op(self, *args):
         _, idx, chunk_size = args

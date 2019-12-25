@@ -27,8 +27,7 @@ class TensorStandardExponential(TensorDistribution, TensorRandomOperandMixin):
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, _dtype=dtype,
-                                                        _gpu=gpu, **kw)
+        super().__init__(_size=size, _state=state, _dtype=dtype, _gpu=gpu, **kw)
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)

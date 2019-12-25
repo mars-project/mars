@@ -32,7 +32,7 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
     def __init__(self, keys=None, drop=True, append=False, verify_integrity=False,
                  object_type=None, **kw):
         super().__init__(_keys=keys, _drop=drop, _append=append,
-                                                _verify_integrity=verify_integrity, _object_type=object_type, **kw)
+                         _verify_integrity=verify_integrity, _object_type=object_type, **kw)
 
     @property
     def keys(self):

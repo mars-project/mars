@@ -522,8 +522,8 @@ def in_range_index(i, pd_range_index):
     Check whether the input `i` is within `pd_range_index` which is a pd.RangeIndex.
     """
     start, stop, step = _get_range_index_start(pd_range_index), \
-                        _get_range_index_stop(pd_range_index), \
-                        _get_range_index_step(pd_range_index)
+        _get_range_index_stop(pd_range_index), \
+        _get_range_index_step(pd_range_index)
     if step > 0 and start <= i < stop and (i - start) % step == 0:
         return True
     if step < 0 and start >= i > stop and (start - i) % step == 0:

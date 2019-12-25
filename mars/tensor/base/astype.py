@@ -33,8 +33,7 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
     _casting = StringField('casting')
 
     def __init__(self, dtype=None, order=None, casting=None, sparse=False, **kw):
-        super().__init__(_dtype=dtype, _order=order,
-                                           _casting=casting, _sparse=sparse, **kw)
+        super().__init__(_dtype=dtype, _order=order, _casting=casting, _sparse=sparse, **kw)
 
     @property
     def dtype(self):

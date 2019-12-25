@@ -43,9 +43,9 @@ class RunPyTorch(LearnMergeDictOperand):
                  master_port=None, master_addr=None, rank=None, init_method=None,
                  merge=None, output_types=None, gpu=None, **kw):
         super().__init__(_code=code, _command_args=command_args, _world_size=world_size,
-                                         _master_port=master_port, _master_addr=master_addr,
-                                         _rank=rank, _init_method=init_method, _merge=merge,
-                                         _output_types=output_types, _gpu=gpu, **kw)
+                         _master_port=master_port, _master_addr=master_addr, _rank=rank,
+                         _init_method=init_method, _merge=merge, _output_types=output_types,
+                         _gpu=gpu, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
 

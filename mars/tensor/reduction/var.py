@@ -30,7 +30,7 @@ def reduce_var_square(var_square, avg_diff, count, op, axis, sum_func):
     kw = dict(axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
 
     reduced_var_square = var_square[..., moment - 2].sum(**kw) + \
-                         sum_func(count * avg_diff ** moment, **kw)
+        sum_func(count * avg_diff ** moment, **kw)
     for i in range(1, moment - 1):
         coeff = factorial(moment) / float(factorial(i) * factorial(moment - i))
         reduced_var_square += coeff * sum_func(var_square[..., moment - i - 2] * avg_diff ** moment, **kw)
@@ -46,8 +46,8 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
-        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                           _ddof=ddof, _combine_size=combine_size, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
+                         _combine_size=combine_size, **kw)
 
     @property
     def moment(self):
@@ -88,7 +88,7 @@ class TensorMomentMap(TensorReduction, TensorReductionMixin):
         if moment is not None:
             kw['_moment'] = moment
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                              _combine_size=combine_size, **kw)
+                         _combine_size=combine_size, **kw)
 
     @property
     def moment(self):
@@ -105,8 +105,7 @@ class TensorMomentMap(TensorReduction, TensorReductionMixin):
         empty = get_array_module(in_chunk, nosparse=True).empty
 
         with device(device_id):
-            chunk_count = numel(in_chunk, axis=axis, dtype=np.int64,
-                                     keepdims=bool(op.keepdims))
+            chunk_count = numel(in_chunk, axis=axis, dtype=np.int64, keepdims=bool(op.keepdims))
             chunk_sum = xp.sum(in_chunk, axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
             avg = xp.true_divide(chunk_sum, chunk_count)
             var_square = empty(chunk_count.shape + (moment - 1,), dtype=dtype)
@@ -125,7 +124,7 @@ class TensorMomentCombine(TensorReduction, TensorReductionMixin):
         if moment is not None:
             kw['_moment'] = moment
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                  _combine_size=combine_size, **kw)
+                         _combine_size=combine_size, **kw)
 
     @property
     def moment(self):
@@ -161,7 +160,7 @@ class TensorVar(TensorReduction, TensorReductionMixin):
 
     def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, **kw):
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
-                                        _combine_size=combine_size, **kw)
+                         _combine_size=combine_size, **kw)
 
     @property
     def ddof(self):

@@ -37,8 +37,8 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
     _axis2 = Int32Field('axis2')
 
     def __init__(self, axis1=None, axis2=None, dtype=None, sparse=False, **kw):
-        super().__init__(_axis1=axis1, _axis2=axis2, _dtype=dtype,
-                                             _sparse=sparse, _create_view=True, **kw)
+        super().__init__(_axis1=axis1, _axis2=axis2, _dtype=dtype, _sparse=sparse,
+                         _create_view=True, **kw)
 
     @property
     def axis1(self):

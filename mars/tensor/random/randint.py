@@ -34,10 +34,8 @@ class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
     def __init__(self, state=None, size=None, dtype=None,
                  low=None, high=None, sparse=False, density=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size,
-                                            _low=low, _high=high, _dtype=dtype,
-                                            _sparse=sparse, _density=density,
-                                            _gpu=gpu, **kw)
+        super().__init__(_state=state, _size=size, _low=low, _high=high, _dtype=dtype,
+                         _sparse=sparse, _density=density, _gpu=gpu, **kw)
 
     @property
     def low(self):

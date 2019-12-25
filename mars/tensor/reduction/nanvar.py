@@ -34,7 +34,7 @@ class TensorNanMoment(TensorReduction, TensorReductionMixin):
         if moment is not None:
             kw['_moment'] = moment
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                              _ddof=ddof, _combine_size=combine_size, **kw)
+                         _ddof=ddof, _combine_size=combine_size, **kw)
 
     @property
     def moment(self):
@@ -75,7 +75,7 @@ class TensorNanMomentMap(TensorReduction, TensorReductionMixin):
         if moment is not None:
             kw['_moment'] = moment
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                 _combine_size=combine_size, **kw)
+                         _combine_size=combine_size, **kw)
 
     @property
     def moment(self):
@@ -111,7 +111,7 @@ class TensorNanMomentCombine(TensorReduction, TensorReductionMixin):
         if moment is not None:
             kw['_moment'] = moment
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                     _combine_size=combine_size, **kw)
+                         _combine_size=combine_size, **kw)
 
     @property
     def moment(self):
@@ -147,7 +147,7 @@ class TensorNanVar(TensorReduction, TensorReductionMixin):
 
     def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, **kw):
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
-                                           _combine_size=combine_size, **kw)
+                         _combine_size=combine_size, **kw)
 
     @property
     def ddof(self):

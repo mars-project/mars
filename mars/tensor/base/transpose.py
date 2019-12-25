@@ -38,10 +38,9 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
     _axes = ListField('axes', ValueType.int32)
 
     def __init__(self, axes=None, dtype=None, sparse=False, **kw):
-        super().__init__(_axes=axes, _dtype=dtype,
-                                              _sparse=sparse,
-                                              # transpose will create a view
-                                              _create_view=True, **kw)
+        super().__init__(_axes=axes, _dtype=dtype, _sparse=sparse,
+                         # transpose will create a view
+                         _create_view=True, **kw)
 
     @property
     def axes(self):

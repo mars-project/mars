@@ -39,8 +39,8 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     _is_intermediate = BoolField('is_intermediate')
 
     def __init__(self, labels=None, combine_size=None, is_intermediate=None, object_type=None, **kw):
-        super().__init__(_labels=labels, _combine_size=combine_size,
-                                          _is_intermediate=is_intermediate, _object_type=object_type, **kw)
+        super().__init__(_labels=labels, _combine_size=combine_size, _is_intermediate=is_intermediate,
+                         _object_type=object_type, **kw)
 
     @property
     def labels(self):
@@ -203,8 +203,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
     _mask = AnyField('mask')
 
     def __init__(self, col_names=None, mask=None, object_type=ObjectType.series, **kw):
-        super().__init__(_col_names=col_names, _mask=mask,
-                                             _object_type=object_type, **kw)
+        super().__init__(_col_names=col_names, _mask=mask, _object_type=object_type, **kw)
 
     @property
     def col_names(self):
@@ -278,8 +277,8 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                     chunk_op = op.copy().reset_key()
                     chunk_op._mask = op.mask.iloc[nsplits_acc[idx]:nsplits_acc[idx+1]]
                     out_chunk = chunk_op.new_chunk([in_chunk], index=in_chunk.index,
-                                                    shape=(np.nan, in_chunk.shape[1]), dtypes=in_chunk.dtypes,
-                                                    index_value=in_df.index_value, columns_value=in_chunk.columns_value)
+                                                   shape=(np.nan, in_chunk.shape[1]), dtypes=in_chunk.dtypes,
+                                                   index_value=in_df.index_value, columns_value=in_chunk.columns_value)
                     out_chunks.append(out_chunk)
 
             nsplits = ((np.nan,) * in_df.chunk_shape[0], in_df.nsplits[1])

@@ -26,8 +26,7 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
     _slices = ListField('slices')
 
     def __init__(self, slices=None, dtype=None, sparse=False, **kw):
-        super().__init__(_slices=slices, _dtype=dtype,
-                                          _sparse=sparse, **kw)
+        super().__init__(_slices=slices, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def slices(self):

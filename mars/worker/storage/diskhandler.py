@@ -61,8 +61,7 @@ class DiskIO(BytesStorageIO):
 
     def __init__(self, session_id, data_key, mode='r', nbytes=None, compress=None,
                  packed=False, handler=None):
-        super().__init__(session_id, data_key, mode=mode,
-                                     handler=handler)
+        super().__init__(session_id, data_key, mode=mode, handler=handler)
         block_size = options.worker.copy_block_size
         dirs = options.worker.spill_directory = parse_spill_dirs(options.worker.spill_directory)
         if not dirs:  # pragma: no cover

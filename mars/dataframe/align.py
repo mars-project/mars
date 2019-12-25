@@ -228,8 +228,7 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, shuffle_key=None, sparse=None, object_type=None, **kw):
-        super().__init__(_shuffle_key=shuffle_key, _sparse=sparse,
-                                                        _object_type=object_type, **kw)
+        super().__init__(_shuffle_key=shuffle_key, _sparse=sparse, _object_type=object_type, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -501,7 +500,7 @@ def _calc_axis_splits(left_axis, right_axis, left_axis_chunks, right_axis_chunks
 
 
 def _build_dummy_axis_split(chunk_shape):
-    axis_index_min_max, axis_increase = [(i, True, i+1, True) for i in range(chunk_shape)], True
+    axis_index_min_max, axis_increase = [(i, True, i + 1, True) for i in range(chunk_shape)], True
     if len(axis_index_min_max) == 1:
         left_splits, right_splits = [axis_index_min_max], [axis_index_min_max]
     else:
@@ -590,7 +589,7 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
             if align_axis == 0:
                 kw = {
                     'index_min_max': splits.get_axis_split(align_axis, left_or_right, align_axis_idx),
-                    'index_shuffle_size':  -1 if splits[0].isdummy() else None,
+                    'index_shuffle_size': -1 if splits[0].isdummy() else None,
                     'column_shuffle_size': out_shape[shuffle_axis],
                 }
                 input_idx = splits.get_axis_idx(align_axis, left_or_right, align_axis_idx)
@@ -620,9 +619,11 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
             for j in range(out_shape[shuffle_axis]):
                 chunk_kw = dict()
                 if align_axis == 0:
-                    chunk_kw['index_value'] = proxy_chunk.inputs[0].inputs[0].index_value if splits[0].isdummy() else None
+                    chunk_kw['index_value'] = proxy_chunk.inputs[0].inputs[0].index_value \
+                        if splits[0].isdummy() else None
                 else:
-                    chunk_kw['columns_value'] = proxy_chunk.inputs[0].inputs[0].columns_value if splits[1].isdummy() else None
+                    chunk_kw['columns_value'] = proxy_chunk.inputs[0].inputs[0].columns_value \
+                        if splits[1].isdummy() else None
                 reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
                 reduce_op = DataFrameIndexAlignReduce(i=j, sparse=proxy_chunk.issparse(),
                                                       shuffle_key=','.join(str(idx) for idx in reduce_idx),

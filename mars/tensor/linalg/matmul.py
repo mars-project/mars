@@ -39,8 +39,7 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
     _order = StringField('order')
 
     def __init__(self, dtype=None, sparse=False, casting=None, order=None,  **kw):
-        super().__init__(_dtype=dtype, _sparse=sparse,
-                                           _casting=casting, _order=order, **kw)
+        super().__init__(_dtype=dtype, _sparse=sparse, _casting=casting, _order=order, **kw)
         if self._casting is None:
             self._casting = 'same_kind'
         if self._order is None:
@@ -149,7 +148,7 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
             get_s = lambda x, idx: x[idx] if x != (1,) else x[0]
             shape = tuple(max(get_s(a_s, j), get_s(b_s, j))
                           for a_s, b_s, j in zip(a.nsplits[:-2], b.nsplits[:-2], out_idx[:-2])) + \
-                    (get_s(a.nsplits[-2], out_idx[-2]), get_s(b.nsplits[-1], out_idx[-1]))
+                (get_s(a.nsplits[-2], out_idx[-2]), get_s(b.nsplits[-1], out_idx[-1]))
 
             for contract_idx in range(len(a.nsplits[-1])):
                 a_idx = get_idx(a, out_idx[: a.ndim - 1] + (contract_idx,))

@@ -39,10 +39,8 @@ class TensorSort(TensorOperand, TensorOperandMixin):
 
     def __init__(self, axis=None, kind=None, parallel_kind=None, order=None,
                  psrs_kinds=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _kind=kind,
-                                         _parallel_kind=parallel_kind,
-                                         _order=order, _psrs_kinds=psrs_kinds,
-                                         _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_axis=axis, _kind=kind, _parallel_kind=parallel_kind, _order=order,
+                         _psrs_kinds=psrs_kinds, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -116,7 +114,7 @@ class PSRSSorter(object):
         axis_chunk_shape = min(axis_chunk_shape, int(np.sqrt(axis_shape)))
         if np.isnan(axis_shape) or any(np.isnan(s) for s in in_tensor.nsplits[op.axis]):
             raise TilesError('fail to tile because either the shape of '
-                            'input tensor on axis {} has unknown shape or chunk shape'.format(op.axis))
+                             'input tensor on axis {} has unknown shape or chunk shape'.format(op.axis))
         chunk_size = int(axis_shape / axis_chunk_shape)
         chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]
         if axis_shape % chunk_size > 0:
@@ -298,9 +296,8 @@ class PSRSSortRegularSample(TensorOperand, PSRSOperandMixin):
 
     def __init__(self, axis=None, order=None, kind=None, n_partition=None,
                  dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _order=order,
-                                                    _kind=kind, _n_partition=n_partition,
-                                                    _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_axis=axis, _order=order, _kind=kind, _n_partition=n_partition,
+                         _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -348,8 +345,7 @@ class PSRSConcatPivot(TensorOperand, PSRSOperandMixin):
     _kind = StringField('kind')
 
     def __init__(self, axis=None, order=None, kind=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _order=order, _kind=kind,
-                                              _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_axis=axis, _order=order, _kind=kind, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -387,9 +383,8 @@ class PSRSShuffleMap(TensorShuffleMap, PSRSOperandMixin):
     _n_partition = Int32Field('n_partition')
 
     def __init__(self, axis=None, order=None, n_partition=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _order=order,
-                                             _n_partition=n_partition,
-                                             _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_axis=axis, _order=order, _n_partition=n_partition, _dtype=dtype,
+                         _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -438,10 +433,8 @@ class PSRSShuffleReduce(TensorShuffleReduce, PSRSOperandMixin):
 
     def __init__(self, axis=None, order=None, kind=None, need_align=None,
                  shuffle_key=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _order=order,
-                                                _kind=kind, _need_align=need_align,
-                                                _shuffle_key=shuffle_key,
-                                                _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_axis=axis, _order=order, _kind=kind, _need_align=need_align,
+                         _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -508,8 +501,7 @@ class PSRSAlignMap(TensorShuffleMap, PSRSOperandMixin):
     _output_sizes = ListField('output_sizes', ValueType.int32)
 
     def __init__(self, axis=None, output_sizes=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _output_sizes=output_sizes,
-                                           _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_axis=axis, _output_sizes=output_sizes, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -559,8 +551,7 @@ class PSRSAlignReduce(TensorShuffleReduce, PSRSOperandMixin):
     _axis = Int32Field('axis')
 
     def __init__(self, axis=None, shuffle_key=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _shuffle_key=shuffle_key,
-                                              _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_axis=axis, _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):

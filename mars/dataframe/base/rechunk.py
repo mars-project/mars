@@ -34,8 +34,7 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, object_type=None, **kw):
         super().__init__(_chunk_size=chunk_size, _threshold=threshold,
-                                               _chunk_size_limit=chunk_size_limit,
-                                               _object_type=object_type, **kw)
+                         _chunk_size_limit=chunk_size_limit, _object_type=object_type, **kw)
 
     @property
     def chunk_size(self):

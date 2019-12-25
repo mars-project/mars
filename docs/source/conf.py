@@ -21,7 +21,7 @@
 from mars import __version__
 
 project = 'mars'
-copyright = '2014-2018, The Alibaba Group Holding Ltd.'
+copyright = '1999-2020, The Alibaba Group Holding Ltd.'
 author = 'jisheng, qinxing'
 
 # The short X.Y version

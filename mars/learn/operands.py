@@ -158,8 +158,7 @@ class LearnObjectFetch(Fetch, LearnObjectFetchMixin):
                               on_deserialize=_on_deserialize_output_types)
 
     def __init__(self, to_fetch_key=None, output_types=None, **kw):
-        super().__init__(_to_fetch_key=to_fetch_key,
-                                               _output_types=output_types, **kw)
+        super().__init__(_to_fetch_key=to_fetch_key, _output_types=output_types, **kw)
 
     @property
     def output_types(self):

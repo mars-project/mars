@@ -122,8 +122,7 @@ class TensorEmptyLike(TensorEmptyBase, TensorLike):
 
     def __init__(self, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else None
-        super().__init__(_dtype=dtype, _gpu=gpu,
-                                              _order=order, _sparse=sparse, **kw)
+        super().__init__(_dtype=dtype, _gpu=gpu, _order=order, _sparse=sparse, **kw)
 
     @property
     def order(self):

@@ -259,7 +259,7 @@ class Test(unittest.TestCase):
         data2 = pd.DataFrame([[1, 3.0, 'b']], columns=[1, 2, 3])
 
         pd.testing.assert_series_equal(infer_dtypes(data1.dtypes, data2.dtypes, operator.add),
-                                      (data1 + data2).dtypes)
+                                       (data1 + data2).dtypes)
 
     def testInferIndexValue(self):
         # same range index

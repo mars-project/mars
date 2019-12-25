@@ -39,11 +39,9 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
 
     def __init__(self, return_index=None, return_inverse=None, return_counts=None,
                  axis=None, dtype=None, gpu=None, aggregate_size=None, **kw):
-        super().__init__(_return_index=return_index,
-                                           _return_inverse=return_inverse,
-                                           _return_counts=return_counts, _axis=axis,
-                                           _aggregate_size=aggregate_size,
-                                           _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_return_index=return_index, _return_inverse=return_inverse,
+                         _return_counts=return_counts, _axis=axis,
+                         _aggregate_size=aggregate_size, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def output_limit(self):
@@ -81,7 +79,7 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
               'dtype': input_obj.dtype,
               'gpu': input_obj.op.gpu}
         if chunk:
-            idx = [0,] * len(shape)
+            idx = [0, ] * len(shape)
             idx[op.axis] = chunk_index or 0
             kw['index'] = tuple(idx)
         kws.append(kw)
@@ -162,7 +160,7 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
                     continue
                 if np.isnan(inp.shape[axis]):
                     raise TilesError('input tensor has unknown shape '
-                                    'on axis {}'.format(axis))
+                                     'on axis {}'.format(axis))
                 new_chunk_size[axis] = inp.shape[axis]
             check_chunks_unknown_shape([inp], TilesError)
             inp = inp.rechunk(new_chunk_size)._inplace_tile()
@@ -185,7 +183,7 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
             shape[op.axis] = np.nan
             map_chunks.append(map_op.new_chunk([c], shape=tuple(shape), index=c.index))
 
-        shuffle_chunk = TensorShuffleProxy(dtype=inp.dtype, _tensor_keys=[inp.op.key])\
+        shuffle_chunk = TensorShuffleProxy(dtype=inp.dtype, _tensor_keys=[inp.op.key]) \
             .new_chunk(map_chunks, shape=())
 
         reduce_chunks = [list() for _ in range(len(op.outputs))]
@@ -274,12 +272,10 @@ class TensorUniqueShuffleMap(TensorShuffleMap, TensorOperandMixin):
     def __init__(self, return_index=None, return_inverse=None, return_counts=None,
                  axis=None, aggregate_size=None, start_pos=None,
                  dtype=None, gpu=None, **kw):
-        super().__init__(_return_index=return_index,
-                                                     _return_inverse=return_inverse,
-                                                     _return_counts=return_counts, _axis=axis,
-                                                     _aggregate_size=aggregate_size,
-                                                     _start_pos=start_pos,
-                                                     _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_return_index=return_index, _return_inverse=return_inverse,
+                         _return_counts=return_counts, _axis=axis,
+                         _aggregate_size=aggregate_size, _start_pos=start_pos,
+                         _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def return_index(self):
@@ -360,12 +356,9 @@ class TensorUniqueShuffleReduce(TensorShuffleReduce, TensorOperandMixin):
 
     def __init__(self, return_index=None, return_inverse=None, return_counts=None,
                  axis=None, dtype=None, gpu=None, aggregate_id=None, shuffle_key=None, **kw):
-        super().__init__(_return_index=return_index,
-                                                        _return_inverse=return_inverse,
-                                                        _return_counts=return_counts, _axis=axis,
-                                                        _aggregate_id=aggregate_id,
-                                                        _shuffle_key=shuffle_key,
-                                                        _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_return_index=return_index, _return_inverse=return_inverse,
+                         _return_counts=return_counts, _axis=axis, _aggregate_id=aggregate_id,
+                         _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def output_limit(self):
@@ -475,8 +468,7 @@ class TensorUniqueInverseReduce(TensorShuffleReduce, TensorOperandMixin):
     _op_type_ = OperandDef.UNIQUE_INVERSE_REDUCE
 
     def __init__(self, shuffle_key=None, dtype=None, gpu=None, **kw):
-        super().__init__(_shuffle_key=shuffle_key,
-                                                        _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

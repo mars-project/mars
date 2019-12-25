@@ -33,9 +33,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, dtypes=None, gpu=None, sparse=None, **kw):
-        super().__init__(_dtypes=dtypes,
-                                                  _gpu=gpu, _sparse=sparse,
-                                                  _object_type=ObjectType.dataframe, **kw)
+        super().__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse,
+                         _object_type=ObjectType.dataframe, **kw)
 
     @property
     def dtypes(self):
@@ -165,8 +164,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, dtype=None, gpu=None, sparse=None, **kw):
-        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse,
-                                               _object_type=ObjectType.series, **kw)
+        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, _object_type=ObjectType.series, **kw)
 
     @property
     def dtype(self):

@@ -36,9 +36,9 @@ class XGBTrain(LearnMergeDictOperand):
 
     def __init__(self, params=None, dtrain=None, evals=None, kwargs=None,
                  tracker=None, merge=None, gpu=None, output_types=None, **kw):
-        super().__init__(_params=params, _dtrain=dtrain, _evals=evals,
-                                       _kwargs=kwargs, _tracker=tracker, _merge=merge,
-                                       _gpu=gpu, _output_types=output_types, **kw)
+        super().__init__(_params=params, _dtrain=dtrain, _evals=evals, _kwargs=kwargs,
+                         _tracker=tracker, _merge=merge, _gpu=gpu,
+                         _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
 

@@ -37,11 +37,10 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
 
     def __init__(self, data=None, label=None, missing=None, weight=None, feature_names=None,
                  feature_types=None, multi_output=None, gpu=None, output_types=None, **kw):
-        super().__init__(_data=data, _label=label, _missing=missing,
-                                        _weight=weight, _feature_names=feature_names,
-                                        _feature_types=feature_types, _gpu=gpu,
-                                        _multi_output=multi_output,
-                                        _output_types=output_types, **kw)
+        super().__init__(_data=data, _label=label, _missing=missing, _weight=weight,
+                         _feature_names=feature_names, _feature_types=feature_types,
+                         _gpu=gpu, _multi_output=multi_output, _output_types=output_types,
+                         **kw)
 
     @property
     def output_limit(self):

@@ -31,9 +31,9 @@ class TensorNanArgmaxMap(TensorReduction, TensorArgMapMixin):
     _agg_func_name = 'nanmax'
 
     def __init__(self, axis=None, dtype=np.dtype(int),
-                 combine_size=None, offset=None, total_shape=None,**kw):
+                 combine_size=None, offset=None, total_shape=None, **kw):
         super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
-                                                 _offset=offset, _total_shape=total_shape, **kw)
+                         _offset=offset, _total_shape=total_shape, **kw)
 
     @property
     def offset(self):
@@ -53,8 +53,7 @@ class TensorNanArgmaxCombine(TensorReduction, TensorArgCombineMixin):
     _func_name = 'nanargmax'
 
     def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super().__init__(_axis=axis, _dtype=dtype,
-                                                     _combine_size=combine_size, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
 
 class TensorNanArgmax(TensorReduction, TensorArgReductionMixin):
@@ -62,8 +61,7 @@ class TensorNanArgmax(TensorReduction, TensorArgReductionMixin):
     _func_name = 'nanargmax'
 
     def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super().__init__(_axis=axis, _dtype=dtype,
-                                              _combine_size=combine_size, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
     @staticmethod
     def _get_op_types():

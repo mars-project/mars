@@ -251,7 +251,6 @@ class Test(unittest.TestCase):
         with self.assertRaises((ValueError)):
             broadcast_to(arr[arr < 2], (3, 20))
 
-
     def testWhere(self):
         cond = tensor([[True, False], [False, True]], chunk_size=1)
         x = tensor([1, 2], chunk_size=1)

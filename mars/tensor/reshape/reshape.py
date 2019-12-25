@@ -43,7 +43,7 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
 
     def __init__(self, newshape=None, order=None, dtype=None, create_view=None, **kw):
         super().__init__(_newshape=newshape, _order=order, _dtype=dtype,
-                                            _create_view=create_view, **kw)
+                         _create_view=create_view, **kw)
 
     @property
     def newshape(self):

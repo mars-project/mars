@@ -230,8 +230,7 @@ class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
                              on_deserialize=ObjectType)
 
     def __init__(self, object_type=None, sparse=None, **kwargs):
-        super().__init__(_object_type=object_type,
-                                                    _sparse=sparse, **kwargs)
+        super().__init__(_object_type=object_type, _sparse=sparse, **kwargs)
 
     @property
     def object_type(self):

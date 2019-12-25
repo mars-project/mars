@@ -25,8 +25,7 @@ class TensorModf(TensorOutBinOp):
     _op_type_ = OperandDef.MODF
 
     def __init__(self, casting='same_kind', dtype=None, sparse=False, **kw):
-        super().__init__(_casting=casting, _dtype=dtype,
-                                         _sparse=sparse, **kw)
+        super().__init__(_casting=casting, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def _fun(self):

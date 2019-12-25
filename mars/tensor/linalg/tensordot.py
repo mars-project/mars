@@ -40,8 +40,7 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
     _b_axes = TupleField('b_axes', ValueType.int32)
 
     def __init__(self, a_axes=None, b_axes=None, dtype=None, sparse=False, **kw):
-        super().__init__(_a_axes=a_axes, _b_axes=b_axes,
-                                              _dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_a_axes=a_axes, _b_axes=b_axes, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def a(self):

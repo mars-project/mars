@@ -50,8 +50,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
     _model = StringField('model', on_serialize=_on_serialize_model, on_deserialize=_on_deserialize_model)
 
     def __init__(self, data=None, model=None, output_types=None, gpu=None, **kw):
-        super().__init__(_data=data, _model=model, _gpu=gpu,
-                                         _output_types=output_types, **kw)
+        super().__init__(_data=data, _model=model, _gpu=gpu, _output_types=output_types, **kw)
 
     @property
     def data(self):

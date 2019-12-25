@@ -46,10 +46,10 @@ class RunTensorFlow(LearnMergeDictOperand):
     def __init__(self, code=None, n_workers=None, n_ps=None, tf_config=None,
                  port=None, command_args=None, tf_task_type=None, tf_task_index=None,
                  merge=None, output_types=None, gpu=None, **kw):
-        super().__init__(_code=code, _n_workers=n_workers, _n_ps=n_ps,
-                                            _tf_config=tf_config, _command_args=command_args, _port=port,
-                                            _tf_task_type=tf_task_type, _tf_task_index=tf_task_index,
-                                            _merge=merge, _output_types=output_types, _gpu=gpu, **kw)
+        super().__init__(_code=code, _n_workers=n_workers, _n_ps=n_ps, _tf_config=tf_config,
+                         _command_args=command_args, _port=port, _tf_task_type=tf_task_type,
+                         _tf_task_index=tf_task_index, _merge=merge, _output_types=output_types,
+                         _gpu=gpu, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
 

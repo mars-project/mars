@@ -41,10 +41,10 @@ def get_git_info():
             return
         branches = _get_cmd_results(pkg_root, ['git', 'branch']).splitlines(False)
         commit_ref = None
-        for l in branches:
-            if not l.startswith('*'):
+        for branch in branches:
+            if not branch.startswith('*'):
                 continue
-            striped = l[1:].strip()
+            striped = branch[1:].strip()
             if not striped.startswith('('):
                 commit_ref = striped
             else:

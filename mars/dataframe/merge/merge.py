@@ -150,8 +150,7 @@ class DataFrameMergeAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, shuffle_key=None, sparse=False, **kw):
-        super().__init__(_shuffle_key=shuffle_key,
-                                                        _object_type=ObjectType.dataframe, **kw)
+        super().__init__(_shuffle_key=shuffle_key, _object_type=ObjectType.dataframe, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)

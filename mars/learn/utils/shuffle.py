@@ -55,8 +55,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
     _seeds = TupleField('seeds', ValueType.uint32)
 
     def __init__(self, axes=None, seeds=None, output_types=None, **kw):
-        super().__init__(_axes=axes, _seeds=seeds,
-                                           _output_types=output_types, **kw)
+        super().__init__(_axes=axes, _seeds=seeds, _output_types=output_types, **kw)
 
     @property
     def axes(self):
@@ -278,9 +277,8 @@ class LearnShuffleMap(LearnShuffleMapBase, LearnOperandMixin):
 
     def __init__(self, output_types=None, axes=None, seeds=None,
                  reduce_sizes=None, **kw):
-        super().__init__(_output_types=output_types,
-                                              _axes=axes, _seeds=seeds,
-                                              _reduce_sizes=reduce_sizes, **kw)
+        super().__init__(_output_types=output_types, _axes=axes, _seeds=seeds,
+                         _reduce_sizes=reduce_sizes, **kw)
 
     @property
     def input(self):
@@ -351,10 +349,8 @@ class LearnShuffleReduce(LearnShuffleReduceBase, LearnOperandMixin):
 
     def __init__(self, output_types=None, axes=None, seeds=None, reduce_sizes=None,
                  shuffle_key=None, **kw):
-        super().__init__(_output_types=output_types,
-                                                 _axes=axes, _seeds=seeds,
-                                                 _shuffle_key=shuffle_key,
-                                                 _reduce_sizes=reduce_sizes, **kw)
+        super().__init__(_output_types=output_types, _axes=axes, _seeds=seeds,
+                         _shuffle_key=shuffle_key, _reduce_sizes=reduce_sizes, **kw)
 
     @property
     def input(self):

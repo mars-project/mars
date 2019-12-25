@@ -35,8 +35,7 @@ class SharedStorageIO(BytesStorageIO):
                  pin_token=None, handler=None):
         from .objectholder import SharedHolderActor
 
-        super().__init__(session_id, data_key, mode=mode,
-                                              handler=handler)
+        super().__init__(session_id, data_key, mode=mode, handler=handler)
         self._shared_buf = None
         self._shared_store = shared_store
         self._offset = 0

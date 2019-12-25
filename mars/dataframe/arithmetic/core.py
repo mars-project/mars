@@ -39,9 +39,8 @@ class DataFrameBinOp(DataFrameOperand):
     _rhs = AnyField('rhs')
 
     def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
-        super().__init__(_axis=axis, _level=level,
-                                             _fill_value=fill_value,
-                                             _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
+        super().__init__(_axis=axis, _level=level, _fill_value=fill_value, _object_type=object_type,
+                         _lhs=lhs, _rhs=rhs, **kw)
 
     @property
     def axis(self):

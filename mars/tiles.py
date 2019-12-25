@@ -155,9 +155,8 @@ class ChunkGraphBuilder(GraphBuilder):
     def __init__(self, graph=None, graph_cls=DAG, node_processor=None,
                  inputs_selector=None, compose=True,
                  on_tile=None, on_tile_success=None, on_tile_failure=None):
-        super().__init__(graph=graph, graph_cls=graph_cls,
-                                                node_processor=node_processor,
-                                                inputs_selector=inputs_selector)
+        super().__init__(graph=graph, graph_cls=graph_cls, node_processor=node_processor,
+                         inputs_selector=inputs_selector)
         self._compose = compose
         self._on_tile = on_tile
         self._on_tile_success = on_tile_success

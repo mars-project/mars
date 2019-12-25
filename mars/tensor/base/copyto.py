@@ -38,8 +38,7 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
     _where = KeyField('where')
 
     def __init__(self, casting=None, dtype=None, gpu=None, sparse=None, **kw):
-        super().__init__(_casting=casting, _dtype=dtype,
-                                           _gpu=gpu, _sparse=sparse, **kw)
+        super().__init__(_casting=casting, _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
 
     @property
     def src(self):

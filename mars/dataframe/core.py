@@ -282,9 +282,8 @@ class IndexChunkData(ChunkData):
 
     def __init__(self, op=None, shape=None, index=None, dtype=None, name=None,
                  index_value=None, **kw):
-        super().__init__(_op=op, _shape=shape, _index=index,
-                                             _dtype=dtype, _name=name,
-                                             _index_value=index_value, **kw)
+        super().__init__(_op=op, _shape=shape, _index=index, _dtype=dtype, _name=name,
+                         _index_value=index_value, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -335,9 +334,8 @@ class IndexData(HasShapeTileableData):
 
     def __init__(self, op=None, shape=None, nsplits=None, dtype=None,
                  name=None, index_value=None, chunks=None, **kw):
-        super().__init__(_op=op, _shape=shape, _nsplits=nsplits,
-                                        _dtype=dtype, _name=name, _index_value=index_value,
-                                        _chunks=chunks, **kw)
+        super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtype=dtype, _name=name,
+                         _index_value=index_value, _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -399,9 +397,8 @@ class SeriesChunkData(ChunkData):
 
     def __init__(self, op=None, shape=None, index=None, dtype=None, name=None,
                  index_value=None, **kw):
-        super().__init__(_op=op, _shape=shape, _index=index,
-                                              _dtype=dtype, _name=name,
-                                              _index_value=index_value, **kw)
+        super().__init__(_op=op, _shape=shape, _index=index, _dtype=dtype, _name=name,
+                         _index_value=index_value, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -456,9 +453,8 @@ class SeriesData(HasShapeTileableData):
 
     def __init__(self, op=None, shape=None, nsplits=None, dtype=None,
                  name=None, index_value=None, chunks=None, **kw):
-        super().__init__(_op=op, _shape=shape, _nsplits=nsplits,
-                                         _dtype=dtype, _name=name, _index_value=index_value,
-                                         _chunks=chunks, **kw)
+        super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtype=dtype, _name=name,
+                         _index_value=index_value, _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -556,9 +552,8 @@ class DataFrameChunkData(ChunkData):
 
     def __init__(self, op=None, shape=None, index=None, dtypes=None,
                  index_value=None, columns_value=None, **kw):
-        super().__init__(_op=op, _shape=shape, _index=index,
-                                                 _dtypes=dtypes, _index_value=index_value,
-                                                 _columns_value=columns_value, **kw)
+        super().__init__(_op=op, _shape=shape, _index=index, _dtypes=dtypes,
+                         _index_value=index_value, _columns_value=columns_value, **kw)
 
     def __len__(self):
         return self.shape[0]
@@ -626,10 +621,9 @@ class DataFrameData(HasShapeTileableData):
 
     def __init__(self, op=None, shape=None, nsplits=None, dtypes=None,
                  index_value=None, columns_value=None, chunks=None, **kw):
-        super().__init__(_op=op, _shape=shape, _nsplits=nsplits,
-                                            _dtypes=dtypes, _index_value=index_value,
-                                            _columns_value=columns_value,
-                                            _chunks=chunks, **kw)
+        super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtypes=dtypes,
+                         _index_value=index_value, _columns_value=columns_value,
+                         _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):

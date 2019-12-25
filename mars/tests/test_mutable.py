@@ -255,7 +255,8 @@ class Test(unittest.TestCase):
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorStructured(self):
         def testWithGivenSession(session):
-            rec_type = np.dtype([('a', np.int32), ('b', np.double), ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])
+            rec_type = np.dtype(
+                [('a', np.int32), ('b', np.double), ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])
 
             mut = session.create_mutable_tensor("test", (4, 5), dtype=rec_type, chunk_size=3)
             mut[1:4, 1] = (3, 4., (5, 6))
@@ -426,7 +427,7 @@ class Test(unittest.TestCase):
             from mars.tensor.core import mutable_tensor
 
             # simple dtype.
-            mut1 = mutable_tensor("test", (4, ), dtype='<U16', chunk_size=3)
+            mut1 = mutable_tensor("test", (4,), dtype='<U16', chunk_size=3)
             mut1[0] = 'a'
             mut1[1] = 'bb'
             mut1[2] = 'cccc'
@@ -492,7 +493,7 @@ class Test(unittest.TestCase):
             testWithGivenSession(session)
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                            shared_memory='20M', web=True) as cluster:
+                         shared_memory='20M', web=True) as cluster:
             session = cluster.session.as_default()
             testWithGivenSession(session)
 
@@ -500,5 +501,5 @@ class Test(unittest.TestCase):
                 testWithGivenSession(web_session)
 
     def assertRecordsEqual(self, records, expected):
-        np.testing.assert_array_equal(records['index'], expected[:,0])
-        np.testing.assert_array_equal(records['value'], expected[:,1])
+        np.testing.assert_array_equal(records['index'], expected[:, 0])
+        np.testing.assert_array_equal(records['value'], expected[:, 1])
