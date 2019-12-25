@@ -535,7 +535,7 @@ class SerializableGraphNode(Serializable):
 
             return GraphDef.NodeDef
 
-        return super(SerializableGraphNode, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def node(self):
@@ -557,7 +557,7 @@ class SerializableGraph(Serializable):
 
             return GraphDef
 
-        return super(SerializableGraph, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def level(self):

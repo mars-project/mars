@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 class MarsApiRequestHandler(MarsRequestHandler):
     def set_default_headers(self):
-        super(MarsApiRequestHandler, self).set_default_headers()
+        super().set_default_headers()
         self.set_header('Content-Type', 'application/json')
 
     def _dump_exception(self, exc_info, status_code=500):

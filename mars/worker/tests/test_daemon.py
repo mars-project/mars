@@ -25,7 +25,7 @@ from mars.worker.tests.base import WorkerCase
 
 class DaemonSleeperActor(WorkerActor):
     def post_create(self):
-        super(DaemonSleeperActor, self).__init__()
+        super().__init__()
         self._daemon_ref = self.promise_ref(WorkerDaemonActor.default_uid())
         self._daemon_ref.register_process(self.ref(), os.getpid(), _tell=True)
 
@@ -36,7 +36,7 @@ class DaemonSleeperActor(WorkerActor):
 
 class DaemonTestActor(WorkerActor):
     def __init__(self):
-        super(DaemonTestActor, self).__init__()
+        super().__init__()
         self._result = None
 
     def run_test_sleep(self, sleeper_ref, t):

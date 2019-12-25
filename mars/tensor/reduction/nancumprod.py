@@ -27,7 +27,7 @@ class TensorNanCumprod(TensorCumReduction, TensorCumReductionMixin):
     _func_name = 'nancumprod'
 
     def __init__(self, axis=None, dtype=None, **kw):
-        super(TensorNanCumprod, self).__init__(_axis=axis, _dtype=dtype, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, **kw)
 
     @staticmethod
     def _get_op_types():

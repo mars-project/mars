@@ -757,6 +757,3 @@ def copy_tileables(*tileables, **kwargs):
         return copied[0]
     else:
         return copied
-
-
-

@@ -17,7 +17,7 @@ import uuid
 from mars.utils import get_next_port
 from mars.worker import WorkerDaemonActor
 from mars.worker.tests.base import WorkerCase
-from mars.worker.storage import *
+from mars.worker.storage import StorageManagerActor, DataStorageDevice
 
 
 class Test(WorkerCase):

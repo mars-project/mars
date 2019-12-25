@@ -35,7 +35,7 @@ class Test(LearnIntegrationTestBase):
         rs = mt.random.RandomState(0)
         self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
-        super(Test, self).setUp()
+        super().setUp()
 
     def testDistributedXGBClassifier(self):
         service_ep = 'http://127.0.0.1:' + self.web_port

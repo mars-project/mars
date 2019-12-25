@@ -21,7 +21,7 @@ class MarsError(RuntimeError):
     def __init__(self, msg=None):
         self._err_data = msg
         msg = repr(msg) if msg is not None else None
-        super(MarsError, self).__init__(msg)
+        super().__init__(msg)
 
     def __str__(self):
         return self.args[0] or ''
@@ -49,7 +49,7 @@ class StorageFull(MarsError):
             msg = (msg or '') + ' request_size=%s, total_size=%s' \
                   % (self._request_size, self._capacity)
             msg = msg.strip()
-        super(StorageFull, self).__init__(msg)
+        super().__init__(msg)
 
     @property
     def request_size(self):

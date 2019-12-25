@@ -27,8 +27,7 @@ class StartTracker(LearnOperand, LearnOperandMixin):
     _n_workers = Int32Field('n_workers')
 
     def __init__(self, n_workers=None, output_types=None, **kw):
-        super(StartTracker, self).__init__(_n_workers=n_workers,
-                                           _output_types=output_types, **kw)
+        super().__init__(_n_workers=n_workers, _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
 

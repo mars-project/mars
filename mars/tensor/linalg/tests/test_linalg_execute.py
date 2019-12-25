@@ -146,7 +146,7 @@ class Test(unittest.TestCase):
             s = s.astype(dtype, copy=False)
             V = V.astype(dtype, copy=False)
 
-            for normalizer in ['auto', 'LU', 'QR']: # 'none' would not be stable
+            for normalizer in ['auto', 'LU', 'QR']:  # 'none' would not be stable
                 # compute the singular values of X using the fast approximate method
                 Ua, sa, Va = randomized_svd(
                     X, k, power_iteration_normalizer=normalizer, random_state=0)

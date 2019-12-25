@@ -24,7 +24,7 @@ class TensorFuseChunkMixin(FuseChunkMixin, TensorOperandMixin):
 
 class TensorFuseChunk(TensorFuse, TensorFuseChunkMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
-        super(TensorFuseChunk, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_dtype=dtype, _sparse=sparse, **kw)
 
 
 def estimate_fuse_size(ctx, op):

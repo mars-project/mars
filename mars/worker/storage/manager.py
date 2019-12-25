@@ -36,7 +36,7 @@ class DataAttrs(object):
 
 class StorageManagerActor(WorkerActor):
     def __init__(self):
-        super(StorageManagerActor, self).__init__()
+        super().__init__()
         self._data_to_locations = dict()
         self._data_attrs = dict()
         self._proc_to_data = defaultdict(set)
@@ -44,7 +44,7 @@ class StorageManagerActor(WorkerActor):
         self._proc_holders = dict()
 
     def post_create(self):
-        super(StorageManagerActor, self).post_create()
+        super().post_create()
 
         from ..daemon import WorkerDaemonActor
         daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())

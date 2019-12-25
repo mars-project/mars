@@ -13,13 +13,10 @@
 # limitations under the License.
 
 # register operands
-from .contrib.xgboost import register_op
-register_op()
 from .utils.shuffle import shuffle
-del shuffle
-from .contrib.tensorflow import register_op
-register_op()
-from .contrib.pytorch import register_op
-register_op()
-del register_op
+from .contrib import xgboost, tensorflow, pytorch
 
+for _mod in [xgboost, tensorflow, pytorch]:
+    _mod.register_op()
+
+del _mod, shuffle

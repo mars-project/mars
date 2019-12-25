@@ -40,8 +40,7 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
     _b_axes = TupleField('b_axes', ValueType.int32)
 
     def __init__(self, a_axes=None, b_axes=None, dtype=None, sparse=False, **kw):
-        super(TensorTensorDot, self).__init__(_a_axes=a_axes, _b_axes=b_axes,
-                                              _dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_a_axes=a_axes, _b_axes=b_axes, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def a(self):
@@ -60,7 +59,7 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
         return self._b_axes
 
     def _set_inputs(self, inputs):
-        super(TensorTensorDot, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._a = self._inputs[0]
         self._b = self._inputs[1]
 
@@ -73,7 +72,7 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
     def estimate_size(cls, ctx, op):
         chunk = op.outputs[0]
         if chunk.is_sparse():
-            return super(TensorTensorDot, cls).estimate_size(ctx, op)
+            return super().estimate_size(ctx, op)
 
         # empirical value in real environments
         calc_usage = chunk.nbytes

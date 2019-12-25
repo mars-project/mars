@@ -58,19 +58,19 @@ class SerializeMustFailOperand(TensorOperand, TensorElementWise):
     _f = Int64Field('f', on_deserialize=_on_deserialize_fail)
 
     def __init__(self, f=None, **kw):
-        super(SerializeMustFailOperand, self).__init__(_f=f, **kw)
+        super().__init__(_f=f, **kw)
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
 class Test(unittest.TestCase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self._old_default_cpu_usage = options.scheduler.default_cpu_usage
         options.scheduler.default_cpu_usage = 0
 
     def tearDown(self):
-        super(Test, self).tearDown()
+        super().tearDown()
         options.scheduler.default_cpu_usage = self._old_default_cpu_usage
 
     def testLocalCluster(self, *_):
@@ -126,7 +126,7 @@ class Test(unittest.TestCase):
     def testLocalClusterError(self, *_):
         with option_context({'scheduler.retry_num': 1}):
             with new_cluster(scheduler_n_process=2, worker_n_process=3,
-                            shared_memory='20M', web=True) as cluster:
+                             shared_memory='20M', web=True) as cluster:
                 # Note that it is nested exception and we want to check the message
                 # of the inner exeception, thus assertRaises won't work.
 
@@ -134,7 +134,7 @@ class Test(unittest.TestCase):
                     t = mt.array(["1", "2", "3", "4"])
                     try:
                         session.run(t + 1)
-                    except:
+                    except:  # noqa: E722
                         etype, exp, tb = sys.exc_info()
                         self.assertEqual(etype, ExecutionFailed)
                         self.assertIsInstance(exp, ExecutionFailed)
@@ -148,7 +148,7 @@ class Test(unittest.TestCase):
                     t = mt.array(["1", "2", "3", "4"])
                     try:
                         session.run(t + 1)
-                    except:
+                    except:  # noqa: E722
                         etype, exp, tb = sys.exc_info()
                         self.assertEqual(etype, ExecutionFailed)
                         self.assertIsInstance(exp, ExecutionFailed)

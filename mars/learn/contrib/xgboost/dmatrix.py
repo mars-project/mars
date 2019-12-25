@@ -37,11 +37,10 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
 
     def __init__(self, data=None, label=None, missing=None, weight=None, feature_names=None,
                  feature_types=None, multi_output=None, gpu=None, output_types=None, **kw):
-        super(ToDMatrix, self).__init__(_data=data, _label=label, _missing=missing,
-                                        _weight=weight, _feature_names=feature_names,
-                                        _feature_types=feature_types, _gpu=gpu,
-                                        _multi_output=multi_output,
-                                        _output_types=output_types, **kw)
+        super().__init__(_data=data, _label=label, _missing=missing, _weight=weight,
+                         _feature_names=feature_names, _feature_types=feature_types,
+                         _gpu=gpu, _multi_output=multi_output, _output_types=output_types,
+                         **kw)
 
     @property
     def output_limit(self):
@@ -78,7 +77,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         return self._multi_output
 
     def _set_inputs(self, inputs):
-        super(ToDMatrix, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._data = self._inputs[0]
         has_label = self._label is not None
         if has_label:
@@ -151,14 +150,14 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             data_kw['index'] = data_chunk.index
             kws.append(data_kw)
             if label is not None:
-                label_chunk = chunk_op._label = label.cix[i,]
+                label_chunk = chunk_op._label = label.cix[i, ]
                 inps.append(label_chunk)
                 kw = cls._get_kw(label_chunk)
                 kw['index'] = label_chunk.index
                 kw['type'] = 'label'
                 kws.append(kw)
             if weight is not None:
-                weight_chunk = chunk_op._weight = weight.cix[i,]
+                weight_chunk = chunk_op._weight = weight.cix[i, ]
                 inps.append(weight_chunk)
                 kw = cls._get_kw(weight_chunk)
                 kw['index'] = weight_chunk.index

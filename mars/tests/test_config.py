@@ -59,7 +59,7 @@ class Test(TestBase):
 
         class T(threading.Thread):
             def __init__(self, is_first, condition):
-                super(T, self).__init__()
+                super().__init__()
                 self.is_first = is_first
                 self.condition = condition
 

@@ -25,10 +25,10 @@ class TensorFFTShift(TensorFFTShiftBase, TensorFFTShiftMixin):
     _op_type_ = OperandDef.FFTSHIFT
 
     def __init__(self, axes=None, dtype=None, **kw):
-        super(TensorFFTShift, self).__init__(_axes=axes, _dtype=dtype, **kw)
+        super().__init__(_axes=axes, _dtype=dtype, **kw)
 
     def _set_inputs(self, inputs):
-        super(TensorFFTShift, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, x):

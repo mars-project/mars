@@ -56,7 +56,7 @@ class GraphMetaActor(SchedulerActor):
         return 's:0:graph_meta$%s$%s' % (session_id, graph_key)
 
     def __init__(self, session_id, graph_key):
-        super(GraphMetaActor, self).__init__()
+        super().__init__()
         self._session_id = session_id
         self._graph_key = graph_key
 
@@ -75,7 +75,7 @@ class GraphMetaActor(SchedulerActor):
         self._state_to_infos = defaultdict(dict)
 
     def post_create(self):
-        super(GraphMetaActor, self).post_create()
+        super().post_create()
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
@@ -92,7 +92,7 @@ class GraphMetaActor(SchedulerActor):
 
     def pre_destroy(self):
         self._graph_wait_ref.destroy()
-        super(GraphMetaActor, self).pre_destroy()
+        super().pre_destroy()
 
     def get_graph_info(self):
         return self._start_time, self._end_time, len(self._op_infos)
@@ -203,7 +203,7 @@ class GraphWaitActor(SchedulerActor):
         return 's:0:graph_wait$%s$%s' % (session_id, graph_key)
 
     def __init__(self, graph_event):
-        super(GraphWaitActor, self).__init__()
+        super().__init__()
         self._graph_event = graph_event
 
     def wait(self, timeout=None):
@@ -221,7 +221,7 @@ class GraphActor(SchedulerActor):
     def __init__(self, session_id, graph_key, serialized_tileable_graph,
                  target_tileables=None, serialized_chunk_graph=None,
                  state=GraphState.UNSCHEDULED, final_state=None):
-        super(GraphActor, self).__init__()
+        super().__init__()
         self._graph_key = graph_key
         self._session_id = session_id
         self._serialized_tileable_graph = serialized_tileable_graph
@@ -271,7 +271,7 @@ class GraphActor(SchedulerActor):
         self._graph_analyze_pool = None
 
     def post_create(self):
-        super(GraphActor, self).post_create()
+        super().post_create()
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
         random.seed(int(time.time()))
@@ -291,7 +291,7 @@ class GraphActor(SchedulerActor):
         self._graph_analyze_pool = self.ctx.threadpool(1)
 
     def pre_destroy(self):
-        super(GraphActor, self).pre_destroy()
+        super().pre_destroy()
         self._graph_meta_ref.destroy()
 
     @contextlib.contextmanager

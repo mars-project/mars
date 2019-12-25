@@ -55,8 +55,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
     _axis = AnyField('axis')
 
     def __init__(self, axis=None, dtype=None, sparse=False, gpu=None, **kw):
-        super(TensorConcatenate, self).__init__(_axis=axis, _dtype=dtype,
-                                                _gpu=gpu, _sparse=sparse, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
 
     @property
     def axis(self):
@@ -106,7 +105,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
             axis_index = np.searchsorted(axis_cum_chunk_shape, out_idx[axis], side='right')
             t = inputs[axis_index]
             axis_inner_index = out_idx[axis] - \
-                               (0 if axis_index < 1 else axis_cum_chunk_shape[axis_index - 1])
+                (0 if axis_index < 1 else axis_cum_chunk_shape[axis_index - 1])
             idx = out_idx[:axis] + (axis_inner_index,) + out_idx[axis + 1:]
             in_chunk = t.cix[idx]
             if idx == out_idx:

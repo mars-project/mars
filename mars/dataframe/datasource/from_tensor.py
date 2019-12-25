@@ -33,9 +33,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, dtypes=None, gpu=None, sparse=None, **kw):
-        super(DataFrameFromTensor, self).__init__(_dtypes=dtypes,
-                                                  _gpu=gpu, _sparse=sparse,
-                                                  _object_type=ObjectType.dataframe, **kw)
+        super().__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse,
+                         _object_type=ObjectType.dataframe, **kw)
 
     @property
     def dtypes(self):
@@ -46,7 +45,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         return self._input
 
     def _set_inputs(self, inputs):
-        super(DataFrameFromTensor, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = inputs[0]
 
     def __call__(self, input_tensor, index, columns):
@@ -165,8 +164,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, dtype=None, gpu=None, sparse=None, **kw):
-        super(SeriesFromTensor, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse,
-                                               _object_type=ObjectType.series, **kw)
+        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, _object_type=ObjectType.series, **kw)
 
     @property
     def dtype(self):
@@ -223,4 +221,3 @@ def series_from_tensor(tensor, index=None, name=None, gpu=None, sparse=False):
     gpu = tensor.op.gpu if gpu is None else gpu
     op = SeriesFromTensor(dtype=tensor.dtype, gpu=gpu, sparse=sparse)
     return op(tensor, index, name)
-

@@ -50,6 +50,7 @@ from .reshape import reshape
 from .merge import concatenate, stack, hstack, vstack, dstack, column_stack
 from .indexing import take, compress, extract, choose, unravel_index, nonzero, flatnonzero
 from .rechunk import rechunk
+# noinspection PyUnresolvedReferences
 from .lib.index_tricks import mgrid, ogrid, ndindex
 from .core import mutable_tensor
 
@@ -61,20 +62,24 @@ from . import special
 
 # types
 from .core import Tensor, MutableTensor
+# noinspection PyUnresolvedReferences
 from ..core import ExecutableTuple
+
+# noinspection PyUnresolvedReferences
+from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
+    errstate, geterr, seterr
+# import numpy types
+# noinspection PyUnresolvedReferences
+from numpy import dtype, object, number, inexact, floating, complexfloating, \
+    integer, signedinteger, unsignedinteger, character, generic, flexible, \
+    int, int_, bool, bool_, float_, cfloat, bytes_, unicode_, void, object_, \
+    intc, intp, int8, int16, int32, int64, uint8, uint16, uint32, uint64, uint, \
+    float, float16, float32, float64, double, complex64, complex128, datetime64, timedelta64
+# noinspection PyUnresolvedReferences
+from numpy import finfo
 
 # register fuse op and fetch op
 from .fuse import TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk
 from .fetch import TensorFetch, TensorFetchShuffle
 from . import ufunc
 del TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk, TensorFetch, TensorFetchShuffle, ufunc
-
-from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
-    errstate, geterr, seterr
-# import numpy types
-from numpy import dtype, object, number, inexact, floating, complexfloating, \
-    integer, signedinteger, unsignedinteger, character, generic, flexible, \
-    int, int_, bool, bool_, float_, cfloat, bytes_, unicode_, void, object_, \
-    intc, intp, int8, int16, int32, int64, uint8, uint16, uint32, uint64, uint, \
-    float, float16, float32, float64, double, complex64, complex128, datetime64, timedelta64
-from numpy import finfo

@@ -51,7 +51,7 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
     Base class of all worker actors, providing necessary utils
     """
     def __init__(self):
-        super(WorkerActor, self).__init__()
+        super().__init__()
         self._proc_id = None
 
     @classmethod
@@ -152,13 +152,13 @@ class ExpMeanHolder(object):
 class ExpiringCache(dict):
     def __init__(self, *args, **kwargs):
         expire_time = kwargs.pop('_expire_time', options.worker.callback_preserve_time)
-        super(ExpiringCache, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._expire_time = expire_time
         self._insert_times = OrderedDict()
 
     def __setitem__(self, key, value):
-        super(ExpiringCache, self).__setitem__(key, value)
+        super().__setitem__(key, value)
         if key in self._insert_times:
             self._insert_times[key] = time.time()
             self._insert_times.move_to_end(key)

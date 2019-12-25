@@ -39,8 +39,7 @@ class TensorFull(TensorNoInput):
                 fill_value = dtype.type(fill_value)
         elif fill_value is not None:
             dtype = np.array(fill_value).dtype
-        super(TensorFull, self).__init__(_fill_value=fill_value, _dtype=dtype,
-                                         _gpu=gpu, _order=order, **kw)
+        super().__init__(_fill_value=fill_value, _dtype=dtype, _gpu=gpu, _order=order, **kw)
 
     @property
     def fill_value(self):
@@ -131,8 +130,8 @@ class TensorFullLike(TensorLike):
                 fill_value = dtype.type(fill_value)
         elif fill_value is not None:
             dtype = np.array(fill_value).dtype
-        super(TensorFullLike, self).__init__(_fill_value=fill_value, _dtype=dtype, _gpu=gpu,
-                                             _order=order, _sparse=sparse, **kw)
+        super().__init__(_fill_value=fill_value, _dtype=dtype, _gpu=gpu, _order=order,
+                         _sparse=sparse, **kw)
 
     @property
     def fill_value(self):

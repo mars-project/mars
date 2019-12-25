@@ -38,7 +38,7 @@ class MarsDistributor(Distributor):
     process is ``offset + hash % (n_process - offset)``.
     """
     def __init__(self, n_process, default_prefix=None):
-        super(MarsDistributor, self).__init__(n_process)
+        super().__init__(n_process)
         self._default_prefix = to_str(default_prefix)
 
     @functools.lru_cache(100)

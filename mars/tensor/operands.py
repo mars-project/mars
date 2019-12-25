@@ -131,7 +131,7 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
 
     def __init__(self, dtype=None, **kwargs):
         kwargs['_dtype'] = kwargs.get('_dtype', dtype)
-        super(TensorShuffleProxy, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     @property
     def dtype(self):

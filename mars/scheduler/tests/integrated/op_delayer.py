@@ -38,10 +38,10 @@ class DelayedOperandActor(OperandActor):
                 os.path.exists(os.environ['SHUFFLE_HAS_SUCC_FINISH_FILE']):
             self.ctx.sleep(0.1)
 
-        super(DelayedOperandActor, self)._on_ready()
+        super()._on_ready()
 
     def _on_finished(self):
-        super(DelayedOperandActor, self)._on_finished()
+        super()._on_finished()
         if self._is_terminal:
             _write_state_file('OP_TERMINATE_STATE_FILE')
 
@@ -54,17 +54,17 @@ class DelayedShuffleProxyActor(ShuffleProxyActor):
             while not os.path.exists(os.environ['SHUFFLE_START_SUCC_FILE']):
                 self.ctx.sleep(0.1)
 
-        super(DelayedShuffleProxyActor, self)._start_successors()
+        super()._start_successors()
 
     def add_finished_successor(self, op_key, worker):
         try:
-            return super(DelayedShuffleProxyActor, self).add_finished_successor(op_key, worker)
+            return super().add_finished_successor(op_key, worker)
         finally:
             _write_state_file('SHUFFLE_HAS_SUCC_FINISH_FILE')
 
     def free_predecessors(self):
         _write_state_file('SHUFFLE_ALL_SUCC_FINISH_FILE')
-        super(DelayedShuffleProxyActor, self).free_predecessors()
+        super().free_predecessors()
 
 
 register_actor_implementation(OperandActor, DelayedOperandActor)

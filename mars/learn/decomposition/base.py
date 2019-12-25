@@ -179,4 +179,3 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
             ret = (mt.dot(X, self.components_) + self.mean_)
         ret.execute(session=session, fetch=False)
         return ret
-

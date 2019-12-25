@@ -25,7 +25,7 @@ class TensorFetch(Fetch, TensorFetchMixin):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, dtype=None, to_fetch_key=None, sparse=False, **kw):
-        super(TensorFetch, self).__init__(
+        super().__init__(
             _dtype=dtype, _to_fetch_key=to_fetch_key, _sparse=sparse, **kw)
 
     @property
@@ -35,19 +35,19 @@ class TensorFetch(Fetch, TensorFetchMixin):
     def _new_chunks(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
             self._to_fetch_key = kw['_key']
-        return super(TensorFetch, self)._new_chunks(inputs, kws=kws, **kw)
+        return super()._new_chunks(inputs, kws=kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
             self._to_fetch_key = kw['_key']
-        return super(TensorFetch, self)._new_tileables(inputs, kws=kws, **kw)
+        return super()._new_tileables(inputs, kws=kws, **kw)
 
 
 class TensorFetchShuffle(FetchShuffle, TensorFetchMixin):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, dtype=None, to_fetch_keys=None, to_fetch_idxes=None, **kw):
-        super(TensorFetchShuffle, self).__init__(
+        super().__init__(
             _dtype=dtype, _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes, **kw)
 
     @property

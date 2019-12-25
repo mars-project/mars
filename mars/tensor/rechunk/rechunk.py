@@ -32,8 +32,8 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
     _chunk_size_limit = Int64Field('chunk_size_limit')
 
     def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, dtype=None, sparse=False, **kw):
-        super(TensorRechunk, self).__init__(_chunk_size=chunk_size, _threshold=threshold,
-                                            _chunk_size_limit=chunk_size_limit, _dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_chunk_size=chunk_size, _threshold=threshold, _chunk_size_limit=chunk_size_limit,
+                         _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def chunk_size(self):
@@ -48,7 +48,7 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
         return self._chunk_size_limit
 
     def _set_inputs(self, inputs):
-        super(TensorRechunk, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, tensor):

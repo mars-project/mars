@@ -82,14 +82,14 @@ class LocalClusterSession(object):
     def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
         from ...tensor.utils import create_mutable_tensor
         shape, dtype, chunk_size, chunk_keys, chunk_eps = \
-                self._api.create_mutable_tensor(self._session_id, name, shape,
-                                                dtype, *args, **kwargs)
+            self._api.create_mutable_tensor(self._session_id, name, shape,
+                                            dtype, *args, **kwargs)
         return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys, chunk_eps)
 
     def get_mutable_tensor(self, name):
         from ...tensor.utils import create_mutable_tensor
         shape, dtype, chunk_size, chunk_keys, chunk_eps = \
-                 self._api.get_mutable_tensor(self._session_id, name)
+            self._api.get_mutable_tensor(self._session_id, name)
         return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys, chunk_eps)
 
     def write_mutable_tensor(self, tensor, index, value):

@@ -141,7 +141,7 @@ class Test(TestBase):
         self.assertArrayEqual(self.d1 / s1, self.d1 / self.s1.toarray())
         self.assertArrayEqual(s1 / 2, self.s1 / 2)
         self.assertArrayEqual(2 / s1, 2 / self.s1.toarray())
-        
+
         # test sparse vector
         v = SparseNDArray(self.v1, shape=(3,))
         self.assertArrayEqual(v / v, self.v1_data / self.v1_data)

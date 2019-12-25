@@ -34,7 +34,7 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
     _method = StringField('method')
 
     def __init__(self, method=None, dtype=None, **kw):
-        super(TensorQR, self).__init__(_method=method, _dtype=dtype, **kw)
+        super().__init__(_method=method, _dtype=dtype, **kw)
 
     @property
     def method(self):
@@ -45,7 +45,7 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
         return 2
 
     def _set_inputs(self, inputs):
-        super(TensorQR, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, a):

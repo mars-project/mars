@@ -36,7 +36,7 @@ class DataFrame(_Frame):
         else:
             pdf = pd.DataFrame(data, index=index, columns=columns, dtype=dtype, copy=copy)
             df = from_pandas_df(pdf, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
-        super(DataFrame, self).__init__(df.data)
+        super().__init__(df.data)
 
 
 class Series(_Series):
@@ -51,4 +51,4 @@ class Series(_Series):
         else:
             pd_series = pd.Series(data, index=index, dtype=dtype, name=name, copy=copy)
             series = from_pandas_series(pd_series, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
-        super(Series, self).__init__(series.data)
+        super().__init__(series.data)

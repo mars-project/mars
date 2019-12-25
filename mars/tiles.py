@@ -155,9 +155,8 @@ class ChunkGraphBuilder(GraphBuilder):
     def __init__(self, graph=None, graph_cls=DAG, node_processor=None,
                  inputs_selector=None, compose=True,
                  on_tile=None, on_tile_success=None, on_tile_failure=None):
-        super(ChunkGraphBuilder, self).__init__(graph=graph, graph_cls=graph_cls,
-                                                node_processor=node_processor,
-                                                inputs_selector=inputs_selector)
+        super().__init__(graph=graph, graph_cls=graph_cls, node_processor=node_processor,
+                         inputs_selector=inputs_selector)
         self._compose = compose
         self._on_tile = on_tile
         self._on_tile_success = on_tile_success
@@ -265,7 +264,7 @@ class IterativeChunkGraphBuilder(ChunkGraphBuilder):
         self._cur_tileable_graph = None
         self._iterative_chunk_graphs = []
         self._done = False
-        super(IterativeChunkGraphBuilder, self).__init__(
+        super().__init__(
             graph=graph, graph_cls=graph_cls, node_processor=node_processor,
             inputs_selector=inputs_selector, compose=compose, on_tile=on_tile,
             on_tile_success=self._wrap_on_tile_success(on_tile_success),
@@ -317,7 +316,7 @@ class IterativeChunkGraphBuilder(ChunkGraphBuilder):
     def _tile(self, tileable_data, tileable_graph):
         if any(inp.op in self._interrupted_ops for inp in tileable_data.inputs):
             raise TilesError('Tile fail due to failure of inputs')
-        return super(IterativeChunkGraphBuilder, self)._tile(tileable_data, tileable_graph)
+        return super()._tile(tileable_data, tileable_graph)
 
     @kernel_mode
     @enter_build_mode
@@ -328,7 +327,7 @@ class IterativeChunkGraphBuilder(ChunkGraphBuilder):
         self._prev_tileable_graph = tileable_graph
         self._cur_tileable_graph = type(tileable_graph)()
 
-        chunk_graph = super(IterativeChunkGraphBuilder, self).build(
+        chunk_graph = super().build(
             tileables, tileable_graph=tileable_graph)
         self._iterative_chunk_graphs.append(chunk_graph)
         if len(self._interrupted_ops) == 0:

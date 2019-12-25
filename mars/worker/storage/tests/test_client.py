@@ -32,18 +32,19 @@ from mars.utils import get_next_port, build_exc_info
 from mars.worker import WorkerDaemonActor, MemQuotaActor, QuotaActor, DispatchActor
 from mars.worker.utils import WorkerActor
 from mars.worker.tests.base import WorkerCase
-from mars.worker.storage import *
+from mars.worker.storage import StorageManagerActor, IORunnerActor, SharedHolderActor, \
+    PlasmaKeyMapActor, InProcHolderActor, StorageHandler, DataStorageDevice
 
 
 class OtherProcessTestActor(WorkerActor):
     def __init__(self):
-        super(OtherProcessTestActor, self).__init__()
+        super().__init__()
         self._accept = None
         self._result = None
         self._manager_ref = None
 
     def post_create(self):
-        super(OtherProcessTestActor, self).post_create()
+        super().post_create()
         self._manager_ref = self.ctx.actor_ref(StorageManagerActor.default_uid())
 
     def set_result(self, result, accept=True):
@@ -88,7 +89,7 @@ class Test(WorkerCase):
 
     def tearDown(self):
         options.worker.lock_free_fileio = False
-        super(Test, self).tearDown()
+        super().tearDown()
 
     def testClientReadAndWrite(self):
         test_addr = '127.0.0.1:%d' % get_next_port()

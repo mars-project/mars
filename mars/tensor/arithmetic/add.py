@@ -89,7 +89,7 @@ class TensorTreeAdd(TensorOperand, TensorElementWise):
     _op_type_ = OperandDef.TREE_ADD
 
     def __init__(self, dtype=None, sparse=False, **kw):
-        super(TensorTreeAdd, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_dtype=dtype, _sparse=sparse, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

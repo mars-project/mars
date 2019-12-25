@@ -170,8 +170,8 @@ class Test(TestBase):
         self.assertEqual(series.chunks[2].index, (2,))
 
     def testILocSetItem(self):
-        df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]],
-                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
+        df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
+                           index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
         df2 = md.DataFrame(df1, chunk_size=2)
         df2 = df2.tiles()
 
@@ -375,7 +375,7 @@ class Test(TestBase):
         self.assertIs(r1.columns_value, r3.columns_value)
 
     def testSeriesGetitem(self):
-        data = pd.Series(np.random.rand(10,), name='a')
+        data = pd.Series(np.random.rand(10, ), name='a')
         series = md.Series(data, chunk_size=3)
 
         result1 = series[2]

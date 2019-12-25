@@ -632,7 +632,7 @@ cdef class Communicator(AsyncHandler):
     cdef object __weakref__
 
     def __init__(self, pool, ClusterInfo cluster_info, pipe, Distributor distributor=None, parallel=None):
-        super(Communicator, self).__init__()
+        super().__init__()
         AsyncHandler.__init__(self)
 
         self.pool = pool
@@ -1094,7 +1094,7 @@ cdef class Dispatcher(AsyncHandler):
     cdef dict handlers
 
     def __init__(self, ClusterInfo cluster_info, list pipes, Distributor distributor=None, parallel=None):
-        super(Dispatcher, self).__init__()
+        super().__init__()
         AsyncHandler.__init__(self)
 
         self.cluster_info = cluster_info
@@ -1400,7 +1400,7 @@ cdef class ActorServerHandler:
 
 class ActorStreamServer(gevent.server.StreamServer):
     def __init__(self, listener, handler):
-        super(ActorStreamServer, self).__init__(listener, handler)
+        super().__init__(listener, handler)
         self._socks = []
         handler.set_server(self)
 
@@ -1408,7 +1408,7 @@ class ActorStreamServer(gevent.server.StreamServer):
         self._socks.append(sock)
 
     def close(self):
-        super(ActorStreamServer, self).close()
+        super().close()
         [sock.close() for sock in self._socks]
 
 

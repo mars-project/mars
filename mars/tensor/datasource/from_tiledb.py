@@ -37,7 +37,7 @@ class TensorTileDBDataSource(TensorNoInput):
     def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_dim_starts=None,
                  tiledb_key=None, tiledb_timstamp=None, dtype=None,
                  gpu=None, sparse=None, **kw):
-        super(TensorTileDBDataSource, self).__init__(
+        super().__init__(
             _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri,
             _tiledb_dim_starts=tiledb_dim_starts,
             _tiledb_key=tiledb_key, _tiledb_timestamp=tiledb_timstamp,
@@ -69,7 +69,7 @@ class TensorTileDBDataSource(TensorNoInput):
 
     def to_chunk_op(self, *args):
         _, chunk_idx, nsplits = args
-        chunk_op = super(TensorTileDBDataSource, self).to_chunk_op(*args)
+        chunk_op = super().to_chunk_op(*args)
         axis_offsets = []
         for axis, idx in enumerate(chunk_idx):
             axis_offsets.append(sum(nsplits[axis][:idx]))

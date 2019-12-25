@@ -201,7 +201,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
                         resource_ref.get_worker_count(), n_workers
                     ))
                 break
-            except:
+            except:  # noqa: E722
                 if time.time() - check_time > 20:
                     raise
                 time.sleep(0.1)

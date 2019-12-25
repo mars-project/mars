@@ -44,15 +44,15 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     _indexes = ListField('indexes')
 
     def __init__(self, dtype=None, sparse=False, indexes=None, create_view=False, **kw):
-        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes,
-                                          _create_view=create_view, **kw)
+        super().__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes,
+                         _create_view=create_view, **kw)
 
     @property
     def indexes(self):
         return self._indexes
 
     def _set_inputs(self, inputs):
-        super(TensorIndex, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
@@ -515,7 +515,7 @@ class FancyIndexingDistributeMap(TensorShuffleMap, TensorOperandMixin):
     _axes = TupleField('axes', ValueType.int32)
 
     def __init__(self, dest_nsplits=None, axes=None, dtype=None, sparse=None, **kw):
-        super(FancyIndexingDistributeMap, self).__init__(
+        super().__init__(
             _dest_nsplits=dest_nsplits, _axes=axes, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
@@ -554,11 +554,11 @@ class FancyIndexingDistributeReduce(TensorShuffleReduce, TensorOperandMixin):
     _axes = TupleField('axes', ValueType.int32)
 
     def __init__(self, axes=None, dtype=None, sparse=None, **kw):
-        super(FancyIndexingDistributeReduce, self).__init__(
+        super().__init__(
             _axes=axes, _dtype=dtype, _sparse=sparse, **kw)
 
     def _set_inputs(self, inputs):
-        super(FancyIndexingDistributeReduce, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     @property
@@ -617,7 +617,7 @@ class FancyIndexingConcatMap(TensorShuffleMap, TensorOperandMixin):
     _fancy_index_axis = Int32Field('fancy_index_axis')
 
     def __init__(self, fancy_index_axis=None, dtype=None, sparse=None, **kw):
-        super(FancyIndexingConcatMap, self).__init__(
+        super().__init__(
             _fancy_index_axis=fancy_index_axis, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
@@ -655,7 +655,7 @@ class FancyIndexingConcatReduce(TensorShuffleReduce, TensorOperandMixin):
     _fancy_index_shape = TupleField('fancy_index_shape', ValueType.int64)
 
     def __init__(self, fancy_index_axis=None, fancy_index_shape=None, dtype=None, sparse=None, **kw):
-        super(FancyIndexingConcatReduce, self).__init__(
+        super().__init__(
             _fancy_index_axis=fancy_index_axis, _fancy_index_shape=fancy_index_shape,
             _dtype=dtype, _sparse=sparse, **kw)
 

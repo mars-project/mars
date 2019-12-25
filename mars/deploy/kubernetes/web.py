@@ -21,7 +21,7 @@ class K8SWebApplication(K8SServiceMixin, WebApplication):
     def start(self):
         self.write_pid_file()
         self.wait_all_schedulers_ready()
-        super(K8SWebApplication, self).start()
+        super().start()
 
 
 main = K8SWebApplication()

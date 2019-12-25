@@ -266,7 +266,7 @@ class IndexValue(Serializable):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.indexvalue_pb2 import IndexValue as IndexValueDef
             return IndexValueDef
-        return super(IndexValue, cls).cls(provider)
+        return super().cls(provider)
 
 
 class IndexChunkData(ChunkData):
@@ -282,16 +282,15 @@ class IndexChunkData(ChunkData):
 
     def __init__(self, op=None, shape=None, index=None, dtype=None, name=None,
                  index_value=None, **kw):
-        super(IndexChunkData, self).__init__(_op=op, _shape=shape, _index=index,
-                                             _dtype=dtype, _name=name,
-                                             _index_value=index_value, **kw)
+        super().__init__(_op=op, _shape=shape, _index=index, _dtype=dtype, _name=name,
+                         _index_value=index_value, **kw)
 
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import IndexChunkDef
             return IndexChunkDef
-        return super(IndexChunkData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def params(self):
@@ -335,16 +334,15 @@ class IndexData(HasShapeTileableData):
 
     def __init__(self, op=None, shape=None, nsplits=None, dtype=None,
                  name=None, index_value=None, chunks=None, **kw):
-        super(IndexData, self).__init__(_op=op, _shape=shape, _nsplits=nsplits,
-                                        _dtype=dtype, _name=name, _index_value=index_value,
-                                        _chunks=chunks, **kw)
+        super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtype=dtype, _name=name,
+                         _index_value=index_value, _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import IndexDef
             return IndexDef
-        return super(IndexData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def params(self):
@@ -399,16 +397,15 @@ class SeriesChunkData(ChunkData):
 
     def __init__(self, op=None, shape=None, index=None, dtype=None, name=None,
                  index_value=None, **kw):
-        super(SeriesChunkData, self).__init__(_op=op, _shape=shape, _index=index,
-                                              _dtype=dtype, _name=name,
-                                              _index_value=index_value, **kw)
+        super().__init__(_op=op, _shape=shape, _index=index, _dtype=dtype, _name=name,
+                         _index_value=index_value, **kw)
 
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import SeriesChunkDef
             return SeriesChunkDef
-        return super(SeriesChunkData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def params(self):
@@ -456,16 +453,15 @@ class SeriesData(HasShapeTileableData):
 
     def __init__(self, op=None, shape=None, nsplits=None, dtype=None,
                  name=None, index_value=None, chunks=None, **kw):
-        super(SeriesData, self).__init__(_op=op, _shape=shape, _nsplits=nsplits,
-                                         _dtype=dtype, _name=name, _index_value=index_value,
-                                         _chunks=chunks, **kw)
+        super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtype=dtype, _name=name,
+                         _index_value=index_value, _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import SeriesDef
             return SeriesDef
-        return super(SeriesData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def params(self):
@@ -531,7 +527,7 @@ class Series(TileableEntity):
 
     def __hash__(self):
         # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
-        return super(Series, self).__hash__()
+        return super().__hash__()
 
     def to_tensor(self, dtype=None):
         return self._data.to_tensor(dtype=dtype)
@@ -556,9 +552,8 @@ class DataFrameChunkData(ChunkData):
 
     def __init__(self, op=None, shape=None, index=None, dtypes=None,
                  index_value=None, columns_value=None, **kw):
-        super(DataFrameChunkData, self).__init__(_op=op, _shape=shape, _index=index,
-                                                 _dtypes=dtypes, _index_value=index_value,
-                                                 _columns_value=columns_value, **kw)
+        super().__init__(_op=op, _shape=shape, _index=index, _dtypes=dtypes,
+                         _index_value=index_value, _columns_value=columns_value, **kw)
 
     def __len__(self):
         return self.shape[0]
@@ -568,7 +563,7 @@ class DataFrameChunkData(ChunkData):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import DataFrameChunkDef
             return DataFrameChunkDef
-        return super(DataFrameChunkData, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def params(self):
@@ -626,17 +621,16 @@ class DataFrameData(HasShapeTileableData):
 
     def __init__(self, op=None, shape=None, nsplits=None, dtypes=None,
                  index_value=None, columns_value=None, chunks=None, **kw):
-        super(DataFrameData, self).__init__(_op=op, _shape=shape, _nsplits=nsplits,
-                                            _dtypes=dtypes, _index_value=index_value,
-                                            _columns_value=columns_value,
-                                            _chunks=chunks, **kw)
+        super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtypes=dtypes,
+                         _index_value=index_value, _columns_value=columns_value,
+                         _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import DataFrameDef
             return DataFrameDef
-        return super(DataFrameData, cls).cls(provider)
+        return super().cls(provider)
 
     def __str__(self):
         if is_eager_mode():
@@ -711,7 +705,7 @@ class DataFrame(TileableEntity):
 
     def __hash__(self):
         # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
-        return super(DataFrame, self).__hash__()
+        return super().__hash__()
 
     def __len__(self):
         return len(self._data)
@@ -746,7 +740,7 @@ class DataFrameGroupByData(TileableData):
                         on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
 
     def __init__(self, op=None, chunks=None, **kw):
-        super(DataFrameGroupByData, self).__init__(_op=op, _chunks=chunks, **kw)
+        super().__init__(_op=op, _chunks=chunks, **kw)
 
     def _equal(self, o):
         # FIXME We need to implemented a true `==` operator for DataFrameGroupby
@@ -765,7 +759,7 @@ class DataFrameGroupBy(TileableEntity):
 
     def __hash__(self):
         # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
-        return super(DataFrameGroupBy, self).__hash__()
+        return super().__hash__()
 
 
 INDEX_TYPE = (Index, IndexData)

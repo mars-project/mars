@@ -23,7 +23,7 @@ from mars.dataframe.utils import sort_dataframe_inplace
 
 class Test(TestBase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self.executor = Executor()
 
     def testMerge(self):
@@ -87,8 +87,8 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(sort_dataframe_inplace(expected5, 0), sort_dataframe_inplace(result5, 0))
 
     def testJoin(self):
-        df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]], index=['a1', 'a2', 'a3'])
-        df2 = pd.DataFrame([[1,2,3], [1,5,6], [7, 8, 9]], index=['a1', 'b2', 'b3']) + 1
+        df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], index=['a1', 'a2', 'a3'])
+        df2 = pd.DataFrame([[1, 2, 3], [1, 5, 6], [7, 8, 9]], index=['a1', 'b2', 'b3']) + 1
         df2 = pd.concat([df2, df2 + 1])
 
         mdf1 = from_pandas(df1, chunk_size=2)
@@ -125,8 +125,8 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(expected4.sort_index(), result4.sort_index())
 
     def testJoinOn(self):
-        df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]], columns=['a1', 'a2', 'a3'])
-        df2 = pd.DataFrame([[1,2,3], [1,5,6], [7, 8, 9]], columns=['a1', 'b2', 'b3']) + 1
+        df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]], columns=['a1', 'a2', 'a3'])
+        df2 = pd.DataFrame([[1, 2, 3], [1, 5, 6], [7, 8, 9]], columns=['a1', 'b2', 'b3']) + 1
         df2 = pd.concat([df2, df2 + 1])
 
         mdf1 = from_pandas(df1, chunk_size=2)

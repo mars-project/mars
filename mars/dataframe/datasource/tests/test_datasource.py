@@ -399,4 +399,3 @@ class Test(TestBase):
                 pd.testing.assert_series_equal(df.dtypes, chunk.dtypes)
         finally:
             shutil.rmtree(tempdir)
-

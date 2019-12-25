@@ -129,29 +129,29 @@ class ChunkMetaCache(ChunkMetaStore):
     Cache of chunk meta with an LRU
     """
     def __init__(self, limit=_META_CACHE_SIZE):
-        super(ChunkMetaCache, self).__init__()
+        super().__init__()
         self._chunk_metas = OrderedDict()
         self._limit = limit
 
     def __getitem__(self, item):
         self._chunk_metas.move_to_end(item)
-        return super(ChunkMetaCache, self).__getitem__(item)
+        return super().__getitem__(item)
 
     def get(self, chunk_key, default=None):
         try:
             self._chunk_metas.move_to_end(chunk_key)
         except KeyError:
             pass
-        return super(ChunkMetaCache, self).get(chunk_key, default)
+        return super().get(chunk_key, default)
 
     def __setitem__(self, key, value):
         limit = self._limit
         store = self._chunk_metas
         if key in store:
-            super(ChunkMetaCache, self).__setitem__(key, value)
+            super().__setitem__(key, value)
             store.move_to_end(key)
         else:
-            super(ChunkMetaCache, self).__setitem__(key, value)
+            super().__setitem__(key, value)
             while len(store) > limit:
                 dkey, ditem = store.popitem(False)
                 self._del_chunk_key_from_workers(dkey, ditem.workers)
@@ -162,7 +162,7 @@ class ChunkMetaActor(SchedulerActor):
     Actor storing chunk metas and chunk cache
     """
     def __init__(self, chunk_info_uid=None):
-        super(ChunkMetaActor, self).__init__()
+        super().__init__()
         self._meta_store = ChunkMetaStore()
         self._meta_broadcasts = dict()
         self._meta_cache = ChunkMetaCache()
@@ -173,7 +173,7 @@ class ChunkMetaActor(SchedulerActor):
 
     def post_create(self):
         logger.debug('Actor %s running in process %d at %s', self.uid, os.getpid(), self.address)
-        super(ChunkMetaActor, self).post_create()
+        super().post_create()
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):

@@ -34,14 +34,14 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
     _lower = BoolField('lower')
 
     def __init__(self, lower=None, dtype=None, **kw):
-        super(TensorCholesky, self).__init__(_lower=lower, _dtype=dtype, **kw)
+        super().__init__(_lower=lower, _dtype=dtype, **kw)
 
     @property
     def lower(self):
         return self._lower
 
     def _set_inputs(self, inputs):
-        super(TensorCholesky, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, a):
@@ -158,7 +158,7 @@ class TensorCholeskyFuse(TensorOperand, TensorOperandMixin):
     _by_solve_triangular = BoolField('by_solve_triangular')
 
     def __init__(self, by_solve_triangular=None, **kw):
-        super(TensorCholeskyFuse, self).__init__(_by_solve_triangular=by_solve_triangular, **kw)
+        super().__init__(_by_solve_triangular=by_solve_triangular, **kw)
 
     @property
     def by_solve_triangular(self):

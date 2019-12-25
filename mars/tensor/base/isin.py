@@ -37,8 +37,7 @@ class TensorIsIn(TensorOperand, TensorOperandMixin):
 
     def __init__(self, assume_unique=None, invert=None, dtype=None, **kw):
         dtype = np.dtype(bool) if dtype is None else dtype
-        super(TensorIsIn, self).__init__(_assume_unique=assume_unique, _invert=invert,
-                                         _dtype=dtype, **kw)
+        super().__init__(_assume_unique=assume_unique, _invert=invert, _dtype=dtype, **kw)
 
     @property
     def element(self):
@@ -57,7 +56,7 @@ class TensorIsIn(TensorOperand, TensorOperandMixin):
         return self._invert
 
     def _set_inputs(self, inputs):
-        super(TensorIsIn, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._element = self._inputs[0]
         self._test_elements = self._inputs[1]
 

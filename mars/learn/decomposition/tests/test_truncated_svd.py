@@ -20,7 +20,7 @@ import numpy as np
 try:
     import sklearn
     import scipy.sparse as sp
-    from sklearn.utils import  check_random_state
+    from sklearn.utils import check_random_state
     from sklearn.utils.testing import assert_array_almost_equal, assert_array_less
 
     from mars.learn.decomposition.truncated_svd import TruncatedSVD

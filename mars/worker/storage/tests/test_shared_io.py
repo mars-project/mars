@@ -26,7 +26,8 @@ from mars.tests.core import patch_method
 from mars.utils import get_next_port
 from mars.worker import WorkerDaemonActor, QuotaActor, MemQuotaActor
 from mars.worker.tests.base import WorkerCase
-from mars.worker.storage import *
+from mars.worker.storage import StorageManagerActor, PlasmaKeyMapActor, SharedHolderActor, \
+    InProcHolderActor, StorageHandler, DataStorageDevice
 
 
 def mock_transfer_in_global_runner(self, session_id, data_key, src_handler, fallback=None):

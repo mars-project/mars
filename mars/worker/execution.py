@@ -114,7 +114,7 @@ class ExecutionActor(WorkerActor):
     _last_dump_time = time.time()
 
     def __init__(self):
-        super(ExecutionActor, self).__init__()
+        super().__init__()
         self._dispatch_ref = None
         self._mem_quota_ref = None
         self._status_ref = None
@@ -134,7 +134,7 @@ class ExecutionActor(WorkerActor):
         from .quota import MemQuotaActor
         from .status import StatusActor
 
-        super(ExecutionActor, self).post_create()
+        super().post_create()
         self.set_cluster_info_ref()
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())

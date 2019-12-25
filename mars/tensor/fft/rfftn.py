@@ -25,8 +25,7 @@ class TensorRFFTN(TensorRealFFTN, TensorRealFFTNMixin):
     _op_type_ = OperandDef.RFFTN
 
     def __init__(self, shape=None, axes=None, norm=None, dtype=None, **kw):
-        super(TensorRFFTN, self).__init__(_shape=shape, _axes=axes, _norm=norm,
-                                          _dtype=dtype, **kw)
+        super().__init__(_shape=shape, _axes=axes, _norm=norm, _dtype=dtype, **kw)
 
 
 def rfftn(a, s=None, axes=None, norm=None):

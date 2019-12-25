@@ -28,12 +28,12 @@ class KVStoreActor(SchedulerActor):
     Actor handling reading and writing to an external KV store.
     """
     def __init__(self):
-        super(KVStoreActor, self).__init__()
+        super().__init__()
         self._store = kvstore.get(options.kv_store)
 
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
-        super(KVStoreActor, self).post_create()
+        super().post_create()
 
     def read(self, item, recursive=False, sort=False):
         return self._store.read(item, recursive=recursive, sort=sort)

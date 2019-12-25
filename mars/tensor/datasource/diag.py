@@ -105,10 +105,10 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
     _k = Int32Field('k')
 
     def __init__(self, k=None, dtype=None, gpu=None, sparse=False, **kw):
-        super(TensorDiag, self).__init__(_k=k, _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+        super().__init__(_k=k, _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
 
     def _set_inputs(self, inputs):
-        super(TensorDiag, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         if self.dtype is None:
             self._dtype = self.input.dtype
 
@@ -133,7 +133,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
     def _get_chunk(cls, op, chunk_k, chunk_shape, chunk_idx):
         assert chunk_shape[0] == chunk_shape[1]
         input_idx = chunk_idx[1] if op.k < 0 else chunk_idx[0]
-        input_chunk = op.inputs[0].cix[input_idx,]
+        input_chunk = op.inputs[0].cix[input_idx, ]
         op = TensorDiag(k=chunk_k, dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
         return op.new_chunk([input_chunk], shape=chunk_shape, index=chunk_idx)
 
@@ -182,7 +182,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
             return new_op.new_tensors(op.inputs, op.outputs[0].shape, order=tensor.order,
                                       chunks=chunks, nsplits=(tuple(nsplit),))
         else:
-            return super(TensorDiag, cls).tile(op)
+            return super().tile(op)
 
     @property
     def k(self):

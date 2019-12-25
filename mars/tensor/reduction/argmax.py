@@ -32,8 +32,8 @@ class TensorArgmaxMap(TensorReduction, TensorArgMapMixin):
 
     def __init__(self, axis=None, dtype=np.dtype(int),
                  combine_size=None, offset=None, total_shape=None, **kw):
-        super(TensorArgmaxMap, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
-                                              _offset=offset, _total_shape=total_shape, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
+                         _offset=offset, _total_shape=total_shape, **kw)
 
     @property
     def offset(self):
@@ -49,8 +49,7 @@ class TensorArgmaxCombine(TensorReduction, TensorArgCombineMixin):
     _func_name = 'argmax'
 
     def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super(TensorArgmaxCombine, self).__init__(_axis=axis, _dtype=dtype,
-                                                  _combine_size=combine_size, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
 
 class TensorArgmax(TensorReduction, TensorArgReductionMixin):
@@ -58,7 +57,7 @@ class TensorArgmax(TensorReduction, TensorArgReductionMixin):
     _func_name = 'argmax'
 
     def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super(TensorArgmax, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
     @staticmethod
     def _get_op_types():

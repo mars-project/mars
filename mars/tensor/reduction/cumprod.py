@@ -27,7 +27,7 @@ class TensorCumprod(TensorCumReduction, TensorCumReductionMixin):
     _func_name = 'cumprod'
 
     def __init__(self, axis=None, dtype=None, **kw):
-        super(TensorCumprod, self).__init__(_axis=axis, _dtype=dtype, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, **kw)
 
     @staticmethod
     def _get_op_types():

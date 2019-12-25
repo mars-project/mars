@@ -71,12 +71,12 @@ class TensorNoInput(TensorDataSource):
     def _new_chunks(self, inputs, kws=None, **kw):
         shape = kw.get('shape', None)
         self.extra_params['shape'] = shape  # set shape to make the operand key different
-        return super(TensorNoInput, self)._new_chunks(inputs, kws=kws, **kw)
+        return super()._new_chunks(inputs, kws=kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
         shape = kw.get('shape', None)
         self.extra_params['shape'] = shape  # set shape to make the operand key different
-        return super(TensorNoInput, self)._new_tileables(inputs, kws=kws, **kw)
+        return super()._new_tileables(inputs, kws=kws, **kw)
 
     def __call__(self, shape, chunk_size=None, order=None):
         shape = normalize_shape(shape)
@@ -99,7 +99,7 @@ class TensorHasInput(TensorDataSource):
             raise ValueError("Tensor can only have 1 input")
 
     def _set_inputs(self, inputs):
-        super(TensorHasInput, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     @classmethod
@@ -123,7 +123,7 @@ class TensorHasInput(TensorDataSource):
 
 class TensorLike(TensorHasInput):
     def _set_inputs(self, inputs):
-        super(TensorLike, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         if self.dtype is None:
             self._dtype = self.input.dtype
         if self.gpu is None:

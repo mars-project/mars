@@ -33,8 +33,7 @@ class TensorStack(TensorOperand, TensorOperandMixin):
     _axis = Int32Field('axis')
 
     def __init__(self, axis=None, dtype=None, sparse=False, **kw):
-        super(TensorStack, self).__init__(_axis=axis, _dtype=dtype,
-                                          _sparse=sparse, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def axis(self):
@@ -66,7 +65,7 @@ class TensorStack(TensorOperand, TensorOperandMixin):
         axis = op.axis
 
         output_nsplits = inputs[0].nsplits[:axis] + ((1,) * len(inputs),) + \
-                         inputs[0].nsplits[axis:]
+            inputs[0].nsplits[axis:]
         output_idxes = itertools.product(*[range(len(nsplit)) for nsplit in output_nsplits])
 
         out_chunks = []
@@ -111,7 +110,7 @@ class TensorStack(TensorOperand, TensorOperandMixin):
             for i in range(input_tuple_len):
                 ret = xp.stack([inp[i] for inp in inputs], axis=axis)
                 # make sure order is identical to out's order
-                ret = ret.astype(ret.dtype, order=out.order, copy=False)
+                ret = ret.astype(ret.dtype, order=out.order.value, copy=False)
                 rets.append(ret)
             ctx[out.key] = rets if is_input_tuple else rets[0]
 

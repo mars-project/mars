@@ -34,7 +34,7 @@ class IORunnerActor(WorkerActor):
         return 'w:%d:io_runner_inproc' % proc_id
 
     def __init__(self, lock_free=False, dispatched=True):
-        super(IORunnerActor, self).__init__()
+        super().__init__()
         self._work_items = deque()
         self._max_work_item_id = 0
         self._cur_work_items = dict()
@@ -45,7 +45,7 @@ class IORunnerActor(WorkerActor):
         self._dispatched = dispatched
 
     def post_create(self):
-        super(IORunnerActor, self).post_create()
+        super().post_create()
 
         if self._dispatched:
             from ..dispatcher import DispatchActor

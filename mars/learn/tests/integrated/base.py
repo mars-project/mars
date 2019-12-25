@@ -28,7 +28,7 @@ from mars.scheduler import ResourceActor
 
 class LearnIntegrationTestBase(unittest.TestCase):
     def setUp(self):
-        super(LearnIntegrationTestBase, self).setUp()
+        super().setUp()
         self.n_workers = 2
         self.start_distributed_env(n_workers=self.n_workers)
 

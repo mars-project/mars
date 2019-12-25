@@ -32,9 +32,8 @@ class TensorRandomIntegers(TensorSimpleRandomData, TensorRandomOperandMixin):
     def __init__(self, state=None, size=None, dtype=None,
                  low=None, high=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super(TensorRandomIntegers, self).__init__(_state=state, _size=size,
-                                                   _dtype=dtype, _low=low, _high=high,
-                                                   _gpu=gpu, **kw)
+        super().__init__(_state=state, _size=size, _dtype=dtype, _low=low, _high=high,
+                         _gpu=gpu, **kw)
 
     @property
     def low(self):

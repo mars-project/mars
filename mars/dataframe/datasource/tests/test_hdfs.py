@@ -43,7 +43,7 @@ A,B,C,D,E
 @unittest.skipIf(not os.environ.get('WITH_HDFS'), 'Only run when hdfs is installed')
 class TestHDFS(TestBase):
     def setUp(self):
-        super(TestHDFS, self).setUp()
+        super().setUp()
         self.hdfs = pyarrow.hdfs.connect(host="localhost", port=8020)
         if self.hdfs.exists(TEST_DIR):
             self.hdfs.rm(TEST_DIR, recursive=True)

@@ -48,8 +48,7 @@ class TensorPermutation(TensorRandomOperand, TensorOperandMixin):
     _axis = Int32Field('axis')
 
     def __init__(self, state=None, axis=None, dtype=None, gpu=None, **kw):
-        super(TensorPermutation, self).__init__(_dtype=dtype, _gpu=gpu,
-                                                _state=state, _axis=axis, **kw)
+        super().__init__(_dtype=dtype, _gpu=gpu, _state=state, _axis=axis, **kw)
 
     @property
     def input(self):
@@ -60,7 +59,7 @@ class TensorPermutation(TensorRandomOperand, TensorOperandMixin):
         return self._axis
 
     def _set_inputs(self, inputs):
-        super(TensorPermutation, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, x):
@@ -118,7 +117,7 @@ class TensorPermutation(TensorRandomOperand, TensorOperandMixin):
 
         new_op = op.copy()
         nsplits = list(in_tensor.nsplits)
-        nsplits[0] = [np.nan,] * len(nsplits[0])
+        nsplits[0] = [np.nan, ] * len(nsplits[0])
         return new_op.new_tensors(op.inputs, out_tensor.shape, order=out_tensor.order,
                                   chunks=reduce_chunks, nsplits=nsplits)
 
@@ -141,11 +140,11 @@ class TensorPermutationMap(TensorShuffleMap, TensorOperandMixin):
     _reduce_size = Int32Field('reduce_size')
 
     def __init__(self, dtype=None, gpu=None, seed=None, axis=None, reduce_size=None, **kw):
-        super(TensorPermutationMap, self).__init__(_dtype=dtype, _gpu=gpu, _seed=seed,
-                                                   _axis=axis, _reduce_size=reduce_size, **kw)
+        super().__init__(_dtype=dtype, _gpu=gpu, _seed=seed, _axis=axis,
+                         _reduce_size=reduce_size, **kw)
 
     def _set_inputs(self, inputs):
-        super(TensorPermutationMap, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     @property
@@ -190,12 +189,12 @@ class TensorPermutationReduce(TensorShuffleReduce, TensorOperandMixin):
     _axis = Int32Field('axis')
 
     def __init__(self, dtype=None, gpu=None, seed=None, axis=None, shuffle_key=None, **kw):
-        super(TensorPermutationReduce, self).__init__(
+        super().__init__(
             _dtype=dtype, _gpu=gpu, _seed=seed, _shuffle_key=shuffle_key,
             _axis=axis, **kw)
 
     def _set_inputs(self, inputs):
-        super(TensorPermutationReduce, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     @property

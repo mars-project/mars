@@ -263,7 +263,7 @@ class Test(unittest.TestCase):
         npa = data.copy()
         npb = npa[:5, :4]
         npc = npb.copy()
-        npc[0, 0] =10
+        npc[0, 0] = 10
 
         np.testing.assert_array_equal(c.execute(), npc)
         np.testing.assert_array_equal(a.execute(), npa)

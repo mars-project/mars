@@ -209,7 +209,7 @@ class ArrowBufferIO(WorkerBufferIO):
     File-like object mocking object stored in shared memory as file with header
     """
     def __init__(self, buf, mode='r', compress_in=None, compress_out=None, block_size=8192):
-        super(ArrowBufferIO, self).__init__(
+        super().__init__(
             mode=mode, compress_in=compress_in, compress_out=compress_out, block_size=block_size)
 
         self._buf = buf
@@ -242,7 +242,7 @@ class ArrowBufferIO(WorkerBufferIO):
             self._writer.close()
         self._writer = self._mv = self._buf = None
 
-        super(ArrowBufferIO, self).close()
+        super().close()
 
 
 class FileBufferIO(WorkerBufferIO):
@@ -251,7 +251,7 @@ class FileBufferIO(WorkerBufferIO):
     """
     def __init__(self, file, mode='r', compress_in=None, compress_out=None,
                  block_size=8192, managed=True):
-        super(FileBufferIO, self).__init__(
+        super().__init__(
             mode=mode, compress_in=compress_in, compress_out=compress_out, block_size=block_size)
 
         self._managed = managed
@@ -270,7 +270,7 @@ class FileBufferIO(WorkerBufferIO):
         self._file.write(d)
 
     def close(self):
-        super(FileBufferIO, self).close()
+        super().close()
         if self._file and self._managed:
             self._file.close()
         self._file = None

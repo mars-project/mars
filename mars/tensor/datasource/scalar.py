@@ -31,7 +31,7 @@ class Scalar(TensorNoInput):
     _data = AnyField('data')
 
     def __init__(self, data=None, dtype=None, gpu=False, **kw):
-        super(Scalar, self).__init__(_data=data, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_data=data, _dtype=dtype, _gpu=gpu, **kw)
 
     @classmethod
     def tile(cls, op):

@@ -27,7 +27,7 @@ cudf = lazy_import('cudf', globals=globals())
 
 class Test(TestBase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self.executor = Executor()
 
     @require_cudf

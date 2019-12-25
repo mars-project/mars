@@ -25,8 +25,7 @@ class TensorIFFTN(TensorStandardFFTN, TensorComplexFFTNMixin):
     _op_type_ = OperandDef.IFFTN
 
     def __init__(self, shape=None, axes=None, norm=None, dtype=None, **kw):
-        super(TensorIFFTN, self).__init__(_shape=shape, _axes=axes, _norm=norm,
-                                          _dtype=dtype, **kw)
+        super().__init__(_shape=shape, _axes=axes, _norm=norm, _dtype=dtype, **kw)
 
 
 def ifftn(a, s=None, axes=None, norm=None):

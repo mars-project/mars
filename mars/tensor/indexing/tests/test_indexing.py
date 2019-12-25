@@ -86,7 +86,7 @@ class Test(unittest.TestCase):
                             'together with shapes (2,) (3,)')
 
         with self.assertRaises(IndexError):
-            t[[100,]]
+            t[[100, ]]
 
         t = ones((100, 200, 300), chunk_size=10)
 

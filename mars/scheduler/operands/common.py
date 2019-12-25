@@ -32,7 +32,7 @@ class OperandActor(BaseOperandActor):
     Actor handling the whole lifecycle of a particular operand instance
     """
     def __init__(self, session_id, graph_id, op_key, op_info, worker=None, allocated=False, **kwargs):
-        super(OperandActor, self).__init__(
+        super().__init__(
             session_id, graph_id, op_key, op_info, worker=worker, **kwargs)
 
         io_meta = self._io_meta
@@ -101,10 +101,10 @@ class OperandActor(BaseOperandActor):
         target_worker = kwargs.get('target_worker')
         if target_worker:
             self._target_worker = target_worker
-        return super(OperandActor, self).start_operand(state=state, **kwargs)
+        return super().start_operand(state=state, **kwargs)
 
     def add_running_predecessor(self, op_key, worker):
-        super(OperandActor, self).add_running_predecessor(op_key, worker)
+        super().add_running_predecessor(op_key, worker)
         self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
 
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
@@ -113,7 +113,7 @@ class OperandActor(BaseOperandActor):
         be collected by the predecessor to judge if a node with lower-priority can be
         scheduled.
         """
-        super(OperandActor, self).add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
+        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
         if all(k in self._finish_preds for k in self._pred_keys):
             # all predecessors done, the operand can be executed now
             if self.state == OperandState.UNSCHEDULED:
@@ -122,7 +122,7 @@ class OperandActor(BaseOperandActor):
         return False
 
     def add_finished_successor(self, op_key, worker):
-        super(OperandActor, self).add_finished_successor(op_key, worker)
+        super().add_finished_successor(op_key, worker)
         if not self._is_terminal and \
                 all(k in self._finish_succs for k in self._succ_keys):
             # make sure that all prior states are terminated (in case of failover)
@@ -262,7 +262,7 @@ class OperandActor(BaseOperandActor):
                     return
 
         self._allocated = False
-        super(OperandActor, self).move_failover_state(from_states, state, new_target, dead_workers)
+        super().move_failover_state(from_states, state, new_target, dead_workers)
 
     def free_data(self, state=OperandState.FREED, check=True):
         """

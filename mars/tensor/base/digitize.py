@@ -35,7 +35,7 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
     _right = BoolField('right')
 
     def __init__(self, right=False, dtype=None, **kw):
-        super(TensorDigitize, self).__init__(_right=right, _dtype=dtype, **kw)
+        super().__init__(_right=right, _dtype=dtype, **kw)
 
     @property
     def bins(self):
@@ -46,7 +46,7 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
         return self._right
 
     def _set_inputs(self, inputs):
-        super(TensorDigitize, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
         if len(inputs) > 1:
             self._bins = self._inputs[1]

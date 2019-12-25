@@ -63,7 +63,7 @@ class SenderActor(WorkerActor):
     Actor handling sending data to ReceiverActors in other workers
     """
     def __init__(self):
-        super(SenderActor, self).__init__()
+        super().__init__()
         self._dispatch_ref = None
         self._events_ref = None
 
@@ -71,7 +71,7 @@ class SenderActor(WorkerActor):
         from .dispatcher import DispatchActor
         from .events import EventsActor
 
-        super(SenderActor, self).post_create()
+        super().post_create()
 
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
         if not self.ctx.has_actor(self._events_ref):
@@ -299,7 +299,7 @@ class ReceiverDataMeta(object):
 
 class ReceiverManagerActor(WorkerActor):
     def __init__(self):
-        super(ReceiverManagerActor, self).__init__()
+        super().__init__()
         self._data_meta_cache = ExpiringCache()
         self._max_callback_id = 0
         self._callback_id_to_callbacks = dict()
@@ -308,7 +308,7 @@ class ReceiverManagerActor(WorkerActor):
         self._dispatch_ref = None
 
     def post_create(self):
-        super(ReceiverManagerActor, self).post_create()
+        super().post_create()
 
         from .dispatcher import DispatchActor
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
@@ -461,7 +461,7 @@ class ReceiverWorkerActor(WorkerActor):
     Actor handling receiving data from a SenderActor
     """
     def __init__(self):
-        super(ReceiverWorkerActor, self).__init__()
+        super().__init__()
         self._chunk_holder_ref = None
         self._dispatch_ref = None
         self._receiver_manager_ref = None
@@ -477,7 +477,7 @@ class ReceiverWorkerActor(WorkerActor):
         from .status import StatusActor
         from .dispatcher import DispatchActor
 
-        super(ReceiverWorkerActor, self).post_create()
+        super().post_create()
 
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
         if not self.ctx.has_actor(self._events_ref):
@@ -770,18 +770,18 @@ class ResultSenderActor(WorkerActor):
     Actor handling sending result to user client
     """
     def __init__(self):
-        super(ResultSenderActor, self).__init__()
+        super().__init__()
         self._result_copy_ref = None
         self._serialize_pool = None
 
     def post_create(self):
-        super(ResultSenderActor, self).post_create()
+        super().post_create()
         self._serialize_pool = self.ctx.threadpool(1)
         self._result_copy_ref = self.ctx.create_actor(ResultCopyActor, uid=ResultCopyActor.default_uid())
 
     def pre_destroy(self):
         self._result_copy_ref.destroy()
-        super(ResultSenderActor, self).pre_destroy()
+        super().pre_destroy()
 
     def fetch_data(self, session_id, chunk_key, index_obj=None):
         compression_type = dataserializer.CompressType(options.worker.transfer_compression)

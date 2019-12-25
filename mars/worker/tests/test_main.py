@@ -35,7 +35,7 @@ from mars.worker import DispatchActor, WorkerDaemonActor
 
 class WorkerProcessTestActor(PromiseActor):
     def __init__(self):
-        super(WorkerProcessTestActor, self).__init__()
+        super().__init__()
         self._replied = False
 
     def run_test(self, worker, calc_device=None):

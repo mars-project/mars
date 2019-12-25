@@ -33,7 +33,7 @@ OP_MODULE_KEY = '_op_module_'
 
 class OperandMetaclass(SerializableMetaclass):
     def __new__(mcs, name, bases, kv):
-        cls = super(OperandMetaclass, mcs).__new__(mcs, name, bases, kv)
+        cls = super().__new__(mcs, name, bases, kv)
 
         for base in bases:
             if OP_TYPE_KEY not in kv and hasattr(base, OP_TYPE_KEY):
@@ -88,7 +88,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     def __init__(self, *args, **kwargs):
         extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
         kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
-        super(Operand, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if hasattr(self, OP_MODULE_KEY) and hasattr(self, OP_TYPE_KEY):
             self._op_id = '{0}.{1}'.format(getattr(self, OP_MODULE_KEY), getattr(self, OP_TYPE_KEY))
 
@@ -97,7 +97,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         if provider.type == ProviderType.protobuf:
             from .serialize.protos.operand_pb2 import OperandDef
             return OperandDef
-        return super(Operand, cls).cls(provider)
+        return super().cls(provider)
 
     @property
     def inputs(self):
@@ -185,7 +185,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
             raise ValueError("Outputs' size exceeds limitation")
 
     def copy(self):
-        new_op = super(Operand, self).copy()
+        new_op = super().copy()
         new_op.outputs = []
         new_op.extra_params = deepcopy(self.extra_params)
         return new_op
@@ -408,7 +408,7 @@ class HasInput(Operand):
         return self._input
 
     def _set_inputs(self, inputs):
-        super(HasInput, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
 
@@ -492,6 +492,7 @@ class FuseChunkMixin(object):
         setattr(self, '_operands', [c.op for c in fuse_chunks])
         return self.new_chunk(head_chunk.inputs, shape=tail_chunk.shape, order=tail_chunk.order,
                               _composed=fuse_chunks, _key=tail_chunk.key)
+
 
 class FetchShuffle(Operand):
     _op_type_ = OperandDef.FETCH_SHUFFLE

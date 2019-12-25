@@ -37,8 +37,8 @@ class TensorAround(TensorUnaryOp):
 
     def __init__(self, decimals=None, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
         err = err if err is not None else np.geterr()
-        super(TensorAround, self).__init__(_decimals=decimals, _casting=casting, _err=err,
-                                           _dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_decimals=decimals, _casting=casting, _err=err, _dtype=dtype,
+                         _sparse=sparse, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

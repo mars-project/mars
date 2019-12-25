@@ -25,14 +25,14 @@ class TensorIFFTShift(TensorFFTShiftBase, TensorFFTShiftMixin):
     _op_type_ = OperandDef.IFFTSHIFT
 
     def __init__(self, axes=None, dtype=None, **kw):
-        super(TensorIFFTShift, self).__init__(_axes=axes, _dtype=dtype, **kw)
+        super().__init__(_axes=axes, _dtype=dtype, **kw)
 
     @classmethod
     def _is_inverse(cls):
         return True
 
     def _set_inputs(self, inputs):
-        super(TensorIFFTShift, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, x):

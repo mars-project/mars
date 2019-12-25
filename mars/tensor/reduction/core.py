@@ -98,12 +98,12 @@ class TensorReductionMixin(TensorOperandMixin):
         return out
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        chunks = super(TensorReductionMixin, self)._new_chunks(inputs, kws=kws, **kw)
+        chunks = super()._new_chunks(inputs, kws=kws, **kw)
         setattr(self, '_input', getattr(self, '_inputs')[0])
         return chunks
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        tensors = super(TensorReductionMixin, self)._new_tileables(inputs, kws=kws, **kw)
+        tensors = super()._new_tileables(inputs, kws=kws, **kw)
         setattr(self, '_input', getattr(self, '_inputs')[0])
         return tensors
 

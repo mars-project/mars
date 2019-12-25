@@ -69,7 +69,7 @@ def normalize_chunk_sizes(shape, chunk_size):
             assert isinstance(chunk, int)
 
             sizes = tuple(chunk for _ in range(int(size / chunk))) + \
-                    (tuple() if size % chunk == 0 else (size % chunk,))
+                (tuple() if size % chunk == 0 else (size % chunk,))
             chunk_sizes.append(sizes)
 
     return tuple(chunk_sizes)

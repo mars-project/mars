@@ -32,8 +32,8 @@ class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
     def __init__(self, n=None, pvals=None, state=None, size=None,
                  dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super(TensorMultinomial, self).__init__(_n=n, _pvals=pvals, _state=state,
-                                                _size=size, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_n=n, _pvals=pvals, _state=state, _size=size, _dtype=dtype,
+                         _gpu=gpu, **kw)
 
     @property
     def n(self):
@@ -142,4 +142,3 @@ def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, dt
     op = TensorMultinomial(n=n, pvals=pvals, state=random_state.to_numpy(),
                            size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)
-

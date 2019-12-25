@@ -26,7 +26,7 @@ from mars.tiles import get_tiled
 class Test(TestBase):
     def testRandomSerialize(self):
         arr = RandomState(0).beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunk_size=2),
-            chunk_size=1, size=(3, 2, 2)).tiles()
+                                  chunk_size=1, size=(3, 2, 2)).tiles()
         chunk = arr.chunks[0]
 
         self.assertEqual(chunk.op.dtype, np.dtype('f8'))

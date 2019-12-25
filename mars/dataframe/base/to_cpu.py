@@ -20,8 +20,7 @@ class DataFrameToCPU(DataFrameDeviceConversionBase):
     _op_type_ = OperandDef.TO_CPU
 
     def __init__(self, dtypes=None, gpu=None, sparse=None, object_type=None, **kw):
-        super(DataFrameToCPU, self).__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse,
-                                             _object_type=object_type, **kw)
+        super().__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse, _object_type=object_type, **kw)
         if self._gpu or self._gpu is None:
             self._gpu = False
 

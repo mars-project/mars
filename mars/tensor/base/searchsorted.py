@@ -49,12 +49,11 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
 
     def __init__(self, values=None, side=None, dtype=None, gpu=None, combine_size=None,
                  stage=None,  offset=None, **kw):
-        super(TensorSearchsorted, self).__init__(_values=values, _side=side, _dtype=dtype,
-                                                 _gpu=gpu, _combine_size=combine_size,
-                                                 _stage=stage, _offset=offset, **kw)
+        super().__init__(_values=values, _side=side, _dtype=dtype, _gpu=gpu,
+                         _combine_size=combine_size, _stage=stage, _offset=offset, **kw)
 
     def _set_inputs(self, inputs):
-        super(TensorSearchsorted, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
         if len(self._inputs) == 2:
             self._values = self._inputs[1]

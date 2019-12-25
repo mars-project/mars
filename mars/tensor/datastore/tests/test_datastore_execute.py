@@ -30,7 +30,7 @@ from mars.tensor import tensor, arange, totiledb
 
 class Test(TestBase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self.executor = Executor()
 
     @unittest.skipIf(tiledb is None, 'tiledb not installed')

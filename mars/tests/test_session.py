@@ -386,7 +386,7 @@ class Test(unittest.TestCase):
                 FakeOp._size[0] = sum(m.chunk_size
                                       for m in context.get_chunk_metas(keys))
                 self.assertEqual(context.running_mode, RunningMode.local)
-                return super(FakeOp, cls).tile(op)
+                return super().tile(op)
 
             @classmethod
             def execute(cls, ctx, op):

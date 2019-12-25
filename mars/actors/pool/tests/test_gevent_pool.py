@@ -60,7 +60,7 @@ def create_actor_pool(*args, **kwargs):
 
 class DummyActor(Actor):
     def __init__(self, value):
-        super(DummyActor, self).__init__()
+        super().__init__()
 
         if value < 0:
             raise ValueError('value < 0')
@@ -138,7 +138,7 @@ class DummyActor(Actor):
 
 class DummyFunctionActor(FunctionActor):
     def __init__(self, value):
-        super(DummyFunctionActor, self).__init__()
+        super().__init__()
         self._val = value
 
     def func(self, value):
@@ -147,7 +147,7 @@ class DummyFunctionActor(FunctionActor):
 
 class SurrogateFunctionActor(DummyFunctionActor):
     def __init__(self, value):
-        super(SurrogateFunctionActor, self).__init__(value)
+        super().__init__(value)
         self._val = value * 2
 
     def func(self, value):

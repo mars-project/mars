@@ -152,7 +152,7 @@ def _install():
         setattr(cls, '__rdiv__', rdivide)
         setattr(cls, '__truediv__', truediv)
         setattr(cls, '__itruediv__', _wrap_iop(truediv))
-        setattr(cls, '__rtruediv__',rtruediv)
+        setattr(cls, '__rtruediv__', rtruediv)
         setattr(cls, '__floordiv__', floordiv)
         setattr(cls, '__ifloordiv__', _wrap_iop(floordiv))
         setattr(cls, '__rfloordiv__', rfloordiv)

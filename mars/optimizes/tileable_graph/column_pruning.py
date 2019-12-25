@@ -63,4 +63,3 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
 
 
 register(DataFrameGroupByAgg, GroupbyPruneReadCSV)
-

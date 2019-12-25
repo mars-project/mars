@@ -33,9 +33,8 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
     _chunk_size_limit = Int64Field('chunk_size_limit')
 
     def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, object_type=None, **kw):
-        super(DataFrameRechunk, self).__init__(_chunk_size=chunk_size, _threshold=threshold,
-                                               _chunk_size_limit=chunk_size_limit,
-                                               _object_type=object_type, **kw)
+        super().__init__(_chunk_size=chunk_size, _threshold=threshold,
+                         _chunk_size_limit=chunk_size_limit, _object_type=object_type, **kw)
 
     @property
     def chunk_size(self):
@@ -50,7 +49,7 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
         return self._chunk_size_limit
 
     def _set_inputs(self, inputs):
-        super(DataFrameRechunk, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def __call__(self, x):

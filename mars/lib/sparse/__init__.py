@@ -618,7 +618,7 @@ def clip(a, a_max, a_min, **kw):
         res = getattr(a, 'clip')(a_max, a_min, **kw)
     else:
         xp = get_array_module(a)
-        res = getattr(xp, 'clip')(a, a_max, a_min **kw)
+        res = getattr(xp, 'clip')(a, a_max, a_min, **kw)
 
     if res is NotImplemented:
         raise NotImplementedError

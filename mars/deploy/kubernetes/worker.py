@@ -19,13 +19,13 @@ from .core import K8SServiceMixin, ReadinessActor
 
 class K8SWorkerApplication(K8SServiceMixin, WorkerApplication):
     def __init__(self, *args, **kwargs):
-        super(K8SWorkerApplication, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._readiness_ref = None
 
     def start(self):
         self.write_pid_file()
         self.wait_all_schedulers_ready()
-        super(K8SWorkerApplication, self).start()
+        super().start()
         self._readiness_ref = self.pool.create_actor(ReadinessActor, uid=ReadinessActor.default_uid())
 
 

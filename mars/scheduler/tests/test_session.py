@@ -46,7 +46,7 @@ class MockGraphActor(FunctionActor):
 class Test(unittest.TestCase):
     def tearDown(self):
         options.scheduler.worker_blacklist_time = 3600
-        super(Test, self).tearDown()
+        super().tearDown()
 
     def testFailoverMessage(self):
         mock_session_id = str(uuid.uuid4())

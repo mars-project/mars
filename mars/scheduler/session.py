@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class SessionActor(SchedulerActor):
     def __init__(self, session_id, **kwargs):
-        super(SessionActor, self).__init__()
+        super().__init__()
         self._session_id = session_id
         self._args = kwargs
 
@@ -53,7 +53,7 @@ class SessionActor(SchedulerActor):
         return self._tileable_to_graph[tileable_key]
 
     def post_create(self):
-        super(SessionActor, self).post_create()
+        super().post_create()
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
         self.set_cluster_info_ref()
         self._manager_ref = self.ctx.actor_ref(SessionManagerActor.default_uid())
@@ -64,7 +64,7 @@ class SessionActor(SchedulerActor):
         self._assigner_ref = self.ctx.create_actor(AssignerActor, uid=assigner_uid, address=address)
 
     def pre_destroy(self):
-        super(SessionActor, self).pre_destroy()
+        super().pre_destroy()
         self._manager_ref.delete_session(self._session_id, _tell=True)
         self.ctx.destroy_actor(self._assigner_ref)
         for graph_ref in self._graph_refs.values():
@@ -206,7 +206,7 @@ class SessionActor(SchedulerActor):
 
 class SessionManagerActor(SchedulerActor):
     def __init__(self):
-        super(SessionManagerActor, self).__init__()
+        super().__init__()
         self._session_refs = dict()
 
     def post_create(self):

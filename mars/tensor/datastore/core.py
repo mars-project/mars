@@ -17,7 +17,7 @@ from ..operands import TensorHasInput, TensorOperandMixin
 
 class TensorDataStore(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
-        super(TensorDataStore, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = inputs[0]
 
     def __call__(self, a, order=None):

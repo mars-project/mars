@@ -14,6 +14,7 @@
 
 import pandas as pd
 import numpy as np
+import unittest
 
 from mars import opcodes as OperandDef
 from mars.tests.core import TestBase, parameterized
@@ -190,3 +191,6 @@ class Test(TestBase):
         self.assertIsInstance(reduction_df.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(reduction_df.chunks[0].inputs[0].inputs), 2)
 
+
+if __name__ == '__main__':  # pragma: no cover
+    unittest.main()

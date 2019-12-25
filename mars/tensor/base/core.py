@@ -24,7 +24,7 @@ class TensorDeviceConversionBase(TensorOperand, TensorOperandMixin):
         return self._input
 
     def _set_inputs(self, inputs):
-        super(TensorDeviceConversionBase, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         self._input = inputs[0]
 
     def __call__(self, tensor):

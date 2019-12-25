@@ -31,9 +31,9 @@ class TensorNanArgminMap(TensorReduction, TensorArgMapMixin):
     _agg_func_name = 'nanmin'
 
     def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None,
-                 offset=None, total_shape=None,**kw):
-        super(TensorNanArgminMap, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
-                                                 _offset=offset, _total_shape=total_shape, **kw)
+                 offset=None, total_shape=None, **kw):
+        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
+                         _offset=offset, _total_shape=total_shape, **kw)
 
     @property
     def offset(self):
@@ -49,8 +49,7 @@ class TensorNanArgminCombine(TensorReduction, TensorArgCombineMixin):
     _func_name = 'nanargmin'
 
     def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super(TensorNanArgminCombine, self).__init__(_axis=axis, _dtype=dtype,
-                                                     _combine_size=combine_size, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
 
 class TensorNanArgmin(TensorReduction, TensorArgReductionMixin):
@@ -58,7 +57,7 @@ class TensorNanArgmin(TensorReduction, TensorArgReductionMixin):
     _func_name = 'nanargmin'
 
     def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super(TensorNanArgmin, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
     @staticmethod
     def _get_op_types():

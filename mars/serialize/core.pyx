@@ -159,7 +159,7 @@ cdef class Field:
 
 cdef class AnyField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(AnyField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = None
@@ -168,7 +168,7 @@ cdef class AnyField(Field):
 cdef class IdentityField(Field):
     def __init__(self, tag, tp=None, default=None, bint weak_ref=False,
                  on_serialize=None, on_deserialize=None):
-        super(IdentityField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         if tp is not None:
@@ -179,7 +179,7 @@ cdef class IdentityField(Field):
 
 cdef class BoolField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(BoolField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.bool
@@ -187,7 +187,7 @@ cdef class BoolField(Field):
 
 cdef class Int8Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Int8Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.int8
@@ -195,7 +195,7 @@ cdef class Int8Field(Field):
 
 cdef class Int16Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Int16Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.int16
@@ -203,7 +203,7 @@ cdef class Int16Field(Field):
 
 cdef class Int32Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Int32Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.int32
@@ -211,7 +211,7 @@ cdef class Int32Field(Field):
 
 cdef class Int64Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Int64Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.int64
@@ -219,7 +219,7 @@ cdef class Int64Field(Field):
 
 cdef class UInt8Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(UInt8Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.uint8
@@ -227,7 +227,7 @@ cdef class UInt8Field(Field):
 
 cdef class UInt16Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(UInt16Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.uint16
@@ -235,7 +235,7 @@ cdef class UInt16Field(Field):
 
 cdef class UInt32Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(UInt32Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.uint32
@@ -243,7 +243,7 @@ cdef class UInt32Field(Field):
 
 cdef class UInt64Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(UInt64Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.uint64
@@ -251,7 +251,7 @@ cdef class UInt64Field(Field):
 
 cdef class Float16Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Float16Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.float64
@@ -259,7 +259,7 @@ cdef class Float16Field(Field):
 
 cdef class Float32Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Float32Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.float32
@@ -267,7 +267,7 @@ cdef class Float32Field(Field):
 
 cdef class Float64Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Float64Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.float64
@@ -275,7 +275,7 @@ cdef class Float64Field(Field):
 
 cdef class Complex64Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Complex64Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.complex64
@@ -283,7 +283,7 @@ cdef class Complex64Field(Field):
 
 cdef class Complex128Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Complex128Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.complex128
@@ -291,7 +291,7 @@ cdef class Complex128Field(Field):
 
 cdef class StringField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(StringField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.unicode
@@ -299,7 +299,7 @@ cdef class StringField(Field):
 
 cdef class BytesField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(BytesField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.bytes
@@ -307,7 +307,7 @@ cdef class BytesField(Field):
 
 cdef class UnicodeField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(UnicodeField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.unicode
@@ -318,7 +318,7 @@ cdef class KeyField(Field):
     # we only store the key when pickling the serializable object
 
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(KeyField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.key
@@ -326,7 +326,7 @@ cdef class KeyField(Field):
 
 cdef class NDArrayField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(NDArrayField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.arr
@@ -334,7 +334,7 @@ cdef class NDArrayField(Field):
 
 cdef class Datetime64Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Datetime64Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.datetime64
@@ -342,7 +342,7 @@ cdef class Datetime64Field(Field):
 
 cdef class Timedelta64Field(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(Timedelta64Field, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.timedelta64
@@ -350,7 +350,7 @@ cdef class Timedelta64Field(Field):
 
 cdef class DataTypeField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(DataTypeField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.dtype
@@ -358,7 +358,7 @@ cdef class DataTypeField(Field):
 
 cdef class IndexField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(IndexField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.index
@@ -366,7 +366,7 @@ cdef class IndexField(Field):
 
 cdef class SeriesField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(SeriesField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.series
@@ -374,7 +374,7 @@ cdef class SeriesField(Field):
 
 cdef class DataFrameField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(DataFrameField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.dataframe
@@ -382,7 +382,7 @@ cdef class DataFrameField(Field):
 
 cdef class SliceField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(SliceField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.slice
@@ -399,7 +399,7 @@ cdef inline _handle_nest_reference(field, ref):
 
 cdef class ListField(Field):
     def __init__(self, tag, tp=None, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(ListField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         if tp is not None and type(tp) == Reference:
@@ -434,7 +434,7 @@ cdef class TupleField(Field):
         weak_ref = kwargs.pop('weak_ref', False)
         on_serialize = kwargs.pop('on_serialize', None)
         on_deserialize = kwargs.pop('on_deserialize', None)
-        super(TupleField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         if len(tps) == 1 and isinstance(tps[0], Iterable):
@@ -445,7 +445,7 @@ cdef class TupleField(Field):
 cdef class DictField(Field):
     def __init__(self, tag, key_type=None, value_type=None,
                  default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super(DictField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.dict(key_type, value_type)
@@ -454,7 +454,7 @@ cdef class DictField(Field):
 cdef class ReferenceField(Field):
     def __init__(self, tag, model, default=None, bint weak_ref=False,
                  on_serialize=None, on_deserialize=None):
-        super(ReferenceField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         if not isinstance(model, str):
@@ -496,7 +496,7 @@ cdef class OneOfField(Field):
         weak_ref = kw.pop('weak_ref', False)
         on_serialize = kw.pop('on_serialize', None)
         on_deserialize = kw.pop('on_deserialize', None)
-        super(OneOfField, self).__init__(
+        super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
 
@@ -674,7 +674,7 @@ class AttributeAsDict(Serializable):
         if provider.type == ProviderType.protobuf and cls.attr_tag is None:
             from .protos.value_pb2 import Value
             return Value
-        return super(AttributeAsDict, cls).cls(provider)
+        return super().cls(provider)
 
     def serialize(self, Provider provider, obj=None):
         return provider.serialize_attribute_as_dict(self, obj=obj)

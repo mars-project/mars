@@ -27,8 +27,8 @@ class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANMEAN_CHUNK
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
-        super(TensorNanMeanChunk, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                 _combine_size=combine_size, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+                         _combine_size=combine_size, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -49,8 +49,8 @@ class TensorNanMean(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANMEAN
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
-        super(TensorNanMean, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                            _combine_size=combine_size, **kw)
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+                         _combine_size=combine_size, **kw)
 
     @staticmethod
     def _get_op_types():

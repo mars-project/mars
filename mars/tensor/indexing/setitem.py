@@ -36,8 +36,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     _value = AnyField('value')
 
     def __init__(self, dtype=None, sparse=False, indexes=None, value=None, **kw):
-        super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse,
-                                                  _indexes=indexes, _value=value, **kw)
+        super().__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes, _value=value, **kw)
 
     @property
     def indexes(self):
@@ -48,7 +47,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         return self._value
 
     def _set_inputs(self, inputs):
-        super(TensorIndexSetValue, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
@@ -135,6 +134,7 @@ def _setitem(a, item, value):
         value = broadcast_to(value, shape).astype(a.dtype)
 
     # __setitem__ on a view should be still a view, see GH #732.
-    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(), indexes=index, value=value, _create_view=a.op.create_view)
+    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(), indexes=index, value=value,
+                             _create_view=a.op.create_view)
     ret = op(a, index, value)
     a.data = ret.data

@@ -25,7 +25,7 @@ class DataFrameAbs(DataFrameOperand, DataFrameUnaryOpMixin):
     _func_name = 'abs'
 
     def __init__(self, object_type=None, **kw):
-        super(DataFrameAbs, self).__init__(_object_type=object_type, **kw)
+        super().__init__(_object_type=object_type, **kw)
 
     @classproperty
     def _operator(self):

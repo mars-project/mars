@@ -25,7 +25,8 @@ from mars.serialize import dataserializer
 from mars.tests.core import patch_method
 from mars.utils import get_next_port
 from mars.worker import WorkerDaemonActor, QuotaActor, MemQuotaActor, StatusActor, EventsActor
-from mars.worker.storage import *
+from mars.worker.storage import StorageHandler, StorageManagerActor, InProcHolderActor, \
+    PlasmaKeyMapActor, SharedHolderActor, DataStorageDevice
 from mars.worker.tests.base import WorkerCase
 from mars.worker.utils import WorkerClusterInfoActor
 
