@@ -1,0 +1,155 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2019.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.3.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-12-25 11:13+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/tensor/generated/mars.tensor.searchsorted.rst:2
+msgid "mars.tensor.searchsorted"
+msgstr ""
+
+#: mars.tensor.searchsorted:1 of
+msgid "Find indices where elements should be inserted to maintain order."
+msgstr ""
+
+#: mars.tensor.searchsorted:3 of
+msgid ""
+"Find the indices into a sorted tensor `a` such that, if the corresponding"
+" elements in `v` were inserted before the indices, the order of `a` would"
+" be preserved."
+msgstr ""
+
+#: mars.tensor.searchsorted:7 of
+msgid "Assuming that `a` is sorted:"
+msgstr ""
+
+#: mars.tensor.searchsorted:10 of
+msgid "`side`"
+msgstr ""
+
+#: mars.tensor.searchsorted:10 of
+msgid "returned index `i` satisfies"
+msgstr ""
+
+#: mars.tensor.searchsorted:12 of
+msgid "left"
+msgstr ""
+
+#: mars.tensor.searchsorted:12 of
+msgid "``a[i-1] < v <= a[i]``"
+msgstr ""
+
+#: mars.tensor.searchsorted:13 of
+msgid "right"
+msgstr ""
+
+#: mars.tensor.searchsorted:13 of
+msgid "``a[i-1] <= v < a[i]``"
+msgstr ""
+
+#: mars.tensor.searchsorted:20 of
+msgid "a"
+msgstr ""
+
+#: of
+msgid "1-D array_like"
+msgstr ""
+
+#: mars.tensor.searchsorted:19 of
+msgid ""
+"Input tensor. If `sorter` is None, then it must be sorted in ascending "
+"order, otherwise `sorter` must be an array of indices that sort it."
+msgstr ""
+
+#: mars.tensor.searchsorted:22 of
+msgid "v"
+msgstr ""
+
+#: of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.searchsorted:23 of
+msgid "Values to insert into `a`."
+msgstr ""
+
+#: mars.tensor.searchsorted:26 of
+msgid "side"
+msgstr ""
+
+#: of
+msgid "{'left', 'right'}, optional"
+msgstr ""
+
+#: mars.tensor.searchsorted:25 of
+msgid ""
+"If 'left', the index of the first suitable location found is given. If "
+"'right', return the last such index.  If there is no suitable index, "
+"return either 0 or N (where N is the length of `a`)."
+msgstr ""
+
+#: mars.tensor.searchsorted:29 of
+msgid "sorter"
+msgstr ""
+
+#: of
+msgid "1-D array_like, optional"
+msgstr ""
+
+#: mars.tensor.searchsorted:29 of
+msgid ""
+"Optional tensor of integer indices that sort array a into ascending "
+"order. They are typically the result of argsort."
+msgstr ""
+
+#: mars.tensor.searchsorted:32 of
+msgid "combine_size: int, optional"
+msgstr ""
+
+#: mars.tensor.searchsorted:32 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.searchsorted:37 of
+msgid "indices"
+msgstr ""
+
+#: of
+msgid "tensor of ints"
+msgstr ""
+
+#: mars.tensor.searchsorted:37 of
+msgid "Array of insertion points with the same shape as `v`."
+msgstr ""
+
+#: mars.tensor.searchsorted:41 of
+msgid ""
+"sort : Return a sorted copy of a tensor. histogram : Produce histogram "
+"from 1-D data."
+msgstr ""
+
+#: mars.tensor.searchsorted:46 of
+msgid "Binary search is used to find the required insertion points."
+msgstr ""
+
+#: mars.tensor.searchsorted:48 of
+msgid ""
+"This function is a faster version of the builtin python "
+"`bisect.bisect_left` (``side='left'``) and `bisect.bisect_right` "
+"(``side='right'``) functions, which is also vectorized in the `v` "
+"argument."
+msgstr ""
+

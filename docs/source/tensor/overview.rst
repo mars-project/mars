@@ -29,6 +29,5 @@ Any contribution from community is sincerely welcomed. The main feature not impl
 
 - Tensor with unknown shape does not support all operations.
 - Only small subset of ``np.linalg`` are implemented.
-- Operations like ``sort`` which is hard to execute in parallel are not implemented.
 - Mars tensor doesn't implement interface like ``tolist`` and ``nditer`` etc,
   because the iteration or loops over a large tensor is very inefficient.

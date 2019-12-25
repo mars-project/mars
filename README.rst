@@ -3,7 +3,8 @@ Mars
 
 |PyPI version| |Docs| |Build| |Coverage| |Quality| |License|
 
-Mars is a tensor-based unified framework for large-scale data computation. `Documentation`_.
+Mars is a tensor-based unified framework for large-scale data computation
+which scales Numpy, Pandas and Scikit-learn. `Documentation`_.
 
 Installation
 ------------
@@ -36,7 +37,7 @@ for development:
     pip install -e ".[dev]"
 
 More details about installing Mars can be found at
-`getting started <https://mars-project.readthedocs.io/en/latest/install.html>`_ section in
+`getting started <https://docs.mars-project.io//en/latest/install.html>`_ section in
 Mars document.
 
 
@@ -258,7 +259,7 @@ After all mars processes are started, users can run
 Getting involved
 ----------------
 
-- Read `contribution guide <https://mars-project.readthedocs.io/en/latest/contributing.html>`_.
+- Read `contribution guide <https://docs.mars-project.io/en/latest/contributing.html>`_.
 - Join the mailing list: send an email to `mars-dev@googlegroups.com`_.
 - Please report bugs by submitting a `GitHub issue`_.
 - Submit contributions using `pull requests`_.
