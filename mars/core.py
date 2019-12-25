@@ -175,20 +175,47 @@ class AttributeAsDictKey(Base, AttributeAsDict):
     _id = StringField('id')
 
 
-class ChunkData(SerializableWithKey):
+class EntityData(SerializableWithKey):
     __slots__ = '__weakref__', '_siblings'
 
     # required fields
     _op = KeyField('op')  # store key of operand here
     # optional fields
-    _index = TupleField('index', ValueType.uint32)
-    _cached = BoolField('cached')
     _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
         extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
         kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
-        super(ChunkData, self).__init__(*args, **kwargs)
+        super(EntityData, self).__init__(*args, **kwargs)
+
+    @property
+    def op(self):
+        return getattr(self, '_op', None)
+
+    @property
+    def inputs(self):
+        return self.op.inputs or []
+
+    @inputs.setter
+    def inputs(self, new_inputs):
+        self.op.inputs = new_inputs
+
+    def is_sparse(self):
+        return self.op.is_sparse()
+
+    issparse = is_sparse
+
+    @property
+    def extra_params(self):
+        return self._extra_params
+
+
+class ChunkData(EntityData):
+    __slots__ = ()
+
+    # optional fields
+    _index = TupleField('index', ValueType.uint32)
+    _cached = BoolField('cached')
 
     def __repr__(self):
         return 'Chunk <op={0}, key={1}>'.format(self.op.__class__.__name__, self.key)
@@ -205,23 +232,8 @@ class ChunkData(SerializableWithKey):
         return getattr(self, '_index', None)
 
     @property
-    def op(self):
-        try:
-            return self._op
-        except AttributeError:
-            return None
-
-    @property
     def cached(self):
         return getattr(self, '_cached', None)
-
-    @property
-    def inputs(self):
-        return self.op.inputs
-
-    @inputs.setter
-    def inputs(self, new_inputs):
-        self.op.inputs = new_inputs
 
     @property
     def composed(self):
@@ -230,11 +242,6 @@ class ChunkData(SerializableWithKey):
     @property
     def device(self):
         return self.op.device
-
-    def is_sparse(self):
-        return self.op.is_sparse()
-
-    issparse = is_sparse
 
     def _update_key(self):
         object.__setattr__(self, '_key', tokenize(
@@ -342,21 +349,16 @@ class FuseChunk(Chunk):
 FUSE_CHUNK_TYPE = (FuseChunkData, FuseChunk)
 
 
-class TileableData(SerializableWithKey, Tileable):
-    __slots__ = '__weakref__', '_siblings', '_cix', '_entities'
+class TileableData(EntityData, Tileable):
+    __slots__ = '_cix', '_entities'
     _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
 
-    # required fields
-    _op = KeyField('op')
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
     _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64),
                           on_serialize=on_serialize_nsplits)
-    _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
-        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
-        kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
         if kwargs.get('_nsplits', None) is not None:
             kwargs['_nsplits'] = tuple(tuple(s) for s in kwargs['_nsplits'])
 
@@ -377,10 +379,6 @@ class TileableData(SerializableWithKey, Tileable):
         return getattr(self, '_chunks', None)
 
     @property
-    def op(self):
-        return getattr(self, '_op', None)
-
-    @property
     def nsplits(self):
         return getattr(self, '_nsplits', None)
 
@@ -389,21 +387,9 @@ class TileableData(SerializableWithKey, Tileable):
         self._nsplits = new_nsplits
 
     @property
-    def inputs(self):
-        return self.op.inputs or []
-
-    @inputs.setter
-    def inputs(self, new_inputs):
-        self.op.inputs = new_inputs
-
-    @property
     def params(self):
         # params return the properties which useful to rebuild a new tileable object
         return dict()
-
-    @property
-    def extra_params(self):
-        return self._extra_params
 
     @property
     def cix(self):
@@ -423,11 +409,6 @@ class TileableData(SerializableWithKey, Tileable):
 
     def is_coarse(self):
         return not hasattr(self, '_chunks') or self._chunks is None or len(self._chunks) == 0
-
-    def is_sparse(self):
-        return self.op.is_sparse()
-
-    issparse = is_sparse
 
     @enter_build_mode
     def attach(self, entity):
