@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
+from ...compat import six
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape, process_index
@@ -200,7 +201,19 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        r = ctx[op.inputs[0].key].iloc[op.indexes]
+        if six.PY2:
+            # for python 2, indexes requires to be writeable
+            # thus copy them first if have to
+            indexes = []
+            for ind in op.indexes:
+                if hasattr(ind, 'flags') and not ind.flags.writeable:
+                    indexes.append(ind.copy())
+                else:
+                    indexes.append(ind)
+            indexes = tuple(indexes)
+        else:
+            indexes = op.indexes
+        r = ctx[op.inputs[0].key].iloc[indexes]
         if isinstance(r, pd.Series) and r.dtype != chunk.dtype:
             r = r.astype(chunk.dtype)
         ctx[chunk.key] = r
