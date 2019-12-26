@@ -32,15 +32,6 @@ from mars.scheduler import SessionManagerActor, ResourceActor
 from mars.scheduler.graph import GraphState
 from mars.scheduler.utils import SchedulerClusterInfoActor
 
-try:
-    from flaky import flaky
-except ImportError:
-    def flaky(*_, **__):
-        def _wrapper(obj):
-            return obj
-
-        return _wrapper
-
 logger = logging.getLogger(__name__)
 
 
@@ -48,14 +39,7 @@ class ProcessRequirementUnmetError(RuntimeError):
     pass
 
 
-def _rerun_filter(err, *_, **__):
-    if issubclass(err[0], ProcessRequirementUnmetError):
-        return True
-    return False
-
-
 @unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
-@flaky(max_runs=3, rerun_filter=_rerun_filter)
 class SchedulerIntegratedTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -84,6 +68,10 @@ class SchedulerIntegratedTest(unittest.TestCase):
             if os.path.exists(fn):
                 os.unlink(fn)
 
+        self.terminate_processes()
+        options.kv_store = ':inproc:'
+
+    def terminate_processes(self):
         procs = tuple(self.proc_workers) + tuple(self.proc_schedulers)
         for p in procs:
             p.send_signal(signal.SIGINT)
@@ -100,7 +88,6 @@ class SchedulerIntegratedTest(unittest.TestCase):
 
         if self.etcd_helper:
             self.etcd_helper.stop()
-        options.kv_store = ':inproc:'
 
     def kill_process_tree(self, proc, intentional=True):
         if intentional:
@@ -113,9 +100,22 @@ class SchedulerIntegratedTest(unittest.TestCase):
         self.state_files[environ] = fn
         return fn
 
-    def start_processes(self, n_schedulers=2, n_workers=2, etcd=False, cuda=False, modules=None,
-                        log_scheduler=True, log_worker=True, env=None, scheduler_args=None,
-                        worker_args=None):
+    def start_processes(self, *args, **kwargs):
+        fail_count = 0
+        while True:
+            try:
+                self._start_processes(*args, **kwargs)
+                break
+            except ProcessRequirementUnmetError:
+                fail_count += 1
+                if fail_count >= 3:
+                    raise
+                logger.error('Failed to start service, retrying')
+                self.terminate_processes()
+
+    def _start_processes(self, n_schedulers=2, n_workers=2, etcd=False, cuda=False, modules=None,
+                         log_scheduler=True, log_worker=True, env=None, scheduler_args=None,
+                         worker_args=None):
         old_not_errors = gevent.hub.Hub.NOT_ERROR
         gevent.hub.Hub.NOT_ERROR = (Exception,)
 
