@@ -15,13 +15,13 @@
 import unittest
 import numpy as np
 
-from mars.executor import Executor
 from mars.tensor.datasource import ones, tensor
+from mars.tests.core import TestExecutor
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = Executor('numpy')
+        self.executor = TestExecutor('numpy')
 
     def testReshapeExecution(self):
         x = ones((1, 2, 3), chunk_size=[4, 3, 5])

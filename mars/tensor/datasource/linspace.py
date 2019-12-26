@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int64Field, BoolField
+from ...serialize import Int64Field, BoolField, AnyField
 from ...config import options
 from ..utils import decide_chunk_sizes
 from .core import TensorNoInput
@@ -27,8 +27,8 @@ from ..array_utils import create_array
 class TensorLinspace(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_LINSPACE
 
-    _start = Int64Field('start')
-    _stop = Int64Field('stop')
+    _start = AnyField('start')
+    _stop = AnyField('stop')
     _num = Int64Field('num')
     _endpoint = BoolField('endpoint')
 

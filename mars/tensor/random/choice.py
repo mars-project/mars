@@ -36,11 +36,11 @@ class TensorChoice(TensorSimpleRandomData, TensorRandomOperandMixin):
     _p = KeyField('p')
     _func_name = 'choice'
 
-    def __init__(self, state=None, size=None, replace=None,
+    def __init__(self, a=None, p=None, state=None, size=None, replace=None,
                  dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, _replace=replace, _dtype=dtype,
-                         _gpu=gpu, **kw)
+        super().__init__(_a=a, _p=p, _state=state, _size=size, _replace=replace,
+                         _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def a(self):
@@ -53,6 +53,13 @@ class TensorChoice(TensorSimpleRandomData, TensorRandomOperandMixin):
     @property
     def p(self):
         return self._p
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        if self._a is not None:
+            self._a = self._inputs[0]
+        if self._p is not None:
+            self._p = self._inputs[-1]
 
     def __call__(self, a, p, chunk_size=None):
         return self.new_tensor([a, p], None, raw_chunk_size=chunk_size)
@@ -173,6 +180,6 @@ def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gp
         raise ValueError("Cannot take a larger sample than population when 'replace=False'")
 
     size = random_state._handle_size(size)
-    op = TensorChoice(state=random_state.to_numpy(), replace=replace,
-                      size=size, dtype=dtype, gpu=gpu)
+    op = TensorChoice(a=a, p=p, state=random_state.to_numpy(),
+                      replace=replace, size=size, dtype=dtype, gpu=gpu)
     return op(a, p, chunk_size=chunk_size)

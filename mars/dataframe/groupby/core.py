@@ -31,8 +31,8 @@ class DataFrameGroupByMap(DataFrameShuffleMap, DataFrameOperandMixin):
     _by = AnyField('by')
     _shuffle_size = Int32Field('shuffle_size')
 
-    def __init__(self, by=None, shuffle_size=None, **kw):
-        super().__init__(_by=by, _shuffle_size=shuffle_size, _object_type=ObjectType.dataframe, **kw)
+    def __init__(self, by=None, shuffle_size=None, object_type=ObjectType.dataframe, **kw):
+        super().__init__(_by=by, _shuffle_size=shuffle_size, _object_type=object_type, **kw)
 
     @property
     def shuffle_size(self):
@@ -64,8 +64,8 @@ class DataFrameGroupByMap(DataFrameShuffleMap, DataFrameOperandMixin):
 class DataFrameGroupByReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_REDUCE
 
-    def __init__(self, shuffle_key=None, **kw):
-        super().__init__(_shuffle_key=shuffle_key, _object_type=ObjectType.dataframe, **kw)
+    def __init__(self, shuffle_key=None, object_type=ObjectType.dataframe, **kw):
+        super().__init__(_shuffle_key=shuffle_key, _object_type=object_type, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
