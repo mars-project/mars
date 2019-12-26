@@ -40,8 +40,7 @@ class TensorChoice(TensorSimpleRandomData, TensorRandomOperandMixin):
                  dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorChoice, self).__init__(_a=a, _p=p, _state=state, _size=size,
-                                           _replace=replace,
-                         _dtype=dtype, _gpu=gpu, **kw)
+                                           _replace=replace, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def a(self):
@@ -56,7 +55,7 @@ class TensorChoice(TensorSimpleRandomData, TensorRandomOperandMixin):
         return self._p
 
     def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
+        super(TensorChoice, self)._set_inputs(inputs)
         if self._a is not None:
             self._a = self._inputs[0]
         if self._p is not None:
