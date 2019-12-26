@@ -24,7 +24,7 @@ from ..core import FuseChunkData, FuseChunk
 from ..operands import Operand, TileableOperandMixin, ShuffleMap, ShuffleReduce, Fuse
 from ..operands import ShuffleProxy, FuseChunkMixin
 from ..serialize import Int8Field
-from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
+from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, TensorOrder
 from ..utils import calc_nsplits
 from .utils import parse_index
 
@@ -71,6 +71,9 @@ class DataFrameOperandMixin(TileableOperandMixin):
         chunk_type, chunk_data_type = self._chunk_types(object_type)
         kw['op'] = self
         kw['index'] = index
+        if object_type == ObjectType.scalar:
+            # tensor
+            kw['order'] = TensorOrder.C_ORDER
         data = chunk_data_type(**kw)
         return chunk_type(data)
 
@@ -80,6 +83,9 @@ class DataFrameOperandMixin(TileableOperandMixin):
             raise ValueError('object_type should be specified')
         tileable_type, tileable_data_type = self._tileable_types(object_type)
         kw['op'] = self
+        if object_type == ObjectType.scalar:
+            # tensor
+            kw['order'] = TensorOrder.C_ORDER
         data = tileable_data_type(**kw)
         return tileable_type(data)
 

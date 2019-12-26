@@ -19,14 +19,14 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
-from mars.executor import Executor
 from mars.tensor.datasource import tensor, empty
 from mars.tensor.merge import concatenate, stack, hstack, vstack, dstack, column_stack
+from mars.tests.core import TestExecutor
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = Executor('numpy')
+        self.executor = TestExecutor('numpy')
 
     def testConcatenateExecution(self):
         a_data = np.random.rand(10, 20, 30)

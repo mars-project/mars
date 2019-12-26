@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import pickle
+import sys
 import weakref
 
 import numpy as np
@@ -147,7 +148,12 @@ cdef class ProtobufSerializeProvider(Provider):
         cdef object x
 
         x = obj.datetime64
-        return np.load(six.BytesIO(x)) if x is not None and len(x) > 0 else None
+        if x is not None and len(x) > 0:
+            # np.load will return a ndarray
+            value = np.load(six.BytesIO(x))
+            return value.dtype.type(value)
+        else:
+            return None
 
     cdef inline void _set_timedelta64(self, value, obj, tp=None):
         bio = six.BytesIO()
@@ -158,7 +164,12 @@ cdef class ProtobufSerializeProvider(Provider):
         cdef object x
 
         x = obj.timedelta64
-        return np.load(six.BytesIO(x)) if x is not None and len(x) > 0 else None
+        if x is not None and len(x) > 0:
+            # np.load will return a ndarray
+            value = np.load(six.BytesIO(x))
+            return value.dtype.type(value)
+        else:
+            return None
 
     cdef inline void _set_complex(self, value, obj, tp=None):
         obj.c.real = value.real
@@ -500,9 +511,19 @@ cdef class ProtobufSerializeProvider(Provider):
                     value = list(value)
                 self._set_list(value, field_obj, tp=field.type, weak_ref=field.weak_ref)
         elif isinstance(field_obj, Value):
-            self._set_value(value, field_obj, field.type, weak_ref=field.weak_ref)
+            try:
+                self._set_value(value, field_obj, field.type, weak_ref=field.weak_ref)
+            except TypeError:
+                exc_info = sys.exc_info()
+                raise TypeError('Failed to set field `{}` for {}, reason: {}'.format(
+                    tag, model_instance, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
         elif isinstance(field, TupleField):
-            self._set_tuple(value, field_obj, tp=field.type, weak_ref=field.weak_ref)
+            try:
+                self._set_tuple(value, field_obj, tp=field.type, weak_ref=field.weak_ref)
+            except TypeError:
+                exc_info = sys.exc_info()
+                raise TypeError('Failed to set field `{}` for {}, reason: {}'.format(
+                    tag, model_instance, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
         else:
             setattr(obj, tag, value)
 

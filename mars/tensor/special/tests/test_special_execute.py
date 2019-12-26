@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 from mars.tensor import tensor
-from mars.executor import Executor
+from mars.tests.core import TestExecutor
 
 try:
     import scipy
@@ -33,7 +33,7 @@ except ImportError:
 @unittest.skipIf(scipy is None, 'scipy not installed')
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = Executor('numpy')
+        self.executor = TestExecutor('numpy')
 
     def testGammalnExecution(self):
         raw = np.random.rand(10, 8, 6)

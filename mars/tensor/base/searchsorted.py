@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-import operator
 
 import numpy as np
 
@@ -42,8 +41,8 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
     _values = AnyField('values')
     _side = StringField('side')
     _combine_size = Int32Field('combine_size')
-    _stage = StringField('stage', on_serialize=operator.attrgetter('value'),
-                         on_deserialize=Stage)
+    _stage = StringField('stage', on_serialize=lambda s: s.value if s is not None else s,
+                         on_deserialize=lambda n: Stage(n) if n is not None else n)
     # offset is used only for map stage
     _offset = Int64Field('offset')
 
@@ -141,7 +140,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
         for v_chunk in v_chunks:
             offsets = [0] + np.cumsum(a.nsplits[0]).tolist()[:-1]
             v_shape = v_chunk.shape if hasattr(v_chunk, 'shape') else ()
-            v_index = v_chunk.index if hasattr(v_chunk, 'index') else 0
+            v_index = v_chunk.index if hasattr(v_chunk, 'index') else (0,)
             chunks = []
             for i, c in enumerate(a.chunks):
                 chunk_op = op.copy().reset_key()

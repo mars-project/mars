@@ -85,6 +85,8 @@ def rmultiply(x1, x2, **kwargs):
 
 
 class TensorTreeMultiply(TensorOperand, TensorElementWise):
+    _op_type_ = OperandDef.TREE_MULTIPLY
+
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorTreeMultiply, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 

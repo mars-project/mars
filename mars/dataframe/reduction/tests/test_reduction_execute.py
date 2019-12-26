@@ -15,7 +15,7 @@
 import pandas as pd
 import numpy as np
 
-from mars.tests.core import TestBase, parameterized
+from mars.tests.core import TestBase, parameterized, TestExecutor
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 
@@ -30,55 +30,74 @@ reduction_functions = dict(
 
 @parameterized(**reduction_functions)
 class Test(TestBase):
+    def setUp(self):
+        self.executor = TestExecutor()
+
     def compute(self, data, **kwargs):
         return getattr(data, self.func_name)(**kwargs)
 
     def testSeriesReduction(self):
         data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
         reduction_df1 = self.compute(from_pandas_series(data))
-        self.assertEqual(self.compute(data), reduction_df1.execute())
+        self.assertEqual(
+            self.compute(data), self.executor.execute_dataframe(reduction_df1, concat=True)[0])
 
         reduction_df2 = self.compute(from_pandas_series(data, chunk_size=6))
-        self.assertAlmostEqual(self.compute(data), reduction_df2.execute())
+        self.assertAlmostEqual(
+            self.compute(data), self.executor.execute_dataframe(reduction_df2, concat=True)[0])
 
         reduction_df3 = self.compute(from_pandas_series(data, chunk_size=3))
-        self.assertAlmostEqual(self.compute(data), reduction_df3.execute())
+        self.assertAlmostEqual(
+            self.compute(data), self.executor.execute_dataframe(reduction_df3, concat=True)[0])
 
         reduction_df4 = self.compute(from_pandas_series(data, chunk_size=4), axis='index')
-        self.assertAlmostEqual(self.compute(data, axis='index'), reduction_df4.execute())
+        self.assertAlmostEqual(
+            self.compute(data, axis='index'), self.executor.execute_dataframe(reduction_df4, concat=True)[0])
 
         data = pd.Series(np.random.rand(20), name='a')
         data[0] = 0.1  # make sure not all elements are NAN
         data[data > 0.5] = np.nan
         reduction_df1 = self.compute(from_pandas_series(data, chunk_size=3))
-        self.assertAlmostEqual(self.compute(data), reduction_df1.execute())
+        self.assertAlmostEqual(
+            self.compute(data), self.executor.execute_dataframe(reduction_df1, concat=True)[0])
 
         reduction_df2 = self.compute(from_pandas_series(data, chunk_size=3), skipna=False)
-        self.assertTrue(np.isnan(reduction_df2.execute()))
+        self.assertTrue(
+            np.isnan(self.executor.execute_dataframe(reduction_df2, concat=True)[0]))
 
         if self.has_min_count:
             reduction_df3 = self.compute(from_pandas_series(data, chunk_size=3), skipna=False, min_count=2)
-            self.assertTrue(np.isnan(reduction_df3.execute()))
+            self.assertTrue(
+                np.isnan(self.executor.execute_dataframe(reduction_df3, concat=True)[0]))
 
             reduction_df4 = self.compute(from_pandas_series(data, chunk_size=3), min_count=1)
-            self.assertAlmostEqual(self.compute(data, min_count=1), reduction_df4.execute())
+            self.assertAlmostEqual(
+                self.compute(data, min_count=1),
+                self.executor.execute_dataframe(reduction_df4, concat=True)[0])
 
             reduction_df5 = self.compute(from_pandas_series(data, chunk_size=3), min_count=21)
-            self.assertTrue(np.isnan(reduction_df5.execute()))
+            self.assertTrue(
+                np.isnan(self.executor.execute_dataframe(reduction_df5, concat=True)[0]))
 
     def testDataFrameReduction(self):
         data = pd.DataFrame(np.random.rand(20, 10))
         reduction_df1 = self.compute(from_pandas_df(data))
-        pd.testing.assert_series_equal(self.compute(data), reduction_df1.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data), self.executor.execute_dataframe(reduction_df1, concat=True)[0])
 
         reduction_df2 = self.compute(from_pandas_df(data, chunk_size=3))
-        pd.testing.assert_series_equal(self.compute(data), reduction_df2.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data), self.executor.execute_dataframe(reduction_df2, concat=True)[0])
 
         reduction_df3 = self.compute(from_pandas_df(data, chunk_size=6), axis='index', numeric_only=True)
-        pd.testing.assert_series_equal(self.compute(data, axis='index', numeric_only=True), reduction_df3.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data, axis='index', numeric_only=True),
+            self.executor.execute_dataframe(reduction_df3, concat=True)[0])
 
         reduction_df4 = self.compute(from_pandas_df(data, chunk_size=3), axis=1)
-        pd.testing.assert_series_equal(self.compute(data, axis=1), reduction_df4.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data, axis=1),
+            self.executor.execute_dataframe(reduction_df4, concat=True)[0])
 
         # test null
         np_data = np.random.rand(20, 10)
@@ -86,43 +105,61 @@ class Test(TestBase):
         data = pd.DataFrame(np_data)
 
         reduction_df1 = self.compute(from_pandas_df(data, chunk_size=3))
-        pd.testing.assert_series_equal(self.compute(data), reduction_df1.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data), self.executor.execute_dataframe(reduction_df1, concat=True)[0])
 
         reduction_df2 = self.compute(from_pandas_df(data, chunk_size=3), skipna=False)
-        pd.testing.assert_series_equal(self.compute(data, skipna=False), reduction_df2.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data, skipna=False), self.executor.execute_dataframe(reduction_df2, concat=True)[0])
 
         reduction_df2 = self.compute(from_pandas_df(data, chunk_size=3), skipna=False)
-        pd.testing.assert_series_equal(self.compute(data, skipna=False), reduction_df2.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data, skipna=False), self.executor.execute_dataframe(reduction_df2, concat=True)[0])
 
         if self.has_min_count:
             reduction_df3 = self.compute(from_pandas_df(data, chunk_size=3), min_count=15)
-            pd.testing.assert_series_equal(self.compute(data, min_count=15), reduction_df3.execute())
+            pd.testing.assert_series_equal(
+                self.compute(data, min_count=15),
+                self.executor.execute_dataframe(reduction_df3, concat=True)[0])
 
             reduction_df4 = self.compute(from_pandas_df(data, chunk_size=3), min_count=3)
-            pd.testing.assert_series_equal(self.compute(data, min_count=3), reduction_df4.execute())
+            pd.testing.assert_series_equal(
+                self.compute(data, min_count=3),
+                self.executor.execute_dataframe(reduction_df4, concat=True)[0])
 
             reduction_df5 = self.compute(from_pandas_df(data, chunk_size=3), axis=1, min_count=3)
-            pd.testing.assert_series_equal(self.compute(data, axis=1, min_count=3), reduction_df5.execute())
+            pd.testing.assert_series_equal(
+                self.compute(data, axis=1, min_count=3),
+                self.executor.execute_dataframe(reduction_df5, concat=True)[0])
 
             reduction_df5 = self.compute(from_pandas_df(data, chunk_size=3), axis=1, min_count=8)
-            pd.testing.assert_series_equal(self.compute(data, axis=1, min_count=8), reduction_df5.execute())
+            pd.testing.assert_series_equal(
+                self.compute(data, axis=1, min_count=8),
+                self.executor.execute_dataframe(reduction_df5, concat=True)[0])
 
         # test numeric_only
         data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
                             columns=[np.random.bytes(10) for _ in range(10)])
         reduction_df1 = self.compute(from_pandas_df(data, chunk_size=2))
-        pd.testing.assert_series_equal(self.compute(data), reduction_df1.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data), self.executor.execute_dataframe(reduction_df1, concat=True)[0])
 
         reduction_df2 = self.compute(from_pandas_df(data, chunk_size=6), axis='index', numeric_only=True)
-        pd.testing.assert_series_equal(self.compute(data, axis='index', numeric_only=True), reduction_df2.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data, axis='index', numeric_only=True),
+            self.executor.execute_dataframe(reduction_df2, concat=True)[0])
 
         reduction_df3 = self.compute(from_pandas_df(data, chunk_size=3), axis='columns')
-        pd.testing.assert_series_equal(self.compute(data, axis='columns'), reduction_df3.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data, axis='columns'),
+            self.executor.execute_dataframe(reduction_df3, concat=True)[0])
 
         data_dict = dict((str(i), np.random.rand(10)) for i in range(10))
         data_dict['string'] = [str(i) for i in range(10)]
         data_dict['bool'] = np.random.choice([True, False], (10,))
         data = pd.DataFrame(data_dict)
         reduction_df = self.compute(from_pandas_df(data, chunk_size=3), axis='index', numeric_only=True)
-        pd.testing.assert_series_equal(self.compute(data, axis='index', numeric_only=True), reduction_df.execute())
+        pd.testing.assert_series_equal(
+            self.compute(data, axis='index', numeric_only=True),
+            self.executor.execute_dataframe(reduction_df, concat=True)[0])
 

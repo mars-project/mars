@@ -12,18 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import signal
 import subprocess
 import sys
 import time
-import signal
 import unittest
 
 import requests
 import gevent
 
-from mars.utils import get_next_port
 from mars.actors import new_client
 from mars.scheduler import ResourceActor
+from mars.utils import get_next_port
+
+logger = logging.getLogger()
+
+
+class ProcessRequirementUnmetError(RuntimeError):
+    pass
 
 
 class LearnIntegrationTestBase(unittest.TestCase):
@@ -32,7 +39,20 @@ class LearnIntegrationTestBase(unittest.TestCase):
         self.n_workers = 2
         self.start_distributed_env(n_workers=self.n_workers)
 
-    def start_distributed_env(self, n_workers=2):
+    def start_distributed_env(self, *args, **kwargs):
+        fail_count = 0
+        while True:
+            try:
+                self._start_distributed_env(*args, **kwargs)
+                break
+            except ProcessRequirementUnmetError:
+                fail_count += 1
+                if fail_count >= 3:
+                    raise
+                logger.error('Failed to start service, retrying')
+                self.terminate_processes()
+
+    def _start_distributed_env(self, n_workers=2):
         scheduler_port = self.scheduler_port = str(get_next_port())
         self.proc_workers = []
         for _ in range(n_workers):
@@ -73,7 +93,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
         check_time = time.time()
         while True:
             if time.time() - check_time > 30:
-                raise SystemError('Wait for service start timeout')
+                raise ProcessRequirementUnmetError('Wait for service start timeout')
             try:
                 resp = requests.get(service_ep + '/api', timeout=1)
             except (requests.ConnectionError, requests.Timeout):
@@ -101,7 +121,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
                 if actor_client.has_actor(resource_ref):
                     break
                 else:
-                    raise SystemError('Check meta_timestamp timeout')
+                    raise ProcessRequirementUnmetError('Check meta_timestamp timeout')
             except:  # noqa: E722
                 if time.time() - check_time > 10:
                     raise
@@ -110,18 +130,20 @@ class LearnIntegrationTestBase(unittest.TestCase):
         check_time = time.time()
         while resource_ref.get_worker_count() < self.n_workers:
             if self.proc_scheduler.poll() is not None:
-                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+                raise ProcessRequirementUnmetError(
+                    'Scheduler not started. exit code %s' % self.proc_scheduler.poll())
             for proc_worker in self.proc_workers:
                 if proc_worker.poll() is not None:
-                    raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
+                    raise ProcessRequirementUnmetError(
+                        'Worker not started. exit code %s' % self.proc_worker.poll())
             if time.time() - check_time > 20:
-                raise SystemError('Check meta_timestamp timeout')
+                raise ProcessRequirementUnmetError('Check meta_timestamp timeout')
 
             time.sleep(0.1)
 
         gevent.hub.Hub.NOT_ERROR = old_not_errors
 
-    def tearDown(self):
+    def terminate_processes(self):
         procs = [self.proc_web, self.proc_scheduler] + self.proc_workers
         for p in procs:
             p.send_signal(signal.SIGINT)
@@ -136,4 +158,6 @@ class LearnIntegrationTestBase(unittest.TestCase):
             if p.poll() is None:
                 p.kill()
 
+    def tearDown(self):
+        self.terminate_processes()
         gevent.hub.Hub.NOT_ERROR = self.exceptions

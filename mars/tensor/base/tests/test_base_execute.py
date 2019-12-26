@@ -21,7 +21,6 @@ import scipy.sparse as sps
 import pandas as pd
 
 from mars import tensor as mt
-from mars.executor import Executor
 from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
@@ -29,12 +28,12 @@ from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcas
     flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort, to_gpu, to_cpu
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
-from mars.tests.core import require_cupy
+from mars.tests.core import require_cupy, TestExecutor
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = Executor('numpy')
+        self.executor = TestExecutor('numpy')
 
     def testRechunkExecution(self):
         raw = np.random.random((11, 8))

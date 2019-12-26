@@ -19,10 +19,11 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
+from ...compat import six
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape, process_index
-from ...serialize import AnyField, ListField
+from ...serialize import AnyField, TupleField
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, DATAFRAME_TYPE
 from ..utils import indexing_index_value
@@ -55,7 +56,7 @@ class DataFrameIloc(object):
 class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
         super(DataFrameIlocGetItem, self).__init__(_indexes=indexes,
@@ -200,7 +201,19 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        r = ctx[op.inputs[0].key].iloc[op.indexes]
+        if six.PY2:
+            # for python 2, indexes requires to be writeable
+            # thus copy them first if have to
+            indexes = []
+            for ind in op.indexes:
+                if hasattr(ind, 'flags') and not ind.flags.writeable:
+                    indexes.append(ind.copy())
+                else:
+                    indexes.append(ind)
+            indexes = tuple(indexes)
+        else:
+            indexes = op.indexes
+        r = ctx[op.inputs[0].key].iloc[indexes]
         if isinstance(r, pd.Series) and r.dtype != chunk.dtype:
             r = r.astype(chunk.dtype)
         ctx[chunk.key] = r
@@ -209,7 +222,7 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
 
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
@@ -275,9 +288,9 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
     _indexes = AnyField('indexes')
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, **kw):
+    def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.series, **kw):
         super(SeriesIlocGetItem, self).__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse,
-                                                _object_type=ObjectType.series, **kw)
+                                                _object_type=object_type, **kw)
 
     @property
     def indexes(self):

@@ -174,7 +174,7 @@ class IndexValue(Serializable):
         _dtype = DataTypeField('dtype')
 
     class MultiIndex(IndexBase):
-        _names = ListField('name')
+        _names = ListField('names', on_serialize=list)
         _data = NDArrayField('data')
         _sortorder = Int32Field('sortorder')
 
@@ -322,13 +322,23 @@ class IndexChunk(Chunk):
     _allow_data_type_ = (IndexChunkData,)
 
 
+def _on_deserialize_index_value(index_value):
+    if index_value is None:
+        return
+    try:
+        getattr(index_value, 'value')
+        return index_value
+    except AttributeError:
+        return
+
+
 class IndexData(HasShapeTileableData):
     __slots__ = ()
 
     # optional field
     _dtype = DataTypeField('dtype')
     _name = AnyField('name')
-    _index_value = ReferenceField('index_value', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
     _chunks = ListField('chunks', ValueType.reference(IndexChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [IndexChunk(it) for it in x] if x is not None else x)
@@ -395,7 +405,7 @@ class SeriesChunkData(ChunkData):
     # optional field
     _dtype = DataTypeField('dtype')
     _name = AnyField('name')
-    _index_value = ReferenceField('index_value', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
 
     def __init__(self, op=None, shape=None, index=None, dtype=None, name=None,
                  index_value=None, **kw):
@@ -449,7 +459,7 @@ class SeriesData(HasShapeTileableData):
     # optional field
     _dtype = DataTypeField('dtype')
     _name = AnyField('name')
-    _index_value = ReferenceField('index_value', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
     _chunks = ListField('chunks', ValueType.reference(SeriesChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [SeriesChunk(it) for it in x] if x is not None else x)
@@ -551,7 +561,7 @@ class DataFrameChunkData(ChunkData):
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
     _dtypes = SeriesField('dtypes')
-    _index_value = ReferenceField('index_value', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
     _columns_value = ReferenceField('columns_value', IndexValue)
 
     def __init__(self, op=None, shape=None, index=None, dtypes=None,
@@ -618,7 +628,7 @@ class DataFrameData(HasShapeTileableData):
 
     # optional fields
     _dtypes = SeriesField('dtypes')
-    _index_value = ReferenceField('index_value', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
     _columns_value = ReferenceField('columns_value', IndexValue)
     _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,

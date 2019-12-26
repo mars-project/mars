@@ -20,7 +20,7 @@ from .core import DataFrameBinOpMixin, DataFrameBinOp
 
 
 class DataFrameFloorDiv(DataFrameBinOp, DataFrameBinOpMixin):
-    _op_type_ = OperandDef.DIV
+    _op_type_ = OperandDef.FLOORDIV
 
     _func_name = 'floordiv'
     _rfunc_name = 'rfloordiv'
