@@ -1,5 +1,5 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
 #
@@ -318,7 +318,3 @@ msgstr ""
 #: ../../source/tensor/manipulation.rst:116:<autosummary>:1
 msgid "Roll tensor elements along a given axis."
 msgstr ""
-
-#~ msgid "Return a contiguous flattened array."
-#~ msgstr ""
-
