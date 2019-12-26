@@ -21,16 +21,15 @@ import scipy.sparse as sps
 
 from mars.compat import six
 from mars.config import option_context
-from mars.executor import Executor
 from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, cos, truediv, frexp, \
     modf, clip, isclose
-from mars.tests.core import require_cupy
+from mars.tests.core import require_cupy, TestExecutor
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = Executor('numpy')
+        self.executor = TestExecutor('numpy')
 
     def _nan_equal(self, a, b):
         try:

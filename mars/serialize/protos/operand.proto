@@ -365,6 +365,7 @@ message OperandDef {
         GROUPBY_MAP = 2031;
         GROUPBY_REDUCE = 2032;
         GROUPBY_AGG = 2033;
+        GROUPBY_CONCAT = 2034;
 
         // parallel sorting by regular sampling
         PSRS_SORT_REGULAR_SMAPLE = 2040;

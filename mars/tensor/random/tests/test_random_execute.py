@@ -18,15 +18,15 @@ import unittest
 
 import numpy as np
 
-from mars.executor import Executor
 from mars.tensor.datasource import tensor as from_ndarray
 from mars.lib.sparse.core import issparse
 from mars import tensor
+from mars.tests.core import TestExecutor
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = Executor('numpy')
+        self.executor = TestExecutor('numpy')
 
     def testRandExecution(self):
         arr = tensor.random.rand(10, 20, chunk_size=3, dtype='f4')
@@ -48,7 +48,7 @@ class Test(unittest.TestCase):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).randn(5, 5)))
 
     def testRandintExecution(self):
-        size_executor = Executor(sync_provider_type=Executor.SyncProviderType.MOCK)
+        size_executor = TestExecutor(sync_provider_type=TestExecutor.SyncProviderType.MOCK)
 
         arr = tensor.random.randint(0, 2, size=(10, 30), chunk_size=3)
         size_res = size_executor.execute_tensor(arr, mock=True)
@@ -162,7 +162,7 @@ class Test(unittest.TestCase):
                                                                     p=[.2, .5, .3])))
 
     def testSparseRandintExecution(self):
-        size_executor = Executor(sync_provider_type=Executor.SyncProviderType.MOCK)
+        size_executor = TestExecutor(sync_provider_type=TestExecutor.SyncProviderType.MOCK)
 
         arr = tensor.random.randint(1, 2, size=(30, 50), density=.1, chunk_size=10, dtype='f4')
         size_res = size_executor.execute_tensor(arr, mock=True)

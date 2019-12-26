@@ -25,8 +25,7 @@ try:
 except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
-from mars.executor import Executor
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, TestExecutor
 from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, full_like, \
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
     triu, tril, fromtiledb
@@ -40,7 +39,7 @@ from mars.tensor.datasource.from_dataframe import from_dataframe
 class Test(TestBase):
     def setUp(self):
         super(Test, self).setUp()
-        self.executor = Executor()
+        self.executor = TestExecutor('numpy')
 
     def testCreateSparseExecution(self):
         mat = sps.csr_matrix([[0, 0, 2], [2, 0, 0]])

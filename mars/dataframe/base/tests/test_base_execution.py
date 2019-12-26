@@ -15,11 +15,10 @@
 import numpy as np
 import pandas as pd
 
-from mars.executor import Executor
 from mars.dataframe.base import to_gpu, to_cpu
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.tests.core import TestBase, require_cudf
+from mars.tests.core import TestBase, require_cudf, TestExecutor
 from mars.utils import lazy_import
 
 cudf = lazy_import('cudf', globals=globals())
@@ -28,7 +27,7 @@ cudf = lazy_import('cudf', globals=globals())
 class Test(TestBase):
     def setUp(self):
         super(Test, self).setUp()
-        self.executor = Executor()
+        self.executor = TestExecutor()
 
     @require_cudf
     def testToGPUExecution(self):

@@ -32,6 +32,7 @@ from mars.compat import six, zip_longest
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
 from mars.utils import lazy_import
+from mars.executor import Executor
 
 try:
     import pytest
@@ -336,3 +337,15 @@ def create_actor_pool(*args, **kwargs):
         except (OSError, gevent.socket.error):
             continue
     raise OSError("Failed to create actor pool")
+
+
+class TestExecutor(Executor):
+    """
+    Mostly identical to normal executor, difference is that when executing graph,
+    graph will be serialized then deserialized by Protocol Buffers and JSON both.
+    """
+
+    def execute_graph(self, graph, keys, **kw):
+        graph = type(graph).from_pb(graph.to_pb())
+        graph = type(graph).from_json(graph.to_json())
+        return super().execute_graph(graph, keys, **kw)

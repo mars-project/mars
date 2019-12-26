@@ -17,14 +17,14 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int64Field, TupleField
+from ...serialize import AnyField, TupleField
 from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
 
 
 class TensorNanArgmaxMap(TensorReduction, TensorArgMapMixin):
     _op_type_ = OperandDef.NANARGMAX_CHUNK
 
-    _offset = Int64Field('offset')
+    _offset = AnyField('offset')
     _total_shape = TupleField('total_shape')
 
     _func_name = 'nanargmax'

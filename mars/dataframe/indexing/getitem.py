@@ -23,7 +23,7 @@ from ...serialize import AnyField, Int32Field, BoolField
 from ...utils import tokenize, check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..align import align_dataframe_series
-from ..core import SERIES_TYPE
+from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, TILEABLE_TYPE, CHUNK_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index, in_range_index
@@ -31,6 +31,7 @@ from .utils import calc_columns_index
 
 
 class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
+    _op_module_ = 'series'
     _op_type_ = OperandDef.INDEX
 
     _labels = AnyField('labels')
@@ -90,6 +91,9 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         if not is_scalar:
             index_value = kw.pop('index_value', None) or parse_index(pd.Index(self._labels))
             kw['index_value'] = index_value
+        else:
+            # tensor chunk cannot accept index_value
+            kw.pop('index_value', None)
         return super(SeriesIndex, self)._new_chunks(inputs, kws=kws, **kw)
 
     @classmethod
@@ -213,6 +217,13 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
     @property
     def mask(self):
         return self._mask
+
+    def _set_inputs(self, inputs):
+        super(DataFrameIndex, self)._set_inputs(inputs)
+        if isinstance(self._col_names, (TILEABLE_TYPE, CHUNK_TYPE)):
+            self._col_names = self._inputs[0]
+        if isinstance(self._mask, (TILEABLE_TYPE, CHUNK_TYPE)):
+            self._mask = self._inputs[-1]
 
     def __call__(self, df):
         if self.col_names is not None:
@@ -345,7 +356,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = df[op.col_names]
         else:
             df = ctx[op.inputs[0].key]
-            if isinstance(op.mask, SERIES_TYPE):
+            if isinstance(op.mask, SERIES_CHUNK_TYPE):
                 mask = ctx[op.inputs[1].key]
             else:
                 mask = op.mask

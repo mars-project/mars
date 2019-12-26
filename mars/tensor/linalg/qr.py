@@ -75,8 +75,10 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
         if in_tensor.chunk_shape == (1, 1):
             in_chunk = in_tensor.chunks[0]
             chunk_op = op.copy().reset_key()
-            qr_chunks = chunk_op.new_chunks([in_chunk], shape=(q_shape, r_shape), index=in_chunk.index,
-                                            kws=[{'side': 'q'}, {'side': 'r'}])
+            qr_chunks = chunk_op.new_chunks([in_chunk], kws=[
+                {'side': 'q', 'shape': q_shape, 'index': in_chunk.index},
+                {'side': 'r', 'shape': r_shape, 'index': in_chunk.index}
+            ])
             q_chunk, r_chunk = qr_chunks
 
             new_op = op.copy()
