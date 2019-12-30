@@ -86,11 +86,13 @@ if os.path.exists(os.path.join(repo_root, '.git')):
         with open(os.path.join(repo_root, 'mars', '.git-branch'), 'w') as git_file:
             git_file.write('%s %s' % git_info)
 
-cythonize_kw = dict(language_level=sys.version_info[0])
+cythonize_kw = dict(language_level=sys.version_info[0], compiler_directives=dict())
 cy_extension_kw = dict()
 if os.environ.get('CYTHON_TRACE'):
     cy_extension_kw['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
-    cythonize_kw['compiler_directives'] = {'linetrace': True}
+    cythonize_kw['compiler_directives'].update({'linetrace': True})
+if os.environ.get('CYTHON_PROFILE'):
+    cythonize_kw['compiler_directives'].update({'profile': True})
 
 if 'MSC' in sys.version:
     extra_compile_args = ['/Ot', '/I' + os.path.join(repo_root, 'misc')]

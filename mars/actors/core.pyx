@@ -33,14 +33,14 @@ cdef class ActorRef:
 
     ctx = property(lambda self: self._ctx, _set_ctx)
 
-    async def send(self, object message, object callback=None):
-        return await self._ctx.send(self, message, callback=callback)
+    cpdef send(self, object message, object callback=None):
+        return self._ctx.send(self, message, callback=callback)
 
-    async def tell(self, object message, object delay=None, object callback=None):
-        return await self._ctx.tell(self, message, delay=delay, callback=callback)
+    cpdef tell(self, object message, object delay=None, object callback=None):
+        return self._ctx.tell(self, message, delay=delay, callback=callback)
 
-    async def destroy(self, object callback=None):
-        return await self._ctx.destroy_actor(self, callback=callback)
+    cpdef destroy(self, object callback=None):
+        return self._ctx.destroy_actor(self, callback=callback)
 
     def __getstate__(self):
         return self.address, self.uid
@@ -118,7 +118,6 @@ class FunctionActor(_FunctionActor):
             return _actor_implementation[id(cls)](*args, **kwargs)
         except KeyError:
             return super().__new__(cls, *args, **kwargs)
-
 
 
 async def create_actor_pool(str address=None, int n_process=0, object distributor=None,
