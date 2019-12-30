@@ -29,9 +29,6 @@ from mars.lib.mmh3 import hash as mmh_hash
 from mars.tests.core import aio_case
 from mars.utils import to_binary
 
-import tracemalloc
-tracemalloc.start()
-
 
 DEFAULT_PORT = 12345
 

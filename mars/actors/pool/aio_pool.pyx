@@ -42,7 +42,7 @@ from .messages cimport pack_send_message, pack_tell_message, pack_create_actor_m
     pack_has_actor_message, unpack_has_actor_message, pack_error_message, unpack_error_message, \
     unpack_message_type_value, unpack_message_type, unpack_message_id, get_index, MessageType
 from .utils cimport new_actor_id
-from .utils import create_actor_ref
+from .utils import create_actor_ref, sleep_and_await, await_sequence, done_future
 
 cdef int REMOTE_FROM_INDEX = -2
 cdef int UNKNOWN_TO_INDEX = -1
@@ -143,11 +143,11 @@ cdef class ActorContext:
         ref.ctx = self
         return ref
 
-    async def destroy_actor(self, ActorRef actor_ref, object callback=None):
-        return await self._comm.destroy_actor(actor_ref, callback=callback)
+    def destroy_actor(self, ActorRef actor_ref, object callback=None):
+        return self._comm.destroy_actor(actor_ref, callback=callback)
 
-    async def has_actor(self, ActorRef actor_ref, object callback=None):
-        return await self._comm.has_actor(actor_ref, callback=callback)
+    cpdef has_actor(self, ActorRef actor_ref, object callback=None):
+        return self._comm.has_actor(actor_ref, callback=callback)
 
     def actor_ref(self, *args, **kwargs):
         cdef ActorRef ref
@@ -156,11 +156,11 @@ cdef class ActorContext:
         ref.ctx = self
         return ref
 
-    async def send(self, ActorRef actor_ref, object message, object callback=None):
-        return await self._comm.send(actor_ref, message, callback=callback)
+    cpdef send(self, ActorRef actor_ref, object message, object callback=None):
+        return self._comm.send(actor_ref, message, callback=callback)
 
-    async def tell(self, ActorRef actor_ref, object message, object delay=None, object callback=None):
-        return await self._comm.tell(actor_ref, message, delay=delay, callback=callback)
+    cpdef tell(self, ActorRef actor_ref, object message, object delay=None, object callback=None):
+        return self._comm.tell(actor_ref, message, delay=delay, callback=callback)
 
     @staticmethod
     def threadpool(size):
@@ -252,7 +252,7 @@ cdef class AsyncHandler:
         # wait for result
         try:
             result = await ar
-            if callback:
+            if callback is not None:
                 callback(result)
             future.set_result(result)
         except:  # noqa: E722
@@ -407,12 +407,6 @@ cdef class AsyncIOPair:
             await self.writer.wait_closed()
         if self.socket is not None:
             self.socket.close()
-        elif self.pipe_fds is not None:
-            os.close(self.pipe_fds[0])
-            try:
-                os.close(self.pipe_fds[1])
-            except OSError:
-                pass
 
 
 cdef class Connection:
@@ -578,15 +572,15 @@ cdef class ActorRemoteHelper:
         actor_ref.ctx = ActorContext(self)
         return actor_ref
 
-    async def destroy_actor(self, ActorRef actor_ref, object callback=None):
+    cpdef destroy_actor(self, ActorRef actor_ref, object callback=None):
         cdef tuple binaries
         binaries = pack_destroy_actor_message(ActorRemoteHelper.index, UNKNOWN_TO_INDEX, actor_ref)[1:]
-        return await self._pool.exec(self._send_remote(actor_ref.address, binaries))
+        return self._pool.exec(self._send_remote(actor_ref.address, binaries))
 
-    async def has_actor(self, ActorRef actor_ref, object callback=None):
+    cpdef has_actor(self, ActorRef actor_ref, object callback=None):
         cdef tuple binaries
         binaries = pack_has_actor_message(ActorRemoteHelper.index, UNKNOWN_TO_INDEX, actor_ref)[1:]
-        return await self._pool.exec(self._send_remote(actor_ref.address, binaries))
+        return self._pool.exec(self._send_remote(actor_ref.address, binaries))
 
     def actor_ref(self, *args, **kwargs):
         cdef ActorRef ref
@@ -595,8 +589,7 @@ cdef class ActorRemoteHelper:
         ref.ctx = self
         return ref
 
-    async def _send(self, ActorRef actor_ref, object message, bint wait_response=True,
-                    object callback=None):
+    cpdef _send(self, ActorRef actor_ref, object message, bint wait_response=True, object callback=None):
         cdef object func
         cdef list binaries
 
@@ -608,20 +601,18 @@ cdef class ActorRemoteHelper:
         except (AttributeError, pickle.PickleError):
             raise pickle.PicklingError('Unable to pickle message {0}'.format(message))
 
-        return await self._pool.exec(self._send_remote(actor_ref.address, binaries))
+        return self._pool.exec(self._send_remote(actor_ref.address, binaries))
 
-    async def send(self, ActorRef actor_ref, object message, object callback=None):
-        return await self._send(actor_ref, message, wait_response=True, callback=callback)
+    cpdef send(self, ActorRef actor_ref, object message, object callback=None):
+        return self._send(actor_ref, message, wait_response=True, callback=callback)
 
-    async def tell(self, ActorRef actor_ref, object message, object delay=None, object callback=None):
+    cpdef tell(self, ActorRef actor_ref, object message, object delay=None, object callback=None):
         if delay is not None:
-            async def delay_tell():
-                await asyncio.sleep(delay)
-                return await self._send(actor_ref, message, wait_response=False, callback=callback)
-
-            asyncio.ensure_future(delay_tell())
+            asyncio.ensure_future(sleep_and_await(
+                self._send, actor_ref, message, wait_response=False, callback=callback, _delay=delay))
+            return done_future()
         else:
-            return await self._send(actor_ref, message, wait_response=False, callback=callback)
+            return self._send(actor_ref, message, wait_response=False, callback=callback)
 
 
 cdef object _no_callback = object()
@@ -716,7 +707,7 @@ cdef class Communicator(AsyncHandler):
         else:
             return
 
-    async def _send_process(self, int to_index, ActorRef actor_ref, message, bint wait_response=True,
+    cpdef _send_process(self, int to_index, ActorRef actor_ref, message, bint wait_response=True,
                             callback=None):
         cdef object func
         cdef list msg
@@ -731,42 +722,42 @@ cdef class Communicator(AsyncHandler):
         except (AttributeError, pickle.PickleError):
             raise pickle.PicklingError('Unable to pickle message {0}'.format(message))
 
-        await self.pipe.write(*message)
-        return await self.submit(message_id)
+        return await_sequence(
+            self.pipe.write(*message),
+            self.submit(message_id),
+        )
 
-    async def _send_remote(self, ActorRef actor_ref, object message, bint wait_response=True,
+    cpdef _send_remote(self, ActorRef actor_ref, object message, bint wait_response=True,
                            object callback=None):
         if wait_response:
-            return await self.remote_handler.send(actor_ref, message, callback=callback)
+            return self.remote_handler.send(actor_ref, message, callback=callback)
         else:
-            return await self.remote_handler.tell(actor_ref, message, callback=callback)
+            return self.remote_handler.tell(actor_ref, message, callback=callback)
 
-    async def _send(self, ActorRef actor_ref, object message, bint wait_response=True,
+    cpdef _send(self, ActorRef actor_ref, object message, bint wait_response=True,
                     object callback=None):
-        return await self._dispatch(self._send_local, self._send_process, self._send_remote, actor_ref,
-                                    (actor_ref, message), dict(wait_response=wait_response, callback=callback))
+        return self._dispatch(self._send_local, self._send_process, self._send_remote, actor_ref,
+                              (actor_ref, message), dict(wait_response=wait_response, callback=callback))
 
-    async def send(self, ActorRef actor_ref, object message, object callback=None):
-        return await self._send(actor_ref, message, wait_response=True, callback=callback)
+    cpdef send(self, ActorRef actor_ref, object message, object callback=None):
+        return self._send(actor_ref, message, wait_response=True, callback=callback)
 
-    async def tell(self, ActorRef actor_ref, object message, object delay=None, object callback=None):
+    cpdef tell(self, ActorRef actor_ref, object message, object delay=None, object callback=None):
         if delay is not None:
-            async def delay_tell():
-                await asyncio.sleep(delay)
-                return await self._send(actor_ref, message, wait_response=False, callback=callback)
-
-            asyncio.ensure_future(delay_tell())
+            asyncio.ensure_future(sleep_and_await(
+                self._send, actor_ref, message, wait_response=False, callback=callback, _delay=delay))
+            return done_future()
         else:
-            return await self._send(actor_ref, message, wait_response=False, callback=callback)
+            return self._send(actor_ref, message, wait_response=False, callback=callback)
 
-    async def _create_local_actor(self, ActorRef actor_ref, actor_cls, args, kwargs):
+    cpdef _create_local_actor(self, ActorRef actor_ref, actor_cls, args, kwargs):
         cdef bint wait
         cdef object callback
 
         callback = kwargs.pop('callback', None)
-        return await self.pool.create_actor(actor_cls, actor_ref.uid, *args, **kwargs)
+        return self.pool.create_actor(actor_cls, actor_ref.uid, *args, **kwargs)
 
-    async def _create_process_actor(self, int to_index, ActorRef actor_ref, object actor_cls,
+    cpdef _create_process_actor(self, int to_index, ActorRef actor_ref, object actor_cls,
                                     args, kwargs):
         cdef object callback
         cdef bytes message_id
@@ -780,58 +771,62 @@ cdef class Communicator(AsyncHandler):
         except (AttributeError, pickle.PickleError):
             raise pickle.PicklingError('Unable to pickle {0}(*{1}, **{2})'.format(actor_cls, args, kwargs))
 
-        await self.pipe.write(message)
-        return await self.submit(message_id)
+        return await_sequence(
+            self.pipe.write(message),
+            self.submit(message_id),
+        )
 
-    async def _create_remote_actor(self, ActorRef actor_ref, object actor_cls, args, kwargs):
-        return await self.remote_handler.create_actor(
+    cpdef _create_remote_actor(self, ActorRef actor_ref, object actor_cls, args, kwargs):
+        return self.remote_handler.create_actor(
             actor_ref.address, actor_ref.uid, actor_cls, *args, **kwargs)
 
-    async def create_actor(self, str address, object uid,
-                           object actor_cls, *args, **kwargs):
+    def create_actor(self, str address, object uid, object actor_cls, *args, **kwargs):
         cdef object actor_id
         cdef ActorRef actor_ref
 
         actor_id = uid or new_actor_id()
         actor_ref = ActorRef(address, actor_id)
-        return await self._dispatch(self._create_local_actor, self._create_process_actor,
-                                    self._create_remote_actor, actor_ref,
-                                    (actor_ref, actor_cls, args, kwargs), dict())
+        return self._dispatch(self._create_local_actor, self._create_process_actor,
+                              self._create_remote_actor, actor_ref,
+                              (actor_ref, actor_cls, args, kwargs), dict())
 
-    async def _destroy_local_actor(self, ActorRef actor_ref, object callback=None):
-        return await self.pool.destroy_actor(actor_ref.uid)
+    cpdef _destroy_local_actor(self, ActorRef actor_ref, object callback=None):
+        return self.pool.destroy_actor(actor_ref.uid)
 
-    async def _destroy_process_actor(self, int to_index, ActorRef actor_ref, object callback=None):
+    cpdef _destroy_process_actor(self, int to_index, ActorRef actor_ref, object callback=None):
         cdef bytes message_id
         cdef bytearray message
         cdef object future
 
         message_id, message = pack_destroy_actor_message(self.index, to_index, actor_ref)
-        await self.pipe.write(message)
-        return await self.submit(message_id)
+        return await_sequence(
+            self.pipe.write(message),
+            self.submit(message_id),
+        )
 
-    async def destroy_actor(self, ActorRef actor_ref, object callback=None):
-        return await self._dispatch(self._destroy_local_actor, self._destroy_process_actor,
+    cpdef destroy_actor(self, ActorRef actor_ref, object callback=None):
+        return self._dispatch(self._destroy_local_actor, self._destroy_process_actor,
                               self.remote_handler.destroy_actor, actor_ref,
                               (actor_ref,), dict(callback=callback))
 
     cpdef _has_local_actor(self, ActorRef actor_ref, object callback=None):
         return self.pool.has_actor(actor_ref.uid)
 
-    async def _has_process_actor(self, int to_index, ActorRef actor_ref, object callback=None):
+    cpdef _has_process_actor(self, int to_index, ActorRef actor_ref, object callback=None):
         cdef bytes message_id
         cdef bytearray message
         cdef object future
 
         message_id, message = pack_has_actor_message(self.index, to_index, actor_ref)
+        return await_sequence(
+            self.pipe.write(message),
+            self.submit(message_id),
+        )
 
-        await self.pipe.write(message)
-        return await self.submit(message_id)
-
-    async def has_actor(self, ActorRef actor_ref, callback=None):
-        return await self._dispatch(self._has_local_actor, self._has_process_actor,
-                                    self.remote_handler.has_actor, actor_ref,
-                                    (actor_ref,), dict(callback=callback))
+    def has_actor(self, ActorRef actor_ref, callback=None):
+        return self._dispatch(self._has_local_actor, self._has_process_actor,
+                              self.remote_handler.has_actor, actor_ref,
+                              (actor_ref,), dict(callback=callback))
 
     async def _on_receive_send(self, bytes binary, object callback):
         cdef object message
@@ -952,15 +947,14 @@ cdef class Communicator(AsyncHandler):
         message = unpack_error_message(binary)
         self.err(message.message_id, message.error_type, message.error, message.traceback)
 
-    async def on_receive(self, bytes binary, object callback=None):
+    cpdef on_receive(self, bytes binary, object callback=None):
         cdef int message_type
 
         if callback is None:
-            async def callback(data):
-                await self.pipe.write(data)
+            callback = self.pipe.write
 
         message_type = unpack_message_type_value(binary)
-        return await self._handlers[message_type](binary, callback)
+        return self._handlers[message_type](binary, callback)
 
     async def run(self):
         cdef bytes message
@@ -1016,7 +1010,7 @@ cdef class Dispatcher(AsyncHandler):
             return False
         return True
 
-    async def _send(self, ActorRef actor_ref, object message, bint wait_response=True,
+    cpdef _send(self, ActorRef actor_ref, object message, bint wait_response=True,
                     object callback=None):
         cdef int to_index
         cdef list msg
@@ -1025,9 +1019,9 @@ cdef class Dispatcher(AsyncHandler):
 
         if self._is_remote(actor_ref):
             if wait_response:
-                return await self.remote_handler.send(actor_ref, message, callback=callback)
+                return self.remote_handler.send(actor_ref, message, callback=callback)
             else:
-                return await self.remote_handler.tell(actor_ref, message, callback=callback)
+                return self.remote_handler.tell(actor_ref, message, callback=callback)
 
         to_index = self.distributor.distribute(actor_ref.uid)
         try:
@@ -1039,21 +1033,21 @@ cdef class Dispatcher(AsyncHandler):
         except (AttributeError, pickle.PickleError):
             raise pickle.PicklingError('Unable to pickle message: {0}'.format(message))
 
-        await self.pipes[to_index].write(*messages)
-        return await self.submit(message_id)
+        return await_sequence(
+            self.pipes[to_index].write(*messages),
+            self.submit(message_id),
+        )
 
-    async def send(self, ActorRef actor_ref, object message, object callback=None):
-        return await self._send(actor_ref, message, wait_response=True, callback=callback)
+    cpdef send(self, ActorRef actor_ref, object message, object callback=None):
+        return self._send(actor_ref, message, wait_response=True, callback=callback)
 
-    async def tell(self, ActorRef actor_ref, object message, object delay=None, object callback=None):
+    cpdef tell(self, ActorRef actor_ref, object message, object delay=None, object callback=None):
         if delay is not None:
-            async def delay_tell():
-                await asyncio.sleep(delay)
-                return await self._send(actor_ref, message, wait_response=False, callback=callback)
-
-            asyncio.ensure_future(delay_tell())
+            asyncio.ensure_future(sleep_and_await(
+                self._send, actor_ref, message, wait_response=False, callback=callback, _delay=delay))
+            return done_future()
         else:
-            return await self._send(actor_ref, message, wait_response=False, callback=callback)
+            return self._send(actor_ref, message, wait_response=False, callback=callback)
 
     async def create_actor(self, str address, object uid, object actor_cls, *args, **kwargs):
         cdef object actor_id
@@ -1081,38 +1075,41 @@ cdef class Dispatcher(AsyncHandler):
         await self.pipes[to_index].write(message)
         return await self.submit(message_id)
 
-    async def destroy_actor(self, ActorRef actor_ref, object callback=None):
+    cpdef destroy_actor(self, ActorRef actor_ref, object callback=None):
         cdef int to_index
         cdef bytes message_id
         cdef bytearray message
 
         if self._is_remote(actor_ref):
-            return await self.remote_handler.destroy_actor(actor_ref, callback=callback)
+            return self.remote_handler.destroy_actor(actor_ref, callback=callback)
 
         to_index = self.distributor.distribute(actor_ref.uid)
 
         message_id, message = pack_destroy_actor_message(
             self.index, to_index, actor_ref)
+        return await_sequence(
+            self.pipes[to_index].write(message),
+            self.submit(message_id),
+        )
 
-        await self.pipes[to_index].write(message)
-        return await self.submit(message_id)
-
-    async def has_actor(self, ActorRef actor_ref, object callback=None):
+    cpdef has_actor(self, ActorRef actor_ref, object callback=None):
         cdef int to_index
         cdef bytes message_id
         cdef bytearray message
         cdef object future
 
         if self._is_remote(actor_ref):
-            return await self.remote_handler.has_actor(actor_ref, callback=callback)
+            return self.remote_handler.has_actor(actor_ref, callback=callback)
 
         to_index = self.distributor.distribute(actor_ref.uid)
 
         message_id, message = pack_has_actor_message(
             self.index, to_index, actor_ref)
 
-        await self.pipes[to_index].write(message)
-        return await self.submit(message_id)
+        return await_sequence(
+            self.pipes[to_index].write(message),
+            self.submit(message_id),
+        )
 
     async def _on_receive_action(self, bytes binary):
         cdef int from_index
@@ -1167,11 +1164,11 @@ cdef class Dispatcher(AsyncHandler):
             # sent from process
             await self.pipes[to_index].write(binary)
 
-    async def on_receive(self, bytes binary):
+    cpdef on_receive(self, bytes binary):
         cdef int message_type
 
         message_type = unpack_message_type_value(binary)
-        return await self.handlers[message_type](binary)
+        return self.handlers[message_type](binary)
 
     async def _check_pipe(self, int idx):
         cdef bytes message
@@ -1400,23 +1397,26 @@ cdef class ActorPool:
                 *(self._start_process(idx) for idx in range(self.cluster_info.n_process))
             )]
 
+            async def close_pipe(p):
+                if p is None:
+                    return
+                try:
+                    await p.close()
+                except OSError:
+                    pass
+
             async def stop_func():
                 for process in self._processes:
                     process.terminate()
-                for idx, p in enumerate(self._comm_pipes):
-                    if p is not None:
-                        try:
-                            await p.close()
-                        except OSError:
-                            pass
-                        self._comm_pipes[idx] = None
-                for idx, p in enumerate(self._pool_pipes):
-                    if p is not None:
-                        try:
-                            await p.close()
-                        except OSError:
-                            pass
-                        self._pool_pipes[idx] = None
+                try:
+                    await asyncio.wait([close_pipe(p) for p in (self._comm_pipes + self._pool_pipes)],
+                                       return_when=asyncio.ALL_COMPLETED)
+                except OSError:
+                    pass
+                for idx in range(len(self._comm_pipes)):
+                    self._comm_pipes[idx] = None
+                for idx in range(len(self._pool_pipes)):
+                    self._pool_pipes[idx] = None
 
             self._stop_funcs.append(stop_func)
 
@@ -1466,7 +1466,7 @@ cdef class ActorClient:
     def __init__(self, parallel=None):
         self.remote_handler = ActorRemoteHelper(parallel)
 
-    async def create_actor(self, object actor_cls, *args, **kwargs):
+    def create_actor(self, object actor_cls, *args, **kwargs):
         cdef object address
         cdef object uid
 
@@ -1474,13 +1474,13 @@ cdef class ActorClient:
             raise ValueError('address must be provided')
         address = kwargs.pop('address')
         uid = kwargs.pop('uid', new_actor_id())
-        return await self.remote_handler.create_actor(address, uid, actor_cls, *args, **kwargs)
+        return self.remote_handler.create_actor(address, uid, actor_cls, *args, **kwargs)
 
-    async def has_actor(self, ActorRef actor_ref, object callback=None):
-        return await self.remote_handler.has_actor(actor_ref, callback=callback)
+    cpdef has_actor(self, ActorRef actor_ref, object callback=None):
+        return self.remote_handler.has_actor(actor_ref, callback=callback)
 
-    async def destroy_actor(self, ActorRef actor_ref, object callback=None):
-        return await self.remote_handler.destroy_actor(actor_ref, callback=callback)
+    cpdef destroy_actor(self, ActorRef actor_ref, object callback=None):
+        return self.remote_handler.destroy_actor(actor_ref, callback=callback)
 
     def actor_ref(self, *args, **kwargs):
         cdef ActorRef ref

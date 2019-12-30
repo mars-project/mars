@@ -20,6 +20,10 @@ cdef class ActorRef:
     cdef public object uid
     cdef public object _ctx
 
+    cpdef send(self, object message, object callback=*)
+    cpdef tell(self, object message, object delay=*, object callback=*)
+    cpdef destroy(self, object callback=*)
+
 
 cdef class Actor:
     cdef str _address
