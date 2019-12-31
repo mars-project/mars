@@ -1390,8 +1390,8 @@ cdef class ActorPool:
 
         if not self._multi_process:
             # only start local pool
-            self._dispatcher = await start_local_pool(0, self.cluster_info, distributor=self.distributor,
-                                                      parallel=self._parallel)
+            self._dispatcher = await start_local_pool(
+                0, self.cluster_info, distributor=self.distributor, parallel=self._parallel)
         else:
             self._processes, self._comm_pipes, self._pool_pipes = [list(tp) for tp in zip(
                 *(self._start_process(idx) for idx in range(self.cluster_info.n_process))
