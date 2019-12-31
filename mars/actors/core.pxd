@@ -33,8 +33,4 @@ cdef class Actor:
     cpdef ActorRef ref(self)
 
 
-cdef class _FunctionActor(Actor):
-    pass
-
-
 cpdef object new_client(object parallel=*)

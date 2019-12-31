@@ -116,7 +116,10 @@ class DummyFunctionActor(FunctionActor):
         super().__init__()
         self._val = value
 
-    async def func(self, value):
+    def sync_func(self, value):
+        return value + self._val
+
+    async def async_func(self, value):
         return value + self._val
 
 
@@ -125,7 +128,10 @@ class SurrogateFunctionActor(DummyFunctionActor):
         super().__init__(value)
         self._val = value * 2
 
-    async def func(self, value):
+    def sync_func(self, value):
+        return value * self._val
+
+    async def async_func(self, value):
         return value * self._val
 
 
@@ -193,19 +199,22 @@ class Test(unittest.TestCase):
     async def testFunctionActor(self):
         async with await create_actor_pool(n_process=1) as pool:
             actor_ref = await pool.create_actor(DummyFunctionActor, 1)
-            self.assertEqual(await actor_ref.func(2), 3)
-            actor_ref.destroy()
+            self.assertEqual(await actor_ref.sync_func(2), 3)
+            self.assertEqual(await actor_ref.async_func(2), 3)
+            await actor_ref.destroy()
 
             try:
                 register_actor_implementation(DummyFunctionActor, SurrogateFunctionActor)
                 actor_ref = await pool.create_actor(DummyFunctionActor, 3)
-                self.assertEqual(await actor_ref.func(2), 12)
+                self.assertEqual(await actor_ref.sync_func(2), 12)
+                self.assertEqual(await actor_ref.async_func(2), 12)
                 await actor_ref.destroy()
             finally:
                 unregister_actor_implementation(DummyFunctionActor)
 
             actor_ref = await pool.create_actor(DummyFunctionActor, 2)
-            self.assertEqual(await actor_ref.func(2), 4)
+            self.assertEqual(await actor_ref.sync_func(2), 4)
+            self.assertEqual(await actor_ref.async_func(2), 4)
             await actor_ref.destroy()
 
     async def testLocalCreateActor(self):
