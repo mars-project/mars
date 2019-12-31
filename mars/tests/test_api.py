@@ -75,7 +75,7 @@ class Test(unittest.TestCase):
         self.api.delete_graph(session_id, graph_key)
         self.assertFalse(self.pool.has_actor(graph_ref))
 
-    @patch_method(GraphActor.get_tileable_meta)
+    @patch_method(GraphActor.get_tileable_metas)
     @patch_method(ChunkMetaClient.batch_get_chunk_shape)
     def testGetTensorNsplits(self, *_):
         session_id = 'mock_session_id'
@@ -98,7 +98,7 @@ class Test(unittest.TestCase):
             [(3, 4), (3, 2), (2, 4), (2, 2)]
         ]
 
-        GraphActor.get_tileable_meta.side_effect = mock_indexes
+        GraphActor.get_tileable_metas.side_effect = mock_indexes
         ChunkMetaClient.batch_get_chunk_shape.side_effect = mock_shapes
 
         nsplits = self.api.get_tileable_nsplits(session_id, graph_key, tensor_key)

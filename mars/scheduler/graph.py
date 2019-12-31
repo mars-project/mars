@@ -1070,21 +1070,29 @@ class GraphActor(SchedulerActor):
                 check=False, _tell=not wait, _wait=False))
         [f.result() for f in futures]
 
-    def get_tileable_meta(self, tileable_key):
+    def get_tileable_metas(self, tileable_keys, filter_fields=None):
         """
-        Get tileable meta including nsplit, chunk keys and chunk indexes.
-        :param tileable_key: tileable_key
-        :return: tuple, (nsplits, OrderedDict(chunk_index -> chunk_key))
+        Get tileable meta including nsplits, chunk keys and chunk indexes.
+        :param tileable_keys: tileable_keys.
+        :param filter_fields: filter the fields('nsplits', 'chunk_keys', 'chunk_indexes') in meta.
+        :return: metas list.
         """
-        tileable = self._get_tileable_by_key(tileable_key)
-        chunk_indexes = OrderedDict((c.index, c.key) for c in tileable.chunks)
-        nsplits = tileable.nsplits
-        if hasattr(tileable, 'shape') and np.nan in tileable.shape:
-            chunk_shapes = self.chunk_meta.batch_get_chunk_shape(
-                self._session_id, list(chunk_indexes.values()))
-            nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes.keys(), chunk_shapes)))
+        meta_names = ['nsplits', 'chunk_keys', 'chunk_indexes']
+        metas = []
+        for tileable_key in tileable_keys:
+            tileable = self._get_tileable_by_key(tileable_key)
+            chunk_keys, chunk_indexes = tuple(zip(*[(c.key, c.index) for c in tileable.chunks]))
+            if hasattr(tileable, 'shape') and np.nan in tileable.shape:
+                chunk_shapes = self.chunk_meta.batch_get_chunk_shape(self._session_id, chunk_indexes)
+                nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes, chunk_shapes)))
+            else:
+                nsplits = tileable.nsplits
+            meta = [nsplits, chunk_keys, chunk_indexes]
+            if filter_fields is not None:
+                meta = [meta[i] for i, k in enumerate(filter_fields) if k in meta_names]
+            metas.append(meta)
 
-        return nsplits, chunk_indexes
+        return metas
 
     def build_fetch_graph(self, tileable_key):
         """
