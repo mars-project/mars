@@ -16,6 +16,7 @@ import sys
 import threading
 from collections import namedtuple
 from enum import Enum
+from typing import List
 
 
 _context_factory = threading.local()
@@ -52,10 +53,12 @@ class ContextBase(object):
         raise NotImplementedError
 
     def __enter__(self):
+        _context_factory.prev = getattr(_context_factory, 'current', None)
         _context_factory.current = self
 
     def __exit__(self, *_):
-        _context_factory.current = None
+        _context_factory.current = _context_factory.prev
+        _context_factory.prev = None
 
     def wraps(self, func):
         def h(*args, **kwargs):
@@ -134,14 +137,33 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
+    # ----------------
+    # Result relative
+    # ----------------
+
+    def get_chunk_results(self, chunk_keys: List[str]) -> List:
+        """
+        Get results when given chunk keys
+
+        :param chunk_keys: chunk keys
+        :return: list of chunk results
+        """
+        raise NotImplementedError
+
 
 ChunkMeta = namedtuple('ChunkMeta', ['chunk_size', 'chunk_shape', 'workers'])
 
 
-class LocalContext(ContextBase):
+class LocalContext(ContextBase, dict):
     def __init__(self, local_session, ncores=None):
+        dict.__init__(self)
         self._local_session = local_session
         self._ncores = ncores
+
+    def copy(self):
+        new_d = LocalContext(self._local_session, ncores=self._ncores)
+        new_d.update(self)
+        return new_d
 
     def set_ncores(self, ncores):
         self._ncores = ncores
@@ -167,10 +189,12 @@ class LocalContext(ContextBase):
         return self._ncores
 
     def get_chunk_metas(self, chunk_keys):
-        chunk_result = self._local_session.executor.chunk_result
         metas = []
         for chunk_key in chunk_keys:
-            chunk_data = chunk_result[chunk_key]
+            chunk_data = self.get(chunk_key)
+            if chunk_data is None:
+                metas.append(None)
+                continue
             if hasattr(chunk_data, 'nbytes'):
                 # ndarray
                 size = chunk_data.nbytes
@@ -188,16 +212,10 @@ class LocalContext(ContextBase):
 
         return metas
 
-
-class LocalDictContext(LocalContext, dict):
-    def __init__(self, local_session, ncores=None):
-        LocalContext.__init__(self, local_session, ncores=ncores)
-        dict.__init__(self)
-
-    def copy(self):
-        new_d = LocalDictContext(self._local_session, ncores=self._ncores)
-        new_d.update(self)
-        return new_d
+    def get_chunk_results(self, chunk_keys: List[str]) -> List:
+        # As the context is actually holding the data,
+        # so for the local context, we just fetch data from itself
+        return [self[chunk_key] for chunk_key in chunk_keys]
 
 
 class DistributedContext(ContextBase):
@@ -237,6 +255,19 @@ class DistributedContext(ContextBase):
     def get_chunk_metas(self, chunk_keys):
         return self._chunk_meta_client.batch_get_chunk_meta(
             self._session_id, chunk_keys)
+
+    def get_chunk_results(self, chunk_keys: List[str]) -> List:
+        from .serialize import dataserializer
+        from .worker.transfer import ResultSenderActor
+
+        all_workers = [m.workers for m in self.get_chunk_metas(chunk_keys)]
+        results = []
+        for chunk_key, endpoints in zip(chunk_keys, all_workers):
+            sender_ref = self._actor_ctx.actor_ref(
+                ResultSenderActor.default_uid(), address=endpoints[-1])
+            results.append(
+                dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk_key)))
+        return results
 
 
 class DistributedDictContext(DistributedContext, dict):

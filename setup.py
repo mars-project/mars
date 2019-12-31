@@ -144,6 +144,7 @@ setup_options = dict(
         'mars-worker = mars.worker.__main__:main',
         'mars-web = mars.web.__main__:main',
     ]},
+    python_requires='>=3.5',
     install_requires=requirements,
     cmdclass={'build_ext': build_ext},
     ext_modules=extensions,

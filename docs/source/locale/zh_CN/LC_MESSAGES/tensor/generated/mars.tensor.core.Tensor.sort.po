@@ -1,0 +1,106 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2019.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.3.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-12-25 11:13+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.sort.rst:2
+msgid "mars.tensor.core.Tensor.sort"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:1 of
+msgid "Sort a tensor, in-place."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:6 of
+msgid "axis"
+msgstr ""
+
+#: of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:6 of
+msgid ""
+"Axis along which to sort. Default is -1, which means sort along the last "
+"axis."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:8 of
+msgid "kind"
+msgstr ""
+
+#: of
+msgid "{'quicksort', 'mergesort', 'heapsort', 'stable'}, optional"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:9 of
+msgid "Sorting algorithm. Default is 'quicksort'."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:11 of
+msgid "parallel_kind: {'PSRS'}, optional"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:11 of
+msgid ""
+"Parallel sorting algorithm, for the details, refer to: "
+"http://csweb.cs.wfu.edu/bigiron/LittleFE-"
+"PSRS/build/html/PSRSalgorithm.html"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:13 of
+msgid "psrs_kinds: list with 3 elements, optional"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:14 of
+msgid "Sorting algorithms during PSRS algorithm."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:20 of
+msgid "order"
+msgstr ""
+
+#: of
+msgid "str or list of str, optional"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:16 of
+msgid ""
+"When `a` is a tensor with fields defined, this argument specifies which "
+"fields to compare first, second, etc.  A single field can be specified as"
+" a string, and not all fields need be specified, but unspecified fields "
+"will still be used, in the order in which they come up in the dtype, to "
+"break ties."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:24 of
+msgid ""
+"numpy.sort : Return a sorted copy of a tensor. argsort : Indirect sort. "
+"lexsort : Indirect stable sort on multiple keys. searchsorted : Find "
+"elements in sorted tensor. partition: Partial sort."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:32 of
+msgid "See ``sort`` for notes on the different sorting algorithms."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:47 of
+msgid ""
+"Use the `order` keyword to specify a field to use when sorting a "
+"structured tensor:"
+msgstr ""
+

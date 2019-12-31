@@ -17,7 +17,7 @@
 import numpy as np
 
 from .core import Entity, Base
-from .context import LocalDictContext
+from .context import LocalContext
 from .tiles import get_tiled
 from .executor import Executor
 try:
@@ -30,7 +30,7 @@ except ImportError:  # pragma: no cover
 class LocalSession(object):
     def __init__(self, **kwargs):
         self._endpoint = None
-        self._context = LocalDictContext(self)
+        self._context = LocalContext(self)
         self._executor = Executor(storage=self._context)
 
         self._mut_tensor = dict()

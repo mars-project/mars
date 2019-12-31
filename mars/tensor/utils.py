@@ -153,7 +153,10 @@ def infer_dtype(np_func, empty=True, reverse=False, check=True):
                 dtype = None
 
             if usr_dtype and dtype:
-                if check and not np.can_cast(dtype, usr_dtype):
+                can_cast_kwargs = {}
+                if kw.get('casting') is not None:
+                    can_cast_kwargs['casting'] = kw.get('casting')
+                if check and not np.can_cast(dtype, usr_dtype, **can_cast_kwargs):
                     raise TypeError(' No loop matching the specified signature '
                                     'and casting was found for ufunc %s' % np_func)
                 kw['dtype'] = usr_dtype
@@ -270,9 +273,7 @@ def slice_split(index, sizes):
 
 
 def is_asc_sorted(arr):
-    if not isinstance(arr, np.ndarray):
-        arr = np.array(arr)
-
+    arr = np.asarray(arr)
     if len(arr) == 0:
         return True
     return np.all(arr[:-1] <= arr[1:])

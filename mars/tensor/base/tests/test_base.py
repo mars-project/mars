@@ -22,7 +22,8 @@ from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
     ascontiguousarray, asfortranarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
-    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, to_gpu, to_cpu
+    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
+    histogram_bin_edges, to_gpu, to_cpu
 from mars.tensor.base.searchsorted import Stage
 from mars.tiles import get_tiled
 
@@ -750,3 +751,34 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             sort(np.random.rand(100), psrs_kinds=['non_valid_kind'] * 3)
+
+    def testHistogramBinEdges(self):
+        a = array([0, 0, 0, 1, 2, 3, 3, 4, 5], chunk_size=3)
+
+        with self.assertRaises(ValueError):
+            histogram_bin_edges(a, bins='unknown')
+
+        with self.assertRaises(TypeError):
+            # bins is str, weights cannot be provided
+            histogram_bin_edges(a, bins='scott', weights=a)
+
+        with self.assertRaises(ValueError):
+            histogram_bin_edges(a, bins=-1)
+
+        with self.assertRaises(ValueError):
+            # not asc
+            histogram_bin_edges(a, bins=[3, 2, 1])
+
+        with self.assertRaises(ValueError):
+            # bins cannot be 2d
+            histogram_bin_edges(a, bins=np.random.rand(2, 3))
+
+        with self.assertRaises(ValueError):
+            histogram_bin_edges(a, range=(5, 0))
+
+        with self.assertRaises(ValueError):
+            histogram_bin_edges(a, range=(np.nan, np.nan))
+
+        bins = histogram_bin_edges(a, bins=3, range=(0, 5))
+        # if range specified, no error will occur
+        bins.tiles()

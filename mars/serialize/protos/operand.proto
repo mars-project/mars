@@ -275,6 +275,8 @@ message OperandDef {
         ISIN = 423;
         SEARCHSORTED = 428;
         SORT = 429;
+        HISTOGRAM = 430;
+        HISTOGRAM_BIN_EDGES = 431;
         // fancy index, distributed phase is a shuffle operation that
         // the fancy indexes will be distributed to the left chunks
         // the concat phase will concat back the indexed left chunks and index

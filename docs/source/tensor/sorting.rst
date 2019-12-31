@@ -1,6 +1,17 @@
 Sorting, Searching, and Counting
 ================================
 
+Sorting
+-------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   mars.tensor.sort
+   mars.tensor.core.Tensor.sort
+
+
 Searching
 ---------
 
@@ -17,6 +28,7 @@ Searching
    mars.tensor.nonzero
    mars.tensor.flatnonzero
    mars.tensor.where
+   mars.tensor.searchsorted
    mars.tensor.extract
 
 
