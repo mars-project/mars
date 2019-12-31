@@ -180,7 +180,7 @@ class ChunkGraphBuilder(GraphBuilder):
         else:
             tds = copy_tileables(tileable_data.op.outputs,
                                  inputs=[cache[inp] for inp in tileable_data.inputs],
-                                 copy_key=True, copy_id=False, force_ret_list=True)
+                                 copy_key=True, copy_id=False)
             _op_to_copied[tileable_data.op] = tds
         if not tileable_data.is_coarse():
             # the tileable is already tiled

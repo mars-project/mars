@@ -32,6 +32,7 @@ import zlib
 import threading
 import itertools
 import weakref
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -733,18 +734,16 @@ def kill_process_tree(pid, include_parent=True):
         shutil.rmtree(plasma_sock_dir, ignore_errors=True)
 
 
-def copy_tileables(*tileables, **kwargs):
-    if isinstance(tileables, (list, tuple)) and len(tileables) == 1 and \
-            isinstance(tileables[0], (list, tuple)):
-        tileables = tileables[0]
+def copy_tileables(tileables: List, **kwargs):
     inputs = kwargs.pop('inputs', None)
     copy_key = kwargs.pop('copy_key', True)
     copy_id = kwargs.pop('copy_id', True)
-    force_ret_list = kwargs.pop('force_ret_list', False)
     if kwargs:
         raise TypeError("got un unexpected "
                         "keyword argument '{}'".format(next(iter(kwargs))))
     if len(tileables) > 1:
+        # cannot handle tileables with different operands here
+        # try to copy separately if so
         if len({t.op for t in tileables}) != 1:
             raise TypeError("All tileables' operands should be same.")
 
@@ -759,8 +758,4 @@ def copy_tileables(*tileables, **kwargs):
         params.update(t.extra_params)
         kws.append(params)
     inputs = inputs or op.inputs
-    copied = op.new_tileables(inputs, kws=kws, output_limit=len(kws))
-    if not force_ret_list and len(tileables) == 1:
-        return copied[0]
-    else:
-        return copied
+    return op.new_tileables(inputs, kws=kws, output_limit=len(kws))
