@@ -49,6 +49,7 @@ from .searchsorted import searchsorted, TensorSearchsorted
 from .unique import unique
 from .sort import sort
 from .partition import partition
+from .partition import partition
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 
