@@ -277,6 +277,7 @@ message OperandDef {
         SORT = 429;
         HISTOGRAM = 430;
         HISTOGRAM_BIN_EDGES = 431;
+        PARTITION = 432;
         // fancy index, distributed phase is a shuffle operation that
         // the fancy indexes will be distributed to the left chunks
         // the concat phase will concat back the indexed left chunks and index
@@ -376,6 +377,9 @@ message OperandDef {
         PSRS_SHUFFLE_REDUCE = 2043;
         PSRS_ALIGN_MAP = 2044;
         PSRS_ALIGN_REDUCE = 2045;
+        // partition
+        CALC_PARTITIONS_INFO = 2046;
+        PARTITION_MERGED = 2047;
 
         // store
         READ_CSV = 2100;

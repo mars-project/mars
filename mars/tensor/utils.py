@@ -106,6 +106,28 @@ def validate_axis(ndim, axis):
     return axis if axis >= 0 else ndim + axis
 
 
+def validate_order(dtype, order):
+    if getattr(dtype, 'fields', None) is None:
+        if order is not None:
+            raise ValueError('Cannot specify order when the array has no fields')
+        else:
+            return
+
+    need_check = True
+    if order is None:
+        order = list(dtype.names)
+        need_check = False
+    elif isinstance(order, (list, tuple)):
+        order = list(order)
+    else:
+        order = [order]
+    if need_check:
+        for o in order:
+            if o not in dtype.fields:
+                raise ValueError('unknown field name: {}'.format(o))
+    return order
+
+
 def inject_dtype(dtype):
     def inner(func):
         @wraps(func)

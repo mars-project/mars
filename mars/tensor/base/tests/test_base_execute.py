@@ -27,7 +27,7 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
-    flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort, \
+    flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort, partition, \
     histogram_bin_edges, histogram, to_gpu, to_cpu
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
@@ -1238,6 +1238,161 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(a, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(np.sort(raw, axis=1), axis=0))
+
+    def testPartitionExecution(self):
+        # only 1 chunk when axis = -1
+        raw = np.random.rand(100, 10)
+        x = tensor(raw, chunk_size=10)
+
+        px = partition(x, [1, 8])
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(res, np.partition(raw, [1, 8]))
+
+        # 1-d chunk
+        raw = np.random.rand(100)
+        x = tensor(raw, chunk_size=10)
+
+        kth = np.random.RandomState(0).randint(-100, 100, size=(10,))
+        px = partition(x, kth)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(res[kth], np.partition(raw, kth)[kth])
+
+        # structured dtype
+        raw = np.empty(100, dtype=[('id', np.int32), ('size', np.int64)])
+        raw['id'] = np.random.randint(1000, size=100, dtype=np.int32)
+        raw['size'] = np.random.randint(1000, size=100, dtype=np.int64)
+        x = tensor(raw, chunk_size=10)
+
+        px = partition(x, kth, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(
+            res[kth], np.partition(raw, kth, order=['size', 'id'])[kth])
+
+        # test flatten case
+        raw = np.random.rand(10, 10)
+        x = tensor(raw, chunk_size=5)
+
+        px = partition(x, kth, axis=None)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(res[kth], np.partition(raw, kth, axis=None)[kth])
+
+        # test multi-dimension
+        raw = np.random.rand(10, 100)
+        x = tensor(raw, chunk_size=(2, 10))
+
+        kth = np.random.RandomState(0).randint(-10, 10, size=(3,))
+        px = partition(x, kth)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(res[:, kth], np.partition(raw, kth)[:, kth])
+
+        raw = np.random.rand(10, 99)
+        x = tensor(raw, chunk_size=(2, 10))
+
+        px = partition(x, kth)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(res[:, kth], np.partition(raw, kth)[:, kth])
+
+        # test 3-d
+        raw = np.random.rand(20, 25, 28)
+        x = tensor(raw, chunk_size=(10, 5, 7))
+
+        kth = np.random.RandomState(0).randint(-28, 28, size=(3,))
+        px = partition(x, kth)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(
+            res[:, :, kth], np.partition(raw, kth)[:, :, kth])
+
+        kth = np.random.RandomState(0).randint(-20, 20, size=(3,))
+        px = partition(x, kth, axis=0)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(res[kth], np.partition(raw, kth, axis=0)[kth])
+
+        kth = np.random.RandomState(0).randint(-25, 25, size=(3,))
+        px = partition(x, kth, axis=1)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(
+            res[:, kth], np.partition(raw, kth, axis=1)[:, kth])
+
+        # test multi-dimension with structured type
+        raw = np.empty((10, 100), dtype=[('id', np.int32), ('size', np.int64)])
+        raw['id'] = np.random.randint(1000, size=(10, 100), dtype=np.int32)
+        raw['size'] = np.random.randint(1000, size=(10, 100), dtype=np.int64)
+        x = tensor(raw, chunk_size=(3, 10))
+
+        kth = np.random.RandomState(0).randint(-100, 100, size=(10,))
+        px = partition(x, kth)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(res[:, kth], np.partition(raw, kth)[:, kth])
+
+        px = partition(x, kth, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(
+            res[:, kth], np.partition(raw, kth, order=['size', 'id'])[:, kth])
+
+        px = partition(x, kth, order=['size'])
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(
+            res[:, kth], np.partition(raw, kth, order=['size'])[:, kth])
+
+        kth = np.random.RandomState(0).randint(-10, 10, size=(5,))
+        px = partition(x, kth, axis=0, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        np.testing.assert_array_equal(
+            res[kth], np.partition(raw, kth, axis=0, order=['size', 'id'])[kth])
+
+        raw = np.random.rand(10, 12)
+        a = tensor(raw, chunk_size=(5, 4))
+        kth = np.random.RandomState(0).randint(-12, 12, size=(2,))
+        a.partition(kth, axis=1)
+
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        np.testing.assert_array_equal(
+            res[:, kth], np.partition(raw, kth, axis=1)[:, kth])
+
+        kth = np.random.RandomState(0).randint(-10, 10, size=(2,))
+        a.partition(kth, axis=0)
+
+        raw_base = res
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        np.testing.assert_array_equal(
+            res[kth], np.partition(raw_base, kth, axis=0)[kth])
+
+        # test kth which is tensor
+        raw = np.random.rand(10, 12)
+        a = tensor(raw, chunk_size=(3, 5))
+        kth = (mt.random.rand(5) * 24 - 12).astype(int)
+
+        px = partition(a, kth)
+        sx = sort(a)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        kth_res = self.executor.execute_tensor(kth, concat=True)[0]
+        sort_res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res[:, kth_res], sort_res[:, kth_res])
+
+        a = tensor(raw, chunk_size=(10, 12))
+        kth = (mt.random.rand(5) * 24 - 12).astype(int)
+
+        px = partition(a, kth)
+        sx = sort(a)
+
+        res = self.executor.execute_tensor(px, concat=True)[0]
+        kth_res = self.executor.execute_tensor(kth, concat=True)[0]
+        sort_res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res[:, kth_res], sort_res[:, kth_res])
 
     def testHistogramBinEdgesExecution(self):
         rs = np.random.RandomState(0)

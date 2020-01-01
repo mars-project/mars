@@ -53,6 +53,7 @@ from .isin import isin, TensorIsIn
 from .searchsorted import searchsorted, TensorSearchsorted
 from .unique import unique
 from .sort import sort
+from .partition import partition
 from .histogram import histogram_bin_edges, TensorHistogramBinEdges, \
     histogram, TensorHistogram
 from .to_gpu import to_gpu
