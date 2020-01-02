@@ -26,7 +26,7 @@ reduction_functions = dict(
     sum=dict(func_name='sum', has_min_count=True),
     prod=dict(func_name='prod', has_min_count=True),
     min=dict(func_name='min', has_min_count=False),
-    max=dict(func_name='max', has_min_count=False)
+    max=dict(func_name='max', has_min_count=False),
 )
 
 
@@ -164,6 +164,68 @@ class Test(TestBase):
         pd.testing.assert_series_equal(
             self.compute(data, axis='index', numeric_only=True),
             self.executor.execute_dataframe(reduction_df, concat=True)[0])
+
+
+class TestCount(TestBase):
+    def setUp(self):
+        self.executor = ExecutorForTest()
+
+    def testSeriesCount(self):
+        array = np.random.rand(10)
+        array[[2, 7, 9]] = np.nan
+        data = pd.Series(array)
+        series = from_pandas_series(data)
+
+        result = self.executor.execute_dataframe(series.count(), concat=True)[0]
+        expected = data.count()
+        self.assertEqual(result, expected)
+
+        series2 = from_pandas_series(data, chunk_size=1)
+
+        result = self.executor.execute_dataframe(series2.count(), concat=True)[0]
+        expected = data.count()
+        self.assertEqual(result, expected)
+
+        series2 = from_pandas_series(data, chunk_size=3)
+
+        result = self.executor.execute_dataframe(series2.count(), concat=True)[0]
+        expected = data.count()
+        self.assertEqual(result, expected)
+
+    def testDataFrameCount(self):
+        data = pd.DataFrame({
+            "Person": ["John", "Myla", "Lewis", "John", "Myla"],
+            "Age": [24., np.nan, 21., 33, 26],
+            "Single": [False, True, True, True, False]})
+        df = from_pandas_df(data)
+
+        result = self.executor.execute_dataframe(df.count(), concat=True)[0]
+        expected = data.count()
+        pd.testing.assert_series_equal(result, expected)
+
+        result = self.executor.execute_dataframe(df.count(axis='columns'), concat=True)[0]
+        expected = data.count(axis='columns')
+        pd.testing.assert_series_equal(result, expected)
+
+        df2 = from_pandas_df(data, chunk_size=2)
+
+        result = self.executor.execute_dataframe(df2.count(), concat=True)[0]
+        expected = data.count()
+        pd.testing.assert_series_equal(result, expected)
+
+        result = self.executor.execute_dataframe(df2.count(axis='columns'), concat=True)[0]
+        expected = data.count(axis='columns')
+        pd.testing.assert_series_equal(result, expected)
+
+        df3 = from_pandas_df(data, chunk_size=3)
+
+        result = self.executor.execute_dataframe(df3.count(numeric_only=True), concat=True)[0]
+        expected = data.count(numeric_only=True)
+        pd.testing.assert_series_equal(result, expected)
+
+        result = self.executor.execute_dataframe(df3.count(axis='columns', numeric_only=True), concat=True)[0]
+        expected = data.count(axis='columns', numeric_only=True)
+        pd.testing.assert_series_equal(result, expected)
 
 
 if __name__ == '__main__':  # pragma: no cover

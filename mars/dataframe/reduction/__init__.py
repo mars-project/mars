@@ -16,6 +16,7 @@ from .sum import DataFrameSum
 from .prod import DataFrameProd
 from .max import DataFrameMax
 from .min import DataFrameMin
+from .count import DataFrameCount
 
 
 def _install():
@@ -24,6 +25,7 @@ def _install():
     from .prod import prod_series, prod_dataframe
     from .max import max_series, max_dataframe
     from .min import min_series, min_dataframe
+    from .count import count_series, count_dataframe
 
     setattr(DataFrame, 'sum', sum_dataframe)
     setattr(Series, 'sum', sum_series)
@@ -33,6 +35,8 @@ def _install():
     setattr(Series, 'max', max_series)
     setattr(DataFrame, 'min', min_dataframe)
     setattr(Series, 'min', min_series)
+    setattr(DataFrame, 'count', count_dataframe)
+    setattr(Series, 'count', count_series)
 
 
 _install()
