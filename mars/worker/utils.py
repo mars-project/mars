@@ -58,10 +58,10 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
     def default_uid(cls):
         return 'w:0:{0}'.format(cls.__name__)
 
-    def post_create(self):
+    async def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
         try:
-            self.set_cluster_info_ref()
+            await self.set_cluster_info_ref()
         except ActorNotExist:
             pass
         self._init_shared_store()
@@ -97,16 +97,16 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
         from ..scheduler.chunkmeta import ChunkMetaClient
         return ChunkMetaClient(self.ctx, self._cluster_info_ref, has_local_cache=False)
 
-    def handle_actors_down(self, halt_refs):
+    async def handle_actors_down(self, halt_refs):
         """
         Handle process down event
         :param halt_refs: actor refs in halt processes
         """
-        handled_refs = self.reject_promise_refs(halt_refs, *build_exc_info(WorkerProcessStopped))
+        handled_refs = await self.reject_promise_refs(halt_refs, *build_exc_info(WorkerProcessStopped))
         logger.debug('Process halt detected. Affected promises %r rejected.',
                      [ref.uid for ref in handled_refs])
 
-    def register_actors_down_handler(self):
+    async def register_actors_down_handler(self):
         from .daemon import WorkerDaemonActor
 
         daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
