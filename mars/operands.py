@@ -74,6 +74,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     _create_view = BoolField('create_view')
 
     _inputs = ListField('inputs', ValueType.key)
+    _prepare_inputs = ListField('prepare_inputs', ValueType.bool)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
 
     _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
@@ -139,6 +140,13 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     @property
     def expect_worker(self):
         return getattr(self, '_expect_worker', None)
+
+    @property
+    def prepare_inputs(self):
+        val = getattr(self, '_prepare_inputs', None)
+        if not val:
+            return [True] * len(self.inputs or ())
+        return val
 
     @property
     def extra_params(self):
