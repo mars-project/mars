@@ -75,6 +75,7 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     _create_view = BoolField('create_view')
 
     _inputs = ListField('inputs', ValueType.key)
+    _prepare_inputs = ListField('prepare_inputs', ValueType.bool)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
 
     _stage = Int32Field('stage', on_serialize=lambda s: s.value if s is not None else s,
@@ -153,6 +154,13 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     @property
     def stage(self):
         return getattr(self, '_stage', None)
+
+    @property
+    def prepare_inputs(self):
+        val = getattr(self, '_prepare_inputs', None)
+        if not val:
+            return [True] * len(self.inputs or ())
+        return val
 
     @property
     def extra_params(self):
