@@ -263,7 +263,7 @@ class EtcdProcessHelper(object):
 
         env_path = os.environ.get('PATH', '')
         if self.base_directory not in env_path:
-            os.environ['PATH'] = os.path.pathsep.join([env_path, self.base_directory])
+            os.environ['PATH'] = os.path.pathsep.join([self.base_directory, env_path])
 
         if proc_args:
             daemon_args.extend(proc_args)

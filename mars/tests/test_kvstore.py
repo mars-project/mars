@@ -14,47 +14,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
 import sys
 import unittest
 
-import gevent
-
-from mars.tests.core import EtcdProcessHelper
+from mars.tests.core import EtcdProcessHelper, aio_case
 from mars.kvstore import get, PathResult
 
 
+@aio_case
 class Test(unittest.TestCase):
-    def testLocalPathStore(self):
+    async def testLocalPathStore(self):
         kvstore = get(':inproc:')
-        kvstore.write('/node/subnode/v1', 'value1')
-        kvstore.write('/node/v2', 'value2')
+        await kvstore.write('/node/subnode/v1', 'value1')
+        await kvstore.write('/node/v2', 'value2')
 
-        res = kvstore.read('/node', sort=True)
+        res = await kvstore.read('/node', sort=True)
         expected = PathResult(key='/node', dir=True, children=[
             PathResult(key='/node/subnode', dir=True),
             PathResult(key='/node/v2', value='value2'),
         ])
         self.assertEqual(repr(res), repr(expected))
 
-        res = kvstore.read('/node', recursive=True, sort=True)
+        res = await kvstore.read('/node', recursive=True, sort=True)
         expected = PathResult(key='/node', dir=True, children=[
             PathResult(key='/node/subnode/v1', value='value1'),
             PathResult(key='/node/v2', value='value2'),
         ])
         self.assertEqual(repr(res), repr(expected))
 
-        kvstore.write('/node/v3', 'value3')
+        await kvstore.write('/node/v3', 'value3')
         with self.assertRaises(KeyError):
-            kvstore.write('/node/v2/invalid_value', value='invalid')
+            await kvstore.write('/node/v2/invalid_value', value='invalid')
 
-        res = kvstore.read('/', recursive=False, sort=True)
+        res = await kvstore.read('/', recursive=False, sort=True)
         expected = PathResult(key='/', dir=True, children=[
             PathResult(key='/node', dir=True),
         ])
         self.assertEqual(repr(res), repr(expected))
 
-        res = kvstore.read('/', recursive=True, sort=True)
+        res = await kvstore.read('/', recursive=True, sort=True)
         expected = PathResult(key='/', dir=True, children=[
             PathResult(key='/node/subnode/v1', value='value1'),
             PathResult(key='/node/v2', value='value2'),
@@ -62,13 +62,13 @@ class Test(unittest.TestCase):
         ])
         self.assertEqual(repr(res), repr(expected))
 
-        kvstore.write('/node/subnode2/v4', 'value4')
+        await kvstore.write('/node/subnode2/v4', 'value4')
 
         with self.assertRaises(KeyError):
-            kvstore.delete('/node/subnode', dir=True)
+            await kvstore.delete('/node/subnode', dir=True)
 
-        kvstore.delete('/node/subnode/v1')
-        res = kvstore.read('/', recursive=True, sort=True)
+        await kvstore.delete('/node/subnode/v1')
+        res = await kvstore.read('/', recursive=True, sort=True)
         expected = PathResult(key='/', dir=True, children=[
             PathResult(key='/node/subnode', dir=True),
             PathResult(key='/node/subnode2/v4', value='value4'),
@@ -77,8 +77,8 @@ class Test(unittest.TestCase):
         ])
         self.assertEqual(repr(res), repr(expected))
 
-        kvstore.delete('/node/subnode2', dir=True, recursive=True)
-        res = kvstore.read('/', recursive=True, sort=True)
+        await kvstore.delete('/node/subnode2', dir=True, recursive=True)
+        res = await kvstore.read('/', recursive=True, sort=True)
         expected = PathResult(key='/', dir=True, children=[
             PathResult(key='/node/subnode', dir=True),
             PathResult(key='/node/v2', value='value2'),
@@ -89,169 +89,161 @@ class Test(unittest.TestCase):
     @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
     @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
                      'does not run without etcd')
-    def testEtcdPathStore(self):
+    async def testEtcdPathStore(self):
         with EtcdProcessHelper(port_range_start=51342).run():
-            kvstore = get(u'etcd://localhost:51342')
-            kvstore.write(u'/node/subnode/v1', u'value1')
-            kvstore.write(u'/node/v2', u'value2')
+            kvstore = get('etcd://localhost:51342')
+            await kvstore.write('/node/subnode/v1', 'value1')
+            await kvstore.write('/node/v2', 'value2')
 
-            res = kvstore.read(u'/node', sort=True)
-            expected = PathResult(key=u'/node', dir=True, children=[
-                PathResult(key=u'/node/subnode', dir=True),
-                PathResult(key=u'/node/v2', value=u'value2'),
+            res = await kvstore.read('/node', sort=True)
+            expected = PathResult(key='/node', dir=True, children=[
+                PathResult(key='/node/subnode', dir=True),
+                PathResult(key='/node/v2', value='value2'),
             ])
             self.assertEqual(repr(res), repr(expected))
 
-            res = kvstore.read(u'/node', recursive=True, sort=True)
-            expected = PathResult(key=u'/node', dir=True, children=[
-                PathResult(key=u'/node/subnode/v1', value=u'value1'),
-                PathResult(key=u'/node/v2', value=u'value2'),
+            res = await kvstore.read('/node', recursive=True, sort=True)
+            expected = PathResult(key='/node', dir=True, children=[
+                PathResult(key='/node/subnode/v1', value='value1'),
+                PathResult(key='/node/v2', value='value2'),
             ])
             self.assertEqual(repr(res), repr(expected))
 
-            kvstore.write(u'/node/v3', u'value3')
+            await kvstore.write('/node/v3', 'value3')
             with self.assertRaises(KeyError):
-                kvstore.write(u'/node/v2/invalid_value', value=u'invalid')
+                await kvstore.write('/node/v2/invalid_value', value='invalid')
 
-            res = kvstore.read('/', recursive=False, sort=True)
+            res = await kvstore.read('/', recursive=False, sort=True)
             expected = PathResult(key='/', dir=True, children=[
-                PathResult(key=u'/node', dir=True),
+                PathResult(key='/node', dir=True),
             ])
             self.assertEqual(repr(res), repr(expected))
 
-            res = kvstore.read('/', recursive=True, sort=True)
+            res = await kvstore.read('/', recursive=True, sort=True)
             expected = PathResult(key='/', dir=True, children=[
-                PathResult(key=u'/node/subnode/v1', value=u'value1'),
-                PathResult(key=u'/node/v2', value=u'value2'),
-                PathResult(key=u'/node/v3', value=u'value3'),
+                PathResult(key='/node/subnode/v1', value='value1'),
+                PathResult(key='/node/v2', value='value2'),
+                PathResult(key='/node/v3', value='value3'),
             ])
             self.assertEqual(repr(res), repr(expected))
 
-            kvstore.write(u'/node/subnode2/v4', u'value4')
+            await kvstore.write('/node/subnode2/v4', 'value4')
 
             with self.assertRaises(KeyError):
-                kvstore.delete(u'/node/subnode', dir=True)
+                await kvstore.delete('/node/subnode', dir=True)
 
-            kvstore.delete(u'/node/subnode/v1')
-            res = kvstore.read('/', recursive=True, sort=True)
+            await kvstore.delete('/node/subnode/v1')
+            res = await kvstore.read('/', recursive=True, sort=True)
             expected = PathResult(key='/', dir=True, children=[
-                PathResult(key=u'/node/subnode', dir=True),
-                PathResult(key=u'/node/subnode2/v4', value=u'value4'),
-                PathResult(key=u'/node/v2', value=u'value2'),
-                PathResult(key=u'/node/v3', value=u'value3'),
+                PathResult(key='/node/subnode', dir=True),
+                PathResult(key='/node/subnode2/v4', value='value4'),
+                PathResult(key='/node/v2', value='value2'),
+                PathResult(key='/node/v3', value='value3'),
             ])
             self.assertEqual(repr(res), repr(expected))
 
-            kvstore.delete(u'/node', recursive=True, dir=True)
+            await kvstore.delete(u'/node', recursive=True, dir=True)
 
-    def testLocalWatch(self):
+    async def testLocalWatch(self):
         kvstore = get(':inproc:')
-        kvstore.write('/node/subnode/v1', 'value1')
-        kvstore.write('/node/v2', 'value2')
+        await kvstore.write('/node/subnode/v1', 'value1')
+        await kvstore.write('/node/v2', 'value2')
 
-        def watcher():
-            return kvstore.watch('/node/v2', timeout=10)
+        async def watcher():
+            return await kvstore.watch('/node/v2', timeout=10)
 
-        def writer():
-            gevent.sleep(0.5)
-            kvstore.write('/node/v2', 'value2\'')
+        async def writer():
+            await asyncio.sleep(0.5)
+            await kvstore.write('/node/v2', 'value2\'')
 
-        g1 = gevent.spawn(writer)
-        g2 = gevent.spawn(watcher)
-        gevent.joinall([g1, g2])
-        self.assertEqual(g2.value.value, 'value2\'')
+        asyncio.ensure_future(writer())
+        self.assertEqual((await watcher()).value, 'value2\'')
 
-        kvstore.delete('/node/v2')
+        await kvstore.delete('/node/v2')
 
-        def watcher():
-            return kvstore.watch('/node/subnode', timeout=10, recursive=True)
+        async def watcher():
+            return await kvstore.watch('/node/subnode', timeout=10, recursive=True)
 
-        def writer():
-            gevent.sleep(0.5)
-            kvstore.write('/node/subnode/v1', 'value1\'')
+        async def writer():
+            await asyncio.sleep(0.5)
+            await kvstore.write('/node/subnode/v1', 'value1\'')
 
-        g1 = gevent.spawn(writer)
-        g2 = gevent.spawn(watcher)
-        gevent.joinall([g1, g2])
-        self.assertEqual(g2.value.children[0].value, 'value1\'')
+        asyncio.ensure_future(writer())
+        self.assertEqual((await watcher()).children[0].value, 'value1\'')
 
-        kvstore.write('/node/subnode/v3', '-1')
+        await kvstore.write('/node/subnode/v3', '-1')
 
-        def watcher():
+        async def watcher():
             results = []
-            for idx, result in enumerate(kvstore.eternal_watch('/node/subnode/v3')):
+            idx = 0
+            async for result in kvstore.eternal_watch('/node/subnode/v3'):
                 results.append(int(result.value))
                 if idx == 4:
                     break
+                idx += 1
             return results
 
-        def writer():
-            gevent.sleep(0.1)
+        async def writer():
+            await asyncio.sleep(0.1)
             for v in range(5):
-                kvstore.write('/node/subnode/v3', str(v))
-                gevent.sleep(0.1)
+                await kvstore.write('/node/subnode/v3', str(v))
+                await asyncio.sleep(0.1)
 
-        g1 = gevent.spawn(writer)
-        g2 = gevent.spawn(watcher)
-        gevent.joinall([g1, g2])
-        self.assertEqual(g2.value, list(range(5)))
+        asyncio.ensure_future(writer())
+        self.assertEqual(await watcher(), list(range(5)))
 
-        kvstore.delete('/node', dir=True, recursive=True)
+        await kvstore.delete('/node', dir=True, recursive=True)
 
     @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
     @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
                      'does not run without etcd')
-    def testEtcdWatch(self):
+    async def testEtcdWatch(self):
         with EtcdProcessHelper(port_range_start=51342).run():
             kvstore = get('etcd://localhost:51342')
-            kvstore.write('/node/subnode/v1', 'value1')
-            kvstore.write('/node/v2', 'value2')
+            await kvstore.write('/node/subnode/v1', 'value1')
+            await kvstore.write('/node/v2', 'value2')
 
-            def watcher():
-                return kvstore.watch('/node/v2', timeout=10)
+            async def watcher():
+                return await kvstore.watch('/node/v2', timeout=10)
 
-            def writer():
-                gevent.sleep(1)
-                kvstore.write('/node/v2', 'value2\'')
+            async def writer():
+                await asyncio.sleep(0.5)
+                await kvstore.write('/node/v2', 'value2\'')
 
-            g1 = gevent.spawn(writer)
-            g2 = gevent.spawn(watcher)
-            gevent.joinall([g1, g2])
-            self.assertEqual(g2.value.value, 'value2\'')
+            asyncio.ensure_future(writer())
+            self.assertEqual((await watcher()).value, 'value2\'')
 
-            kvstore.delete('/node/v2')
+            await kvstore.delete('/node/v2')
 
-            def watcher():
-                return kvstore.watch('/node/subnode', timeout=10, recursive=True)
+            async def watcher():
+                return await kvstore.watch('/node/subnode', timeout=10, recursive=True)
 
-            def writer():
-                gevent.sleep(1)
-                kvstore.write('/node/subnode/v1', 'value1\'')
+            async def writer():
+                await asyncio.sleep(0.5)
+                await kvstore.write('/node/subnode/v1', 'value1\'')
 
-            g1 = gevent.spawn(writer)
-            g2 = gevent.spawn(watcher)
-            gevent.joinall([g1, g2])
-            self.assertEqual(g2.value.children[0].value, 'value1\'')
+            asyncio.ensure_future(writer())
+            self.assertEqual((await watcher()).children[0].value, 'value1\'')
 
-            kvstore.write('/node/subnode/v3', '-1')
+            await kvstore.write('/node/subnode/v3', '-1')
 
-            def watcher():
+            async def watcher():
                 results = []
-                for idx, result in enumerate(kvstore.eternal_watch('/node/subnode/v3')):
+                idx = 0
+                async for result in kvstore.eternal_watch('/node/subnode/v3'):
                     results.append(int(result.value))
                     if idx == 4:
                         break
+                    idx += 1
                 return results
 
-            def writer():
-                gevent.sleep(0.1)
+            async def writer():
+                await asyncio.sleep(0.1)
                 for v in range(5):
-                    kvstore.write('/node/subnode/v3', str(v))
-                    gevent.sleep(0.1)
+                    await kvstore.write('/node/subnode/v3', str(v))
+                    await asyncio.sleep(0.1)
 
-            g1 = gevent.spawn(writer)
-            g2 = gevent.spawn(watcher)
-            gevent.joinall([g1, g2])
-            self.assertEqual(g2.value, list(range(5)))
+            asyncio.ensure_future(writer())
+            self.assertEqual(await watcher(), list(range(5)))
 
-            kvstore.delete('/node', dir=True, recursive=True)
+            await kvstore.delete('/node', dir=True, recursive=True)

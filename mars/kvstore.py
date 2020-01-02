@@ -12,16 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+from asyncio.locks import Event, Lock
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
-
-from gevent.event import Event
 
 
 def _normalize_path(path):
     while '//' in path:
         path = path.replace('//', '/')
     return path.rstrip('/') or '/'
+
+
+# todo remove this when dropping support for Python 3.5
+class _EternalWatchIter(object):
+    def __init__(self, store, key, recursive=False):
+        self.store = store
+        self.key = key
+        self.recursive = recursive
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        return await self.store.watch(self.key, timeout=None, recursive=self.recursive)
 
 
 class PathResult(object):
@@ -62,12 +76,12 @@ class LocalKVStore(object):
         else:
             raise KeyError(item)
 
-    def _read_dir(self, item, recursive=False, sort=False):
+    async def _read_dir(self, item, recursive=False, sort=False):
         item = _normalize_path(item)
         r = PathResult(item, dir=True)
         if recursive:
             for ch in self._children[item]:
-                v = self.read(item + '/' + ch, recursive=True)
+                v = await self.read(item + '/' + ch, recursive=True)
                 if v.dir and v.children:
                     r.children.extend(v.children)
                 else:
@@ -78,7 +92,7 @@ class LocalKVStore(object):
             r.children = sorted(r.children, key=lambda ch: ch.key)
         return r
 
-    def read(self, item, recursive=False, sort=False):
+    async def read(self, item, recursive=False, sort=False):
         item = _normalize_path(item)
         if item in self._store:
             if item in self._expire_time and self._expire_time[item] < datetime.now():
@@ -86,9 +100,9 @@ class LocalKVStore(object):
                 raise KeyError(item)
             return PathResult(item, value=self._store[item])
         else:
-            return self._read_dir(item, recursive=recursive, sort=sort)
+            return await self._read_dir(item, recursive=recursive, sort=sort)
 
-    def watch(self, key, timeout=None, recursive=None, sort=False):
+    async def watch(self, key, timeout=None, recursive=None, sort=False):
         key = _normalize_path(key)
         segments = key.lstrip('/').split('/')
         path = ''
@@ -119,7 +133,9 @@ class LocalKVStore(object):
         else:
             self._watch_event[key].add(watch_event)
 
-        if not watch_event.wait(timeout):
+        try:
+            await asyncio.wait_for(watch_event.wait(), timeout)
+        except asyncio.TimeoutError:
             raise TimeoutError
 
         if recursive:
@@ -128,24 +144,21 @@ class LocalKVStore(object):
         else:
             self._watch_event[key].remove(watch_event)
 
-        return self.read(key, recursive=recursive, sort=sort)
+        return await self.read(key, recursive=recursive, sort=sort)
 
     def eternal_watch(self, key, recursive=False):
-        while True:
-            response = self.watch(key, timeout=None, recursive=recursive)
-            yield response
+        return _EternalWatchIter(self, key, recursive=recursive)
 
     def get_lock(self, lock_name):
-        from gevent.lock import RLock
         lock_name = _normalize_path(lock_name)
         if lock_name not in self._store:
-            lock = RLock()
-            self.write(lock_name, lock)
+            lock = Lock()
+            self._write(lock_name, lock)
         else:
             lock = self._store[lock_name]
         return lock
 
-    def write(self, key, value=None, ttl=None, dir=False):
+    def _write(self, key, value=None, ttl=None, dir=False):
         key = _normalize_path(key)
         segments = key.lstrip('/').split('/')
         path = ''
@@ -176,7 +189,10 @@ class LocalKVStore(object):
         if key in self._watch_event:
             [e.set() for e in list(self._watch_event[key])]
 
-    def delete(self, key, dir=False, recursive=False):
+    async def write(self, key, value=None, ttl=None, dir=False):
+        return self._write(key, value=value, ttl=ttl, dir=dir)
+
+    async def delete(self, key, dir=False, recursive=False):
         key = _normalize_path(key)
         if not dir:
             del self._store[key]
@@ -186,9 +202,9 @@ class LocalKVStore(object):
             for ch in list(self._children[key]):
                 ch_key = key + '/' + ch
                 if ch_key in self._store:
-                    self.delete(ch_key)
+                    await self.delete(ch_key)
                 else:
-                    self.delete(ch_key, dir=True, recursive=True)
+                    await self.delete(ch_key, dir=True, recursive=True)
             del self._children[key]
         dir_name, file_name = key.rsplit('/', 1)
         if not dir_name:
@@ -219,12 +235,12 @@ class EtcdKVStore(object):
         self._etcd_client = etcd_client
         self._base_path = _normalize_path(base_path)
 
-    def read(self, item, recursive=False, sort=False):
-        from etcd_gevent import EtcdKeyError, EtcdKeyNotFound
+    async def read(self, item, recursive=False, sort=False):
+        from aio_etcd import EtcdKeyError, EtcdKeyNotFound
         item = _normalize_path(self._base_path + item)
 
         try:
-            val = self._etcd_client.read(item, recursive=recursive)
+            val = await self._etcd_client.read(item, recursive=recursive)
         except (EtcdKeyError, EtcdKeyNotFound):
             val = None
         if val is None:
@@ -239,11 +255,12 @@ class EtcdKVStore(object):
             r.children = sorted(r.children, key=lambda ch: ch.key)
         return r
 
-    def watch(self, item, timeout=None, recursive=None):
-        from etcd_gevent import EtcdKeyError, EtcdWatchTimedOut
+    async def watch(self, item, timeout=None, recursive=None):
+        from aio_etcd import EtcdKeyError, EtcdWatchTimedOut
         item = _normalize_path(self._base_path + item)
         try:
-            val = self._etcd_client.watch(item, timeout=timeout, recursive=recursive)
+            val = await asyncio.wait_for(
+                self._etcd_client.watch(item, recursive=recursive), timeout=timeout)
         except EtcdKeyError:
             raise KeyError(item)
         except EtcdWatchTimedOut:
@@ -255,30 +272,28 @@ class EtcdKVStore(object):
         return r
 
     def eternal_watch(self, key, recursive=False):
-        while True:
-            response = self.watch(key, timeout=0, recursive=recursive)
-            yield response
+        return _EternalWatchIter(self, key, recursive=recursive)
 
     def get_lock(self, lock_name):
-        from etcd_gevent import Lock
+        from aio_etcd import Lock
         lock_name = _normalize_path(lock_name)
         return Lock(self._etcd_client, lock_name)
 
-    def write(self, key, value=None, ttl=None, dir=False):
-        from etcd_gevent import EtcdKeyError, EtcdNotFile
+    async def write(self, key, value=None, ttl=None, dir=False):
+        from aio_etcd import EtcdKeyError, EtcdNotFile
         key = _normalize_path(self._base_path + key)
         try:
-            self._etcd_client.write(key, value, ttl=ttl, dir=dir)
+            await self._etcd_client.write(key, value, ttl=ttl, dir=dir)
         except EtcdKeyError as ex:
             if dir and isinstance(ex, EtcdNotFile):
                 return
             raise KeyError('%s not dir' % key)
 
-    def delete(self, key, dir=False, recursive=False):
-        from etcd_gevent import EtcdKeyError, EtcdDirNotEmpty
+    async def delete(self, key, dir=False, recursive=False):
+        from aio_etcd import EtcdKeyError, EtcdDirNotEmpty
         key = _normalize_path(self._base_path + key)
         try:
-            self._etcd_client.delete(key, dir=dir, recursive=recursive)
+            await self._etcd_client.delete(key, dir=dir, recursive=recursive)
         except EtcdKeyError:
             raise KeyError(key)
         except EtcdDirNotEmpty:
@@ -290,7 +305,7 @@ def get(addr):
         return LocalKVStore()
     parsed = urlparse(addr)
     if parsed.scheme == 'etcd':
-        from etcd_gevent.client import Client as EtcdClient
+        from aio_etcd.client import Client as EtcdClient
         hosts = tuple((h.strip(), parsed.port) for h in parsed.hostname.split(','))
         client = EtcdClient(host=hosts, allow_reconnect=True)
         return EtcdKVStore(client, parsed.path)
