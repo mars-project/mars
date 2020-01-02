@@ -629,7 +629,7 @@ class PSRSAlignReduce(TensorShuffleReduce, PSRSOperandMixin):
                 slc = list(next(it))
                 slc.insert(op.axis, slice(None))
                 concat_1d = xp.concatenate(inps)
-                res[slc] = concat_1d
+                res[tuple(slc)] = concat_1d
             ctx[out.key] = res.astype(res.dtype, order=out.order.value)
 
 

@@ -331,7 +331,7 @@ def create_actor_pool(*args, **kwargs):
     raise OSError("Failed to create actor pool")
 
 
-class TestExecutor(Executor):
+class ExecutorForTest(Executor):
     """
     Mostly identical to normal executor, difference is that when executing graph,
     graph will be serialized then deserialized by Protocol Buffers and JSON both.

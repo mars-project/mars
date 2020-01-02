@@ -17,7 +17,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from mars.tests.core import TestBase, parameterized, TestExecutor
+from mars.tests.core import TestBase, parameterized, ExecutorForTest
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 
@@ -33,7 +33,7 @@ reduction_functions = dict(
 @parameterized(**reduction_functions)
 class Test(TestBase):
     def setUp(self):
-        self.executor = TestExecutor()
+        self.executor = ExecutorForTest()
 
     def compute(self, data, **kwargs):
         return getattr(data, self.func_name)(**kwargs)

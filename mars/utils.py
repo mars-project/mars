@@ -32,6 +32,7 @@ import zlib
 import threading
 import itertools
 import weakref
+import warnings
 from typing import List
 
 import numpy as np
@@ -759,3 +760,11 @@ def copy_tileables(tileables: List, **kwargs):
         kws.append(params)
     inputs = inputs or op.inputs
     return op.new_tileables(inputs, kws=kws, output_limit=len(kws))
+
+
+def ignore_warning(func):
+    def inner(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            return func(*args, **kwargs)
+    return inner

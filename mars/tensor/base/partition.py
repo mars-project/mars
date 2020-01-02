@@ -87,19 +87,19 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
         if np.isnan(in_tensor.shape[op.axis]):
             raise TilesError('Tensor has unknown shape on axis {}'.format(op.axis))
 
+        kth = op.kth
         if isinstance(op.kth, TENSOR_TYPE):
-            kth = op.kth
             # if `kth` is a tensor, make sure no unknown shape
             check_chunks_unknown_shape([kth], TilesError)
-            op._kth = kth.rechunk(kth.shape)._inplace_tile()
+            kth = kth.rechunk(kth.shape)._inplace_tile()
 
         if in_tensor.chunk_shape[op.axis] == 1:
             out_chunks = []
             for chunk in in_tensor.chunks:
                 chunk_op = op.copy().reset_key()
                 chunk_inputs = [chunk]
-                if isinstance(op.kth, TENSOR_TYPE):
-                    chunk_inputs.append(op.kth.chunks[0])
+                if isinstance(kth, TENSOR_TYPE):
+                    chunk_inputs.append(kth.chunks[0])
                 out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
                                                index=chunk.index, order=chunk.order)
                 out_chunks.append(out_chunk)
@@ -108,7 +108,7 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
             return new_op.new_tensors([in_tensor], shape=in_tensor.shape, order=in_tensor.order,
                                       chunks=out_chunks, nsplits=in_tensor.nsplits)
         else:
-            return ParallelPartition.tile(op)
+            return ParallelPartition.tile(op, kth)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -127,9 +127,13 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
 
 class ParallelPartition:
     @classmethod
-    def calc_paritions_info(cls, op, size, sort_info_chunks):
+    def calc_paritions_info(cls, op, kth, size, sort_info_chunks):
         # stage5, collect sort infos and calculate partition info for each partitions
-        kth = op.kth.chunks[0] if isinstance(op.kth, TENSOR_TYPE) else op.kth
+        if isinstance(kth, TENSOR_TYPE):
+            kth = kth.chunks[0]
+            is_kth_input = True
+        else:
+            is_kth_input = False
         calc_op = CalcPartitionsInfo(kth=kth, size=size,
                                      dtype=np.dtype(np.int32), gpu=op.gpu)
         kws = []
@@ -141,7 +145,7 @@ class ParallelPartition:
                 'pos': i
             })
         inputs = list(sort_info_chunks)
-        if isinstance(op.kth, TENSOR_TYPE):
+        if is_kth_input:
             inputs.insert(0, kth)
         return calc_op.new_chunks(inputs, kws=kws, output_limit=len(kws))
 
@@ -164,7 +168,7 @@ class ParallelPartition:
         return partitioned_chunks
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op, kth):
         """
         Approach here would be almost like PSRSSorter, but there are definitely some differences
         Main processes are listed below:
@@ -205,7 +209,7 @@ class ParallelPartition:
 
             # stage5, collect sort infos and calculate partition info for each partitions
             partition_info_chunks = cls.calc_paritions_info(
-                op, in_tensor.shape[op.axis], sort_info_chunks)
+                op, kth, in_tensor.shape[op.axis], sort_info_chunks)
 
             # Stage 6: partition on each partitions
             partitioned_chunks = cls.partition_on_merged(

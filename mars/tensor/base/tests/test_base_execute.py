@@ -23,6 +23,7 @@ import pandas as pd
 from mars import tensor as mt
 from mars.tiles import TilesError
 from mars.context import LocalContext
+from mars.utils import ignore_warning
 from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
@@ -31,12 +32,12 @@ from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcas
     histogram_bin_edges, histogram, to_gpu, to_cpu
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
-from mars.tests.core import require_cupy, TestExecutor
+from mars.tests.core import require_cupy, ExecutorForTest
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = TestExecutor('numpy')
+        self.executor = ExecutorForTest('numpy')
 
     def testRechunkExecution(self):
         raw = np.random.random((11, 8))
@@ -1394,6 +1395,7 @@ class Test(unittest.TestCase):
         sort_res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res[:, kth_res], sort_res[:, kth_res])
 
+    @ignore_warning
     def testHistogramBinEdgesExecution(self):
         rs = np.random.RandomState(0)
 
@@ -1414,7 +1416,7 @@ class Test(unittest.TestCase):
                 self.executor = this.executor
 
         ctx = LocalContext(MockSession())
-        executor = TestExecutor('numpy', storage=ctx)
+        executor = ExecutorForTest('numpy', storage=ctx)
         with ctx:
             raw2 = rs.randint(10, size=(1,))
             b = tensor(raw2)
@@ -1449,6 +1451,7 @@ class Test(unittest.TestCase):
             self.assertEqual(bin_edges.shape, expected.shape)
             np.testing.assert_array_equal(result, expected)
 
+    @ignore_warning
     def testHistogramExecution(self):
         rs = np.random.RandomState(0)
 
@@ -1480,7 +1483,7 @@ class Test(unittest.TestCase):
                 self.executor = this.executor
 
         ctx = LocalContext(MockSession())
-        executor = TestExecutor('numpy', storage=ctx)
+        executor = ExecutorForTest('numpy', storage=ctx)
         with ctx:
             raw2 = rs.randint(10, size=(1,))
             b = tensor(raw2)

@@ -18,13 +18,13 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
-from mars.tests.core import TestBase, TestExecutor
+from mars.tests.core import TestBase, ExecutorForTest
 
 
 class Test(TestBase):
     def setUp(self):
         super(Test, self).setUp()
-        self.executor = TestExecutor()
+        self.executor = ExecutorForTest()
 
     def testGroupBy(self):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],

@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from mars.tests.core import TestBase, parameterized, TestExecutor
+from mars.tests.core import TestBase, parameterized, ExecutorForTest
 from mars.tensor.datasource import array as from_array
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -36,7 +36,7 @@ binary_functions = dict(
 @parameterized(**binary_functions)
 class TestBinary(TestBase):
     def setUp(self):
-        self.executor = TestExecutor()
+        self.executor = ExecutorForTest()
 
     @property
     def rfunc_name(self):
@@ -527,7 +527,7 @@ class TestBinary(TestBase):
 class TestUnary(TestBase):
     def setUp(self):
         super().setUp()
-        self.executor = TestExecutor()
+        self.executor = ExecutorForTest()
 
     def testAbs(self):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))
