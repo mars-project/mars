@@ -468,7 +468,7 @@ class ExecutionActor(WorkerActor):
             finish_callbacks=all_callbacks,
             calc_device=calc_device,
             preferred_data_device=preferred_data_device,
-            no_prepare_chunk_keys=io_meta['no_prepare_chunk_keys'],
+            no_prepare_chunk_keys=io_meta.get('no_prepare_chunk_keys') or set(),
         )
 
         logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key,
