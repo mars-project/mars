@@ -21,6 +21,7 @@ import tempfile
 import textwrap
 import time
 import unittest
+from functools import partial
 from enum import Enum
 
 import numpy as np
@@ -140,6 +141,18 @@ class Test(unittest.TestCase):
 
         self.assertEqual(utils.tokenize(CustomizedTokenize()),
                          utils.tokenize(CustomizedTokenize()))
+
+        v = lambda x: x + 1
+        self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
+
+        def f(a, b):
+            return np.add(a, b)
+        self.assertEqual(utils.tokenize(f), utils.tokenize(copy.deepcopy(f)))
+
+        partial_f = partial(f, 1)
+        self.assertEqual(utils.tokenize(partial_f), utils.tokenize(copy.deepcopy(partial_f)))
+
+
 
     def testBuildTileableGraph(self):
         a = mt.ones((10, 10), chunk_size=8)
