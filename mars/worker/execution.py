@@ -43,14 +43,15 @@ class GraphExecutionRecord(object):
                  'state_time', 'mem_request', 'pinned_keys', 'est_finish_time',
                  'calc_actor_uid', 'send_addresses', 'retry_delay', 'retry_pending',
                  'finish_callbacks', 'stop_requested', 'calc_device',
-                 'preferred_data_device', 'resource_released')
+                 'preferred_data_device', 'resource_released', 'no_prepare_chunk_keys')
 
     def __init__(self, graph_serialized, state, chunk_targets=None, data_targets=None,
                  io_meta=None, data_metas=None, mem_request=None,
                  shared_input_chunks=None, pinned_keys=None, est_finish_time=None,
                  calc_actor_uid=None, send_addresses=None, retry_delay=None,
                  finish_callbacks=None, stop_requested=False, calc_device=None,
-                 preferred_data_device=None, resource_released=False):
+                 preferred_data_device=None, resource_released=False,
+                 no_prepare_chunk_keys=None):
 
         self.graph_serialized = graph_serialized
         graph = self.graph = deserialize_graph(graph_serialized)
@@ -74,6 +75,7 @@ class GraphExecutionRecord(object):
         self.calc_device = calc_device
         self.preferred_data_device = preferred_data_device
         self.resource_released = resource_released
+        self.no_prepare_chunk_keys = no_prepare_chunk_keys or set()
 
         _, self.op_string = concat_operand_keys(graph)
 
@@ -234,6 +236,8 @@ class ExecutionActor(WorkerActor):
         for chunk in graph:
             op = chunk.op
             if isinstance(op, Fetch):
+                if chunk.key in graph_record.no_prepare_chunk_keys:
+                    continue
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = input_data_sizes.get(chunk.key) or calc_data_size(chunk)
             elif isinstance(op, FetchShuffle):
@@ -464,6 +468,7 @@ class ExecutionActor(WorkerActor):
             finish_callbacks=all_callbacks,
             calc_device=calc_device,
             preferred_data_device=preferred_data_device,
+            no_prepare_chunk_keys=io_meta['no_prepare_chunk_keys'],
         )
 
         logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key,
@@ -557,6 +562,8 @@ class ExecutionActor(WorkerActor):
         for chunk in graph:
             op = chunk.op
             if isinstance(op, Fetch):
+                if chunk.key in graph_record.no_prepare_chunk_keys:
+                    continue
                 input_keys.add(op.to_fetch_key or chunk.key)
             elif isinstance(op, FetchShuffle):
                 shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
