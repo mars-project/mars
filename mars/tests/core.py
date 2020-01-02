@@ -17,6 +17,7 @@ import asyncio
 import functools
 import itertools
 import os
+import socket
 import logging
 import shutil
 import subprocess
@@ -349,13 +350,12 @@ def aio_case(obj):
     return func_wrapper
 
 
-def create_actor_pool(*args, **kwargs):
-    import gevent.socket
+async def create_actor_pool(*args, **kwargs):
     from mars.actors import create_actor_pool as new_actor_pool
 
     address = kwargs.pop('address', None)
     if not address:
-        return new_actor_pool(*args, **kwargs)
+        return await new_actor_pool(*args, **kwargs)
 
     if isinstance(address, str):
         host = address.rsplit(':')[0]
@@ -368,8 +368,8 @@ def create_actor_pool(*args, **kwargs):
     for _ in range(5):
         try:
             address = '{0}:{1}'.format(host, next(it))
-            return new_actor_pool(address, *args, **kwargs)
-        except (OSError, gevent.socket.error):
+            return await new_actor_pool(address, *args, **kwargs)
+        except (OSError, socket.error):
             continue
     raise OSError("Failed to create actor pool")
 

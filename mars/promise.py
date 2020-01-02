@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import inspect
 import logging
 import struct
 import sys
-import threading
 import weakref
 
 import numpy as np
@@ -92,12 +92,14 @@ class Promise(object):
             return None
 
         @functools.wraps(func)
-        def _wrapped(*args, **kwargs):
+        async def _wrapped(*args, **kwargs):
             _promise_pool.pop(self.id, None)
 
             result = None
             try:
                 result = func(*args, **kwargs)
+                if asyncio.iscoroutine(result):
+                    result = await result
                 if isinstance(result, Promise):
                     # the function itself returns a promise object
                     # bind returned promise object to current promise
@@ -168,7 +170,7 @@ class Promise(object):
         self._args = ()
         self._kwargs = {}
 
-    def _internal_step_next(self, *args, **kwargs):
+    async def _internal_step_next(self, *args, **kwargs):
         """
         Actual call to step promise call into the next step.
         If there are further steps, the function will return it
@@ -203,7 +205,7 @@ class Promise(object):
                     # remove the handler in promise in case that
                     # function closure is not freed
                     handler, acceptor._accept_handler = acceptor._accept_handler, None
-                    next_call = handler(*args, **kwargs)
+                    next_call = await handler(*args, **kwargs)
                 else:
                     acceptor._accepted = accept
                     acceptor._args = args
@@ -215,7 +217,7 @@ class Promise(object):
                     # remove the handler in promise in case that
                     # function closure is not freed
                     handler, rejecter._reject_handler = rejecter._reject_handler, None
-                    next_call = handler(*args, **kwargs)
+                    next_call = await handler(*args, **kwargs)
                 else:
                     rejecter._accepted = accept
                     rejecter._args = args
@@ -228,7 +230,7 @@ class Promise(object):
             if target_promise:
                 _promise_pool.pop(target_promise.id, None)
 
-    def step_next(self, args_and_kwargs=None):
+    async def step_next(self, args_and_kwargs=None):
         """
         Step into next promise with given args and kwargs
         """
@@ -239,7 +241,7 @@ class Promise(object):
 
         while step_call is not None:
             func, args, kwargs = step_call
-            step_call = func(*args, **kwargs)
+            step_call = await func(*args, **kwargs)
 
     def then(self, on_fulfilled, on_rejected=None):
         promise = Promise(on_fulfilled, on_rejected)
@@ -250,30 +252,32 @@ class Promise(object):
             args_and_kwargs[1]['_accept'] = self._accepted
             _promise_pool.pop(self.id, None)
             self._clear_result_cache()
-            self.step_next(args_and_kwargs)
+            asyncio.ensure_future(self.step_next(args_and_kwargs))
         return promise
 
     def catch(self, on_rejected):
         return self.then(None, on_rejected)
 
-    def wait(self, waiter=None, timeout=None):
-        """
-        Wait when the promise returns. Currently only used in debug.
-        :param waiter: wait object
-        :param timeout: wait timeout
-        :return: accept or reject
-        """
-        waiter = threading.Event()
-        status = []
+    def __await__(self):
+        waiter = asyncio.Event()
+        _result = None
 
-        def _finish_exec(accept_or_reject):
+        def _finish_exec(args, kw, accept=True):
+            nonlocal _result
+            _result = (accept, args, kw)
             waiter.set()
-            status.append(accept_or_reject)
 
-        self.then(lambda *_, **__: _finish_exec(True),
-                  lambda *_, **__: _finish_exec(False))
-        waiter.wait(timeout)
-        return status[0]
+        async def _waiter():
+            await waiter.wait()
+            accept, args, kw = _result
+            if not accept:
+                raise args[1].with_traceback(args[2])
+            else:
+                return args, kw
+
+        self.then(lambda *args, **kw: _finish_exec(args, kw, True),
+                  lambda *exc: _finish_exec(exc, {}, False))
+        return _waiter().__await__()
 
 
 class PromiseRefWrapper(object):
@@ -319,27 +323,24 @@ class PromiseRefWrapper(object):
             self._caller.register_promise(p, self._ref)
 
             timeout = kwargs.pop('_timeout', 0)
-            spawn = kwargs.pop('_spawn', True)
 
             kwargs['callback'] = ((self._caller.uid, self._caller.address),
                                   'handle_promise', promise_id)
             kwargs['_tell'] = True
 
-            def _promise_runner():
+            async def _promise_runner():
                 try:
-                    ref_fun(*args, **kwargs)
+                    await ref_fun(*args, **kwargs)
                 except:  # noqa: E722
-                    self._caller.ref().handle_promise(
+                    await self._caller.ref().handle_promise(
                         promise_id, *sys.exc_info(), _accept=False, _tell=True)
 
-            if spawn:
-                self._caller.async_group.spawn(_promise_runner)
-            else:
-                ref_fun(*args, **kwargs)
+            asyncio.ensure_future(_promise_runner())
 
             if timeout and timeout > 0:
                 # add a callback that triggers some times later to deal with timeout
-                self._caller.ref().handle_promise_timeout(promise_id, _tell=True, _delay=timeout)
+                asyncio.ensure_future(self._caller.ref().handle_promise_timeout(
+                    promise_id, _tell=True, _delay=timeout))
 
             return p
 
@@ -361,7 +362,7 @@ def reject_on_exception(func):
                 break
 
     @functools.wraps(func)
-    def _wrapped(*args, **kwargs):
+    async def _wrapped(*args, **kwargs):
         callback = None
         if 'callback' in kwargs:
             callback = kwargs['callback']
@@ -369,14 +370,15 @@ def reject_on_exception(func):
             callback = args[callback_pos]
 
         try:
-            return func(*args, **kwargs)
+            return await func(*args, **kwargs)
         except:  # noqa: E722
             actor = args[0]
             logger.exception('Unhandled exception in promise call')
             if callback:
-                actor.tell_promise(callback, *sys.exc_info(), _accept=False)
+                await actor.tell_promise(callback, *sys.exc_info(), _accept=False)
             else:
                 raise
+
     return _wrapped
 
 
@@ -404,12 +406,6 @@ class PromiseActor(FunctionActor):
             ref = self.ctx.actor_ref(*args, **kwargs)
         return PromiseRefWrapper(ref, self)
 
-    @property
-    def async_group(self):
-        if not hasattr(self, '_async_group'):
-            self._async_group = self.ctx.asyncpool()
-        return self._async_group
-
     def spawn_promised(self, func, *args, **kwargs):
         """
         Run func asynchronously in a pool and returns a promise.
@@ -424,18 +420,18 @@ class PromiseActor(FunctionActor):
         ref = self.ref()
         self.register_promise(p, ref)
 
-        def _wrapped(*a, **kw):
+        async def _wrapped(*a, **kw):
             try:
-                result = func(*a, **kw)
+                result = await func(*a, **kw)
             except:  # noqa: E722
-                ref.handle_promise(p.id, *sys.exc_info(), _accept=False, _tell=True)
+                await ref.handle_promise(p.id, *sys.exc_info(), _accept=False, _tell=True)
             else:
-                ref.handle_promise(p.id, result, _tell=True)
+                await ref.handle_promise(p.id, result, _tell=True)
             finally:
                 del a, kw
 
         try:
-            self.async_group.spawn(_wrapped, *args, **kwargs)
+            asyncio.ensure_future(_wrapped(*args, **kwargs))
         finally:
             del args, kwargs
         return p
@@ -505,10 +501,10 @@ class PromiseActor(FunctionActor):
                 p = self.get_promise(promise_id)
                 if p is None:
                     continue
-                p.step_next([args, kwargs])
+                asyncio.ensure_future(p.step_next([args, kwargs]))
         return handled_refs
 
-    def tell_promise(self, callback, *args, **kwargs):
+    async def tell_promise(self, callback, *args, **kwargs):
         """
         Tell promise results to the caller
         :param callback: promise callback
@@ -516,9 +512,13 @@ class PromiseActor(FunctionActor):
         wait = kwargs.pop('_wait', False)
         uid, address = callback[0]
         callback_args = callback[1:] + args + (kwargs, )
-        return self.ctx.actor_ref(uid, address=address).tell(callback_args, wait=wait)
+        awaitable = self.ctx.actor_ref(uid, address=address).tell(callback_args)
+        if wait:
+            return await awaitable
+        else:
+            asyncio.ensure_future(awaitable)
 
-    def handle_promise(self, promise_id, *args, **kwargs):
+    async def handle_promise(self, promise_id, *args, **kwargs):
         """
         Callback entry for promise results
         :param promise_id: promise key
@@ -527,10 +527,10 @@ class PromiseActor(FunctionActor):
         if p is None:
             logger.warning('Promise %r reentered or not registered in %s', promise_id, self.uid)
             return
-        self.get_promise(promise_id).step_next([args, kwargs])
+        await self.get_promise(promise_id).step_next([args, kwargs])
         self.delete_promise(promise_id)
 
-    def handle_promise_timeout(self, promise_id):
+    async def handle_promise_timeout(self, promise_id):
         """
         Callback entry for promise timeout
         :param promise_id: promise key
@@ -541,7 +541,7 @@ class PromiseActor(FunctionActor):
             return
 
         self.delete_promise(promise_id)
-        p.step_next([build_exc_info(PromiseTimeout), dict(_accept=False)])
+        await p.step_next([build_exc_info(PromiseTimeout), dict(_accept=False)])
 
 
 def all_(promises):
@@ -556,21 +556,21 @@ def all_(promises):
     finish_set = set()
 
     def _build_then(promise):
-        def _then(*_, **__):
+        async def _then(*_, **__):
             finish_set.add(promise.id)
             if all(p.id in finish_set for p in promises):
                 for p in promises:
                     _promise_pool.pop(p.id, None)
-                new_promise.step_next()
+                await new_promise.step_next()
         return _then
 
-    def _handle_reject(*args, **kw):
+    async def _handle_reject(*args, **kw):
         if new_promise._accepted is not None:
             return
         for p in promises:
             _promise_pool.pop(p.id, None)
         kw['_accept'] = False
-        new_promise.step_next([args, kw])
+        await new_promise.step_next([args, kw])
 
     for p in promises:
         p.then(_build_then(p), _handle_reject)
@@ -578,7 +578,7 @@ def all_(promises):
     if promises:
         return new_promise
     else:
-        new_promise.step_next()
+        asyncio.ensure_future(new_promise.step_next())
         return new_promise
 
 

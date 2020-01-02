@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import asyncio.queues
 import functools
 import sys
-import threading
 import time
 import unittest
 import weakref
-from queue import Queue
 
-from mars.tests.core import create_actor_pool
+from mars.tests.core import create_actor_pool, aio_case
 from mars.utils import build_exc_info
 from mars import promise
 
@@ -31,13 +31,13 @@ class ServeActor(promise.PromiseActor):
         self._result_list = []
 
     @promise.reject_on_exception
-    def serve(self, value, delay=None, accept=True, raises=False, callback=None):
-        self.ctx.sleep(delay if delay is not None else 0.1)
+    async def serve(self, value, delay=None, accept=True, raises=False, callback=None):
+        await asyncio.sleep(delay if delay is not None else 0.1)
         if raises:
             raise ValueError('User-induced error')
         self._result_list.append(value)
         if callback:
-            self.tell_promise(callback, value, _accept=accept)
+            await self.tell_promise(callback, value, _accept=accept)
 
     def get_result(self):
         return self._result_list
@@ -57,7 +57,7 @@ class PromiseTestActor(promise.PromiseActor):
     def reset_finished(self):
         self._finished = False
 
-    def test_normal(self):
+    async def test_normal(self):
         self._finished = False
 
         assert self.promise_ref().uid == self.uid
@@ -82,8 +82,8 @@ class PromiseTestActor(promise.PromiseActor):
             .then(lambda *_: setattr(self, '_finished', True))
 
     def test_spawn(self, raises=False):
-        def _task():
-            self.ctx.sleep(0.5)
+        async def _task():
+            await asyncio.sleep(0.5)
             if raises:
                 raise SystemError
 
@@ -117,8 +117,8 @@ class PromiseTestActor(promise.PromiseActor):
 
         ref = self.promise_ref('ServeActor')
 
-        def _rejecter(*exc):
-            ref.serve(exc[0].__name__)
+        async def _rejecter(*exc):
+            await ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=2, _timeout=1, _promise=True) \
             .catch(_rejecter) \
@@ -129,8 +129,8 @@ class PromiseTestActor(promise.PromiseActor):
 
         ref = self.promise_ref('ServeActor')
 
-        def _rejecter(*exc):
-            ref.serve(exc[0].__name__)
+        async def _rejecter(*exc):
+            await ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=1, _timeout=2, _promise=True) \
             .catch(_rejecter) \
@@ -142,8 +142,8 @@ class PromiseTestActor(promise.PromiseActor):
         self._finished = False
         ref = self.promise_ref('ServeActor')
 
-        def _rejecter(*exc):
-            ref.serve(exc[0].__name__)
+        async def _rejecter(*exc):
+            await ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=2, _promise=True) \
             .catch(_rejecter) \
@@ -156,8 +156,8 @@ class PromiseTestActor(promise.PromiseActor):
         self._finished = False
         ref = self.promise_ref('ServeActor', address=self.address)
 
-        def _rejecter(*exc):
-            ref.serve(exc[0].__name__)
+        async def _rejecter(*exc):
+            await ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=2, _promise=True) \
             .catch(_rejecter) \
@@ -173,8 +173,8 @@ class PromiseTestActor(promise.PromiseActor):
 
         new_content = Intermediate('Content: %s' % (content,))
 
-        def _acceptor(*_):
-            ref.serve(weakref.ref(new_content))
+        async def _acceptor(*_):
+            await ref.serve(weakref.ref(new_content))
             return 'Processed: %s' % new_content.str
 
         ref.serve(0, delay=0.5, _promise=True) \
@@ -186,43 +186,41 @@ def _raise_exception(exc):
     raise exc
 
 
-def wait_test_actor_result(ref, timeout):
-    import gevent
+async def wait_test_actor_result(ref, timeout):
     t = time.time()
-    while not ref.get_finished():
-        gevent.sleep(0.01)
+    while not await ref.get_finished():
+        await asyncio.sleep(0.01)
         if time.time() > t + timeout:
             raise TimeoutError
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
+@aio_case
 class Test(unittest.TestCase):
-    def testPromise(self):
+    async def testPromise(self):
         promises = weakref.WeakValueDictionary()
-        req_queue = Queue()
+        req_queue = asyncio.queues.Queue()
         value_list = []
 
         time_unit = 0.1
 
-        def test_thread_body():
+        async def test_coro_body():
             while True:
-                idx, v, success = req_queue.get()
+                idx, v, success = await req_queue.get()
                 if v is None:
                     break
                 value_list.append(('thread_body', v))
-                time.sleep(time_unit)
-                promises[idx].step_next([(v,), dict(_accept=success)])
+                await asyncio.sleep(time_unit)
+                asyncio.ensure_future(promises[idx].step_next([(v,), dict(_accept=success)]))
 
         try:
-            thread = threading.Thread(target=test_thread_body)
-            thread.daemon = True
-            thread.start()
+            asyncio.ensure_future(test_coro_body())
 
             def gen_promise(value, accept=True):
                 value_list.append(('gen_promise', value))
                 p = promise.Promise()
                 promises[p.id] = p
-                req_queue.put((p.id, value + 1, accept))
+                asyncio.ensure_future(req_queue.put((p.id, value + 1, accept)))
                 return p
 
             # simple promise call
@@ -230,7 +228,7 @@ class Test(unittest.TestCase):
             p = gen_promise(0) \
                 .then(lambda v: gen_promise(v)) \
                 .then(lambda v: gen_promise(v))
-            p.wait()
+            await p
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -240,9 +238,8 @@ class Test(unittest.TestCase):
 
             # continue accepted call with then
             value_list = []
-            p.then(lambda *_: gen_promise(0)) \
-                .then(lambda v: gen_promise(v)) \
-                .wait()
+            await p.then(lambda *_: gen_promise(0)) \
+                .then(lambda v: gen_promise(v))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -253,8 +250,7 @@ class Test(unittest.TestCase):
             value_list = []
             p = promise.finished() \
                 .then(lambda *_: 5 / 0)
-            p.catch(lambda *_: gen_promise(0)) \
-                .wait()
+            await p.catch(lambda *_: gen_promise(0))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1)]
@@ -267,7 +263,7 @@ class Test(unittest.TestCase):
                 .catch(lambda *_: 2 / 0) \
                 .catch(lambda *_: gen_promise(0)) \
                 .catch(lambda *_: gen_promise(1))
-            p.wait()
+            await p
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1)]
@@ -278,20 +274,18 @@ class Test(unittest.TestCase):
             p = gen_promise(0) \
                 .then(lambda *_: 5 / 0) \
                 .then(lambda *_: gen_promise(2))
-            time.sleep(0.5)
+            await asyncio.sleep(0.5)
             value_list = []
-            p.catch(lambda *_: gen_promise(0)) \
-                .wait()
+            await p.catch(lambda *_: gen_promise(0))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1)]
             )
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda v: gen_promise(v).then(lambda x: x + 1)) \
-                .then(lambda v: gen_promise(v)) \
-                .wait()
+                .then(lambda v: gen_promise(v))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -300,11 +294,10 @@ class Test(unittest.TestCase):
             )
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda v: gen_promise(v)) \
                 .then(lambda v: gen_promise(v, False)) \
-                .catch(lambda v: value_list.append(('catch', v))) \
-                .wait()
+                .catch(lambda v: value_list.append(('catch', v)))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -314,11 +307,10 @@ class Test(unittest.TestCase):
             )
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda v: gen_promise(v, False).then(lambda x: x + 1)) \
                 .then(lambda v: gen_promise(v)) \
-                .catch(lambda v: value_list.append(('catch', v))) \
-                .wait()
+                .catch(lambda v: value_list.append(('catch', v)))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -327,12 +319,11 @@ class Test(unittest.TestCase):
             )
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda v: gen_promise(v)) \
                 .then(lambda v: v + 1) \
                 .then(lambda v: gen_promise(v, False)) \
-                .catch(lambda v: value_list.append(('catch', v))) \
-                .wait()
+                .catch(lambda v: value_list.append(('catch', v)))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -342,13 +333,12 @@ class Test(unittest.TestCase):
             )
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda v: gen_promise(v)) \
                 .catch(lambda v: gen_promise(v)) \
                 .catch(lambda v: gen_promise(v)) \
                 .then(lambda v: gen_promise(v, False)) \
-                .catch(lambda v: value_list.append(('catch', v))) \
-                .wait()
+                .catch(lambda v: value_list.append(('catch', v)))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -358,14 +348,13 @@ class Test(unittest.TestCase):
             )
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda v: gen_promise(v)) \
                 .catch(lambda v: gen_promise(v)) \
                 .catch(lambda v: gen_promise(v)) \
                 .then(lambda v: gen_promise(v, False)) \
                 .then(lambda v: gen_promise(v), lambda v: gen_promise(v + 1, False)) \
-                .catch(lambda v: value_list.append(('catch', v))) \
-                .wait()
+                .catch(lambda v: value_list.append(('catch', v)))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -376,14 +365,13 @@ class Test(unittest.TestCase):
             )
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda v: gen_promise(v)) \
                 .catch(lambda v: gen_promise(v)) \
                 .catch(lambda v: gen_promise(v)) \
                 .then(lambda v: gen_promise(v, False)) \
                 .then(lambda v: gen_promise(v), lambda v: _raise_exception(ValueError)) \
-                .catch(lambda *_: value_list.append(('catch',))) \
-                .wait()
+                .catch(lambda *_: value_list.append(('catch',)))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -393,13 +381,12 @@ class Test(unittest.TestCase):
             )
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda v: gen_promise(v, False)) \
                 .catch(lambda v: gen_promise(v, False)) \
                 .catch(lambda v: gen_promise(v)) \
                 .then(lambda v: gen_promise(v)) \
-                .catch(lambda v: value_list.append(('catch', v))) \
-                .wait()
+                .catch(lambda v: value_list.append(('catch', v)))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -410,11 +397,10 @@ class Test(unittest.TestCase):
             )
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda v: gen_promise(v, False)) \
                 .then(lambda v: gen_promise(v)) \
-                .catch(lambda v: value_list.append(('catch', v))) \
-                .wait()
+                .catch(lambda v: value_list.append(('catch', v)))
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
@@ -423,61 +409,58 @@ class Test(unittest.TestCase):
             )
         finally:
             self.assertDictEqual(promise._promise_pool, {})
-            req_queue.put((None, None, None))
 
-    def testPromiseActor(self):
+    async def testPromiseActor(self):
         try:
-            with create_actor_pool(n_process=1) as pool:
-                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
-                test_ref = pool.create_actor(PromiseTestActor)
+            async with await create_actor_pool(n_process=1) as pool:
+                serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = await pool.create_actor(PromiseTestActor)
 
-                test_ref.test_normal()
-                wait_test_actor_result(test_ref, 10)
-                self.assertListEqual(serve_ref.get_result(), list(range(11)))
+                await test_ref.test_normal()
+                await wait_test_actor_result(test_ref, 10)
+                self.assertListEqual(await serve_ref.get_result(), list(range(11)))
 
-                serve_ref.clear_result()
-                test_ref.reset_finished()
+                await serve_ref.clear_result()
+                await test_ref.reset_finished()
 
-                test_ref.test_error_raise()
-                wait_test_actor_result(test_ref, 10)
-                self.assertListEqual(serve_ref.get_result(), [-1])
+                await test_ref.test_error_raise()
+                await wait_test_actor_result(test_ref, 10)
+                self.assertListEqual(await serve_ref.get_result(), [-1])
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 
-    def testAll(self):
+    async def testAll(self):
         promises = weakref.WeakValueDictionary()
-        req_queue = Queue()
+        req_queue = asyncio.queues.Queue()
         value_list = []
 
         time_unit = 0.1
 
-        def test_thread_body():
+        async def test_coro_body():
             while True:
-                idx, v, success = req_queue.get()
+                idx, v, success = await req_queue.get()
                 if v is None:
                     break
                 value_list.append(('thread_body', v))
-                time.sleep(time_unit)
-                promises[idx].step_next([(v,), dict(_accept=success)])
+                await asyncio.sleep(time_unit)
+                asyncio.ensure_future(promises[idx].step_next([(v,), dict(_accept=success)]))
 
         def gen_promise(value, accept=True):
             p = promise.Promise()
             promises[p.id] = p
-            req_queue.put((p.id, value + 1, accept))
+            asyncio.ensure_future(req_queue.put((p.id, value + 1, accept)))
             return p
 
         try:
-            thread = threading.Thread(target=test_thread_body)
-            thread.daemon = True
-            thread.start()
+            asyncio.ensure_future(test_coro_body())
 
             value_list = []
-            promise.all_([]).then(lambda: value_list.append(('all', 0))).wait()
+            await promise.all_([]).then(lambda: value_list.append(('all', 0)))
             self.assertListEqual(value_list, [('all', 0)])
 
             value_list = []
             prior_promises = [gen_promise(idx) for idx in range(4)]
-            promise.all_(prior_promises).then(lambda: value_list.append(('all', 5))).wait()
+            await promise.all_(prior_promises).then(lambda: value_list.append(('all', 5)))
             del prior_promises
 
             self.assertListEqual(
@@ -488,142 +471,143 @@ class Test(unittest.TestCase):
 
             value_list = []
             prior_promises = [gen_promise(idx, bool((idx + 1) % 2)) for idx in range(4)]
-            promise.all_(prior_promises).then(
+            await promise.all_(prior_promises).then(
                 lambda: value_list.append(('all', 5)),
                 lambda *_: value_list.append(('all_catch', 5)),
-            ).wait()
+            )
             del prior_promises
 
-            expected = [('thread_body', 1), ('thread_body', 2), ('all_catch', 5)]
+            expected = [('thread_body', 1), ('thread_body', 2), ('thread_body', 3), ('all_catch', 5)]
             self.assertListEqual(value_list[:len(expected)], expected)
-            time.sleep(0.5)
+            await asyncio.sleep(0.5)
 
             def _gen_all_promise(*_):
                 prior_promises = [gen_promise(idx, bool((idx + 1) % 2)) for idx in range(4)]
                 return promise.all_(prior_promises)
 
             value_list = []
-            gen_promise(0) \
+            await gen_promise(0) \
                 .then(lambda *_: value_list.append(('pre_all', 0))) \
                 .then(_gen_all_promise) \
                 .then(lambda v: gen_promise(v)) \
                 .then(
                 lambda: value_list.append(('all', 5)),
                 lambda *_: value_list.append(('all_catch', 5)),
-            ).wait()
-            expected = [('thread_body', 1), ('pre_all', 0), ('thread_body', 1), ('thread_body', 2), ('all_catch', 5)]
+            )
+            expected = [('thread_body', 1), ('pre_all', 0),
+                        ('thread_body', 1), ('thread_body', 2), ('thread_body', 3),
+                        ('all_catch', 5)]
             self.assertListEqual(value_list[:len(expected)], expected)
-            time.sleep(0.5)
+            await asyncio.sleep(0.5)
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
-            req_queue.put((None, None, None))
 
-    def testSpawnPromisedActor(self):
+    async def testSpawnPromisedActor(self):
         try:
-            with create_actor_pool(n_process=1) as pool:
-                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
-                test_ref = pool.create_actor(PromiseTestActor)
+            async with await create_actor_pool(n_process=1) as pool:
+                serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = await pool.create_actor(PromiseTestActor)
 
                 start_time = time.time()
-                test_ref.test_spawn()
+                await test_ref.test_spawn()
                 self.assertLess(time.time() - start_time, 0.5)
-                wait_test_actor_result(test_ref, 30)
-                self.assertEqual(serve_ref.get_result(), [0])
+                await wait_test_actor_result(test_ref, 30)
+                self.assertEqual(await serve_ref.get_result(), [0])
 
                 self.assertGreaterEqual(time.time() - start_time, 0.5)
                 self.assertLess(time.time() - start_time, 1)
 
-                serve_ref.clear_result()
-                test_ref.reset_finished()
+                await serve_ref.clear_result()
+                await test_ref.reset_finished()
 
                 start_time = time.time()
-                test_ref.test_spawn(raises=True)
+                await test_ref.test_spawn(raises=True)
                 self.assertLess(time.time() - start_time, 0.5)
-                wait_test_actor_result(test_ref, 30)
-                self.assertEqual(serve_ref.get_result(), ['SystemError'])
+                await wait_test_actor_result(test_ref, 30)
+                self.assertEqual(await serve_ref.get_result(), ['SystemError'])
 
                 self.assertGreaterEqual(time.time() - start_time, 0.5)
                 self.assertLess(time.time() - start_time, 1)
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 
-    def testAllActor(self):
+    async def testAllActor(self):
         try:
-            with create_actor_pool(n_process=1) as pool:
-                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
-                test_ref = pool.create_actor(PromiseTestActor)
+            async with await create_actor_pool(n_process=1) as pool:
+                serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = await pool.create_actor(PromiseTestActor)
 
-                test_ref.test_all_promise()
+                await test_ref.test_all_promise()
 
-                wait_test_actor_result(test_ref, 30)
+                await wait_test_actor_result(test_ref, 30)
                 self.assertListEqual(
-                    serve_ref.get_result(),
+                    await serve_ref.get_result(),
                     [-128] + list(range(0, 20, 2)) + list(range(1, 20, 2)) + [127]
                 )
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 
-    def testTimeoutActor(self):
+    async def testTimeoutActor(self):
         try:
-            with create_actor_pool(n_process=1) as pool:
-                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
-                test_ref = pool.create_actor(PromiseTestActor)
+            async with await create_actor_pool(n_process=1) as pool:
+                serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = await pool.create_actor(PromiseTestActor)
 
-                test_ref.test_timeout()
+                await test_ref.test_timeout()
 
-                wait_test_actor_result(test_ref, 30)
-                self.assertListEqual(serve_ref.get_result(), [0, 'PromiseTimeout'])
+                await wait_test_actor_result(test_ref, 30)
+                self.assertListEqual(await serve_ref.get_result(), [0, 'PromiseTimeout'])
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 
-    def testNoTimeoutActor(self):
+    async def testNoTimeoutActor(self):
         try:
-            with create_actor_pool(n_process=1) as pool:
-                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
-                test_ref = pool.create_actor(PromiseTestActor)
+            async with await create_actor_pool(n_process=1) as pool:
+                serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = await pool.create_actor(PromiseTestActor)
 
-                test_ref.test_no_timeout()
+                await test_ref.test_no_timeout()
 
-                wait_test_actor_result(test_ref, 30)
+                await wait_test_actor_result(test_ref, 30)
 
-                self.assertListEqual(serve_ref.get_result(), [0])
+                self.assertListEqual(await serve_ref.get_result(), [0])
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 
-    def testRefReject(self):
+    async def testRefReject(self):
         try:
-            with create_actor_pool(n_process=1) as pool:
-                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
-                test_ref = pool.create_actor(PromiseTestActor)
+            async with await create_actor_pool(n_process=1) as pool:
+                serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = await pool.create_actor(PromiseTestActor)
 
-                test_ref.test_ref_reject()
+                await test_ref.test_ref_reject()
 
-                wait_test_actor_result(test_ref, 30)
-                self.assertListEqual(serve_ref.get_result(), ['WorkerProcessStopped', 0])
+                await wait_test_actor_result(test_ref, 30)
+                self.assertListEqual(await serve_ref.get_result(), [0, 'WorkerProcessStopped'])
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 
-    def testAddrReject(self):
+    async def testAddrReject(self):
         try:
-            with create_actor_pool(n_process=1) as pool:
-                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
-                test_ref = pool.create_actor(PromiseTestActor)
+            async with await create_actor_pool(n_process=1) as pool:
+                serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = await pool.create_actor(PromiseTestActor)
 
-                test_ref.test_addr_reject()
+                await test_ref.test_addr_reject()
 
-                wait_test_actor_result(test_ref, 30)
-                self.assertListEqual(serve_ref.get_result(), ['WorkerDead', 0])
+                await wait_test_actor_result(test_ref, 30)
+                self.assertListEqual(await serve_ref.get_result(), [0, 'WorkerDead'])
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 
-    def testClosureRefcount(self):
+    async def testClosureRefcount(self):
         try:
-            with create_actor_pool(n_process=1) as pool:
-                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
-                test_ref = pool.create_actor(PromiseTestActor)
+            async with await create_actor_pool(n_process=1) as pool:
+                serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = await pool.create_actor(PromiseTestActor)
 
-                test_ref.test_closure_refcount()
-                wait_test_actor_result(test_ref, 30)
-                self.assertIsNone(serve_ref.get_result()[-1]())
+                await test_ref.test_closure_refcount()
+                await wait_test_actor_result(test_ref, 30)
+                self.assertIsNone((await serve_ref.get_result())[-1]())
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
