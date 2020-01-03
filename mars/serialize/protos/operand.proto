@@ -201,6 +201,10 @@ message OperandDef {
         GAMMALN = 200;
         ERF = 201;
 
+        // spatial
+        PDIST = 231;
+        CDIST = 232;
+
         // tree operand
         TREE_ADD = 251;
         TREE_MULTIPLY = 252;
@@ -385,6 +389,10 @@ message OperandDef {
         // partition
         CALC_PARTITIONS_INFO = 2046;
         PARTITION_MERGED = 2047;
+
+        // pdist
+        PDIST_MAP = 2050;
+        PDIST_REDUCE = 2051;
 
         // store
         READ_CSV = 2100;
