@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 cd /mnt/mars
+/opt/conda/bin/pip install -r requirements.txt
+/opt/conda/bin/pip install -r requirements-extra.txt
+
 mkdir -p .kube-coverage
 export COVERAGE_FILE=.kube-coverage/.coverage
 
