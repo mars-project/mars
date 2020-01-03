@@ -781,7 +781,7 @@ def require_module(module: str):
             def inner(*args, **kwargs):
                 return func(*args, **kwargs)
             return inner
-        except ImportError as e:
+        except ImportError:
             return
     return wrap
 

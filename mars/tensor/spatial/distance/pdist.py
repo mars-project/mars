@@ -497,7 +497,7 @@ def pdist(X, metric='euclidean', **kwargs):
     if len(s) != 2:
         raise ValueError('A 2-dimensional tensor must be passed.')
 
-    m, n = s
+    m = s[0]
     out = kwargs.pop("out", None)
     if out is not None:
         if not hasattr(out, 'shape'):
@@ -679,11 +679,12 @@ class PdistShuffleMap(TensorShuffleMap, TensorOperandMixin):
             indices = out_row_cum_sizes[i_indices] + j_indices - \
                       (op.n - out_row_sizes[i_indices])
 
-            del out_row_sizes, out_row_cum_sizes
+            # save as much memory as possible
+            del i_indices, j_indices, out_row_sizes, out_row_cum_sizes
 
             out_cum_size = xp.cumsum(op.out_sizes)
             out = op.outputs[0]
-            for i, out_size in enumerate(op.out_sizes):
+            for i in range(len(op.out_sizes)):
                 start_index = out_cum_size[i - 1] if i > 0 else 0
                 end_index = out_cum_size[i]
                 to_filter = (indices >= start_index) & (indices < end_index)
