@@ -14,7 +14,6 @@
 
 import os
 import pickle
-import cloudpickle
 import uuid
 from collections import deque
 from datetime import date, datetime, timedelta
@@ -24,10 +23,8 @@ from functools import lru_cache, partial
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
 
 import numpy as np
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import pandas as pd
+import cloudpickle
 
 
 cpdef str to_str(s, encoding='utf-8'):
