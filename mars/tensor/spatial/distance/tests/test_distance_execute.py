@@ -80,3 +80,50 @@ class Test(unittest.TestCase):
         # result = self._executor.execute_tensor(dist, concat=True)[0]
         # expected = sp_pdist(raw, metric=f)
         # np.testing.assert_array_equal(result, expected)
+
+    @unittest.skipIf(distance.cdist is None, 'scipy not installed')
+    def testCdistExecution(self):
+        from scipy.spatial.distance import cdist as sp_cdist
+
+        raw_a = np.random.rand(100, 10)
+        raw_b = np.random.rand(89, 10)
+
+        # test 1 chunk
+        xa = tensor(raw_a, chunk_size=100)
+        xb = tensor(raw_b, chunk_size=100)
+
+        dist = distance.cdist(xa, xb)
+        result = self._executor.execute_tensor(dist, concat=True)[0]
+        expected = sp_cdist(raw_a, raw_b)
+        np.testing.assert_array_equal(result, expected)
+
+        dist = distance.cdist(xa, xb, metric='hamming')
+        result = self._executor.execute_tensor(dist, concat=True)[0]
+        expected = sp_cdist(raw_a, raw_b, metric='hamming')
+        np.testing.assert_array_equal(result, expected)
+
+        # f = lambda u, v: np.sqrt(((u-v)**2).sum())
+        # dist = distance.cdist(xa, xb, metric=f)
+        # result = self._executor.execute_tensor(dist, concat=True)[0]
+        # expected = sp_cdist(raw_a, raw_b, metric=f)
+        # np.testing.assert_array_equal(result, expected)
+
+        # test more than 1 chunk
+        xa = tensor(raw_a, chunk_size=12)
+        xb = tensor(raw_b, chunk_size=13)
+
+        dist = distance.cdist(xa, xb)
+        result = self._executor.execute_tensor(dist, concat=True)[0]
+        expected = sp_cdist(raw_a, raw_b)
+        np.testing.assert_array_equal(result, expected)
+
+        dist = distance.cdist(xa, xb, metric='hamming')
+        result = self._executor.execute_tensor(dist, concat=True)[0]
+        expected = sp_cdist(raw_a, raw_b, metric='hamming')
+        np.testing.assert_array_equal(result, expected)
+
+        # f = lambda u, v: np.sqrt(((u-v)**2).sum())
+        # dist = distance.cdist(xa, xb, metric=f)
+        # result = self._executor.execute_tensor(dist, concat=True)[0]
+        # expected = sp_cdist(raw_a, raw_b, metric=f)
+        # np.testing.assert_array_equal(result, expected)

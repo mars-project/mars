@@ -18,6 +18,7 @@ import numpy as np
 
 from mars.tensor.datasource import tensor
 from mars.tensor.spatial import distance
+from mars.tiles import get_tiled
 
 
 class Test(unittest.TestCase):
@@ -65,3 +66,57 @@ class Test(unittest.TestCase):
         # test extra param
         with self.assertRaises(TypeError):
             distance.pdist(np.random.rand(3, 3), unknown_kw='unknown_kw')
+
+    def testCdist(self):
+        raw_a = np.random.rand(100, 10)
+        raw_b = np.random.rand(90, 10)
+
+        # test 1 chunk
+        a = tensor(raw_a, chunk_size=100)
+        b = tensor(raw_b, chunk_size=100)
+        dist = distance.cdist(a, b)
+        self.assertEqual(dist.shape, (100, 90))
+
+        dist = dist.tiles()
+        self.assertEqual(len(dist.chunks), 1)
+        for c in dist.chunks:
+            self.assertEqual(c.shape, dist.shape)
+
+        # test multiple chunks
+        a = tensor(raw_a, chunk_size=15)
+        b = tensor(raw_b, chunk_size=16)
+        dist = distance.cdist(a, b)
+        self.assertEqual(dist.shape, (100, 90))
+
+        dist = dist.tiles()
+        self.assertEqual(len(dist.chunks), (100 // 15 + 1) * (90 // 16 + 1))
+        for c in dist.chunks:
+            ta = get_tiled(a)
+            tb = get_tiled(b)
+            self.assertEqual(c.shape, (ta.cix[c.index[0], 0].shape[0],
+                                       tb.cix[c.index[1], 0].shape[0]))
+
+        # XA can only be 2-d
+        with self.assertRaises(ValueError):
+            distance.cdist(np.random.rand(3, 3, 3), np.random.rand(3, 3))
+
+        # XB can only be 2-d
+        with self.assertRaises(ValueError):
+            distance.cdist(np.random.rand(3, 3), np.random.rand(3, 3, 3))
+
+        # out type wrong
+        with self.assertRaises(TypeError):
+            distance.cdist(raw_a, raw_b, out=2)
+
+        # out shape wrong
+        with self.assertRaises(ValueError):
+            distance.cdist(raw_a, raw_b, out=tensor(np.random.rand(100, 91)))
+
+        # out dtype wrong
+        with self.assertRaises(ValueError):
+            distance.cdist(raw_a, raw_b,
+                           out=tensor(np.random.randint(2, size=(100, 90))))
+
+        # test extra param
+        with self.assertRaises(TypeError):
+            distance.cdist(raw_a, raw_b, unknown_kw='unknown_kw')

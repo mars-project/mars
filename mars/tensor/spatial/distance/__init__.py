@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .pdist import pdist
+from .cdist import cdist
