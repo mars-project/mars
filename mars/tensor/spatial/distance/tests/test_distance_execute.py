@@ -45,11 +45,11 @@ class Test(unittest.TestCase):
         expected = sp_pdist(raw, metric='hamming')
         np.testing.assert_array_equal(result, expected)
 
-        # f = lambda u, v: np.sqrt(((u-v)**2).sum())
-        # dist = distance.pdist(x, metric=f)
-        # result = self._executor.execute_tensor(dist, concat=True)[0]
-        # expected = sp_pdist(raw, metric=f)
-        # np.testing.assert_array_equal(result, expected)
+        f = lambda u, v: np.sqrt(((u-v)**2).sum())
+        dist = distance.pdist(x, metric=f)
+        result = self._executor.execute_tensor(dist, concat=True)[0]
+        expected = sp_pdist(raw, metric=f)
+        np.testing.assert_array_equal(result, expected)
 
         # test more than 1 chunk
         x = tensor(raw, chunk_size=12)
@@ -75,11 +75,11 @@ class Test(unittest.TestCase):
         expected = sp_pdist(raw, metric='hamming')
         np.testing.assert_array_equal(result, expected)
 
-        # f = lambda u, v: np.sqrt(((u-v)**2).sum())
-        # dist = distance.pdist(x, metric=f, aggregate_size=2)
-        # result = self._executor.execute_tensor(dist, concat=True)[0]
-        # expected = sp_pdist(raw, metric=f)
-        # np.testing.assert_array_equal(result, expected)
+        f = lambda u, v: np.sqrt(((u-v)**2).sum())
+        dist = distance.pdist(x, metric=f, aggregate_size=2)
+        result = self._executor.execute_tensor(dist, concat=True)[0]
+        expected = sp_pdist(raw, metric=f)
+        np.testing.assert_array_equal(result, expected)
 
     @unittest.skipIf(distance.cdist is None, 'scipy not installed')
     def testCdistExecution(self):
@@ -102,11 +102,11 @@ class Test(unittest.TestCase):
         expected = sp_cdist(raw_a, raw_b, metric='hamming')
         np.testing.assert_array_equal(result, expected)
 
-        # f = lambda u, v: np.sqrt(((u-v)**2).sum())
-        # dist = distance.cdist(xa, xb, metric=f)
-        # result = self._executor.execute_tensor(dist, concat=True)[0]
-        # expected = sp_cdist(raw_a, raw_b, metric=f)
-        # np.testing.assert_array_equal(result, expected)
+        f = lambda u, v: np.sqrt(((u-v)**2).sum())
+        dist = distance.cdist(xa, xb, metric=f)
+        result = self._executor.execute_tensor(dist, concat=True)[0]
+        expected = sp_cdist(raw_a, raw_b, metric=f)
+        np.testing.assert_array_equal(result, expected)
 
         # test more than 1 chunk
         xa = tensor(raw_a, chunk_size=12)
@@ -122,8 +122,8 @@ class Test(unittest.TestCase):
         expected = sp_cdist(raw_a, raw_b, metric='hamming')
         np.testing.assert_array_equal(result, expected)
 
-        # f = lambda u, v: np.sqrt(((u-v)**2).sum())
-        # dist = distance.cdist(xa, xb, metric=f)
-        # result = self._executor.execute_tensor(dist, concat=True)[0]
-        # expected = sp_cdist(raw_a, raw_b, metric=f)
-        # np.testing.assert_array_equal(result, expected)
+        f = lambda u, v: np.sqrt(((u-v)**2).sum())
+        dist = distance.cdist(xa, xb, metric=f)
+        result = self._executor.execute_tensor(dist, concat=True)[0]
+        expected = sp_cdist(raw_a, raw_b, metric=f)
+        np.testing.assert_array_equal(result, expected)
