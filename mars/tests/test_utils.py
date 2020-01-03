@@ -152,8 +152,6 @@ class Test(unittest.TestCase):
         partial_f = partial(f, 1)
         self.assertEqual(utils.tokenize(partial_f), utils.tokenize(copy.deepcopy(partial_f)))
 
-
-
     def testBuildTileableGraph(self):
         a = mt.ones((10, 10), chunk_size=8)
         b = mt.ones((10, 10), chunk_size=8)
