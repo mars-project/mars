@@ -294,7 +294,7 @@ class Test(SchedulerIntegratedTest):
         expected = np.sort(raw)[:5]
         assert_allclose(loads(result), expected)
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(KeyError):
             session_ref.fetch_result(graph_key, a.key, check=False)
 
         raw1 = rs.rand(20)
