@@ -609,8 +609,11 @@ class GraphActor(SchedulerActor):
             for failed_op in chunk_graph_builder.interrupted_ops:
                 for inp in failed_op.inputs:
                     if inp not in failed_tileable_set:
-                        fetch_inp = build_fetch_tileable(inp).data
-                        self._tileable_to_fetch[inp] = fetch_inp
+                        if inp not in self._tileable_to_fetch:
+                            fetch_inp = build_fetch_tileable(inp).data
+                            self._tileable_to_fetch[inp] = fetch_inp
+                        else:
+                            fetch_inp = self._tileable_to_fetch[inp]
                         to_fetch_tileables.append(fetch_inp)
                         to_run_tileable_graph.add_node(fetch_inp)
                         for o in failed_op.outputs:
@@ -969,7 +972,7 @@ class GraphActor(SchedulerActor):
             chunk.data._shape = chunk_meta.chunk_shape
 
         for tileable, tiled in need_update_tileable_to_tiled.items():
-            chunk_idx_to_shape = {c.index: c.shape for c in tiled.chunks}
+            chunk_idx_to_shape = OrderedDict((c.index, c.shape) for c in tiled.chunks)
             nsplits = calc_nsplits(chunk_idx_to_shape)
             tiled._nsplits = nsplits
             if any(np.isnan(s) for s in tileable.shape):
@@ -1119,6 +1122,8 @@ class GraphActor(SchedulerActor):
         ctx = dict()
         for chunk in tileable.chunks:
             endpoints = self.chunk_meta.get_workers(self._session_id, chunk.key)
+            if endpoints is None:
+                raise KeyError('cannot fetch meta of chunk {}'.format(chunk))
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
             ctx[chunk.key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk.key))
 
