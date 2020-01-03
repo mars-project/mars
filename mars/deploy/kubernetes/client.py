@@ -132,7 +132,7 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
                 scheduler_mem=None, worker_num=1, worker_cpu=None, worker_mem=None,
                 worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
                 web_num=1, web_cpu=None, web_mem=None, service_type=None,
-                timeout=None, **kwargs):
+                timeout=None, log_when_fail=False, **kwargs):
     """
     :param kube_api_client: Kubernetes API client, can be created with ``new_client_from_config``
     :param image: Docker image to use, ``marsproject/mars:<mars version>`` by default
@@ -246,6 +246,13 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
         web_ep = _create_node_port_service(core_api, namespace)
         return KubernetesClusterClient(kube_api_client, namespace, web_ep)
     except:  # noqa: E722
+        if log_when_fail:  # pargma: no cover
+            pod_items = core_api.list_namespaced_pod(namespace).to_dict()
+            for item in pod_items['items']:
+                log_resp = core_api.read_namespaced_pod_log(
+                    name=item['metadata']['name'], namespace=namespace)
+                logger.error('Error when creating cluster:\n%s', log_resp)
+
         if namespace is not None:
             try:
                 core_api.delete_namespace(namespace)

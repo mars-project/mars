@@ -18,14 +18,13 @@ import uuid
 from collections import deque
 from datetime import date, datetime, timedelta
 from enum import Enum
+from functools import lru_cache, partial
 
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
 
 import numpy as np
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import pandas as pd
+import cloudpickle
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -99,7 +98,8 @@ cdef class Tokenizer:
                 return obj._key
             if hasattr(obj, '__mars_tokenize__'):
                 return self.tokenize(obj.__mars_tokenize__())
-
+            if callable(obj):
+                return tokenize_function(obj)
             for clz in object_type.__mro__:
                 if clz in self._handlers:
                     self._handlers[object_type] = self._handlers[clz]
@@ -185,6 +185,23 @@ cdef list tokenize_pandas_dataframe(ob):
     l = [block.values for block in ob._data.blocks]
     l.extend([ob.columns, ob.index])
     return iterative_tokenize(l)
+
+
+@lru_cache(500)
+def tokenize_function(ob):
+    if isinstance(ob, partial):
+        args = iterative_tokenize(ob.args)
+        keywords = iterative_tokenize(ob.keywords) if ob.keywords else None
+        return tokenize_function(ob.func), args, keywords
+    else:
+        try:
+            return pickle.dumps(ob, protocol=0)
+        except:
+            pass
+        try:
+            return cloudpickle.dumps(ob, protocol=0)
+        except:
+            return str(ob)
 
 
 cdef Tokenizer tokenize_handler = Tokenizer()
