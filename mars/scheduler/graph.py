@@ -969,7 +969,7 @@ class GraphActor(SchedulerActor):
             chunk.data._shape = chunk_meta.chunk_shape
 
         for tileable, tiled in need_update_tileable_to_tiled.items():
-            chunk_idx_to_shape = {c.index: c.shape for c in tiled.chunks}
+            chunk_idx_to_shape = OrderedDict((c.index, c.shape) for c in tiled.chunks)
             nsplits = calc_nsplits(chunk_idx_to_shape)
             tiled._nsplits = nsplits
             if any(np.isnan(s) for s in tileable.shape):
@@ -1119,6 +1119,8 @@ class GraphActor(SchedulerActor):
         ctx = dict()
         for chunk in tileable.chunks:
             endpoints = self.chunk_meta.get_workers(self._session_id, chunk.key)
+            if endpoints is None:
+                raise KeyError('cannot fetch meta of chunk {}'.format(chunk))
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
             ctx[chunk.key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk.key))
 
