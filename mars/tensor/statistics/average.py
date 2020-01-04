@@ -17,8 +17,8 @@
 import numpy as np
 
 from ..datasource import tensor as astensor
-from .broadcast_to import broadcast_to
-from .swapaxes import swapaxes
+from ..base.broadcast_to import broadcast_to
+from ..base.swapaxes import swapaxes
 
 
 def average(a, axis=None, weights=None, returned=False):

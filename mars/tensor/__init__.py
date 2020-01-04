@@ -22,9 +22,8 @@ from .datasource import tensor, array, asarray, ascontiguousarray, asfortranarra
 from .datastore import totiledb
 from .base import result_type, ndim, copyto, transpose, where, broadcast_to, broadcast_arrays, \
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
-    array_split, split, hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, \
-    average, cov, corrcoef, flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort, \
-    partition, histogram, histogram_bin_edges
+    array_split, split, hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, \
+    flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort, partition
 from .arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
     floordiv as floor_divide, mod, power, float_power, fmod, sqrt, \
     around, round_, round_ as round, logaddexp, logaddexp2, negative, positive, \
@@ -38,6 +37,7 @@ from .arithmetic import add, subtract, multiply, divide, truediv as true_divide,
     maximum, minimum, floor, ceil, trunc, remainder, fmax, fmin, isfinite, isinf, isnan, \
     signbit, copysign, nextafter, spacing, clip, isclose, ldexp, frexp, modf, angle, \
     isreal, iscomplex, real, imag, fix, i0, sinc, nan_to_num
+from .statistics import average, cov, corrcoef, digitize, ptp, histogram_bin_edges, histogram
 from .linalg.tensordot import tensordot
 from .linalg.dot import dot
 from .linalg.inner import inner, innerproduct
