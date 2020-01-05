@@ -21,7 +21,7 @@ import scipy.sparse as sps
 import pandas as pd
 
 from mars import tensor as mt
-from mars.tiles import TilesError
+from mars.tiles import TilesError, get_tiled
 from mars.context import LocalContext
 from mars.utils import ignore_warning
 from mars.tensor.datasource import tensor, ones, zeros, arange
@@ -1146,6 +1146,20 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(raw))
 
+        # test force need_align=True
+        sx = sort(x)
+        sx.op._need_align = True
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        self.assertEqual(get_tiled(sx).nsplits, get_tiled(x).nsplits)
+        np.testing.assert_array_equal(res, np.sort(raw))
+
+        # test psrs_kinds
+        sx = sort(x, psrs_kinds=[None, None, 'quicksort'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
         # structured dtype
         raw = np.empty(100, dtype=[('id', np.int32), ('size', np.int64)])
         raw['id'] = np.random.randint(1000, size=100, dtype=np.int32)
@@ -1153,6 +1167,12 @@ class Test(unittest.TestCase):
         x = tensor(raw, chunk_size=10)
 
         sx = sort(x, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, order=['size', 'id']))
+
+        # test psrs_kinds with structured dtype
+        sx = sort(x, order=['size', 'id'], psrs_kinds=[None, None, 'quicksort'])
 
         res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(raw, order=['size', 'id']))
@@ -1175,6 +1195,11 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(raw))
 
+        sx = sort(x, psrs_kinds=[None, None, 'quicksort'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
         raw = np.random.rand(10, 99)
         x = tensor(raw, chunk_size=(2, 10))
 
@@ -1192,12 +1217,27 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(raw))
 
+        sx = sort(x, psrs_kinds=[None, None, 'quicksort'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
         sx = sort(x, axis=0)
 
         res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(raw, axis=0))
 
+        sx = sort(x, axis=0, psrs_kinds=[None, None, 'quicksort'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=0))
+
         sx = sort(x, axis=1)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=1))
+
+        sx = sort(x, axis=1, psrs_kinds=[None, None, 'quicksort'])
 
         res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(raw, axis=1))
@@ -1224,6 +1264,12 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(res, np.sort(raw, order=['size']))
 
         sx = sort(x, axis=0, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=0, order=['size', 'id']))
+
+        sx = sort(x, axis=0, order=['size', 'id'],
+                  psrs_kinds=[None, None, 'quicksort'])
 
         res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(raw, axis=0, order=['size', 'id']))

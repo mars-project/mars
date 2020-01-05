@@ -36,11 +36,13 @@ class TensorSort(TensorOperand, TensorOperandMixin):
     _parallel_kind = StringField('parallel_kind')
     _order = ListField('order', ValueType.string)
     _psrs_kinds = ListField('psrs_kinds', ValueType.string)
+    _need_align = BoolField('need_align')
 
     def __init__(self, axis=None, kind=None, parallel_kind=None, order=None,
-                 psrs_kinds=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _kind=kind, _parallel_kind=parallel_kind, _order=order,
-                         _psrs_kinds=psrs_kinds, _dtype=dtype, _gpu=gpu, **kw)
+                 psrs_kinds=None, need_align=None, dtype=None, gpu=None, **kw):
+        super().__init__(_axis=axis, _kind=kind, _parallel_kind=parallel_kind,
+                         _order=order, _psrs_kinds=psrs_kinds,
+                         _need_align=need_align, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -61,6 +63,10 @@ class TensorSort(TensorOperand, TensorOperandMixin):
     @property
     def psrs_kinds(self):
         return self._psrs_kinds
+
+    @property
+    def need_align(self):
+        return self._need_align
 
     def __call__(self, a):
         return self.new_tensor([a], shape=a.shape, order=a.order)
@@ -127,7 +133,10 @@ class PSRSSorter(object):
         # another shuffle would be required to make sure each axis except to sort
         # has elements with identical size
         extra_shape = [s for i, s in enumerate(in_tensor.shape) if i != op.axis]
-        need_align = bool(np.prod(extra_shape, dtype=int) != 1)
+        if op.need_align is None:
+            need_align = bool(np.prod(extra_shape, dtype=int) != 1)
+        else:
+            need_align = op.need_align
 
         return in_tensor, axis_chunk_shape, out_idxes, need_align
 
@@ -186,6 +195,7 @@ class PSRSSorter(object):
         partition_chunks = []
         for sorted_chunk in sorted_chunks:
             partition_shuffle_map = PSRSShuffleMap(axis=op.axis, n_partition=axis_chunk_shape,
+                                                   input_sorted=op.psrs_kinds[0] is not None,
                                                    order=op.order, dtype=sorted_chunk.dtype,
                                                    gpu=sorted_chunk.op.gpu)
             partition_chunk = partition_shuffle_map.new_chunk([sorted_chunk, concat_pivot_chunk],
@@ -372,15 +382,22 @@ class PSRSSortRegularSample(TensorOperand, PSRSOperandMixin):
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            sort_res = ctx[op.outputs[0].key] = _sort(a, op, xp)
-
-            # do regular sample
             n = op.n_partition
             w = int(a.shape[op.axis] // n)
+            if op.kind is not None:
+                # sort
+                res = ctx[op.outputs[0].key] = _sort(a, op, xp)
+            else:
+                # do not sort, prepare for sample by `xp.partition`
+                kth = np.arange(0, n * w, w)
+                ctx[op.outputs[0].key] = res = xp.partition(
+                    a, kth, axis=op.axis, order=op.order)
+            # do regular sample
             if op.order is not None:
-                sort_res = sort_res[op.order]
+                res = res[op.order]
             slc = (slice(None),) * op.axis + (slice(0, n * w, w),)
-            ctx[op.outputs[1].key] = sort_res[slc]
+            ctx[op.outputs[1].key] = res[slc]
+
 
 
 class PSRSConcatPivot(TensorOperand, PSRSOperandMixin):
@@ -412,10 +429,17 @@ class PSRSConcatPivot(TensorOperand, PSRSOperandMixin):
 
         with device(device_id):
             a = xp.concatenate(inputs, axis=op.axis)
-            _sort(a, op, xp, inplace=True)
-
             p = len(inputs)
             assert a.shape[op.axis] == p ** 2
+
+            if op.kind is not None:
+                # sort
+                _sort(a, op, xp, inplace=True)
+            else:
+                # prepare for sampling via `partition`
+                kth = xp.arange(p - 1, (p - 1) ** 2 + 1, p - 1)
+                a.partition(kth, axis=op.axis)
+
             select = slice(p - 1, (p - 1) ** 2 + 1, p - 1)
             slc = (slice(None),) * op.axis + (select,)
             ctx[op.outputs[0].key] = a[slc]
@@ -427,10 +451,12 @@ class PSRSShuffleMap(TensorShuffleMap, PSRSOperandMixin):
     _axis = Int32Field('axis')
     _order = ListField('order', ValueType.string)
     _n_partition = Int32Field('n_partition')
+    _input_sorted = BoolField('input_sorted')
 
-    def __init__(self, axis=None, order=None, n_partition=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _order=order, _n_partition=n_partition, _dtype=dtype,
-                         _gpu=gpu, **kw)
+    def __init__(self, axis=None, order=None, n_partition=None, input_sorted=None
+                 , dtype=None, gpu=None, **kw):
+        super().__init__(_axis=axis, _order=order, _n_partition=n_partition,
+                         _input_sorted=input_sorted, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -443,6 +469,10 @@ class PSRSShuffleMap(TensorShuffleMap, PSRSOperandMixin):
     @property
     def n_partition(self):
         return self._n_partition
+
+    @property
+    def input_sorted(self):
+        return self._input_sorted
 
     @classmethod
     def execute(cls, ctx, op):
@@ -461,10 +491,17 @@ class PSRSShuffleMap(TensorShuffleMap, PSRSOperandMixin):
                 raw_a_1d = a_1d
                 if op.order is not None:
                     a_1d = a_1d[op.order]
-                poses = xp.searchsorted(a_1d, pivots_1d, side='right')
-                poses = (None,) + tuple(poses) + (None,)
-                for i in range(op.n_partition):
-                    reduce_outputs[i][idx] = raw_a_1d[poses[i]: poses[i + 1]]
+                if op.input_sorted:
+                    # a is sorted already
+                    poses = xp.searchsorted(a_1d, pivots_1d, side='right')
+                    poses = (None,) + tuple(poses) + (None,)
+                    for i in range(op.n_partition):
+                        reduce_outputs[i][idx] = raw_a_1d[poses[i]: poses[i + 1]]
+                else:
+                    # a is not sorted, search every element in pivots
+                    out_idxes = xp.searchsorted(pivots_1d, a_1d, side='right')
+                    for i in range(op.n_partition):
+                        reduce_outputs[i][idx] = raw_a_1d[out_idxes == i]
             for i in range(op.n_partition):
                 ctx[(out.key, str(i))] = tuple(reduce_outputs[i].ravel())
 
@@ -784,7 +821,13 @@ def sort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None, order=None)
             psrs_kinds = list(psrs_kinds)
             if len(psrs_kinds) != 3:
                 raise ValueError('psrs_kinds should have 3 elements')
-            for psrs_kind in psrs_kinds:
+            for i, psrs_kind in enumerate(psrs_kinds):
+                if psrs_kind is None:
+                    if i < 2:
+                        continue
+                    else:
+                        raise ValueError('3rd element of psrs_kinds '
+                                         'should be specified')
                 upper_psrs_kind = psrs_kind.upper()
                 if upper_psrs_kind not in _AVAILABLE_KINDS:
                     raise ValueError('{} is an unrecognized kind '

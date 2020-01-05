@@ -36,11 +36,12 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
     _axis = Int32Field('axis')
     _kind = StringField('kind')
     _order = ListField('order', ValueType.string)
+    _need_align = BoolField('need_align')
 
     def __init__(self, kth=None, axis=None, kind=None, order=None,
-                 dtype=None, gpu=None, **kw):
+                 need_align=None, dtype=None, gpu=None, **kw):
         super().__init__(_kth=kth, _axis=axis, _kind=kind, _order=order,
-                         _dtype=dtype, _gpu=gpu, **kw)
+                         _need_align=need_align, _dtype=dtype, _gpu=gpu, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -54,6 +55,10 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
         # remember when merging data in PSRSShuffleReduce,
         # we don't need sort, thus set psrs_kinds[2] to None
         return ['quicksort', 'mergesort', None]
+
+    @property
+    def need_align(self):
+        return self._need_align
 
     @property
     def input(self):

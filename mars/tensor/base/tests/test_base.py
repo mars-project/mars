@@ -752,6 +752,12 @@ class Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             sort(np.random.rand(100), psrs_kinds=['non_valid_kind'] * 3)
 
+        with self.assertRaises(ValueError):
+            sort(np.random.rand(100), psrs_kinds=[None, None, None])
+
+        with self.assertRaises(ValueError):
+            sort(np.random.rand(100), psrs_kinds=['quicksort', 'mergesort', None])
+
     def testPartition(self):
         a = tensor(np.random.rand(10, 10), chunk_size=(5, 10))
 
