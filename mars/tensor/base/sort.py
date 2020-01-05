@@ -195,7 +195,8 @@ class PSRSSorter(object):
         partition_chunks = []
         for sorted_chunk in sorted_chunks:
             partition_shuffle_map = PSRSShuffleMap(axis=op.axis, n_partition=axis_chunk_shape,
-                                                   input_sorted=op.psrs_kinds[0] is not None,order=op.order, dtype=sorted_chunk.dtype,
+                                                   input_sorted=op.psrs_kinds[0] is not None,
+                                                   order=op.order, dtype=sorted_chunk.dtype,
                                                    gpu=sorted_chunk.op.gpu)
             partition_chunk = partition_shuffle_map.new_chunk([sorted_chunk, concat_pivot_chunk],
                                                               shape=sorted_chunk.shape,
