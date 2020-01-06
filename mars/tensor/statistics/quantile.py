@@ -178,7 +178,11 @@ def _quantile_ureduce_func(a, q, axis=None, out=None, overwrite_input=False,
     return r
 
 
+q_error_msg = 'Quantiles must be in the range [0, 1]'
+
+
 class TensorQuantile(TensorOperand, TensorOperandMixin):
+    __slots__ = 'q_error_msg',
     _op_type_ = OperandDef.QUANTILE
 
     _a = KeyField('a')
@@ -191,6 +195,7 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
 
     def __init__(self, q=None, axis=None, out=None, overwrite_input=None,
                  interpolation=None, keepdims=None, dtype=None, gpu=None, **kw):
+        self.q_error_msg = kw.pop('q_error_msg', q_error_msg)
         super().__init__(_q=q, _axis=axis, _interpolation=interpolation,
                          _out=out, _overwrite_input=overwrite_input,
                          _keepdims=keepdims, _dtype=dtype, _gpu=gpu, **kw)
@@ -299,7 +304,7 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
             q_data = ctx.get_chunk_results(q_chunk_keys)
             q = np.concatenate(q_data)
             if not _quantile_is_valid(q):
-                raise ValueError("Quantiles must be in the range [0, 1]")
+                raise ValueError(op.q_error_msg)
         else:
             q = np.asarray(op.q)
 
@@ -322,6 +327,40 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
 
 
 INTERPOLATION_TYPES = {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
+
+
+def _quantile_unchecked(a, q, axis=None, out=None, overwrite_input=False,
+                        interpolation='linear', keepdims=False,
+                        q_error_msg=None):
+    a = astensor(a)
+    if isinstance(q, (Base, Entity)):
+        q = astensor(q)
+        # do check in tile
+        q_input = q
+    else:
+        q_input = None
+
+    if isinstance(axis, Iterable):
+        axis = tuple(axis)
+
+    if q.ndim > 1:
+        raise ValueError('`q` should be a scalar or array of float')
+
+    if out is not None and not isinstance(out, TENSOR_TYPE):
+        raise TypeError('`out` should be a tensor, got {}'.format(type(out)))
+
+    if interpolation not in INTERPOLATION_TYPES:
+        raise ValueError("interpolation can only be 'linear', 'lower' "
+                         "'higher', 'midpoint', or 'nearest'")
+
+    # infer dtype
+    q_tiny = np.random.rand(2 if q.size % 2 == 0 else 1).astype(q.dtype)
+    dtype = np.quantile(np.empty(1, dtype=a.dtype), q_tiny, interpolation=interpolation).dtype
+    op = TensorQuantile(q=q, axis=axis, out=out, overwrite_input=overwrite_input,
+                        interpolation=interpolation, keepdims=keepdims,
+                        q_error_msg=q_error_msg,
+                        dtype=dtype, gpu=a.op.gpu)
+    return op(a, q=q_input, out=out)
 
 
 def quantile(a, q, axis=None, out=None, overwrite_input=False,
@@ -417,34 +456,12 @@ def quantile(a, q, axis=None, out=None, overwrite_input=False,
     array([6.5, 4.5, 2.5])
     """
 
-    a = astensor(a)
-    if isinstance(q, (Base, Entity)):
-        q = astensor(q)
-        # do check in tile
-        q_input = q
-    else:
+    if not isinstance(q, (Base, Entity)):
         q = np.asanyarray(q)
         # do check instantly if q is not a tensor
         if not _quantile_is_valid(q):
-            raise ValueError("Quantiles must be in the range [0, 1]")
-        q_input = None
-    if isinstance(axis, Iterable):
-        axis = tuple(axis)
+            raise ValueError(q_error_msg)
 
-    if q.ndim > 1:
-        raise ValueError('`q` should be a scalar or array of float')
+    return _quantile_unchecked(a, q, axis=axis, out=out, overwrite_input=overwrite_input,
+                               interpolation=interpolation, keepdims=keepdims)
 
-    if out is not None and not isinstance(out, TENSOR_TYPE):
-        raise TypeError('`out` should be a tensor, got {}'.format(type(out)))
-
-    if interpolation not in INTERPOLATION_TYPES:
-        raise ValueError("interpolation can only be 'linear', 'lower' "
-                         "'higher', 'midpoint', or 'nearest'")
-
-    # infer dtype
-    q_tiny = np.random.rand(2 if q.size % 2 == 0 else 1).astype(q.dtype)
-    dtype = np.quantile(np.empty(1, dtype=a.dtype), q_tiny, interpolation=interpolation).dtype
-    op = TensorQuantile(q=q, axis=axis, out=out, overwrite_input=overwrite_input,
-                        interpolation=interpolation, keepdims=keepdims,
-                        dtype=dtype, gpu=a.op.gpu)
-    return op(a, q=q_input, out=out)

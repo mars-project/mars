@@ -22,7 +22,7 @@ from mars.context import LocalContext
 from mars.utils import ignore_warning
 from mars.tensor.datasource import arange, tensor, empty
 from mars.tensor.statistics import average, cov, corrcoef, ptp, \
-    digitize, histogram_bin_edges, histogram, quantile
+    digitize, histogram_bin_edges, histogram, quantile, percentile
 from mars.tensor.statistics.quantile import INTERPOLATION_TYPES
 from mars.tensor.base import sort
 from mars.tensor.merge import stack
@@ -425,3 +425,29 @@ class Test(unittest.TestCase):
                 q[0] = 1.1
                 r = quantile(a, q, axis=None)
                 _ = executor.execute_tensors(r)[0]
+
+    def testPercentileExecution(self):
+        raw = np.random.rand(20, 10)
+        q = np.random.RandomState(0).randint(100, size=11)
+        a = tensor(raw, chunk_size=7)
+        r = percentile(a, q)
+
+        result = self.executor.execute_tensor(r, concat=True)[0]
+        expected = np.percentile(raw, q)
+        np.testing.assert_array_equal(result, expected)
+
+        mq = tensor(q)
+
+        this = self
+
+        class MockSession:
+            def __init__(self):
+                self.executor = this.executor
+
+        ctx = LocalContext(MockSession())
+        executor = ExecutorForTest('numpy', storage=ctx)
+        with ctx:
+            r = percentile(a, mq)
+            result = executor.execute_tensors([r])[0]
+
+            np.testing.assert_array_equal(result, expected)

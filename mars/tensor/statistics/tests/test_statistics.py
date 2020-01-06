@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 from mars.tensor.datasource import tensor, array
-from mars.tensor.statistics import digitize, histogram_bin_edges, quantile
+from mars.tensor.statistics import digitize, histogram_bin_edges, \
+    quantile, percentile
 from mars.tensor.statistics.quantile import INTERPOLATION_TYPES
 
 
@@ -95,6 +96,8 @@ class Test(unittest.TestCase):
                         expected = np.quantile(raw2, q, axis=axis,
                                                interpolation=interpolation,
                                                keepdims=keepdims)
+                        if b.shape != expected.shape:
+                            raise ValueError
                         self.assertEqual(b.shape, expected.shape)
                         self.assertEqual(b.dtype, expected.dtype)
 
@@ -127,3 +130,14 @@ class Test(unittest.TestCase):
         # wrong interpolation
         with self.assertRaises(ValueError):
             quantile(a, q, interpolation='unknown')
+
+    def testPercentile(self):
+        raw = np.random.rand(100)
+        q = [101]
+
+        a = tensor(raw, chunk_size=100)
+
+        with self.assertRaises(ValueError) as cm:
+            percentile(a, q)
+        the_exception = cm.exception
+        self.assertIn('Percentiles', str(the_exception))
