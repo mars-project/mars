@@ -21,9 +21,7 @@ import scipy.sparse as sps
 import pandas as pd
 
 from mars import tensor as mt
-from mars.tiles import TilesError, get_tiled
-from mars.context import LocalContext
-from mars.utils import ignore_warning
+from mars.tiles import get_tiled
 from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \

@@ -37,7 +37,8 @@ from .arithmetic import add, subtract, multiply, divide, truediv as true_divide,
     maximum, minimum, floor, ceil, trunc, remainder, fmax, fmin, isfinite, isinf, isnan, \
     signbit, copysign, nextafter, spacing, clip, isclose, ldexp, frexp, modf, angle, \
     isreal, iscomplex, real, imag, fix, i0, sinc, nan_to_num
-from .statistics import average, cov, corrcoef, digitize, ptp, histogram_bin_edges, histogram
+from .statistics import average, cov, corrcoef, digitize, ptp, \
+    histogram_bin_edges, histogram, quantile
 from .linalg.tensordot import tensordot
 from .linalg.dot import dot
 from .linalg.inner import inner, innerproduct

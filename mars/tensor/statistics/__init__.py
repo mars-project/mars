@@ -19,6 +19,7 @@ from .digitize import digitize, TensorDigitize
 from .ptp import ptp
 from .histogram import histogram_bin_edges, TensorHistogramBinEdges, \
     histogram, TensorHistogram
+from .quantile import quantile
 
 
 def _install():

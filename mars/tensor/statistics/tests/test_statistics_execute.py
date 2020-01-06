@@ -20,9 +20,10 @@ import scipy.sparse as sps
 from mars.tiles import TilesError
 from mars.context import LocalContext
 from mars.utils import ignore_warning
-from mars.tensor.datasource import arange, tensor
+from mars.tensor.datasource import arange, tensor, empty
 from mars.tensor.statistics import average, cov, corrcoef, ptp, \
-    digitize, histogram_bin_edges, histogram
+    digitize, histogram_bin_edges, histogram, quantile
+from mars.tensor.statistics.quantile import INTERPOLATION_TYPES
 from mars.tensor.base import sort
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
@@ -266,3 +267,161 @@ class Test(unittest.TestCase):
                         result = executor.execute_tensors([hist])[0]
                         expected = np.histogram(r, bins=[0, 4, 8], density=density)[0]
                         np.testing.assert_array_equal(result, expected)
+
+    def testQuantileExecution(self):
+        # test 1 chunk, 1-d
+        raw = np.random.rand(20)
+        a = tensor(raw, chunk_size=20)
+
+        raw2 = raw.copy()
+        raw2[np.random.RandomState(0).randint(raw.size, size=3)] = np.nan
+        a2 = tensor(raw2, chunk_size=20)
+
+        for q in [np.random.RandomState(0).rand(), np.random.RandomState(0).rand(5)]:
+            for interpolation in INTERPOLATION_TYPES:
+                for keepdims in [True, False]:
+                    r = quantile(a, q, interpolation=interpolation, keepdims=keepdims)
+
+                    result = self.executor.execute_tensor(r, concat=True)[0]
+                    expected = np.quantile(
+                        raw, q, interpolation=interpolation, keepdims=keepdims)
+
+                    np.testing.assert_array_equal(result, expected)
+
+                    r2 = quantile(a2, q, interpolation=interpolation, keepdims=keepdims)
+
+                    result = self.executor.execute_tensor(r2, concat=True)[0]
+                    expected = np.quantile(
+                        raw2, q, interpolation=interpolation, keepdims=keepdims)
+
+                    np.testing.assert_array_equal(result, expected)
+
+        # test 1 chunk, 2-d
+        raw = np.random.rand(20, 10)
+        a = tensor(raw, chunk_size=20)
+
+        raw2 = raw.copy()
+        raw2.flat[np.random.RandomState(0).randint(raw.size, size=3)] = np.nan
+        a2 = tensor(raw2, chunk_size=20)
+
+        for q in [np.random.RandomState(0).rand(), np.random.RandomState(0).rand(5)]:
+            for interpolation in INTERPOLATION_TYPES:
+                for keepdims in [True, False]:
+                    for axis in [None, 0, 1]:
+                        r = quantile(a, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+
+                        result = self.executor.execute_tensor(r, concat=True)[0]
+                        expected = np.quantile(
+                            raw, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+
+                        np.testing.assert_array_equal(result, expected)
+
+                        r2 = quantile(a2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+
+                        result = self.executor.execute_tensor(r2, concat=True)[0]
+                        expected = np.quantile(
+                            raw2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+
+                        np.testing.assert_array_equal(result, expected)
+
+        # test multi chunks, 1-d
+        raw = np.random.rand(20)
+        a = tensor(raw, chunk_size=3)
+
+        raw2 = raw.copy()
+        raw2[np.random.RandomState(0).randint(raw.size, size=3)] = np.nan
+        a2 = tensor(raw2, chunk_size=20)
+
+        for q in [np.random.RandomState(0).rand(), np.random.RandomState(0).rand(5)]:
+            for interpolation in INTERPOLATION_TYPES:
+                for keepdims in [True, False]:
+                    r = quantile(a, q, interpolation=interpolation, keepdims=keepdims)
+
+                    result = self.executor.execute_tensor(r, concat=True)[0]
+                    expected = np.quantile(
+                        raw, q, interpolation=interpolation, keepdims=keepdims)
+
+                    np.testing.assert_array_equal(result, expected)
+
+                    r2 = quantile(a2, q, interpolation=interpolation, keepdims=keepdims)
+
+                    result = self.executor.execute_tensor(r2, concat=True)[0]
+                    expected = np.quantile(
+                        raw2, q, interpolation=interpolation, keepdims=keepdims)
+
+                    np.testing.assert_array_equal(result, expected)
+
+        # test multi chunk, 2-d
+        raw = np.random.rand(20, 10)
+        a = tensor(raw, chunk_size=(3, 4))
+
+        raw2 = raw.copy()
+        raw2.flat[np.random.RandomState(0).randint(raw.size, size=3)] = np.nan
+        a2 = tensor(raw2, chunk_size=(3, 4))
+
+        for q in [np.random.RandomState(0).rand(), np.random.RandomState(0).rand(5)]:
+            for interpolation in INTERPOLATION_TYPES:
+                for keepdims in [True, False]:
+                    for axis in [None, 0, 1]:
+                        r = quantile(a, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+
+                        result = self.executor.execute_tensor(r, concat=True)[0]
+                        expected = np.quantile(
+                            raw, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+
+                        np.testing.assert_array_equal(result, expected)
+
+                        r2 = quantile(a2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+
+                        result = self.executor.execute_tensor(r2, concat=True)[0]
+                        expected = np.quantile(
+                            raw2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
+
+                        np.testing.assert_array_equal(result, expected)
+
+        # test out, 1 chunk
+        raw = np.random.rand(20)
+        q = np.random.rand(11)
+        a = tensor(raw, chunk_size=20)
+        out = empty((5, 11))
+        quantile(a, q, out=out)
+
+        result = self.executor.execute_tensor(out, concat=True)[0]
+        expected = np.quantile(raw, q, out=np.empty((5, 11)))
+        np.testing.assert_array_equal(result, expected)
+
+        # test out, multi chunks
+        raw = np.random.rand(20)
+        q = np.random.rand(11)
+        a = tensor(raw, chunk_size=3)
+        out = empty((5, 11))
+        quantile(a, q, out=out)
+
+        result = self.executor.execute_tensor(out, concat=True)[0]
+        expected = np.quantile(raw, q, out=np.empty((5, 11)))
+        np.testing.assert_array_equal(result, expected)
+
+        # test q which is a tensor
+        q_raw = np.random.RandomState(0).rand(5)
+        q = tensor(q_raw, chunk_size=3)
+
+        this = self
+
+        class MockSession:
+            def __init__(self):
+                self.executor = this.executor
+
+        ctx = LocalContext(MockSession())
+        executor = ExecutorForTest('numpy', storage=ctx)
+        with ctx:
+            r = quantile(a, q, axis=None)
+
+            result = executor.execute_tensors([r])[0]
+            expected = np.quantile(raw, q_raw, axis=None)
+
+            np.testing.assert_array_equal(result, expected)
+
+            with self.assertRaises(ValueError):
+                q[0] = 1.1
+                r = quantile(a, q, axis=None)
+                _ = executor.execute_tensors(r)[0]
