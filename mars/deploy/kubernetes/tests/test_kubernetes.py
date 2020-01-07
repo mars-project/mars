@@ -39,6 +39,33 @@ MARS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(mt.__file__)))
 TEST_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
+def _rewrite_json_coverage(file_name, new_file_name):
+    with open(file_name, 'rb') as f:
+        content = f.read()
+    with open(new_file_name, 'wb') as f:
+        f.write(content.replace(b'/mnt/mars', MARS_ROOT.encode()))
+
+
+def _rewrite_sqlite_coverage(file_name, new_file_name):
+    import sqlite3
+    shutil.copyfile(file_name, new_file_name)
+    conn = None
+    try:
+        conn = sqlite3.connect(new_file_name)
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, path FROM file')
+
+        updates = []
+        for file_id, file_path in cursor:
+            updates.append((file_path.replace('/mnt/mars', MARS_ROOT), file_id))
+        cursor = conn.cursor()
+        cursor.executemany('UPDATE file SET path=? WHERE id=?', updates)
+        conn.commit()
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 @unittest.skipIf(
     find_executable('kubectl') is None or find_executable('docker') is None
     or k8s_config is None,
@@ -56,14 +83,18 @@ class Test(unittest.TestCase):
             # rewrite paths in coverage result files
             for fn in glob.glob(os.path.join(kube_coverage_path, '.coverage.*')):
                 with open(fn, 'rb') as f:
-                    content = f.read()
+                    sqlite_header = f.read(6)
+
                 if 'COVERAGE_FILE' in os.environ:
                     new_cov_file = os.environ['COVERAGE_FILE'] \
                                    + os.path.basename(fn).replace('.coverage', '')
                 else:
                     new_cov_file = fn.replace('.kube-coverage' + os.sep, '')
-                with open(new_cov_file, 'wb') as f:
-                    f.write(content.replace(b'/mnt/mars', MARS_ROOT.encode()))
+
+                if sqlite_header == b'SQLite':
+                    _rewrite_sqlite_coverage(fn, new_cov_file)
+                else:
+                    _rewrite_json_coverage(fn, new_cov_file)
             shutil.rmtree(kube_coverage_path)
 
     @classmethod

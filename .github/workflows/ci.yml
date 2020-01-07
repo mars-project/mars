@@ -177,4 +177,8 @@ jobs:
           export DEFAULT_VENV=$VIRTUAL_ENV
           python .github/workflows/unify_coverage.py covdata/ "$(pwd)"
           coverage combine covdata/
-          for i in $(seq 1 3); do coveralls && break || sleep 5; done;
+          for i in $(seq 1 3); do
+            ECODE=0; coveralls && break || sleep 5
+            ECODE=1
+          done
+          if [ "$ECODE" -ne "0" ]; then exit $ECODE; fi

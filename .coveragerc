@@ -18,6 +18,7 @@ omit =
     mars/lib/uhashring/*
     mars/serialize/protos/*
     mars/learn/contrib/xgboost/tracker.py
+    *.html
     *.pxd
     */tests/*
 
