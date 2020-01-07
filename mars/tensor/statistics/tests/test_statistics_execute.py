@@ -22,7 +22,7 @@ from mars.context import LocalContext
 from mars.utils import ignore_warning
 from mars.tensor.datasource import arange, tensor, empty
 from mars.tensor.statistics import average, cov, corrcoef, ptp, \
-    digitize, histogram_bin_edges, histogram, quantile, percentile
+    digitize, histogram_bin_edges, histogram, quantile, percentile, median
 from mars.tensor.statistics.quantile import INTERPOLATION_TYPES
 from mars.tensor.base import sort
 from mars.tensor.merge import stack
@@ -451,3 +451,20 @@ class Test(unittest.TestCase):
             result = executor.execute_tensors([r])[0]
 
             np.testing.assert_array_equal(result, expected)
+
+    def testMedianExecution(self):
+        raw = np.random.rand(20, 10)
+        a = tensor(raw, chunk_size=7)
+        r = median(a)
+
+        result = self.executor.execute_tensor(r, concat=True)[0]
+        expected = np.median(raw)
+
+        np.testing.assert_array_equal(result, expected)
+
+        r = median(a, axis=1)
+
+        result = self.executor.execute_tensor(r, concat=True)[0]
+        expected = np.median(raw, axis=1)
+
+        np.testing.assert_array_equal(result, expected)

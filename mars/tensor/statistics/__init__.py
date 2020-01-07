@@ -21,6 +21,7 @@ from .histogram import histogram_bin_edges, TensorHistogramBinEdges, \
     histogram, TensorHistogram
 from .quantile import quantile
 from .percentile import percentile
+from .median import median
 
 
 def _install():
