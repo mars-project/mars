@@ -30,11 +30,14 @@ def rewrite_sqlite_coverage(file_name, old_path, new_path):
 
         updates = []
         for file_id, file_path in cursor:
-            updates.append((rewrite_path(file_path, old_path, new_path), file_id))
+            new_file_path = rewrite_path(file_path, old_path, new_path)
+            if file_path != new_file_path:
+                updates.append((new_file_path, file_id))
 
-        cursor = conn.cursor()
-        cursor.executemany('UPDATE file SET path=? WHERE id=?', updates)
-        conn.commit()
+        if updates:
+            cursor = conn.cursor()
+            cursor.executemany('UPDATE file SET path=? WHERE id=?', updates)
+            conn.commit()
     finally:
         if conn is not None:
             conn.close()

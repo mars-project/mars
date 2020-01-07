@@ -92,6 +92,15 @@ jobs:
         fi
         conda list
 
+    - name: Lint with flake8
+      shell: bash
+      run: |
+        source ./.github/workflows/reload-env.sh
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 mars --count --select=E9,F63,E111,E901,E999,F7,F82,F401,F821,F822,F823,F841 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 mars --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
     - name: Build cython extensions
       env:
         CYTHON_TRACE: ${{ matrix.cython-trace }}
@@ -107,15 +116,6 @@ jobs:
           done
         fi
         python setup.py build_ext --force --inplace
-
-    - name: Lint with flake8
-      shell: bash
-      run: |
-        source ./.github/workflows/reload-env.sh
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 mars --count --select=E9,F63,E111,E901,E999,F7,F82,F401,F821,F822,F823,F841 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 mars --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Test with pytest
       env:

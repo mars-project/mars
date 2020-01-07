@@ -4,6 +4,7 @@
 
 [run]
 branch = True
+relative_files = True
 cover_pylib = False
 parallel = True
 plugins = Cython.Coverage
