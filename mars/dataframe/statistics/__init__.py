@@ -16,10 +16,11 @@ from .quantile import DataFrameQuantile
 
 
 def _install():
-    from ..core import Series
-    from .quantile import quantile_series
+    from ..core import Series, DataFrame
+    from .quantile import quantile_series, quantile_dataframe
 
     Series.quantile = quantile_series
+    DataFrame.quantile = quantile_dataframe
 
 
 _install()

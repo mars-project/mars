@@ -19,7 +19,7 @@ import pandas as pd
 
 from mars.tests.core import ExecutorForTest
 from mars.tensor import tensor
-from mars.dataframe import Series
+from mars.dataframe import Series, DataFrame
 from mars.context import LocalContext
 
 
@@ -28,7 +28,7 @@ class Test(unittest.TestCase):
         super().setUp()
         self.executor = ExecutorForTest('numpy')
 
-    def testQuantileExecution(self):
+    def testSeriesQuantileExecution(self):
         raw = pd.Series(np.random.rand(10), name='a')
         a = Series(raw, chunk_size=3)
 
@@ -70,3 +70,64 @@ class Test(unittest.TestCase):
             expected = raw.quantile([0.3, 0.7])
 
             pd.testing.assert_series_equal(result, expected)
+
+    def testDataFrameQuantileExecution(self):
+        raw = pd.DataFrame({'a': np.random.rand(10),
+                            'b': np.random.randint(1000, size=10),
+                            'c': np.random.rand(10),
+                            'd': [np.random.bytes(10) for _ in range(10)]},
+                           index=pd.RangeIndex(1, 11))
+        df = DataFrame(raw, chunk_size=3)
+
+        # q = 0.5, axis = 0, series
+        r = df.quantile()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.quantile()
+
+        pd.testing.assert_series_equal(result, expected)
+
+        # q = 0.5, axis = 1, series
+        r = df.quantile(axis=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.quantile(axis=1)
+
+        pd.testing.assert_series_equal(result, expected)
+
+        # q is a list, axis = 0, dataframe
+        r = df.quantile([0.3, 0.7])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.quantile([0.3, 0.7])
+
+        pd.testing.assert_frame_equal(result, expected)
+
+        # q is a list, axis = 1, dataframe
+        r = df.quantile([0.3, 0.7], axis=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.quantile([0.3, 0.7], axis=1)
+
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test interpolation
+        r = df.quantile([0.3, 0.7], interpolation='midpoint')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.quantile([0.3, 0.7], interpolation='midpoint')
+
+        pd.testing.assert_frame_equal(result, expected)
+
+        this = self
+
+        class MockSession:
+            def __init__(self):
+                self.executor = this.executor
+
+        ctx = LocalContext(MockSession())
+        executor = ExecutorForTest('numpy', storage=ctx)
+        with ctx:
+            q = tensor([0.3, 0.7])
+
+            # q is a tensor
+            r = df.quantile(q)
+            result = executor.execute_dataframes([r])[0]
+            expected = raw.quantile([0.3, 0.7])
+
+            pd.testing.assert_frame_equal(result, expected)
