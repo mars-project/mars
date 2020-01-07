@@ -71,13 +71,6 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, input_tensor, index, columns):
         if self._from_1d_tensors:
-            from ...tensor import stack
-
-            # input_tensor is a list full of 1-d tensor
-            inputs = list(input_tensor)
-            input_tensor = stack(inputs).T
-        else:
-            if self._from_1d_tensors:
             return self._call_input_1d_tensors(input_tensor, index, columns)
         else:
             return self._call_input_tensor(input_tensor, index, columns)
@@ -134,7 +127,6 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             raise ValueError('Must pass 1-d or 2-d input')
         inputs = [input_tensor]
 
-        inputs = [input_tensor]
         if index is not None:
             if input_tensor.shape[0] != len(index):
                 raise ValueError(

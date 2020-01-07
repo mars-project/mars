@@ -31,3 +31,6 @@ from . import groupby
 
 del reduction, statistics, arithmetic, indexing, merge, base, groupby
 del DataFrameFetch, DataFrameFetchShuffle
+
+# noinspection PyUnresolvedReferences
+from pandas import Timedelta, Timestamp

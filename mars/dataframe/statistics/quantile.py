@@ -24,7 +24,6 @@ from ...serialize import KeyField, AnyField, StringField, DataTypeField, \
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.datasource import empty, tensor as astensor, \
     from_series as tensor_from_series, from_dataframe as tensor_from_dataframe
-from ...tensor.merge import stack
 from ...tensor.statistics.quantile import quantile as tensor_quantile
 from ...tensor.utils import recursive_tile
 from ...utils import tokenize
@@ -82,7 +81,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
         quantile_dtypes = []
         for name in dtypes.index:
             dt = tensor_quantile(tensor_from_series(a[name]), self._q,
-                                 interpolation=self._interpolation).dtype
+                                 interpolation=self._interpolation,
+                                 handle_non_numeric=not self._numeric_only).dtype
             quantile_dtypes.append(dt)
         return find_common_type(quantile_dtypes)
 
@@ -115,7 +115,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             shape = (len(a),)
             # calc dtype
             dt = tensor_quantile(empty(a.shape[1], dtype=find_common_type(dtypes)),
-                                 self._q, interpolation=self._interpolation).dtype
+                                 self._q, interpolation=self._interpolation,
+                                 handle_non_numeric=not self._numeric_only).dtype
             return self.new_series(inputs, shape=shape, dtype=dt,
                                    index_value=index_value, name=index_value.name)
         elif q_val.ndim == 1 and self._axis == 0:
@@ -126,7 +127,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             for name in dtypes.index:
                 dtype_list.append(
                     tensor_quantile(tensor_from_series(a[name]), self._q,
-                                    interpolation=self._interpolation).dtype)
+                                    interpolation=self._interpolation,
+                                    handle_non_numeric=not self._numeric_only).dtype)
             dtypes = pd.Series(dtype_list, index=dtypes.index)
             return self.new_dataframe(inputs, shape=shape, dtypes=dtypes,
                                       index_value=index_value,
@@ -158,7 +160,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
         # get dtype by tensor
         a_t = astensor(a)
         self._dtype = dtype = tensor_quantile(
-            a_t, self._q, interpolation=self._interpolation).dtype
+            a_t, self._q, interpolation=self._interpolation,
+            handle_non_numeric=not self._numeric_only).dtype
 
         if q_val.ndim == 0:
             self._object_type = ObjectType.scalar
@@ -181,15 +184,23 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_dataframe(cls, op):
+        from ...tensor.merge.stack import TensorStack
+
         df = op.outputs[0]
         if op.object_type == ObjectType.series:
             if op.axis == 0:
                 ts = []
                 for name in df.index_value.to_pandas():
                     a = tensor_from_series(op.input[name])
-                    t = tensor_quantile(a, op.q, interpolation=op.interpolation)
+                    t = tensor_quantile(a, op.q, interpolation=op.interpolation,
+                                        handle_non_numeric=not op.numeric_only)
                     ts.append(t)
-                tr = stack(ts)
+                try:
+                    dtype = np.result_type([it.dtype for it in ts])
+                except TypeError:
+                    dtype = np.dtype(object)
+                stack_op = TensorStack(axis=0, dtype=dtype)
+                tr = stack_op(ts)
                 r = series_from_tensor(tr, index=op.input.columns_value.to_pandas(),
                                        name=np.asscalar(ts[0].op.q))
             else:
@@ -197,7 +208,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                 empty_df = build_empty_df(op.input.dtypes)
                 fields = empty_df._get_numeric_data().columns.tolist()
                 t = tensor_from_dataframe(op.input[fields])
-                tr = tensor_quantile(t, op.q, axis=1, interpolation=op.interpolation)
+                tr = tensor_quantile(t, op.q, axis=1, interpolation=op.interpolation,
+                                     handle_non_numeric=not op.numeric_only)
                 r = series_from_tensor(tr, name=np.asscalar(tr.op.q))
                 r._index_value = op.input.index_value
         else:
@@ -206,7 +218,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                 d = OrderedDict()
                 for name in df.dtypes.index:
                     a = tensor_from_series(op.input[name])
-                    t = tensor_quantile(a, op.q, interpolation=op.interpolation)
+                    t = tensor_quantile(a, op.q, interpolation=op.interpolation,
+                                        handle_non_numeric=not op.numeric_only)
                     d[name] = t
                 r = create_df(d, index=op.q)
             else:
@@ -214,7 +227,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                 empty_df = build_empty_df(op.input.dtypes)
                 fields = empty_df._get_numeric_data().columns.tolist()
                 t = tensor_from_dataframe(op.input[fields])
-                tr = tensor_quantile(t, op.q, axis=1, interpolation=op.interpolation)
+                tr = tensor_quantile(t, op.q, axis=1, interpolation=op.interpolation,
+                                     handle_non_numeric=not op.numeric_only)
                 if not op.input.index_value.has_value():
                     raise NotImplementedError
                 # TODO(xuye.qin): use index=op.input.index when we support DataFrame.index
@@ -226,7 +240,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _tile_series(cls, op):
         a = tensor_from_series(op.input)
-        t = tensor_quantile(a, op.q, interpolation=op.interpolation)
+        t = tensor_quantile(a, op.q, interpolation=op.interpolation,
+                            handle_non_numeric=not op.numeric_only)
         if op.object_type == ObjectType.scalar:
             r = t
         else:
@@ -242,6 +257,51 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
 
 
 def quantile_series(series, q=0.5, interpolation='linear'):
+    """
+    Return value at the given quantile.
+
+    Parameters
+    ----------
+    q : float or array-like, default 0.5 (50% quantile)
+        0 <= q <= 1, the quantile(s) to compute.
+    interpolation : {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
+        .. versionadded:: 0.18.0
+
+        This optional parameter specifies the interpolation method to use,
+        when the desired quantile lies between two data points `i` and `j`:
+
+            * linear: `i + (j - i) * fraction`, where `fraction` is the
+              fractional part of the index surrounded by `i` and `j`.
+            * lower: `i`.
+            * higher: `j`.
+            * nearest: `i` or `j` whichever is nearest.
+            * midpoint: (`i` + `j`) / 2.
+
+    Returns
+    -------
+    float or Series
+        If ``q`` is an array or a tensor, a Series will be returned where the
+        index is ``q`` and the values are the quantiles, otherwise
+        a float will be returned.
+
+    See Also
+    --------
+    core.window.Rolling.quantile
+    numpy.percentile
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> s = md.Series([1, 2, 3, 4])
+    >>> s.quantile(.5).execute()
+    2.5
+    >>> s.quantile([.25, .5, .75]).execute()
+    0.25    1.75
+    0.50    2.50
+    0.75    3.25
+    dtype: float64
+    """
+
     if isinstance(q, (Base, Entity)):
         q = astensor(q)
         q_input = q
@@ -255,6 +315,65 @@ def quantile_series(series, q=0.5, interpolation='linear'):
 
 def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
                        interpolation='linear'):
+    """
+    Return values at the given quantile over requested axis.
+    Parameters
+    ----------
+    q : float or array-like, default 0.5 (50% quantile)
+        Value between 0 <= q <= 1, the quantile(s) to compute.
+    axis : {0, 1, 'index', 'columns'} (default 0)
+        Equals 0 or 'index' for row-wise, 1 or 'columns' for column-wise.
+    numeric_only : bool, default True
+        If False, the quantile of datetime and timedelta data will be
+        computed as well.
+    interpolation : {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
+        This optional parameter specifies the interpolation method to use,
+        when the desired quantile lies between two data points `i` and `j`:
+        * linear: `i + (j - i) * fraction`, where `fraction` is the
+          fractional part of the index surrounded by `i` and `j`.
+        * lower: `i`.
+        * higher: `j`.
+        * nearest: `i` or `j` whichever is nearest.
+        * midpoint: (`i` + `j`) / 2.
+        .. versionadded:: 0.18.0
+    Returns
+    -------
+    Series or DataFrame
+        If ``q`` is an array or a tensor, a DataFrame will be returned where the
+          index is ``q``, the columns are the columns of self, and the
+          values are the quantiles.
+        If ``q`` is a float, a Series will be returned where the
+          index is the columns of self and the values are the quantiles.
+    See Also
+    --------
+    core.window.Rolling.quantile: Rolling quantile.
+    numpy.percentile: Numpy function to compute the percentile.
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame(np.array([[1, 1], [2, 10], [3, 100], [4, 100]]),
+    ...                   columns=['a', 'b'])
+    >>> df.quantile(.1).execute()
+    a    1.3
+    b    3.7
+    Name: 0.1, dtype: float64
+    >>> df.quantile([.1, .5]).execute()
+           a     b
+    0.1  1.3   3.7
+    0.5  2.5  55.0
+    Specifying `numeric_only=False` will also compute the quantile of
+    datetime and timedelta data.
+    >>> df = md.DataFrame({'A': [1, 2],
+    ...                    'B': [md.Timestamp('2010'),
+    ...                          md.Timestamp('2011')],
+    ...                    'C': [md.Timedelta('1 days'),
+    ...                          md.Timedelta('2 days')]})
+    >>> df.quantile(0.5, numeric_only=False).execute()
+    A                    1.5
+    B    2010-07-02 12:00:00
+    C        1 days 12:00:00
+    Name: 0.5, dtype: object
+    """
     if isinstance(q, (Base, Entity)):
         q = astensor(q)
         q_input = q

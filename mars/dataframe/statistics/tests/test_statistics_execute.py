@@ -75,7 +75,10 @@ class Test(unittest.TestCase):
         raw = pd.DataFrame({'a': np.random.rand(10),
                             'b': np.random.randint(1000, size=10),
                             'c': np.random.rand(10),
-                            'd': [np.random.bytes(10) for _ in range(10)]},
+                            'd': [np.random.bytes(10) for _ in range(10)],
+                            'e': [pd.Timestamp('201{}'.format(i)) for i in range(10)],
+                            'f': [pd.Timedelta('{} days'.format(i)) for i in range(10)]
+                            },
                            index=pd.RangeIndex(1, 11))
         df = DataFrame(raw, chunk_size=3)
 
@@ -131,3 +134,24 @@ class Test(unittest.TestCase):
             expected = raw.quantile([0.3, 0.7])
 
             pd.testing.assert_frame_equal(result, expected)
+
+        # test numeric_only
+        raw2 = pd.DataFrame({'a': np.random.rand(10),
+                             'b': np.random.randint(1000, size=10),
+                             'c': np.random.rand(10),
+                             'd': [pd.Timestamp('201{}'.format(i)) for i in range(10)],
+                            },
+                           index=pd.RangeIndex(1, 11))
+        df2 = DataFrame(raw2, chunk_size=3)
+
+        r = df2.quantile([0.3, 0.7], numeric_only=False)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw2.quantile([0.3, 0.7], numeric_only=False)
+
+        pd.testing.assert_frame_equal(result, expected)
+
+        r = df2.quantile(numeric_only=False)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw2.quantile(numeric_only=False)
+
+        pd.testing.assert_series_equal(result, expected)
