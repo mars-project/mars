@@ -127,6 +127,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             raise ValueError('Must pass 1-d or 2-d input')
         inputs = [input_tensor]
 
+        inputs = [input_tensor]
         if index is not None:
             if input_tensor.shape[0] != len(index):
                 raise ValueError(
@@ -213,6 +214,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         in_tensor = op.input
         out_chunks = []
         nsplits = in_tensor.nsplits
+
         if op.index is not None:
             # rechunk index if it's a tensor
             index_tensor = op.index.rechunk([nsplits[0]])._inplace_tile()
@@ -244,6 +246,11 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 pd_index = out_df.index_value.to_pandas()
                 chunk_pd_index = pd_index[index_stop - in_chunk.shape[0]:index_stop]
                 index_value = parse_index(chunk_pd_index, store_data=True)
+            elif op.index is not None:
+                index_chunk = index_tensor.cix[in_chunk.index[0],]
+                chunk_inputs.append(index_chunk)
+                index_value = parse_index(pd.Index([], dtype=index_tensor.dtype),
+                                          key=tokenize(index_chunk, type(out_op).__name__))
             else:
                 assert op.index is not None
                 index_chunk = index_tensor.cix[in_chunk.index[0],]

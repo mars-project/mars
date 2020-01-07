@@ -26,7 +26,8 @@ from . import base
 from . import indexing
 from . import merge
 from . import reduction
+from . import statistics
 from . import groupby
 
-del reduction, arithmetic, indexing, merge, base, groupby
+del reduction, statistics, arithmetic, indexing, merge, base, groupby
 del DataFrameFetch, DataFrameFetchShuffle
