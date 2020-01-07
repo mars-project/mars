@@ -6,22 +6,23 @@ import sqlite3
 import sys
 
 
-def rewrite_path(txt, old_path, new_path):
+def rewrite_path(txt, old_path=None, new_path=None):
     txt = txt.replace('\\\\', '/').replace('\\', '/')
     txt = re.sub('"([A-Za-z]):/', lambda m: '"/' + m.group(1).lower() + '/', txt)
     txt = re.sub('^([A-Za-z]):/', lambda m: '/' + m.group(1).lower() + '/', txt)
-    txt = txt.replace(old_path, new_path)
+    if old_path is not None and new_path is not None:
+        txt = txt.replace(old_path, new_path)
     return txt
 
 
-def rewrite_json_coverage(file_name, old_path, new_path):
+def rewrite_json_coverage(file_name, old_path=None, new_path=None):
     with open(file_name, 'r') as f:
         cov_data = rewrite_path(f.read(), old_path, new_path)
     with open(file_name, 'w') as f:
         f.write(cov_data)
 
 
-def rewrite_sqlite_coverage(file_name, old_path, new_path):
+def rewrite_sqlite_coverage(file_name, old_path=None, new_path=None):
     conn = None
     try:
         conn = sqlite3.connect(file_name)
@@ -44,15 +45,18 @@ def rewrite_sqlite_coverage(file_name, old_path, new_path):
 
 
 def main(source_dir):
-    for fn in glob.glob('.pwd.*'):
-        cov_fn = fn.replace('.pwd', '.coverage')
-        if not os.path.exists(cov_fn):
+    for cov_fn in glob.glob('.coverage*'):
+        if 'coveragerc' in cov_fn:
             continue
-
         sys.stderr.write('Rewriting coverage file %s\n' % cov_fn)
-        with open(fn, 'r') as f:
-            env_pwd = f.read().strip()
-            env_pwd = re.sub('^/([A-Z])/', lambda m: '/' + m.group(1).lower() + '/', env_pwd)
+
+        pwd_fn = cov_fn.replace('.coverage', '.pwd')
+        if not os.path.exists(pwd_fn):
+            env_pwd = None
+        else:
+            with open(pwd_fn, 'r') as f:
+                env_pwd = f.read().strip()
+                env_pwd = re.sub('^/([A-Z])/', lambda m: '/' + m.group(1).lower() + '/', env_pwd)
 
         with open(cov_fn, 'rb') as f:
             header = f.read(6)
@@ -64,5 +68,9 @@ def main(source_dir):
 
 
 if __name__ == '__main__':
-    os.chdir(sys.argv[1])
-    main(sys.argv[2])
+    if len(sys.argv) > 1:
+        os.chdir(sys.argv[1])
+    source_dir = None
+    if len(sys.argv) > 2:
+        source_dir = sys.argv[2]
+    main(source_dir)
