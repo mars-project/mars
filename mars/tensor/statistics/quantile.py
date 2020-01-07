@@ -464,4 +464,3 @@ def quantile(a, q, axis=None, out=None, overwrite_input=False,
 
     return _quantile_unchecked(a, q, axis=axis, out=out, overwrite_input=overwrite_input,
                                interpolation=interpolation, keepdims=keepdims)
-

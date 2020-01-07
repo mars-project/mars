@@ -180,8 +180,8 @@ class Test(unittest.TestCase):
             raw3 = rs.randint(10, size=(0,))
             c = tensor(raw3)
             for t, r in [(a, raw), (b, raw2), (c, raw3), (sort(a), raw)]:
-                # TODO: test 'auto' and 'fd' after `mt.percentile` implemented
-                test_bins = [10, 'stone', 'doane', 'rice', 'scott', 'sqrt', 'sturges']
+                test_bins = [10, 'stone', 'auto', 'doane', 'fd',
+                             'rice', 'scott', 'sqrt', 'sturges']
                 for bins in test_bins:
                     bin_edges = histogram_bin_edges(t, bins=bins)
 
@@ -248,8 +248,8 @@ class Test(unittest.TestCase):
             c = tensor(raw3)
             for t, r in [(a, raw), (b, raw2), (c, raw3), (sort(a), raw)]:
                 for density in (True, False):
-                    # TODO: test 'auto' and 'fd' after `mt.percentile` implemented
-                    test_bins = [10, 'stone', 'doane', 'rice', 'scott', 'sqrt', 'sturges']
+                    test_bins = [10, 'stone', 'auto', 'doane', 'fd',
+                                 'rice', 'scott', 'sqrt', 'sturges']
                     for bins in test_bins:
                         hist = histogram(t, bins=bins, density=density)[0]
 
