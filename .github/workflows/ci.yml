@@ -9,9 +9,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hdfs]
+        python-version: [3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hdfs, 3.8-cython]
         include:
-          - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m", cython-trace: 1 }
+          - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m" }
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
           - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38" }
@@ -19,12 +19,16 @@ jobs:
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
           - { os: ubuntu-16.04, python-version: 3.8-hdfs, no-common-tests: 1,
               no-deploy: 1, with-hdfs: "with hdfs" }
+          - { os: ubuntu-16.04, python-version: 3.8-cython, no-common-tests: 1,
+              no-deploy: 1, with-cython: "with Cython" }
           - { os: windows-latest, python-version: 3.8, build-static: 1 }
         exclude:
           - { os: macOS-latest, python-version: 3.8-kubernetes }
           - { os: macOS-latest, python-version: 3.8-hdfs }
+          - { os: macOS-latest, python-version: 3.8-cython }
           - { os: windows-latest, python-version: 3.8-kubernetes }
           - { os: windows-latest, python-version: 3.8-hdfs }
+          - { os: windows-latest, python-version: 3.8-cython }
 
     steps:
     - name: Check out code
@@ -103,15 +107,22 @@ jobs:
 
     - name: Build cython extensions
       env:
-        CYTHON_TRACE: ${{ matrix.cython-trace }}
+        WITH_CYTHON: ${{ matrix.with-cython }}
       shell: bash
       run: |
         source ./.github/workflows/reload-env.sh
-        if [ -z "$CYTHON_TRACE" ]; then
+        if [ -z "$WITH_CYTHON" ]; then
           for cf in `ls .coveragerc*`; do
             sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
             sed -i.bak -e '/*\.pxd/ a\
             \ \ \ \ *.pyx \
+            ' $cf
+          done
+        else
+          export CYTHON_TRACE=1
+          for cf in `ls .coveragerc*`; do
+            sed -i.bak -e '/*\.pxd/ a\
+            \ \ \ \ *.py \
             ' $cf
           done
         fi
@@ -121,6 +132,7 @@ jobs:
       env:
         WITH_HDFS: ${{ matrix.with-hdfs }}
         WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+        WITH_CYTHON: ${{ matrix.with-cython }}
         NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
         NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
         CHANGE_MINIKUBE_NONE_USER: true

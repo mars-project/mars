@@ -9,6 +9,11 @@ if [ -n "$WITH_KUBERNETES" ]; then
   pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/deploy/kubernetes
   coverage report
 fi
+if [ -n "$WITH_CYTHON" ]; then
+  pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/actors mars/deploy/local mars/serialize \
+    mars/optimizes mars/scheduler mars/tests
+  coverage report
+fi
 if [ -z "$NO_COMMON_TESTS" ]; then
   if [[ "$UNAME" == "mingw"* ]]; then
     python -m pytest $PYTEST_CONFIG --ignore=mars/scheduler --ignore=mars/worker --timeout=1500
