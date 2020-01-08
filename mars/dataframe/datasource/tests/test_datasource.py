@@ -314,6 +314,12 @@ class Test(TestBase):
         pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
         pd.testing.assert_index_equal(df.chunks[3].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
 
+        # from tensor with index that is a tensor as well
+        df = dataframe_from_tensor(tensor, index=mt.arange(0, 20, 2))
+        df = df.tiles()
+        self.assertEqual(len(df.chunks[0].inputs), 2)
+        self.assertFalse(df.chunks[0].index_value.has_value())
+
         # from tensor with given columns
         df = dataframe_from_tensor(tensor, columns=list('abcdefghij'))
         df = df.tiles()

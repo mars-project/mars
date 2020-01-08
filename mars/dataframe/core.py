@@ -106,7 +106,8 @@ class IndexValue(Serializable):
 
         def to_pandas(self):
             slc = self._slice
-            return pd.RangeIndex(slc.start, slc.stop, slc.step)
+            return pd.RangeIndex(slc.start, slc.stop, slc.step,
+                                 name=getattr(self, '_name', None))
 
     class CategoricalIndex(IndexBase):
         _name = AnyField('name')
@@ -250,6 +251,10 @@ class IndexValue(Serializable):
     def min_max(self):
         return self._index_value.min_val, self._index_value.min_val_close, \
                self._index_value.max_val, self._index_value.max_val_close
+
+    @property
+    def name(self):
+        return getattr(self._index_value, 'name', None)
 
     def has_value(self):
         if isinstance(self._index_value, self.RangeIndex):
