@@ -2,7 +2,7 @@ ARG BASE_CONTAINER=marsproject/mars-base
 FROM ${BASE_CONTAINER}
 
 RUN /srv/retry.sh 3 /opt/conda/bin/conda install -c pkgs/main \
-    coverage \
+    coverage\<5.0 cloudpickle \
   && conda clean --all -f -y
 
 RUN apt-get -yq update \

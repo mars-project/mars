@@ -18,7 +18,7 @@ if [ -z "$NO_COMMON_TESTS" ]; then
     pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/tensor mars/dataframe mars/web mars/learn
     mv .coverage build/.coverage.tensor.file
     pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --ignore mars/tensor --ignore mars/dataframe \
-     --ignore mars/learn mars
+      --ignore mars/learn mars
     mv .coverage build/.coverage.main.file
     coverage combine build/ && coverage report --fail-under=85
 

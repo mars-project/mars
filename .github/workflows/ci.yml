@@ -36,7 +36,7 @@ jobs:
       shell: bash
       run: |
         source ./.github/workflows/install-conda.sh
-        python -m pip install --upgrade pip setuptools wheel coverage;
+        python -m pip install --upgrade pip setuptools wheel coverage\<5.0;
 
     - name: Install dependencies
       env:
@@ -171,7 +171,7 @@ jobs:
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.github_token }}
         run: |
-          pip install numpy cython gevent coverage
+          pip install numpy cython gevent coverage\<5.0
           pip install git+https://github.com/wjsi/coveralls-python.git
           CYTHON_TRACE=1 python setup.py sdist
           export DEFAULT_VENV=$VIRTUAL_ENV
