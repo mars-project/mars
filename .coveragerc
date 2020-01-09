@@ -1,5 +1,6 @@
 [run]
 branch = True
+relative_files = True
 cover_pylib = False
 concurrency = multiprocessing,gevent
 parallel = True
@@ -18,6 +19,7 @@ omit =
     mars/lib/uhashring/*
     mars/serialize/protos/*
     mars/learn/contrib/xgboost/tracker.py
+    *.html
     *.pxd
     */tests/*
 

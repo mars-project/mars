@@ -8,7 +8,6 @@ mkdir -p .kube-coverage
 export COVERAGE_FILE=.kube-coverage/.coverage
 
 cp /mnt/mars/.coveragerc /tmp/coveragerc
-sed -i.bak "s/plugins *= *Cython\.Coverage//g" /tmp/coveragerc
 export COVERAGE_PROCESS_START=/tmp/coveragerc
 
 COV_RUNNER="/opt/conda/bin/coverage run --rcfile=/tmp/coveragerc"
