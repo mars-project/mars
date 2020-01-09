@@ -107,6 +107,9 @@ class Test(unittest.TestCase):
         b = b.tiles()
         self.assertEqual(b.shape, (10,))
 
+        b = quantile(a, 0.3)
+        self.assertEqual(b.ndim, 0)
+
         # q has to be 1-d
         with self.assertRaises(ValueError):
             quantile(a, q.reshape(5, 2))

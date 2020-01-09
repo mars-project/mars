@@ -237,7 +237,7 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
         return self._keepdims
 
     def __call__(self, a, q=None, out=None):
-        shape = [self._q.size]
+        shape = [self._q.size] if self._q.ndim > 0 else []
         if self._axis is None:
             exclude_axes = set(range(a.ndim))
         elif isinstance(self._axis, tuple):
@@ -302,7 +302,7 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
             if any(meta is None for meta in metas):
                 raise TilesError('q has to be executed if it\' a tensor')
             q_data = ctx.get_chunk_results(q_chunk_keys)
-            q = np.concatenate(q_data)
+            op._q = q = np.concatenate(q_data)
             if not _quantile_is_valid(q):
                 raise ValueError(op.q_error_msg)
         else:
@@ -331,8 +331,15 @@ INTERPOLATION_TYPES = {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
 
 def _quantile_unchecked(a, q, axis=None, out=None, overwrite_input=False,
                         interpolation='linear', keepdims=False,
-                        q_error_msg=None):
+                        q_error_msg=None, handle_non_numeric=None):
     a = astensor(a)
+    raw_dtype = a.dtype
+    need_view_back = False
+    if handle_non_numeric and not np.issubdtype(a.dtype, np.number):
+        # enable handle_non_numeric is often used
+        # to handle the datetime-like dtype
+        a = a.astype('i8')
+        need_view_back = True
     if isinstance(q, (Base, Entity)):
         q = astensor(q)
         # do check in tile
@@ -355,16 +362,23 @@ def _quantile_unchecked(a, q, axis=None, out=None, overwrite_input=False,
 
     # infer dtype
     q_tiny = np.random.rand(2 if q.size % 2 == 0 else 1).astype(q.dtype)
-    dtype = np.quantile(np.empty(1, dtype=a.dtype), q_tiny, interpolation=interpolation).dtype
+    if handle_non_numeric and not np.issubdtype(a.dtype, np.number):
+        dtype = a.dtype
+    else:
+        dtype = np.quantile(np.empty(1, dtype=a.dtype), q_tiny,
+                            interpolation=interpolation).dtype
     op = TensorQuantile(q=q, axis=axis, out=out, overwrite_input=overwrite_input,
                         interpolation=interpolation, keepdims=keepdims,
-                        q_error_msg=q_error_msg,
+                        handle_non_numeric=handle_non_numeric, q_error_msg=q_error_msg,
                         dtype=dtype, gpu=a.op.gpu)
-    return op(a, q=q_input, out=out)
+    ret = op(a, q=q_input, out=out)
+    if need_view_back:
+        ret = ret.astype(raw_dtype)
+    return ret
 
 
 def quantile(a, q, axis=None, out=None, overwrite_input=False,
-             interpolation='linear', keepdims=False):
+             interpolation='linear', keepdims=False, **kw):
     """
     Compute the q-th quantile of the data along the specified axis.
 
@@ -456,6 +470,11 @@ def quantile(a, q, axis=None, out=None, overwrite_input=False,
     array([6.5, 4.5, 2.5])
     """
 
+    handle_non_numeric = kw.pop('handle_non_numeric', None)
+    if len(kw) > 0:  # pragma: no cover
+        raise TypeError('quantile() got an unexpected keyword '
+                        'argument \'{}\''.format(next(iter(kw))))
+
     if not isinstance(q, (Base, Entity)):
         q = np.asanyarray(q)
         # do check instantly if q is not a tensor
@@ -463,4 +482,5 @@ def quantile(a, q, axis=None, out=None, overwrite_input=False,
             raise ValueError(q_error_msg)
 
     return _quantile_unchecked(a, q, axis=axis, out=out, overwrite_input=overwrite_input,
-                               interpolation=interpolation, keepdims=keepdims)
+                               interpolation=interpolation, keepdims=keepdims,
+                               handle_non_numeric=handle_non_numeric)
