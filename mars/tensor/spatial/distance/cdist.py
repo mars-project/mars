@@ -492,6 +492,9 @@ def cdist(XA, XB, metric='euclidean', **kwargs):
     XA = astensor(XA, order='C')
     XB = astensor(XB, order='C')
 
+    if XA.issparse() or XB.issparse():
+        raise ValueError('Sparse tensors are not supported by this function.')
+
     s = XA.shape
     sB = XB.shape
 

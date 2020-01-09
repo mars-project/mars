@@ -493,6 +493,9 @@ def pdist(X, metric='euclidean', **kwargs):
 
     X = astensor(X, order='C')
 
+    if X.issparse():
+        raise ValueError('Sparse tensors are not supported by this function.')
+
     s = X.shape
     if len(s) != 2:
         raise ValueError('A 2-dimensional tensor must be passed.')

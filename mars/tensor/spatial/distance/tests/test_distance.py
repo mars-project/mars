@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+import scipy.sparse as sps
 
 from mars.tensor.datasource import tensor
 from mars.tensor.spatial import distance
@@ -44,6 +45,12 @@ class Test(unittest.TestCase):
         self.assertEqual(len(dist.chunks), 2)
         for c in dist.chunks:
             self.assertEqual(c.shape, (dist.shape[0] // 2,))
+
+        # X cannot be sparse
+        raw = sps.csr_matrix(np.zeros((4, 3)))
+        a = tensor(raw)
+        with self.assertRaises(ValueError):
+            distance.pdist(a)
 
         # X can only be 2-d
         with self.assertRaises(ValueError):
@@ -104,6 +111,18 @@ class Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             distance.cdist(np.random.rand(3, 3), np.random.rand(3, 3, 3))
 
+        # XA cannot be sparse
+        raw = sps.csr_matrix(np.zeros((4, 3)))
+        a = tensor(raw)
+        with self.assertRaises(ValueError):
+            distance.cdist(a, np.random.rand(10, 3))
+
+        # XB cannot be sparse
+        raw = sps.csr_matrix(np.zeros((4, 3)))
+        b = tensor(raw)
+        with self.assertRaises(ValueError):
+            distance.cdist(np.random.rand(10, 3), b)
+
         # out type wrong
         with self.assertRaises(TypeError):
             distance.cdist(raw_a, raw_b, out=2)
@@ -120,3 +139,22 @@ class Test(unittest.TestCase):
         # test extra param
         with self.assertRaises(TypeError):
             distance.cdist(raw_a, raw_b, unknown_kw='unknown_kw')
+
+    def testSquareform(self):
+        self.assertEqual(distance.squareform(np.array([], dtype=float)).shape, (1, 1))
+        self.assertEqual(distance.squareform(np.atleast_2d(np.random.rand())).shape, (0,))
+
+        with self.assertRaises(ValueError):
+            distance.squareform(np.random.rand(3, 3), force='tomatrix')
+
+        with self.assertRaises(ValueError):
+            distance.squareform(np.random.rand(3), force='tovector')
+
+        with self.assertRaises(ValueError):
+            distance.squareform(np.random.rand(3, 3, 3))
+
+        with self.assertRaises(ValueError):
+            distance.squareform(np.random.rand(2, 4))
+
+        with self.assertRaises(ValueError):
+            distance.squareform(np.random.rand(7))

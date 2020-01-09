@@ -127,3 +127,63 @@ class Test(unittest.TestCase):
         result = self._executor.execute_tensor(dist, concat=True)[0]
         expected = sp_cdist(raw_a, raw_b, metric=f)
         np.testing.assert_array_equal(result, expected)
+
+    @unittest.skipIf(distance.cdist is None, 'scipy not installed')
+    def testSqureFormExecution(self):
+        from scipy.spatial.distance import pdist as sp_pdist, \
+            squareform as sp_squareform
+
+        raw_a = np.random.rand(80, 10)
+        raw_pdsit = sp_pdist(raw_a)
+        raw_square = sp_squareform(raw_pdsit)
+
+        # tomatrix, test 1 chunk
+        vec = tensor(raw_pdsit, chunk_size=raw_pdsit.shape[0])
+        mat = distance.squareform(vec, chunk_size=100)
+        result = self._executor.execute_tensor(mat, concat=True)[0]
+        np.testing.assert_array_equal(result, raw_square)
+
+        # tomatrix, test more than 1 chunk
+        vec = tensor(raw_pdsit, chunk_size=33)
+        self.assertGreater(len(vec.tiles().chunks), 1)
+        mat = distance.squareform(vec, chunk_size=34)
+        result = self._executor.execute_tensor(mat, concat=True)[0]
+        np.testing.assert_array_equal(result, raw_square)
+
+        # tovec, test 1 chunk
+        mat = tensor(raw_square)
+        vec = distance.squareform(mat, chunk_size=raw_pdsit.shape[0])
+        self.assertEqual(len(mat.tiles().chunks), 1)
+        self.assertEqual(len(vec.tiles().chunks), 1)
+        result = self._executor.execute_tensor(vec, concat=True)[0]
+        np.testing.assert_array_equal(result, raw_pdsit)
+
+        # tovec, test more than 1 chunk
+        mat = tensor(raw_square, chunk_size=31)
+        vec = distance.squareform(mat, chunk_size=40)
+        self.assertGreater(len(vec.tiles().chunks), 1)
+        result = self._executor.execute_tensor(vec, concat=True)[0]
+        np.testing.assert_array_equal(result, raw_pdsit)
+
+        # test checks
+        # generate non-symmetric matrix
+        non_sym_arr = np.random.RandomState(0).rand(10, 10)
+
+        # 1 chunk
+        mat = tensor(non_sym_arr)
+        vec = distance.squareform(mat, checks=True, chunk_size=100)
+        with self.assertRaises(ValueError):
+            _ = self._executor.execute_tensor(vec, concat=True)[0]
+        # force checks=False
+        vec = distance.squareform(mat, checks=False, chunk_size=100)
+        _ = self._executor.execute_tensor(vec, concat=True)[0]
+
+        # more than 1 chunk
+        mat = tensor(non_sym_arr, chunk_size=6)
+        vec = distance.squareform(mat, checks=True, chunk_size=8)
+        self.assertGreater(len(vec.tiles().chunks), 1)
+        with self.assertRaises(ValueError):
+            _ = self._executor.execute_tensor(vec, concat=True)[0]
+        # force checks=False
+        vec = distance.squareform(mat, checks=False, chunk_size=100)
+        _ = self._executor.execute_tensor(vec, concat=True)[0]

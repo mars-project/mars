@@ -14,3 +14,4 @@
 
 from .pdist import pdist
 from .cdist import cdist
+from .squareform import squareform
