@@ -56,15 +56,12 @@ class Test(unittest.TestCase):
 
             # rewrite paths in coverage result files
             for fn in glob.glob(os.path.join(kube_coverage_path, '.coverage.*')):
-                with open(fn, 'rb') as f:
-                    content = f.read()
                 if 'COVERAGE_FILE' in os.environ:
                     new_cov_file = os.environ['COVERAGE_FILE'] \
                                    + os.path.basename(fn).replace('.coverage', '')
                 else:
                     new_cov_file = fn.replace('.kube-coverage' + os.sep, '')
-                with open(new_cov_file, 'wb') as f:
-                    f.write(content.replace(b'/mnt/mars', MARS_ROOT.encode()))
+                shutil.copyfile(fn, new_cov_file)
             shutil.rmtree(kube_coverage_path)
 
     @classmethod

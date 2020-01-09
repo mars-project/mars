@@ -9,10 +9,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hdfs]
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hdfs, 3.8-cython]
         include:
           - { os: ubuntu-16.04, python-version: 2.7, python-abis: "cp27-cp27m:cp27-cp27mu" }
-          - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m", cython-trace: 1 }
+          - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m" }
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
           - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38" }
@@ -20,13 +20,17 @@ jobs:
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
           - { os: ubuntu-16.04, python-version: 3.8-hdfs, no-common-tests: 1,
               no-deploy: 1, with-hdfs: "with hdfs" }
+          - { os: ubuntu-16.04, python-version: 3.8-cython, no-common-tests: 1,
+              no-deploy: 1, with-cython: "with Cython" }
           - { os: windows-latest, python-version: 3.8, build-static: 1 }
         exclude:
           - { os: macOS-latest, python-version: 3.8-kubernetes }
           - { os: macOS-latest, python-version: 3.8-hdfs }
+          - { os: macOS-latest, python-version: 3.8-cython }
           - { os: windows-latest, python-version: 2.7 }
           - { os: windows-latest, python-version: 3.8-kubernetes }
           - { os: windows-latest, python-version: 3.8-hdfs }
+          - { os: windows-latest, python-version: 3.8-cython }
 
     steps:
     - name: Check out code
@@ -62,7 +66,6 @@ jobs:
         fi
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
-        pip install git+https://github.com/wjsi/coveralls-python.git
         if [[ $UNAME == "mingw"* ]]; then
           pip install virtualenv flake8
         else
@@ -98,22 +101,6 @@ jobs:
         fi
         conda list
 
-    - name: Build cython extensions
-      env:
-        CYTHON_TRACE: ${{ matrix.cython-trace }}
-      shell: bash
-      run: |
-        source ./.github/workflows/reload-env.sh
-        if [ -z "$CYTHON_TRACE" ]; then
-          for cf in `ls .coveragerc*`; do
-            sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
-            sed -i.bak -e '/*\.pxd/ a\
-            \ \ \ \ *.pyx \
-            ' $cf
-          done
-        fi
-        python setup.py build_ext --force --inplace
-
     - name: Lint with flake8
       shell: bash
       run: |
@@ -123,10 +110,34 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 mars --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
+    - name: Build cython extensions
+      env:
+        WITH_CYTHON: ${{ matrix.with-cython }}
+      shell: bash
+      run: |
+        source ./.github/workflows/reload-env.sh
+        if [ -z "$WITH_CYTHON" ]; then
+          for cf in `ls .coveragerc*`; do
+            sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
+            sed -i.bak -e '/*\.pxd/ a\
+            \ \ \ \ *.pyx \
+            ' $cf
+          done
+        else
+          export CYTHON_TRACE=1
+          for cf in `ls .coveragerc*`; do
+            sed -i.bak -e '/*\.pxd/ a\
+            \ \ \ \ *.py \
+            ' $cf
+          done
+        fi
+        python setup.py build_ext --force --inplace
+
     - name: Test with pytest
       env:
         WITH_HDFS: ${{ matrix.with-hdfs }}
         WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+        WITH_CYTHON: ${{ matrix.with-cython }}
         NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
         NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
         CHANGE_MINIKUBE_NONE_USER: true
@@ -134,6 +145,7 @@ jobs:
       run: |
         source ./.github/workflows/reload-env.sh
         source ./.github/workflows/run-tests.sh
+
         mkdir covdata
         cp .coverage covdata/.coverage.$RUNNER_TRACKING_ID
         echo $(pwd) > covdata/.pwd.$RUNNER_TRACKING_ID
@@ -152,6 +164,7 @@ jobs:
 
     - name: Persist coverage data
       uses: actions/upload-artifact@v1
+      if: startsWith(matrix.os, 'windows') != true
       with:
         name: covdata
         path: covdata
@@ -173,14 +186,21 @@ jobs:
         with:
           name: covdata
 
-      - name: Report coverage data
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.github_token }}
+      - name: Collect coverage data
         run: |
           pip install numpy cython gevent coverage
-          pip install git+https://github.com/wjsi/coveralls-python.git
+          pip install codecov
           CYTHON_TRACE=1 python setup.py sdist
           export DEFAULT_VENV=$VIRTUAL_ENV
-          python .github/workflows/unify_coverage.py covdata/ "$(pwd)"
           coverage combine covdata/
-          for i in $(seq 1 3); do coveralls && break || sleep 5; done;
+          coverage xml
+
+      - name: Prepare coverage token
+        if: success() && github.repository == 'mars-project/mars'
+        run: cp .github/codecov-upstream.yml .codecov.yml
+
+      - name: Report coverage data
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
