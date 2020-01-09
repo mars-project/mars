@@ -74,7 +74,34 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
         return ExecutableTuple([p, l, u])
 
     @classmethod
+    def _tile_one_chunk(cls, op):
+        p, l, u = op.outputs
+        chunk_op = op.copy().reset_key()
+        chunk_kws = [
+            {'side': 'p', 'dtype': p.dtype,
+             'shape': p.shape, 'order': p.order,
+             'index': (0,) * p.ndim},
+            {'side': 'l', 'dtype': l.dtype,
+             'shape': l.shape, 'order': l.order,
+             'index': (0,) * l.ndim},
+            {'side': 'u', 'dtype': u.dtype,
+             'shape': u.shape, 'order': u.order,
+             'index': (0,) * u.ndim}
+        ]
+        chunks = chunk_op.new_chunks(op.input.chunks, kws=chunk_kws)
+
+        new_op = op.copy()
+        kws = [p.params, l.params, u.params]
+        for i, out in enumerate([p, l, u]):
+            kws[i]['nsplits'] = tuple((s,) for s in out.shape)
+            kws[i]['chunks'] = [chunks[i]]
+        return new_op.new_tensors(op.inputs, kws=kws)
+
+    @classmethod
     def tile(cls, op):
+        if len(op.input.chunks) == 1:
+            return cls._tile_one_chunk(op)
+
         from ..arithmetic.subtract import TensorSubtract
         from ..arithmetic.add import TensorTreeAdd
         from ..base.transpose import TensorTranspose
