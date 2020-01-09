@@ -11,7 +11,7 @@ if [ -n "$WITH_KUBERNETES" ]; then
 fi
 if [ -n "$WITH_CYTHON" ]; then
   pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/actors mars/deploy/local mars/serialize \
-    mars/optimizes mars/scheduler mars/tests
+    mars/optimizes mars/scheduler mars/tests mars/web
   coverage report
 fi
 if [ -z "$NO_COMMON_TESTS" ]; then
