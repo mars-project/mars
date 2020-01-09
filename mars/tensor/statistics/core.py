@@ -26,7 +26,7 @@ def _ureduce(a, func, **kwargs):
     Parameters
     ----------
     a : array_like
-        Input array or object that can be converted to an array.
+        Input tensor or object that can be converted to a tensor.
     func : callable
         Reduction function capable of receiving a single axis argument.
         It is called with `a` as first argument followed by `kwargs`.
