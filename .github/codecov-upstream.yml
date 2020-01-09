@@ -1,0 +1,35 @@
+# Documentation: https://docs.codecov.io/docs/codecov-yaml
+
+codecov:
+  # Avoid "Missing base report" due to committing CHANGES.rst with "[CI skip]"
+  # https://github.com/codecov/support/issues/363
+  # https://docs.codecov.io/docs/comparing-commits
+  allow_coverage_offsets: true
+
+  token: 75f25682-0783-48e6-92ba-83c93157ed06
+
+comment: off
+
+coverage:
+  status:
+    project:
+      default:
+        target: 90%
+        threshold: 0.5%
+
+# Matches 'omit:' in .coveragerc
+ignore:
+  - "mars/compat.py"
+  - "mars/lib/functools32"
+  - "mars/lib/futures"
+  - "mars/lib/enum.py"
+  - "mars/lib/six.py"
+  - "mars/lib/gipc.pyx"
+  - "mars/lib/nvutils.py"
+  - "mars/lib/tblib"
+  - "mars/lib/uhashring"
+  - "mars/serialize/protos"
+  - "mars/learn/contrib/xgboost/tracker.py"
+  - "**/*.html"
+  - "**/*.pxd"
+  - "**/tests"

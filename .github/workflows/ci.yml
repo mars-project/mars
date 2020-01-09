@@ -60,7 +60,6 @@ jobs:
         fi
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
-        pip install git+https://github.com/wjsi/coveralls-python.git
         if [[ $UNAME == "mingw"* ]]; then
           pip install virtualenv flake8
         else
@@ -181,17 +180,21 @@ jobs:
         with:
           name: covdata
 
-      - name: Report coverage data
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.github_token }}
+      - name: Collect coverage data
         run: |
           pip install numpy cython gevent coverage
-          pip install git+https://github.com/wjsi/coveralls-python.git
+          pip install codecov
           CYTHON_TRACE=1 python setup.py sdist
           export DEFAULT_VENV=$VIRTUAL_ENV
           coverage combine covdata/
-          for i in $(seq 1 3); do
-            ECODE=0; coveralls && break || sleep 5
-            ECODE=1
-          done
-          if [ "$ECODE" -ne "0" ]; then exit $ECODE; fi
+          coverage xml
+
+      - name: Prepare coverage token
+        if: success() && github.repository == 'mars-project/mars'
+        run: cp .github/codecov-upstream.yml .codecov.yml
+
+      - name: Report coverage data
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
