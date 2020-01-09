@@ -21,12 +21,12 @@ import numpy as np
 from mars.tensor import ones, add, swapaxes, moveaxis, atleast_1d, atleast_2d, \
     atleast_3d, squeeze, tensor
 from mars.session import LocalSession, Session
-from mars.tests.core import TestExecutor
+from mars.tests.core import ExecutorForTest
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = TestExecutor('numpy')
+        self.executor = ExecutorForTest('numpy')
         local_session = LocalSession()
         local_session._executor = self.executor
         self.session = Session()

@@ -22,12 +22,13 @@ import scipy.sparse as sps
 from mars.tensor.datasource import ones, tensor
 from mars.tensor.reduction import mean, nansum, nanmax, nanmin, nanmean, nanprod, nanargmax, \
     nanargmin, nanvar, nanstd, count_nonzero, allclose, array_equal, var, std, nancumsum, nancumprod
-from mars.tests.core import TestExecutor
+from mars.utils import ignore_warning
+from mars.tests.core import ExecutorForTest
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = TestExecutor('numpy')
+        self.executor = ExecutorForTest('numpy')
 
     def testSumProdExecution(self):
         arr = ones((10, 8), chunk_size=3)
@@ -304,6 +305,7 @@ class Test(unittest.TestCase):
         self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
+    @ignore_warning
     def testNanReduction(self):
         raw = np.random.choice(a=[0, 1, np.nan], size=(10, 10), p=[0.3, 0.4, 0.3])
 
