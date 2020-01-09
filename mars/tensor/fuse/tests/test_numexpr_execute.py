@@ -20,6 +20,7 @@ import itertools
 import numpy as np
 
 from mars.executor import Executor
+from mars.utils import ignore_warning
 from mars.tensor.datasource import tensor
 
 
@@ -61,6 +62,7 @@ class Test(unittest.TestCase):
         self.assertEqual(sum(s[0] for s in res4_size), arr4.nbytes)
         self.assertTrue(np.array_equal(res4[0], res4_cmp[0]))
 
+    @ignore_warning
     def testUnaryExecution(self):
         from mars.tensor.arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj
 
@@ -89,6 +91,7 @@ class Test(unittest.TestCase):
         res_cmp = self.executor.execute_tensor(arr2, concat=True)
         self.assertTrue(np.allclose(res[0], res_cmp[0]))
 
+    @ignore_warning
     def testBinExecution(self):
         from mars.tensor.arithmetic import BIN_UFUNC, mod, fmod, \
             bitand, bitor, bitxor, lshift, rshift, ldexp

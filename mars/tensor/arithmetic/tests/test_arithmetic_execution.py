@@ -20,15 +20,16 @@ import numpy as np
 import scipy.sparse as sps
 
 from mars.config import option_context
+from mars.utils import ignore_warning
 from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, cos, truediv, frexp, \
     modf, clip, isclose
-from mars.tests.core import require_cupy, TestExecutor
+from mars.tests.core import require_cupy, ExecutorForTest
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = TestExecutor('numpy')
+        self.executor = ExecutorForTest('numpy')
 
     def _nan_equal(self, a, b):
         try:
@@ -165,6 +166,7 @@ class Test(unittest.TestCase):
             return x.toarray()
         return x
 
+    @ignore_warning
     def testSparseUfuncExexution(self):
         from mars.tensor.arithmetic import UNARY_UFUNC, BIN_UFUNC, arccosh, \
             invert, mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp
@@ -533,6 +535,7 @@ class Test(unittest.TestCase):
 
         np.testing.assert_equal(res, expected)
 
+    @ignore_warning
     def testDtypeExecution(self):
         a = ones((10, 20), dtype='f4', chunk_size=5)
 

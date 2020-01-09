@@ -25,12 +25,12 @@ from mars.tensor.indexing import take, compress, extract, choose, \
     unravel_index, nonzero, flatnonzero
 from mars.tensor import mod, stack, hstack
 from mars.config import options
-from mars.tests.core import TestExecutor
+from mars.tests.core import ExecutorForTest
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = TestExecutor('numpy')
+        self.executor = ExecutorForTest('numpy')
         self.old_chunk = options.tensor.chunk_size
         options.tensor.chunk_size = 10
 
