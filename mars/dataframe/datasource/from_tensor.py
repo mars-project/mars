@@ -189,13 +189,11 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             if out_df.index_value.has_value():
                 pd_index = out_df.index_value.to_pandas()[cum_sizes[i]: cum_sizes[i + 1]]
                 index_value = parse_index(pd_index, store_data=True)
-            elif op.index is not None:
+            else:
+                assert op.index is not None
                 index_chunk = in_tensors[-1].cix[i,]
                 index_value = parse_index(pd.Index([], dtype=index_chunk.dtype),
                                           key=tokenize(index_chunk, type(chunk_op).__name__))
-            else:
-                chunk_pd_index = pd.RangeIndex(start=cum_sizes[i], stop=cum_sizes[i + 1])
-                index_value = parse_index(chunk_pd_index)
             shape = (nsplit[i], len(out_df.dtypes))
             out_chunk = chunk_op.new_chunk([t.cix[i,] for t in in_tensors],
                                            shape=shape, index=chunk_index,
@@ -246,15 +244,12 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 pd_index = out_df.index_value.to_pandas()
                 chunk_pd_index = pd_index[index_stop - in_chunk.shape[0]:index_stop]
                 index_value = parse_index(chunk_pd_index, store_data=True)
-            elif op.index is not None:
+            else:
+                assert op.index is not None
                 index_chunk = index_tensor.cix[in_chunk.index[0],]
                 chunk_inputs.append(index_chunk)
                 index_value = parse_index(pd.Index([], dtype=index_tensor.dtype),
                                           key=tokenize(index_chunk, type(out_op).__name__))
-            else:
-                chunk_pd_index = pd.RangeIndex(start=index_stop - in_chunk.shape[0],
-                                               stop=index_stop)
-                index_value = parse_index(chunk_pd_index)
 
             out_op.extra_params['index_stop'] = index_stop
             out_op.extra_params['column_stop'] = column_stop

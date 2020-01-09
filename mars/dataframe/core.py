@@ -254,7 +254,7 @@ class IndexValue(Serializable):
 
     @property
     def name(self):
-        return getattr(self._index_value, 'name', None)
+        return getattr(self._index_value, '_name', None)
 
     def has_value(self):
         if isinstance(self._index_value, self.RangeIndex):
