@@ -19,12 +19,12 @@ import numpy as np
 
 from mars.tensor.datasource import tensor
 from mars.tensor.spatial import distance
-from mars.tests.core import TestExecutor
+from mars.tests.core import ExecutorForTest
 
 
 class Test(unittest.TestCase):
     def setUp(self) -> None:
-        self._executor = TestExecutor('numpy')
+        self._executor = ExecutorForTest('numpy')
 
     @unittest.skipIf(distance.pdist is None, 'scipy not installed')
     def testPdistExecution(self):
