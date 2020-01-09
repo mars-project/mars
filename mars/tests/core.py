@@ -344,6 +344,7 @@ class TestExecutor(Executor):
     Mostly identical to normal executor, difference is that when executing graph,
     graph will be serialized then deserialized by Protocol Buffers and JSON both.
     """
+    __test__ = False
 
     def execute_graph(self, graph, keys, **kw):
         graph = type(graph).from_pb(graph.to_pb())
