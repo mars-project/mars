@@ -269,8 +269,8 @@ Thank you in advance for your contributions!
 
 .. |Build| image:: https://github.com/mars-project/mars/workflows/Mars%20CI/badge.svg
    :target: https://github.com/mars-project/mars/actions
-.. |Coverage| image:: https://img.shields.io/coveralls/github/mars-project/mars.svg
-   :target: https://coveralls.io/github/mars-project/mars
+.. |Coverage| image:: https://codecov.io/gh/mars-project/mars/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/mars-project/mars
 .. |Quality| image:: https://img.shields.io/codacy/grade/4e15343492d14335847d67630bb3c319.svg
    :target: https://app.codacy.com/project/mars-project/mars/dashboard
 .. |PyPI version| image:: https://img.shields.io/pypi/v/pymars.svg
