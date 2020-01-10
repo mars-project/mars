@@ -47,17 +47,17 @@ class Test(TestBase):
         data2 = np.random.rand(6, 6)
         t1 = tensor(data1, chunk_size=3)
         t2 = tensor(data2, chunk_size=3)
-        t = einsum('..., ...', t1, t2)
+        t = einsum('..., ...', t1, t2, order='C')
         res = self.executor.execute_tensor(t, concat=True)[0]
-        expected = np.einsum('..., ...', data1, data2)
+        expected = np.einsum('..., ...', data1, data2, order='C')
         np.testing.assert_almost_equal(res, expected)
 
         # sum(data, axis=-1)
         data = np.random.rand(10)
         t1 = tensor(data, chunk_size=3)
-        t = einsum('i->', t1)
+        t = einsum('i->', t1, order='F')
         res = self.executor.execute_tensor(t, concat=True)[0]
-        expected = np.einsum('i->', data)
+        expected = np.einsum('i->', data, order='F')
         np.testing.assert_almost_equal(res, expected)
 
         # sum(data, axis=0)

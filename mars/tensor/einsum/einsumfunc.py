@@ -388,7 +388,7 @@ def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
                 known_contractions.append(result)
 
         # If we do not have a inner contraction, rescan pairs including outer products
-        if len(known_contractions) == 0:
+        if len(known_contractions) == 0:  # pragma: no cover
 
             # Then check the outer products
             for positions in itertools.combinations(range(len(input_sets)), 2):
@@ -573,7 +573,7 @@ def parse_einsum_input(operands):
             if s not in einsum_symbols:
                 raise ValueError("Character %s is not a valid symbol." % s)
 
-    else:
+    else: # pragma: no cover
         tmp_operands = list(operands)
         operand_list = []
         subscript_list = []
@@ -843,16 +843,16 @@ def einsum_path(*operands, **kwargs):
         pass
 
     # Given an explicit path
-    elif len(path_type) and (path_type[0] == 'einsum_path'):
+    elif len(path_type) and (path_type[0] == 'einsum_path'):  # pragma: no cover
         pass
 
     # Path tuple with memory limit
     elif ((len(path_type) == 2) and isinstance(path_type[0], basestring) and
-            isinstance(path_type[1], (int, float))):
+            isinstance(path_type[1], (int, float))):  # pragma: no cover
         memory_limit = int(path_type[1])
         path_type = path_type[0]
 
-    else:
+    else:  # pragma: no cover
         raise TypeError("Did not understand the path: %s" % str(path_type))
 
     # Hidden option, only einsum should call this
@@ -920,9 +920,9 @@ def einsum_path(*operands, **kwargs):
         path = _greedy_path(input_sets, output_set, dimension_dict, memory_arg)
     elif path_type == "optimal":
         path = _optimal_path(input_sets, output_set, dimension_dict, memory_arg)
-    elif path_type[0] == 'einsum_path':
+    elif path_type[0] == 'einsum_path':  # pragma: no cover
         path = path_type[1:]
-    else:
+    else:  # pragma: no cover
         raise KeyError("Path name %s not found", path_type)
 
     cost_list, scale_list, size_list, contraction_list = [], [], [], []
