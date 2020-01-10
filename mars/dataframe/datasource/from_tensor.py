@@ -245,11 +245,6 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 pd_index = out_df.index_value.to_pandas()
                 chunk_pd_index = pd_index[index_stop - in_chunk.shape[0]:index_stop]
                 index_value = parse_index(chunk_pd_index, store_data=True)
-            elif op.index is not None:
-                index_chunk = index_tensor.cix[in_chunk.index[0],]
-                chunk_inputs.append(index_chunk)
-                index_value = parse_index(pd.Index([], dtype=index_tensor.dtype),
-                                          key=tokenize(index_chunk, type(out_op).__name__))
             else:
                 assert op.index is not None
                 index_chunk = index_tensor.cix[in_chunk.index[0],]

@@ -96,8 +96,6 @@ class Test(unittest.TestCase):
                         expected = np.quantile(raw2, q, axis=axis,
                                                interpolation=interpolation,
                                                keepdims=keepdims)
-                        if b.shape != expected.shape:
-                            raise ValueError
                         self.assertEqual(b.shape, expected.shape)
                         self.assertEqual(b.dtype, expected.dtype)
 
