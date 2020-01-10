@@ -1,36 +1,15 @@
 syntax = "proto3";
 
 
-import "mars/serialize/protos/operand.proto";
-import "mars/serialize/protos/tensor.proto";
-import "mars/serialize/protos/dataframe.proto";
-import "mars/serialize/protos/object.proto";
-import "mars/serialize/protos/fusechunk.proto";
+import "mars/serialize/protos/anyref.proto";
 
 
 message GraphDef {
-    message NodeDef {
-        oneof node {
-            OperandDef op = 1;
-            TensorChunkDef tensor_chunk = 2;
-            TensorDef tensor = 3;
-            DataFrameChunkDef dataframe_chunk = 4;
-            DataFrameDef dataframe = 5;
-            IndexChunkDef index_chunk = 6;
-            IndexDef index = 7;
-            SeriesChunkDef series_chunk = 8;
-            SeriesDef series = 9;
-            ObjectChunkDef object_chunk = 11;
-            ObjectDef object = 12;
-            FuseChunkDef fuse_chunk =10;
-        }
-    }
-
     enum Level {
         CHUNK = 0;
         ENTITY = 1;
     }
 
     Level level = 2;
-    repeated NodeDef node = 1;
+    repeated AnyReference node = 1;
 }

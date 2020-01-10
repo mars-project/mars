@@ -24,7 +24,7 @@ import numpy as np
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
     on_deserialize_shape, on_serialize_nsplits, enter_build_mode, build_mode
 from .serialize import HasKey, ValueType, ProviderType, Serializable, AttributeAsDict, \
-    TupleField, ListField, DictField, KeyField, BoolField, StringField, OneOfField
+    TupleField, ListField, DictField, KeyField, BoolField, StringField, ReferenceField
 from .tiles import Tileable, handler
 
 
@@ -252,6 +252,9 @@ class Chunk(Entity):
     _allow_data_type_ = (ChunkData,)
 
 
+CHUNK_TYPE = (ChunkData, Chunk)
+
+
 class ObjectChunkData(ChunkData):
     # chunk whose data could be any serializable
     __slots__ = ()
@@ -280,35 +283,21 @@ class ObjectChunk(Chunk):
 
 
 def _on_serialize_composed(composed):
-    return [FuseChunkData.ChunkRef(c.data if isinstance(c, Entity) else c) for c in composed]
-
-
-def _on_deserialize_composed(refs):
-    return [r.chunk for r in refs]
+    return [c.data if isinstance(c, Entity) else c for c in composed]
 
 
 class FuseChunkData(ChunkData):
     __slots__ = '_inited',
 
     class ChunkRef(Serializable):
-        _chunk = OneOfField('chunk', tensor_chunk='mars.tensor.core.TensorChunkData',
-                            tensor='mars.tensor.core.TensorData',
-                            dataframe_chunk='mars.dataframe.core.DataFrameChunkData',
-                            dataframe='mars.dataframe.core.DataFrameData',
-                            index_chunk='mars.dataframe.core.IndexChunkData',
-                            index='mars.dataframe.core.IndexData',
-                            series_chunk='mars.dataframe.core.SeriesChunkData',
-                            series='mars.dataframe.core.SeriesData',
-                            object_chunk='mars.core.ObjectChunkData',
-                            object='mars.core.ObjectData')
+        _chunk = ReferenceField('chunk', None)
 
         @property
         def chunk(self):
             return self._chunk
 
-    _composed = ListField('composed', ValueType.reference(ChunkRef),
-                          on_serialize=_on_serialize_composed,
-                          on_deserialize=_on_deserialize_composed)
+    _composed = ListField('composed', ValueType.reference(None),
+                          on_serialize=_on_serialize_composed)
 
     def __init__(self, *args, **kwargs):
         self._inited = False
@@ -476,6 +465,9 @@ class TileableEntity(Entity):
             self._data.attach(self)
         else:
             entity_view_handler.data_changed(self._data, new_data)
+
+
+TILEABLE_TYPE = (TileableEntity, TileableData)
 
 
 class HasShapeTileableData(TileableData):
