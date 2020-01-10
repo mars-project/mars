@@ -15,6 +15,8 @@
 import os
 import tempfile
 import shutil
+from collections import OrderedDict
+
 
 import numpy as np
 import pandas as pd
@@ -24,7 +26,7 @@ import mars.dataframe as md
 from mars.tests.core import TestBase, require_cudf, ExecutorForTest
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.from_tensor import dataframe_from_tensor
+from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tensors
 from mars.dataframe.datasource.from_records import from_records
 
 
@@ -61,13 +63,22 @@ class Test(TestBase):
     def testSeriesFromTensor(self):
         data = np.random.rand(10)
         series = md.Series(mt.tensor(data), name='a')
-        pd.testing.assert_series_equal(series.execute(), pd.Series(data, name='a'))
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
+                                       pd.Series(data, name='a'))
 
         series = md.Series(mt.tensor(data, chunk_size=3))
-        pd.testing.assert_series_equal(series.execute(), pd.Series(data))
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
+                                       pd.Series(data))
 
         series = md.Series(mt.ones((10,), chunk_size=4))
-        pd.testing.assert_series_equal(series.execute(), pd.Series(np.ones(10,)))
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
+                                       pd.Series(np.ones(10,)))
+
+        index_data = np.random.rand(10)
+        series = md.Series(mt.tensor(data, chunk_size=3), name='a',
+                           index=mt.tensor(index_data, chunk_size=4))
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
+                                       pd.Series(data, name='a', index=index_data))
 
     def testFromTensorExecution(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)
@@ -108,6 +119,16 @@ class Test(TestBase):
                                     index=np.arange(0, 20, 2))
         pd.testing.assert_frame_equal(pdf_expected, result5)
 
+        # from tensor with given index that is a tensor
+        raw7 = np.random.rand(10, 10)
+        tensor7 = mt.tensor(raw7, chunk_size=3)
+        index_raw7 = np.random.rand(10)
+        index7 = mt.tensor(index_raw7, chunk_size=4)
+        df7 = dataframe_from_tensor(tensor7, index=index7)
+        result7 = self.executor.execute_dataframe(df7, concat=True)[0]
+        pdf_expected = pd.DataFrame(raw7, index=index_raw7)
+        pd.testing.assert_frame_equal(pdf_expected, result7)
+
         # from tensor with given columns
         tensor6 = mt.ones((10, 10), chunk_size=3)
         df6 = dataframe_from_tensor(tensor6, columns=list('abcdefghij'))
@@ -115,6 +136,24 @@ class Test(TestBase):
         pdf_expected = pd.DataFrame(self.executor.execute_tensor(tensor6, concat=True)[0],
                                     columns=list('abcdefghij'))
         pd.testing.assert_frame_equal(pdf_expected, result6)
+
+        # from 1d tensors
+        raws8 = [('a', np.random.rand(8)), ('b', np.random.randint(10, size=8)),
+                 ('c', [np.random.bytes(6) for _ in range(8)])]
+        tensors8 = [mt.tensor(r[1], chunk_size=3) for r in raws8]
+        df8 = dataframe_from_1d_tensors(tensors8, columns=[r[0] for r in raws8])
+        result = self.executor.execute_dataframe(df8, concat=True)[0]
+        pdf_expected = pd.DataFrame(OrderedDict(raws8))
+        pd.testing.assert_frame_equal(result, pdf_expected)
+
+        # from 1d tensors and specify index with a tensor
+        index_raw9 = np.random.rand(8)
+        index9 = mt.tensor(index_raw9, chunk_size=4)
+        df9 = dataframe_from_1d_tensors(tensors8, columns=[r[0] for r in raws8],
+                                        index=index9)
+        result = self.executor.execute_dataframe(df9, concat=True)[0]
+        pdf_expected = pd.DataFrame(OrderedDict(raws8), index=index_raw9)
+        pd.testing.assert_frame_equal(result, pdf_expected)
 
     def testFromRecordsExecution(self):
         dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])

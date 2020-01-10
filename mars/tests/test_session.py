@@ -311,6 +311,13 @@ class Test(unittest.TestCase):
         np.testing.assert_equal(df_result.values, np.ones((2, 2)))
         pd.testing.assert_frame_equal(df_result, df2)
 
+        raw_a = np.random.rand(10)
+        raw_b = np.random.randint(1000, size=10)
+        df = md.DataFrame({'a': mt.tensor(raw_a), 'b': mt.tensor(raw_b)}, columns=['b', 'a'])
+        df_result = sess.run(df)
+        pd.testing.assert_frame_equal(
+            df_result, pd.DataFrame({'a': raw_a, 'b': raw_b}, columns=['b', 'a']))
+
     def testDataFrameTensorConvert(self):
         # test from_tensor(), from_dataframe(), to_tensor(), to_dataframe()
         sess = new_session()
