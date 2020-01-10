@@ -74,7 +74,7 @@ class Test(unittest.TestCase):
             raw2 = raw.astype(dtype)
             a = tensor(raw2, chunk_size=100)
 
-            b = quantile(a, q)
+            b = quantile(a, q, overwrite_input=True)
             self.assertEqual(b.shape, (10,))
             self.assertEqual(b.dtype, np.quantile(raw2, q).dtype)
 
@@ -85,7 +85,7 @@ class Test(unittest.TestCase):
         q = np.random.rand(10)
 
         for dtype in [np.float32, np.int64, np.complex128]:
-            for axis in (None, 0, 1):
+            for axis in (None, 0, 1, [0, 1]):
                 for interpolation in INTERPOLATION_TYPES:
                     for keepdims in [True, False]:
                         raw2 = raw.astype(dtype)
@@ -96,8 +96,10 @@ class Test(unittest.TestCase):
                         expected = np.quantile(raw2, q, axis=axis,
                                                interpolation=interpolation,
                                                keepdims=keepdims)
-                        if b.shape != expected.shape:
-                            raise ValueError
+                        self.assertEqual(b.shape, expected.shape)
+                        self.assertEqual(b.dtype, expected.dtype)
+
+                        b = b.tiles()
                         self.assertEqual(b.shape, expected.shape)
                         self.assertEqual(b.dtype, expected.dtype)
 
@@ -109,6 +111,15 @@ class Test(unittest.TestCase):
 
         b = quantile(a, 0.3)
         self.assertEqual(b.ndim, 0)
+
+        raw2 = np.random.rand(3, 4, 5)
+        a2 = tensor(raw2, chunk_size=3)
+        b2 = quantile(a2, q, axis=(0, 2))
+        expected = np.quantile(raw2, q, axis=(0, 2))
+        self.assertEqual(b2.shape, expected.shape)
+
+        b2 = b2.tiles()
+        self.assertEqual(b2.shape, expected.shape)
 
         # q has to be 1-d
         with self.assertRaises(ValueError):

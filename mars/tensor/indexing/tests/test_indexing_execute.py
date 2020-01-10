@@ -365,6 +365,16 @@ class Test(unittest.TestCase):
         expected = np.take(data, [5, 19, 2, 13], axis=1)
         np.testing.assert_array_equal(res, expected)
 
+        with self.assertRaises(ValueError):
+            take(t, [1, 3, 4], out=tensor(np.random.rand(4)))
+
+        out = tensor([1, 2, 3, 4])
+        a = take(t, [4, 19, 2, 8], out=out)
+
+        res = self.executor.execute_tensor(out, concat=True)[0]
+        expected = np.take(data, [4, 19, 2, 8])
+        np.testing.assert_array_equal(res, expected)
+
     def testCompressExecution(self):
         data = np.array([[1, 2], [3, 4], [5, 6]])
         a = tensor(data, chunk_size=1)
