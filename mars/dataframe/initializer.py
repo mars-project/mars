@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
+import pandas as pd
 
+from ..core import Base, Entity
 from ..tensor.core import TENSOR_TYPE
+from ..tensor import tensor as astensor
 from .core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame as _Frame, Series as _Series
 from .datasource.dataframe import from_pandas as from_pandas_df
 from .datasource.series import from_pandas as from_pandas_series
-from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor
+from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
+    dataframe_from_1d_tensors
 
 
 class DataFrame(_Frame):
@@ -33,6 +33,15 @@ class DataFrame(_Frame):
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
             df = data
+        elif isinstance(data, dict) and any(isinstance(v, (Base, Entity)) for v in data.values()):
+            # data is a dict and some value is tensor
+            columns = list(data.keys()) if columns is None else columns
+            tensors = []
+            for c in columns:
+                tensors.append(astensor(data[c]))
+            df = dataframe_from_1d_tensors(
+                tensors, index=index, columns=columns,
+                gpu=gpu, sparse=sparse)
         else:
             pdf = pd.DataFrame(data, index=index, columns=columns, dtype=dtype, copy=copy)
             df = from_pandas_df(pdf, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
