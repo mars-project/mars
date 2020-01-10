@@ -178,7 +178,7 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
         inputs, device_id, xp = as_same_device(
             [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
 
-        if xp is cp:
+        if xp is cp:  # pragma: no cover
             raise NotImplementedError('`cdist` does not support running on GPU yet')
 
         with device(device_id):

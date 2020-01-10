@@ -61,9 +61,9 @@ class Test(unittest.TestCase):
         expected = sp_pdist(raw)
         np.testing.assert_array_equal(result, expected)
 
-        dist = distance.pdist(x, aggregate_size=2)
+        dist = distance.pdist(x, aggregate_size=3)
         tdist = dist.tiles()
-        self.assertEqual(len(tdist.chunks), 2)
+        self.assertEqual(len(tdist.chunks), 3)
         result = self._executor.execute_tensor(dist, concat=True)[0]
         expected = sp_pdist(raw)
         np.testing.assert_array_equal(result, expected)
@@ -80,6 +80,31 @@ class Test(unittest.TestCase):
         result = self._executor.execute_tensor(dist, concat=True)[0]
         expected = sp_pdist(raw, metric=f)
         np.testing.assert_array_equal(result, expected)
+
+        for x in [tensor(raw), tensor(raw, chunk_size=12)]:
+            # test w
+            weight = np.random.rand(10)
+            w = tensor(weight, chunk_size=7)
+            dist = distance.pdist(x, metric='wminkowski', p=3, w=w)
+            result = self._executor.execute_tensor(dist, concat=True)[0]
+            expected = sp_pdist(raw, metric='wminkowski', p=3, w=weight)
+            np.testing.assert_array_equal(result, expected)
+
+            # test V
+            v = np.random.rand(10)
+            V = tensor(v, chunk_size=7)
+            dist = distance.pdist(x, metric='seuclidean', V=V)
+            result = self._executor.execute_tensor(dist, concat=True)[0]
+            expected = sp_pdist(raw, metric='seuclidean', V=v)
+            np.testing.assert_array_equal(result, expected)
+
+            # test VI
+            vi = np.random.rand(10, 10)
+            VI = tensor(vi, chunk_size=8)
+            dist = distance.pdist(x, metric='mahalanobis', VI=VI)
+            result = self._executor.execute_tensor(dist, concat=True)[0]
+            expected = sp_pdist(raw, metric='mahalanobis', VI=vi)
+            np.testing.assert_array_equal(result, expected)
 
     @unittest.skipIf(distance.cdist is None, 'scipy not installed')
     def testCdistExecution(self):
@@ -127,6 +152,32 @@ class Test(unittest.TestCase):
         result = self._executor.execute_tensor(dist, concat=True)[0]
         expected = sp_cdist(raw_a, raw_b, metric=f)
         np.testing.assert_array_equal(result, expected)
+
+        for xa, xb in [(tensor(raw_a), tensor(raw_b)),
+                       (tensor(raw_a, chunk_size=12), tensor(raw_b, chunk_size=13))]:
+            # test w
+            weight = np.random.rand(10)
+            w = tensor(weight, chunk_size=7)
+            dist = distance.cdist(xa, xb, metric='wminkowski', p=3, w=w)
+            result = self._executor.execute_tensor(dist, concat=True)[0]
+            expected = sp_cdist(raw_a, raw_b, metric='wminkowski', p=3, w=weight)
+            np.testing.assert_array_equal(result, expected)
+
+            # test V
+            v = np.random.rand(10)
+            V = tensor(v, chunk_size=7)
+            dist = distance.cdist(xa, xb, metric='seuclidean', V=V)
+            result = self._executor.execute_tensor(dist, concat=True)[0]
+            expected = sp_cdist(raw_a, raw_b, metric='seuclidean', V=v)
+            np.testing.assert_array_equal(result, expected)
+
+            # test VI
+            vi = np.random.rand(10, 10)
+            VI = tensor(vi, chunk_size=8)
+            dist = distance.cdist(xa, xb, metric='mahalanobis', VI=VI)
+            result = self._executor.execute_tensor(dist, concat=True)[0]
+            expected = sp_cdist(raw_a, raw_b, metric='mahalanobis', VI=vi)
+            np.testing.assert_array_equal(result, expected)
 
     @unittest.skipIf(distance.cdist is None, 'scipy not installed')
     def testSqureFormExecution(self):
