@@ -18,17 +18,18 @@ import numpy as np
 from mars import opcodes as OperandDef
 from mars.tests.core import TestBase, parameterized
 from mars.dataframe.core import IndexValue, Series
-from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, DataFrameMax
+from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, DataFrameMax, DataFrameCount
 from mars.dataframe.merge import DataFrameConcat
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 
 
 reduction_functions = dict(
-    sum=dict(func_name='sum', op=DataFrameSum),
-    prod=dict(func_name='prod', op=DataFrameProd),
-    min=dict(func_name='min', op=DataFrameMin),
-    max=dict(func_name='max', op=DataFrameMax)
+    sum=dict(func_name='sum', op=DataFrameSum, has_skipna=True),
+    prod=dict(func_name='prod', op=DataFrameProd, has_skipna=True),
+    min=dict(func_name='min', op=DataFrameMin, has_skipna=True),
+    max=dict(func_name='max', op=DataFrameMax, has_skipna=True),
+    count=dict(func_name='count', op=DataFrameCount, has_skipna=False),
 )
 
 
@@ -40,7 +41,11 @@ class Test(TestBase):
 
     def testSeriesReductionSerialize(self):
         data = pd.Series(np.random.rand(10), name='a')
-        reduction_df = getattr(from_pandas_series(data), self.func_name)(axis='index', skipna=False).tiles()
+        if self.has_skipna:
+            kwargs = dict(axis='index', skipna=False)
+        else:
+            kwargs = dict()
+        reduction_df = getattr(from_pandas_series(data), self.func_name)(**kwargs).tiles()
 
         # pb
         chunk = reduction_df.chunks[0]
@@ -93,7 +98,11 @@ class Test(TestBase):
         self.assertEqual(len(series.chunks[0].inputs[0].inputs), 2)
 
         data = pd.Series(np.random.rand(25), name='a')
-        series = getattr(from_pandas_series(data, chunk_size=7), self.func_name)(axis='index', skipna=False)
+        if self.has_skipna:
+            kwargs = dict(axis='index', skipna=False)
+        else:
+            kwargs = dict()
+        series = getattr(from_pandas_series(data, chunk_size=7), self.func_name)(**kwargs)
 
         self.assertIsInstance(series, Series)
         self.assertEqual(series.name, data.name)
@@ -109,8 +118,10 @@ class Test(TestBase):
 
     def testDataFrameReductionSerialize(self):
         data = pd.DataFrame(np.random.rand(10, 8), columns=[np.random.bytes(10) for _ in range(8)])
-        reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)(axis='index', skipna=False,
-                                                                                   numeric_only=True).tiles()
+        kwargs = dict(axis='index', numeric_only=True)
+        if self.has_skipna:
+            kwargs['skipna'] = False
+        reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)(**kwargs).tiles()
 
         # pb
         chunk = reduction_df.chunks[0]
