@@ -12,14 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
+
 import numpy as np
 import pandas as pd
 
 from ...config import options
-from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
+from ...utils import lazy_import
+from ...serialize import BoolField, AnyField, DataTypeField, Int32Field, StringField
 from ..utils import parse_index, build_empty_df
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType, DATAFRAME_TYPE
 from ..merge import DataFrameConcat
+
+cudf = lazy_import('cudf', globals=globals())
+
+
+class Stage(Enum):
+    map = 'map'
+    combine = 'combine'
+    agg = 'agg'
 
 
 class DataFrameReductionOperand(DataFrameOperand):
@@ -29,17 +40,17 @@ class DataFrameReductionOperand(DataFrameOperand):
     _numeric_only = BoolField('numeric_only')
     _min_count = Int32Field('min_count')
 
-    _calc_with_count = BoolField('calc_with_count')
+    _stage = StringField('stage', on_serialize=lambda x: getattr(x, 'value', None),
+                         on_deserialize=Stage)
 
     _dtype = DataTypeField('dtype')
     _combine_size = Int32Field('combine_size')
 
-    def __init__(self, axis=None, skipna=None, level=None, numeric_only=None, min_count=None, calc_with_count=None,
-                 dtype=None, combine_size=None, gpu=None, sparse=None, object_type=None, **kw):
+    def __init__(self, axis=None, skipna=None, level=None, numeric_only=None, min_count=None,
+                 stage=None, dtype=None, combine_size=None, gpu=None, sparse=None, object_type=None, **kw):
         super().__init__(_axis=axis, _skipna=skipna, _level=level, _numeric_only=numeric_only,
-                         _min_count=min_count, _calc_with_count=calc_with_count, _dtype=dtype,
-                         _combine_size=combine_size, _gpu=gpu, _sparse=sparse,
-                         _object_type=object_type, **kw)
+                         _min_count=min_count, _stage=stage, _dtype=dtype, _combine_size=combine_size,
+                         _gpu=gpu, _sparse=sparse, _object_type=object_type, **kw)
 
     @property
     def axis(self):
@@ -62,8 +73,8 @@ class DataFrameReductionOperand(DataFrameOperand):
         return self._min_count
 
     @property
-    def calc_with_count(self):
-        return self._calc_with_count
+    def stage(self):
+        return self._stage
 
     @property
     def dtype(self):
@@ -119,8 +130,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                     index_value = chk.index_value
                     dtypes = pd.Series(op.outputs[0].dtype)
                 new_op = op.copy().reset_key()
-                if op.min_count is not None and op.min_count > 0:
-                    new_op._calc_with_count = True
+                new_op._stage = Stage.combine
                 # all intermediate results' type is dataframe
                 new_op._object_type = ObjectType.dataframe
                 new_chunks.append(new_op.new_chunk([chk], shape=reduced_shape, index=(i,), dtypes=dtypes,
@@ -134,6 +144,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                                                                    numeric_only=op.numeric_only)
         reduced_shape = (np.nan,) if op.axis == 1 else reduced_df.shape
         new_op = op.copy().reset_key()
+        new_op._stage = Stage.agg
         return new_op.new_chunk([chk], shape=reduced_shape, index=(idx,), dtype=reduced_df.dtype,
                                 index_value=parse_index(reduced_df.index))
 
@@ -156,8 +167,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         reduction_chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
-            if op.min_count is not None and op.min_count > 0:
-                new_chunk_op._calc_with_count = True
+            op._stage = Stage.map
             new_chunk_op._object_type = ObjectType.dataframe
             if op.axis == 0:
                 if op.numeric_only:
@@ -196,8 +206,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
-            if op.min_count is not None and op.min_count > 0:
-                new_chunk_op._calc_with_count = True
+            op._stage = Stage.map
             chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=df.dtype, index_value=df.index_value)
 
         while len(chunks) > combine_size:
@@ -209,8 +218,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 chk = concat_op.new_chunk(chks, shape=(length,), index=(i,), dtype=chks[0].dtype,
                                           index_value=parse_index(pd.RangeIndex(length)))
                 new_op = op.copy().reset_key()
-                if op.min_count is not None and op.min_count > 0:
-                    new_op._calc_with_count = True
+                new_op._stage = Stage.combine
                 new_chunks.append(new_op.new_chunk([chk], shape=(), index=(i,), dtype=chk.dtype,
                                                    index_value=parse_index(pd.RangeIndex(0))))
             chunks = new_chunks
@@ -220,6 +228,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         chk = concat_op.new_chunk(chunks, shape=(length,), index=(0,), dtype=chunks[0].dtype,
                                   index_value=parse_index(pd.RangeIndex(length)))
         chunk_op = op.copy().reset_key()
+        chunk_op._stage = Stage.agg
         chunk = chunk_op.new_chunk([chk], shape=(), index=(0,), dtype=chk.dtype,
                                    index_value=parse_index(pd.RangeIndex(0)))
 
@@ -241,7 +250,11 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
 
     @classmethod
     def _execute_reduction(cls, in_data, op, min_count=None):
-        kwargs = dict(axis=op.axis, level=op.level, skipna=op.skipna)
+        kwargs = dict()
+        if op.axis is not None:
+            kwargs['axis'] = op.axis
+        if op.skipna is not None:
+            kwargs['skipna'] = op.skipna
         if op.numeric_only is not None:
             kwargs['numeric_only'] = op.numeric_only
         if min_count is not None:
@@ -249,51 +262,92 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         return getattr(in_data, getattr(cls, '_func_name'))(**kwargs)
 
     @classmethod
-    def _execute_with_count(cls, ctx, op):
-        inputs = ctx[op.inputs[0].key]
-        if isinstance(inputs, tuple):
-            in_data, concat_count = inputs
-            count = concat_count.sum(axis=op.axis)
-        else:
-            in_data = inputs
-            count = in_data.notnull().sum(axis=op.axis)
+    def _execute_map_with_count(cls, ctx, op):
+        # Execution with specified `min_count` in the map stage
+
+        xdf = cudf if op.gpu else pd
+        in_data = ctx[op.inputs[0].key]
+        count = in_data.notnull().sum(axis=op.axis)
         r = cls._execute_reduction(in_data, op)
-        if isinstance(in_data, pd.Series):
+        if isinstance(in_data, xdf.Series):
             ctx[op.outputs[0].key] = (r, count)
         else:
             # For dataframe, will keep dimensions for intermediate results.
-            ctx[op.outputs[0].key] = (pd.DataFrame(r), pd.DataFrame(count)) if op.axis == 1 \
-                else (pd.DataFrame(r).transpose(), pd.DataFrame(count).transpose())
+            ctx[op.outputs[0].key] = (xdf.DataFrame(r), xdf.DataFrame(count)) if op.axis == 1 \
+                else (xdf.DataFrame(r).transpose(), xdf.DataFrame(count).transpose())
+
+    @classmethod
+    def _execute_combine_with_count(cls, ctx, op):
+        # Execution with specified `min_count` in the combine stage
+
+        xdf = cudf if op.gpu else pd
+        in_data, concat_count = ctx[op.inputs[0].key]
+        count = concat_count.sum(axis=op.axis)
+        r = cls._execute_reduction(in_data, op)
+        if isinstance(in_data, xdf.Series):
+            ctx[op.outputs[0].key] = (r, count)
+        else:
+            # For dataframe, will keep dimensions for intermediate results.
+            ctx[op.outputs[0].key] = (xdf.DataFrame(r), xdf.DataFrame(count)) if op.axis == 1 \
+                else (xdf.DataFrame(r).transpose(), xdf.DataFrame(count).transpose())
+
+    @classmethod
+    def _execute_agg_with_count(cls, ctx, op):
+        # Execution with specified `min_count` in the aggregate stage
+
+        # When specify `min_count`, the terminal chunk has two inputs one of which is for count.
+        # The output should be determined by comparing `count` with `min_count`.
+        in_data, concat_count = ctx[op.inputs[0].key]
+        count = concat_count.sum(axis=op.axis)
+        r = cls._execute_reduction(in_data, op)
+        if np.isscalar(r):
+            ctx[op.outputs[0].key] = np.nan if count < op.min_count else r
+        else:
+            r[count < op.min_count] = np.nan
+            ctx[op.outputs[0].key] = r
 
     @classmethod
     def _execute_without_count(cls, ctx, op):
-        inputs = ctx[op.inputs[0].key]
-        if isinstance(inputs, tuple):
-            # When specify `min_count`, the terminal chunk has two inputs one of which is for count.
-            # The output should be determined by comparing `count` with `min_count`.
-            in_data, concat_count = inputs
-            count = concat_count.sum(axis=op.axis)
-            r = cls._execute_reduction(in_data, op)
-            if np.isscalar(r):
-                ctx[op.outputs[0].key] = np.nan if count < op.min_count else r
-            else:
-                r[count < op.min_count] = np.nan
-                ctx[op.outputs[0].key] = r
+        # Execution for normal reduction operands.
+
+        # For dataframe, will keep dimensions for intermediate results.
+        xdf = cudf if op.gpu else pd
+        in_data = ctx[op.inputs[0].key]
+        r = cls._execute_reduction(in_data, op, min_count=op.min_count)
+        if isinstance(in_data, xdf.Series) or op.object_type == ObjectType.series:
+            ctx[op.outputs[0].key] = r
         else:
-            # For dataframe, will keep dimensions for intermediate results.
-            in_data = inputs
-            r = cls._execute_reduction(in_data, op, min_count=op.min_count)
-            if isinstance(in_data, pd.Series) or op.object_type == ObjectType.series:
-                ctx[op.outputs[0].key] = r
-            else:
-                ctx[op.outputs[0].key] = pd.DataFrame(r).transpose() if op.axis == 0 else pd.DataFrame(r)
+            ctx[op.outputs[0].key] = xdf.DataFrame(r).transpose() if op.axis == 0 else xdf.DataFrame(r)
+
+    @classmethod
+    def _execute_map(cls, ctx, op):
+        if op.min_count is not None and op.min_count > 0:
+            cls._execute_map_with_count(ctx, op)
+        else:
+            cls._execute_without_count(ctx, op)
+
+    @classmethod
+    def _execute_combine(cls, ctx, op):
+        if op.min_count is not None and op.min_count > 0:
+            cls._execute_combine_with_count(ctx, op)
+        else:
+            cls._execute_without_count(ctx, op)
+
+    @classmethod
+    def _execute_agg(cls, ctx, op):
+        if op.min_count is not None and op.min_count > 0:
+            cls._execute_agg_with_count(ctx, op)
+        else:
+            cls._execute_without_count(ctx, op)
 
     @classmethod
     def execute(cls, ctx, op):
-        if op.calc_with_count:
-            cls._execute_with_count(ctx, op)
+        if op.stage == Stage.combine:
+            cls._execute_combine(ctx, op)
+        elif op.stage == Stage.agg:
+            cls._execute_agg(ctx, op)
         else:
-            cls._execute_without_count(ctx, op)
+            cls._execute_map(ctx, op)
 
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None)

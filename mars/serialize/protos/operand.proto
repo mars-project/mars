@@ -365,6 +365,9 @@ message OperandDef {
         DATAFRAME_SHUFFLE_MERGE_ALIGN_MAP = 2011;
         DATAFRAME_SHUFFLE_MERGE_ALIGN_REDUCE = 2012;
 
+        // dataframe reduction
+        COUNT = 2025;
+
         // groupby
         GROUPBY = 2030;
         GROUPBY_MAP = 2031;
