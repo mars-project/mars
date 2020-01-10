@@ -18,7 +18,6 @@ import re
 import subprocess
 import sys
 from distutils.cmd import Command
-from distutils.spawn import find_executable
 from distutils.sysconfig import get_config_var
 from distutils.version import LooseVersion
 from setuptools import setup, find_packages, Extension
@@ -121,79 +120,44 @@ extensions = cythonize(cy_extensions, **cythonize_kw) + \
     [Extension('mars.lib.mmh3', ['mars/lib/mmh3_src/mmh3module.cpp', 'mars/lib/mmh3_src/MurmurHash3.cpp'])]
 
 
-class BuildProto(Command):
-    description = "Build protobuf file"
-    user_options = []
-    protoc_executable = None
+build_protos_cmd = os.path.join(repo_root, 'bin', 'build-protos.py')
+override_cmd_class = dict()
+if os.path.exists(build_protos_cmd):
+    class BuildProto(Command):
+        description = "Build protobuf file"
+        user_options = []
+        protobuf_version = '3.6.0'
 
-    def initialize_options(self):
-        pass
+        def initialize_options(self):
+            pass
 
-    def finalize_options(self):
-        pass
+        def finalize_options(self):
+            pass
 
-    def _get_protoc_executable(self):
-        cls = type(self)
-        if cls.protoc_executable:
-            return cls.protoc_executable
-
-        cls.protoc_executable = find_executable('protoc') or os.environ.get('PROTOC')
-        if cls.protoc_executable is None:
-            sys.stderr.write('Cannot find protoc. Make sure it is installed. '
-                             'You may point it with PROTOC environment variable.\n')
-            sys.exit(1)
-        return cls.protoc_executable
-
-    def run(self):
-        protoc_executable = find_executable('protoc') or os.environ.get('PROTOC')
-        if protoc_executable is None:
-            sys.stderr.write('Cannot find protoc. Make sure it is installed. '
-                             'You may point it with PROTOC environment variable.\n')
-            sys.exit(1)
-
-        for root, _, files in os.walk(repo_root):
-            for fn in files:
-                if not fn.endswith('.proto'):
-                    continue
-
-                src_fn = os.path.join(root, fn)
-                compiled_fn = src_fn.replace('.proto', '_pb2.py')
-                rel_path = os.path.relpath(src_fn, repo_root)
-                if not os.path.exists(compiled_fn) or \
-                        os.path.getmtime(src_fn) > os.path.getmtime(compiled_fn):
-                    sys.stdout.write('compiling protobuf %s\n' % rel_path)
-                    subprocess.check_call([self._get_protoc_executable(), '--python_out=.', rel_path],
-                                          cwd=repo_root)
-
-                if fn == 'operand_type.proto':
-                    op_globs = dict()
-                    opcode_fn = os.path.join(repo_root, 'mars', 'opcodes.py')
-                    if not os.path.exists(opcode_fn) or \
-                            os.path.getmtime(src_fn) > os.path.getmtime(opcode_fn):
-                        execfile(compiled_fn, op_globs)
-                        OperandType = op_globs['OperandType']
-                        with open(os.path.join(repo_root, 'mars', 'opcodes.py'), 'w') as opcode_file:
-                            opcode_file.write('# Generated automatically from %s.  DO NOT EDIT!\n' % rel_path)
-                            for val, desc in OperandType.DESCRIPTOR.values_by_number.items():
-                                opcode_file.write('{0} = {1!r}\n'.format(desc.name, val))
+        def run(self):
+            subprocess.check_call([sys.executable, build_protos_cmd, repo_root], env=os.environ.copy())
 
 
-class CustomBuildPy(build_py):
-    def run(self):
-        self.run_command('build_proto')
-        build_py.run(self)
+    class CustomBuildPy(build_py):
+        def run(self):
+            self.run_command('build_proto')
+            build_py.run(self)
 
 
-class CustomDevelop(develop):
-    def run(self):
-        self.run_command('build_proto')
-        develop.run(self)
+    class CustomDevelop(develop):
+        def run(self):
+            self.run_command('build_proto')
+            develop.run(self)
 
 
-class CustomSDist(sdist):
-    def run(self):
-        self.run_command('build_proto')
-        sdist.run(self)
+    class CustomSDist(sdist):
+        def run(self):
+            self.run_command('build_proto')
+            sdist.run(self)
+
+    override_cmd_class = {
+        'build_py': CustomBuildPy, 'sdist': CustomSDist, 'develop': CustomDevelop,
+        'build_ext': build_ext, 'build_proto': BuildProto}
 
 
 setup_options = dict(
@@ -227,8 +191,7 @@ setup_options = dict(
     ]},
     python_requires='>=3.5',
     install_requires=requirements,
-    cmdclass={'build_py': CustomBuildPy, 'sdist': CustomSDist, 'develop': CustomDevelop,
-              'build_ext': build_ext, 'build_proto': BuildProto},
+    cmdclass=override_cmd_class,
     ext_modules=extensions,
     extras_require={
         'distributed': extra_requirements,

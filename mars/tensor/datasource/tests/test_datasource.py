@@ -38,7 +38,7 @@ from mars.tensor.core import Tensor, SparseTensor, TensorChunk
 from mars.tensor.datasource.from_dataframe import from_dataframe
 from mars.graph import DAG
 from mars.core import build_mode
-from mars.serialize.protos.operand_pb2 import OperandDef
+from mars import opcodes
 from mars.tests.core import TestBase
 
 
@@ -54,7 +54,7 @@ class Test(TestBase):
         self.assertEqual(tuple(pb.index), chunk.index)
         self.assertEqual(pb.key, chunk.key)
         self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), OperandDef.TENSOR_ONES)
+        self.assertEqual(int(op.type.split('.', 1)[1]), opcodes.TENSOR_ONES)
 
         chunk2 = self._pb_deserial(serials)[chunk.data]
 
@@ -84,7 +84,7 @@ class Test(TestBase):
         self.assertEqual(tuple(pb.index), chunk.index)
         self.assertEqual(pb.key, chunk.key)
         self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), OperandDef.TENSOR_DATA_SOURCE)
+        self.assertEqual(int(op.type.split('.', 1)[1]), opcodes.TENSOR_DATA_SOURCE)
 
         chunk2 = self._pb_deserial(serials)[chunk.data]
 
@@ -116,7 +116,7 @@ class Test(TestBase):
         op, pb = serials[composed_chunk.op, composed_chunk.data]
 
         self.assertEqual(pb.key, composed_chunk.key)
-        self.assertEqual(int(op.type.split('.', 1)[1]), OperandDef.FUSE)
+        self.assertEqual(int(op.type.split('.', 1)[1]), opcodes.FUSE)
         self.assertEqual(len(pb.composed), 2)
 
         composed_chunk2 = self._pb_deserial(serials)[composed_chunk.data]
