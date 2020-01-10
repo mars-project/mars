@@ -17,26 +17,26 @@ from .prod import DataFrameProd
 from .max import DataFrameMax
 from .min import DataFrameMin
 from .count import DataFrameCount
+from .mean import DataFrameMean
 
 
 def _install():
-    from ..core import DataFrame, Series
+    from ..core import DATAFRAME_TYPE, SERIES_TYPE
     from .sum import sum_series, sum_dataframe
     from .prod import prod_series, prod_dataframe
     from .max import max_series, max_dataframe
     from .min import min_series, min_dataframe
     from .count import count_series, count_dataframe
+    from .mean import mean_series, mean_dataframe
 
-    setattr(DataFrame, 'sum', sum_dataframe)
-    setattr(Series, 'sum', sum_series)
-    setattr(DataFrame, 'prod', prod_dataframe)
-    setattr(Series, 'prod', prod_series)
-    setattr(DataFrame, 'max', max_dataframe)
-    setattr(Series, 'max', max_series)
-    setattr(DataFrame, 'min', min_dataframe)
-    setattr(Series, 'min', min_series)
-    setattr(DataFrame, 'count', count_dataframe)
-    setattr(Series, 'count', count_series)
+    func_names = ['sum', 'prod', 'max', 'min', 'count', 'mean']
+    series_funcs = [sum_series, prod_series, max_series, min_series, count_series, mean_series]
+    df_funcs = [sum_dataframe, prod_dataframe, max_dataframe, min_dataframe, count_dataframe, mean_dataframe]
+    for func_name, series_func, df_func in zip(func_names, series_funcs, df_funcs):
+        for t in DATAFRAME_TYPE:
+            setattr(t, func_name, df_func)
+        for t in SERIES_TYPE:
+            setattr(t, func_name, series_func)
 
 
 _install()
