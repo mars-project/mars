@@ -218,6 +218,15 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
             return [recursive_tile(result)]
 
         check_chunks_unknown_shape(op.inputs, TilesError)
+        if len(in_tensor.chunks) == 1:
+            # 1 chunk
+            chunk_op = op.copy().reset_key()
+            chunk = chunk_op.new_chunk(in_tensor.chunks, shape=tensor.shape,
+                                       order=tensor.order, index=(0,) * tensor.ndim)
+            new_op = op.copy()
+            return new_op.new_tensors(op.inputs, shape=tensor.shape,
+                                      order=tensor.order, chunks=[chunk],
+                                      nsplits=tuple((s,) for s in tensor.shape))
         try:
             rechunk_nsplits, reshape_nsplits = cls._gen_reshape_rechunk_nsplits(
                 in_tensor.shape, tensor.shape, in_tensor.nsplits)

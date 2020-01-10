@@ -21,9 +21,9 @@ import numpy as np
 from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
     ascontiguousarray, asfortranarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
-    split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
+    split, squeeze, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
-    partition, histogram_bin_edges, to_gpu, to_cpu
+    partition, to_gpu, to_cpu
 from mars.tensor.base.searchsorted import Stage
 from mars.tiles import get_tiled
 
@@ -386,18 +386,6 @@ class Test(unittest.TestCase):
 
         t = squeeze(x, axis=2)
         self.assertEqual(t.shape, (1, 3))
-
-    def testDigitize(self):
-        x = tensor(np.array([0.2, 6.4, 3.0, 1.6]), chunk_size=2)
-        bins = np.array([0.0, 1.0, 2.5, 4.0, 10.0])
-        inds = digitize(x, bins)
-
-        self.assertEqual(inds.shape, (4,))
-        self.assertIsNotNone(inds.dtype)
-
-        inds = inds.tiles()
-
-        self.assertEqual(len(inds.chunks), 2)
 
     def testResultType(self):
         x = tensor([2, 3], dtype='i4')
@@ -807,34 +795,3 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             partition(np.random.rand(10), [-11, 2])
-
-    def testHistogramBinEdges(self):
-        a = array([0, 0, 0, 1, 2, 3, 3, 4, 5], chunk_size=3)
-
-        with self.assertRaises(ValueError):
-            histogram_bin_edges(a, bins='unknown')
-
-        with self.assertRaises(TypeError):
-            # bins is str, weights cannot be provided
-            histogram_bin_edges(a, bins='scott', weights=a)
-
-        with self.assertRaises(ValueError):
-            histogram_bin_edges(a, bins=-1)
-
-        with self.assertRaises(ValueError):
-            # not asc
-            histogram_bin_edges(a, bins=[3, 2, 1])
-
-        with self.assertRaises(ValueError):
-            # bins cannot be 2d
-            histogram_bin_edges(a, bins=np.random.rand(2, 3))
-
-        with self.assertRaises(ValueError):
-            histogram_bin_edges(a, range=(5, 0))
-
-        with self.assertRaises(ValueError):
-            histogram_bin_edges(a, range=(np.nan, np.nan))
-
-        bins = histogram_bin_edges(a, bins=3, range=(0, 5))
-        # if range specified, no error will occur
-        bins.tiles()

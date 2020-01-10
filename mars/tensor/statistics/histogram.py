@@ -161,7 +161,7 @@ class HistBinStoneSelector(HistBinSelector):
         if self._x.size <= 1 or ptp_x == 0:
             return 0.0
         else:
-            return super(HistBinStoneSelector, self).get_result()
+            return super().get_result()
 
 
 class HistBinDoaneSelector(HistBinSelector):
@@ -189,14 +189,75 @@ class HistBinDoaneSelector(HistBinSelector):
         if self._x.size <= 2:
             return 0.0
         else:
-            return super(HistBinDoaneSelector, self).get_result()
+            return super().get_result()
+
+
+class HistBinFdSelector(HistBinSelector):
+    """
+    The Freedman-Diaconis histogram bin estimator.
+
+    The Freedman-Diaconis rule uses interquartile range (IQR) to
+    estimate binwidth. It is considered a variation of the Scott rule
+    with more robustness as the IQR is less affected by outliers than
+    the standard deviation. However, the IQR depends on fewer points
+    than the standard deviation, so it is less accurate, especially for
+    long tailed distributions.
+
+    If the IQR is 0, this function returns 1 for the number of bins.
+    Binwidth is inversely proportional to the cube root of data size
+    (asymptotically optimal).
+    """
+
+    def __call__(self):
+        iqr = mt.subtract(*mt.percentile(self._x, [75, 25]))
+        return 2.0 * iqr * self._x.size ** (-1.0 / 3.0)
+
+
+class HistBinAutoSelector(HistBinSelector):
+    """
+    Histogram bin estimator that uses the minimum width of the
+    Freedman-Diaconis and Sturges estimators if the FD bandwidth is non zero
+    and the Sturges estimator if the FD bandwidth is 0.
+
+    The FD estimator is usually the most robust method, but its width
+    estimate tends to be too large for small `x` and bad for data with limited
+    variance. The Sturges estimator is quite good for small (<1000) datasets
+    and is the default in the R language. This method gives good off the shelf
+    behaviour.
+
+    If there is limited variance the IQR can be 0, which results in the
+    FD bin width being 0 too. This is not a valid bin width, so
+    ``np.histogram_bin_edges`` chooses 1 bin instead, which may not be optimal.
+    If the IQR is 0, it's unlikely any variance based estimators will be of
+    use, so we revert to the sturges estimator, which only uses the size of the
+    dataset in its calculation.
+    """
+
+    def __init__(self, histogram_bin_edges_op, x, range, raw_range):
+        super().__init__(histogram_bin_edges_op, x, range, raw_range)
+        self._bin_fd = HistBinFdSelector(
+            histogram_bin_edges_op, x, range, raw_range)
+        self._bin_sturges = HistBinSturgesSelector(
+            histogram_bin_edges_op, x, range, raw_range)
+
+    def __call__(self):
+        return self._bin_fd()
+
+    def get_result(self):
+        fd_bw = super().get_result()
+        sturges_bw = self._bin_sturges.get_result()
+        if fd_bw:
+            return min(fd_bw, sturges_bw)
+        else:
+            # limited variance, so we return a len dependent bw estimator
+            return sturges_bw
 
 
 # Private dict initialized at module load time
 _hist_bin_selectors = {'stone': HistBinStoneSelector,
-                       'auto': None,  # TODO: not implemented, need `mt.percentile` first
+                       'auto': HistBinAutoSelector,
                        'doane': HistBinDoaneSelector,
-                       'fd': None,  # TODO: not implemented, need `mt.percentile` first
+                       'fd': HistBinFdSelector,
                        'rice': HistBinRiceSelector,
                        'scott': HistBinScottSelector,
                        'sqrt': HistBinSqrtSelector,
@@ -645,8 +706,8 @@ def histogram_bin_edges(a, bins=10, range=None, weights=None):
     --------
     >>> import mars.tensor as mt
     >>> arr = mt.array([0, 0, 0, 1, 2, 3, 3, 4, 5])
-    #>>> mt.histogram_bin_edges(arr, bins='auto', range=(0, 1)).execute()
-    #array([0.  , 0.25, 0.5 , 0.75, 1.  ])
+    >>> mt.histogram_bin_edges(arr, bins='auto', range=(0, 1)).execute()
+    array([0.  , 0.25, 0.5 , 0.75, 1.  ])
     >>> mt.histogram_bin_edges(arr, bins=2).execute()
     array([0. , 2.5, 5. ])
 
@@ -659,29 +720,35 @@ def histogram_bin_edges(a, bins=10, range=None, weights=None):
     This function allows one set of bins to be computed, and reused across
     multiple histograms:
 
-    #>>> shared_bins = mt.histogram_bin_edges(arr, bins='auto').execute
-    #>>> shared_bins
-    #array([0., 1., 2., 3., 4., 5.])
+    >>> shared_bins = mt.histogram_bin_edges(arr, bins='auto')
+    >>> shared_bins.execute()
+    array([0., 1., 2., 3., 4., 5.])
 
-    # >>> group_id = mt.array([0, 1, 1, 0, 1, 1, 0, 1, 1])
-    # >>> hist_0, _ = mt.histogram(arr[group_id == 0], bins=shared_bins).execute()
-    # >>> hist_1, _ = mt.histogram(arr[group_id == 1], bins=shared_bins).execute()
+    >>> group_id = mt.array([0, 1, 1, 0, 1, 1, 0, 1, 1])
+    >>> a = arr[group_id == 0]
+    >>> a.execute()
+    array([0, 1, 3])
+    >>> hist_0, _ = mt.histogram(a, bins=shared_bins).execute()
+    >>> b = arr[group_id == 1]
+    >>> b.execute()
+    array([0, 0, 2, 3, 4, 5])
+    >>> hist_1, _ = mt.histogram(b, bins=shared_bins).execute()
 
-    #>>> hist_0; hist_1
-    #array([1, 1, 0, 1, 0])
-    #array([2, 0, 1, 1, 2])
+    >>> hist_0; hist_1
+    array([1, 1, 0, 1, 0])
+    array([2, 0, 1, 1, 2])
 
     Which gives more easily comparable results than using separate bins for
     each histogram:
 
-    #>>> hist_0, bins_0 = mt.histogram(arr[group_id == 0], bins='auto').execute()
-    #>>> hist_1, bins_1 = mt.histogram(arr[group_id == 1], bins='auto').execute()
-    #>>> hist_0; hist_1
-    #array([1, 1, 1])
-    #array([2, 1, 1, 2])
-    #>>> bins_0; bins_1
-    #array([0., 1., 2., 3.])
-    #array([0.  , 1.25, 2.5 , 3.75, 5.  ])
+    >>> hist_0, bins_0 = mt.histogram(a, bins='auto').execute()
+    >>> hist_1, bins_1 = mt.histogram(b, bins='auto').execute()
+    >>> hist_0; hist_1
+    array([1, 1, 1])
+    array([2, 1, 1, 2])
+    >>> bins_0; bins_1
+    array([0., 1., 2., 3.])
+    array([0.  , 1.25, 2.5 , 3.75, 5.  ])
 
     """
     a, weights = _ravel_and_check_weights(a, weights)
@@ -909,14 +976,14 @@ def histogram(a, bins=10, range=None, weights=None, density=None):
     Automated Bin Selection Methods example, using 2 peak random data
     with 2000 points:
 
-    #>>> import matplotlib.pyplot as plt
-    #>>> rng = mt.random.RandomState(10)  # deterministic random data
-    #>>> a = mt.hstack((rng.normal(size=1000),
-    #...                rng.normal(loc=5, scale=2, size=1000)))
-    #>>> _ = plt.hist(a, bins='auto')  # arguments are passed to np.histogram
-    #>>> plt.title("Histogram with 'auto' bins")
-    #Text(0.5, 1.0, "Histogram with 'auto' bins")
-    #>>> plt.show()
+    >>> import matplotlib.pyplot as plt
+    >>> rng = mt.random.RandomState(10)  # deterministic random data
+    >>> a = mt.hstack((rng.normal(size=1000),
+    ...                rng.normal(loc=5, scale=2, size=1000)))
+    >>> _ = plt.hist(np.asarray(a), bins='auto')  # arguments are passed to np.histogram
+    >>> plt.title("Histogram with 'auto' bins")
+    Text(0.5, 1.0, "Histogram with 'auto' bins")
+    >>> plt.show()
 
     """
     op = TensorHistogram(input=a, bins=bins, range=range,
