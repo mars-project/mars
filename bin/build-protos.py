@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import ast
 import os
 import shutil
 import subprocess
@@ -51,7 +52,7 @@ def _download_protoc_executable():
     sys.stderr.write('Downloading protoc from %s. You can download it manually, '
                      'extract the downloaded package and then specify the '
                      'environment variable PROTOC as the path to the protoc '
-                     'binary and run the command again.' % protoc_url)
+                     'binary and run the command again.\n' % protoc_url)
 
     temp_path = _temp_protoc_path = tempfile.mkdtemp(prefix='mars-setup-')
     zip_path = os.path.join(temp_path, 'protoc.zip')
@@ -61,6 +62,36 @@ def _download_protoc_executable():
         executable = protoc_zip.extract('bin/%s' % protoc_bin, temp_path)
         os.chmod(executable, os.stat(executable).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         return executable
+
+
+class OperandAnalyzer(ast.NodeVisitor):
+    def __init__(self):
+        self.operand_codes = []
+
+    @staticmethod
+    def _collect_call_kwargs(call_node):
+        return dict((kw.arg, kw.value) for kw in call_node.keywords)
+
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Attribute) and node.func.attr == 'EnumDescriptor':
+            enum_kw = self._collect_call_kwargs(node)
+            if enum_kw['name'].s == 'OperandType':
+                for op_def in enum_kw['values'].elts:
+                    op_kw = self._collect_call_kwargs(op_def)
+                    self.operand_codes.append((op_kw['name'].s, op_kw['number'].n))
+        self.generic_visit(node)
+
+
+def _generate_operand_file(source_path, rel_path, op_file_path):
+    content = open(source_path, 'rb').read()
+    tree = ast.parse(content)
+    analyzer = OperandAnalyzer()
+    analyzer.visit(tree)
+
+    with open(op_file_path, 'w') as opcode_file:
+        opcode_file.write('# Generated automatically from %s.  DO NOT EDIT!\n' % rel_path)
+        for desc, val in analyzer.operand_codes:
+            opcode_file.write('{0} = {1!r}\n'.format(desc, val))
 
 
 def main(repo_root):
@@ -78,24 +109,14 @@ def main(repo_root):
                 subprocess.check_call([_get_protoc_executable(), '--python_out=.', rel_path],
                                       cwd=repo_root)
 
-            if fn == 'operand_type.proto':
+            if fn == 'operand.proto':
                 op_globs = dict()
                 opcode_fn = os.path.join(repo_root, 'mars', 'opcodes.py')
                 sys.stdout.write('constructing opcodes with %s\n' % rel_path)
                 if not os.path.exists(opcode_fn) or \
                         os.path.getmtime(src_fn) > os.path.getmtime(opcode_fn):
-                    try:
-                        import google.protobuf
-                    except ImportError:
-                        sys.stderr.write('You need to install protobuf to build proto files.\n')
-                        sys.exit(1)
+                    _generate_operand_file(compiled_fn, rel_path, opcode_fn)
 
-                    execfile(compiled_fn, op_globs)
-                    OperandType = op_globs['OperandType']
-                    with open(os.path.join(repo_root, 'mars', 'opcodes.py'), 'w') as opcode_file:
-                        opcode_file.write('# Generated automatically from %s.  DO NOT EDIT!\n' % rel_path)
-                        for val, desc in OperandType.DESCRIPTOR.values_by_number.items():
-                            opcode_file.write('{0} = {1!r}\n'.format(desc.name, val))
     if _temp_protoc_path:
         shutil.rmtree(_temp_protoc_path)
 
