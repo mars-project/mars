@@ -15,10 +15,12 @@ else
 
   if [ "$UNAME" = "linux" ]; then
     docker pull $DOCKER_IMAGE
+    pip install -r requirements-wheel.txt
 
     pyabis=$(echo $PYABI | tr ":" "\n")
     for abi in $pyabis; do
       git clean -f -x
+      python bin/build-protos.py
       docker run --rm -e "PYABI=$abi" -e "GIT_TAG=$GIT_TAG" -v `pwd`:/io \
         $DOCKER_IMAGE $PRE_CMD /io/.github/workflows/build-wheels.sh
     done
