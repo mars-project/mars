@@ -167,7 +167,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         reduction_chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
-            op._stage = Stage.map
+            new_chunk_op._stage = Stage.map
             new_chunk_op._object_type = ObjectType.dataframe
             if op.axis == 0:
                 if op.numeric_only:
@@ -206,7 +206,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
-            op._stage = Stage.map
+            new_chunk_op._stage = Stage.map
             chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=df.dtype, index_value=df.index_value)
 
         while len(chunks) > combine_size:
@@ -249,7 +249,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             return cls._tile_series(op)
 
     @classmethod
-    def _execute_reduction(cls, in_data, op, min_count=None):
+    def _execute_reduction(cls, in_data, op, min_count=None, reduction_func=None):
         kwargs = dict()
         if op.axis is not None:
             kwargs['axis'] = op.axis
@@ -259,16 +259,20 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             kwargs['numeric_only'] = op.numeric_only
         if min_count is not None:
             kwargs['min_count'] = op.min_count
-        return getattr(in_data, getattr(cls, '_func_name'))(**kwargs)
+        reduction_func = reduction_func or getattr(cls, '_func_name')
+        return getattr(in_data, reduction_func)(**kwargs)
 
     @classmethod
-    def _execute_map_with_count(cls, ctx, op):
+    def _execute_map_with_count(cls, ctx, op, reduction_func=None):
         # Execution with specified `min_count` in the map stage
 
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
-        count = in_data.notnull().sum(axis=op.axis)
-        r = cls._execute_reduction(in_data, op)
+        if isinstance(in_data, pd.Series):
+            count = in_data.count()
+        else:
+            count = in_data.count(axis=op.axis, numeric_only=op.numeric_only)
+        r = cls._execute_reduction(in_data, op, reduction_func=reduction_func)
         if isinstance(in_data, xdf.Series):
             ctx[op.outputs[0].key] = (r, count)
         else:
@@ -277,13 +281,13 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 else (xdf.DataFrame(r).transpose(), xdf.DataFrame(count).transpose())
 
     @classmethod
-    def _execute_combine_with_count(cls, ctx, op):
+    def _execute_combine_with_count(cls, ctx, op, reduction_func=None):
         # Execution with specified `min_count` in the combine stage
 
         xdf = cudf if op.gpu else pd
         in_data, concat_count = ctx[op.inputs[0].key]
         count = concat_count.sum(axis=op.axis)
-        r = cls._execute_reduction(in_data, op)
+        r = cls._execute_reduction(in_data, op, reduction_func=reduction_func)
         if isinstance(in_data, xdf.Series):
             ctx[op.outputs[0].key] = (r, count)
         else:
@@ -292,14 +296,14 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 else (xdf.DataFrame(r).transpose(), xdf.DataFrame(count).transpose())
 
     @classmethod
-    def _execute_agg_with_count(cls, ctx, op):
+    def _execute_agg_with_count(cls, ctx, op, reduction_func=None):
         # Execution with specified `min_count` in the aggregate stage
 
         # When specify `min_count`, the terminal chunk has two inputs one of which is for count.
         # The output should be determined by comparing `count` with `min_count`.
         in_data, concat_count = ctx[op.inputs[0].key]
         count = concat_count.sum(axis=op.axis)
-        r = cls._execute_reduction(in_data, op)
+        r = cls._execute_reduction(in_data, op, reduction_func=reduction_func)
         if np.isscalar(r):
             ctx[op.outputs[0].key] = np.nan if count < op.min_count else r
         else:
@@ -307,13 +311,13 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             ctx[op.outputs[0].key] = r
 
     @classmethod
-    def _execute_without_count(cls, ctx, op):
+    def _execute_without_count(cls, ctx, op, reduction_func=None):
         # Execution for normal reduction operands.
 
         # For dataframe, will keep dimensions for intermediate results.
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
-        r = cls._execute_reduction(in_data, op, min_count=op.min_count)
+        r = cls._execute_reduction(in_data, op, min_count=op.min_count, reduction_func=reduction_func)
         if isinstance(in_data, xdf.Series) or op.object_type == ObjectType.series:
             ctx[op.outputs[0].key] = r
         else:
@@ -346,8 +350,12 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             cls._execute_combine(ctx, op)
         elif op.stage == Stage.agg:
             cls._execute_agg(ctx, op)
-        else:
+        elif op.stage == Stage.map:
             cls._execute_map(ctx, op)
+        else:
+            in_data = ctx[op.inputs[0].key]
+            min_count = getattr(op, 'min_count', None)
+            ctx[op.outputs[0].key] = cls._execute_reduction(in_data, op, min_count)
 
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None)

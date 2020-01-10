@@ -27,6 +27,7 @@ reduction_functions = dict(
     prod=dict(func_name='prod', has_min_count=True),
     min=dict(func_name='min', has_min_count=False),
     max=dict(func_name='max', has_min_count=False),
+    mean=dict(func_name='mean', has_min_count=False)
 )
 
 
