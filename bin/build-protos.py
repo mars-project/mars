@@ -14,11 +14,6 @@ _protoc_executable = None
 _temp_protoc_path = None
 
 
-def execfile(fname, globs, locs=None):
-    locs = locs or globs
-    exec(compile(open(fname).read(), fname, "exec"), globs, locs)
-
-
 def _get_protoc_executable():
     global _protoc_executable
 
@@ -110,7 +105,6 @@ def main(repo_root):
                                       cwd=repo_root)
 
             if fn == 'operand.proto':
-                op_globs = dict()
                 opcode_fn = os.path.join(repo_root, 'mars', 'opcodes.py')
                 sys.stdout.write('constructing opcodes with %s\n' % rel_path)
                 if not os.path.exists(opcode_fn) or \
