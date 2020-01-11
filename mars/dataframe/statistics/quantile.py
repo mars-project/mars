@@ -31,7 +31,7 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..core import DATAFRAME_TYPE
 from ..datasource.from_tensor import series_from_tensor, dataframe_from_tensor
 from ..initializer import DataFrame as create_df
-from ..utils import parse_index, build_empty_df, find_common_type
+from ..utils import parse_index, build_empty_df, find_common_type, validate_axis
 
 
 class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
@@ -379,6 +379,7 @@ def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
         q_input = q
     else:
         q_input = None
+    axis = validate_axis(axis, df)
 
     op = DataFrameQuantile(q=q, interpolation=interpolation,
                            axis=axis, numeric_only=numeric_only,
