@@ -478,7 +478,10 @@ cdef class ProtobufSerializeProvider(Provider):
         if field.on_serialize and value is not None:
             value = field.on_serialize(value)
         tag = field.tag_name(self)
-        field_obj = getattr(obj, tag)
+        try:
+            field_obj = getattr(obj, tag)
+        except AttributeError:
+            raise AttributeError('no attribute {} for {}'.format(tag, model_instance))
 
         if value is None:
             return

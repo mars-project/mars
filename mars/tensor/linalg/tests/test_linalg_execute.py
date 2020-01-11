@@ -25,12 +25,13 @@ from mars.tensor.linalg import qr, svd, cholesky, norm, lu, \
 from mars.tensor.random import uniform
 from mars.learn.datasets.samples_generator import make_low_rank_matrix
 from mars.lib.sparse import issparse, SparseNDArray
-from mars.tests.core import TestExecutor
+from mars.utils import ignore_warning
+from mars.tests.core import ExecutorForTest
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = TestExecutor('numpy')
+        self.executor = ExecutorForTest('numpy')
 
     def testQRExecution(self):
         data = np.random.randn(18, 6)
@@ -776,6 +777,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(A.dot(inv_A), concat=True)[0]
         self.assertTrue(np.allclose(res, np.eye(data.shape[0], dtype=float)))
 
+    @ignore_warning
     def testNormExecution(self):
         d = np.arange(9) - 4
         d2 = d.reshape(3, 3)
@@ -810,7 +812,7 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(res, 3.14, delta=1)
 
     def testTensordotExecution(self):
-        size_executor = TestExecutor(sync_provider_type=TestExecutor.SyncProviderType.MOCK)
+        size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
 
         a_data = np.arange(60).reshape(3, 4, 5)
         a = tensor(a_data, chunk_size=2)
@@ -897,7 +899,7 @@ class Test(unittest.TestCase):
                 input_nbytes = dict((inp.op.key, inp.nbytes) for inp in op.inputs)
                 chunk_input_nbytes[chunk_key] = sum(input_nbytes.values())
 
-            size_executor = TestExecutor(sync_provider_type=TestExecutor.SyncProviderType.MOCK)
+            size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
             try:
                 chunk_sizes.clear()
                 chunk_nbytes.clear()

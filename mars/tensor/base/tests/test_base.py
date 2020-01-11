@@ -23,7 +23,7 @@ from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
-    histogram_bin_edges, to_gpu, to_cpu
+    partition, histogram_bin_edges, to_gpu, to_cpu
 from mars.tensor.base.searchsorted import Stage
 from mars.tiles import get_tiled
 
@@ -752,6 +752,62 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             sort(np.random.rand(100), psrs_kinds=['non_valid_kind'] * 3)
+
+        with self.assertRaises(ValueError):
+            sort(np.random.rand(100), psrs_kinds=[None, None, None])
+
+        with self.assertRaises(ValueError):
+            sort(np.random.rand(100), psrs_kinds=['quicksort', 'mergesort', None])
+
+    def testPartition(self):
+        a = tensor(np.random.rand(10, 10), chunk_size=(5, 10))
+
+        pa = partition(a, [4, 9])
+        self.assertEqual(type(pa.op).__name__, 'TensorPartition')
+
+        pa = pa.tiles()
+
+        self.assertEqual(len(pa.chunks), 2)
+        for c in pa.chunks:
+            self.assertEqual(type(c.op).__name__, 'TensorPartition')
+            self.assertEqual(type(c.inputs[0].op).__name__, 'ArrayDataSource')
+
+        a = tensor(np.random.rand(100), chunk_size=(10))
+
+        pa = partition(a, 4)
+        self.assertEqual(type(pa.op).__name__, 'TensorPartition')
+
+        pa = pa.tiles()
+
+        for c in pa.chunks:
+            self.assertEqual(type(c.op).__name__, 'PartitionMerged')
+            self.assertEqual(c.shape, (np.nan,))
+
+        a = tensor(np.empty((10, 10), dtype=[('id', np.int32), ('size', np.int64)]),
+                   chunk_size=(10, 5))
+        pa = partition(a, 3)
+        self.assertSequenceEqual(pa.op.order, ['id', 'size'])
+
+        with self.assertRaises(ValueError):
+            partition(a, 4, order=['unknown_field'])
+
+        with self.assertRaises(np.AxisError):
+            partition(np.random.rand(100), 4, axis=1)
+
+        with self.assertRaises(ValueError):
+            partition(np.random.rand(100), 4, kind='non_valid_kind')
+
+        with self.assertRaises(ValueError):
+            partition(np.random.rand(10), 10)
+
+        with self.assertRaises(TypeError):
+            partition(np.random.rand(10), tensor([1.0, 2.0]))
+
+        with self.assertRaises(ValueError):
+            partition(np.random.rand(10), tensor([[1, 2]]))
+
+        with self.assertRaises(ValueError):
+            partition(np.random.rand(10), [-11, 2])
 
     def testHistogramBinEdges(self):
         a = array([0, 0, 0, 1, 2, 3, 3, 4, 5], chunk_size=3)
