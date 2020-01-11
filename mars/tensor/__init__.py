@@ -20,10 +20,11 @@ from .datasource import tensor, array, asarray, ascontiguousarray, asfortranarra
     full, full_like, arange, diag, diagflat, eye, identity, linspace, \
     meshgrid, indices, tril, triu, fromtiledb, from_dataframe
 from .datastore import totiledb
-from .base import result_type, copyto, transpose, where, broadcast_to, broadcast_arrays, \
+from .base import result_type, ndim, copyto, transpose, where, broadcast_to, broadcast_arrays, \
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, \
-    average, cov, corrcoef, flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort
+    average, cov, corrcoef, flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort, \
+    histogram, histogram_bin_edges
 from .arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
     floordiv as floor_divide, mod, power, float_power, fmod, sqrt, \
     around, round_, round_ as round, logaddexp, logaddexp2, negative, positive, \

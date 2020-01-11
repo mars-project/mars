@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-09-02 17:27+0800\n"
+"POT-Creation-Date: 2019-12-25 11:13+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -112,12 +112,14 @@ msgstr ""
 "当使用命令行启动 Mars 时，你可以通过指定启动参数控制 Mars 各服务进程的"
 "行为。所有 Mars 服务均拥有下面的参数。"
 
-#: ../../source/install.rst:122 ../../source/install.rst:146
+#: ../../source/install.rst:122
+#: ../../source/install.rst:146
 #: ../../source/install.rst:156
 msgid "Argument"
 msgstr "参数"
 
-#: ../../source/install.rst:122 ../../source/install.rst:146
+#: ../../source/install.rst:122
+#: ../../source/install.rst:146
 #: ../../source/install.rst:156
 msgid "Description"
 msgstr "描述"
@@ -222,7 +224,8 @@ msgid "``--net-procs``"
 msgstr ""
 
 #: ../../source/install.rst:161
-msgid "Number of processes for network transfer. 1 by default"
+#, fuzzy
+msgid "Number of processes for network transfer. 4 by default"
 msgstr "用于网络传输的进程数，默认为 1"
 
 #: ../../source/install.rst:163

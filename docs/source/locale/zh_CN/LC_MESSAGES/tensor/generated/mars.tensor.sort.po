@@ -1,0 +1,261 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2019.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.3.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-12-25 11:13+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/tensor/generated/mars.tensor.sort.rst:2
+msgid "mars.tensor.sort"
+msgstr ""
+
+#: mars.tensor.sort:1 of
+msgid "Return a sorted copy of a tensor."
+msgstr ""
+
+#: mars.tensor.sort:5 of
+msgid "a"
+msgstr ""
+
+#: of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.sort:6 of
+msgid "Tensor to be sorted."
+msgstr ""
+
+#: mars.tensor.sort:8 of
+msgid "axis"
+msgstr ""
+
+#: of
+msgid "int or None, optional"
+msgstr ""
+
+#: mars.tensor.sort:8 of
+msgid ""
+"Axis along which to sort. If None, the tensor is flattened before "
+"sorting. The default is -1, which sorts along the last axis."
+msgstr ""
+
+#: mars.tensor.sort:15 mars.tensor.sort:51 of
+msgid "kind"
+msgstr ""
+
+#: of
+msgid "{'quicksort', 'mergesort', 'heapsort', 'stable'}, optional"
+msgstr ""
+
+#: mars.tensor.sort:11 of
+msgid ""
+"Sorting algorithm. The default is 'quicksort'. Note that both 'stable' "
+"and 'mergesort' use timsort or radix sort under the covers and, in "
+"general, the actual implementation will vary with data type. The "
+"'mergesort' option is retained for backwards compatibility. Note that "
+"this argument would not take effect if `a` has more than 1 chunk on the "
+"sorting axis."
+msgstr ""
+
+#: mars.tensor.sort:18 of
+msgid "parallel_kind: {'PSRS'}, optional"
+msgstr ""
+
+#: mars.tensor.sort:18 of
+msgid ""
+"Parallel sorting algorithm, for the details, refer to: "
+"http://csweb.cs.wfu.edu/bigiron/LittleFE-"
+"PSRS/build/html/PSRSalgorithm.html"
+msgstr ""
+
+#: mars.tensor.sort:20 of
+msgid "psrs_kinds: list with 3 elements, optional"
+msgstr ""
+
+#: mars.tensor.sort:21 of
+msgid "Sorting algorithms during PSRS algorithm."
+msgstr ""
+
+#: mars.tensor.sort:27 of
+msgid "order"
+msgstr ""
+
+#: of
+msgid "str or list of str, optional"
+msgstr ""
+
+#: mars.tensor.sort:23 of
+msgid ""
+"When `a` is a tensor with fields defined, this argument specifies which "
+"fields to compare first, second, etc.  A single field can be specified as"
+" a string, and not all fields need be specified, but unspecified fields "
+"will still be used, in the order in which they come up in the dtype, to "
+"break ties."
+msgstr ""
+
+#: mars.tensor.sort:32 of
+msgid "sorted_tensor"
+msgstr ""
+
+#: of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.sort:32 of
+msgid "Tensor of the same type and shape as `a`."
+msgstr ""
+
+#: mars.tensor.sort:36 of
+msgid ""
+"Tensor.sort : Method to sort a tensor in-place. argsort : Indirect sort. "
+"lexsort : Indirect stable sort on multiple keys. searchsorted : Find "
+"elements in a sorted tensor. partition : Partial sort."
+msgstr ""
+
+#: mars.tensor.sort:44 of
+msgid ""
+"The various sorting algorithms are characterized by their average speed, "
+"worst case performance, work space size, and whether they are stable. A "
+"stable sort keeps items with the same key in the same relative order. The"
+" four algorithms implemented in NumPy have the following properties:"
+msgstr ""
+
+#: mars.tensor.sort:51 of
+msgid "speed"
+msgstr ""
+
+#: mars.tensor.sort:51 of
+msgid "worst case"
+msgstr ""
+
+#: mars.tensor.sort:51 of
+msgid "work space"
+msgstr ""
+
+#: mars.tensor.sort:51 of
+msgid "stable"
+msgstr ""
+
+#: mars.tensor.sort:53 of
+msgid "'quicksort'"
+msgstr ""
+
+#: mars.tensor.sort:53 of
+msgid "1"
+msgstr ""
+
+#: mars.tensor.sort:53 of
+msgid "O(n^2)"
+msgstr ""
+
+#: mars.tensor.sort:53 mars.tensor.sort:54 of
+msgid "0"
+msgstr ""
+
+#: mars.tensor.sort:53 mars.tensor.sort:54 of
+msgid "no"
+msgstr ""
+
+#: mars.tensor.sort:54 of
+msgid "'heapsort'"
+msgstr ""
+
+#: mars.tensor.sort:54 of
+msgid "3"
+msgstr ""
+
+#: mars.tensor.sort:54 mars.tensor.sort:55 mars.tensor.sort:56 of
+msgid "O(n*log(n))"
+msgstr ""
+
+#: mars.tensor.sort:55 of
+msgid "'mergesort'"
+msgstr ""
+
+#: mars.tensor.sort:55 mars.tensor.sort:56 of
+msgid "2"
+msgstr ""
+
+#: mars.tensor.sort:55 mars.tensor.sort:56 of
+msgid "~n/2"
+msgstr ""
+
+#: mars.tensor.sort:55 mars.tensor.sort:56 of
+msgid "yes"
+msgstr ""
+
+#: mars.tensor.sort:56 of
+msgid "'timsort'"
+msgstr ""
+
+#: mars.tensor.sort:59 of
+msgid ""
+"The datatype determines which of 'mergesort' or 'timsort' is actually "
+"used, even if 'mergesort' is specified. User selection at a finer scale "
+"is not currently available."
+msgstr ""
+
+#: mars.tensor.sort:63 of
+msgid ""
+"All the sort algorithms make temporary copies of the data when sorting "
+"along any but the last axis.  Consequently, sorting along the last axis "
+"is faster and uses less space than sorting along any other axis."
+msgstr ""
+
+#: mars.tensor.sort:68 of
+msgid ""
+"The sort order for complex numbers is lexicographic. If both the real and"
+" imaginary parts are non-nan then the order is determined by the real "
+"parts except when they are equal, in which case the order is determined "
+"by the imaginary parts."
+msgstr ""
+
+#: mars.tensor.sort:73 of
+msgid ""
+"quicksort has been changed to an introsort which will switch heapsort "
+"when it does not make enough progress. This makes its worst case "
+"O(n*log(n))."
+msgstr ""
+
+#: mars.tensor.sort:77 of
+msgid ""
+"'stable' automatically choses the best stable sorting algorithm for the "
+"data type being sorted. It, along with 'mergesort' is currently mapped to"
+" timsort or radix sort depending on the data type. API forward "
+"compatibility currently limits the ability to select the implementation "
+"and it is hardwired for the different data types."
+msgstr ""
+
+#: mars.tensor.sort:84 of
+msgid ""
+"Timsort is added for better performance on already or nearly sorted data."
+" On random data timsort is almost identical to mergesort. It is now used "
+"for stable sort while quicksort is still the default sort if none is "
+"chosen. For details of timsort, refer to `CPython listsort.txt "
+"<https://github.com/python/cpython/blob/3.7/Objects/listsort.txt>`_. "
+"'mergesort' and 'stable' are mapped to radix sort for integer data types."
+" Radix sort is an O(n) sort instead of O(n log n)."
+msgstr ""
+
+#: mars.tensor.sort:105 of
+msgid ""
+"Use the `order` keyword to specify a field to use when sorting a "
+"structured array:"
+msgstr ""
+
+#: mars.tensor.sort:117 of
+msgid "Sort by age, then height if ages are equal:"
+msgstr ""
+

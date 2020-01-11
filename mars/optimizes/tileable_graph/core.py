@@ -85,8 +85,7 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
                 new_node = n
             elif any(inp in self._optimizer_context for inp in n.inputs):
                 new_inputs = [self._optimizer_context.get(i, i) for i in n.inputs]
-                copied = copy_tileables(*n.op.outputs, inputs=new_inputs)
-                new_tileables = copied if isinstance(copied, list) else [copied]
+                new_tileables = copy_tileables(n.op.outputs, inputs=new_inputs)
                 for t, new_t in zip(n.op.outputs, new_tileables):
                     self._optimizer_context[t] = new_t.data
                     if t is n:

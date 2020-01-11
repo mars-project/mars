@@ -47,21 +47,22 @@ from .array_equal import array_equal
 
 
 def _install():
-    from ..core import Tensor
+    from ..core import Tensor, TensorData
 
-    setattr(Tensor, 'sum', sum)
-    setattr(Tensor, 'prod', prod)
-    setattr(Tensor, 'max', max)
-    setattr(Tensor, 'min', min)
-    setattr(Tensor, 'all', all)
-    setattr(Tensor, 'any', any)
-    setattr(Tensor, 'mean', mean)
-    setattr(Tensor, 'argmax', argmax)
-    setattr(Tensor, 'argmin', argmin)
-    setattr(Tensor, 'cumsum', cumsum)
-    setattr(Tensor, 'cumprod', cumprod)
-    setattr(Tensor, 'var', var)
-    setattr(Tensor, 'std', std)
+    for cls in (Tensor, TensorData):
+        setattr(cls, 'sum', sum)
+        setattr(cls, 'prod', prod)
+        setattr(cls, 'max', max)
+        setattr(cls, 'min', min)
+        setattr(cls, 'all', all)
+        setattr(cls, 'any', any)
+        setattr(cls, 'mean', mean)
+        setattr(cls, 'argmax', argmax)
+        setattr(cls, 'argmin', argmin)
+        setattr(cls, 'cumsum', cumsum)
+        setattr(cls, 'cumprod', cumprod)
+        setattr(cls, 'var', var)
+        setattr(cls, 'std', std)
 
 
 _install()
