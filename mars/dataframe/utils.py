@@ -170,8 +170,8 @@ def parse_index(index_value, store_data=False, key=None):
             '_is_monotonic_increasing': index.is_monotonic_increasing,
             '_is_monotonic_decreasing': index.is_monotonic_decreasing,
             '_is_unique': index.is_unique,
-            '_min_val': index.min(),
-            '_max_val': index.max(),
+            '_min_val': _get_index_min(index),
+            '_max_val': _get_index_max(index),
             '_min_val_close': True,
             '_max_val_close': True,
             '_key': key or tokenize(index),
@@ -179,6 +179,18 @@ def parse_index(index_value, store_data=False, key=None):
         if ret_data:
             kw['_data'] = index.values
         return kw
+
+    def _get_index_min(index):
+        try:
+            return index.min()
+        except TypeError:
+            return None
+
+    def _get_index_max(index):
+        try:
+            return index.max()
+        except TypeError:
+            return None
 
     def _serialize_index(index):
         properties = _extract_property(index, store_data)

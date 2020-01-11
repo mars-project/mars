@@ -15,7 +15,7 @@
 import numpy as np
 import pandas as pd
 
-from mars.dataframe.base import to_gpu, to_cpu
+from mars.dataframe.base import to_gpu, to_cpu, reset_index
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.tests.core import TestBase, require_cudf, ExecutorForTest
@@ -91,3 +91,37 @@ class Test(TestBase):
         series2 = series.rechunk(1)
         res = self.executor.execute_dataframe(series2, concat=True)[0]
         pd.testing.assert_series_equal(data, res)
+
+    def testResetIndex(self):
+        data = pd.DataFrame([('bird',    389.0),
+                             ('bird',     24.0),
+                             ('mammal',   80.5),
+                             ('mammal', np.nan)],
+                            index=['falcon', 'parrot', 'lion', 'monkey'],
+                            columns=('class', 'max_speed'))
+        df = from_pandas_df(data)
+        df2 = reset_index(df)
+        result = self.executor.execute_dataframe(df2, concat=True)[0]
+        expected = data.reset_index()
+        pd.testing.assert_frame_equal(result, expected)
+
+        df = from_pandas_df(data, chunk_size=2)
+        df2 = reset_index(df)
+        result = self.executor.execute_dataframe(df2, concat=True)[0]
+        expected = data.reset_index()
+        pd.testing.assert_frame_equal(result, expected)
+
+        s = pd.Series([1, 2, 3, 4], name='foo',
+                      index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+
+        series = from_pandas_series(s)
+        s2 = reset_index(series)
+        result = self.executor.execute_dataframe(s2, concat=True)[0]
+        expected = s.reset_index()
+        pd.testing.assert_frame_equal(result, expected)
+
+        series = from_pandas_series(s, chunk_size=2)
+        s2 = reset_index(series, drop=True)
+        result = self.executor.execute_dataframe(s2, concat=True)[0]
+        expected = s.reset_index(drop=True)
+        pd.testing.assert_series_equal(result, expected)

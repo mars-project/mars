@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.dataframe.base.to_gpu import to_gpu
-from mars.dataframe.base.to_cpu import to_cpu
+from .to_gpu import to_gpu
+from .to_cpu import to_cpu
+from .reset_index import reset_index
 
 
 def _install():
@@ -24,6 +25,7 @@ def _install():
         setattr(t, 'to_gpu', to_gpu)
         setattr(t, 'to_cpu', to_cpu)
         setattr(t, 'rechunk', rechunk)
+        setattr(t, 'reset_index', reset_index)
 
 
 _install()

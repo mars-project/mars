@@ -14,10 +14,176 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pandas as pd
+import numpy as np
+
 from ... import opcodes as OperandDef
-from ..operands import DataFrameOperandMixin, DataFrameOperand
+from ...serialize import BoolField, AnyField, StringField
+from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE, ObjectType
+from ..core import IndexValue
+from ..utils import parse_index, build_empty_df
 
 
 class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
-    def __init__(self):
-        pass
+    _op_type_ = OperandDef.RESET_INDEX
+
+    _level = AnyField('level')
+    _drop = BoolField('drop')
+    _name = StringField('name')
+    _col_level = AnyField('col_level')
+    _col_fill = AnyField('col_fill')
+
+    def __init__(self, level=None, drop=None, name=None, col_level=None, col_fill=None, object_type=None, **kwargs):
+        super(DataFrameResetIndex, self).__init__(_level=level, _drop=drop, _name=name, _col_level=col_level,
+                                                  _col_fill=col_fill, _object_type=object_type, **kwargs)
+
+    @property
+    def level(self):
+        return self._level
+
+    @property
+    def drop(self):
+        return self._drop
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def col_level(self):
+        return self._col_level
+
+    @property
+    def col_fill(self):
+        return self._col_fill
+
+    @classmethod
+    def _tile_series(cls, op):
+        out_chunks = []
+        out = op.outputs[0]
+        range_index = isinstance(out.index_value.value, IndexValue.RangeIndex)
+        cum_range = np.cumsum((0, ) + op.inputs[0].nsplits[0])
+        for c in op.inputs[0].chunks:
+            if range_index:
+                index_value = parse_index(pd.RangeIndex(cum_range[c.index[0]], cum_range[c.index[0] + 1]))
+            else:
+                index_value = out.index_value
+            chunk_op = op.copy().reset_key()
+            if op.drop:
+                out_chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index, dtype=c.dtype,
+                                               name=c.name, index_value=index_value)
+            else:
+                shape = (c.shape[0], out.shape[1])
+                out_chunk = chunk_op.new_chunk([c], shape=shape, index=c.index, dtypes=out.dtypes,
+                                               index_value=index_value, columns_value=out.columns_value)
+            out_chunks.append(out_chunk)
+        new_op = op.copy()
+        if op.drop:
+            return new_op.new_seriess(op.inputs, op.inputs[0].shape, nsplits=op.inputs[0].nsplits,
+                                      chunks=out_chunks, dtype=out.dtype, index_value=out.index_value)
+        else:
+            nsplits = (op.inputs[0].nsplits[0], (out.shape[1],))
+            return new_op.new_dataframes(op.inputs, out.shape, nsplits=nsplits, chunks=out_chunks,
+                                         index_value=out.index_value, columns_value=out.columns_value,
+                                         dtypes=out.dtypes)
+
+    @classmethod
+    def _tile_dataframe(cls, op):
+        in_df = op.inputs[0]
+        out_df = op.outputs[0]
+        added_columns_num = len(out_df.dtypes) - len(in_df.dtypes)
+        out_chunks = []
+        range_index = isinstance(out_df.index_value.value, IndexValue.RangeIndex)
+        cum_range = np.cumsum((0, ) + in_df.nsplits[0])
+        for c in in_df.chunks:
+            if range_index:
+                index_value = parse_index(pd.RangeIndex(cum_range[c.index[0]], cum_range[c.index[0] + 1]))
+            else:
+                index_value = out_df.index_value
+            if c.index[1] == 0:
+                chunk_op = op.copy().reset_key()
+                dtypes = out_df.dtypes[:(added_columns_num + len(c.dtypes))]
+                columns_value = parse_index(dtypes.index)
+                new_chunk = chunk_op.new_chunk([c], shape=(c.shape[0], c.shape[1] + added_columns_num),
+                                               index=c.index, index_value=index_value,
+                                               columns_value=columns_value, dtypes=dtypes)
+            else:
+                chunk_op = op.copy().reset_key()
+                chunk_op._drop = True
+                new_chunk = chunk_op.new_chunk([c], shape=c.shape, index_value=index_value,
+                                               index=c.index, columns_value=c.columns_value, dypes=c.dtypes)
+            out_chunks.append(new_chunk)
+        new_op = op.copy()
+        columns_splits = list(in_df.nsplits[1])
+        columns_splits[0] += added_columns_num
+        nsplits = (in_df.nsplits[0], tuple(columns_splits))
+        return new_op.new_dataframes(op.inputs, out_df.shape, nsplits=nsplits,
+                                     chunks=out_chunks, dtypes=out_df.dtypes,
+                                     index_value=out_df.index_value, columns_value=out_df.columns_value)
+
+    @classmethod
+    def tile(cls, op):
+        if isinstance(op.inputs[0], DATAFRAME_TYPE):
+            return cls._tile_dataframe(op)
+        else:
+            return cls._tile_series(op)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        in_data = ctx[op.inputs[0].key]
+        out = op.outputs[0]
+
+        kwargs = dict()
+        if op.name is not None:
+            kwargs['name'] = op.name
+        if op.col_level is not None:
+            kwargs['col_level'] = op.col_level
+        if op.col_fill is not None:
+            kwargs['col_fill'] = op.col_fill
+
+        r = in_data.reset_index(level=op.level, drop=op.drop, **kwargs)
+        if isinstance(out.index_value.value, IndexValue.RangeIndex):
+            r.index = out.index_value.to_pandas()
+        ctx[out.key] = r
+
+    def _call_series(self, a):
+        if self.drop:
+            index_value = parse_index(pd.RangeIndex(a.shape[0]))
+            return self.new_series([a], shape=a.shape, dtype=a.dtype, name=a.name, index_value=index_value)
+        else:
+            empty_df = pd.Series(a.dtype, index=a.index_value.to_pandas())
+            empty_df = empty_df.reset_index(level=self.level, name=self.name)
+            shape = (a.shape[0], len(empty_df.dtypes))
+            self._object_type = ObjectType.dataframe
+            return self.new_dataframe([a], shape=shape, index_value=parse_index(empty_df.index),
+                                      columns_value=parse_index(empty_df.columns),
+                                      dtypes=empty_df.dtypes)
+
+    def _call_dataframe(self, a):
+        if self.drop:
+            shape = a.shape
+            columns_value = a.columns_value
+            dtypes = a.dtypes
+        else:
+            shape = (a.shape[0] + 1, a.shape[1])
+            empty_df = build_empty_df(a.dtypes)
+            empty_df.index = a.index_value.to_pandas()
+            empty_df = empty_df.reset_index(level=self.level, col_level=self.col_level, col_fill=self.col_fill)
+            columns_value = parse_index(empty_df.columns)
+            dtypes = empty_df.dtypes
+        index_value = parse_index(pd.RangeIndex(a.shape[0]))
+        return self.new_dataframe([a], shape=shape, columns_value=columns_value,
+                                  index_value=index_value, dtypes=dtypes)
+
+    def __call__(self, a):
+        if isinstance(a, DATAFRAME_TYPE):
+            return self._call_dataframe(a)
+        else:
+            return self._call_series(a)
+
+
+def reset_index(a, level=None, drop=False, col_level=None, col_fill=None):
+    object_type = ObjectType.dataframe if isinstance(a, DATAFRAME_TYPE) else ObjectType.series
+    op = DataFrameResetIndex(level=level, drop=drop, col_level=col_level,
+                             col_fill=col_fill, object_type=object_type)
+    return op(a)
