@@ -21,11 +21,14 @@ import scipy.sparse as sps
 import pandas as pd
 
 from mars import tensor as mt
+from mars.tiles import TilesError
+from mars.context import LocalContext
 from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
-    flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort, to_gpu, to_cpu
+    flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort, \
+    histogram_bin_edges, histogram, to_gpu, to_cpu
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
 from mars.tests.core import require_cupy, TestExecutor
@@ -1235,3 +1238,117 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(a, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(np.sort(raw, axis=1), axis=0))
+
+    def testHistogramBinEdgesExecution(self):
+        rs = np.random.RandomState(0)
+
+        raw = rs.randint(10, size=(20,))
+        a = tensor(raw, chunk_size=3)
+
+        # range provided
+        for range_ in [(0, 10), (3, 11), (3, 7)]:
+            bin_edges = histogram_bin_edges(a, range=range_)
+            result = self.executor.execute_tensor(bin_edges)[0]
+            expected = np.histogram_bin_edges(raw, range=range_)
+            np.testing.assert_array_equal(result, expected)
+
+        this = self
+
+        class MockSession:
+            def __init__(self):
+                self.executor = this.executor
+
+        ctx = LocalContext(MockSession())
+        executor = TestExecutor('numpy', storage=ctx)
+        with ctx:
+            raw2 = rs.randint(10, size=(1,))
+            b = tensor(raw2)
+            raw3 = rs.randint(10, size=(0,))
+            c = tensor(raw3)
+            for t, r in [(a, raw), (b, raw2), (c, raw3), (sort(a), raw)]:
+                # TODO: test 'auto' and 'fd' after `mt.percentile` implemented
+                test_bins = [10, 'stone', 'doane', 'rice', 'scott', 'sqrt', 'sturges']
+                for bins in test_bins:
+                    bin_edges = histogram_bin_edges(t, bins=bins)
+
+                    if r.size > 0:
+                        with self.assertRaises(TilesError):
+                            executor.execute_tensor(bin_edges)
+
+                    result = executor.execute_tensors([bin_edges])[0]
+                    expected = np.histogram_bin_edges(r, bins=bins)
+                    np.testing.assert_array_equal(result, expected)
+
+                test_bins = [[0, 4, 8], mt.tensor([0, 4, 8], chunk_size=2)]
+                for bins in test_bins:
+                    bin_edges = histogram_bin_edges(t, bins=bins)
+                    result = executor.execute_tensors([bin_edges])[0]
+                    expected = np.histogram_bin_edges(r, bins=[0, 4, 8])
+                    np.testing.assert_array_equal(result, expected)
+
+            raw = np.arange(5)
+            a = tensor(raw, chunk_size=3)
+            bin_edges = histogram_bin_edges(a)
+            result = executor.execute_tensors([bin_edges])[0]
+            expected = np.histogram_bin_edges(raw)
+            self.assertEqual(bin_edges.shape, expected.shape)
+            np.testing.assert_array_equal(result, expected)
+
+    def testHistogramExecution(self):
+        rs = np.random.RandomState(0)
+
+        raw = rs.randint(10, size=(20,))
+        a = tensor(raw, chunk_size=3)
+        raw_weights = rs.rand(20)
+        weights = tensor(raw_weights, chunk_size=4)
+
+        # range provided
+        for range_ in [(0, 10), (3, 11), (3, 7)]:
+            bin_edges = histogram(a, range=range_)[0]
+            result = self.executor.execute_tensor(bin_edges)[0]
+            expected = np.histogram(raw, range=range_)[0]
+            np.testing.assert_array_equal(result, expected)
+
+        for wt in (raw_weights, weights):
+            for density in (True, False):
+                bins = [1, 4, 6, 9]
+                bin_edges = histogram(a, bins=bins, weights=wt, density=density)[0]
+                result = self.executor.execute_tensor(bin_edges)[0]
+                expected = np.histogram(
+                    raw, bins=bins, weights=raw_weights, density=density)[0]
+                np.testing.assert_almost_equal(result, expected)
+
+        this = self
+
+        class MockSession:
+            def __init__(self):
+                self.executor = this.executor
+
+        ctx = LocalContext(MockSession())
+        executor = TestExecutor('numpy', storage=ctx)
+        with ctx:
+            raw2 = rs.randint(10, size=(1,))
+            b = tensor(raw2)
+            raw3 = rs.randint(10, size=(0,))
+            c = tensor(raw3)
+            for t, r in [(a, raw), (b, raw2), (c, raw3), (sort(a), raw)]:
+                for density in (True, False):
+                    # TODO: test 'auto' and 'fd' after `mt.percentile` implemented
+                    test_bins = [10, 'stone', 'doane', 'rice', 'scott', 'sqrt', 'sturges']
+                    for bins in test_bins:
+                        hist = histogram(t, bins=bins, density=density)[0]
+
+                        if r.size > 0:
+                            with self.assertRaises(TilesError):
+                                executor.execute_tensor(hist)
+
+                        result = executor.execute_tensors([hist])[0]
+                        expected = np.histogram(r, bins=bins, density=density)[0]
+                        np.testing.assert_array_equal(result, expected)
+
+                    test_bins = [[0, 4, 8], mt.tensor([0, 4, 8], chunk_size=2)]
+                    for bins in test_bins:
+                        hist = histogram(t, bins=bins, density=density)[0]
+                        result = executor.execute_tensors([hist])[0]
+                        expected = np.histogram(r, bins=[0, 4, 8], density=density)[0]
+                        np.testing.assert_array_equal(result, expected)

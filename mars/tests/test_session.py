@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import unittest
-import sys
 
 import numpy as np
 import pandas as pd
@@ -24,8 +23,6 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.tiles import get_tiled
 from mars.session import new_session, Session
-from mars.tensor.arithmetic import TensorAdd
-from mars.context import get_context, RunningMode
 
 
 class Test(unittest.TestCase):
@@ -371,37 +368,6 @@ class Test(unittest.TestCase):
         r4 = sess.fetch(df1.iloc[0, 2])
         self.assertEqual(r4, r1.iloc[0, 2])
 
-    def testTileContext(self):
-        class FakeOp(TensorAdd):
-            _size = [None]
-
-            @classmethod
-            def tile(cls, op):
-                keys = [inp.chunks[0].key for inp in op.inputs]
-                keys.append('fake_key')
-                cr = sess._sess.executor.chunk_result
-                cr['fake_key'] = 4
-                cr[keys[1]] = pd.DataFrame(cr[keys[1]])
-                context = get_context()
-                FakeOp._size[0] = sum(m.chunk_size
-                                      for m in context.get_chunk_metas(keys))
-                self.assertEqual(context.running_mode, RunningMode.local)
-                return super(FakeOp, cls).tile(op)
-
-            @classmethod
-            def execute(cls, ctx, op):
-                ctx[op.outputs[0].key] = FakeOp._size[0]
-
-        l, r = mt.ones((10, 20), dtype=float), mt.ones((10, 20), dtype=int)
-        f = FakeOp(lhs=l, rhs=r).new_tensor([l, r], shape=(10, 20), dtype=l.dtype)
-
-        sess = new_session()
-        sess.run(l, r)
-        expect_nbytes = l.nbytes + \
-                        pd.DataFrame(np.ones((10, 20), dtype=int)).memory_usage().sum() + \
-                        sys.getsizeof(4)
-        self.assertEqual(sess.run(f), expect_nbytes)
-
     def testMultiOutputsOp(self):
         sess = new_session()
 
@@ -454,3 +420,13 @@ class Test(unittest.TestCase):
         ret = sess.run([b, c])
         expected = np.sort(raw + 1)[:5]
         np.testing.assert_array_equal(ret[1], expected)
+
+        raw = rs.randint(100, size=(100,))
+        a = mt.tensor(raw, chunk_size=23)
+        a.sort()
+        b = mt.histogram(a, bins='stone')
+
+        res = sess.run(b)
+        expected = np.histogram(np.sort(raw), bins='stone')
+        np.testing.assert_almost_equal(res[0], expected[0])
+        np.testing.assert_almost_equal(res[1], expected[1])

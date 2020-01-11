@@ -49,4 +49,6 @@ Histograms
    :toctree: generated/
    :nosignatures:
 
+   mars.tensor.histogram
+   mars.tensor.histogram_bin_edges
    mars.tensor.digitize

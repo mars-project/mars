@@ -22,7 +22,7 @@ from mars.learn.operands import OutputType
 from mars.learn.contrib.xgboost import train, MarsDMatrix
 from mars.learn.contrib.xgboost.dmatrix import ToDMatrix
 from mars.learn.contrib.xgboost.train import XGBTrain
-from mars.context import ContextBase, ChunkMeta, RunningMode, LocalDictContext
+from mars.context import ContextBase, ChunkMeta, RunningMode, LocalContext
 from mars.graph import DAG
 
 try:
@@ -48,7 +48,7 @@ class Test(unittest.TestCase):
     def testSerializeLocalTrain(self):
         sess = new_session()
 
-        with LocalDictContext(sess._sess):
+        with LocalContext(sess._sess):
             dmatrix = ToDMatrix(data=self.X, label=self.y)()
             model = XGBTrain(dtrain=dmatrix)()
 

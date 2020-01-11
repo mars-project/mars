@@ -19,6 +19,7 @@ import sys
 import threading
 import weakref
 import operator
+import contextlib
 from collections import deque, defaultdict
 from numbers import Integral
 
@@ -41,6 +42,7 @@ from .compat import six, futures, OrderedDict, enum
 from .optimizes.runtime.optimizers.core import Optimizer
 from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTileableGraphBuilder
 from .graph_builder import TileableGraphBuilder
+from .context import LocalContext
 from .utils import kernel_mode, enter_build_mode, build_fetch, calc_nsplits,\
     has_unknown_shape
 
@@ -661,6 +663,14 @@ class Executor(object):
                     node._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
                 tiled_n._nsplits = new_nsplits
 
+    @contextlib.contextmanager
+    def _gen_local_context(self, chunk_result):
+        if isinstance(chunk_result, LocalContext):
+            with chunk_result:
+                yield chunk_result
+        else:
+            yield chunk_result
+
     @kernel_mode
     @enter_build_mode
     def execute_tileables(self, tileables, fetch=True, n_parallel=None, n_thread=None,
@@ -718,72 +728,81 @@ class Executor(object):
             else:
                 return TileableGraphBuilder(**kwargs)
 
-        # build tileable graph
-        tileable_graph_builder = _get_tileable_graph_builder()
-        tileable_graph = tileable_graph_builder.build(tileables)
-        chunk_graph_builder = IterativeChunkGraphBuilder(
-            graph_cls=DirectedGraph, node_processor=_generate_fetch_if_executed,
-            compose=compose, on_tile_success=_on_tile_success)
-        intermediate_result_keys = set()
-        while True:
-            # build chunk graph, tile will be done during building
-            chunk_graph = chunk_graph_builder.build(tileables, tileable_graph=tileable_graph)
-            tileable_graph = chunk_graph_builder.prev_tileable_graph
-            temp_result_keys = set(result_keys)
-            if not chunk_graph_builder.done:
-                # add temporary chunks keys into result keys
-                for n in chunk_graph:
-                    if chunk_graph.count_successors(n) == 0:
-                        temp_result_keys.add(n.key)
-            # execute chunk graph
-            self.execute_graph(chunk_graph, list(temp_result_keys), n_parallel=n_parallel or n_thread,
-                               print_progress=print_progress, mock=mock,
-                               chunk_result=chunk_result)
-            if chunk_graph_builder.done:
-                if len(intermediate_result_keys) > 0:
-                    # failed before
-                    intermediate_to_release_keys = \
-                        {k for k in intermediate_result_keys
-                         if k not in result_keys and k in chunk_result}
-                    to_release_keys.update(intermediate_to_release_keys)
-                delattr(chunk_graph_builder, '_prev_tileable_graph')
-                break
-            else:
-                # update shape of tileable and its chunks
-                self._update_tileable_and_chunk_shape(
-                    tileable_graph, chunk_result, chunk_graph_builder.interrupted_ops)
-                executed_keys.update(temp_result_keys)
-                intermediate_result_keys.update(temp_result_keys)
-                # add the node that failed
-                to_run_tileables = list(itertools.chain(
-                    *(op.outputs for op in chunk_graph_builder.interrupted_ops)))
-                to_run_tileables_set = set(to_run_tileables)
-                for op in chunk_graph_builder.interrupted_ops:
-                    for inp in op.inputs:
-                        if inp not in to_run_tileables_set:
-                            to_run_tileables_set.add(inp)
-                tileable_graph_builder = _get_tileable_graph_builder(
-                    inputs_selector=lambda inps: [inp for inp in inps if inp in to_run_tileables_set])
-                tileable_graph = tileable_graph_builder.build(to_run_tileables_set)
+        # As the chunk_result is copied, we cannot use the original context any more,
+        # and if `chunk_result` is a LocalContext, it's copied into a LocalContext as well,
+        # thus here just to make sure the new context is entered
+        with self._gen_local_context(chunk_result):
+            # build tileable graph
+            tileable_graph_builder = _get_tileable_graph_builder()
+            tileable_graph = tileable_graph_builder.build(tileables)
+            chunk_graph_builder = IterativeChunkGraphBuilder(
+                graph_cls=DirectedGraph, node_processor=_generate_fetch_if_executed,
+                compose=compose, on_tile_success=_on_tile_success)
+            intermediate_result_keys = set()
+            while True:
+                # build chunk graph, tile will be done during building
+                chunk_graph = chunk_graph_builder.build(
+                    tileables, tileable_graph=tileable_graph)
+                tileable_graph = chunk_graph_builder.prev_tileable_graph
+                temp_result_keys = set(result_keys)
+                if not chunk_graph_builder.done:
+                    # add temporary chunks keys into result keys
+                    for interrupted_op in chunk_graph_builder.interrupted_ops:
+                        for inp in interrupted_op.inputs:
+                            if inp.op not in chunk_graph_builder.interrupted_ops:
+                                for n in get_tiled(inp).chunks:
+                                    temp_result_keys.add(n.key)
+                # execute chunk graph
+                self.execute_graph(chunk_graph, list(temp_result_keys),
+                                   n_parallel=n_parallel or n_thread,
+                                   print_progress=print_progress, mock=mock,
+                                   chunk_result=chunk_result)
+                if chunk_graph_builder.done:
+                    if len(intermediate_result_keys) > 0:
+                        # failed before
+                        intermediate_to_release_keys = \
+                            {k for k in intermediate_result_keys
+                             if k not in result_keys and k in chunk_result}
+                        to_release_keys.update(intermediate_to_release_keys)
+                    delattr(chunk_graph_builder, '_prev_tileable_graph')
+                    break
+                else:
+                    # update shape of tileable and its chunks
+                    self._update_tileable_and_chunk_shape(
+                        tileable_graph, chunk_result, chunk_graph_builder.interrupted_ops)
+                    executed_keys.update(temp_result_keys)
+                    intermediate_result_keys.update(temp_result_keys)
+                    # add the node that failed
+                    to_run_tileables = list(itertools.chain(
+                        *(op.outputs for op in chunk_graph_builder.interrupted_ops)))
+                    to_run_tileables_set = set(to_run_tileables)
+                    for op in chunk_graph_builder.interrupted_ops:
+                        for inp in op.inputs:
+                            if inp not in to_run_tileables_set:
+                                to_run_tileables_set.add(inp)
+                    tileable_graph_builder = _get_tileable_graph_builder(
+                        inputs_selector=lambda inps: [inp for inp in inps
+                                                      if inp in to_run_tileables_set])
+                    tileable_graph = tileable_graph_builder.build(to_run_tileables_set)
 
-        for tileable in tileables:
-            if tileable.key in self.stored_tileables:
-                self.stored_tileables[tileable.key][0].add(tileable.id)
-            else:
-                chunk_keys = tileable_data_to_chunk_keys[tileable_optimized.get(tileable, tileable)]
-                self.stored_tileables[tileable.key] = tuple([{tileable.id}, set(chunk_keys)])
-        try:
-            if fetch:
-                concat_keys = [
-                    tileable_data_to_concat_keys[tileable_optimized.get(t, t)] for t in tileables]
-                return [chunk_result[k] for k in concat_keys]
-            else:
-                return
-        finally:
-            for to_release_key in to_release_keys:
-                del chunk_result[to_release_key]
-            self._chunk_result.update(
-                {k: chunk_result[k] for k in result_keys if k in chunk_result})
+            for tileable in tileables:
+                if tileable.key in self.stored_tileables:
+                    self.stored_tileables[tileable.key][0].add(tileable.id)
+                else:
+                    chunk_keys = tileable_data_to_chunk_keys[tileable_optimized.get(tileable, tileable)]
+                    self.stored_tileables[tileable.key] = tuple([{tileable.id}, set(chunk_keys)])
+            try:
+                if fetch:
+                    concat_keys = [
+                        tileable_data_to_concat_keys[tileable_optimized.get(t, t)] for t in tileables]
+                    return [chunk_result[k] for k in concat_keys]
+                else:
+                    return
+            finally:
+                for to_release_key in to_release_keys:
+                    del chunk_result[to_release_key]
+                self._chunk_result.update(
+                    {k: chunk_result[k] for k in result_keys if k in chunk_result})
 
     execute_tensors = execute_tileables
     execute_dataframes = execute_tileables

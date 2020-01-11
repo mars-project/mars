@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
+
 import numpy as np
 import pandas as pd
 
@@ -68,9 +70,10 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r2, concat=True)[0],
                                       df2.groupby('c2').agg('max'))
 
-        r3 = mdf2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'})
+        agg = OrderedDict([('c1', 'min'), ('c3', 'sum')])
+        r3 = mdf2.groupby('c2').agg(agg)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
-                                      df2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'}))
+                                      df2.groupby('c2').agg(agg))
 
         r3 = mdf2.groupby('c2').agg({'c1': 'min'})
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
@@ -114,9 +117,10 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r2, concat=True)[0],
                                       df2.groupby('c2').agg('max'))
 
-        r3 = mdf2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'}, method='shuffle')
+        agg = OrderedDict([('c1', 'min'), ('c3', 'sum')])
+        r3 = mdf2.groupby('c2').agg(agg, method='shuffle')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
-                                      df2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'}))
+                                      df2.groupby('c2').agg(agg))
 
         r3 = mdf2.groupby('c2').agg({'c1': 'min'}, method='shuffle')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],

@@ -50,13 +50,13 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
             selected_columns = [
                 c for c in list(input_node.dtypes.index) if c in selected_columns + new_input.op._usecols]
         else:
-            new_input = copy_tileables(input_node).data
+            new_input = copy_tileables([input_node])[0].data
 
         new_input._shape = (input_node.shape[0], len(selected_columns))
         new_input._dtypes = input_node.dtypes[selected_columns]
         new_input._columns_value = new_input._dtypes.index
         new_input.op._usecols = selected_columns
-        new_node = copy_tileables(node, inputs=[new_input]).data
+        new_node = copy_tileables([node], inputs=[new_input])[0].data
 
         self._optimizer_context[node] = new_node
         self._optimizer_context[input_node] = new_input

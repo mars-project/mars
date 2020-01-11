@@ -20,7 +20,7 @@ from ..core import Tensor
 from .ravel import ravel
 
 
-def ptp(a, axis=None, out=None):
+def ptp(a, axis=None, out=None, keepdims=None):
     """
     Range of values (maximum - minimum) along an axis.
 
@@ -37,6 +37,16 @@ def ptp(a, axis=None, out=None):
         Alternative output tensor in which to place the result. It must
         have the same shape and buffer length as the expected output,
         but the type of the output values will be cast if necessary.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the input array.
+
+        If the default value is passed, then `keepdims` will not be
+        passed through to the `ptp` method of sub-classes of
+        `Tensor`, however any non-default value will be.  If the
+        sub-class' method does not implement `keepdims` any
+        exceptions will be raised.
 
     Returns
     -------
@@ -67,7 +77,7 @@ def ptp(a, axis=None, out=None):
     else:
         validate_axis(a.ndim, axis)
 
-    t = a.max(axis=axis) - a.min(axis=axis)
+    t = a.max(axis=axis, keepdims=keepdims) - a.min(axis=axis, keepdims=keepdims)
 
     if out is not None:
         if not isinstance(out, Tensor):

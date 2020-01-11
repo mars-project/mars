@@ -58,7 +58,7 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     Operand can have inputs and outputs
     which should be the :class:`mars.tensor.core.TensorData`, :class:`mars.tensor.core.ChunkData` etc.
     """
-
+    __slots__ = '__weakref__',
     attr_tag = 'attr'
     _init_update_key_ = False
 
