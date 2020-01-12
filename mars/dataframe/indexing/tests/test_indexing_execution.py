@@ -16,13 +16,13 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
-from mars.tests.core import TestBase, TestExecutor
+from mars.tests.core import TestBase, ExecutorForTest
 
 
 class Test(TestBase):
     def setUp(self):
         super(Test, self).setUp()
-        self.executor = TestExecutor()
+        self.executor = ExecutorForTest()
 
     def testSetIndex(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
