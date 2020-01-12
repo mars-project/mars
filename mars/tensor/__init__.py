@@ -50,7 +50,8 @@ from .reduction import sum, nansum, prod, prod as product, nanprod, \
     var, std, nanvar, nanstd, nancumsum, nancumprod, count_nonzero, allclose, array_equal
 from .reshape import reshape
 from .merge import concatenate, stack, hstack, vstack, dstack, column_stack
-from .indexing import take, compress, extract, choose, unravel_index, nonzero, flatnonzero
+from .indexing import take, compress, extract, choose, unravel_index, \
+    nonzero, flatnonzero, fill_diagonal
 from .rechunk import rechunk
 from .einsum import einsum
 # noinspection PyUnresolvedReferences

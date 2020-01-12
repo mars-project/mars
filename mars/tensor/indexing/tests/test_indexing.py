@@ -21,7 +21,8 @@ import numpy as np
 from mars.tensor.base.broadcast_to import TensorBroadcastTo
 from mars.tensor.datasource import ones, tensor, array, empty
 from mars.tensor.datasource.ones import TensorOnes
-from mars.tensor.indexing import choose, unravel_index, nonzero, compress
+from mars.tensor.indexing import choose, unravel_index, nonzero, \
+    compress, fill_diagonal
 from mars.tensor.indexing.setitem import TensorIndexSetValue
 from mars.tensor.merge.concatenate import TensorConcatenate
 from mars.config import option_context
@@ -365,3 +366,23 @@ class Test(unittest.TestCase):
         t_slice2 = t[5:]
 
         self.assertNotEqual(t_slice1.op.key, t_slice2.op.key)
+
+    def testFillDiagonal(self):
+        a = tensor(np.random.rand(10, 13))
+        fill_diagonal(a, 10)
+
+        self.assertEqual(a.shape, (10, 13))
+
+        # must be Tensor
+        with self.assertRaises(TypeError):
+            fill_diagonal(np.random.rand(11, 10), 1)
+
+        # at least 2-d required
+        with self.assertRaises(ValueError):
+            a = tensor(np.random.rand(4))
+            fill_diagonal(a, 1)
+
+        # for more than 2-d, shape on each dimension should be equal
+        with self.assertRaises(ValueError):
+            a = tensor(np.random.rand(11, 10, 11))
+            fill_diagonal(a, 1)
