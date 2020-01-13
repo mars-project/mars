@@ -14,7 +14,6 @@
 
 
 import operator
-import heapq
 import itertools
 from functools import reduce
 
@@ -162,57 +161,6 @@ def _find_split_rechunk(old_chunk_size, new_chunk_size, graph_size_limit):
     return tuple(chunk_size), memory_limit_hit
 
 
-def _merge_to_number(desired_chunk_size, max_number):
-    """ Minimally merge the given chunks so as to drop the number of
-        chunks below *max_number*, while minimizing the largest width.
-        """
-    if len(desired_chunk_size) <= max_number:
-        return desired_chunk_size
-
-    distinct = set(desired_chunk_size)
-    if len(distinct) == 1:
-        # Fast path for homogeneous target, also ensuring a regular result
-        w = distinct.pop()
-        n = len(desired_chunk_size)
-        total = n * w
-
-        desired_width = total // max_number
-        width = w * (desired_width // w)
-        adjust = (total - max_number * width) // w
-
-        return (width + w,) * adjust + (width,) * (max_number - adjust)
-
-    nmerges = len(desired_chunk_size) - max_number
-
-    heap = [(desired_chunk_size[i] + desired_chunk_size[i + 1], i, i + 1)
-            for i in range(len(desired_chunk_size) - 1)]
-    heapq.heapify(heap)
-
-    chunk_size = list(desired_chunk_size)
-
-    while nmerges > 0:
-        # Find smallest interval to merge
-        width, i, j = heapq.heappop(heap)
-        # If interval was made invalid by another merge, recompute
-        # it, re-insert it and retry.
-        if chunk_size[j] == 0:
-            j += 1
-            while chunk_size[j] == 0:
-                j += 1
-            heapq.heappush(heap, (chunk_size[i] + chunk_size[j], i, j))
-            continue
-        elif chunk_size[i] + chunk_size[j] != width:
-            heapq.heappush(heap, (chunk_size[i] + chunk_size[j], i, j))
-            continue
-        # Merge
-        assert chunk_size[i] != 0
-        chunk_size[i] = 0  # mark deleted
-        chunk_size[j] = width
-        nmerges -= 1
-
-    return tuple(filter(None, chunk_size))
-
-
 def _divide_to_width(desired_chunk_size, max_width):
     """ Minimally divide the given chunks so as to make the largest chunk
     width less or equal than *max_width*.
@@ -230,10 +178,10 @@ def _divide_to_width(desired_chunk_size, max_width):
 
 def _find_merge_rechunk(old_chunk_size, new_chunk_size, chunk_size_limit):
     """
-        Find an intermediate rechunk that would merge some adjacent blocks
-        together in order to get us nearer the *new_chunks* target, without
-        violating the *chunk_size_limit* (in number of elements).
-        """
+    Find an intermediate rechunk that would merge some adjacent blocks
+    together in order to get us nearer the *new_chunks* target, without
+    violating the *chunk_size_limit* (in number of elements).
+    """
     ndim = len(old_chunk_size)
 
     old_largest_width = [max(c) for c in old_chunk_size]

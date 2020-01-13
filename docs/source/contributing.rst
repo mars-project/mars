@@ -31,7 +31,7 @@ inside it:
     conda create -n mars-dev --file conda-spec.txt python=3.7
     source activate mars-dev
     conda install -c conda-forge pyarrow tiledb-py
-    pip install -e .
+    pip install -e ".[dev]"
 
 Change ``3.7`` into the version of Python you want to install, and ``mars-dev``
 into your preferred environment name.
@@ -44,6 +44,7 @@ development, use the following steps:
 .. code-block:: bash
 
     pip install --upgrade setuptools pip
+    pip install cython protobuf
     git clone https://github.com/mars-project/mars.git
     cd mars
     pip install -e ".[dev]"
@@ -71,6 +72,25 @@ the root of Mars project:
 .. code-block:: bash
 
     python setup.py build_ext -i
+
+Rebuilding Protobufs
+````````````````````
+Mars uses Protobuf to serialize operands internally. After you change protobuf
+files in Mars, you need to compile them into Python source codes by running the
+command below on the root of Mars project:
+
+.. code-block:: bash
+
+    python setup.py build_proto
+
+Note that besides files compiled by ``protoc``, Mars will also generate an
+``opcodes.py`` given ``operand_type.proto``. You shall not edit the generated
+file.
+
+Mars will download protoc for Win32, MacOS x64 and Linux x64 from Github. If
+you need to specify a customized version of ``protoc``, you can use the
+environment variable ``PROTOC`` to specify its path before calling the above
+command.
 
 Running Tests
 -------------

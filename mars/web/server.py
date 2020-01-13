@@ -43,9 +43,8 @@ def get_jinja_env():
     )
 
     def format_ts(value):
-        if value is None or np.isnan(value):
-            return None
-        return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M:%S')
+        return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M:%S') \
+            if value is not None and not np.isnan(value) else None
 
     _jinja_env.filters['format_ts'] = format_ts
     _jinja_env.filters['readable_size'] = readable_size
@@ -53,20 +52,21 @@ def get_jinja_env():
 
 
 class BokehStaticFileHandler(web.StaticFileHandler):
-    @classmethod
-    def get_absolute_path(cls, root, path):
+    @staticmethod
+    def _get_path_root(root, path):
         from bokeh import server
         path_parts = path.rsplit('/', 1)
         if 'bokeh' in path_parts[-1]:
             root = os.path.join(os.path.dirname(server.__file__), "static")
-        return super().get_absolute_path(root, path)
+        return root
+
+    @classmethod
+    def get_absolute_path(cls, root, path):
+        return super().get_absolute_path(cls._get_path_root(root, path), path)
 
     def validate_absolute_path(self, root, absolute_path):
-        from bokeh import server
-        path_parts = absolute_path.rsplit('/', 1)
-        if 'bokeh' in path_parts[-1]:
-            root = os.path.join(os.path.dirname(server.__file__), "static")
-        return super().validate_absolute_path(root, absolute_path)
+        return super().validate_absolute_path(
+            self._get_path_root(root, absolute_path), absolute_path)
 
 
 class MarsRequestHandler(web.RequestHandler):

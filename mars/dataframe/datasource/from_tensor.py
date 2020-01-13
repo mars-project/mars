@@ -99,9 +99,9 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         inputs = list(input_1d_tensors)
         if index is not None:
             if input_1d_tensors[0].shape[0] != len(index):
-                raise ValueError('index {} should have '
-                                 'the same shape with tensor: {}'.format(
-                    index, input_1d_tensors[0].shape[0]))
+                raise ValueError(
+                    'index {} should have the same shape with tensor: {}'.format(
+                        index, input_1d_tensors[0].shape[0]))
             index_value = self._process_index(index, inputs)
         else:
             index_value = parse_index(pd.RangeIndex(0, input_1d_tensors[0].shape[0]))
@@ -191,11 +191,11 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(pd_index, store_data=True)
             else:
                 assert op.index is not None
-                index_chunk = in_tensors[-1].cix[i,]
+                index_chunk = in_tensors[-1].cix[i, ]
                 index_value = parse_index(pd.Index([], dtype=index_chunk.dtype),
                                           key=tokenize(index_chunk, type(chunk_op).__name__))
             shape = (nsplit[i], len(out_df.dtypes))
-            out_chunk = chunk_op.new_chunk([t.cix[i,] for t in in_tensors],
+            out_chunk = chunk_op.new_chunk([t.cix[i, ] for t in in_tensors],
                                            shape=shape, index=chunk_index,
                                            dtypes=dtypes, index_value=index_value,
                                            columns_value=columns_value)
@@ -247,7 +247,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(chunk_pd_index, store_data=True)
             else:
                 assert op.index is not None
-                index_chunk = index_tensor.cix[in_chunk.index[0],]
+                index_chunk = index_tensor.cix[in_chunk.index[0], ]
                 chunk_inputs.append(index_chunk)
                 index_value = parse_index(pd.Index([], dtype=index_tensor.dtype),
                                           key=tokenize(index_chunk, type(out_op).__name__))
@@ -341,7 +341,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
         if self._index is not None:
-            self._index=  self._inputs[-1]
+            self._index = self._inputs[-1]
 
     @classmethod
     def tile(cls, op):

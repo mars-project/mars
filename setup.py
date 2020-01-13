@@ -15,10 +15,15 @@
 import os
 import platform
 import re
+import subprocess
 import sys
+from distutils.cmd import Command
 from distutils.sysconfig import get_config_var
 from distutils.version import LooseVersion
 from setuptools import setup, find_packages, Extension
+from setuptools.command.build_py import build_py
+from setuptools.command.develop import develop
+from setuptools.command.sdist import sdist
 
 import numpy as np
 from Cython.Build import cythonize
@@ -115,6 +120,46 @@ extensions = cythonize(cy_extensions, **cythonize_kw) + \
     [Extension('mars.lib.mmh3', ['mars/lib/mmh3_src/mmh3module.cpp', 'mars/lib/mmh3_src/MurmurHash3.cpp'])]
 
 
+build_protos_cmd = os.path.join(repo_root, 'bin', 'build-protos.py')
+override_cmd_class = dict()
+if os.path.exists(build_protos_cmd):
+    class BuildProto(Command):
+        description = "Build protobuf file"
+        user_options = []
+        protobuf_version = '3.6.0'
+
+        def initialize_options(self):
+            pass
+
+        def finalize_options(self):
+            pass
+
+        def run(self):
+            subprocess.check_call([sys.executable, build_protos_cmd, repo_root], env=os.environ.copy())
+
+
+    class CustomBuildPy(build_py):
+        def run(self):
+            self.run_command('build_proto')
+            build_py.run(self)
+
+
+    class CustomDevelop(develop):
+        def run(self):
+            self.run_command('build_proto')
+            develop.run(self)
+
+
+    class CustomSDist(sdist):
+        def run(self):
+            self.run_command('build_proto')
+            sdist.run(self)
+
+    override_cmd_class = {
+        'build_py': CustomBuildPy, 'sdist': CustomSDist, 'develop': CustomDevelop,
+        'build_ext': build_ext, 'build_proto': BuildProto}
+
+
 setup_options = dict(
     name='pymars',
     version=version,
@@ -146,7 +191,7 @@ setup_options = dict(
     ]},
     python_requires='>=3.5',
     install_requires=requirements,
-    cmdclass={'build_ext': build_ext},
+    cmdclass=override_cmd_class,
     ext_modules=extensions,
     extras_require={
         'distributed': extra_requirements,
