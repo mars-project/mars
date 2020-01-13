@@ -10,6 +10,9 @@ else
   source activate test
 
   if [ "$UNAME" = "linux" ]; then
+    conda create --quiet --yes -n wheel python=$PYTHON
+    conda activate wheel
+
     docker pull $DOCKER_IMAGE
     pip install "$(cat requirements-wheel.txt | grep protobuf)"
 
@@ -24,6 +27,7 @@ else
     done
     mv /tmp/*.whl dist/
 
+    conda activate test
   else
     conda create --quiet --yes -n wheel python=$PYTHON
     conda activate wheel
