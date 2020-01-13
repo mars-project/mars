@@ -16,7 +16,6 @@
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
-from ...dataframe.utils import build_empty_df
 from ..utils import to_numpy
 from ..core import TensorOrder
 from .core import TensorHasInput
@@ -38,6 +37,8 @@ class TensorFromDataFrame(TensorHasInput):
 
 
 def from_dataframe(in_df, dtype=None):
+    from ...dataframe.utils import build_empty_df
+
     if dtype is None:
         empty_pdf = build_empty_df(in_df.dtypes)
         dtype = empty_pdf.dtypes[0]
