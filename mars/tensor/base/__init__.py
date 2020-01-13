@@ -37,13 +37,8 @@ from .vsplit import vsplit
 from .dsplit import dsplit
 from .roll import roll
 from .squeeze import squeeze, TensorSqueeze
-from .ptp import ptp
 from .diff import diff
 from .ediff1d import ediff1d
-from .digitize import digitize, TensorDigitize
-from .average import average
-from .cov import cov
-from .corrcoef import corrcoef
 from .flip import flip
 from .flipud import flipud
 from .fliplr import fliplr
@@ -54,8 +49,6 @@ from .searchsorted import searchsorted, TensorSearchsorted
 from .unique import unique
 from .sort import sort
 from .partition import partition
-from .histogram import histogram_bin_edges, TensorHistogramBinEdges, \
-    histogram, TensorHistogram
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 
@@ -71,7 +64,6 @@ def _install():
         setattr(cls, 'repeat', repeat)
         setattr(cls, 'ravel', ravel)
         setattr(cls, 'flatten', flatten)
-        setattr(cls, 'ptp', ptp)
         setattr(cls, 'to_gpu', to_gpu)
         setattr(cls, 'to_cpu', to_cpu)
 

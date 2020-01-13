@@ -401,7 +401,6 @@ class PSRSSortRegularSample(TensorOperand, PSRSOperandMixin):
             ctx[op.outputs[1].key] = res[slc]
 
 
-
 class PSRSConcatPivot(TensorOperand, PSRSOperandMixin):
     _op_type_ = OperandDef.PSRS_CONCAT_PIVOT
 

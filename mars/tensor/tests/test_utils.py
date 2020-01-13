@@ -17,7 +17,7 @@ import numpy as np
 import unittest
 
 from mars.lib.mmh3 import hash_from_buffer as mmh3_hash_from_buffer
-from mars.tensor.utils import hash_on_axis
+from mars.tensor.utils import hash_on_axis, normalize_axis_tuple
 
 
 class Test(unittest.TestCase):
@@ -54,3 +54,15 @@ class Test(unittest.TestCase):
         expected = np.array([hash_from_buffer(a[:, :, i]) % 3 for i in range(a.shape[2])])
 
         np.testing.assert_array_equal(result, expected)
+
+    def testNormalizeAxisTuple(self):
+        self.assertEqual(normalize_axis_tuple(-1, 3), (2,))
+        self.assertEqual(normalize_axis_tuple([0, -2], 3), (0, 1))
+        self.assertEqual(sorted(normalize_axis_tuple({0, -2}, 3)), [0, 1])
+
+        with self.assertRaises(ValueError) as cm:
+            normalize_axis_tuple((1, -2), 3, argname='axes')
+        self.assertIn('axes', str(cm.exception))
+
+        with self.assertRaises(ValueError):
+            normalize_axis_tuple((1, -2), 3)

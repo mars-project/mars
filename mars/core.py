@@ -472,6 +472,7 @@ class TileableEntity(Entity):
 
     @Entity.data.setter
     def data(self, new_data):
+        self._check_data(new_data)
         if self._data is None:
             self._data = new_data
             self._data.attach(self)

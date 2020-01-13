@@ -366,7 +366,7 @@ def _validate_kth_value(kth, size):
     return kth
 
 
-def partition(a, kth, axis=-1, kind='introselect', order=None):
+def partition(a, kth, axis=-1, kind='introselect', order=None, **kw):
     r"""
     Return a partitioned copy of a tensor.
 
@@ -463,7 +463,11 @@ def partition(a, kth, axis=-1, kind='introselect', order=None):
         raise ValueError('{} is an unrecognized kind of select'.format(kind))
     # if a is structure type and order is not None
     order = validate_order(a.dtype, order)
+    need_align = kw.pop('need_align', None)
+    if len(kw) > 0:
+        raise TypeError('partition() got an unexpected keyword '
+                        'argument \'{}\''.format(next(iter(kw))))
 
     op = TensorPartition(kth=kth, axis=axis, kind=kind, order=order,
-                         dtype=a.dtype, gpu=a.op.gpu)
+                         need_align=need_align, dtype=a.dtype, gpu=a.op.gpu)
     return op(a, kth)
