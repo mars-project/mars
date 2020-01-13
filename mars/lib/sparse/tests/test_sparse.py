@@ -319,3 +319,82 @@ class Test(TestBase):
 
         v1 = SparseVector(self.v1, shape=(3,))
         np.testing.assert_array_equal(v1.minimum(self.d1), np.minimum(self.v1_data, self.d1))
+
+    def testSparseFillDiagonal(self):
+        s1 = sps.random(100, 11, density=0.3, format='csr', random_state=0)
+
+        # fill scalar
+        arr = SparseNDArray(s1)
+        arr.fill_diagonal(3)
+
+        expected = s1.copy().A
+        np.fill_diagonal(expected, 3)
+
+        np.testing.assert_array_equal(arr.toarray(), expected)
+
+        # fill scalar, wrap=True
+        arr = SparseNDArray(s1)
+        arr.fill_diagonal(3, wrap=True)
+
+        expected = s1.copy().A
+        np.fill_diagonal(expected, 3, wrap=True)
+
+        np.testing.assert_array_equal(arr.toarray(), expected)
+
+        # fill list
+        arr = SparseNDArray(s1)
+        arr.fill_diagonal([1, 2, 3])
+
+        expected = s1.copy().A
+        np.fill_diagonal(expected, [1, 2, 3])
+
+        np.testing.assert_array_equal(arr.toarray(), expected)
+
+        # fill list, wrap=True
+        arr = SparseNDArray(s1)
+        arr.fill_diagonal([1, 2, 3], wrap=True)
+
+        expected = s1.copy().A
+        np.fill_diagonal(expected, [1, 2, 3], wrap=True)
+
+        np.testing.assert_array_equal(arr.toarray(), expected)
+
+        # fill long list
+        val = np.random.RandomState(0).rand(101)
+        arr = SparseNDArray(s1)
+        arr.fill_diagonal(val)
+
+        expected = s1.copy().A
+        np.fill_diagonal(expected, val)
+
+        np.testing.assert_array_equal(arr.toarray(), expected)
+
+        # fill long list, wrap=True
+        val = np.random.RandomState(0).rand(101)
+        arr = SparseNDArray(s1)
+        arr.fill_diagonal(val, wrap=True)
+
+        expected = s1.copy().A
+        np.fill_diagonal(expected, val, wrap=True)
+
+        np.testing.assert_array_equal(arr.toarray(), expected)
+
+        # fill ndarray
+        val = np.random.RandomState(0).rand(3, 4)
+        arr = SparseNDArray(s1)
+        arr.fill_diagonal(val)
+
+        expected = s1.copy().A
+        np.fill_diagonal(expected, val)
+
+        np.testing.assert_array_equal(arr.toarray(), expected)
+
+        # fill ndarray, wrap=True
+        val = np.random.RandomState(0).rand(3, 4)
+        arr = SparseNDArray(s1)
+        arr.fill_diagonal(val, wrap=True)
+
+        expected = s1.copy().A
+        np.fill_diagonal(expected, val, wrap=True)
+
+        np.testing.assert_array_equal(arr.toarray(), expected)
