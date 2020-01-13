@@ -338,4 +338,3 @@ class Test(SchedulerIntegratedTest):
         expected = np.histogram(np.sort(raw), bins='scott')
         assert_allclose(loads(res[0]), expected[0])
         assert_allclose(loads(res[1]), expected[1])
-

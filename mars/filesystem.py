@@ -19,7 +19,8 @@ from gzip import GzipFile
 from pyarrow import LocalFileSystem as ArrowLocalFileSystem
 from pyarrow import HadoopFileSystem
 try:
-    import lz4, lz4.frame
+    import lz4
+    import lz4.frame
 except ImportError:  # pragma: no cover
     lz4 = None
 
