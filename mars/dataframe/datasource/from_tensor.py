@@ -213,6 +213,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         in_tensor = op.input
         out_chunks = []
         nsplits = in_tensor.nsplits
+
         if op.index is not None:
             # rechunk index if it's a tensor
             index_tensor = op.index.rechunk([nsplits[0]])._inplace_tile()
