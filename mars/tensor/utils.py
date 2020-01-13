@@ -411,7 +411,9 @@ def decide_unify_split(*splits):
     if not splits:
         return ()
     raw_splits = splits
-    splits = set(s for s in splits if len(s) > 1)
+    # support broadcasting rules
+    # decide_unify_splits((1,), (5,))  --> (5,)
+    splits = set(s for s in splits if ((len(s) > 1) or (len(s) == 1 and s[0] != 1)))
     if len(splits) == 1:
         return splits.pop()
     if len(splits) == 0:
