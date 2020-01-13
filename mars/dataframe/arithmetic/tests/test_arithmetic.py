@@ -27,27 +27,47 @@ from mars.dataframe.utils import split_monotonic_index_min_max, \
 from mars.dataframe.datasource.dataframe import from_pandas, DataFrameDataSource
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series, SeriesDataSource
 from mars.dataframe.arithmetic import abs, DataFrameAbs, DataFrameAdd, DataFrameSubtract, \
-    DataFrameFloorDiv, DataFrameTrueDiv
+    DataFrameFloorDiv, DataFrameTrueDiv, DataFrameEqual, DataFrameNotEqual, \
+    DataFrameGreater, DataFrameLess, DataFrameGreaterEqual, DataFrameLessEqual
 from mars.dataframe.align import DataFrameIndexAlignMap, \
     DataFrameIndexAlignReduce, DataFrameShuffleProxy
 from mars.tiles import get_tiled
 from mars.tests.core import TestBase, parameterized
 
 
+def comp_func(name, reverse_name):
+    def inner(_, lhs, rhs):
+        try:
+            return getattr(lhs, name)(rhs)
+        except AttributeError:
+            return getattr(rhs, reverse_name)(lhs)
+    return inner
+
+
 binary_functions = dict(
-    add=dict(func=operator.add, op=DataFrameAdd, func_name='add'),
-    subtract=dict(func=operator.sub, op=DataFrameSubtract, func_name='sub'),
-    floordiv=dict(func=operator.floordiv, op=DataFrameFloorDiv, func_name='floordiv'),
-    truediv=dict(func=operator.truediv, op=DataFrameTrueDiv, func_name='truediv')
+    add=dict(func=operator.add, op=DataFrameAdd, func_name='add', rfunc_name='radd'),
+    subtract=dict(func=operator.sub, op=DataFrameSubtract, func_name='sub', rfunc_name='rsub'),
+    floordiv=dict(func=operator.floordiv, op=DataFrameFloorDiv,
+                  func_name='floordiv', rfunc_name='rfloordiv'),
+    truediv=dict(func=operator.truediv, op=DataFrameTrueDiv,
+                 func_name='truediv', rfunc_name='rtruediv'),
+    equal=dict(func=comp_func('eq', 'eq'), op=DataFrameEqual,
+               func_name='eq', rfunc_name='eq'),
+    not_equal=dict(func=comp_func('ne', 'ne'), op=DataFrameNotEqual,
+                   func_name='ne', rfunc_name='ne'),
+    greater=dict(func=comp_func('gt', 'lt'), op=DataFrameGreater,
+                 func_name='gt', rfunc_name='lt'),
+    less=dict(func=comp_func('lt', 'gt'), op=DataFrameLess,
+              func_name='lt', rfunc_name='gt'),
+    greater_equal=dict(func=comp_func('ge', 'le'), op=DataFrameGreaterEqual,
+                       func_name='ge', rfunc_name='le'),
+    less_equal=dict(func=comp_func('le', 'ge'), op=DataFrameLessEqual,
+                    func_name='le', rfunc_name='ge'),
 )
 
 
 @parameterized(**binary_functions)
 class TestBinary(TestBase):
-    @property
-    def rfunc_name(self):
-        return 'r' + self.func_name
-
     def testWithoutShuffle(self):
         # all the axes are monotonic
         # data1 with index split into [0...4], [5...9],
@@ -975,6 +995,10 @@ class TestBinary(TestBase):
         pd.testing.assert_index_equal(result5.columns_value.to_pandas(), data.columns)
         self.assertIsInstance(result5.index_value.value, IndexValue.Int64Index)
 
+        if 'builtin_function_or_method' not in str(type(self.func)):
+            # skip NotImplemented test for comparison function
+            return
+
         # test NotImplemented, use other's rfunc instead
         class TestRFunc:
             pass
@@ -1001,6 +1025,10 @@ class TestBinary(TestBase):
             self.assertEqual(len(cr.inputs), 1)
             self.assertIsInstance(cr.inputs[0].op, SeriesDataSource)
             self.assertEqual(cr.op.rhs, 456)
+
+        if 'builtin_function_or_method' not in str(type(self.func)):
+            # skip rfunc test for comparison function
+            return
 
         r = getattr(s1, self.rfunc_name)(789)
         r = r.tiles()

@@ -516,13 +516,6 @@ class SeriesData(HasShapeTileableData):
     def index_value(self):
         return self._index_value
 
-    def _equal(self, o):
-        # FIXME We need to implemented a true `==` operator for Series
-        if build_mode().is_build_mode:
-            return self is o
-        else:
-            return self == o
-
     def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_series
         return from_series(self, dtype=dtype)
@@ -536,13 +529,6 @@ class SeriesData(HasShapeTileableData):
 class Series(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (SeriesData,)
-
-    def __eq__(self, other):
-        return self._equal(other)
-
-    def __hash__(self):
-        # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
-        return super().__hash__()
 
     def to_tensor(self, dtype=None):
         return self._data.to_tensor(dtype=dtype)
@@ -688,14 +674,6 @@ class DataFrameData(HasShapeTileableData):
     def columns_value(self):
         return self._columns_value
 
-    def _equal(self, o):
-        # FIXME We need to implemented a true `==` operator for DataFrame, current we just need
-        # to do `self is o` under build mode to make the `iloc.__setitem__` happy.
-        if build_mode().is_build_mode:
-            return self is o
-        else:
-            return self == o
-
     def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_dataframe
         return from_dataframe(self, dtype=dtype)
@@ -714,13 +692,6 @@ class DataFrameData(HasShapeTileableData):
 class DataFrame(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (DataFrameData,)
-
-    def __eq__(self, other):
-        return self._equal(other)
-
-    def __hash__(self):
-        # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
-        return super().__hash__()
 
     def __len__(self):
         return len(self._data)

@@ -437,6 +437,7 @@ class BuildMode(object):
             self._old_mode = self.is_build_mode
             self.is_build_mode = True
         self._enter_times += 1
+        return self
 
     def __exit__(self, *_):
         self._enter_times -= 1
