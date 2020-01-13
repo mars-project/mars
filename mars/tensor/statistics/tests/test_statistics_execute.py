@@ -214,7 +214,7 @@ class Test(unittest.TestCase):
 
         raw = rs.randint(10, size=(20,))
         a = tensor(raw, chunk_size=3)
-        raw_weights = rs.random(20)
+        raw_weights = rs.rand(20)
         weights = tensor(raw_weights, chunk_size=4)
 
         # range provided
