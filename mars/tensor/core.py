@@ -468,7 +468,7 @@ class Tensor(TileableEntity):
         self._data = sort(self, axis=axis, kind=kind, parallel_kind=parallel_kind,
                           psrs_kinds=psrs_kinds, order=order).data
 
-    def partition(self, kth, axis=-1, kind='introselect', order=None):
+    def partition(self, kth, axis=-1, kind='introselect', order=None, **kw):
         """
         Rearranges the elements in the tensor in such a way that the value of the
         element in kth position is in the position it would be in a sorted tensor.
@@ -521,7 +521,8 @@ class Tensor(TileableEntity):
         """
         from .base import partition
 
-        self._data = partition(self, kth, axis=axis, kind=kind, order=order).data
+        self._data = partition(self, kth, axis=axis,
+                               kind=kind, order=order, **kw).data
 
     @property
     def flat(self):

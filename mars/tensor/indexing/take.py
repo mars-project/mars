@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..utils import validate_axis
+from ..utils import validate_axis, check_out_param
 from ..datasource import tensor as astensor
 
 
-def take(a, indices, axis=None):
+def take(a, indices, axis=None, out=None):
     """
     Take elements from a tensor along an axis.
 
@@ -107,11 +107,23 @@ def take(a, indices, axis=None):
 
     If `indices` is not one dimensional, the output also has these dimensions.
 
-    >>> mt.take(a, [[0, 1], [2, 3]]).execute()  # TODO(jisheng): accomplish this if the fancy indexing is supported
+    >>> mt.take(a, [[0, 1], [2, 3]]).execute()
+    array([[4, 3],
+           [5, 7]])
     """
     a = astensor(a)
     if axis is None:
-        return a.ravel()[indices]
+        t = a.ravel()[indices]
+    else:
+        axis = validate_axis(a.ndim, axis)
+        t = a[(slice(None),) * axis + (indices,)]
 
-    axis = validate_axis(a.ndim, axis)
-    return a[(slice(None),) * axis + (indices,)]
+    if out is None:
+        return t
+
+    if out.shape != t.shape:
+        raise ValueError('output tensor has wrong shape, '
+                         'expect: {}, got: {}'.format(t.shape, out.shape))
+    check_out_param(out, t, 'unsafe')
+    out.data = t.data
+    return out

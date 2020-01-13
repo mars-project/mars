@@ -16,8 +16,8 @@
 
 from ..utils import validate_axis, check_out_param
 from ..datasource import tensor as astensor
+from ..base.ravel import ravel
 from ..core import Tensor
-from .ravel import ravel
 
 
 def ptp(a, axis=None, out=None, keepdims=None):

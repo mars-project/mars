@@ -20,9 +20,9 @@ import numpy as np
 
 from ..core import Tensor
 from ..datasource import tensor as astensor, array
+from ..base.squeeze import squeeze
+from ..base.where import where
 from .average import average
-from .squeeze import squeeze
-from .where import where
 
 
 def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=None):

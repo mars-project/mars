@@ -187,6 +187,9 @@ class TensorIndexTilesHandler(object):
                 out_axis += 1
             elif _is_fancy_index(raw_index_obj):
                 # fancy indexing
+                # check unknown shape, only for fancy index of numpy.ndarray
+                if isinstance(raw_index_obj, np.ndarray):
+                    check_chunks_unknown_shape([self._in_tensor], TilesError)
                 # because we need to unify all fancy indexes' chunks together later
                 # so here we don't do process any of them here
                 first_fancy_index = False
