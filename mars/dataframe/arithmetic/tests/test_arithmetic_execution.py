@@ -23,13 +23,22 @@ from mars.tensor.datasource import array as from_array
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.arithmetic import abs
+from mars.dataframe.arithmetic.tests.test_arithmetic import comp_func
 
 
 binary_functions = dict(
-    add=dict(func=operator.add, func_name='add'),
-    subtract=dict(func=operator.sub, func_name='sub'),
-    floordiv=dict(func=operator.floordiv, func_name='floordiv'),
-    truediv=dict(func=operator.truediv, func_name='truediv')
+    add=dict(func=operator.add, func_name='add', rfunc_name='radd'),
+    subtract=dict(func=operator.sub, func_name='sub', rfunc_name='rsub'),
+    floordiv=dict(func=operator.floordiv, func_name='floordiv',
+                  rfunc_name='rfloordiv'),
+    truediv=dict(func=operator.truediv, func_name='truediv',
+                 rfunc_name='rtruediv'),
+    equal=dict(func=comp_func('eq', 'eq'), func_name='eq', rfunc_name='eq'),
+    not_equal=dict(func=comp_func('ne', 'ne'), func_name='ne', rfunc_name='ne'),
+    greater=dict(func=comp_func('gt', 'lt'), func_name='gt', rfunc_name='lt'),
+    less=dict(func=comp_func('lt', 'gt'), func_name='lt', rfunc_name='gt'),
+    greater_equal=dict(func=comp_func('ge', 'le'), func_name='ge', rfunc_name='le'),
+    less_equal=dict(func=comp_func('le', 'ge'), func_name='le', rfunc_name='ge'),
 )
 
 
@@ -37,10 +46,6 @@ binary_functions = dict(
 class TestBinary(TestBase):
     def setUp(self):
         self.executor = ExecutorForTest()
-
-    @property
-    def rfunc_name(self):
-        return 'r' + self.func_name
 
     def testWithoutShuffleExecution(self):
         # all the axes are monotonic
