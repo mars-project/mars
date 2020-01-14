@@ -197,6 +197,8 @@ class IndexValue(Serializable):
     def __mars_tokenize__(self):
         # return object for tokenize
         # todo fix this when index support is fixed
+        if hasattr(self, '_key'):
+            return self._key
         try:
             v = self._index_value
         except AttributeError:
@@ -258,7 +260,10 @@ class IndexValue(Serializable):
 
     def has_value(self):
         if isinstance(self._index_value, self.RangeIndex):
-            return True
+            if np.isnan(self._index_value.max_val):
+                return False
+            else:
+                return True
         elif getattr(self._index_value, '_data', None) is not None:
             return True
         return False

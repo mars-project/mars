@@ -21,7 +21,7 @@ from ... import opcodes as OperandDef
 from ...serialize import BoolField, AnyField, StringField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE, ObjectType
 from ..core import IndexValue
-from ..utils import parse_index, build_empty_df
+from ..utils import parse_index, build_empty_df, build_empty_series
 
 
 class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
@@ -61,10 +61,10 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
     def _tile_series(cls, op):
         out_chunks = []
         out = op.outputs[0]
-        range_index = isinstance(out.index_value.value, IndexValue.RangeIndex)
+        is_range_index = out.index_value.has_value()
         cum_range = np.cumsum((0, ) + op.inputs[0].nsplits[0])
         for c in op.inputs[0].chunks:
-            if range_index:
+            if is_range_index:
                 index_value = parse_index(pd.RangeIndex(cum_range[c.index[0]], cum_range[c.index[0] + 1]))
             else:
                 index_value = out.index_value
@@ -123,7 +123,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if isinstance(op.inputs[0], DATAFRAME_TYPE):
+        if op.inputs[0].op.object_type == ObjectType.dataframe:
             return cls._tile_dataframe(op)
         else:
             return cls._tile_series(op)
@@ -142,20 +142,31 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
             kwargs['col_fill'] = op.col_fill
 
         r = in_data.reset_index(level=op.level, drop=op.drop, **kwargs)
-        if isinstance(out.index_value.value, IndexValue.RangeIndex):
+        if out.index_value.has_value():
             r.index = out.index_value.to_pandas()
         ctx[out.key] = r
 
+    @classmethod
+    def _get_out_index(cls, df, out_shape):
+        if isinstance(df.index, pd.RangeIndex):
+            range_value = -1 if np.isnan(out_shape[0]) else out_shape[0]
+            index_value = parse_index(pd.RangeIndex(range_value))
+        else:
+            index_value = parse_index(df.index)
+        return index_value
+
     def _call_series(self, a):
         if self.drop:
-            index_value = parse_index(pd.RangeIndex(a.shape[0]))
+            range_value = -1 if np.isnan(a.shape[0]) else a.shape[0]
+            index_value = parse_index(pd.RangeIndex(range_value))
             return self.new_series([a], shape=a.shape, dtype=a.dtype, name=a.name, index_value=index_value)
         else:
-            empty_df = pd.Series(index=a.index_value.to_pandas(), dtype=a.dtype, name=a.name)
-            empty_df = empty_df.reset_index(level=self.level, name=self.name)
-            shape = (a.shape[0], len(empty_df.dtypes))
             self._object_type = ObjectType.dataframe
-            return self.new_dataframe([a], shape=shape, index_value=parse_index(empty_df.index),
+            empty_series = build_empty_series(dtype=a.dtype, index=a.index_value.to_pandas(), name=a.name)
+            empty_df = empty_series.reset_index(level=self.level, name=self.name)
+            shape = (a.shape[0], len(empty_df.dtypes))
+            index_value = self._get_out_index(empty_df, shape)
+            return self.new_dataframe([a], shape=shape, index_value=index_value,
                                       columns_value=parse_index(empty_df.columns),
                                       dtypes=empty_df.dtypes)
 
@@ -164,7 +175,8 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
             shape = a.shape
             columns_value = a.columns_value
             dtypes = a.dtypes
-            index_value = parse_index(pd.RangeIndex(a.shape[0]))
+            range_value = -1 if np.isnan(a.shape[0]) else a.shape[0]
+            index_value = parse_index(pd.RangeIndex(range_value))
         else:
             empty_df = build_empty_df(a.dtypes)
             empty_df.index = a.index_value.to_pandas()
@@ -172,15 +184,12 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
             shape = (a.shape[0], len(empty_df.columns))
             columns_value = parse_index(empty_df.columns)
             dtypes = empty_df.dtypes
-            if isinstance(empty_df.index, pd.RangeIndex):
-                index_value = parse_index(pd.RangeIndex(a.shape[0]))
-            else:
-                index_value = parse_index(empty_df.index)
+            index_value = self._get_out_index(empty_df, shape)
         return self.new_dataframe([a], shape=shape, columns_value=columns_value,
                                   index_value=index_value, dtypes=dtypes)
 
     def __call__(self, a):
-        if isinstance(a, DATAFRAME_TYPE):
+        if a.op.object_type == ObjectType.dataframe:
             return self._call_dataframe(a)
         else:
             return self._call_series(a)

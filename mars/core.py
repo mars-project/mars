@@ -61,11 +61,17 @@ class Base(HasKey):
         return [getattr(self, k, None) for k in self._keys_
                 if k not in self._no_copy_attrs_]
 
+    def __mars_tokenize__(self):
+        if hasattr(self, '_key'):
+            return self._key
+        else:
+            return (type(self), *self._values_)
+
     def _obj_set(self, k, v):
         object.__setattr__(self, k, v)
 
     def _update_key(self):
-        self._obj_set('_key', tokenize(type(self), *self._values_))
+        self._obj_set('_key', tokenize(type(self).__name__, *self._values_))
         return self
 
     def reset_key(self):
@@ -244,7 +250,7 @@ class ChunkData(EntityData):
 
     def _update_key(self):
         object.__setattr__(self, '_key', tokenize(
-            type(self), *(getattr(self, k, None) for k in self._keys_ if k != '_index')))
+            type(self).__name__, *(getattr(self, k, None) for k in self._keys_ if k != '_index')))
 
 
 class Chunk(Entity):

@@ -137,7 +137,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                     chk = concat_op.new_chunk(chks, dtype=chks[0].dtype)
                 chk_op = SeriesIndex(labels=op.labels, is_intermediate=True)
                 chk = chk_op.new_chunk([chk], shape=(np.nan,), dtype=chk.dtype,
-                                       index_value=parse_index(pd.RangeIndex(0)))
+                                       index_value=parse_index(pd.RangeIndex(-1)))
                 new_chunks.append(chk)
             chunks = new_chunks
 
