@@ -67,3 +67,5 @@ class Test(TestBase):
         t = t.tiles()
         self.assertEqual(len(t.chunks), 3)
 
+        with self.assertRaises(TypeError):
+            einsum('..., ...', t1, t2, optimize=True, unknown_arg=False)

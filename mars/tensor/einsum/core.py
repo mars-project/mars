@@ -152,7 +152,7 @@ class TensorEinsum(TensorOperand, TensorOperandMixin):
                 ctx[op.outputs[0].key] = xp.einsum(op.subscripts, *inputs, dtype=op.dtype)
 
 
-def einsum(subscripts, *operands, dtype=None, order='K', casting='safe', optimize=False):
+def einsum(subscripts, *operands, **kwargs):
     """
     Evaluates the Einstein summation convention on the operands.
 
@@ -393,6 +393,14 @@ def einsum(subscripts, *operands, dtype=None, order='K', casting='safe', optimiz
     ...     _ = mt.einsum('ijk,ilm,njm,nlk,abc->',a,a,a,a,a, optimize=path)
 
     """
+    dtype = kwargs.pop('dtype', None)
+    order = kwargs.pop('order', 'K')
+    casting = kwargs.pop('casting', 'safe')
+    optimize = kwargs.pop('optimize', False)
+
+    if kwargs:
+        raise TypeError('Keyword arguments %r not supported' % list(kwargs.keys()))
+
     all_inputs = [subscripts] + list(operands)
     inputs, outputs, operands = parse_einsum_input(all_inputs)
     subscripts = "->".join((inputs, outputs))
