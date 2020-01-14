@@ -317,7 +317,7 @@ cdef class DirectedGraph:
             set visited = set()
             list nodes = []
 
-        from .core import CHUNK_TYPE, TILEABLE_TYPE, Chunk, TileableEntity
+        from .core import ENTITY_TYPE, TILEABLE_TYPE, Entity, TileableEntity
 
         level = None
 
@@ -332,19 +332,19 @@ cdef class DirectedGraph:
                 visited.add(c)
 
         for node in self.iter_nodes():
-            if isinstance(node, CHUNK_TYPE):
-                node = node.data if isinstance(node, Chunk) else node
-                add_obj(node)
-                if node.composed:
-                    for c in node.composed:
-                        nodes.append(c.op)
-            elif isinstance(node, TILEABLE_TYPE):
+            if isinstance(node, TILEABLE_TYPE):
                 node = node.data if isinstance(node, TileableEntity) else node
                 if level is None:
                     level = SerializableGraph.Level.ENTITY
                 for c in (node.chunks or ()):
                     add_obj(c.data)
                 add_obj(node)
+            elif isinstance(node, ENTITY_TYPE):
+                node = node.data if isinstance(node, Entity) else node
+                add_obj(node)
+                if getattr(node, 'composed', None):
+                    for c in node.composed:
+                        nodes.append(c.op)
             else:
                 raise TypeError('Unknown node type to serialize: {0}'.format(type(node)))
 

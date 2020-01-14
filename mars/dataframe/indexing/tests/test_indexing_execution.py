@@ -21,7 +21,7 @@ from mars.tests.core import TestBase, ExecutorForTest
 
 class Test(TestBase):
     def setUp(self):
-        super(Test, self).setUp()
+        super().setUp()
         self.executor = ExecutorForTest()
 
     def testSetIndex(self):
