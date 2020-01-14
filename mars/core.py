@@ -519,6 +519,9 @@ class HasShapeTileableData(TileableData):
             'shape': self.shape
         }
 
+    def _equals(self, o):
+        return self is o
+
 
 class ObjectData(TileableData):
     __slots__ = ()

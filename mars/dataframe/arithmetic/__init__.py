@@ -12,12 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...core import build_mode
+from ..core import DATAFRAME_TYPE
 from ..utils import wrap_notimplemented_exception
 from .abs import abs, DataFrameAbs
 from .add import add, radd, DataFrameAdd
 from .subtract import subtract, rsubtract, DataFrameSubtract
 from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
 from .truediv import truediv, rtruediv, DataFrameTrueDiv
+from .equal import eq, DataFrameEqual
+from .not_equal import ne, DataFrameNotEqual
+from .less import lt, DataFrameLess
+from .greater import gt, DataFrameGreater
+from .less_equal import le, DataFrameLessEqual
+from .greater_equal import ge, DataFrameGreaterEqual
+
+
+def _wrap_eq():
+    def call(df, other, **kw):
+        if build_mode().is_build_mode:
+            return df._equals(other)
+        return _wrap_comparison(eq)(df, other, **kw)
+    return call
+
+
+def _wrap_comparison(func):
+    def call(df, other, **kw):
+        if isinstance(df, DATAFRAME_TYPE) and isinstance(other, DATAFRAME_TYPE):
+            # index and columns should be identical
+            for index_type in ['index_value', 'columns_value']:
+                left, right = getattr(df, index_type), getattr(other, index_type)
+                if left.has_value() and right.has_value():
+                    # if df and other's index or columns has value
+                    index_eq = left.to_pandas().equals(right.to_pandas())
+                else:
+                    index_eq = left.key == right.key
+                if not index_eq:
+                    raise ValueError('Can only compare '
+                                     'identically-labeled DataFrame object')
+        return wrap_notimplemented_exception(func)(df, other, **kw)
+    return call
 
 
 def _install():
@@ -48,6 +82,19 @@ def _install():
         setattr(entity, 'rtruediv', rtruediv)
         setattr(entity, 'div', truediv)
         setattr(entity, 'rdiv', rtruediv)
+
+        setattr(entity, '__eq__', _wrap_eq())
+        setattr(entity, 'eq', eq)
+        setattr(entity, '__ne__', _wrap_comparison(ne))
+        setattr(entity, 'ne', ne)
+        setattr(entity, '__lt__', _wrap_comparison(lt))
+        setattr(entity, 'lt', lt)
+        setattr(entity, '__gt__', _wrap_comparison(gt))
+        setattr(entity, 'gt', gt)
+        setattr(entity, '__ge__', _wrap_comparison(ge)),
+        setattr(entity, 'ge', ge)
+        setattr(entity, '__le__', _wrap_comparison(le))
+        setattr(entity, 'le', le)
 
 
 _install()
