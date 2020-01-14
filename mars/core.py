@@ -209,6 +209,9 @@ class EntityData(SerializableWithKey):
         return self._extra_params
 
 
+ENTITY_TYPE = (EntityData, Entity)
+
+
 class ChunkData(EntityData):
     __slots__ = ()
 

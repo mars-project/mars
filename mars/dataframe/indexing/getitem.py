@@ -218,7 +218,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         return self._mask
 
     def _set_inputs(self, inputs):
-        super(DataFrameIndex, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         if isinstance(self._col_names, (TILEABLE_TYPE, CHUNK_TYPE)):
             self._col_names = self._inputs[0]
         if isinstance(self._mask, (TILEABLE_TYPE, CHUNK_TYPE)):
