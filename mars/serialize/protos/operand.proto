@@ -322,6 +322,9 @@ message OperandDef {
         FFTSHIFT = 618;
         IFFTSHIFT = 619;
 
+        // einsum
+        EINSUM = 630;
+
         // sparse creation
         SPARSE_MATRIX_DATA_SOURCE = 701;
         DENSE_TO_SPARSE = 702;

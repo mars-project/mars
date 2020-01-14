@@ -52,6 +52,8 @@ from .reshape import reshape
 from .merge import concatenate, stack, hstack, vstack, dstack, column_stack
 from .indexing import take, compress, extract, choose, unravel_index, nonzero, flatnonzero
 from .rechunk import rechunk
+from .einsum import einsum
+# noinspection PyUnresolvedReferences
 from .lib.index_tricks import mgrid, ogrid, ndindex
 from .core import mutable_tensor
 
