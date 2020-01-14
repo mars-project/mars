@@ -134,6 +134,14 @@ class Test(TestBase):
         expected = data.reset_index(level='class')
         pd.testing.assert_frame_equal(result, expected)
 
+        columns = pd.MultiIndex.from_tuples([('speed', 'max'), ('species', 'type')])
+        df = from_pandas_df(data, chunk_size=2)
+        df2 = df_reset_index(df, level='class', col_level=1, col_fill='species')
+        data.columns = columns
+        result = self.executor.execute_dataframe(df2, concat=True)[0]
+        expected = data.reset_index(level='class', col_level=1, col_fill='species')
+        pd.testing.assert_frame_equal(result, expected)
+
         # Test Series
 
         s = pd.Series([1, 2, 3, 4], name='foo',
@@ -150,3 +158,16 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(s2, concat=True)[0]
         expected = s.reset_index(drop=True)
         pd.testing.assert_series_equal(result, expected)
+
+        # Test Unknown shape
+        data1 = pd.DataFrame(np.random.rand(10, 3), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9])
+        df1 = from_pandas_df(data1, chunk_size=5)
+        data2 = pd.DataFrame(np.random.rand(10, 3), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
+        df2 = from_pandas_df(data2, chunk_size=6)
+        df = (df1 + df2).reset_index()
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        # Inconsistent with Pandas when input dataframe's shape is unknown.
+        result = result.sort_values(by=result.columns[0])
+
+        expected = (data1 + data2).reset_index()
+        np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())

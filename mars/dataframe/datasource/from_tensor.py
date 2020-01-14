@@ -25,7 +25,7 @@ from ...serialize import KeyField, SeriesField, DataTypeField, BoolField
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
 from ...tiles import TilesError
-from ...utils import tokenize, check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index
 

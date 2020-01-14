@@ -19,8 +19,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import BoolField, AnyField, StringField
-from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE, ObjectType
-from ..core import IndexValue
+from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import parse_index, build_empty_df, build_empty_series
 
 
@@ -93,10 +92,10 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
         added_columns_num = len(out_df.dtypes) - len(in_df.dtypes)
         out_chunks = []
-        range_index = isinstance(out_df.index_value.value, IndexValue.RangeIndex)
+        is_range_index = out_df.index_value.has_value()
         cum_range = np.cumsum((0, ) + in_df.nsplits[0])
         for c in in_df.chunks:
-            if range_index:
+            if is_range_index:
                 index_value = parse_index(pd.RangeIndex(cum_range[c.index[0]], cum_range[c.index[0] + 1]))
             else:
                 index_value = out_df.index_value
