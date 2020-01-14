@@ -16,7 +16,7 @@ import os
 import tempfile
 import shutil
 from collections import OrderedDict
-
+from string import printable
 
 import numpy as np
 import pandas as pd
@@ -139,7 +139,7 @@ class Test(TestBase):
 
         # from 1d tensors
         raws8 = [('a', np.random.rand(8)), ('b', np.random.randint(10, size=8)),
-                 ('c', [np.random.bytes(6) for _ in range(8)])]
+                 ('c', [''.join(np.random.choice(list(printable), size=6)) for _ in range(8)])]
         tensors8 = [mt.tensor(r[1], chunk_size=3) for r in raws8]
         df8 = dataframe_from_1d_tensors(tensors8, columns=[r[0] for r in raws8])
         result = self.executor.execute_dataframe(df8, concat=True)[0]
