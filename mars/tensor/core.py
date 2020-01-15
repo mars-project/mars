@@ -240,9 +240,6 @@ class TensorData(HasShapeTileableData):
 
         return reshape(self, shape, order=order)
 
-    def _equals(self, o):
-        return self is o
-
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
         from .datastore import totiledb
 

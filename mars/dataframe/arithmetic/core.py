@@ -21,7 +21,6 @@ from pandas.core.dtypes.cast import find_common_type
 
 from ...tensor.datasource import tensor as astensor
 from ...serialize import AnyField, Float64Field
-
 from ...tensor.core import TENSOR_TYPE, ChunkData, Chunk
 from ...utils import classproperty
 from ..align import align_series_series, align_dataframe_series, align_dataframe_dataframe
@@ -38,7 +37,8 @@ class DataFrameBinOp(DataFrameOperand):
     _lhs = AnyField('lhs')
     _rhs = AnyField('rhs')
 
-    def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
+    def __init__(self, axis=None, level=None, fill_value=None,
+                 object_type=None, lhs=None, rhs=None, **kw):
         super(DataFrameBinOp, self).__init__(_axis=axis, _level=level,
                                              _fill_value=fill_value,
                                              _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
@@ -187,8 +187,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         for chunk in tileable.chunks:
             out_op = op.copy().reset_key()
             if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
-                out_chunk = out_op.new_chunk([chunk], shape=chunk.shape, index=chunk.index, dtypes=chunk.dtypes,
-                                             index_value=chunk.index_value,
+                out_chunk = out_op.new_chunk([chunk], shape=chunk.shape, index=chunk.index,
+                                             dtypes=chunk.dtypes, index_value=chunk.index_value,
                                              columns_value=getattr(chunk, 'columns_value'))
             else:
                 out_chunk = out_op.new_chunk([chunk], shape=chunk.shape, index=chunk.index, dtype=chunk.dtype,
@@ -201,7 +201,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                                       index_value=df.index_value, name=df.name, chunks=out_chunks)
         else:
             return new_op.new_dataframes(op.inputs, df.shape, nsplits=tileable.nsplits, dtypes=df.dtypes,
-                                         index_value=df.index_value, columns_value=df.columns_value, chunks=out_chunks)
+                                         index_value=df.index_value, columns_value=df.columns_value,
+                                         chunks=out_chunks)
 
     @classmethod
     def _tile_with_tensor(cls, op):
@@ -260,7 +261,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def execute(cls, ctx, op):
         if len(op.inputs) == 2:
             df, other = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
-            if isinstance(op.inputs[0], SERIES_CHUNK_TYPE) and isinstance(op.inputs[1], DATAFRAME_CHUNK_TYPE):
+            if isinstance(op.inputs[0], SERIES_CHUNK_TYPE) and \
+                    isinstance(op.inputs[1], DATAFRAME_CHUNK_TYPE):
                 df, other = other, df
                 func_name = getattr(cls, '_rfunc_name')
             else:
@@ -277,7 +279,11 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             kw = dict({'axis': op.axis})
         else:
             kw = dict()
-        ctx[op.outputs[0].key] = getattr(df, func_name)(other, level=op.level, fill_value=op.fill_value, **kw)
+        if op.fill_value is not None:
+            # comparison function like eq does not have `fill_value`
+            kw['fill_value'] = op.fill_value
+        ctx[op.outputs[0].key] = getattr(df, func_name)(
+            other, level=op.level, **kw)
 
     @classproperty
     def _operator(self):
@@ -326,7 +332,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
                     'columns_value': columns, 'index_value': index}
 
-        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and isinstance(x2, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
+        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and \
+                isinstance(x2, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
             if axis == 'columns' or axis == 1:
                 index_shape = x1.shape[0]
                 index = x1.index_value
@@ -360,7 +367,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
                     'columns_value': columns, 'index_value': index}
 
-        if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) and isinstance(x2, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
+        if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) and \
+                isinstance(x2, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
             index_shape, dtype, index = np.nan, None, None
 
             dtype = find_common_type([x1.dtype, x2.dtype])
@@ -425,16 +433,19 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     other_shape = other.shape
                 if tensor.ndim == 2 and tensor.shape != other_shape:
                     raise ValueError(
-                        'Unable to coerce to DataFrame, shape must be {}: given {}'.format(other_shape, tensor.shape))
+                        'Unable to coerce to DataFrame, shape must be {}: '
+                        'given {}'.format(other_shape, tensor.shape))
                 elif tensor.ndim == 1 and tensor.shape[0] != other_shape[1]:
                     raise ValueError(
-                        'Unable to coerce to Series, length must be {}: given {}'.format(other_shape[1], tensor.shape[0]))
+                        'Unable to coerce to Series, length must be {}: given {}'.format(
+                            other_shape[1], tensor.shape[0]))
                 elif tensor.ndim > 2:
                     raise ValueError('Unable to coerce to Series/DataFrame, dim must be <= 2')
             if isinstance(other, SERIES_TYPE):
                 if tensor.ndim == 1 and (tensor.shape[0] != other.shape[0]):
                     raise ValueError(
-                        'Unable to coerce to Series, length must be {}: given {}'.format(other.shape[0], tensor.shape[0]))
+                        'Unable to coerce to Series, length must be {}: given {}'.format(
+                            other.shape[0], tensor.shape[0]))
                 elif tensor.ndim > 1:
                     raise ValueError('Unable to coerce to Series, dim must be 1')
 
@@ -487,7 +498,8 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
         for in_chunk in in_df.chunks:
             out_op = op.copy().reset_key()
             out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=in_chunk.index,
-                                         index_value=in_chunk.index_value, columns_value=in_chunk.columns_value)
+                                         index_value=in_chunk.index_value,
+                                         columns_value=in_chunk.columns_value)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
