@@ -27,6 +27,7 @@ from mars.tests.core import ExecutorForTest
 from mars.learn.metrics.pairwise import haversine_distances
 
 
+@unittest.skipIf(sklearn is None, 'scikit-learn not installed')
 class Test(unittest.TestCase):
     def setUp(self) -> None:
         self.executor = ExecutorForTest('numpy')

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
-
 import numpy as np
 try:
     from sklearn.neighbors import DistanceMetric as SklearnDistanceMetric
@@ -26,8 +24,6 @@ from ....tensor.core import TensorOrder
 from ....tensor.indexing import fill_diagonal
 from ....tensor.array_utils import as_same_device, device
 from ....tensor.utils import recursive_tile
-from ....tiles import TilesError
-from ....utils import check_chunks_unknown_shape
 from .core import PairwiseDistances
 
 
@@ -72,43 +68,10 @@ class HaversineDistances(PairwiseDistances):
         if X.shape[1] != 2 or Y.shape[1] != 2:
             raise ValueError('Haversine distance only valid in 2 dimensions')
         if X.issparse() or Y.issparse():
-            raise TypeError('haversine distance requires inputs dense')
+            raise TypeError('Haversine distance requires inputs dense')
 
         return self.new_tensor([X, Y], shape=(X.shape[0], Y.shape[0]),
                                order=TensorOrder.C_ORDER)
-
-    @classmethod
-    def _tile_one_chunk(cls, op):
-        out = op.outputs[0]
-        chunk_op = op.copy().reset_key()
-        chunk = chunk_op.new_chunk([op.x.chunks[0], op.y.chunks[0]],
-                                    shape=out.shape, order=out.order,
-                                    index=(0, 0))
-        new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape,
-                                  order=out.order, chunks=[chunk],
-                                  nsplits=tuple((s,) for s in out.shape))
-
-    @classmethod
-    def _tile_chunks(cls, op, x, y):
-        out = op.outputs[0]
-        out_chunks = []
-        for idx in itertools.product(range(x.chunk_shape[0]),
-                                     range(y.chunk_shape[0])):
-            xi, yi = idx
-
-            chunk_op = op.copy().reset_key()
-            chunk_inputs = [x.cix[xi, 0], y.cix[yi, 0]]
-            out_chunk = chunk_op.new_chunk(
-                chunk_inputs, shape=(chunk_inputs[0].shape[0],
-                                     chunk_inputs[1].shape[0],),
-                order=out.order, index=idx)
-            out_chunks.append(out_chunk)
-
-        new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape,
-                                  order=out.order, chunks=out_chunks,
-                                  nsplits=(x.nsplits[0], y.nsplits[0]))
 
     @classmethod
     def tile(cls, op):
@@ -118,15 +81,7 @@ class HaversineDistances(PairwiseDistances):
         if len(x.chunks) == 1 and len(y.chunks) == 1:
             return cls._tile_one_chunk(op)
 
-        if x.chunk_shape[1] != 1 or y.chunk_shape[1] != 1:
-            check_chunks_unknown_shape([x, y], TilesError)
-
-            x = x.rechunk({1: x.shape[1]})._inplace_tile()
-            if y_is_x:
-                y = x
-            else:
-                y = y.rechunk({1: y.shape[1]})._inplace_tile()
-
+        x, y = cls._rechunk_cols_into_one(x, y)
         ret, = cls._tile_chunks(op, x, y)
         if y_is_x:
             fill_diagonal(ret, 0)
@@ -152,5 +107,45 @@ class HaversineDistances(PairwiseDistances):
 
 
 def haversine_distances(X, Y=None):
+    """Compute the Haversine distance between samples in X and Y
+
+    The Haversine (or great circle) distance is the angular distance between
+    two points on the surface of a sphere. The first distance of each point is
+    assumed to be the latitude, the second is the longitude, given in radians.
+    The dimension of the data must be 2.
+
+    .. math::
+       D(x, y) = 2\\arcsin[\\sqrt{\\sin^2((x1 - y1) / 2)
+                                + \\cos(x1)\\cos(y1)\\sin^2((x2 - y2) / 2)}]
+
+    Parameters
+    ----------
+    X : array_like, shape (n_samples_1, 2)
+
+    Y : array_like, shape (n_samples_2, 2), optional
+
+    Returns
+    -------
+    distance : {Tensor}, shape (n_samples_1, n_samples_2)
+
+    Notes
+    -----
+    As the Earth is nearly spherical, the haversine formula provides a good
+    approximation of the distance between two points of the Earth surface, with
+    a less than 1% error on average.
+
+    Examples
+    --------
+    We want to calculate the distance between the Ezeiza Airport
+    (Buenos Aires, Argentina) and the Charles de Gaulle Airport (Paris, France)
+
+    >>> from mars.learn.metrics.pairwise import haversine_distances
+    >>> bsas = [-34.83333, -58.5166646]
+    >>> paris = [49.0083899664, 2.53844117956]
+    >>> result = haversine_distances([bsas, paris])
+    >>> (result * 6371000/1000).execute()  # multiply by Earth radius to get kilometers
+    array([[    0.        , 11279.45379464],
+           [11279.45379464,     0.        ]])
+    """
     op = HaversineDistances(x=X, y=Y, dtype=np.dtype(np.float64))
     return op(X, Y=Y)

@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import numpy as np
 
-from mars.tensor.operands import TensorOperand, TensorOperandMixin
-from mars.tensor import tensor as astensor
-from mars.learn.utils import check_array
+from ....tensor.operands import TensorOperand, TensorOperandMixin
+from ....tensor import tensor as astensor
+from ....tiles import TilesError
+from ....utils import check_chunks_unknown_shape
+from ...utils import check_array
 
 
 class PairwiseDistances(TensorOperand, TensorOperandMixin):
@@ -73,3 +77,50 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
                                  X.shape[1], Y.shape[1]))
 
         return X, Y
+
+    @classmethod
+    def _tile_one_chunk(cls, op):
+        out = op.outputs[0]
+        chunk_op = op.copy().reset_key()
+        chunk = chunk_op.new_chunk([op.x.chunks[0], op.y.chunks[0]],
+                                   shape=out.shape, order=out.order,
+                                   index=(0, 0))
+        new_op = op.copy()
+        return new_op.new_tensors(op.inputs, shape=out.shape,
+                                  order=out.order, chunks=[chunk],
+                                  nsplits=tuple((s,) for s in out.shape))
+
+    @classmethod
+    def _tile_chunks(cls, op, x, y):
+        out = op.outputs[0]
+        out_chunks = []
+        for idx in itertools.product(range(x.chunk_shape[0]),
+                                     range(y.chunk_shape[0])):
+            xi, yi = idx
+
+            chunk_op = op.copy().reset_key()
+            chunk_inputs = [x.cix[xi, 0], y.cix[yi, 0]]
+            out_chunk = chunk_op.new_chunk(
+                chunk_inputs, shape=(chunk_inputs[0].shape[0],
+                                     chunk_inputs[1].shape[0],),
+                order=out.order, index=idx)
+            out_chunks.append(out_chunk)
+
+        new_op = op.copy()
+        return new_op.new_tensors(op.inputs, shape=out.shape,
+                                  order=out.order, chunks=out_chunks,
+                                  nsplits=(x.nsplits[0], y.nsplits[0]))
+
+    @classmethod
+    def _rechunk_cols_into_one(cls, x, y):
+        y_is_x = y is x
+        if x.chunk_shape[1] != 1 or y.chunk_shape[1] != 1:
+            check_chunks_unknown_shape([x, y], TilesError)
+
+            x = x.rechunk({1: x.shape[1]})._inplace_tile()
+            if y_is_x:
+                y = x
+            else:
+                y = y.rechunk({1: y.shape[1]})._inplace_tile()
+
+        return x, y

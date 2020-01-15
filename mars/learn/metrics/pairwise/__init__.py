@@ -14,13 +14,15 @@
 
 from .euclidean import euclidean_distances
 from .haversine import haversine_distances
+from .manhattan import manhattan_distances
 
 
 def _install():
     from .euclidean import EuclideanDistances
     from .haversine import HaversineDistances
+    from .manhattan import ManhattanDistances
 
-    del EuclideanDistances, HaversineDistances
+    del EuclideanDistances, HaversineDistances, ManhattanDistances
 
 
 _install()
