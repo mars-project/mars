@@ -23,6 +23,7 @@ from .slice import TensorSlice
 from .getitem import TensorIndex, FancyIndexingDistributeMap, FancyIndexingDistributeReduce, \
     FancyIndexingConcatMap, FancyIndexingConcatReduce
 from .setitem import TensorIndexSetValue
+from .fill_diagonal import fill_diagonal, TensorFillDiagonal
 
 
 def _install():

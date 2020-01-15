@@ -702,6 +702,10 @@ def repeat(a, repeats, axis=None):
     return _call_unary('repeat', a, repeats, axis=axis)
 
 
+def fill_diagonal(a, val, wrap=False):
+    return _call_unary('fill_diagonal', a, val, wrap=wrap)
+
+
 def zeros(shape, dtype=float, gpu=False):
     if len(shape) == 2:
         from .matrix import zeros_sparse_matrix

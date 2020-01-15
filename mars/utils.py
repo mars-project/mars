@@ -39,7 +39,7 @@ import numpy as np
 import pandas as pd
 
 from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, register_tokenizer,\
-    insert_reversed_tuple
+    insert_reversed_tuple, ceildiv
 from .config import options
 from .lib.tblib import Traceback
 
@@ -51,6 +51,7 @@ random.seed(int(time.time()) * os.getpid())
 tokenize = tokenize
 register_tokenizer = register_tokenizer
 insert_reversed_tuple = insert_reversed_tuple
+ceildiv = ceildiv
 
 
 # fix encoding conversion problem under windows

@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import issparse, get_array_module, get_sparse_module, cp, cps, np, naked, is_cupy
+from ...utils import ceildiv
+from .core import issparse, get_array_module, \
+    get_sparse_module, cp, cps, np, naked, is_cupy
 
 
 class SparseNDArray(object):
@@ -1301,3 +1303,57 @@ class SparseArray(SparseNDArray):
         r = xp.repeat(self.toarray(), repeats, axis=axis)
         x = xps.csr_matrix(r)
         return SparseNDArray(x, shape=r.shape)
+
+    @staticmethod
+    def _expand_val(val, expect_val_size, xp):
+        if val.size > expect_val_size:
+            val = val[:expect_val_size]
+        elif val.size < expect_val_size:
+            n_repeat = ceildiv(expect_val_size, val.size)
+            val = xp.tile(val, n_repeat)[:expect_val_size]
+        return val
+
+    def fill_diagonal(self, val, wrap=False):
+        lil_matrix = self.spmatrix.tolil()
+
+        xp = get_array_module(self.spmatrix)
+        val = xp.asarray(val)
+        if val.ndim > 1:
+            val = val.ravel()
+        is_tall_matrix = lil_matrix.shape[0] > lil_matrix.shape[1] + 1
+        n_rows, n_cols = lil_matrix.shape
+
+        if not wrap or not is_tall_matrix:
+            if val.ndim > 0:
+                # check if val is long enough
+                expect_val_size = min(n_rows, n_cols)
+                val = self._expand_val(val, expect_val_size, xp)
+            lil_matrix.setdiag(val)
+            matrix = lil_matrix
+        else:
+            block_size = n_cols + 1
+
+            n_block = n_rows // block_size
+            n_vals = n_cols * n_block
+            if n_rows % block_size > 0:
+                # 1 chunk left
+                n_block += 1
+                n_vals += min(n_rows % block_size, n_cols)
+
+            if val.ndim > 0:
+                val = self._expand_val(val, n_vals, xp)
+
+            sub_matrices = []
+            for i in range(n_block):
+                sub_lil_matrix = lil_matrix[i * block_size: (i + 1) * block_size]
+                if val.ndim > 0:
+                    sub_val = val[i * n_cols: (i + 1) * n_cols]
+                else:
+                    sub_val = val
+                sub_lil_matrix.setdiag(sub_val)
+                sub_matrices.append(sub_lil_matrix)
+
+            xps = get_sparse_module(self.spmatrix)
+            matrix = SparseArray(xps.vstack(sub_matrices, format='csr'))
+
+        self.spmatrix = matrix.tocsr()
