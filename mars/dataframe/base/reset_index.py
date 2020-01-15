@@ -20,7 +20,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import BoolField, AnyField, StringField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE, ObjectType
-from ..utils import parse_index, build_empty_df, build_empty_series
+from ..core import IndexValue
+from ..utils import parse_index, build_empty_df, build_empty_series, standardize_range_index
 
 
 class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
@@ -76,6 +77,8 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
                 out_chunk = chunk_op.new_chunk([c], shape=shape, index=c.index, dtypes=out.dtypes,
                                                index_value=index_value, columns_value=out.columns_value)
             out_chunks.append(out_chunk)
+        if not is_range_index and isinstance(out.index_value._index_value, IndexValue.RangeIndex):
+            out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         if op.drop:
             return new_op.new_seriess(op.inputs, op.inputs[0].shape, nsplits=op.inputs[0].nsplits,
@@ -112,6 +115,8 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
                 new_chunk = chunk_op.new_chunk([c], shape=c.shape, index_value=index_value,
                                                index=c.index, columns_value=c.columns_value, dtypes=c.dtypes)
             out_chunks.append(new_chunk)
+        if not is_range_index and isinstance(out_df.index_value._index_value, IndexValue.RangeIndex):
+            out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         columns_splits = list(in_df.nsplits[1])
         columns_splits[0] += added_columns_num
@@ -161,7 +166,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
             return self.new_series([a], shape=a.shape, dtype=a.dtype, name=a.name, index_value=index_value)
         else:
             self._object_type = ObjectType.dataframe
-            empty_series = build_empty_series(dtype=a.dtype, index=a.index_value.to_pandas(), name=a.name)
+            empty_series = build_empty_series(dtype=a.dtype, index=a.index_value.to_pandas()[:0], name=a.name)
             empty_df = empty_series.reset_index(level=self.level, name=self.name)
             shape = (a.shape[0], len(empty_df.dtypes))
             index_value = self._get_out_index(empty_df, shape)
@@ -178,7 +183,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
             index_value = parse_index(pd.RangeIndex(range_value))
         else:
             empty_df = build_empty_df(a.dtypes)
-            empty_df.index = a.index_value.to_pandas()
+            empty_df.index = a.index_value.to_pandas()[:0]
             empty_df = empty_df.reset_index(level=self.level, col_level=self.col_level, col_fill=self.col_fill)
             shape = (a.shape[0], len(empty_df.columns))
             columns_value = parse_index(empty_df.columns)
