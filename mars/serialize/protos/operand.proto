@@ -238,6 +238,7 @@ message OperandDef {
         NANSTD = 325;
         NANCUMSUM = 326;
         NANCUMPROD = 327;
+        COUNT = 343;
 
         // tensor operand
         RESHAPE = 401;
@@ -270,6 +271,7 @@ message OperandDef {
         PARTITION = 432;
         QUANTILE = 440;
         FILL_DIAGONAL = 441;
+        NORMALIZE = 442;
         // fancy index, distributed phase is a shuffle operation that
         // the fancy indexes will be distributed to the left chunks
         // the concat phase will concat back the indexed left chunks and index
@@ -347,9 +349,6 @@ message OperandDef {
         // merge
         DATAFRAME_SHUFFLE_MERGE = 2010;
         DATAFRAME_SHUFFLE_MERGE_ALIGN = 2011;
-
-        // dataframe reduction
-        COUNT = 2025;
 
         // reset index
         RESET_INDEX = 2028;

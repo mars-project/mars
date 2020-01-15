@@ -29,6 +29,16 @@ class TensorMin(TensorReduction, TensorReductionMixin):
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _stage=stage,
                          _combine_size=combine_size, **kw)
 
+    @classmethod
+    def _is_sparse(cls, input_sparse, shape):
+        if input_sparse and len(shape) > 0:
+            return True
+        return False
+
+    @staticmethod
+    def _get_op_types():
+        return TensorMin, TensorMin, None
+
 
 def min(a, axis=None, out=None, keepdims=None, combine_size=None):
     """
