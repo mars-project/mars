@@ -18,7 +18,8 @@ import numpy as np
 from mars import opcodes as OperandDef
 from mars.tests.core import TestBase, parameterized
 from mars.dataframe.core import IndexValue, Series
-from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, DataFrameMax, DataFrameCount
+from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, DataFrameMax, \
+    DataFrameCount, DataFrameMean
 from mars.dataframe.merge import DataFrameConcat
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
@@ -30,6 +31,7 @@ reduction_functions = dict(
     min=dict(func_name='min', op=DataFrameMin, has_skipna=True),
     max=dict(func_name='max', op=DataFrameMax, has_skipna=True),
     count=dict(func_name='count', op=DataFrameCount, has_skipna=False),
+    mean=dict(func_name='mean', op=DataFrameMean, has_skipna=True)
 )
 
 
