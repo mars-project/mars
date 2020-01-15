@@ -19,7 +19,7 @@ from mars.tests.core import TestBase
 from mars.tiles import get_tiled
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.base import to_gpu, to_cpu
+from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index
 
 
 class Test(TestBase):
@@ -155,3 +155,57 @@ class Test(TestBase):
         series = get_tiled(series)
         self.assertEqual(series2.chunk_shape, series.chunk_shape)
         self.assertEqual(series2.nsplits, series.nsplits)
+
+    def testResetIndex(self):
+        data = pd.DataFrame([('bird',    389.0),
+                             ('bird',     24.0),
+                             ('mammal',   80.5),
+                             ('mammal', np.nan)],
+                            index=['falcon', 'parrot', 'lion', 'monkey'],
+                            columns=('class', 'max_speed'))
+        df = df_reset_index(from_pandas_df(data, chunk_size=2))
+        r = data.reset_index()
+
+        self.assertEqual(df.shape, (4, 3))
+        pd.testing.assert_series_equal(df.dtypes, r.dtypes)
+
+        df2 = df.tiles()
+
+        self.assertEqual(len(df2.chunks), 2)
+        self.assertEqual(df2.chunks[0].shape, (2, 3))
+        pd.testing.assert_index_equal(df2.chunks[0].index_value.to_pandas(), pd.RangeIndex(2))
+        pd.testing.assert_series_equal(df2.chunks[0].dtypes, r.dtypes)
+        self.assertEqual(df2.chunks[1].shape, (2, 3))
+        pd.testing.assert_index_equal(df2.chunks[1].index_value.to_pandas(), pd.RangeIndex(2, 4))
+        pd.testing.assert_series_equal(df2.chunks[1].dtypes, r.dtypes)
+
+        df = df_reset_index(from_pandas_df(data, chunk_size=1), drop=True)
+        r = data.reset_index(drop=True)
+
+        self.assertEqual(df.shape, (4, 2))
+        pd.testing.assert_series_equal(df.dtypes, r.dtypes)
+
+        df2 = df.tiles()
+
+        self.assertEqual(len(df2.chunks), 8)
+
+        for c in df2.chunks:
+            self.assertEqual(c.shape, (1, 1))
+            pd.testing.assert_index_equal(c.index_value.to_pandas(), pd.RangeIndex(c.index[0], c.index[0] + 1))
+            pd.testing.assert_series_equal(c.dtypes, r.dtypes[c.index[1]: c.index[1] + 1])
+
+        # test Series
+        series_data = pd.Series([1, 2, 3, 4], name='foo',
+                                index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+        s = series_reset_index(from_pandas_series(series_data, chunk_size=2))
+        r = series_data.reset_index()
+
+        self.assertEqual(s.shape, (4, 2))
+        pd.testing.assert_series_equal(s.dtypes, r.dtypes)
+
+        s2 = s.tiles()
+        self.assertEqual(len(s2.chunks), 2)
+        self.assertEqual(s2.chunks[0].shape, (2, 2))
+        pd.testing.assert_index_equal(s2.chunks[0].index_value.to_pandas(), pd.RangeIndex(2))
+        self.assertEqual(s2.chunks[1].shape, (2, 2))
+        pd.testing.assert_index_equal(s2.chunks[1].index_value.to_pandas(), pd.RangeIndex(2, 4))

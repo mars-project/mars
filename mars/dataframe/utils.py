@@ -165,21 +165,39 @@ def decide_series_chunk_size(shape, chunk_size, memory_usage):
     return normalize_chunk_sizes(shape, int(series_chunk_size))
 
 
-def parse_index(index_value, store_data=False, key=None):
+def parse_index(index_value, *args, store_data=False, key=None):
     def _extract_property(index, ret_data):
         kw = {
             '_is_monotonic_increasing': index.is_monotonic_increasing,
             '_is_monotonic_decreasing': index.is_monotonic_decreasing,
             '_is_unique': index.is_unique,
-            '_min_val': index.min(),
-            '_max_val': index.max(),
+            '_min_val': _get_index_min(index),
+            '_max_val': _get_index_max(index),
             '_min_val_close': True,
             '_max_val_close': True,
-            '_key': key or tokenize(index),
+            '_key': key or _tokenize_index(index, *args),
         }
         if ret_data:
             kw['_data'] = index.values
         return kw
+
+    def _tokenize_index(index, *token_objects):
+        if not index.empty:
+            return tokenize(index)
+        else:
+            return tokenize(index, *token_objects)
+
+    def _get_index_min(index):
+        try:
+            return index.min()
+        except TypeError:
+            return None
+
+    def _get_index_max(index):
+        try:
+            return index.max()
+        except TypeError:
+            return None
 
     def _serialize_index(index):
         properties = _extract_property(index, store_data)
@@ -191,11 +209,11 @@ def parse_index(index_value, store_data=False, key=None):
                 '_is_monotonic_increasing': True,
                 '_is_monotonic_decreasing': False,
                 '_is_unique': True,
-                '_min_val': _get_range_index_start(index),
-                '_max_val': _get_range_index_stop(index),
+                '_min_val': _get_index_min(index),
+                '_max_val': _get_index_max(index),
                 '_min_val_close': True,
                 '_max_val_close': False,
-                '_key': key or tokenize(index),
+                '_key': key or _tokenize_index(index, *args),
             }
         else:
             properties = _extract_property(index, False)
@@ -358,12 +376,16 @@ def build_split_idx_to_origin_idx(splits, increase=True):
     return res
 
 
-def build_empty_df(dtypes):
+def build_empty_df(dtypes, index=None):
     columns = dtypes.index
     df = pd.DataFrame(columns=columns)
     for c, d in zip(columns, dtypes):
-        df[c] = pd.Series(dtype=d)
+        df[c] = pd.Series(dtype=d, index=index)
     return df
+
+
+def build_empty_series(dtype, index=None, name=None):
+    return pd.Series(dtype=dtype, index=index, name=name)
 
 
 def concat_index_value(index_values, store_data=False):
@@ -436,8 +458,7 @@ def infer_index_value(left_index_value, right_index_value):
             isinstance(right_index_value.value, IndexValue.RangeIndex):
         if left_index_value.value.slice == right_index_value.value.slice:
             return left_index_value
-        key = tokenize(left_index_value.key, right_index_value.key)
-        return parse_index(pd.Int64Index([]), key=key)
+        return parse_index(pd.Int64Index([]), left_index_value, right_index_value)
 
     # when left index and right index is identical, and both of them are elements unique,
     # we can infer that the out index should be identical also
@@ -448,8 +469,7 @@ def infer_index_value(left_index_value, right_index_value):
     left_index = left_index_value.to_pandas()
     right_index = right_index_value.to_pandas()
     out_index = pd.Index([], dtype=find_common_type([left_index.dtype, right_index.dtype]))
-    key = tokenize(left_index_value.key, right_index_value.key)
-    return parse_index(out_index, key=key)
+    return parse_index(out_index, left_index_value, right_index_value)
 
 
 def filter_index_value(index_value, min_max, store_data=False):

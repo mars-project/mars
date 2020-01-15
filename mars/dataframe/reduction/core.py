@@ -175,7 +175,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 else:
                     dtypes = c.dtypes
                 reduced_shape = (1, len(dtypes))
-                index_value = parse_index(pd.RangeIndex(1))
+                index_value = parse_index(pd.RangeIndex(1), new_chunk_op)
                 dtypes = c.dtypes
             else:
                 reduced_shape = (c.shape[0], 1)
@@ -215,22 +215,24 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 chks = chunks[i: i + combine_size]
                 concat_op = DataFrameConcat(object_type=ObjectType.series)
                 length = sum([c.shape[0] for c in chks if len(c.shape) > 0])
+                range_num = -1 if np.isnan(length) else length
                 chk = concat_op.new_chunk(chks, shape=(length,), index=(i,), dtype=chks[0].dtype,
-                                          index_value=parse_index(pd.RangeIndex(length)))
+                                          index_value=parse_index(pd.RangeIndex(range_num), [c.key for c in chks]))
                 new_op = op.copy().reset_key()
                 new_op._stage = Stage.combine
                 new_chunks.append(new_op.new_chunk([chk], shape=(), index=(i,), dtype=chk.dtype,
-                                                   index_value=parse_index(pd.RangeIndex(0))))
+                                                   index_value=parse_index(pd.RangeIndex(-1))))
             chunks = new_chunks
 
         concat_op = DataFrameConcat(object_type=ObjectType.series)
         length = sum([c.shape[0] for c in chunks if len(c.shape) > 0])
+        range_num = -1 if np.isnan(length) else length
         chk = concat_op.new_chunk(chunks, shape=(length,), index=(0,), dtype=chunks[0].dtype,
-                                  index_value=parse_index(pd.RangeIndex(length)))
+                                  index_value=parse_index(pd.RangeIndex(range_num)))
         chunk_op = op.copy().reset_key()
         chunk_op._stage = Stage.agg
         chunk = chunk_op.new_chunk([chk], shape=(), index=(0,), dtype=chk.dtype,
-                                   index_value=parse_index(pd.RangeIndex(0)))
+                                   index_value=parse_index(pd.RangeIndex(-1)))
 
         new_op = op.copy().reset_key()
         nsplits = tuple((s,) for s in chunk.shape)
@@ -390,7 +392,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             raise NotImplementedError('Not support specified level now')
 
         return self.new_series([series], shape=(), dtype=series.dtype,
-                               index_value=parse_index(pd.RangeIndex(0)), name=series.name)
+                               index_value=parse_index(pd.RangeIndex(-1)), name=series.name)
 
     def __call__(self, a):
         if isinstance(a, DATAFRAME_TYPE):
