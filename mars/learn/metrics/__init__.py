@@ -12,12 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-from .utils.shuffle import shuffle
-from .contrib import xgboost, tensorflow, pytorch
-from .metrics import pairwise
-
-for _mod in [xgboost, tensorflow, pytorch]:
-    _mod.register_op()
-
-del _mod, shuffle, pairwise
+from .pairwise import euclidean_distances

@@ -12,12 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-from .utils.shuffle import shuffle
-from .contrib import xgboost, tensorflow, pytorch
-from .metrics import pairwise
+from ... import tensor as mt
 
-for _mod in [xgboost, tensorflow, pytorch]:
-    _mod.register_op()
 
-del _mod, shuffle, pairwise
+def row_norms(X, squared=False):
+    """Row-wise (squared) Euclidean norm of X.
+
+    Performs no input validation.
+
+    Parameters
+    ----------
+    X : array_like
+        The input tensor
+    squared : bool, optional (default = False)
+        If True, return squared norms.
+
+    Returns
+    -------
+    array_like
+        The row-wise (squared) Euclidean norm of X.
+    """
+
+    norms = (X * X).sum(axis=1)
+    if not squared:
+        norms = mt.sqrt(norms)
+    return norms

@@ -46,3 +46,4 @@ def get_output_types(*objs):
         else:  # pragma: no cover
             raise TypeError('Output can only be tensor, dataframe or series')
     return output_types
+
