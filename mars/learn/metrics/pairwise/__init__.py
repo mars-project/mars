@@ -13,12 +13,14 @@
 # limitations under the License.
 
 from .euclidean import euclidean_distances
+from .haversine import haversine_distances
 
 
 def _install():
     from .euclidean import EuclideanDistances
+    from .haversine import HaversineDistances
 
-    del EuclideanDistances
+    del EuclideanDistances, HaversineDistances
 
 
 _install()

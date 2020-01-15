@@ -34,6 +34,31 @@ class Test(unittest.TestCase):
     def setUp(self) -> None:
         self.executor = ExecutorForTest('numpy')
 
+    def testEuclideanDistancesOp(self):
+        x = mt.random.rand(10, 3)
+        xx = mt.random.rand(1, 10)
+        y = mt.random.rand(11, 3)
+
+        d = euclidean_distances(x, X_norm_squared=xx)
+        self.assertEqual(d.op.x_norm_squared.key, xx.T.key)
+
+        d = euclidean_distances(x, y, X_norm_squared=mt.random.rand(10, 1, dtype=mt.float32),
+                                Y_norm_squared=mt.random.rand(1, 11, dtype=mt.float32))
+        self.assertIsNone(d.op.x_norm_squared)
+        self.assertIsNone(d.op.y_norm_squared)
+
+        # XX shape incompatible
+        with self.assertRaises(ValueError):
+            euclidean_distances(x, X_norm_squared=mt.random.rand(10))
+
+        # XX shape incompatible
+        with self.assertRaises(ValueError):
+            euclidean_distances(x, X_norm_squared=mt.random.rand(11, 1))
+
+        # YY shape incompatible
+        with self.assertRaises(ValueError):
+            euclidean_distances(x, y, Y_norm_squared=mt.random.rand(10))
+
     def testEuclideanDistancesExecution(self):
         dense_raw_x = np.random.rand(30, 10)
         dense_raw_y = np.random.rand(40, 10)
