@@ -18,7 +18,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, BoolField, Int32Field
 from ...core import Entity, Base
 from ...tiles import TilesError
-from ...utils import check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape, ceildiv
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
@@ -67,14 +67,23 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
         return self.new_tensor(inputs, shape=a.shape, order=a.order)
 
     @staticmethod
-    def _process_val(val, a):
+    def _process_val(val, a, wrap):
+        """
+        given the `val`, `a`, `wrap` which are the arguments in `fill_diagonal`,
+        do some preprocess on `val` includes:
+
+        1. calculate the length to fill on diagonal, 2-d and n-d(n > 2)
+           as well as that `wrap` is True and `a` is a tall matrix need to be considered.
+        2. if val is a Tensor, rechunk it into one chunk.
+        """
+
         from ..datasource import diag
         from ..base import tile
 
         is_val_tensor = isinstance(val, TENSOR_TYPE)
 
         if a.ndim == 2:
-            if TensorFillDiagonal._is_tall(a):
+            if wrap and TensorFillDiagonal._is_tall(a):
                 size = sum(diag(sub).shape[0] for sub
                            in TensorFillDiagonal._split_tall_matrix(a))
             else:
@@ -86,8 +95,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
         repeat_method = tile if is_val_tensor else np.tile
         val_size = val.size
         if val_size < size:
-            n = size // val_size if size % val_size == 0 \
-                else size // val_size + 1
+            n = ceildiv(size, val_size)
             val = repeat_method(val, n)[:size]
         elif val_size > size:
             val = val[:size]
@@ -100,6 +108,14 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
 
     @staticmethod
     def _gen_val(val, diag_idx, cum_sizes):
+        """
+        Given a tensor-level `val`, calculate the chunk-level `val`.
+        Consider both the cases that `val` could be a tensor or ndarray.
+
+        :param val: tensor-level `val`
+        :diag_idx: chunk index on the diagonal direction
+        :cum_sizes: accumulative chunk sizes on the diagonal direction
+        """
         from .slice import TensorSlice
 
         if val.ndim == 0:
@@ -207,9 +223,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
     @staticmethod
     def _split_tall_matrix(a):
         blocksize = a.shape[1] + 1
-        n_block = a.shape[0] // blocksize \
-            if a.shape[0] % blocksize == 0 \
-            else a.shape[0] // blocksize + 1
+        n_block = ceildiv(a.shape[0], blocksize)
         return [a[i * blocksize: (i + 1) * blocksize]
                 for i in range(n_block)]
 
@@ -222,7 +236,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
         is_in_tensor_tall = cls._is_tall(in_tensor)
 
         if op.val.ndim > 0:
-            val = cls._process_val(op.val, in_tensor)
+            val = cls._process_val(op.val, in_tensor, op.wrap)
         else:
             val = op.val
 

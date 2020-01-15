@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import issparse, get_array_module, get_sparse_module, cp, cps, np, naked, is_cupy
+from ...utils import ceildiv
+from .core import issparse, get_array_module, \
+    get_sparse_module, cp, cps, np, naked, is_cupy
 
 
 class SparseNDArray(object):
@@ -1307,9 +1309,7 @@ class SparseArray(SparseNDArray):
         if val.size > expect_val_size:
             val = val[:expect_val_size]
         elif val.size < expect_val_size:
-            n_repeat = expect_val_size // val.size \
-                if expect_val_size % val.size == 0 \
-                else expect_val_size // val.size + 1
+            n_repeat = ceildiv(expect_val_size, val.size)
             val = xp.tile(val, n_repeat)[:expect_val_size]
         return val
 
