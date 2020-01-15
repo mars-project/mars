@@ -75,11 +75,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         empty_df = build_empty_df(df.dtypes)
         agg_df = empty_df.groupby(self.by).agg(self.func)
         shape = (np.nan, agg_df.shape[1])
-        index_value = parse_index(agg_df.index)
+        index_value = parse_index(agg_df.index, df.key)
         index_value.value.should_be_monotonic = True
         return self.new_dataframe([df], shape=shape, dtypes=agg_df.dtypes,
                                   index_value=index_value,
-                                  columns_value=parse_index(agg_df.columns))
+                                  columns_value=parse_index(agg_df.columns, self))
 
     @classmethod
     def _gen_shuffle_chunks(cls, op, in_df, chunks):

@@ -21,7 +21,7 @@ import pandas as pd
 
 from .. import opcodes as OperandDef
 from ..serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, ListField
-from ..utils import tokenize, get_shuffle_input_keys_idxes
+from ..utils import get_shuffle_input_keys_idxes
 from .core import SERIES_CHUNK_TYPE
 from .utils import hash_dtypes, filter_dtypes
 from .operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
@@ -126,8 +126,7 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
                 kw['index_value'] = filter_index_value(input_index_value, index_min_max)
             else:
                 kw['index_value'] = parse_index(inputs[0].index_value.to_pandas(),
-                                                key=tokenize(input_index_value.key,
-                                                             type(self).__name__))
+                                                input_index_value, type(self).__name__)
         if kw.get('columns_value', None) is None and getattr(inputs[0], 'columns_value', None) is not None:
             input_columns_value = inputs[0].columns_value
             input_dtypes = inputs[0].dtypes
@@ -136,9 +135,8 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
                 kw['columns_value'] = filter_index_value(input_columns_value, column_min_max,
                                                          store_data=True)
             else:
-                kw['columns_value'] = parse_index(inputs[0].columns_value.to_pandas(),
-                                                  key=tokenize(input_columns_value.key,
-                                                               type(self).__name__))
+                kw['columns_value'] = parse_index(inputs[0].columns_value.to_pandas(), input_columns_value,
+                                                  type(self).__name__)
             kw['dtypes'] = input_dtypes[kw['columns_value'].to_pandas()]
             column_shuffle_size = self.column_shuffle_size
             if column_shuffle_size is not None:
@@ -245,8 +243,7 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
             else:
                 # shuffle on index
                 kw['index_value'] = parse_index(index_align_map_chunks[0].index_value.to_pandas(),
-                                                key=tokenize([c.key for c in index_align_map_chunks],
-                                                             type(self).__name__))
+                                                [c.key for c in index_align_map_chunks], type(self).__name__)
         if kw.get('columns_value', None) is None and getattr(inputs[0].inputs[0], 'columns_value', None) is not None:
             index_align_map_chunks = inputs[0].inputs
             if index_align_map_chunks[0].op.column_min_max is not None:
@@ -436,7 +433,7 @@ def _get_monotonic_chunk_index_min_max(index, index_chunks):
 def _need_align_map(input_chunk, index_min_max, column_min_max,
                     dummy_index_splits=False, dummy_column_splits=False):
     if not dummy_index_splits:
-        assert not pd.isnull(index_min_max[0]) and not pd.isnull(index_min_max[2])
+        assert not index_min_max[0] is None and not index_min_max[2] is None
     if isinstance(input_chunk, SERIES_CHUNK_TYPE):
         if input_chunk.index_value is None:
             return True

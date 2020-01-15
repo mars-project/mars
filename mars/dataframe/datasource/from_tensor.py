@@ -25,7 +25,7 @@ from ...serialize import KeyField, SeriesField, DataTypeField, BoolField
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
 from ...tiles import TilesError
-from ...utils import tokenize, check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index
 
@@ -82,8 +82,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 index = astensor(index)
                 if index.ndim != 1:
                     raise ValueError('index should be 1-d, got {}-d'.format(index.ndim))
-                index_value = parse_index(pd.Index([], dtype=index.dtype),
-                                          key=tokenize(index.key, type(self).__name__))
+                index_value = parse_index(pd.Index([], dtype=index.dtype), index, type(self).__name__)
                 inputs.append(index)
             else:
                 index = pd.Index(index)
@@ -193,7 +192,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 assert op.index is not None
                 index_chunk = in_tensors[-1].cix[i, ]
                 index_value = parse_index(pd.Index([], dtype=index_chunk.dtype),
-                                          key=tokenize(index_chunk, type(chunk_op).__name__))
+                                          index_chunk, type(chunk_op).__name__)
             shape = (nsplit[i], len(out_df.dtypes))
             out_chunk = chunk_op.new_chunk([t.cix[i, ] for t in in_tensors],
                                            shape=shape, index=chunk_index,
@@ -250,7 +249,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 index_chunk = index_tensor.cix[in_chunk.index[0], ]
                 chunk_inputs.append(index_chunk)
                 index_value = parse_index(pd.Index([], dtype=index_tensor.dtype),
-                                          key=tokenize(index_chunk, type(out_op).__name__))
+                                          index_chunk, type(out_op).__name__)
 
             out_op.extra_params['index_stop'] = index_stop
             out_op.extra_params['column_stop'] = column_stop
@@ -362,16 +361,15 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
         series_index = out_series.index_value.to_pandas()
         for in_chunk in in_tensor.chunks:
             new_op = op.copy().reset_key()
+            new_op.extra_params['index_start'] = index_start
             chunk_inputs = [in_chunk]
             if index_tensor is not None:
                 index_chunk = index_tensor.cix[in_chunk.index]
                 chunk_inputs.append(index_chunk)
-                index_value = parse_index(pd.Index([], dtype=in_chunk.dtype),
-                                          key=tokenize(index_chunk, type(new_op).__name__))
+                index_value = parse_index(pd.Index([], dtype=in_chunk.dtype), index_chunk, type(new_op).__name__)
             else:
                 chunk_pd_index = series_index[index_start: index_start + in_chunk.shape[0]]
                 index_value = parse_index(chunk_pd_index, store_data=True)
-            new_op.extra_params['index_start'] = index_start
             index_start += in_chunk.shape[0]
             out_chunk = new_op.new_chunk(chunk_inputs, shape=in_chunk.shape, index=in_chunk.index,
                                          index_value=index_value, name=out_series.name)
@@ -401,8 +399,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
                     index = astensor(index)
                     if index.ndim != 1:
                         raise ValueError('index should be 1-d, got {}-d'.format(index.ndim))
-                    index_value = parse_index(pd.Index([], dtype=index.dtype),
-                                              key=tokenize(index.key, type(self).__name__))
+                    index_value = parse_index(pd.Index([], dtype=index.dtype), index, type(self).__name__)
                     inputs.append(index)
                 else:
                     index = pd.Index(index)

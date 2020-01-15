@@ -104,8 +104,10 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
                                   copy=self.copy_, indicator=self.indicator, validate=self.validate)
 
         # the `index_value` doesn't matter.
+        index_tokenize_objects = [left, right, self.how, self.left_on,
+                                  self.right_on, self.left_index, self.right_index]
         return self.new_dataframe([left, right], shape=(np.nan, merged.shape[1]), dtypes=merged.dtypes,
-                                  index_value=parse_index(merged.index),
+                                  index_value=parse_index(merged.index, *index_tokenize_objects),
                                   columns_value=parse_index(merged.columns, store_data=True))
 
 

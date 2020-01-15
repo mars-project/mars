@@ -26,7 +26,6 @@ from ...tensor.datasource import empty, tensor as astensor, \
     from_series as tensor_from_series, from_dataframe as tensor_from_dataframe
 from ...tensor.statistics.quantile import quantile as tensor_quantile
 from ...tensor.utils import recursive_tile
-from ...utils import tokenize
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..core import DATAFRAME_TYPE
 from ..datasource.from_tensor import series_from_tensor, dataframe_from_tensor
@@ -98,8 +97,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
         else:
             q_val = np.asanyarray(self._q)
             pd_index = pd.Index(q_val)
-        q_key = tokenize(a, q_val, self._interpolation,
-                         type(self).__name__)
+        tokenize_objects = (a, q_val, self._interpolation, type(self).__name__)
 
         if q_val.ndim == 0 and self._axis == 0:
             self._object_type = ObjectType.series
@@ -122,7 +120,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
         elif q_val.ndim == 1 and self._axis == 0:
             self._object_type = ObjectType.dataframe
             shape = (len(q_val), len(dtypes))
-            index_value = parse_index(pd_index, key=q_key, store_data=True)
+            index_value = parse_index(pd_index, *tokenize_objects, store_data=True)
             dtype_list = []
             for name in dtypes.index:
                 dtype_list.append(
@@ -137,7 +135,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             assert q_val.ndim == 1 and self._axis == 1
             self._object_type = ObjectType.dataframe
             shape = (len(q_val), a.shape[0])
-            index_value = parse_index(pd_index, key=q_key, store_data=True)
+            index_value = parse_index(pd_index, *tokenize_objects, store_data=True)
             pd_columns = a.index_value.to_pandas()
             dtype_list = np.full(len(pd_columns), self._calc_dtype_on_axis_1(a, dtypes))
             dtypes = pd.Series(dtype_list, index=pd_columns)
@@ -154,8 +152,6 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
         else:
             q_val = np.asanyarray(self._q)
             index_val = pd.Index(q_val)
-        index_key = tokenize(a, q_val, self._interpolation,
-                             type(self).__name__)
 
         # get dtype by tensor
         a_t = astensor(a)
@@ -170,7 +166,8 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             self._object_type = ObjectType.series
             return self.new_series(
                 inputs, shape=q_val.shape, dtype=dtype,
-                index_value=parse_index(index_val, store_data=True, key=index_key),
+                index_value=parse_index(index_val, a, q_val, self._interpolation,
+                                        type(self).__name__, store_data=True),
                 name=a.name)
 
     def __call__(self, a, q_input=None):
