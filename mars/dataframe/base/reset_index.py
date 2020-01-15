@@ -19,7 +19,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import BoolField, AnyField, StringField
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE, ObjectType
 from ..utils import parse_index, build_empty_df, build_empty_series
 
 
@@ -122,7 +122,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if op.inputs[0].op.object_type == ObjectType.dataframe:
+        if isinstance(op.inputs[0], DATAFRAME_TYPE):
             return cls._tile_dataframe(op)
         else:
             return cls._tile_series(op)
@@ -188,7 +188,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
                                   index_value=index_value, dtypes=dtypes)
 
     def __call__(self, a):
-        if a.op.object_type == ObjectType.dataframe:
+        if isinstance(a, DATAFRAME_TYPE):
             return self._call_dataframe(a)
         else:
             return self._call_series(a)
