@@ -54,7 +54,7 @@ class SessionActor(SchedulerActor):
     def get_graph_meta_refs(self):
         return self._graph_meta_refs
 
-    def get_graph_ref_by_tleable_key(self, tileable_key):
+    def get_graph_ref_by_tileable_key(self, tileable_key):
         return self._tileable_to_graph[tileable_key]
 
     def post_create(self):

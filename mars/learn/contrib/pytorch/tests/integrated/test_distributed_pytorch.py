@@ -36,3 +36,22 @@ class Test(LearnIntegrationTestBase):
                 path, n_workers=2, command_argv=['multiple'],
                 port=9945, session=sess, run_kwargs=run_kwargs
             )['status'], 'ok')
+
+
+class TestAPI(LearnIntegrationTestBase):
+    def testDistributedRunPyTorchScript(self):
+        import mars.tensor as mt
+        import numpy as np
+        from mars.context_ import Context
+
+        scheduler_ep = '127.0.0.1:' + self.scheduler_port
+        service_ep = 'http://127.0.0.1:' + self.web_port
+        ctx = Context(scheduler_endpoint=scheduler_ep)
+        with new_session(service_ep).as_default() as sess:
+            session_id = sess.session_id
+            t = mt.random.rand(10, 10, chunk_size=3)
+            r = t.execute(name='test')
+            self.assertEqual(t.key, ctx.get_tileable_key_by_name(session_id, 'test'))
+            np.testing.assert_array_equal(r, ctx.get_tileable_data(session_id, t.key))
+            np.testing.assert_array_equal(r[slice(4, 7), slice(4, 8)],
+                                          ctx.get_tileable_data(session_id, t.key, indexes=[slice(4, 7), slice(4, 8)]))

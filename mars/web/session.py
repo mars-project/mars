@@ -158,7 +158,7 @@ class Session(object):
         session_url = self._endpoint + '/api/session/' + self._session_id
         graph_json = graph.to_json()
 
-        resp_json = self._submit_graph(graph_json, targets_join, names=name, compose=compose)
+        resp_json = self._submit_graph(graph_json, targets_join, names=name or '', compose=compose)
         graph_key = resp_json['graph_key']
         graph_url = '%s/graph/%s' % (session_url, graph_key)
 

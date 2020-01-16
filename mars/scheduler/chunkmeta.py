@@ -525,7 +525,7 @@ class ChunkMetaClient(object):
             meta_dict.update(zip(keys, results))
         metas = [meta_dict.get(k) for k in chunk_keys]
         if filter_fields is not None:
-            metas = [[getattr(m, field) for field in filter_fields] for m in metas]
+            metas = [getattr(m, field) for field in filter_fields for m in metas]
         return metas
 
     def batch_set_chunk_meta(self, session_id, keys, metas, _tell=False, _wait=True):

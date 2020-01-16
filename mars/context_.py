@@ -18,6 +18,7 @@ from collections import defaultdict
 from typing import List
 
 from .utils import merge_chunks
+from .serialize import dataserializer
 from .worker.api import WorkerAPI
 from .scheduler.api import MetaAPI
 from .tensor.datasource import empty
@@ -26,51 +27,60 @@ from .tensor.core import TENSOR_TYPE
 
 
 class Context:
-    def __init__(self):
+    def __init__(self, actor_ctx=None, scheduler_endpoint=None):
         self._worker_api = WorkerAPI()
-        self._meta_api = MetaAPI()
+        self._meta_api = MetaAPI(actor_ctx=actor_ctx, scheduler_endpoint=scheduler_endpoint)
 
     # Meta API
-    def get_tileable_metas(self, session_id, graph_key, tileable_keys, filter_fields: List[str]=None) -> List:
-        return self._meta_api.get_tileable_metas(session_id, graph_key, tileable_keys, filter_fields)
+    def get_tileable_metas(self, session_id, tileable_keys, filter_fields: List[str]=None) -> List:
+        return self._meta_api.get_tileable_metas(session_id, tileable_keys, filter_fields)
 
     def get_chunk_metas(self, session_id, chunk_keys, filter_fields: List[str] = None) -> List:
         return self._meta_api.get_chunk_metas(session_id, chunk_keys, filter_fields)
 
+    def get_tileable_key_by_name(self, session_id, name: str):
+        return self._meta_api.get_tileable_key_by_name(session_id, name)
+
     # Worker API
     def get_chunks_data(self, session_id, worker: str, chunk_keys: List[str], indexes: List=None,
-                        compression_types: List[str]=None) -> List:
+                        compression_types: List[str]=None):
         return self._worker_api.get_chunks_data(session_id, worker, chunk_keys, indexes=indexes,
                                                 compression_types=compression_types)
 
     # Fetch tileable data by tileable keys and indexes.
-    def get_tileable_data(self, session_id, graph_key: str, tileable_key: str, indexes: List=None,
+    def get_tileable_data(self, session_id, tileable_key: str, indexes: List=None,
                           compression_types: List[str]=None):
-        nsplits, chunk_keys, chunk_indexes = self.get_tileable_metas(session_id, graph_key, [tileable_key])
+        nsplits, chunk_keys, chunk_indexes = self.get_tileable_metas(session_id, [tileable_key])[0]
         chunk_idx_to_keys = dict(zip(chunk_indexes, chunk_keys))
         chunk_keys_to_idx = dict(zip(chunk_keys, chunk_indexes))
         endpoints = self.get_chunk_metas(session_id, chunk_keys, filter_fields=['workers'])
         chunk_keys_to_worker = dict((chunk_key, random.choice(es)) for es, chunk_key in zip(endpoints, chunk_keys))
+
         chunk_workers = defaultdict(list)
-        [chunk_workers[e].append(chunk_key) for e, chunk_key in chunk_keys_to_worker.items()]
+        [chunk_workers[e].append(chunk_key) for chunk_key, e in chunk_keys_to_worker.items()]
 
         chunk_results = dict()
         if not indexes:
+            datas = []
             for endpoint, chunks in chunk_workers.items():
-                datas = self.get_chunks_data(session_id, endpoint, chunks, compression_types=compression_types)
-                chunk_results.update(dict(zip([chunk_keys_to_idx[k] for k in chunks], datas)))
+                datas.append(self.get_chunks_data(session_id, endpoint, chunks, compression_types=compression_types))
+            datas = [d.result() for d in datas]
+            for (endpoint, chunks), d in zip(chunk_workers.items(), datas):
+                d = [dataserializer.loads(db) for db in d]
+                chunk_results.update(dict(zip([chunk_keys_to_idx[k] for k in chunks], d)))
         elif all(isinstance(ind, slice) for ind in indexes):
-            chunk_results = dict()
-            indexes = dict()
+            axis_slices = dict()
             for axis, s in enumerate(indexes):
                 idx_to_slices = slice_split(s, nsplits[axis])
-                indexes[axis] = idx_to_slices
+                axis_slices[axis] = idx_to_slices
 
             result_chunks = dict()
-            for chunk_index in itertools.product(*[v.keys() for v in indexes.values()]):
-                slice_obj = tuple(indexes[axis][chunk_idx] for axis, chunk_idx in enumerate(chunk_index))
+            for chunk_index in itertools.product(*[v.keys() for v in axis_slices.values()]):
+                slice_obj = tuple(axis_slices[axis][chunk_idx] for axis, chunk_idx in enumerate(chunk_index))
                 chunk_key = chunk_idx_to_keys[chunk_index]
                 result_chunks[chunk_key] = (chunk_index, slice_obj)
+
+            chunk_datas = dict()
             for endpoint, chunks in chunk_workers.items():
                 to_fetch_keys = []
                 to_fetch_indexes = []
@@ -78,12 +88,16 @@ class Context:
                 for r_chunk, (chunk_index, slice_obj) in result_chunks.items():
                     if r_chunk in chunks:
                         to_fetch_keys.append(r_chunk)
-                        to_fetch_indexes.append(to_fetch_indexes)
+                        to_fetch_indexes.append(slice_obj)
                         to_fetch_idx.append(chunk_index)
                 if to_fetch_keys:
                     datas = self.get_chunks_data(session_id, endpoint, to_fetch_keys, indexes=to_fetch_indexes,
                                                  compression_types=compression_types)
-                    chunk_results.update(dict(zip(to_fetch_idx, datas)))
+                    chunk_datas[tuple(to_fetch_idx)] = datas
+            chunk_datas = dict((k, v.result()) for k, v in chunk_datas.items())
+            for idx, d in chunk_datas.items():
+                d = [dataserializer.loads(db) for db in d]
+                chunk_results.update(dict(zip(idx, d)))
         else:
             if any(isinstance(ind, TENSOR_TYPE) for ind in indexes):
                 raise TypeError("Doesn't support indexing by tensors")
@@ -115,8 +129,9 @@ class Context:
                                                  compression_types=compression_types)
                     chunk_results.update(dict(zip(to_fetch_idx, datas)))
 
+        chunk_results = [(k, v) for k, v in chunk_results.items()]
         if len(chunk_results) == 1:
-            ret = list(chunk_results.values())[0]
+            ret = chunk_results[0][1]
         else:
             ret = merge_chunks(chunk_results)
         return ret

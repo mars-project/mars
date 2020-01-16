@@ -16,22 +16,32 @@ from typing import List
 
 from ..actors import new_client
 from .graph import GraphActor
+from .session import SessionActor
 from .chunkmeta import ChunkMetaClient
 from .utils import SchedulerClusterInfoActor
 
 
 class MetaAPI:
-    def __init__(self, actor_ctx=None, scheduler_ip=None):
+    def __init__(self, actor_ctx=None, scheduler_endpoint=None):
         self._actor_ctx = actor_ctx or new_client()
         self._cluster_info = self._actor_ctx.actor_ref(
-            SchedulerClusterInfoActor.default_uid(), address=scheduler_ip)
+            SchedulerClusterInfoActor.default_uid(), address=scheduler_endpoint)
         self._chunk_meta_client = ChunkMetaClient(self._actor_ctx, self._cluster_info)
 
-    def get_tileable_metas(self, session_id, graph_key, tileable_keys, filter_fields: List[str]=None) -> List:
-        graph_uid = GraphActor.gen_uid(session_id, graph_key)
-        graph_ref = self._actor_ctx.actor_ref(graph_uid)
-        return graph_ref.get_tileable_metas(tileable_keys, filter_fields=filter_fields, _wait=False)
+    def _get_session_ref(self, session_id):
+        session_uid = SessionActor.gen_uid(session_id)
+        session_ref = self._actor_ctx.actor_ref(session_uid, address=self._cluster_info.get_scheduler(session_uid))
+        return session_ref
+
+    def get_tileable_key_by_name(self, session_id, name: str):
+        sess_ref = self._get_session_ref(session_id)
+        return sess_ref.get_tileable_key(name)
+
+    def get_tileable_metas(self, session_id, tileable_keys, filter_fields: List[str]=None) -> List:
+        session_ref = self._get_session_ref(session_id)
+        graph_ref = self._actor_ctx.actor_ref(session_ref.get_graph_ref_by_tileable_key(tileable_keys[0]))
+        return graph_ref.get_tileable_metas(tileable_keys, filter_fields=filter_fields)
 
     def get_chunk_metas(self, session_id, chunk_keys, filter_fields: List[str]=None) -> List:
-        return self._chunk_meta_client.batch_get_chunk_meta(session_id, chunk_keys, filter_fields=filter_fields)
-
+        return self._chunk_meta_client.batch_get_chunk_meta(
+            session_id, chunk_keys, filter_fields=filter_fields)

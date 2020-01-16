@@ -176,7 +176,7 @@ class MarsAPI(object):
     def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None, compressions=None):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        nsplits, chunk_keys, chunk_indexes = graph_ref.get_tileable_metas(tileable_key)
+        nsplits, chunk_keys, chunk_indexes = graph_ref.get_tileable_metas([tileable_key])[0]
         chunk_index_to_key = dict((index, key) for index, key in zip(chunk_indexes, chunk_keys))
         if not index_obj:
             chunk_results = dict((idx, self.fetch_chunk_data(session_id, k)) for

@@ -23,7 +23,7 @@ class WorkerAPI:
         self._actor_context = actor_ctx or new_client()
 
     def get_chunks_data(self, session_id, worker: str, chunk_keys: List[str], indexes: List=None,
-                        compression_types: List[str]=None) -> List:
+                        compression_types: List[str]=None):
         """
         Fetch chunks data from a specified worker.
         :param session_id: session_id
@@ -34,5 +34,5 @@ class WorkerAPI:
         """
         sender_ref = self._actor_context.actor_ref(ResultSenderActor.default_uid(), address=worker)
         compression_type = max(compression_types) if compression_types else None
-        return sender_ref.fetch_batch_data(session_id, chunk_keys, indexes=indexes,
+        return sender_ref.fetch_batch_data(session_id, chunk_keys, index_objs=indexes,
                                            compression_type=compression_type, _wait=False)
