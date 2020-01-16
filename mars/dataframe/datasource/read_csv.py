@@ -288,7 +288,7 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
         mini_df = pd.read_csv(BytesIO(b), sep=sep, index_col=index_col, dtype=dtype, names=names, header=header)
 
     if isinstance(mini_df.index, pd.RangeIndex):
-        index_value = parse_index(pd.RangeIndex(0))
+        index_value = parse_index(pd.RangeIndex(-1))
     else:
         index_value = parse_index(mini_df.index)
     columns_value = parse_index(mini_df.columns, store_data=True)

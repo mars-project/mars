@@ -311,7 +311,7 @@ class TensorRandomOperand(TensorOperand):
                 if slot not in set(TensorRandomOperand.__slots__)]
 
     def _update_key(self):
-        self._key = tokenize(type(self),
+        self._key = tokenize(type(self).__name__,
                              *tuple(getattr(self, k, None) for k in self._keys_))
         return self
 
