@@ -15,14 +15,17 @@
 from .euclidean import euclidean_distances
 from .haversine import haversine_distances
 from .manhattan import manhattan_distances
+from .cosine import cosine_distances, cosine_similarity
 
 
 def _install():
     from .euclidean import EuclideanDistances
     from .haversine import HaversineDistances
     from .manhattan import ManhattanDistances
+    from .cosine import CosineDistances
 
-    del EuclideanDistances, HaversineDistances, ManhattanDistances
+    del EuclideanDistances, HaversineDistances, \
+        ManhattanDistances, CosineDistances
 
 
 _install()
