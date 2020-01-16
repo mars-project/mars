@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...core import build_mode
 from .add import add, TensorAdd, TensorTreeAdd
 from .subtract import subtract, TensorSubtract
 from .multiply import multiply, TensorMultiply, TensorTreeMultiply
@@ -123,6 +124,7 @@ def _wrap_iop(func):
 
 def _install():
     from ..core import TENSOR_TYPE, Tensor, TensorData
+    from ..datasource import tensor as astensor
     from .add import add, radd
     from .subtract import subtract, rsubtract
     from .multiply import multiply, rmultiply
@@ -136,6 +138,13 @@ def _install():
     from .bitand import bitand, rbitand
     from .bitor import bitor, rbitor
     from .bitxor import bitxor, rbitxor
+
+    def _wrap_equal(func):
+        def eq(x1, x2, **kwargs):
+            if build_mode().is_build_mode:
+                return astensor(x1)._equals(x2)
+            return func(x1, x2, **kwargs)
+        return eq
 
     for cls in TENSOR_TYPE:
         setattr(cls, '__add__', add)
@@ -169,7 +178,7 @@ def _install():
         setattr(cls, '__irshift__', _wrap_iop(rshift))
         setattr(cls, '__rrshift__', rrshift)
 
-        setattr(cls, '__eq__', equal)
+        setattr(cls, '__eq__', _wrap_equal(equal))
         setattr(cls, '__ne__', not_equal)
         setattr(cls, '__lt__', less)
         setattr(cls, '__le__', less_equal)

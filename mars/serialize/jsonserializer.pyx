@@ -483,7 +483,12 @@ cdef class JsonSerializeProvider(Provider):
                     tag, model_instance, err)).with_traceback(tb) from err
             if val is None:
                 return
-            obj[tag] = self._serialize_value(val, field.type, weak_ref=field.weak_ref)
+            try:
+                obj[tag] = self._serialize_value(val, field.type, weak_ref=field.weak_ref)
+            except TypeError:
+                tp, err, tb = sys.exc_info()
+                raise tp('Fail to serialize field `{}` for {}, reason: {}'.format(
+                    tag, model_instance, err)).with_traceback(tb) from err
 
     cdef inline _deserialize_value(self, obj, list callbacks, bint weak_ref):
         if not isinstance(obj, dict):

@@ -128,5 +128,5 @@ def isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
     >>> mt.isclose([1.0, mt.nan], [1.0, mt.nan], equal_nan=True).execute()
     array([True, True])
     """
-    op = TensorIsclose(rtol=rtol, atol=atol, equal_nan=equal_nan, dtype=bool)
+    op = TensorIsclose(rtol=rtol, atol=atol, equal_nan=equal_nan, dtype=np.dtype(bool))
     return op(a, b)

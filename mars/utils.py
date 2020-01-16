@@ -761,6 +761,29 @@ def copy_tileables(tileables, **kwargs):
     return op.new_tileables(inputs, kws=kws, output_limit=len(kws))
 
 
+def require_not_none(obj):
+    def wrap(func):
+        if obj is not None:
+            def inner(*args, **kwargs):
+                return func(*args, **kwargs)
+            return inner
+        else:
+            return
+    return wrap
+
+
+def require_module(module):
+    def wrap(func):
+        try:
+            importlib.import_module(module)
+
+            def inner(*args, **kwargs):
+                return func(*args, **kwargs)
+            return inner
+        except ImportError:
+            return
+    return wrap
+
 def ignore_warning(func):
     def inner(*args, **kwargs):
         with warnings.catch_warnings():

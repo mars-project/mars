@@ -324,3 +324,28 @@ class Test(unittest.TestCase):
         self.assertTupleEqual(utils.insert_reversed_tuple((7, 4, 3, 1), 6), (7, 6, 4, 3, 1))
         self.assertTupleEqual(utils.insert_reversed_tuple((7, 4, 3, 1), 4), (7, 4, 3, 1))
         self.assertTupleEqual(utils.insert_reversed_tuple((7, 4, 3, 1), 0), (7, 4, 3, 1, 0))
+
+    def testRequireNotNone(self):
+        @utils.require_not_none(1)
+        def should_exist():
+            pass
+
+        self.assertIsNotNone(should_exist)
+
+        @utils.require_not_none(None)
+        def should_not_exist():
+            pass
+
+        self.assertIsNone(should_not_exist)
+
+        @utils.require_module('numpy.fft')
+        def should_exist_np():
+            pass
+
+        self.assertIsNotNone(should_exist_np)
+
+        @utils.require_module('numpy.fft_error')
+        def should_not_exist_np():
+            pass
+
+        self.assertIsNone(should_not_exist_np)

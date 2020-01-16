@@ -17,9 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import build_mode
 from ..utils import inject_dtype
-from ..datasource import tensor as astensor
 from .core import TensorBinOp
 from .utils import arithmetic_operand
 
@@ -73,8 +71,6 @@ def equal(x1, x2, out=None, where=None, **kwargs):
     >>> mt.equal(1, mt.ones(1))
     array([ True])
     """
-    if build_mode().is_build_mode:
-        return astensor(x1)._equals(x2)
 
     op = TensorEqual(**kwargs)
     return op(x1, x2, out=out, where=where)
