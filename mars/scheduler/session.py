@@ -28,6 +28,8 @@ class SessionActor(SchedulerActor):
         self._session_id = session_id
         self._args = kwargs
 
+        self._tileable_names = dict()
+
         self._cluster_info_ref = None
         self._assigner_ref = None
         self._manager_ref = None
@@ -42,6 +44,9 @@ class SessionActor(SchedulerActor):
 
     def get_argument(self, key):
         return self._args[key]
+
+    def get_tileable_key(self, name):
+        return self._tileable_names[name]
 
     def get_graph_refs(self):
         return self._graph_refs
@@ -73,10 +78,11 @@ class SessionActor(SchedulerActor):
             self.ctx.destroy_actor(mut_tensor_ref)
 
     @log_unhandled
-    def submit_tileable_graph(self, serialized_graph, graph_key, target_tileables=None, compose=True):
+    def submit_tileable_graph(self, serialized_graph, graph_key, target_tileables=None, name=None, compose=True):
         from .graph import GraphActor, GraphMetaActor
 
         graph_uid = GraphActor.gen_uid(self._session_id, graph_key)
+
         graph_addr = self.get_scheduler(graph_uid)
         graph_ref = self.ctx.create_actor(GraphActor, self._session_id, graph_key,
                                           serialized_graph, target_tileables=target_tileables,
@@ -86,9 +92,11 @@ class SessionActor(SchedulerActor):
             GraphMetaActor.gen_uid(self._session_id, graph_key), address=graph_addr)
 
         graph_ref.execute_graph(_tell=True, compose=compose)
-        for tileable_key in target_tileables or ():
+
+        for tileable_key, tileable_name in zip(target_tileables or (), name or ()):
             if tileable_key not in self._tileable_to_graph:
                 self._tileable_to_graph[tileable_key] = graph_ref
+            self._tileable_names[tileable_name] = tileable_key
         return graph_ref
 
     @log_unhandled

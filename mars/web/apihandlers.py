@@ -97,6 +97,7 @@ class GraphsApiHandler(MarsApiRequestHandler):
         try:
             graph = self.get_argument('graph')
             target = self.get_argument('target').split(',')
+            name = self.get_argument('name').split(',')
             compose = bool(int(self.get_argument('compose', '1')))
         except web.MissingArgumentError as ex:
             self.write(json.dumps(dict(msg=str(ex))))
@@ -104,7 +105,7 @@ class GraphsApiHandler(MarsApiRequestHandler):
 
         try:
             graph_key = tokenize(str(uuid.uuid4()))
-            self.web_api.submit_graph(session_id, graph, graph_key, target, compose)
+            self.web_api.submit_graph(session_id, graph, graph_key, target, name=name, compose=compose)
             self.write(json.dumps(dict(graph_key=graph_key)))
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
