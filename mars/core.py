@@ -65,7 +65,7 @@ class Base(HasKey):
         if hasattr(self, '_key'):
             return self._key
         else:
-            return (type(self), *self._values_)
+            return type(self), self._values_
 
     def _obj_set(self, k, v):
         object.__setattr__(self, k, v)

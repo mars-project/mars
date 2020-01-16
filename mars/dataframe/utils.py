@@ -165,7 +165,7 @@ def decide_series_chunk_size(shape, chunk_size, memory_usage):
     return normalize_chunk_sizes(shape, int(series_chunk_size))
 
 
-def parse_index(index_value, *args, store_data=False, key=None):
+def parse_index(index_value, *args, **kwargs):
     def _extract_property(index, ret_data):
         kw = {
             '_is_monotonic_increasing': index.is_monotonic_increasing,
@@ -226,6 +226,12 @@ def parse_index(index_value, *args, store_data=False, key=None):
         kw = _extract_property(index, store_data)
         kw['_sortorder'] = index.sortorder
         return IndexValue.MultiIndex(_names=index.names, **kw)
+
+    store_data = kwargs.pop('store_data', None)
+    key = kwargs.pop('key', None)
+
+    if kwargs:  # pragma: no cover
+        raise TypeError('Unknown keyword: {}'.format(list(kwargs)[0]))
 
     if isinstance(index_value, pd.RangeIndex):
         return IndexValue(_index_value=_serialize_range_index(index_value))

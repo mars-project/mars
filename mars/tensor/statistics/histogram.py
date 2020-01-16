@@ -425,8 +425,11 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
 
     def __init__(self, input=None, bins=None, range=None, weights=None,
                  input_min=None, input_max=None, dtype=None, **kw):
-        super().__init__(_input=input, _bins=bins, _range=range, _weights=weights,
-                         _input_min=input_min, _input_max=input_max, _dtype=dtype, **kw)
+        super(TensorHistogramBinEdges, self).__init__(_input=input, _bins=bins,
+                                                      _range=range, _weights=weights,
+                                                      _input_min=input_min,
+                                                      _input_max=input_max,
+                                                      _dtype=dtype, **kw)
         if getattr(self, '_calc_bin_edges_dependencies', None) is None:
             self._calc_bin_edges_dependencies = []
 
@@ -455,7 +458,7 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
         return self._input_max
 
     def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
+        super(TensorHistogramBinEdges, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
         self._input = next(inputs_iter)
         if isinstance(self._bins, TENSOR_TYPE):
@@ -776,8 +779,9 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
 
     def __init__(self, input=None, bins=None, range=None, weights=None,
                  density=None, ret_bins=None, **kw):
-        super().__init__(_input=input, _bins=bins, _range=range, _weights=weights,
-                         _density=density, _ret_bins=ret_bins, **kw)
+        super(TensorHistogram, self).__init__(_input=input, _bins=bins,
+                                              _range=range, _weights=weights,
+                                              _density=density, _ret_bins=ret_bins, **kw)
 
     @property
     def input(self):

@@ -33,8 +33,8 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
     _col_fill = AnyField('col_fill')
 
     def __init__(self, level=None, drop=None, name=None, col_level=None, col_fill=None, object_type=None, **kwargs):
-        super().__init__(_level=level, _drop=drop, _name=name, _col_level=col_level,
-                         _col_fill=col_fill, _object_type=object_type, **kwargs)
+        super(DataFrameResetIndex, self).__init__(_level=level, _drop=drop, _name=name, _col_level=col_level,
+                                                  _col_fill=col_fill, _object_type=object_type, **kwargs)
 
     @property
     def level(self):
