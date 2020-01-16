@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from ..serialize import DataTypeField
-from ..operands import Operand, TileableOperandMixin, HasInput, ShuffleProxy, \
-    ShuffleMap, ShuffleReduce, Fuse
+from ..operands import Operand, TileableOperandMixin, HasInput, ShuffleProxy, MapReduceOperand, Fuse
 from ..utils import calc_nsplits
 from .core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk, TensorOrder
 
@@ -138,15 +137,7 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
         return getattr(self, '_dtype', None)
 
 
-class TensorShuffleMap(ShuffleMap):
-    _dtype = DataTypeField('dtype')
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
-
-
-class TensorShuffleReduce(ShuffleReduce):
+class TensorMapReduceOperand(MapReduceOperand):
     _dtype = DataTypeField('dtype')
 
     @property

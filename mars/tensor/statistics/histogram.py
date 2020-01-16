@@ -799,7 +799,7 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
         return 1 if not self._ret_bins else 2
 
     def _set_inputs(self, inputs):
-        super(TensorHistogram, self)._set_inputs(inputs)
+        super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
         self._input = next(inputs_iter)
         if isinstance(self._bins, TENSOR_TYPE):

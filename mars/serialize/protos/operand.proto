@@ -289,10 +289,8 @@ message OperandDef {
         // the fancy indexes will be distributed to the left chunks
         // the concat phase will concat back the indexed left chunks and index
         // according to the original fancy index order
-        FANCY_INDEX_DISTRIBUTE_MAP = 424;
-        FANCY_INDEX_DISTRIBUTE_REDUCE = 425;
-        FANCY_INDEX_CONCAT_MAP = 426;
-        FANCY_INDEX_CONCAT_REDUCE = 427;
+        FANCY_INDEX_DISTRIBUTE = 424;
+        FANCY_INDEX_CONCAT = 425;
 
         // linear algebra
         TENSORDOT = 501;
@@ -351,14 +349,10 @@ message OperandDef {
 
         // shuffle
         SHUFFLE_PROXY = 2001;
-        RESHAPE_MAP = 2002;
-        RESHAPE_REDUCE = 2003;
         DATAFRAME_INDEX_ALIGN_MAP = 2004;
         DATAFRAME_INDEX_ALIGN_REDUCE = 2005;
         PERMUTATION_MAP = 2006;
         PERMUTATION_REDUCE = 2007;
-        UNIQUE_MAP = 2008;
-        UNIQUE_REDUCE = 2009;
         UNIQUE_INVERSE_REDUCE = 2013;
 
         // indexing
@@ -389,21 +383,11 @@ message OperandDef {
         // parallel sorting by regular sampling
         PSRS_SORT_REGULAR_SMAPLE = 2040;
         PSRS_CONCAT_PIVOT = 2041;
-        PSRS_SHUFFLE_MAP = 2042;
-        PSRS_SHUFFLE_REDUCE = 2043;
-        PSRS_ALIGN_MAP = 2044;
-        PSRS_ALIGN_REDUCE = 2045;
+        PSRS_SHUFFLE = 2042;
+        PSRS_ALIGN = 2043;
         // partition
         CALC_PARTITIONS_INFO = 2046;
         PARTITION_MERGED = 2047;
-
-        // pdist
-        PDIST_MAP = 2050;
-        PDIST_REDUCE = 2051;
-
-        // squareform
-        SQUAREFORM_MAP = 2052;
-        SQUAREFORM_REDUCE = 2053;
 
         // store
         READ_CSV = 2100;

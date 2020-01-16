@@ -17,18 +17,18 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import BoolField, Int32Field, Int64Field
-from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
 from ...config import options
+from ...operands import OperandStage
+from ...serialize import BoolField, Int32Field, Int64Field
 from ...tiles import TilesError
-from ..operands import TensorOperand, TensorOperandMixin, \
-    TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
+from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
+from ..operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
 from ..utils import validate_axis, hash_on_axis
 
 
-class TensorUnique(TensorOperand, TensorOperandMixin):
+class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.UNIQUE
 
     _return_index = BoolField('return_index')
@@ -37,14 +37,21 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
     _axis = Int32Field('axis')
     _aggregate_size = Int32Field('aggregate_size')
 
+    _aggregate_id = Int32Field('aggregate_id')
+    _start_pos = Int64Field('start_pos')
+
     def __init__(self, return_index=None, return_inverse=None, return_counts=None,
-                 axis=None, dtype=None, gpu=None, aggregate_size=None, **kw):
+                 axis=None, start_pos=None, stage=None, shuffle_key=None,
+                 dtype=None, gpu=None, aggregate_id=None, aggregate_size=None, **kw):
         super().__init__(_return_index=return_index, _return_inverse=return_inverse,
-                         _return_counts=return_counts, _axis=axis,
-                         _aggregate_size=aggregate_size, _dtype=dtype, _gpu=gpu, **kw)
+                         _return_counts=return_counts, _axis=axis, _start_pos=start_pos,
+                         _aggregate_id=aggregate_id, _aggregate_size=aggregate_size,
+                         _stage=stage, _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def output_limit(self):
+        if self.stage == OperandStage.map:
+            return 1
         return 1 + bool(self._return_index) + \
                bool(self._return_inverse) + bool(self._return_counts)
 
@@ -67,6 +74,14 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
     @property
     def aggregate_size(self):
         return self._aggregate_size
+
+    @property
+    def aggregate_id(self):
+        return self._aggregate_id
+
+    @property
+    def start_pos(self):
+        return self._start_pos
 
     @classmethod
     def _gen_kws(cls, op, input_obj, chunk=False, chunk_index=None):
@@ -173,12 +188,13 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
         start_poses = np.cumsum((0,) + unique_on_chunk_sizes)[:-1]
         map_chunks = []
         for c in inp.chunks:
-            map_op = TensorUniqueShuffleMap(return_index=op.return_index,
-                                            return_inverse=op.return_inverse,
-                                            return_counts=op.return_counts,
-                                            axis=op.axis, aggregate_size=aggregate_size,
-                                            start_pos=start_poses[c.index[op.axis]],
-                                            dtype=inp.dtype)
+            map_op = TensorUnique(stage=OperandStage.map,
+                                  return_index=op.return_index,
+                                  return_inverse=op.return_inverse,
+                                  return_counts=op.return_counts,
+                                  axis=op.axis, aggregate_size=aggregate_size,
+                                  start_pos=start_poses[c.index[op.axis]],
+                                  dtype=inp.dtype)
             shape = list(c.shape)
             shape[op.axis] = np.nan
             map_chunks.append(map_op.new_chunk([c], shape=tuple(shape), index=c.index))
@@ -188,11 +204,12 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
 
         reduce_chunks = [list() for _ in range(len(op.outputs))]
         for i in range(aggregate_size):
-            reduce_op = TensorUniqueShuffleReduce(return_index=op.return_index,
-                                                  return_inverse=op.return_inverse,
-                                                  return_counts=op.return_counts,
-                                                  axis=op.axis, aggregate_id=i,
-                                                  shuffle_key=str(i))
+            reduce_op = TensorUnique(stage=OperandStage.reduce,
+                                     return_index=op.return_index,
+                                     return_inverse=op.return_inverse,
+                                     return_counts=op.return_counts,
+                                     axis=op.axis, aggregate_id=i,
+                                     shuffle_key=str(i))
             kws = cls._gen_kws(op, inp, chunk=True, chunk_index=i)
             chunks = reduce_op.new_chunks([shuffle_chunk], kws=kws,
                                           order=op.outputs[0].order)
@@ -240,69 +257,7 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
             return cls._tile_via_shuffle(op)
 
     @classmethod
-    def execute(cls, ctx, op):
-        (ar,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
-
-        with device(device_id):
-            results = xp.unique(ar, return_index=op.return_index,
-                                return_inverse=op.return_inverse,
-                                return_counts=op.return_counts,
-                                axis=op.axis)
-            outs = op.outputs
-            if len(outs) == 1:
-                ctx[outs[0].key] = results
-                return
-
-            assert len(outs) == len(results)
-            for out, result in zip(outs, results):
-                ctx[out.key] = result
-
-
-class TensorUniqueShuffleMap(TensorShuffleMap, TensorOperandMixin):
-    _op_type_ = OperandDef.UNIQUE_MAP
-
-    _return_index = BoolField('return_index')
-    _return_inverse = BoolField('return_inverse')
-    _return_counts = BoolField('return_counts')
-    _axis = Int32Field('axis')
-    _aggregate_size = Int32Field('aggregate_size')
-    _start_pos = Int64Field('start_pos')
-
-    def __init__(self, return_index=None, return_inverse=None, return_counts=None,
-                 axis=None, aggregate_size=None, start_pos=None,
-                 dtype=None, gpu=None, **kw):
-        super().__init__(_return_index=return_index, _return_inverse=return_inverse,
-                         _return_counts=return_counts, _axis=axis,
-                         _aggregate_size=aggregate_size, _start_pos=start_pos,
-                         _dtype=dtype, _gpu=gpu, **kw)
-
-    @property
-    def return_index(self):
-        return self._return_index
-
-    @property
-    def return_inverse(self):
-        return self._return_inverse
-
-    @property
-    def return_counts(self):
-        return self._return_counts
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def aggregate_size(self):
-        return self._aggregate_size
-
-    @property
-    def start_pos(self):
-        return self._start_pos
-
-    @classmethod
-    def execute(cls, ctx, op):
+    def _execute_map(cls, ctx, op):
         (ar,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
         n_reducer = op.aggregate_size
@@ -344,49 +299,8 @@ class TensorUniqueShuffleMap(TensorShuffleMap, TensorOperandMixin):
                     res.append(counts_ar[cond])
                 ctx[(op.outputs[0].key, str(reducer))] = tuple(res)
 
-
-class TensorUniqueShuffleReduce(TensorShuffleReduce, TensorOperandMixin):
-    _op_type_ = OperandDef.UNIQUE_REDUCE
-
-    _return_index = BoolField('return_index')
-    _return_inverse = BoolField('return_inverse')
-    _return_counts = BoolField('return_counts')
-    _axis = Int32Field('axis')
-    _aggregate_id = Int32Field('aggregate_id')
-
-    def __init__(self, return_index=None, return_inverse=None, return_counts=None,
-                 axis=None, dtype=None, gpu=None, aggregate_id=None, shuffle_key=None, **kw):
-        super().__init__(_return_index=return_index, _return_inverse=return_inverse,
-                         _return_counts=return_counts, _axis=axis, _aggregate_id=aggregate_id,
-                         _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
-
-    @property
-    def output_limit(self):
-        return 1 + bool(self._return_index) + \
-               bool(self._return_inverse) + bool(self._return_counts)
-
-    @property
-    def return_index(self):
-        return self._return_index
-
-    @property
-    def return_inverse(self):
-        return self._return_inverse
-
-    @property
-    def return_counts(self):
-        return self._return_counts
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def aggregate_id(self):
-        return self._aggregate_id
-
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_reduce(cls, ctx, op):
         in_chunk = op.inputs[0]
         input_keys, input_indexes = get_shuffle_input_keys_idxes(in_chunk)
 
@@ -463,12 +377,37 @@ class TensorUniqueShuffleReduce(TensorShuffleReduce, TensorOperandMixin):
             except StopIteration:
                 pass
 
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            cls._execute_map(ctx, op)
+        elif op.stage == OperandStage.reduce:
+            cls._execute_reduce(ctx, op)
+        else:
+            (ar,), device_id, xp = as_same_device(
+                [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
-class TensorUniqueInverseReduce(TensorShuffleReduce, TensorOperandMixin):
+            with device(device_id):
+                results = xp.unique(ar, return_index=op.return_index,
+                                    return_inverse=op.return_inverse,
+                                    return_counts=op.return_counts,
+                                    axis=op.axis)
+                outs = op.outputs
+                if len(outs) == 1:
+                    ctx[outs[0].key] = results
+                    return
+
+                assert len(outs) == len(results)
+                for out, result in zip(outs, results):
+                    ctx[out.key] = result
+
+
+class TensorUniqueInverseReduce(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.UNIQUE_INVERSE_REDUCE
 
     def __init__(self, shuffle_key=None, dtype=None, gpu=None, **kw):
-        super().__init__(_shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_stage=OperandStage.reduce, _shuffle_key=shuffle_key,
+                         _dtype=dtype, _gpu=gpu, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

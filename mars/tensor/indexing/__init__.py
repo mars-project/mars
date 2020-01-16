@@ -20,8 +20,7 @@ from .unravel_index import unravel_index, TensorUnravelIndex
 from .nonzero import nonzero, TensorNonzero
 from .flatnonzero import flatnonzero
 from .slice import TensorSlice
-from .getitem import TensorIndex, FancyIndexingDistributeMap, FancyIndexingDistributeReduce, \
-    FancyIndexingConcatMap, FancyIndexingConcatReduce
+from .getitem import TensorIndex, FancyIndexingDistribute, FancyIndexingConcat
 from .setitem import TensorIndexSetValue
 from .fill_diagonal import fill_diagonal, TensorFillDiagonal
 

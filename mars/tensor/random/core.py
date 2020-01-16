@@ -25,7 +25,7 @@ from ...utils import tokenize
 from ..core import TENSOR_TYPE, CHUNK_TYPE
 from ..utils import decide_chunk_sizes, gen_random_seeds, broadcast_shape
 from ..array_utils import array_module, device
-from ..operands import TensorOperand, TensorOperandMixin
+from ..operands import TensorOperand, TensorMapReduceOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..base import broadcast_to
 
@@ -291,11 +291,7 @@ def _on_deserialize_random_state(tup):
     return rs
 
 
-class TensorRandomOperand(TensorOperand):
-    _state = TupleField('state', on_serialize=_on_serialize_random_state,
-                        on_deserialize=_on_deserialize_random_state)
-    _seed = Int32Field('seed')
-
+class TensorSeedOperandMixin(object):
     @property
     def state(self):
         return getattr(self, '_state', None)
@@ -313,6 +309,18 @@ class TensorRandomOperand(TensorOperand):
         self._key = tokenize(type(self).__name__,
                              *tuple(getattr(self, k, None) for k in self._keys_))
         return self
+
+
+class TensorRandomOperand(TensorSeedOperandMixin, TensorOperand):
+    _state = TupleField('state', on_serialize=_on_serialize_random_state,
+                        on_deserialize=_on_deserialize_random_state)
+    _seed = Int32Field('seed')
+
+
+class TensorRandomMapReduceOperand(TensorSeedOperandMixin, TensorMapReduceOperand):
+    _state = TupleField('state', on_serialize=_on_serialize_random_state,
+                        on_deserialize=_on_deserialize_random_state)
+    _seed = Int32Field('seed')
 
 
 class TensorDistribution(TensorRandomOperand):

@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
+from mars.operands import OperandStage
 from mars.tests.core import TestBase
 from mars.dataframe.core import DataFrameGroupBy, DataFrame
 from mars.dataframe.groupby.core import DataFrameGroupByOperand,\
@@ -48,7 +49,7 @@ class Test(TestBase):
         self.assertEqual(r.op.method, 'tree')
         r = r.tiles()
         self.assertEqual(len(r.chunks), 1)
-        self.assertEqual(r.chunks[0].op.stage.value, 'combine')
+        self.assertEqual(r.chunks[0].op.stage, OperandStage.combine)
         self.assertEqual(len(r.chunks[0].inputs), 1)
         self.assertEqual(len(r.chunks[0].inputs[0].inputs), 2)
 
@@ -65,13 +66,13 @@ class Test(TestBase):
         self.assertEqual(len(r.chunks), 5)
         for chunk in r.chunks:
             self.assertIsInstance(chunk.op, DataFrameGroupByAgg)
-            self.assertEqual(chunk.op.stage.value, 'combine')
+            self.assertEqual(chunk.op.stage, OperandStage.combine)
             self.assertIsInstance(chunk.inputs[0].op, DataFrameGroupByReduce)
             self.assertIsInstance(chunk.inputs[0].inputs[0].op, DataFrameShuffleProxy)
             self.assertIsInstance(chunk.inputs[0].inputs[0].inputs[0].op, DataFrameGroupByMap)
 
             agg_chunk = chunk.inputs[0].inputs[0].inputs[0].inputs[0]
-            self.assertEqual(agg_chunk.op.stage.value, 'map')
+            self.assertEqual(agg_chunk.op.stage, OperandStage.map)
 
         # test unknown method
         with self.assertRaises(NotImplementedError):

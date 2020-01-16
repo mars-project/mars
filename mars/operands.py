@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
-from copy import deepcopy
 import weakref
+from copy import deepcopy
+from enum import Enum
 
 import numpy as np
 
@@ -76,6 +77,9 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     _inputs = ListField('inputs', ValueType.key)
     _prepare_inputs = ListField('prepare_inputs', ValueType.bool)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
+
+    _stage = Int32Field('stage', on_serialize=lambda s: s.value if s is not None else s,
+                        on_deserialize=lambda n: OperandStage(n) if n is not None else n)
 
     _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
@@ -147,6 +151,10 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         if not val:
             return [True] * len(self.inputs or ())
         return val
+
+    @property
+    def stage(self):
+        return getattr(self, '_stage', None)
 
     @property
     def extra_params(self):
@@ -425,6 +433,21 @@ class VirtualOperand(Operand):
         return []
 
 
+class MapReduceOperand(Operand):
+    _shuffle_key = StringField('shuffle_key', on_serialize=to_str)
+
+    @property
+    def shuffle_key(self):
+        return getattr(self, '_shuffle_key', None)
+
+    def get_dependent_data_keys(self):
+        if self.stage == OperandStage.reduce:
+            inputs = self.inputs or ()
+            return [(chunk.key, self._shuffle_key)
+                    for proxy in inputs for chunk in proxy.inputs or ()]
+        return super().get_dependent_data_keys()
+
+
 class ShuffleProxy(VirtualOperand):
     _op_type_ = OperandDef.SHUFFLE_PROXY
     _broadcaster = True
@@ -516,3 +539,10 @@ class FetchShuffle(Operand):
     @property
     def to_fetch_idxes(self):
         return self._to_fetch_idxes
+
+
+class OperandStage(Enum):
+    map = 0
+    reduce = 1
+    combine = 2
+    agg = 3

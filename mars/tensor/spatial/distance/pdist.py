@@ -18,20 +18,20 @@ import cloudpickle
 import numpy as np
 
 from .... import opcodes as OperandDef
+from ....operands import OperandStage
 from ....serialize import ValueType, KeyField, StringField, \
     BytesField, Float16Field, Int32Field, TupleField
 from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes, \
     require_module
 from ....config import options
-from ...operands import TensorOperand, TensorOperandMixin, \
-    TensorShuffleMap, TensorShuffleProxy, TensorShuffleReduce
+from ...operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ...array_utils import as_same_device, device, cp
 from ...core import TensorOrder
 from ...datasource.array import tensor as astensor
 
 
-class TensorPdist(TensorOperand, TensorOperandMixin):
+class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PDIST
 
     _input = KeyField('input')
@@ -44,16 +44,32 @@ class TensorPdist(TensorOperand, TensorOperandMixin):
     _vi = KeyField('VI')
     _aggregate_size = Int32Field('aggregate_size')
 
-    def __init__(self, metric=None, metric_func=None, p=None, w=None,
-                 v=None, vi=None, aggregate_size=None, dtype=None, **kw):
-        super().__init__(_metric=metric, _metric_func=metric_func, _p=p,
-                         _w=w, _v=v, _vi=vi, _dtype=dtype,
-                         _aggregate_size=aggregate_size, **kw)
+    _a = KeyField('a')
+    _a_offset = Int32Field('a_offset')
+    _b = KeyField('b')
+    _b_offset = Int32Field('b_offset')
+    _out_sizes = TupleField('out_sizes', ValueType.int32)
+    _n = Int32Field('n')
+
+    def __init__(self, metric=None, metric_func=None, p=None, w=None, v=None, vi=None,
+                 a=None, a_offset=None, b=None, b_offset=None, out_sizes=None, n=None,
+                 aggregate_size=None, stage=None, shuffle_key=None, dtype=None, **kw):
+        super().__init__(_metric=metric, _metric_func=metric_func, _p=p, _w=w, _v=v, _vi=vi,
+                         _a=a, _a_offset=a_offset, _b=b, _b_offset=b_offset, _out_sizes=out_sizes,
+                         _n=n, _dtype=dtype, _aggregate_size=aggregate_size, _stage=stage,
+                         _shuffle_key=shuffle_key, **kw)
 
     def _set_inputs(self, inputs: List) -> None:
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
-        self._input = next(inputs_iter)
+
+        if self.stage == OperandStage.map:
+            self._a = next(inputs_iter)
+            if self._b is not None:
+                self._b = next(inputs_iter)
+        else:
+            self._input = next(inputs_iter)
+
         if self._w is not None:
             self._w = next(inputs_iter)
         if self._v is not None:
@@ -93,38 +109,36 @@ class TensorPdist(TensorOperand, TensorOperandMixin):
     def aggregate_size(self):
         return self._aggregate_size
 
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def a_offset(self):
+        return self._a_offset
+
+    @property
+    def b(self):
+        return self._b
+
+    @property
+    def b_offset(self):
+        return self._b_offset
+
+    @property
+    def out_sizes(self):
+        return self._out_sizes
+
+    @property
+    def n(self):
+        return self._n
+
     def __call__(self, x, shape: Tuple):
         inputs = [x]
         for val in [self._w, self._v, self._vi]:
             if val is not None:
                 inputs.append(val)
         return self.new_tensor(inputs, shape=shape, order=TensorOrder.C_ORDER)
-
-    @classmethod
-    def execute(cls, ctx, op):
-        from scipy.spatial.distance import pdist
-
-        inputs, device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
-
-        if xp is cp:  # pragma: no cover
-            raise NotImplementedError('`pdist` does not support running on GPU yet')
-
-        with device(device_id):
-            inputs_iter = iter(inputs)
-            x = next(inputs_iter)
-            kw = dict()
-            if op.p is not None:
-                kw['p'] = op.p
-            if op.w is not None:
-                kw['w'] = next(inputs_iter)
-            if op.v is not None:
-                kw['V'] = next(inputs_iter)
-            if op.vi is not None:
-                kw['VI'] = next(inputs_iter)
-
-        metric = op.metric if op.metric is not None else op.metric_func
-        ctx[op.outputs[0].key] = pdist(x, metric=metric, **kw)
 
     @classmethod
     def _tile_one_chunk(cls, op, in_tensor, w, v, vi):
@@ -166,6 +180,7 @@ class TensorPdist(TensorOperand, TensorOperandMixin):
         for i in range(chunk_size):
             for j in range(i, chunk_size):
                 kw = {
+                    'stage': OperandStage.map,
                     'a': in_tensor.cix[i, 0],
                     'a_offset': axis_0_cum_size[i - 1] if i > 0 else 0,
                     'out_sizes': tuple(out_sizes),
@@ -181,7 +196,7 @@ class TensorPdist(TensorOperand, TensorOperandMixin):
                 if i != j:
                     kw['b'] = in_tensor.cix[j, 0]
                     kw['b_offset'] = axis_0_cum_size[j - 1] if j > 0 else 0
-                map_op = PdistShuffleMap(**kw)
+                map_op = TensorPdist(**kw)
                 map_chunk_inputs = [kw['a']]
                 if 'b' in kw:
                     map_chunk_inputs.append(kw['b'])
@@ -207,8 +222,8 @@ class TensorPdist(TensorOperand, TensorOperandMixin):
 
         reduce_chunks = []
         for p in range(aggregate_size):
-            reduce_chunk_op = PdistShuffleReduce(
-                shuffle_key=str(p), dtype=out_tensor.dtype)
+            reduce_chunk_op = TensorPdist(
+                stage=OperandStage.reduce, shuffle_key=str(p), dtype=out_tensor.dtype)
             reduce_chunk = reduce_chunk_op.new_chunk(
                 [proxy_chunk], shape=(out_sizes[p],), order=out_tensor.order,
                 index=(p,))
@@ -240,6 +255,122 @@ class TensorPdist(TensorOperand, TensorOperandMixin):
             return cls._tile_one_chunk(op, in_tensor, w, v, vi)
         else:
             return cls._tile_chunks(op, in_tensor, w, v, vi)
+
+    @classmethod
+    def _execute_map(cls, ctx, op):
+        from scipy.spatial.distance import pdist, cdist
+
+        inputs, device_id, xp = as_same_device(
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+
+        if xp is cp:  # pragma: no cover
+            raise NotImplementedError('`pdist` does not support running on GPU yet')
+
+        with device(device_id):
+            inputs_iter = iter(inputs)
+            a = next(inputs_iter)
+            if op.b is not None:
+                b = next(inputs_iter)
+            else:
+                b = None
+            kw = dict()
+            if op.p is not None:
+                kw['p'] = op.p
+            if op.w is not None:
+                kw['w'] = next(inputs_iter)
+            if op.v is not None:
+                kw['V'] = next(inputs_iter)
+            if op.vi is not None:
+                kw['VI'] = next(inputs_iter)
+            metric = op.metric if op.metric is not None else op.metric_func
+
+            if b is None:
+                # one input, pdist on same chunk
+                dists = pdist(a, metric=metric, **kw)
+                i_indices, j_indices = xp.triu_indices(a.shape[0], k=1)
+                i_indices += op.a_offset
+                j_indices += op.a_offset
+            else:
+                # two inputs, pdist on different chunks
+                dists = cdist(a, b, metric=metric, **kw).ravel()
+                mgrid = \
+                    xp.mgrid[op.a_offset: op.a_offset + a.shape[0],
+                    op.b_offset: op.b_offset + b.shape[0]]
+                i_indices, j_indices = mgrid[0].ravel(), mgrid[1].ravel()
+
+            out_row_sizes = xp.arange(op.n - 1, -1, -1)
+            out_row_cum_sizes = xp.empty((op.n + 1,), dtype=int)
+            out_row_cum_sizes[0] = 0
+            xp.cumsum(out_row_sizes, out=out_row_cum_sizes[1:])
+            indices = out_row_cum_sizes[i_indices] + j_indices - \
+                      (op.n - out_row_sizes[i_indices])
+
+            # save as much memory as possible
+            del i_indices, j_indices, out_row_sizes, out_row_cum_sizes
+
+            out_cum_size = xp.cumsum(op.out_sizes)
+            out = op.outputs[0]
+            for i in range(len(op.out_sizes)):
+                start_index = out_cum_size[i - 1] if i > 0 else 0
+                end_index = out_cum_size[i]
+                to_filter = (indices >= start_index) & (indices < end_index)
+                downside_indices = indices[to_filter] - start_index
+                downside_dists = dists[to_filter]
+                ctx[out.key, str(i)] = (downside_indices, downside_dists)
+
+    @classmethod
+    def _execute_single(cls, ctx, op):
+        from scipy.spatial.distance import pdist
+
+        inputs, device_id, xp = as_same_device(
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+
+        if xp is cp:  # pragma: no cover
+            raise NotImplementedError('`pdist` does not support running on GPU yet')
+
+        with device(device_id):
+            inputs_iter = iter(inputs)
+            x = next(inputs_iter)
+            kw = dict()
+            if op.p is not None:
+                kw['p'] = op.p
+            if op.w is not None:
+                kw['w'] = next(inputs_iter)
+            if op.v is not None:
+                kw['V'] = next(inputs_iter)
+            if op.vi is not None:
+                kw['VI'] = next(inputs_iter)
+
+        metric = op.metric if op.metric is not None else op.metric_func
+        ctx[op.outputs[0].key] = pdist(x, metric=metric, **kw)
+
+    @classmethod
+    def _execute_reduce(cls, ctx, op):
+        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
+        raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+        raw_indices = [inp[0] for inp in raw_inputs]
+        raw_dists = [inp[1] for inp in raw_inputs]
+        inputs, device_id, xp = as_same_device(
+            raw_indices + raw_dists, op.device, ret_extra=True)
+        raw_indices = inputs[:len(raw_indices)]
+        raw_dists = inputs[len(raw_indices):]
+        output = op.outputs[0]
+
+        with device(device_id):
+            indices = xp.concatenate(raw_indices)
+            dists = xp.concatenate(raw_dists)
+            out_dists = xp.empty(output.shape, dtype=float)
+            out_dists[indices] = dists
+            ctx[output.key] = out_dists
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            cls._execute_map(ctx, op)
+        elif op.stage == OperandStage.reduce:
+            cls._execute_reduce(ctx, op)
+        else:
+            cls._execute_single(ctx, op)
 
 
 @require_module('scipy.spatial.distance')
@@ -545,178 +676,3 @@ def pdist(X, metric='euclidean', **kwargs):
     else:
         out.data = ret.data
         return out
-
-
-class PdistShuffleMap(TensorShuffleMap, TensorOperandMixin):
-    _op_type_ = OperandDef.PDIST_MAP
-
-    _a = KeyField('a')
-    _a_offset = Int32Field('a_offset')
-    _b = KeyField('b')
-    _b_offset = Int32Field('b_offset')
-    _out_sizes = TupleField('out_sizes', ValueType.int32)
-    _n = Int32Field('n')
-    _metric = StringField('metric')
-    _metric_func = BytesField('metric_func', on_serialize=cloudpickle.dumps,
-                              on_deserialize=cloudpickle.loads)
-    _p = Float16Field('p')
-    _w = KeyField('w')
-    _v = KeyField('V')
-    _vi = KeyField('VI')
-
-    def __init__(self, a=None, a_offset=None, b=None, b_offset=None,
-                 out_sizes=None, n=None, metric=None, metric_func=None, p=None, w=None,
-                 v=None, vi=None, dtype=None, **kw):
-        super().__init__(_a=a, _a_offset=a_offset, _b=b, _b_offset=b_offset,
-                         _out_sizes=out_sizes, _n=n, _metric=metric,
-                         _metric_func=metric_func, _p=p,
-                         _w=w, _v=v, _vi=vi, _dtype=dtype, **kw)
-
-    def _set_inputs(self, inputs: List) -> None:
-        super()._set_inputs(inputs)
-        inputs_iter = iter(self._inputs)
-        self._a = next(inputs_iter)
-        if self._b is not None:
-            self._b = next(inputs_iter)
-        if self._w is not None:
-            self._w = next(inputs_iter)
-        if self._v is not None:
-            self._v = next(inputs_iter)
-        if self._vi is not None:
-            self._vi = next(inputs_iter)
-
-    @property
-    def a(self):
-        return self._a
-
-    @property
-    def a_offset(self):
-        return self._a_offset
-
-    @property
-    def b(self):
-        return self._b
-
-    @property
-    def b_offset(self):
-        return self._b_offset
-
-    @property
-    def out_sizes(self):
-        return self._out_sizes
-
-    @property
-    def n(self):
-        return self._n
-
-    @property
-    def metric(self):
-        return self._metric
-
-    @property
-    def metric_func(self):
-        return self._metric_func
-
-    @property
-    def p(self):
-        return self._p
-
-    @property
-    def w(self):
-        return self._w
-
-    @property
-    def v(self):
-        return self._v
-
-    @property
-    def vi(self):
-        return self._vi
-
-    @classmethod
-    def execute(cls, ctx, op):
-        from scipy.spatial.distance import pdist, cdist
-
-        inputs, device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
-
-        if xp is cp:  # pragma: no cover
-            raise NotImplementedError('`pdist` does not support running on GPU yet')
-
-        with device(device_id):
-            inputs_iter = iter(inputs)
-            a = next(inputs_iter)
-            if op.b is not None:
-                b = next(inputs_iter)
-            else:
-                b = None
-            kw = dict()
-            if op.p is not None:
-                kw['p'] = op.p
-            if op.w is not None:
-                kw['w'] = next(inputs_iter)
-            if op.v is not None:
-                kw['V'] = next(inputs_iter)
-            if op.vi is not None:
-                kw['VI'] = next(inputs_iter)
-            metric = op.metric if op.metric is not None else op.metric_func
-
-            if b is None:
-                # one input, pdist on same chunk
-                dists = pdist(a, metric=metric, **kw)
-                i_indices, j_indices = xp.triu_indices(a.shape[0], k=1)
-                i_indices += op.a_offset
-                j_indices += op.a_offset
-            else:
-                # two inputs, pdist on different chunks
-                dists = cdist(a, b, metric=metric, **kw).ravel()
-                mgrid = \
-                    xp.mgrid[op.a_offset: op.a_offset + a.shape[0],
-                             op.b_offset: op.b_offset + b.shape[0]]
-                i_indices, j_indices = mgrid[0].ravel(), mgrid[1].ravel()
-
-            out_row_sizes = xp.arange(op.n - 1, -1, -1)
-            out_row_cum_sizes = xp.empty((op.n + 1,), dtype=int)
-            out_row_cum_sizes[0] = 0
-            xp.cumsum(out_row_sizes, out=out_row_cum_sizes[1:])
-            indices = out_row_cum_sizes[i_indices] + j_indices - \
-                      (op.n - out_row_sizes[i_indices])
-
-            # save as much memory as possible
-            del i_indices, j_indices, out_row_sizes, out_row_cum_sizes
-
-            out_cum_size = xp.cumsum(op.out_sizes)
-            out = op.outputs[0]
-            for i in range(len(op.out_sizes)):
-                start_index = out_cum_size[i - 1] if i > 0 else 0
-                end_index = out_cum_size[i]
-                to_filter = (indices >= start_index) & (indices < end_index)
-                downside_indices = indices[to_filter] - start_index
-                downside_dists = dists[to_filter]
-                ctx[out.key, str(i)] = (downside_indices, downside_dists)
-
-
-class PdistShuffleReduce(TensorShuffleReduce, TensorOperandMixin):
-    _op_type_ = OperandDef.PDIST_REDUCE
-
-    def __init__(self, shuffle_key=None, dtype=None, **kw):
-        super().__init__(_shuffle_key=shuffle_key, _dtype=dtype, **kw)
-
-    @classmethod
-    def execute(cls, ctx, op):
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
-        raw_indices = [inp[0] for inp in raw_inputs]
-        raw_dists = [inp[1] for inp in raw_inputs]
-        inputs, device_id, xp = as_same_device(
-            raw_indices + raw_dists, op.device, ret_extra=True)
-        raw_indices = inputs[:len(raw_indices)]
-        raw_dists = inputs[len(raw_indices):]
-        output = op.outputs[0]
-
-        with device(device_id):
-            indices = xp.concatenate(raw_indices)
-            dists = xp.concatenate(raw_dists)
-            out_dists = xp.empty(output.shape, dtype=float)
-            out_dists[indices] = dists
-            ctx[output.key] = out_dists

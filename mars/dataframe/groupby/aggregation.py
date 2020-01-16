@@ -13,23 +13,18 @@
 # limitations under the License.
 
 import itertools
-from enum import Enum
 
 import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...operands import OperandStage
 from ...serialize import BoolField, AnyField, StringField
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy, ObjectType
 from ..core import GROUPBY_TYPE
 from ..utils import build_empty_df, parse_index, build_concated_rows_frame
 from .core import DataFrameGroupByMap, DataFrameGroupByReduce
-
-
-class Stage(Enum):
-    map = 'map'
-    combine = 'combine'
 
 
 class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
@@ -40,8 +35,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     _as_index = BoolField('as_index')
     _sort = BoolField('sort')
     _method = StringField('method')
-    _stage = StringField('stage', on_serialize=lambda x: getattr(x, 'value', None),
-                         on_deserialize=Stage)
 
     def __init__(self, func=None, by=None, as_index=None, sort=None, method=None, stage=None, **kw):
         super().__init__(_func=func, _by=by, _as_index=as_index, _sort=sort, _method=method,
@@ -111,7 +104,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         agg_chunks = []
         for chunk in in_df.chunks:
             agg_op = op.copy().reset_key()
-            agg_op._stage = Stage.map
+            agg_op._stage = OperandStage.map
             agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
                                          index_value=out_df.index_value,
                                          columns_value=out_df.columns_value)
@@ -133,7 +126,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         combine_chunks = []
         for chunk in reduce_chunks:
             combine_op = op.copy().reset_key()
-            combine_op._stage = Stage.combine
+            combine_op._stage = OperandStage.combine
             combine_chunk = combine_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
                                                  index_value=out_df.index_value,
                                                  columns_value=out_df.columns_value)
@@ -164,7 +157,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                         c._index = (j, 0)
                     chk = concat_op.new_chunk(chks, dtypes=chks[0].dtypes)
                 chunk_op = op.copy().reset_key()
-                chunk_op._stage = Stage.combine
+                chunk_op._stage = OperandStage.combine
                 new_chunks.append(chunk_op.new_chunk([chk], index=(idx, 0), shape=(np.nan, out_df.shape[1]),
                                                      index_value=chks[0].index_value,
                                                      columns_value=chks[0].columns_value,
@@ -174,7 +167,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         concat_op = DataFrameConcat(object_type=ObjectType.dataframe)
         chk = concat_op.new_chunk(chunks, dtypes=chunks[0].dtypes)
         chunk_op = op.copy().reset_key()
-        chunk_op._stage = Stage.combine
+        chunk_op._stage = OperandStage.combine
         chunk = chunk_op.new_chunk([chk], index=(0, 0), shape=out_df.shape, index_value=out_df.index_value,
                                    columns_value=out_df.columns_value, dtypes=out_df.dtypes)
         new_op = op.copy()
@@ -196,7 +189,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         df = ctx[op.inputs[0].key]
-        if op.stage == Stage.map:
+        if op.stage == OperandStage.map:
             ret = cls._execute_map(df, op)
         else:
             ret = cls._execute_combine(df, op)

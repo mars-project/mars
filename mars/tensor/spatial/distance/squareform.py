@@ -17,28 +17,38 @@ import itertools
 import numpy as np
 
 from .... import opcodes as OperandDef
+from ....operands import OperandStage
 from ....serialize import ValueType, KeyField, BoolField, TupleField
 from ....tiles import TilesError
 from ....config import options
 from ....utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes, \
     require_module
 from ...core import TensorOrder
-from ...operands import TensorOperand, TensorOperandMixin, \
-    TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
+from ...operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ...datasource import ascontiguousarray, array, zeros
 from ...arithmetic import equal
 from ...utils import decide_chunk_sizes, recursive_tile
 from ...array_utils import as_same_device, device, cp
 
 
-class TensorSquareform(TensorOperand, TensorOperandMixin):
+class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.SQUAREFORM
 
     _input = KeyField('input')
     _checks = BoolField('checks')
 
-    def __init__(self, checks=None, dtype=None, gpu=None, **kw):
-        super().__init__(_checks=checks, _dtype=dtype, _gpu=gpu, **kw)
+    _checks_input = KeyField('checks_input')
+    _x_shape = TupleField('x_shape', ValueType.int32)
+    _reduce_sizes = TupleField('reduce_sizes', ValueType.tuple)
+    _start_positions = TupleField('start_positions', ValueType.int32)
+
+    def __init__(self, stage=None, checks=None, checks_input=None, x_shape=None,
+                 reduce_sizes=None, start_positions=None, shuffle_key=None,
+                 dtype=None, gpu=None, **kw):
+        super().__init__(_stage=stage, _checks=checks, _checks_input=checks_input,
+                         _x_shape=x_shape, _reduce_sizes=reduce_sizes,
+                         _start_positions=start_positions, _shuffle_key=shuffle_key,
+                         _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def input(self):
@@ -48,9 +58,27 @@ class TensorSquareform(TensorOperand, TensorOperandMixin):
     def checks(self):
         return self._checks
 
+    @property
+    def checks_input(self):
+        return self._checks_input
+
+    @property
+    def x_shape(self):
+        return self._x_shape
+
+    @property
+    def reduce_sizes(self):
+        return self._reduce_sizes
+
+    @property
+    def start_positions(self):
+        return self._start_positions
+
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
+        if self._checks_input is not None:
+            self._checks_input = self._inputs[-1]
 
     def __call__(self, X, force='no', chunk_size=None):
         s = X.shape
@@ -148,8 +176,8 @@ class TensorSquareform(TensorOperand, TensorOperandMixin):
                 # if apply squareform to 2-d tensor which is symmetric,
                 # we don't need to calculate for lower triangle chunks
                 continue
-            map_chunk_op = TensorSquareformMap(
-                checks_input=checks_input, reduce_sizes=chunk_size,
+            map_chunk_op = TensorSquareform(
+                stage=OperandStage.map, checks_input=checks_input, reduce_sizes=chunk_size,
                 x_shape=op.input.shape,
                 start_positions=tuple(cum_sizes[ax][j]
                                       for ax, j in enumerate(in_chunk.index)),
@@ -169,7 +197,8 @@ class TensorSquareform(TensorOperand, TensorOperandMixin):
         out_shape_iter = itertools.product(*chunk_size)
         out_idx_iter = itertools.product(*(range(len(cs)) for cs in chunk_size))
         for out_idx, out_shape in zip(out_idx_iter, out_shape_iter):
-            reduce_chunk_op = TensorSquareformReduce(
+            reduce_chunk_op = TensorSquareform(
+                stage=OperandStage.reduce,
                 shuffle_key=','.join(str(i) for i in out_idx),
                 dtype=out.dtype)
             reduce_chunk = reduce_chunk_op.new_chunk(
@@ -179,61 +208,6 @@ class TensorSquareform(TensorOperand, TensorOperandMixin):
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
                                   nsplits=chunk_size, chunks=reduce_chunks)
-
-    @classmethod
-    def execute(cls, ctx, op):
-        from scipy.spatial.distance import squareform
-
-        (x,), device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
-
-        if xp is cp:  # pragma: no cover
-            raise NotImplementedError('`squareform` does not support running on GPU yet')
-
-        with device(device_id):
-            ctx[op.outputs[0].key] = squareform(x, checks=op.checks)
-
-
-class TensorSquareformMap(TensorShuffleMap, TensorOperandMixin):
-    _op_type_ = OperandDef.SQUAREFORM_MAP
-
-    _input = KeyField('input')
-    _checks_input = KeyField('checks_input')
-    _x_shape = TupleField('x_shape', ValueType.int32)
-    _reduce_sizes = TupleField('reduce_sizes', ValueType.tuple)
-    _start_positions = TupleField('start_positions', ValueType.int32)
-
-    def __init__(self, checks_input=None, x_shape=None, reduce_sizes=None,
-                 start_positions=None, dtype=None, gpu=None, **kw):
-        super().__init__(_checks_input=checks_input, _x_shape=x_shape,
-                         _reduce_sizes=reduce_sizes, _start_positions=start_positions,
-                         _dtype=dtype, _gpu=gpu, **kw)
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def checks_input(self):
-        return self._checks_input
-
-    @property
-    def x_shape(self):
-        return self._x_shape
-
-    @property
-    def reduce_sizes(self):
-        return self._reduce_sizes
-
-    @property
-    def start_positions(self):
-        return self._start_positions
-
-    def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
-        self._input = self._inputs[0]
-        if self._checks_input is not None:
-            self._checks_input = self._inputs[-1]
 
     @classmethod
     def _to_matrix(cls, ctx, xp, x, op):
@@ -312,7 +286,7 @@ class TensorSquareformMap(TensorShuffleMap, TensorOperandMixin):
             ctx[op.outputs[0].key, str(i)] = out_indices, x[filtered]
 
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_map(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
             [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
 
@@ -330,15 +304,8 @@ class TensorSquareformMap(TensorShuffleMap, TensorOperandMixin):
             else:
                 cls._to_vector(ctx, xp, x, op)
 
-
-class TensorSquareformReduce(TensorShuffleReduce, TensorOperandMixin):
-    _op_type_ = OperandDef.SQUAREFORM_REDUCE
-
-    def __init__(self, shuffle_key=None, dtype=None, **kw):
-        super().__init__(_shuffle_key=shuffle_key, _dtype=dtype, **kw)
-
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_reduce(cls, ctx, op):
         input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
         raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
         raw_indices = [inp[0] for inp in raw_inputs]
@@ -355,6 +322,24 @@ class TensorSquareformReduce(TensorShuffleReduce, TensorOperandMixin):
             dists = xp.concatenate(raw_dists)
             out_dists.flat[indices] = dists
             ctx[output.key] = out_dists
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            cls._execute_map(ctx, op)
+        elif op.stage == OperandStage.reduce:
+            cls._execute_reduce(ctx, op)
+        else:
+            from scipy.spatial.distance import squareform
+
+            (x,), device_id, xp = as_same_device(
+                [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+
+            if xp is cp:  # pragma: no cover
+                raise NotImplementedError('`squareform` does not support running on GPU yet')
+
+            with device(device_id):
+                ctx[op.outputs[0].key] = squareform(x, checks=op.checks)
 
 
 @require_module('scipy.spatial.distance')

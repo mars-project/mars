@@ -18,11 +18,12 @@ from functools import partial
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...operands import OperandStage
 from ...serialize import ValueType, Int32Field, StringField, ListField, BoolField
 from ...tiles import NotSupportTile, TilesError
 from ...utils import get_shuffle_input_keys_idxes
-from ..operands import TensorOperand, TensorOperandMixin, \
-    TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy, TensorOrder
+from ..operands import TensorOperand, TensorOperandMixin, TensorMapReduceOperand, \
+    TensorShuffleProxy, TensorOrder
 from ..array_utils import as_same_device, device, cp
 from ..datasource import tensor as astensor
 from ..utils import validate_axis, validate_order
@@ -194,10 +195,11 @@ class PSRSSorter(object):
         # stage 3: Local data is partitioned
         partition_chunks = []
         for sorted_chunk in sorted_chunks:
-            partition_shuffle_map = PSRSShuffleMap(axis=op.axis, n_partition=axis_chunk_shape,
-                                                   input_sorted=op.psrs_kinds[0] is not None,
-                                                   order=op.order, dtype=sorted_chunk.dtype,
-                                                   gpu=sorted_chunk.op.gpu)
+            partition_shuffle_map = PSRSShuffle(stage=OperandStage.map, axis=op.axis,
+                                                n_partition=axis_chunk_shape,
+                                                input_sorted=op.psrs_kinds[0] is not None,
+                                                order=op.order, dtype=sorted_chunk.dtype,
+                                                gpu=sorted_chunk.op.gpu)
             partition_chunk = partition_shuffle_map.new_chunk([sorted_chunk, concat_pivot_chunk],
                                                               shape=sorted_chunk.shape,
                                                               index=sorted_chunk.index,
@@ -211,12 +213,13 @@ class PSRSSorter(object):
         partition_sort_chunks, sort_info_chunks = [], []
         for i, partition_chunk in enumerate(partition_chunks):
             kind = None if op.psrs_kinds is None else op.psrs_kinds[2]
-            partition_shuffle_reduce = PSRSShuffleReduce(axis=op.axis, order=op.order,
-                                                         kind=kind,
-                                                         shuffle_key=str(i),
-                                                         dtype=partition_chunk.dtype,
-                                                         gpu=partition_chunk.op.gpu,
-                                                         need_align=need_align)
+            partition_shuffle_reduce = PSRSShuffle(stage=OperandStage.reduce,
+                                                   axis=op.axis, order=op.order,
+                                                   kind=kind,
+                                                   shuffle_key=str(i),
+                                                   dtype=partition_chunk.dtype,
+                                                   gpu=partition_chunk.op.gpu,
+                                                   need_align=need_align)
             kws = []
             chunk_shape = list(partition_chunk.shape)
             chunk_shape[op.axis] = np.nan
@@ -248,10 +251,10 @@ class PSRSSorter(object):
     def align_partitions_data(cls, op, out_idx, in_tensor, partition_sort_chunks, sort_info_chunks):
         align_map_chunks = []
         for partition_sort_chunk in partition_sort_chunks:
-            align_map_op = PSRSAlignMap(axis=op.axis,
-                                        output_sizes=list(in_tensor.nsplits[op.axis]),
-                                        dtype=partition_sort_chunk.dtype,
-                                        gpu=partition_sort_chunk.op.gpu)
+            align_map_op = PSRSAlign(stage=OperandStage.map, axis=op.axis,
+                                     output_sizes=list(in_tensor.nsplits[op.axis]),
+                                     dtype=partition_sort_chunk.dtype,
+                                     gpu=partition_sort_chunk.op.gpu)
             align_map_chunk = align_map_op.new_chunk([partition_sort_chunk] + sort_info_chunks,
                                                      shape=partition_sort_chunk.shape,
                                                      index=partition_sort_chunk.index,
@@ -261,9 +264,9 @@ class PSRSSorter(object):
             align_map_chunks, shape=())
         align_reduce_chunks = []
         for i, align_map_chunk in enumerate(align_map_chunks):
-            align_reduce_op = PSRSAlignReduce(axis=op.axis, shuffle_key=str(i),
-                                              dtype=align_map_chunk.dtype,
-                                              gpu=align_map_chunk.op.gpu)
+            align_reduce_op = PSRSAlign(stage=OperandStage.reduce, axis=op.axis,
+                                        shuffle_key=str(i), dtype=align_map_chunk.dtype,
+                                        gpu=align_map_chunk.op.gpu)
             idx = list(out_idx)
             idx.insert(op.axis, i)
             in_chunk = in_tensor.cix[tuple(idx)]
@@ -444,18 +447,23 @@ class PSRSConcatPivot(TensorOperand, PSRSOperandMixin):
             ctx[op.outputs[0].key] = a[slc]
 
 
-class PSRSShuffleMap(TensorShuffleMap, PSRSOperandMixin):
-    _op_type_ = OperandDef.PSRS_SHUFFLE_MAP
+class PSRSShuffle(TensorMapReduceOperand, PSRSOperandMixin):
+    _op_type_ = OperandDef.PSRS_SHUFFLE
 
     _axis = Int32Field('axis')
     _order = ListField('order', ValueType.string)
     _n_partition = Int32Field('n_partition')
     _input_sorted = BoolField('input_sorted')
 
-    def __init__(self, axis=None, order=None, n_partition=None, input_sorted=None
-                 , dtype=None, gpu=None, **kw):
+    _kind = StringField('kind')
+    _need_align = BoolField('need_align')
+
+    def __init__(self, axis=None, order=None, n_partition=None, input_sorted=None,
+                 kind=None, need_align=None, stage=None, shuffle_key=None,
+                 dtype=None, gpu=None, **kw):
         super().__init__(_axis=axis, _order=order, _n_partition=n_partition,
-                         _input_sorted=input_sorted, _dtype=dtype, _gpu=gpu, **kw)
+                         _input_sorted=input_sorted, _kind=kind, _need_align=need_align,
+                         _stage=stage, _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -473,8 +481,20 @@ class PSRSShuffleMap(TensorShuffleMap, PSRSOperandMixin):
     def input_sorted(self):
         return self._input_sorted
 
+    @property
+    def kind(self):
+        return self._kind
+
+    @property
+    def need_align(self):
+        return self._need_align
+
+    @property
+    def output_limit(self):
+        return 1 if not self._need_align else 2
+
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_map(cls, ctx, op):
         (a, pivots), device_id, xp = as_same_device([ctx[c.key] for c in op.inputs],
                                                     device=op.device, ret_extra=True)
         out = op.outputs[0]
@@ -504,42 +524,8 @@ class PSRSShuffleMap(TensorShuffleMap, PSRSOperandMixin):
             for i in range(op.n_partition):
                 ctx[(out.key, str(i))] = tuple(reduce_outputs[i].ravel())
 
-
-class PSRSShuffleReduce(TensorShuffleReduce, PSRSOperandMixin):
-    _op_type_ = OperandDef.PSRS_SHUFFLE_REDUCE
-
-    _axis = Int32Field('axis')
-    _order = ListField('order', ValueType.string)
-    _kind = StringField('kind')
-    _need_align = BoolField('need_align')
-
-    def __init__(self, axis=None, order=None, kind=None, need_align=None,
-                 shuffle_key=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _order=order, _kind=kind, _need_align=need_align,
-                         _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def order(self):
-        return self._order
-
-    @property
-    def kind(self):
-        return self._kind
-
-    @property
-    def need_align(self):
-        return self._need_align
-
-    @property
-    def output_limit(self):
-        return 1 if not self._need_align else 2
-
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_reduce(cls, ctx, op):
         input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
         raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
         flatten_inputs = []
@@ -577,15 +563,24 @@ class PSRSShuffleReduce(TensorShuffleReduce, PSRSOperandMixin):
                 ctx[op.outputs[0].key] = tuple(sort_res.ravel())
                 ctx[op.outputs[1].key] = sort_info
 
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            cls._execute_map(ctx, op)
+        else:
+            cls._execute_reduce(ctx, op)
 
-class PSRSAlignMap(TensorShuffleMap, PSRSOperandMixin):
-    _op_type_ = OperandDef.PSRS_ALIGN_MAP
+
+class PSRSAlign(TensorMapReduceOperand, PSRSOperandMixin):
+    _op_type_ = OperandDef.PSRS_ALIGN
 
     _axis = Int32Field('axis')
     _output_sizes = ListField('output_sizes', ValueType.int32)
 
-    def __init__(self, axis=None, output_sizes=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _output_sizes=output_sizes, _dtype=dtype, _gpu=gpu, **kw)
+    def __init__(self, axis=None, output_sizes=None, stage=None, shuffle_key=None,
+                 dtype=None, gpu=None, **kw):
+        super().__init__(_axis=axis, _output_sizes=output_sizes, _stage=stage,
+                         _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
@@ -596,7 +591,7 @@ class PSRSAlignMap(TensorShuffleMap, PSRSOperandMixin):
         return self._output_sizes
 
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_map(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
         sort_res, sort_infos = inputs[0], inputs[1:]
@@ -628,21 +623,8 @@ class PSRSAlignMap(TensorShuffleMap, PSRSOperandMixin):
                     tuple(ar if ar is not None else xp.empty((0,), dtype=out.dtype)
                           for ar in outs[idx])
 
-
-class PSRSAlignReduce(TensorShuffleReduce, PSRSOperandMixin):
-    _op_type_ = OperandDef.PSRS_ALIGN_REDUCE
-
-    _axis = Int32Field('axis')
-
-    def __init__(self, axis=None, shuffle_key=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
-
-    @property
-    def axis(self):
-        return self._axis
-
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_reduce(cls, ctx, op):
         in_chunk = op.inputs[0]
         axis = op.axis
         input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
@@ -667,6 +649,13 @@ class PSRSAlignReduce(TensorShuffleReduce, PSRSOperandMixin):
                 concat_1d = xp.concatenate(inps)
                 res[tuple(slc)] = concat_1d
             ctx[out.key] = res.astype(res.dtype, order=out.order.value)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            cls._execute_map(ctx, op)
+        else:
+            cls._execute_reduce(ctx, op)
 
 
 _AVAILABLE_KINDS = {'QUICKSORT', 'MERGESORT', 'HEAPSORT', 'STABLE'}
