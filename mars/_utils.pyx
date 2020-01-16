@@ -19,16 +19,13 @@ from binascii import hexlify
 from datetime import date, datetime, timedelta
 from collections import deque
 
+import numpy as np
+import pandas as pd
+cimport cython
+from cpython.version cimport PY_MAJOR_VERSION
+
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
 from .compat import Enum
-
-import numpy as np
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
-
-from cpython.version cimport PY_MAJOR_VERSION
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -248,5 +245,11 @@ cpdef tuple insert_reversed_tuple(tuple a, object x):
         return a[:lo] + (x,) + a[lo:]
 
 
+@cython.nonecheck(False)
+@cython.cdivision(True)
+cpdef int ceildiv(int x, int y) nogil:
+    return x // y + (x % y != 0)
+
+
 __all__ = ['to_str', 'to_binary', 'to_text', 'tokenize', 'tokenize_int', 'register_tokenizer',
-           'insert_reversed_tuple']
+           'insert_reversed_tuple', 'ceildiv']

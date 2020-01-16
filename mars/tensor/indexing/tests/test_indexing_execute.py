@@ -22,7 +22,7 @@ import scipy.sparse as sps
 from mars.tiles import get_tiled
 from mars.tensor.datasource import tensor, arange
 from mars.tensor.indexing import take, compress, extract, choose, \
-    unravel_index, nonzero, flatnonzero
+    unravel_index, nonzero, flatnonzero, fill_diagonal
 from mars.tensor import mod, stack, hstack
 from mars.config import options
 from mars.tests.core import ExecutorForTest
@@ -535,3 +535,197 @@ class Test(unittest.TestCase):
         expected = np.flatnonzero(np.arange(-2, 3))
 
         np.testing.assert_equal(res, expected)
+
+    def testFillDiagonalExecution(self):
+        # 2-d
+        raws = [np.random.rand(30, 11),
+                np.random.rand(15, 15),
+                np.random.rand(11, 30),
+                sps.random(30, 11, density=0.1, format='csr')]
+
+        def copy(x):
+            if hasattr(x, 'nnz'):
+                # sparse
+                return x.A
+            else:
+                return x.copy()
+
+        for raw in raws:
+            # test 1 chunk, wrap=False
+            t = tensor(raw, chunk_size=30)
+            fill_diagonal(t, 1)
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, 1)
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+            # test 1 chunk, wrap=True
+            t = tensor(raw, chunk_size=30)
+            fill_diagonal(t, 1, wrap=True)
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, 1, wrap=True)
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+            # test multiple chunks, wrap=False
+            t = tensor(raw, chunk_size=(12, 4))
+            fill_diagonal(t, 1)
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, 1)
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+            t = tensor(raw, chunk_size=(4, 12))
+            fill_diagonal(t, 1)
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, 1)
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+            # test multiple chunk, val with list type
+            t = tensor(raw, chunk_size=(12, 4))
+            fill_diagonal(t, [1, 2, 3])
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, [1, 2, 3])
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+            # test multiple chunk, val with tensor type
+            t = tensor(raw, chunk_size=(12, 4))
+            fill_diagonal(t, tensor([1, 2, 3]))
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, [1, 2, 3])
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+            # test multiple chunks, wrap=True
+            t = tensor(raw, chunk_size=(12, 4))
+            fill_diagonal(t, 1, wrap=True)
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, 1, wrap=True)
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+            t = tensor(raw, chunk_size=(4, 12))
+            fill_diagonal(t, 1, wrap=True)
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, 1, wrap=True)
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+            # test multiple chunk, val with list type
+            t = tensor(raw, chunk_size=(12, 4))
+            fill_diagonal(t, [1, 2, 3], wrap=True)
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, [1, 2, 3], wrap=True)
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+            # test multiple chunk, val with tensor type
+            t = tensor(raw, chunk_size=(12, 4))
+            fill_diagonal(t, tensor([[1, 2], [3, 4]]), wrap=True)
+
+            res = self.executor.execute_tensor(t, concat=True)[0]
+            expected = copy(raw)
+            np.fill_diagonal(expected, [1, 2, 3, 4], wrap=True)
+
+            np.testing.assert_array_equal(np.asarray(res), expected)
+
+        # 3-d
+        raw = np.random.rand(11, 11, 11)
+
+        expected = raw.copy()
+        np.fill_diagonal(expected, 1)
+        expected2 = raw.copy()
+        np.fill_diagonal(expected2, 1, wrap=True)
+        np.testing.assert_array_equal(expected, expected2)
+
+        # test 1 chunk
+        t = tensor(raw, chunk_size=30)
+        fill_diagonal(t, 1)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+
+        np.testing.assert_array_equal(res, expected)
+
+        t = tensor(raw, chunk_size=30)
+        # wrap = True does not take effect when ndim > 2
+        fill_diagonal(t, 1, wrap=True)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+
+        np.testing.assert_array_equal(res, expected)
+
+        # test multiple chunk
+        t = tensor(raw, chunk_size=(3, 4, 5))
+        fill_diagonal(t, 1)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+
+        np.testing.assert_array_equal(res, expected)
+
+        t = tensor(raw, chunk_size=(3, 4, 5))
+        # wrap = True does not take effect when ndim > 2
+        fill_diagonal(t, 1, wrap=True)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+
+        np.testing.assert_array_equal(res, expected)
+
+        # test val with list type
+        t = tensor(raw, chunk_size=(3, 4, 5))
+        fill_diagonal(t, [[1, 2], [3, 4]])
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = raw.copy()
+        np.fill_diagonal(expected, [1, 2, 3, 4])
+
+        np.testing.assert_array_equal(res, expected)
+
+        # test val with tensor type
+        t = tensor(raw, chunk_size=(3, 4, 5))
+        fill_diagonal(t, tensor([1, 2, 3]))
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = raw.copy()
+        np.fill_diagonal(expected, [1, 2, 3])
+
+        np.testing.assert_array_equal(res, expected)
+
+        # test val with tensor type which ndim == 0
+        t = tensor(raw, chunk_size=(3, 4, 5))
+        fill_diagonal(t, tensor([1, 2, 3]).sum())
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = raw.copy()
+        np.fill_diagonal(expected, 6)
+
+        np.testing.assert_array_equal(res, expected)
+
+        # test val with ndarray type which size is too long
+        t = tensor(raw, chunk_size=(3, 4, 5))
+        fill_diagonal(t, np.arange(20))
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = raw.copy()
+        np.fill_diagonal(expected, np.arange(20))
+
+        np.testing.assert_array_equal(res, expected)

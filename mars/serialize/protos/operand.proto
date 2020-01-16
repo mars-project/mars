@@ -278,8 +278,8 @@ message OperandDef {
         HISTOGRAM = 430;
         HISTOGRAM_BIN_EDGES = 431;
         PARTITION = 432;
-        //statistics
         QUANTILE = 440;
+        FILL_DIAGONAL = 441;
         // fancy index, distributed phase is a shuffle operation that
         // the fancy indexes will be distributed to the left chunks
         // the concat phase will concat back the indexed left chunks and index
