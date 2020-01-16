@@ -390,6 +390,9 @@ message OperandDef {
         // PyTorch
         RUN_PYTORCH = 3011;
 
+        // Check non negative
+        CHECK_NON_NEGATIVE = 3300;
+
         CHOLESKY_FUSE = 999988;
 
         // fetches
