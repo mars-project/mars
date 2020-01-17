@@ -29,6 +29,12 @@ class TensorMax(TensorReduction, TensorReductionMixin):
         super(TensorMax, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _stage=stage,
                                         _combine_size=combine_size, **kw)
 
+    @classmethod
+    def _is_sparse(cls, input_sparse, shape):
+        if input_sparse and len(shape) > 0:
+            return True
+        return False
+
 
 def max(a, axis=None, out=None, keepdims=None, combine_size=None):
     """
