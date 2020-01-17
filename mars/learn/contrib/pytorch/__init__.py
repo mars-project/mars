@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .run_script import run_pytorch_script
+from .dataset import MarsTorchDataset
 
 
 def register_op():

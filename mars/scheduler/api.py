@@ -15,7 +15,6 @@
 from typing import List
 
 from ..actors import new_client
-from .graph import GraphActor
 from .session import SessionActor
 from .chunkmeta import ChunkMetaClient
 from .utils import SchedulerClusterInfoActor

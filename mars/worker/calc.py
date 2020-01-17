@@ -154,8 +154,8 @@ class BaseCalcActor(WorkerActor):
         start_time = time.time()
 
         local_context_dict = DistributedDictContext(
-            self._cluster_info_ref, session_id, self.address, self.get_meta_client(),
-            self._resource_ref, self.ctx, n_cpu=self._get_n_cpu())
+            self.get_scheduler(self.default_uid()), session_id, actor_ctx=self.ctx,
+            address=self.address, n_cpu=self._get_n_cpu())
         local_context_dict.update(context_dict)
         context_dict.clear()
 

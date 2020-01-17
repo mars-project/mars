@@ -39,7 +39,7 @@ class Session(object):
         self._endpoint = endpoint.rstrip('/')
         self._session_id = session_id
         self._args = args or dict()
-        # dict structure: {ttileable_key -> graph_key, tileable_ids}
+        # dict structure: {tileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tileable id
         self._executed_tileables = dict()
 

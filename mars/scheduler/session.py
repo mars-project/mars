@@ -93,10 +93,12 @@ class SessionActor(SchedulerActor):
 
         graph_ref.execute_graph(_tell=True, compose=compose)
 
-        for tileable_key, tileable_name in zip(target_tileables or (), name or ()):
+        for tileable_key in target_tileables or ():
             if tileable_key not in self._tileable_to_graph:
                 self._tileable_to_graph[tileable_key] = graph_ref
-            self._tileable_names[tileable_name] = tileable_key
+
+        if name:
+            self._tileable_names.update(zip(name, target_tileables))
         return graph_ref
 
     @log_unhandled
@@ -229,10 +231,13 @@ class SessionManagerActor(SchedulerActor):
     def create_session(self, session_id, **kwargs):
         uid = SessionActor.gen_uid(session_id)
         scheduler_address = self.get_scheduler(uid)
-        session_ref = self.ctx.create_actor(SessionActor, uid=uid, address=scheduler_address,
-                                            session_id=session_id, **kwargs)
-        self._session_refs[session_id] = session_ref
-        return session_ref
+        if session_id in self._session_refs:
+            return self._session_refs[session_id]
+        else:
+            session_ref = self.ctx.create_actor(SessionActor, uid=uid, address=scheduler_address,
+                                                session_id=session_id, **kwargs)
+            self._session_refs[session_id] = session_ref
+            return session_ref
 
     @log_unhandled
     def has_session(self, session_id):

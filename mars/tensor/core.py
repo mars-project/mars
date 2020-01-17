@@ -780,5 +780,19 @@ def mutable_tensor(name, shape=None, dtype=np.float_, fill_value=None, chunk_siz
                                              fill_value=fill_value, chunk_size=chunk_size)
 
 
+def named_tensor(name, shape=None):
+    from .fetch import TensorFetch
+    from ..context import get_context
+
+    ctx = get_context()
+    tileable_key = ctx.get_tileable_key_by_name(name)
+
+    if shape is None:
+        nsplits = ctx.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+        shape = tuple(sum(s) for s in nsplits)
+
+    return TensorFetch().new_tensor([], shape=shape, _key=tileable_key)
+
+
 TENSOR_TYPE = (Tensor, TensorData)
 CHUNK_TYPE = (TensorChunk, TensorChunkData)

@@ -56,7 +56,7 @@ from .rechunk import rechunk
 from .einsum import einsum
 # noinspection PyUnresolvedReferences
 from .lib.index_tricks import mgrid, ogrid, ndindex
-from .core import mutable_tensor
+from .core import mutable_tensor, named_tensor
 
 from . import random
 from . import fft
