@@ -35,10 +35,6 @@ class TensorMax(TensorReduction, TensorReductionMixin):
             return True
         return False
 
-    @staticmethod
-    def _get_op_types():
-        return TensorMax, TensorMax, None
-
 
 def max(a, axis=None, out=None, keepdims=None, combine_size=None):
     """

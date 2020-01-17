@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
-from enum import Enum
-
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, StringField, Int8Field
+from ...serialize import KeyField, StringField
+from ...operands import OperandStage
 from ...tensor.core import TensorOrder, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ...tensor.array_utils import as_same_device, device, issparse
 from ...config import options
@@ -27,18 +25,10 @@ from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from .core import get_output_types
 
 
-class Stage(Enum):
-    final = 0
-    chunk = 1
-    merge = 2
-
-
 class CheckBase(LearnOperand, LearnOperandMixin):
     _input = KeyField('input')
     _value = KeyField('value')
     _err_msg = StringField('err_msg')
-    _stage = Int8Field('stage', on_serialize=operator.attrgetter('value'),
-                       on_deserialize=Stage)
 
     def __init__(self, input=None, value=None, err_msg=None, stage=None,
                  gpu=None, output_types=None, **kw):
@@ -58,10 +48,6 @@ class CheckBase(LearnOperand, LearnOperandMixin):
     def err_msg(self):
         return self._err_msg
 
-    @property
-    def stage(self):
-        return self._stage
-
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         if self._input is not None:
@@ -73,7 +59,7 @@ class CheckBase(LearnOperand, LearnOperandMixin):
         # output input if value not specified
         self._value = value = value if value is not None else x
         self._output_types = get_output_types(value)
-        self._stage = Stage.final
+        self._stage = OperandStage.agg
         return self.new_tileable([x, value],
                                  kws=[value.params])
 
@@ -83,7 +69,7 @@ class CheckBase(LearnOperand, LearnOperandMixin):
         x, value = op.input, op.value
         check_chunks = []
         for i, chunk in enumerate(x.chunks):
-            chunk_op = cls(err_msg=op.err_msg, stage=Stage.chunk,
+            chunk_op = cls(err_msg=op.err_msg, stage=OperandStage.map,
                            output_types=[OutputType.tensor])
             check_chunk = chunk_op.new_chunk([chunk], shape=(),
                                              index=(i,),
@@ -97,7 +83,7 @@ class CheckBase(LearnOperand, LearnOperandMixin):
             chunk_size = ceildiv(len(prev_check_chunks), combine_size)
             for i in range(chunk_size):
                 chunks = prev_check_chunks[i * combine_size: (i + 1) * combine_size]
-                chunk_op = cls(err_msg=op.err_msg, stage=Stage.merge,
+                chunk_op = cls(err_msg=op.err_msg, stage=OperandStage.combine,
                                output_types=[OutputType.tensor])
                 check_chunk = chunk_op.new_chunk(chunks, shape=(),
                                                  index=(i,),
@@ -108,7 +94,7 @@ class CheckBase(LearnOperand, LearnOperandMixin):
         check_chunk = check_chunks[0]
         out_chunks = []
         for val_chunk in value.chunks:
-            chunk_op = cls(value=val_chunk, err_msg=op.err_msg, stage=Stage.final,
+            chunk_op = cls(value=val_chunk, err_msg=op.err_msg, stage=OperandStage.agg,
                            output_types=op.output_types)
             out_chunk = chunk_op.new_chunk([check_chunk, val_chunk], kws=[val_chunk.params])
             out_chunks.append(out_chunk)
@@ -181,12 +167,12 @@ class CheckNonNegative(CheckBase):
 
     @classmethod
     def execute(cls, ctx, op):
-        if op.stage == Stage.chunk:
+        if op.stage == OperandStage.map:
             return cls._execute_chunk(ctx, op)
-        elif op.stage == Stage.merge:
+        elif op.stage == OperandStage.combine:
             return cls._execute_merge(ctx, op)
         else:
-            assert op.stage == Stage.final
+            assert op.stage == OperandStage.agg
             return cls._execute_final(ctx, op)
 
 

@@ -35,10 +35,6 @@ class TensorMin(TensorReduction, TensorReductionMixin):
             return True
         return False
 
-    @staticmethod
-    def _get_op_types():
-        return TensorMin, TensorMin, None
-
 
 def min(a, axis=None, out=None, keepdims=None, combine_size=None):
     """
