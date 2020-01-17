@@ -18,22 +18,22 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField, TupleField
-from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
+from .core import TensorReduction, TensorArgReductionMixin
 
 
-class TensorArgmaxMap(TensorReduction, TensorArgMapMixin):
-    _op_type_ = OperandDef.ARGMAX_CHUNK
+class TensorArgmax(TensorReduction, TensorArgReductionMixin):
+    _op_type_ = OperandDef.ARGMAX
+    _func_name = 'argmax'
+    _agg_func_name = 'max'
 
     _offset = AnyField('offset')
     _total_shape = TupleField('total_shape')
 
-    _func_name = 'argmax'
-    _agg_func_name = 'max'
-
-    def __init__(self, axis=None, dtype=np.dtype(int),
-                 combine_size=None, offset=None, total_shape=None, **kw):
-        super(TensorArgmaxMap, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
-                                              _offset=offset, _total_shape=total_shape, **kw)
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None,
+                 offset=None, total_shape=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
+        super(TensorArgmax, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
+                                           _offset=offset, _total_shape=total_shape, _stage=stage, **kw)
 
     @property
     def offset(self):
@@ -42,27 +42,6 @@ class TensorArgmaxMap(TensorReduction, TensorArgMapMixin):
     @property
     def total_shape(self):
         return getattr(self, '_total_shape', None)
-
-
-class TensorArgmaxCombine(TensorReduction, TensorArgCombineMixin):
-    _op_type_ = OperandDef.ARGMAX_COMBINE
-    _func_name = 'argmax'
-
-    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super(TensorArgmaxCombine, self).__init__(_axis=axis, _dtype=dtype,
-                                                  _combine_size=combine_size, **kw)
-
-
-class TensorArgmax(TensorReduction, TensorArgReductionMixin):
-    _op_type_ = OperandDef.ARGMAX
-    _func_name = 'argmax'
-
-    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super(TensorArgmax, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorArgmaxMap, TensorArgmax, TensorArgmaxCombine
 
 
 def argmax(a, axis=None, out=None, combine_size=None):

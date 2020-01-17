@@ -16,8 +16,9 @@
 
 import unittest
 
+from mars.operands import OperandStage
 from mars.tensor.datasource import ones
-from mars.tensor.reshape.reshape import TensorReshapeMap, TensorReshapeReduce
+from mars.tensor.reshape.reshape import TensorReshape
 
 
 class Test(unittest.TestCase):
@@ -54,7 +55,9 @@ class Test(unittest.TestCase):
         b = b.tiles()
 
         self.assertEqual(tuple(sum(s) for s in b.nsplits), (27, 31))
-        self.assertIsInstance(b.chunks[0].op, TensorReshapeReduce)
+        self.assertIsInstance(b.chunks[0].op, TensorReshape)
+        self.assertEqual(b.chunks[0].op.stage, OperandStage.reduce)
 
         shuffle_map_sample = b.chunks[0].inputs[0].inputs[0]
-        self.assertIsInstance(shuffle_map_sample.op, TensorReshapeMap)
+        self.assertIsInstance(shuffle_map_sample.op, TensorReshape)
+        self.assertEqual(shuffle_map_sample.op.stage, OperandStage.map)

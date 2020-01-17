@@ -30,11 +30,13 @@ class TensorNanMoment(TensorReduction, TensorReductionMixin):
     _moment = Int32Field('moment', default=2)
     _ddof = Int32Field('ddof')
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None, combine_size=None, **kw):
+    def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None,
+                 combine_size=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
         if moment is not None:
             kw['_moment'] = moment
         super(TensorNanMoment, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                              _ddof=ddof, _combine_size=combine_size, **kw)
+                                              _ddof=ddof, _combine_size=combine_size, _stage=stage, **kw)
 
     @property
     def moment(self):
@@ -45,7 +47,7 @@ class TensorNanMoment(TensorReduction, TensorReductionMixin):
         return self._ddof
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_agg(cls, ctx, op):
         axis = cls.get_axis(op.axis)
         dtype = op.dtype
 
@@ -65,24 +67,8 @@ class TensorNanMoment(TensorReduction, TensorReductionMixin):
                 xp.nansum(chunk_count, axis=axis, dtype=dtype, keepdims=bool(op.keepdims)) - op.ddof,
                 dtype=dtype)
 
-
-class TensorNanMomentMap(TensorReduction, TensorReductionMixin):
-    _op_type_ = OperandDef.NANMOMENT_CHUNK
-
-    _moment = Int32Field('moment', default=2)
-
-    def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
-        if moment is not None:
-            kw['_moment'] = moment
-        super(TensorNanMomentMap, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                 _combine_size=combine_size, **kw)
-
-    @property
-    def moment(self):
-        return getattr(self, '_moment', 2)
-
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_map(cls, ctx, op):
         (in_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
@@ -101,24 +87,8 @@ class TensorNanMomentMap(TensorReduction, TensorReductionMixin):
                                                    keepdims=bool(op.keepdims))
             ctx[op.outputs[0].key] = (chunk_sum, chunk_count, var_square)
 
-
-class TensorNanMomentCombine(TensorReduction, TensorReductionMixin):
-    _op_type_ = OperandDef.NANMOMENT_COMBINE
-
-    _moment = Int32Field('moment')
-
-    def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
-        if moment is not None:
-            kw['_moment'] = moment
-        super(TensorNanMomentCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                     _combine_size=combine_size, **kw)
-
-    @property
-    def moment(self):
-        return getattr(self, '_moment', 2)
-
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_combine(cls, ctx, op):
         axis = cls.get_axis(op.axis)
         moment = op.moment
         dtype = op.dtype
@@ -145,6 +115,11 @@ class TensorNanVar(TensorReduction, TensorReductionMixin):
 
     _ddof = Int32Field('ddof')
 
+    def __new__(cls, *args, **kwargs):
+        if kwargs.get('stage') is not None:
+            return TensorNanMoment(*args, **kwargs)
+        return super(TensorNanVar, cls).__new__(cls, *args, **kwargs)
+
     def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, **kw):
         super(TensorNanVar, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
                                            _combine_size=combine_size, **kw)
@@ -152,10 +127,6 @@ class TensorNanVar(TensorReduction, TensorReductionMixin):
     @property
     def ddof(self):
         return self._ddof
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanMomentMap, TensorNanMoment, TensorNanMomentCombine
 
     def _get_op_kw(self):
         kw = dict()

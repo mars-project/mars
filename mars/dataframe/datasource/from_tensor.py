@@ -43,9 +43,9 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, index=None, dtypes=None, from_1d_tensors=None,
                  gpu=None, sparse=None, **kw):
-        super(DataFrameFromTensor, self).__init__(_index=index,_dtypes=dtypes,
-                                                 _from_1d_tensors=from_1d_tensors, _gpu=gpu, _sparse=sparse,
-                                                  _object_type=ObjectType.dataframe, **kw)
+        super(DataFrameFromTensor, self).__init__(
+            _index=index, _dtypes=dtypes, _from_1d_tensors=from_1d_tensors, _gpu=gpu,
+            _sparse=sparse, _object_type=ObjectType.dataframe, **kw)
 
     @property
     def dtypes(self):
@@ -326,9 +326,9 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, index=None, dtype=None, gpu=None, sparse=None, **kw):
-        super(SeriesFromTensor, self).__init__(_index=index, _dtype=dtype, _gpu=gpu,
-                         _sparse=sparse,
-                                               _object_type=ObjectType.series, **kw)
+        super(SeriesFromTensor, self).__init__(
+            _index=index, _dtype=dtype, _gpu=gpu, _sparse=sparse,
+            _object_type=ObjectType.series, **kw)
 
     @property
     def index(self):
@@ -342,7 +342,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
         super(SeriesFromTensor, self)._set_inputs(inputs)
         self._input = self._inputs[0]
         if self._index is not None:
-            self._index=  self._inputs[-1]
+            self._index = self._inputs[-1]
 
     @classmethod
     def tile(cls, op):

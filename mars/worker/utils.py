@@ -182,7 +182,10 @@ def concat_operand_keys(graph, sep=','):
     for c in graph:
         if isinstance(c.op, Fetch):
             continue
-        graph_op_dict[c.op.key] = type(c.op).__name__
+        if c.op.stage is None:
+            graph_op_dict[c.op.key] = type(c.op).__name__
+        else:
+            graph_op_dict[c.op.key] = '%s:%s' % (type(c.op).__name__, c.op.stage.name)
     keys = sep.join(graph_op_dict.keys())
     graph_ops = sep.join(graph_op_dict.values())
     return keys, graph_ops

@@ -17,21 +17,15 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...operands import OperandStage
 from ...serialize import KeyField, StringField, AnyField, Int64Field, Int32Field
 from ...config import options
-from ...compat import enum
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..operands import TensorOperand, TensorOperandMixin
 from ..core import TENSOR_TYPE, TensorOrder
 from ..datasource.array import tensor as astensor
 from ..array_utils import as_same_device, device
-
-
-class Stage(enum.Enum):
-    map = 'map'
-    combine = 'combine'
-    reduce = 'reduce'
 
 
 class TensorSearchsorted(TensorOperand, TensorOperandMixin):
@@ -41,8 +35,6 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
     _values = AnyField('values')
     _side = StringField('side')
     _combine_size = Int32Field('combine_size')
-    _stage = StringField('stage', on_serialize=lambda s: s.value if s is not None else s,
-                         on_deserialize=lambda n: Stage(n) if n is not None else n)
     # offset is used only for map stage
     _offset = Int64Field('offset')
 
@@ -144,7 +136,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
             chunks = []
             for i, c in enumerate(a.chunks):
                 chunk_op = op.copy().reset_key()
-                chunk_op._stage = Stage.map
+                chunk_op._stage = OperandStage.map
                 chunk_op._offset = offsets[i]
                 in_chunks = [c]
                 if input_len == 2:
@@ -162,10 +154,10 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
                         break
 
                     new_chunks.append(
-                        cls._combine_chunks(to_combine, op, Stage.combine, v_chunk, (j,)))
+                        cls._combine_chunks(to_combine, op, OperandStage.combine, v_chunk, (j,)))
                 chunks = new_chunks
 
-            chunk = cls._combine_chunks(chunks, op, Stage.reduce, v_chunk, v_index)
+            chunk = cls._combine_chunks(chunks, op, OperandStage.reduce, v_chunk, v_index)
             out_chunks.append(chunk)
 
         new_op = op.copy().reset_key()
@@ -272,9 +264,9 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
         with device(device_id):
             if op.stage is None:
                 ret = cls._execute_without_stage(xp, a, v, op)
-            elif op.stage == Stage.map:
+            elif op.stage == OperandStage.map:
                 ret = cls._execute_map(xp, a, v, op)
-            elif op.stage == Stage.combine:
+            elif op.stage == OperandStage.combine:
                 ret = cls._execute_combine(xp, a, v, op)
             else:
                 ret = cls._execute_reduce(xp, a, v, op)

@@ -214,40 +214,25 @@ message OperandDef {
         MIN = 306;
         ALL = 307;
         ANY = 308;
-        MEAN_CHUNK = 309;
-        MEAN_COMBINE = 310;
-        MEAN = 311;
-        ARGMAX = 312;
-        ARGMAX_CHUNK = 313;
-        ARGMAX_COMBINE = 314;
-        ARGMIN = 315;
-        ARGMIN_CHUNK = 316;
-        ARGMIN_COMBINE = 317;
-        NANSUM = 318;
-        NANMAX = 319;
-        NANMIN = 320;
-        NANPROD = 321;
-        NANMEAN = 322;
-        NANMEAN_CHUNK = 323;
-        NANARGMAX = 324;
-        NANARGMAX_CHUNK = 325;
-        NANARGMAX_COMBINE = 326;
-        NANARGMIN = 327;
-        NANARGMIN_CHUNK = 328;
-        NANARGMIN_COMBINE = 329;
-        COUNT_NONZERO = 330;
-        MOMENT_CHUNK = 331;
-        NANMOMENT_CHUNK = 332;
-        MOMENT_COMBINE = 333;
-        NANMOMENT_COMBINE = 334;
-        MOMENT = 335;
-        NANMOMENT = 336;
-        VAR = 337;
-        STD = 338;
-        NANVAR = 339;
-        NANSTD = 340;
-        NANCUMSUM = 341;
-        NANCUMPROD = 342;
+        MEAN = 309;
+        ARGMAX = 310;
+        ARGMIN = 311;
+        NANSUM = 312;
+        NANMAX = 313;
+        NANMIN = 314;
+        NANPROD = 315;
+        NANMEAN = 316;
+        NANARGMAX = 317;
+        NANARGMIN = 318;
+        COUNT_NONZERO = 319;
+        MOMENT = 320;
+        NANMOMENT = 321;
+        VAR = 322;
+        STD = 323;
+        NANVAR = 324;
+        NANSTD = 325;
+        NANCUMSUM = 326;
+        NANCUMPROD = 327;
 
         // tensor operand
         RESHAPE = 401;
@@ -284,10 +269,8 @@ message OperandDef {
         // the fancy indexes will be distributed to the left chunks
         // the concat phase will concat back the indexed left chunks and index
         // according to the original fancy index order
-        FANCY_INDEX_DISTRIBUTE_MAP = 424;
-        FANCY_INDEX_DISTRIBUTE_REDUCE = 425;
-        FANCY_INDEX_CONCAT_MAP = 426;
-        FANCY_INDEX_CONCAT_REDUCE = 427;
+        FANCY_INDEX_DISTRIBUTE = 424;
+        FANCY_INDEX_CONCAT = 425;
 
         // linear algebra
         TENSORDOT = 501;
@@ -346,14 +329,7 @@ message OperandDef {
 
         // shuffle
         SHUFFLE_PROXY = 2001;
-        RESHAPE_MAP = 2002;
-        RESHAPE_REDUCE = 2003;
-        DATAFRAME_INDEX_ALIGN_MAP = 2004;
-        DATAFRAME_INDEX_ALIGN_REDUCE = 2005;
-        PERMUTATION_MAP = 2006;
-        PERMUTATION_REDUCE = 2007;
-        UNIQUE_MAP = 2008;
-        UNIQUE_REDUCE = 2009;
+        DATAFRAME_INDEX_ALIGN = 2004;
         UNIQUE_INVERSE_REDUCE = 2013;
 
         // indexing
@@ -365,8 +341,7 @@ message OperandDef {
 
         // merge
         DATAFRAME_SHUFFLE_MERGE = 2010;
-        DATAFRAME_SHUFFLE_MERGE_ALIGN_MAP = 2011;
-        DATAFRAME_SHUFFLE_MERGE_ALIGN_REDUCE = 2012;
+        DATAFRAME_SHUFFLE_MERGE_ALIGN = 2011;
 
         // dataframe reduction
         COUNT = 2025;
@@ -376,18 +351,14 @@ message OperandDef {
 
         // groupby
         GROUPBY = 2030;
-        GROUPBY_MAP = 2031;
-        GROUPBY_REDUCE = 2032;
         GROUPBY_AGG = 2033;
         GROUPBY_CONCAT = 2034;
 
         // parallel sorting by regular sampling
         PSRS_SORT_REGULAR_SMAPLE = 2040;
         PSRS_CONCAT_PIVOT = 2041;
-        PSRS_SHUFFLE_MAP = 2042;
-        PSRS_SHUFFLE_REDUCE = 2043;
-        PSRS_ALIGN_MAP = 2044;
-        PSRS_ALIGN_REDUCE = 2045;
+        PSRS_SHUFFLE = 2042;
+        PSRS_ALIGN = 2043;
         // partition
         CALC_PARTITIONS_INFO = 2046;
         PARTITION_MERGED = 2047;
