@@ -19,8 +19,7 @@ import mars.dataframe as md
 from mars.operands import OperandStage
 from mars.tests.core import TestBase
 from mars.dataframe.core import DataFrameGroupBy, DataFrame
-from mars.dataframe.groupby.core import DataFrameGroupByOperand,\
-    DataFrameGroupByReduce, DataFrameGroupByMap, DataFrameShuffleProxy
+from mars.dataframe.groupby.core import DataFrameGroupByOperand, DataFrameShuffleProxy
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
 
 
@@ -67,9 +66,11 @@ class Test(TestBase):
         for chunk in r.chunks:
             self.assertIsInstance(chunk.op, DataFrameGroupByAgg)
             self.assertEqual(chunk.op.stage, OperandStage.combine)
-            self.assertIsInstance(chunk.inputs[0].op, DataFrameGroupByReduce)
+            self.assertIsInstance(chunk.inputs[0].op, DataFrameGroupByOperand)
+            self.assertEqual(chunk.inputs[0].op.stage, OperandStage.reduce)
             self.assertIsInstance(chunk.inputs[0].inputs[0].op, DataFrameShuffleProxy)
-            self.assertIsInstance(chunk.inputs[0].inputs[0].inputs[0].op, DataFrameGroupByMap)
+            self.assertIsInstance(chunk.inputs[0].inputs[0].inputs[0].op, DataFrameGroupByOperand)
+            self.assertEqual(chunk.inputs[0].inputs[0].inputs[0].op.stage, OperandStage.map)
 
             agg_chunk = chunk.inputs[0].inputs[0].inputs[0].inputs[0]
             self.assertEqual(agg_chunk.op.stage, OperandStage.map)

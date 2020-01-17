@@ -226,7 +226,11 @@ class ChunkData(EntityData):
     _cached = BoolField('cached')
 
     def __repr__(self):
-        return 'Chunk <op={0}, key={1}>'.format(self.op.__class__.__name__, self.key)
+        if self.op.stage is None:
+            return 'Chunk <op={0}, key={1}>'.format(type(self.op).__name__, self.key)
+        else:
+            return 'Chunk <op={0}, stage={1}, key={2}>'.format(
+                type(self.op).__name__, self.op.stage.name, self.key)
 
     @classmethod
     def cls(cls, provider):

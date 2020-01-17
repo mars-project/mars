@@ -334,10 +334,7 @@ message OperandDef {
 
         // shuffle
         SHUFFLE_PROXY = 2001;
-        DATAFRAME_INDEX_ALIGN_MAP = 2004;
-        DATAFRAME_INDEX_ALIGN_REDUCE = 2005;
-        PERMUTATION_MAP = 2006;
-        PERMUTATION_REDUCE = 2007;
+        DATAFRAME_INDEX_ALIGN = 2004;
         UNIQUE_INVERSE_REDUCE = 2013;
 
         // indexing
@@ -349,8 +346,7 @@ message OperandDef {
 
         // merge
         DATAFRAME_SHUFFLE_MERGE = 2010;
-        DATAFRAME_SHUFFLE_MERGE_ALIGN_MAP = 2011;
-        DATAFRAME_SHUFFLE_MERGE_ALIGN_REDUCE = 2012;
+        DATAFRAME_SHUFFLE_MERGE_ALIGN = 2011;
 
         // dataframe reduction
         COUNT = 2025;
@@ -360,8 +356,6 @@ message OperandDef {
 
         // groupby
         GROUPBY = 2030;
-        GROUPBY_MAP = 2031;
-        GROUPBY_REDUCE = 2032;
         GROUPBY_AGG = 2033;
         GROUPBY_CONCAT = 2034;
 

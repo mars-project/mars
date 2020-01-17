@@ -453,23 +453,6 @@ class ShuffleProxy(VirtualOperand):
     _broadcaster = True
 
 
-class ShuffleMap(Operand):
-    pass
-
-
-class ShuffleReduce(Operand):
-    _shuffle_key = StringField('shuffle_key', on_serialize=to_str)
-
-    @property
-    def shuffle_key(self):
-        return getattr(self, '_shuffle_key', None)
-
-    def get_dependent_data_keys(self):
-        inputs = self.inputs or ()
-        return [(chunk.key, self._shuffle_key)
-                for proxy in inputs for chunk in proxy.inputs or ()]
-
-
 class Fetch(Operand):
     _op_type_ = OperandDef.FETCH
 

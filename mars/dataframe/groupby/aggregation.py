@@ -24,7 +24,7 @@ from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy, ObjectType
 from ..core import GROUPBY_TYPE
 from ..utils import build_empty_df, parse_index, build_concated_rows_frame
-from .core import DataFrameGroupByMap, DataFrameGroupByReduce
+from .core import DataFrameGroupByOperand
 
 
 class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
@@ -81,9 +81,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         chunk_shape = (in_df.chunk_shape[0], 1)
         for chunk in chunks:
             if op.as_index:
-                map_op = DataFrameGroupByMap(shuffle_size=chunk_shape[0])
+                map_op = DataFrameGroupByOperand(stage=OperandStage.map, shuffle_size=chunk_shape[0])
             else:
-                map_op = DataFrameGroupByMap(by=op.by, shuffle_size=chunk_shape[0])
+                map_op = DataFrameGroupByOperand(stage=OperandStage.map, by=op.by, shuffle_size=chunk_shape[0])
             map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan, np.nan), index=chunk.index,
                                                index_value=op.outputs[0].index_value))
 
@@ -92,7 +92,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         # generate reduce chunks
         reduce_chunks = []
         for out_idx in itertools.product(*(range(s) for s in chunk_shape)):
-            reduce_op = DataFrameGroupByReduce(shuffle_key=','.join(str(idx) for idx in out_idx))
+            reduce_op = DataFrameGroupByOperand(
+                stage=OperandStage.reduce, shuffle_key=','.join(str(idx) for idx in out_idx))
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx,
                                     index_value=op.outputs[0].index_value))
