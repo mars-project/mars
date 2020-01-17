@@ -26,6 +26,7 @@ from math import ceil, log
 import numpy as np
 
 from ...config import options
+from ...operands import OperandStage
 from ...serialize import KeyField, AnyField, DataTypeField, BoolField, Int32Field
 from ..core import Tensor, TensorOrder
 from ..array_utils import get_array_module, as_same_device, device, cp
@@ -137,10 +138,6 @@ class TensorReductionMixin(TensorOperandMixin):
     def _get_op_kw(self):
         return None
 
-    @staticmethod
-    def _get_op_types():
-        raise NotImplementedError
-
     @classmethod
     def get_axis(cls, axis):
         return tuple(axis) if axis is not None else axis
@@ -150,7 +147,8 @@ class TensorReductionMixin(TensorOperandMixin):
         return None if len(axis) == ndim or ndim == 1 else axis[0]
 
     @classmethod
-    def _tree_reduction(cls, op, tensor, agg_op_type, axis, combine_op_type=None):
+    def _tree_reduction(cls, tensor, axis):
+        op = tensor.op
         kw = getattr(op, '_get_op_kw')() or {}
         keepdims = op.keepdims
         combine_size = op.combine_size or options.combine_size
@@ -167,16 +165,16 @@ class TensorReductionMixin(TensorOperandMixin):
                 times = int(builtins.max(times, ceil(log(n, combine_size[i]))))
 
         for i in range(times - 1):
-            combine_op = combine_op_type or agg_op_type
-            [tensor] = cls._partial_reduction(combine_op, tensor, axis, op.dtype, True, combine_size)
+            [tensor] = cls._partial_reduction(tensor, axis, op.dtype, True, combine_size, OperandStage.combine)
 
-        return cls._partial_reduction(agg_op_type, tensor, axis, op.dtype, keepdims, combine_size, kw)
+        return cls._partial_reduction(tensor, axis, op.dtype, keepdims, combine_size, OperandStage.agg, kw)
 
     @classmethod
-    def _partial_reduction(cls, agg_op_type, tensor, axis, dtype, keepdims, combine_size, kw=None):
+    def _partial_reduction(cls, tensor, axis, dtype, keepdims, combine_size, stage, kw=None):
         from ..merge.concatenate import TensorConcatenate
         kw = kw or {}
         axes = sorted(combine_size.keys())
+        op_type = type(tensor.op)
 
         combine_blocks = [cls._combine_split(i, combine_size, tensor.chunk_shape)
                           for i in range(tensor.ndim)]
@@ -194,7 +192,7 @@ class TensorReductionMixin(TensorOperandMixin):
                 chk = chks[0]
             shape = tuple(s if i not in combine_size else 1
                           for i, s in enumerate(chk.shape) if keepdims or i not in combine_size)
-            agg_op = agg_op_type(axis=axis, dtype=dtype, keepdims=keepdims, **kw)
+            agg_op = op_type(stage=stage, axis=axis, dtype=dtype, keepdims=keepdims, **kw)
             chunk = agg_op.new_chunk([chk], shape=shape,
                                      index=tuple(idx for i, idx in enumerate(combine_block_idx)
                                                  if keepdims or i not in combine_size),
@@ -205,7 +203,7 @@ class TensorReductionMixin(TensorOperandMixin):
             tuple(c.shape[i] for c in chunks if builtins.all(idx == 0 for j, idx in enumerate(c.index) if j != i))
             for i in range(len(chunks[0].shape))]
         shape = tuple(builtins.sum(nsplit) for nsplit in nsplits)
-        agg_op = agg_op_type(axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size, **kw)
+        agg_op = op_type(stage=stage, axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size, **kw)
         return agg_op.new_tensors([tensor], shape, order=tensor.order,
                                   chunks=chunks, nsplits=nsplits)
 
@@ -235,13 +233,11 @@ class TensorReductionMixin(TensorOperandMixin):
             return op.copy().new_tensors(op.inputs, op.outputs[0].shape, order=out_tensor.order,
                                          chunks=chunks, nsplits=nsplits)
 
-        chunk_op_type, agg_op_type, combine_op_type = getattr(op, '_get_op_types')()
-
         chunks = []
         kw = getattr(op, '_get_op_kw')() or {}
         for c in in_tensor.chunks:
-            chunk_op = chunk_op_type(axis=axis, dtype=op.dtype, keepdims=True,
-                                     combine_size=op.combine_size, **kw)
+            chunk_op = type(op)(stage=OperandStage.map, axis=axis, dtype=op.dtype, keepdims=True,
+                                combine_size=op.combine_size, **kw)
             chunks.append(chunk_op.new_chunk([c], shape=cls._reduced_shape(c.shape, axis),
                                              order=out_tensor.order, index=c.index))
 
@@ -249,10 +245,10 @@ class TensorReductionMixin(TensorOperandMixin):
         tensor = new_op.new_tensor(op.inputs, cls._reduced_shape(in_tensor.shape, axis),
                                    order=out_tensor.order,
                                    nsplits=cls._reduced_nsplits(in_tensor.nsplits, axis), chunks=chunks)
-        return cls._tree_reduction(new_op, tensor, agg_op_type, axis, combine_op_type=combine_op_type)
+        return cls._tree_reduction(tensor, axis)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_agg(cls, ctx, op):
         (input_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
         axis = cls.get_axis(op.axis)
@@ -305,14 +301,13 @@ class TensorArgReductionMixin(TensorReductionMixin):
         in_tensor = op.inputs[0]
         out_tensor = op.outputs[0]
         axis, ravel = cls._get_arg_axis(op.axis, in_tensor.ndim)
-        chunk_op_type, agg_op_type, combine_op_type = getattr(op, '_get_op_types')()
 
         chunks = []
         for c in in_tensor.chunks:
             offset = cls._get_offset(in_tensor, axis, c, ravel)
-            chunk_op = chunk_op_type(axis=axis, dtype=op.dtype, offset=offset,
-                                     total_shape=in_tensor.shape,
-                                     combine_size=op.combine_size)
+            chunk_op = type(op)(stage=OperandStage.map, axis=axis, dtype=op.dtype,
+                                offset=offset, total_shape=in_tensor.shape,
+                                combine_size=op.combine_size)
             chunk = chunk_op.new_chunk([c], shape=cls._reduced_shape(c.shape, axis),
                                        index=c.index, order=out_tensor.order)
             chunks.append(chunk)
@@ -320,10 +315,10 @@ class TensorArgReductionMixin(TensorReductionMixin):
         tensor = new_op.new_tensor(op.inputs, cls._reduced_shape(in_tensor.shape, axis),
                                    order=out_tensor.order,
                                    nsplits=cls._reduced_nsplits(in_tensor.nsplits, axis), chunks=chunks)
-        return cls._tree_reduction(new_op, tensor, agg_op_type, axis, combine_op_type=combine_op_type)
+        return cls._tree_reduction(tensor, axis)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_agg(cls, ctx, op):
         axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
         (vals, arg), device_id, xp = as_same_device(
             ctx[op.inputs[0].key], device=op.device, ret_extra=True)
@@ -346,10 +341,8 @@ class TensorArgReductionMixin(TensorReductionMixin):
                 arg = arg[tuple(inds)]
             ctx[op.outputs[0].key] = arg
 
-
-class TensorArgMapMixin(TensorArgReductionMixin):
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_map(cls, ctx, op):
         arg_axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
         (in_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
@@ -391,10 +384,8 @@ class TensorArgMapMixin(TensorArgReductionMixin):
                 arg += offset
             ctx[op.outputs[0].key] = (vals, arg)
 
-
-class TensorArgCombineMixin(TensorArgReductionMixin):
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_combine(cls, ctx, op):
         axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
         (vals, arg), device_id, xp = as_same_device(
             ctx[op.inputs[0].key], device=op.device, ret_extra=True)
@@ -518,6 +509,22 @@ class TensorReduction(TensorHasInput):
     @property
     def combine_size(self):
         return getattr(self, '_combine_size', None)
+
+    def _rewrite_stage(self, stage):
+        if stage == OperandStage.map and not hasattr(self, 'execute_map'):
+            return OperandStage.agg
+        elif stage == OperandStage.combine and not hasattr(self, 'execute_combine'):
+            return OperandStage.agg
+        return stage
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            return cls.execute_map(ctx, op)
+        elif op.stage == OperandStage.combine:
+            return cls.execute_combine(ctx, op)
+        else:
+            return cls.execute_agg(ctx, op)
 
 
 class TensorCumReduction(TensorHasInput):

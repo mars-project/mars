@@ -25,16 +25,13 @@ from .core import TensorReduction, TensorReductionMixin
 class TensorCountNonzero(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.COUNT_NONZERO
 
-    def __init__(self, axis=None, dtype=np.intp, keepdims=None, combine_size=None, **kw):
+    def __init__(self, axis=None, dtype=np.intp, keepdims=None, combine_size=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                         _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorCountNonzero, TensorSum, None
+                         _combine_size=combine_size, _stage=stage, **kw)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_map(cls, ctx, op):
         (x,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], op.device, ret_extra=True)
 
@@ -49,6 +46,10 @@ class TensorCountNonzero(TensorReduction, TensorReductionMixin):
                 nz = xp.asarray(nz)[tuple(slcs)]
 
             ctx[op.outputs[0].key] = nz
+
+    @classmethod
+    def execute_agg(cls, ctx, op):
+        return TensorSum.execute_agg(ctx, op)
 
 
 def count_nonzero(a, axis=None, combine_size=None):

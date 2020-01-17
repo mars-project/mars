@@ -18,22 +18,22 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField, TupleField
-from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
+from .core import TensorReduction, TensorArgReductionMixin
 
 
-class TensorNanArgmaxMap(TensorReduction, TensorArgMapMixin):
-    _op_type_ = OperandDef.NANARGMAX_CHUNK
+class TensorNanArgmax(TensorReduction, TensorArgReductionMixin):
+    _op_type_ = OperandDef.NANARGMAX
+    _func_name = 'nanargmax'
+    _agg_func_name = 'nanmax'
 
     _offset = AnyField('offset')
     _total_shape = TupleField('total_shape')
 
-    _func_name = 'nanargmax'
-    _agg_func_name = 'nanmax'
-
-    def __init__(self, axis=None, dtype=np.dtype(int),
-                 combine_size=None, offset=None, total_shape=None, **kw):
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None,
+                 offset=None, total_shape=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
         super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
-                         _offset=offset, _total_shape=total_shape, **kw)
+                         _offset=offset, _total_shape=total_shape, _stage=stage, **kw)
 
     @property
     def offset(self):
@@ -42,30 +42,6 @@ class TensorNanArgmaxMap(TensorReduction, TensorArgMapMixin):
     @property
     def total_shape(self):
         return getattr(self, '_total_shape', None)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanArgmaxMap, TensorNanArgmax, TensorNanArgmaxCombine
-
-
-class TensorNanArgmaxCombine(TensorReduction, TensorArgCombineMixin):
-    _op_type_ = OperandDef.NANARGMAX_COMBINE
-    _func_name = 'nanargmax'
-
-    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
-
-
-class TensorNanArgmax(TensorReduction, TensorArgReductionMixin):
-    _op_type_ = OperandDef.NANARGMAX
-    _func_name = 'nanargmax'
-
-    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanArgmaxMap, TensorNanArgmax, TensorNanArgmaxCombine
 
 
 def nanargmax(a, axis=None, out=None, combine_size=None):

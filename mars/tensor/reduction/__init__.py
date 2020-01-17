@@ -24,20 +24,17 @@ from .min import min, TensorMin
 from .nanmin import nanmin, TensorNanMin
 from .all import all, TensorAll
 from .any import any, TensorAny
-from .mean import mean, TensorMean, TensorMeanChunk, TensorMeanCombine
-from .nanmean import nanmean, TensorNanMean, TensorNanMeanChunk
-from .argmax import argmax, TensorArgmax, TensorArgmaxMap, TensorArgmaxCombine
-from .nanargmax import nanargmax, TensorNanArgmax, \
-    TensorNanArgmaxMap, TensorNanArgmaxCombine
-from .argmin import argmin, TensorArgmin, TensorArgminMap, TensorArgminCombine
-from .nanargmin import nanargmin, TensorNanArgmin, \
-    TensorNanArgminMap, TensorNanArgminCombine
+from .mean import mean, TensorMean
+from .nanmean import nanmean, TensorNanMean
+from .argmax import argmax, TensorArgmax
+from .nanargmax import nanargmax, TensorNanArgmax
+from .argmin import argmin, TensorArgmin
+from .nanargmin import nanargmin, TensorNanArgmin
 from .cumsum import cumsum, TensorCumsum
 from .cumprod import cumprod, TensorCumprod
-from .var import var, TensorVar, TensorMoment, TensorMomentMap, TensorMomentCombine
+from .var import var, TensorVar, TensorMoment
 from .std import std
-from .nanvar import nanvar, TensorNanVar, TensorNanMoment, \
-    TensorNanMomentMap, TensorNanMomentCombine
+from .nanvar import nanvar, TensorNanVar, TensorNanMoment
 from .nanstd import nanstd
 from .nancumsum import nancumsum, TensorNanCumsum
 from .nancumprod import nancumprod, TensorNanCumprod

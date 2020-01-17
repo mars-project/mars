@@ -15,10 +15,11 @@
 import numpy as np
 import pandas as pd
 
+from mars.operands import OperandStage
 from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.dataframe.datasource.dataframe import from_pandas
-from mars.dataframe.merge import DataFrameMergeAlignMap, DataFrameMergeAlignReduce, DataFrameShuffleMerge
+from mars.dataframe.merge import DataFrameMergeAlign, DataFrameShuffleMerge
 
 
 class Test(TestBase):
@@ -52,16 +53,20 @@ class Test(TestBase):
                 self.assertIsInstance(chunk.op, DataFrameShuffleMerge)
                 self.assertEqual(chunk.op.how, kw.get('how', 'inner'))
                 left, right = chunk.op.inputs
-                self.assertIsInstance(left.op, DataFrameMergeAlignReduce)
-                self.assertIsInstance(right.op, DataFrameMergeAlignReduce)
+                self.assertIsInstance(left.op, DataFrameMergeAlign)
+                self.assertEqual(left.op.stage, OperandStage.reduce)
+                self.assertIsInstance(right.op, DataFrameMergeAlign)
+                self.assertEqual(right.op.stage, OperandStage.reduce)
                 self.assertEqual(len(left.inputs[0].inputs), 2)
                 self.assertEqual(len(right.inputs[0].inputs), 2)
                 for lchunk in left.inputs[0].inputs:
-                    self.assertIsInstance(lchunk.op, DataFrameMergeAlignMap)
+                    self.assertIsInstance(lchunk.op, DataFrameMergeAlign)
+                    self.assertEqual(lchunk.op.stage, OperandStage.map)
                     self.assertEqual(lchunk.op.index_shuffle_size, 2)
                     self.assertEqual(lchunk.op.shuffle_on, kw.get('on', None) or kw.get('left_on', None))
                 for rchunk in right.inputs[0].inputs:
-                    self.assertIsInstance(rchunk.op, DataFrameMergeAlignMap)
+                    self.assertIsInstance(rchunk.op, DataFrameMergeAlign)
+                    self.assertEqual(rchunk.op.stage, OperandStage.map)
                     self.assertEqual(rchunk.op.index_shuffle_size, 2)
                     self.assertEqual(rchunk.op.shuffle_on, kw.get('on', None) or kw.get('right_on', None))
                 pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), df.columns_value.to_pandas())
@@ -91,16 +96,20 @@ class Test(TestBase):
                 self.assertIsInstance(chunk.op, DataFrameShuffleMerge)
                 self.assertEqual(chunk.op.how, kw.get('how', 'left'))
                 left, right = chunk.op.inputs
-                self.assertIsInstance(left.op, DataFrameMergeAlignReduce)
-                self.assertIsInstance(right.op, DataFrameMergeAlignReduce)
+                self.assertIsInstance(left.op, DataFrameMergeAlign)
+                self.assertEqual(left.op.stage, OperandStage.reduce)
+                self.assertIsInstance(right.op, DataFrameMergeAlign)
+                self.assertEqual(right.op.stage, OperandStage.reduce)
                 self.assertEqual(len(left.inputs[0].inputs), 2)
                 self.assertEqual(len(right.inputs[0].inputs), 3)
                 for lchunk in left.inputs[0].inputs:
-                    self.assertIsInstance(lchunk.op, DataFrameMergeAlignMap)
+                    self.assertIsInstance(lchunk.op, DataFrameMergeAlign)
+                    self.assertEqual(lchunk.op.stage, OperandStage.map)
                     self.assertEqual(lchunk.op.index_shuffle_size, 3)
                     self.assertEqual(lchunk.op.shuffle_on, None)
                 for rchunk in right.inputs[0].inputs:
-                    self.assertIsInstance(rchunk.op, DataFrameMergeAlignMap)
+                    self.assertIsInstance(rchunk.op, DataFrameMergeAlign)
+                    self.assertEqual(rchunk.op.stage, OperandStage.map)
                     self.assertEqual(rchunk.op.index_shuffle_size, 3)
                     self.assertEqual(rchunk.op.shuffle_on, None)
                 pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), df.columns_value.to_pandas())
@@ -130,16 +139,20 @@ class Test(TestBase):
                 self.assertIsInstance(chunk.op, DataFrameShuffleMerge)
                 self.assertEqual(chunk.op.how, kw.get('how', 'left'))
                 left, right = chunk.op.inputs
-                self.assertIsInstance(left.op, DataFrameMergeAlignReduce)
-                self.assertIsInstance(right.op, DataFrameMergeAlignReduce)
+                self.assertIsInstance(left.op, DataFrameMergeAlign)
+                self.assertEqual(left.op.stage, OperandStage.reduce)
+                self.assertIsInstance(right.op, DataFrameMergeAlign)
+                self.assertEqual(right.op.stage, OperandStage.reduce)
                 self.assertEqual(len(left.inputs[0].inputs), 2)
                 self.assertEqual(len(right.inputs[0].inputs), 3)
                 for lchunk in left.inputs[0].inputs:
-                    self.assertIsInstance(lchunk.op, DataFrameMergeAlignMap)
+                    self.assertIsInstance(lchunk.op, DataFrameMergeAlign)
+                    self.assertEqual(lchunk.op.stage, OperandStage.map)
                     self.assertEqual(lchunk.op.index_shuffle_size, 3)
                     self.assertEqual(lchunk.op.shuffle_on, kw.get('on', None))
                 for rchunk in right.inputs[0].inputs:
-                    self.assertIsInstance(rchunk.op, DataFrameMergeAlignMap)
+                    self.assertIsInstance(rchunk.op, DataFrameMergeAlign)
+                    self.assertEqual(rchunk.op.stage, OperandStage.map)
                     self.assertEqual(rchunk.op.index_shuffle_size, 3)
                     self.assertEqual(rchunk.op.shuffle_on, None)
                 pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), df.columns_value.to_pandas())

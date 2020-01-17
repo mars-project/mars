@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
-from copy import deepcopy
 import weakref
+from copy import deepcopy
+from enum import Enum
 
 import numpy as np
 
@@ -77,6 +78,9 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     _prepare_inputs = ListField('prepare_inputs', ValueType.bool)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
 
+    _stage = Int32Field('stage', on_serialize=lambda s: s.value if s is not None else s,
+                        on_deserialize=lambda n: OperandStage(n) if n is not None else n)
+
     _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __new__(cls, *args, **kwargs):
@@ -92,6 +96,12 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         super().__init__(*args, **kwargs)
         if hasattr(self, OP_MODULE_KEY) and hasattr(self, OP_TYPE_KEY):
             self._op_id = '{0}.{1}'.format(getattr(self, OP_MODULE_KEY), getattr(self, OP_TYPE_KEY))
+
+    def __repr__(self):
+        if self.stage is None:
+            return '{0} <key={1}>'.format(type(self).__name__, self.key)
+        else:
+            return '{0} <key={1}, stage={2}>'.format(type(self).__name__, self.key, self.stage.name)
 
     @classmethod
     def cls(cls, provider):
@@ -147,6 +157,10 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         if not val:
             return [True] * len(self.inputs or ())
         return val
+
+    @property
+    def stage(self):
+        return getattr(self, '_stage', None)
 
     @property
     def extra_params(self):
@@ -425,16 +439,7 @@ class VirtualOperand(Operand):
         return []
 
 
-class ShuffleProxy(VirtualOperand):
-    _op_type_ = OperandDef.SHUFFLE_PROXY
-    _broadcaster = True
-
-
-class ShuffleMap(Operand):
-    pass
-
-
-class ShuffleReduce(Operand):
+class MapReduceOperand(Operand):
     _shuffle_key = StringField('shuffle_key', on_serialize=to_str)
 
     @property
@@ -442,9 +447,16 @@ class ShuffleReduce(Operand):
         return getattr(self, '_shuffle_key', None)
 
     def get_dependent_data_keys(self):
-        inputs = self.inputs or ()
-        return [(chunk.key, self._shuffle_key)
-                for proxy in inputs for chunk in proxy.inputs or ()]
+        if self.stage == OperandStage.reduce:
+            inputs = self.inputs or ()
+            return [(chunk.key, self._shuffle_key)
+                    for proxy in inputs for chunk in proxy.inputs or ()]
+        return super().get_dependent_data_keys()
+
+
+class ShuffleProxy(VirtualOperand):
+    _op_type_ = OperandDef.SHUFFLE_PROXY
+    _broadcaster = True
 
 
 class Fetch(Operand):
@@ -516,3 +528,10 @@ class FetchShuffle(Operand):
     @property
     def to_fetch_idxes(self):
         return self._to_fetch_idxes
+
+
+class OperandStage(Enum):
+    map = 0
+    reduce = 1
+    combine = 2
+    agg = 3

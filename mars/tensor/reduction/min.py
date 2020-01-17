@@ -23,13 +23,11 @@ class TensorMin(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.MIN
     _func_name = 'min'
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
-        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None,
+                 stage=None, **kw):
+        stage = self._rewrite_stage(stage)
+        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _stage=stage,
                          _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorMin, TensorMin, None
 
 
 def min(a, axis=None, out=None, keepdims=None, combine_size=None):
