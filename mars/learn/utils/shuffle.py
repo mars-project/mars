@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...operands import OperandStage
 from ...serialize import ValueType, TupleField, KeyField
 from ...tensor.utils import validate_axis, check_random_state, gen_random_seeds, decide_unify_split
 from ...tensor.array_utils import get_array_module
@@ -27,8 +28,7 @@ from ...utils import tokenize, get_shuffle_input_keys_idxes, lazy_import, check_
 from ...tiles import TilesError
 from ...compat import reduce
 from ...core import ExecutableTuple
-from ..operands import LearnOperand, LearnOperandMixin, OutputType, \
-    LearnShuffleMap as LearnShuffleMapBase, LearnShuffleReduce as LearnShuffleReduceBase, LearnShuffleProxy
+from ..operands import LearnOperandMixin, OutputType, LearnMapReduceOperand, LearnShuffleProxy
 from ..utils import convert_to_tensor_or_dataframe, get_output_types
 
 
@@ -47,15 +47,20 @@ def _safe_slice(obj, slc, output_type):
         return obj.iloc[slc]
 
 
-class LearnShuffle(LearnOperand, LearnOperandMixin):
+class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
     _op_type_ = OperandDef.PERMUTATION
 
     _axes = TupleField('axes', ValueType.int32)
     _seeds = TupleField('seeds', ValueType.uint32)
 
-    def __init__(self, axes=None, seeds=None, output_types=None, **kw):
-        super(LearnShuffle, self).__init__(_axes=axes, _seeds=seeds,
-                                           _output_types=output_types, **kw)
+    _input = KeyField('input')
+    _reduce_sizes = TupleField('reduce_sizes', ValueType.uint32)
+
+    def __init__(self, axes=None, seeds=None, output_types=None, reduce_sizes=None,
+                 stage=None, shuffle_key=None, **kw):
+        super(LearnShuffle, self).__init__(
+            _axes=axes, _seeds=seeds, _output_types=output_types, _reduce_sizes=reduce_sizes,
+            _stage=stage, _shuffle_key=shuffle_key, **kw)
 
     @property
     def axes(self):
@@ -66,8 +71,22 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
         return self._seeds
 
     @property
+    def input(self):
+        return self._input
+
+    @property
+    def reduce_sizes(self):
+        return self._reduce_sizes
+
+    @property
     def output_limit(self):
-        return len(self._output_types)
+        if self.stage is None:
+            return len(self._output_types)
+        return 1
+
+    def _set_inputs(self, inputs):
+        super(LearnShuffle, self)._set_inputs(inputs)
+        self._input = self._inputs[0]
 
     def __call__(self, arrays):
         params = self._calc_params([ar.params for ar in arrays])
@@ -210,7 +229,8 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
                     inp_index = tuple(inp_index)
                     in_chunk = inp.cix[inp_index]
                     params = in_chunk.params
-                    map_chunk_op = LearnShuffleMap(
+                    map_chunk_op = LearnShuffle(
+                        stage=OperandStage.map,
                         output_types=output_types, axes=inp_axes,
                         seeds=[mapper_seeds[j][in_chunk.index[ax]]
                                for j, ax in enumerate(inp_axes)],
@@ -225,7 +245,8 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
                 reduce_sizes_ = tuple(rs for rs in reduce_sizes if rs > 1)
                 for c in map_chunks:
                     shuffle_key = ','.join(str(idx) for idx in c.index)
-                    chunk_op = LearnShuffleReduce(
+                    chunk_op = LearnShuffle(
+                        stage=OperandStage.reduce,
                         output_types=output_types, axes=reduce_axes,
                         seeds=[reducer_seeds[j][c.index[ax]] for j, ax in enumerate(inp_axes)
                                if reduce_sizes[j] > 1],
@@ -250,7 +271,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
         return new_op.new_tileables(op.inputs, kws=params)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_single(cls, ctx, op):
         x = ctx[op.inputs[0].key]
         conv = lambda x: x
         if op.output_types[0] == OutputType.tensor:
@@ -266,43 +287,8 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
 
         ctx[op.outputs[0].key] = conv(x)
 
-
-class LearnShuffleMap(LearnShuffleMapBase, LearnOperandMixin):
-    _op_type_ = OperandDef.PERMUTATION_MAP
-
-    _input = KeyField('input')
-    _axes = TupleField('axes', ValueType.int32)
-    _seeds = TupleField('seeds', ValueType.uint32)
-    _reduce_sizes = TupleField('reduce_sizes', ValueType.uint32)
-
-    def __init__(self, output_types=None, axes=None, seeds=None,
-                 reduce_sizes=None, **kw):
-        super(LearnShuffleMap, self).__init__(_output_types=output_types,
-                                              _axes=axes, _seeds=seeds,
-                                              _reduce_sizes=reduce_sizes, **kw)
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def axes(self):
-        return self._axes
-
-    @property
-    def seeds(self):
-        return self._seeds
-
-    @property
-    def reduce_sizes(self):
-        return self._reduce_sizes
-
-    def _set_inputs(self, inputs):
-        super(LearnShuffleMap, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
-
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_map(cls, ctx, op):
         out = op.outputs[0]
         x = ctx[op.input.key]
         axes, seeds, reduce_sizes = op.axes, op.seeds, op.reduce_sizes
@@ -339,44 +325,8 @@ class LearnShuffleMap(LearnShuffleMapBase, LearnOperandMixin):
                 selected = _safe_slice(selected, slc, op.output_types[0])
             ctx[(out.key, group_key)] = selected
 
-
-class LearnShuffleReduce(LearnShuffleReduceBase, LearnOperandMixin):
-    _op_type_ = OperandDef.PERMUTATION_REDUCE
-
-    _input = KeyField('input')
-    _axes = TupleField('axes', ValueType.int32)
-    _seeds = TupleField('seeds', ValueType.uint32)
-    _reduce_sizes = TupleField('reduce_sizes', ValueType.uint32)
-
-    def __init__(self, output_types=None, axes=None, seeds=None, reduce_sizes=None,
-                 shuffle_key=None, **kw):
-        super(LearnShuffleReduce, self).__init__(_output_types=output_types,
-                                                 _axes=axes, _seeds=seeds,
-                                                 _shuffle_key=shuffle_key,
-                                                 _reduce_sizes=reduce_sizes, **kw)
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def axes(self):
-        return self._axes
-
-    @property
-    def seeds(self):
-        return self._seeds
-
-    @property
-    def reduce_sizes(self):
-        return self._reduce_sizes
-
-    def _set_inputs(self, inputs):
-        super(LearnShuffleReduce, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
-
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_reduce(cls, ctx, op):
         in_chunk = op.input
         input_keys, input_indexes = get_shuffle_input_keys_idxes(in_chunk)
         inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
@@ -425,6 +375,15 @@ class LearnShuffleReduce(LearnShuffleReduceBase, LearnOperandMixin):
                 new_grid[idx] = xp.concatenate(cur[idx], axis=ax)
             cur = new_grid
         return xp.concatenate(cur, axis=axes[0])
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            cls.execute_map(ctx, op)
+        elif op.stage == OperandStage.reduce:
+            cls.execute_reduce(ctx, op)
+        else:
+            cls.execute_single(ctx, op)
 
 
 def shuffle(*arrays, **options):

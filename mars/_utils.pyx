@@ -16,8 +16,8 @@ import os
 import pickle
 import uuid
 from binascii import hexlify
-from datetime import date, datetime, timedelta
 from collections import deque
+from datetime import date, datetime, timedelta
 
 import numpy as np
 import pandas as pd

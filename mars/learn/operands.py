@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ..operands import Operand, TileableOperandMixin, Fetch, FetchMixin, \
-    Fuse, FuseChunkMixin, ShuffleMap, ShuffleReduce, ShuffleProxy
+    Fuse, FuseChunkMixin, MapReduceOperand, ShuffleProxy
 from ..compat import enum
 from ..serialize import ValueType, ListField, BoolField
 from ..tensor.core import TensorChunkData, TensorChunk, TensorData, Tensor, \
@@ -200,17 +200,7 @@ class LearnShuffleProxy(ShuffleProxy, LearnOperandMixin):
         return self._output_types
 
 
-class LearnShuffleMap(ShuffleMap):
-    _output_types = ListField('output_type', tp=ValueType.int8,
-                              on_serialize=_on_serialize_output_types,
-                              on_deserialize=_on_deserialize_output_types)
-
-    @property
-    def output_types(self):
-        return self._output_types
-
-
-class LearnShuffleReduce(ShuffleReduce):
+class LearnMapReduceOperand(MapReduceOperand):
     _output_types = ListField('output_type', tp=ValueType.int8,
                               on_serialize=_on_serialize_output_types,
                               on_deserialize=_on_deserialize_output_types)

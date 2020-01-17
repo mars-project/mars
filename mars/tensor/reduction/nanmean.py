@@ -20,18 +20,19 @@ from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
 from .core import TensorReduction, TensorReductionMixin, nannumel
-from .mean import TensorMeanCombine
+from .mean import TensorMean
 
 
-class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
-    _op_type_ = OperandDef.NANMEAN_CHUNK
+class TensorNanMean(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.NANMEAN
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
-        super(TensorNanMeanChunk, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                 _combine_size=combine_size, **kw)
+    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
+        super(TensorNanMean, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+                                            _combine_size=combine_size, _stage=stage, **kw)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_map(cls, ctx, op):
         (in_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
@@ -44,20 +45,8 @@ class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
                                   keepdims=bool(op.keepdims))
             ctx[op.outputs[0].key] = (chunk_sum, chunk_count)
 
-
-class TensorNanMean(TensorReduction, TensorReductionMixin):
-    _op_type_ = OperandDef.NANMEAN
-
-    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
-        super(TensorNanMean, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                            _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanMeanChunk, TensorNanMean, TensorMeanCombine
-
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_agg(cls, ctx, op):
         axis = cls.get_axis(op.axis)
 
         a = ctx[op.inputs[0].key]
@@ -79,6 +68,10 @@ class TensorNanMean(TensorReduction, TensorReductionMixin):
                                    keepdims=bool(op.keepdims))
                 ctx[op.outputs[0].key] = xp.true_divide(chunk_sum, chunk_count,
                                                         dtype=op.dtype)
+
+    @classmethod
+    def execute_combine(cls, ctx, op):
+        TensorMean.execute_combine(ctx, op)
 
 
 def nanmean(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):

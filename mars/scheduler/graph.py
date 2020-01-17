@@ -828,7 +828,8 @@ class GraphActor(SchedulerActor):
             if isinstance(op, VirtualOperand):
                 operand_infos[op_key]['virtual'] = True
 
-            op_name = type(op).__name__
+            op_name = type(op).__name__ if op.stage is None \
+                else '%s:%s' % (type(op).__name__, op.stage.name)
             op_info = operand_infos[op_key]
             meta_op_info = meta_op_infos[op_key] = dict()
 

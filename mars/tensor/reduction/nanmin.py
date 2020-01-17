@@ -23,13 +23,10 @@ class TensorNanMin(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANMIN
     _func_name = 'nanmin'
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
+    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
         super(TensorNanMin, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                           _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanMin, TensorNanMin, None
+                                           _combine_size=combine_size, _stage=stage, **kw)
 
 
 def nanmin(a, axis=None, out=None, keepdims=None, combine_size=None):

@@ -15,40 +15,62 @@
 # limitations under the License.
 
 import itertools
+import logging
 
 import numpy as np
 
-from ..utils import decide_chunk_sizes
 from ... import opcodes as OperandDef
 from ...compat import six, izip
+from ...operands import OperandStage
 from ...serialize import KeyField, TupleField, StringField, ValueType
-from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
 from ...tiles import TilesError
-from ..datasource import tensor as astensor
-from ..operands import TensorOperandMixin, TensorHasInput, TensorShuffleProxy, \
-    TensorShuffleMap, TensorShuffleReduce
+from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
 from ..array_utils import as_same_device, device
-from ..utils import get_order, recursive_tile
-
-import logging
+from ..datasource import tensor as astensor
+from ..operands import TensorOperandMixin, TensorMapReduceOperand, TensorShuffleProxy
+from ..utils import get_order, recursive_tile, decide_chunk_sizes
 
 logger = logging.getLogger(__name__)
 
 
-class TensorReshape(TensorHasInput, TensorOperandMixin):
+class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.RESHAPE
 
     _input = KeyField('input')
     _newshape = TupleField('newshape', ValueType.int64)
     _order = StringField('order')
 
-    def __init__(self, newshape=None, order=None, dtype=None, create_view=None, **kw):
-        super(TensorReshape, self).__init__(_newshape=newshape, _order=order, _dtype=dtype,
+    _axis_offsets = TupleField('axis_offsets', ValueType.uint64)
+    _oldshape = TupleField('oldshape', ValueType.uint64)
+    _new_chunk_size = TupleField('new_chunk_size', ValueType.uint64)
+
+    def __init__(self, newshape=None, order=None, axis_offsets=None, oldshape=None,
+                 new_chunk_size=None, stage=None, shuffle_key=None, dtype=None,
+                 create_view=None, **kw):
+        super(TensorReshape, self).__init__(_newshape=newshape, _order=order, _axis_offsets=axis_offsets,
+                                            _oldshape=oldshape, _new_chunk_size=new_chunk_size,
+                                            _stage=stage, _shuffle_key=shuffle_key, _dtype=dtype,
                                             _create_view=create_view, **kw)
+
+    @property
+    def input(self):
+        return self._input
 
     @property
     def newshape(self):
         return self._newshape
+
+    @property
+    def axis_offsets(self):
+        return self._axis_offsets
+
+    @property
+    def oldshape(self):
+        return self._oldshape
+
+    @property
+    def new_chunk_size(self):
+        return self._new_chunk_size
 
     @property
     def order(self):
@@ -186,9 +208,10 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
 
         for inp in in_tensor.chunks:
             offset = tuple(axis_offsets[axis][idx] for axis, idx in enumerate(inp.index))
-            chunk_op = TensorReshapeMap(_input=inp, _axis_offsets=offset, _oldshape=in_tensor.shape,
-                                        _newshape=new_shape, _new_chunk_size=(max_chunk_size,) * len(new_shape),
-                                        _dtype=inp.dtype)
+            chunk_op = TensorReshape(stage=OperandStage.map, axis_offsets=offset,
+                                     oldshape=in_tensor.shape, newshape=new_shape,
+                                     new_chunk_size=(max_chunk_size,) * len(new_shape),
+                                     dtype=inp.dtype)
             shuffle_inputs.append(chunk_op.new_chunk([inp], shape=(np.nan,), index=inp.index))
 
         proxy_chunk = TensorShuffleProxy(dtype=in_tensor.dtype, _tensor_keys=[in_tensor.op.key]) \
@@ -197,7 +220,8 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
         for chunk_shape, chunk_idx in izip(itertools.product(*out_nsplits),
                                            itertools.product(*chunk_size_idxes)):
             shuffle_key = ','.join(str(o) for o in chunk_idx)
-            chunk_op = TensorReshapeReduce(_dtype=tensor.dtype, _shuffle_key=shuffle_key)
+            chunk_op = TensorReshape(stage=OperandStage.reduce, dtype=tensor.dtype,
+                                     shuffle_key=shuffle_key)
             shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], shape=chunk_shape,
                                                       order=tensor.order, index=chunk_idx))
 
@@ -257,45 +281,28 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
                 tensor.shape, order=tensor.op.order)._inplace_tile()]
 
     @classmethod
-    def execute(cls, ctx, op):
-        (x,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
-
-        with device(device_id):
-            ctx[op.outputs[0].key] = x.reshape(op.newshape, order=op.order)
-
-
-class TensorReshapeMap(TensorShuffleMap, TensorOperandMixin):
-    _op_type_ = OperandDef.RESHAPE_MAP
-
-    _input = KeyField('input')
-    _axis_offsets = TupleField('axis_offsets', ValueType.uint64)
-    _oldshape = TupleField('oldshape', ValueType.uint64)
-    _newshape = TupleField('newshape', ValueType.uint64)
-    _new_chunk_size = TupleField('new_chunk_size', ValueType.uint64)
-
-    def _set_inputs(self, inputs):
-        super(TensorReshapeMap, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
-
-    @property
-    def axis_offsets(self):
-        return self._axis_offsets
-
-    @property
-    def oldshape(self):
-        return self._oldshape
-
-    @property
-    def newshape(self):
-        return self._newshape
-
-    @property
-    def new_chunk_size(self):
-        return self._new_chunk_size
+    def estimate_size(cls, ctx, op):
+        chunk = op.outputs[0]
+        if op.stage == OperandStage.map:
+            inp_chunk = chunk.inputs[0]
+            inp_size, inp_calc = ctx[inp_chunk.key]
+            store_overhead = np.int64().itemsize * inp_chunk.ndim
+            calc_overhead = np.int64().itemsize * (inp_chunk.ndim + 2)
+            ctx[chunk.key] = (store_overhead + inp_size, calc_overhead + inp_calc)
+        elif op.stage == OperandStage.reduce:
+            sum_size = 0
+            for shuffle_input in chunk.inputs[0].inputs or ():
+                key = (shuffle_input.key, chunk.op.shuffle_key)
+                if ctx.get(key) is not None:
+                    sum_size += ctx[key][0]
+                else:
+                    ctx[key] = None
+            ctx[chunk.key] = (chunk.nbytes, max(sum_size, chunk.nbytes))
+        else:
+            super(TensorReshape, cls).estimate_size(ctx, op)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_map(cls, ctx, op):
         chunk = op.outputs[0]
         # todo this function is an experimental one making shuffle runnable.
         # try elevate performance when needed.
@@ -366,26 +373,7 @@ class TensorReshapeMap(TensorShuffleMap, TensorOperandMixin):
             ctx[(chunk.key, group_key)] = group_indices + (group_data,)
 
     @classmethod
-    def estimate_size(cls, ctx, op):
-        chunk = op.outputs[0]
-        inp_chunk = chunk.inputs[0]
-        inp_size, inp_calc = ctx[inp_chunk.key]
-        store_overhead = np.int64().itemsize * inp_chunk.ndim
-        calc_overhead = np.int64().itemsize * (inp_chunk.ndim + 2)
-        ctx[chunk.key] = (store_overhead + inp_size, calc_overhead + inp_calc)
-
-
-class TensorReshapeReduce(TensorShuffleReduce, TensorOperandMixin):
-    _op_type_ = OperandDef.RESHAPE_REDUCE
-
-    _input = KeyField('input')
-
-    def _set_inputs(self, inputs):
-        super(TensorReshapeReduce, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
-
-    @classmethod
-    def execute(cls, ctx, op):
+    def _execute_reduce(cls, ctx, op):
         chunk = op.outputs[0]
         try:
             result_array = ctx[chunk.key]
@@ -407,16 +395,17 @@ class TensorReshapeReduce(TensorShuffleReduce, TensorOperandMixin):
         ctx[chunk.key] = result_array
 
     @classmethod
-    def estimate_size(cls, ctx, op):
-        chunk = op.outputs[0]
-        sum_size = 0
-        for shuffle_input in chunk.inputs[0].inputs or ():
-            key = (shuffle_input.key, chunk.op.shuffle_key)
-            if ctx.get(key) is not None:
-                sum_size += ctx[key][0]
-            else:
-                ctx[key] = None
-        ctx[chunk.key] = (chunk.nbytes, max(sum_size, chunk.nbytes))
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            cls._execute_map(ctx, op)
+        elif op.stage == OperandStage.reduce:
+            cls._execute_reduce(ctx, op)
+        else:
+            (x,), device_id, xp = as_same_device(
+                [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+            with device(device_id):
+                ctx[op.outputs[0].key] = x.reshape(op.newshape, order=op.order)
 
 
 def calc_shape(size, newshape):

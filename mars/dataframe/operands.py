@@ -21,7 +21,7 @@ from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
     DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, GROUPBY_TYPE
 from ..compat import Enum, reduce
 from ..core import FuseChunkData, FuseChunk
-from ..operands import Operand, TileableOperandMixin, ShuffleMap, ShuffleReduce, Fuse
+from ..operands import Operand, TileableOperandMixin, MapReduceOperand, Fuse
 from ..operands import ShuffleProxy, FuseChunkMixin
 from ..serialize import Int8Field
 from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, TensorOrder
@@ -243,16 +243,7 @@ class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
         return self._object_type
 
 
-class DataFrameShuffleMap(ShuffleMap):
-    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
-                             on_deserialize=ObjectType)
-
-    @property
-    def object_type(self):
-        return self._object_type
-
-
-class DataFrameShuffleReduce(ShuffleReduce):
+class DataFrameMapReduceOperand(MapReduceOperand):
     _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
                              on_deserialize=ObjectType)
 

@@ -18,10 +18,10 @@ import unittest
 
 import numpy as np
 
+from mars.operands import OperandStage
 from mars.tensor.datasource import ones, tensor
 from mars.tensor.merge import TensorConcatenate
-from mars.tensor.reduction import all, TensorMean, TensorMeanChunk, TensorMeanCombine, \
-    TensorArgmax, TensorArgmaxMap, TensorArgmaxCombine, TensorArgmin, TensorArgminMap, TensorArgminCombine
+from mars.tensor.reduction import all, TensorMean, TensorArgmax, TensorArgmin
 
 
 class Test(unittest.TestCase):
@@ -85,7 +85,8 @@ class Test(unittest.TestCase):
         self.assertIsNotNone(res.dtype)
         self.assertIsInstance(res.chunks[0].op, TensorMean)
         self.assertIsInstance(res.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, TensorMeanCombine)
+        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, TensorMean)
+        self.assertEqual(res.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.combine)
 
         res = mean(ones((8, 8), chunk_size=8))
         self.assertEqual(res.shape, ())
@@ -114,8 +115,10 @@ class Test(unittest.TestCase):
         res = mean(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
         self.assertEqual(res.shape, (10, 1))
         self.assertIsInstance(res.chunks[0].op, TensorMean)
+        self.assertEqual(res.chunks[0].op.stage, OperandStage.agg)
         self.assertIsInstance(res.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, TensorMeanChunk)
+        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, TensorMean)
+        self.assertEqual(res.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.map)
 
     def testArgReduction(self):
         argmax = lambda x, *args, **kwargs: x.argmax(*args, **kwargs).tiles()
@@ -127,22 +130,30 @@ class Test(unittest.TestCase):
         self.assertIsNotNone(res1.dtype)
         self.assertEqual(res2.shape, ())
         self.assertIsInstance(res1.chunks[0].op, TensorArgmax)
+        self.assertEqual(res1.chunks[0].op.stage, OperandStage.agg)
         self.assertIsInstance(res2.chunks[0].op, TensorArgmin)
+        self.assertEqual(res2.chunks[0].op.stage, OperandStage.agg)
         self.assertIsInstance(res1.chunks[0].inputs[0].op, TensorConcatenate)
         self.assertIsInstance(res2.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmaxCombine)
-        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgminCombine)
+        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmax)
+        self.assertEqual(res1.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.combine)
+        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgmin)
+        self.assertEqual(res2.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.combine)
 
         res1 = argmax(ones((10, 8), chunk_size=3), axis=1)
         res2 = argmin(ones((10, 8), chunk_size=3), axis=1)
         self.assertEqual(res1.shape, (10,))
         self.assertEqual(res2.shape, (10,))
         self.assertIsInstance(res1.chunks[0].op, TensorArgmax)
+        self.assertEqual(res1.chunks[0].op.stage, OperandStage.agg)
         self.assertIsInstance(res2.chunks[0].op, TensorArgmin)
+        self.assertEqual(res2.chunks[0].op.stage, OperandStage.agg)
         self.assertIsInstance(res1.chunks[0].inputs[0].op, TensorConcatenate)
         self.assertIsInstance(res2.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmaxMap)
-        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgminMap)
+        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmax)
+        self.assertEqual(res1.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.map)
+        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgmin)
+        self.assertEqual(res2.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.map)
 
         self.assertRaises(TypeError, lambda: argmax(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
         self.assertRaises(TypeError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))

@@ -24,7 +24,7 @@ from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_spl
     split, squeeze, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
     partition, to_gpu, to_cpu
-from mars.tensor.base.searchsorted import Stage
+from mars.operands import OperandStage
 from mars.tiles import get_tiled
 
 
@@ -534,7 +534,7 @@ class Test(unittest.TestCase):
 
         self.assertEqual(t1.nsplits, ())
         self.assertEqual(len(t1.chunks), 1)
-        self.assertEqual(t1.chunks[0].op.stage, Stage.reduce)
+        self.assertEqual(t1.chunks[0].op.stage, OperandStage.reduce)
 
         with self.assertRaises(ValueError):
             searchsorted(np.random.randint(10, size=(14, 14)), 1)
@@ -712,7 +712,8 @@ class Test(unittest.TestCase):
         sa = sa.tiles()
 
         for c in sa.chunks:
-            self.assertEqual(type(c.op).__name__, 'PSRSShuffleReduce')
+            self.assertEqual(type(c.op).__name__, 'PSRSShuffle')
+            self.assertEqual(c.op.stage, OperandStage.reduce)
             self.assertEqual(c.shape, (np.nan,))
 
         a = tensor(np.empty((10, 10), dtype=[('id', np.int32), ('size', np.int64)]),

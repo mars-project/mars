@@ -18,22 +18,23 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField, TupleField
-from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
+from .core import TensorReduction, TensorArgReductionMixin
 
 
-class TensorNanArgminMap(TensorReduction, TensorArgMapMixin):
-    _op_type_ = OperandDef.NANARGMIN_CHUNK
+class TensorNanArgmin(TensorReduction, TensorArgReductionMixin):
+    _op_type_ = OperandDef.NANARGMIN
+    _func_name = 'nanargmin'
+    _agg_func_name = 'nanmin'
 
     _offset = AnyField('offset')
     _total_shape = TupleField('total_shape')
 
-    _func_name = 'nanargmin'
-    _agg_func_name = 'nanmin'
-
     def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None,
-                 offset=None, total_shape=None,**kw):
-        super(TensorNanArgminMap, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
-                                                 _offset=offset, _total_shape=total_shape, **kw)
+                 offset=None, total_shape=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
+        super(TensorNanArgmin, self).__init__(
+            _axis=axis, _dtype=dtype, _combine_size=combine_size, _offset=offset,
+            _total_shape=total_shape, _stage=stage, **kw)
 
     @property
     def offset(self):
@@ -42,27 +43,6 @@ class TensorNanArgminMap(TensorReduction, TensorArgMapMixin):
     @property
     def total_shape(self):
         return getattr(self, '_total_shape', None)
-
-
-class TensorNanArgminCombine(TensorReduction, TensorArgCombineMixin):
-    _op_type_ = OperandDef.NANARGMIN_COMBINE
-    _func_name = 'nanargmin'
-
-    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super(TensorNanArgminCombine, self).__init__(_axis=axis, _dtype=dtype,
-                                                     _combine_size=combine_size, **kw)
-
-
-class TensorNanArgmin(TensorReduction, TensorArgReductionMixin):
-    _op_type_ = OperandDef.NANARGMIN
-    _func_name = 'nanargmin'
-
-    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
-        super(TensorNanArgmin, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanArgminMap, TensorNanArgmin, TensorNanArgminCombine
 
 
 def nanargmin(a, axis=None, out=None, combine_size=None):
