@@ -191,14 +191,14 @@ class SparseMatrix(SparseArray):
             x = getattr(get_array_module(x), method_name)(x, axis=axis, **kw)
         else:
             x = getattr(self.spmatrix, method_name)(axis=axis, **kw)
-        if issparse(x):
-            return SparseMatrix(x)
         if not isinstance(axis, Iterable):
             axis = (axis,)
         axis = list(range(len(self.shape))) if axis is None else axis
         shape = tuple(s if i not in axis else 1 for i, s in enumerate(self.shape)
                       if keepdims or i not in axis)
         m = get_array_module(x)
+        if issparse(x):
+            return SparseNDArray(x, shape=shape)
         if m.isscalar(x):
             if keepdims:
                 return m.array([x])[0].reshape((1,) * self.ndim)
