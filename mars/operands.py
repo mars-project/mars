@@ -97,6 +97,12 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         if hasattr(self, OP_MODULE_KEY) and hasattr(self, OP_TYPE_KEY):
             self._op_id = '{0}.{1}'.format(getattr(self, OP_MODULE_KEY), getattr(self, OP_TYPE_KEY))
 
+    def __repr__(self):
+        if self.stage is None:
+            return '{0} <key={1}>'.format(type(self).__name__, self.key)
+        else:
+            return '{0} <key={1}, stage={2}>'.format(type(self).__name__, self.key, self.stage.name)
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:

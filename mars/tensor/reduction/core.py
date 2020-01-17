@@ -510,24 +510,21 @@ class TensorReduction(TensorHasInput):
     def combine_size(self):
         return getattr(self, '_combine_size', None)
 
+    def _rewrite_stage(self, stage):
+        if stage == OperandStage.map and not hasattr(self, 'execute_map'):
+            return OperandStage.agg
+        elif stage == OperandStage.combine and not hasattr(self, 'execute_combine'):
+            return OperandStage.agg
+        return stage
+
     @classmethod
     def execute(cls, ctx, op):
-        runner = None
-        try:
-            if op.stage == OperandStage.map:
-                runner = cls.execute_map
-            elif op.stage == OperandStage.combine:
-                runner = cls.execute_combine
-        except AttributeError:
-            pass
-
-        if runner is None:
-            try:
-                runner = cls.execute_agg
-            except AttributeError:
-                raise NotImplementedError
-
-        return runner(ctx, op)
+        if op.stage == OperandStage.map:
+            return cls.execute_map(ctx, op)
+        elif op.stage == OperandStage.combine:
+            return cls.execute_combine(ctx, op)
+        else:
+            return cls.execute_agg(ctx, op)
 
 
 class TensorCumReduction(TensorHasInput):

@@ -31,6 +31,7 @@ class TensorArgmax(TensorReduction, TensorArgReductionMixin):
 
     def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None,
                  offset=None, total_shape=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
         super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
                          _offset=offset, _total_shape=total_shape, _stage=stage, **kw)
 

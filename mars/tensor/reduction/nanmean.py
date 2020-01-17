@@ -27,6 +27,7 @@ class TensorNanMean(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANMEAN
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                          _combine_size=combine_size, _stage=stage, **kw)
 

@@ -45,6 +45,7 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
 
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None,
                  combine_size=None, stage=None, **kw):
+        stage = self._rewrite_stage(stage)
         if moment is not None:
             kw['_moment'] = moment
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
@@ -124,13 +125,17 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
 
 class TensorVar(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.VAR
-    moment = 2
 
     _ddof = Int32Field('ddof')
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, stage=None, **kw):
+    def __new__(cls, *args, **kwargs):
+        if kwargs.get('stage') is not None:
+            return TensorMoment(*args, **kwargs)
+        return super().__new__(cls, *args, **kwargs)
+
+    def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, **kw):
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
-                         _combine_size=combine_size, _stage=stage, **kw)
+                         _combine_size=combine_size, **kw)
 
     @property
     def ddof(self):
@@ -143,16 +148,13 @@ class TensorVar(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        if op.stage is None:
-            axis = cls.get_axis(op.axis)
-            (in_chunk,), device_id, xp = as_same_device(
-                [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+        axis = cls.get_axis(op.axis)
+        (in_chunk,), device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
-            with device(device_id):
-                ctx[op.outputs[0].key] = xp.var(in_chunk, axis=axis, dtype=op.dtype, ddof=op.ddof,
-                                                keepdims=bool(op.keepdims))
-        else:
-            TensorMoment.execute(ctx, op)
+        with device(device_id):
+            ctx[op.outputs[0].key] = xp.var(in_chunk, axis=axis, dtype=op.dtype, ddof=op.ddof,
+                                            keepdims=bool(op.keepdims))
 
 
 def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_size=None):
