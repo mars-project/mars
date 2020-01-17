@@ -23,13 +23,9 @@ class TensorNanMax(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANMAX
     _func_name = 'nanmax'
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
+    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, stage=None, **kw):
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                         _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanMax, TensorNanMax, None
+                         _combine_size=combine_size, _stage=stage, **kw)
 
 
 def nanmax(a, axis=None, out=None, keepdims=None, combine_size=None):

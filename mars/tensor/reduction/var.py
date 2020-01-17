@@ -43,11 +43,12 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
     _moment = Int32Field('moment', default=2)
     _ddof = Int32Field('ddof')
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None, combine_size=None, **kw):
+    def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None,
+                 combine_size=None, stage=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
-                         _combine_size=combine_size, **kw)
+                         _combine_size=combine_size, _stage=stage, **kw)
 
     @property
     def moment(self):
@@ -58,7 +59,7 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
         return self._ddof
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_agg(cls, ctx, op):
         axis = cls.get_axis(op.axis)
         dtype = op.dtype
 
@@ -78,24 +79,8 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
                 xp.sum(chunk_count, axis=axis, dtype=dtype, keepdims=bool(op.keepdims)) - op.ddof,
                 dtype=dtype)
 
-
-class TensorMomentMap(TensorReduction, TensorReductionMixin):
-    _op_type_ = OperandDef.MOMENT_CHUNK
-
-    _moment = Int32Field('moment', default=2)
-
-    def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
-        if moment is not None:
-            kw['_moment'] = moment
-        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                         _combine_size=combine_size, **kw)
-
-    @property
-    def moment(self):
-        return getattr(self, '_moment', 2)
-
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_map(cls, ctx, op):
         (in_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
@@ -114,24 +99,8 @@ class TensorMomentMap(TensorReduction, TensorReductionMixin):
                                                 keepdims=bool(op.keepdims))
             ctx[op.outputs[0].key] = (chunk_sum, chunk_count, var_square)
 
-
-class TensorMomentCombine(TensorReduction, TensorReductionMixin):
-    _op_type_ = OperandDef.MOMENT_COMBINE
-
-    _moment = Int32Field('moment')
-
-    def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
-        if moment is not None:
-            kw['_moment'] = moment
-        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                         _combine_size=combine_size, **kw)
-
-    @property
-    def moment(self):
-        return getattr(self, '_moment', 2)
-
     @classmethod
-    def execute(cls, ctx, op):
+    def execute_combine(cls, ctx, op):
         axis = cls.get_axis(op.axis)
         moment = op.moment
         dtype = op.dtype
@@ -155,20 +124,17 @@ class TensorMomentCombine(TensorReduction, TensorReductionMixin):
 
 class TensorVar(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.VAR
+    moment = 2
 
     _ddof = Int32Field('ddof')
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, **kw):
+    def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, stage=None, **kw):
         super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
-                         _combine_size=combine_size, **kw)
+                         _combine_size=combine_size, _stage=stage, **kw)
 
     @property
     def ddof(self):
         return self._ddof
-
-    @staticmethod
-    def _get_op_types():
-        return TensorMomentMap, TensorMoment, TensorMomentCombine
 
     def _get_op_kw(self):
         kw = dict()
@@ -177,13 +143,16 @@ class TensorVar(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        axis = cls.get_axis(op.axis)
-        (in_chunk,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+        if op.stage is None:
+            axis = cls.get_axis(op.axis)
+            (in_chunk,), device_id, xp = as_same_device(
+                [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
-        with device(device_id):
-            ctx[op.outputs[0].key] = xp.var(in_chunk, axis=axis, dtype=op.dtype, ddof=op.ddof,
-                                            keepdims=bool(op.keepdims))
+            with device(device_id):
+                ctx[op.outputs[0].key] = xp.var(in_chunk, axis=axis, dtype=op.dtype, ddof=op.ddof,
+                                                keepdims=bool(op.keepdims))
+        else:
+            TensorMoment.execute(ctx, op)
 
 
 def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_size=None):
