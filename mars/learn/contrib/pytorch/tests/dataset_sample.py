@@ -29,27 +29,17 @@ def get_model():
 
 
 def main():
-    import os
     import torch.nn as nn
     import torch.distributed as dist
     import torch.optim as optim
     import torch.utils.data
-    import mars.tensor as mt
-    from mars.learn.contrib.pytorch.dataset import MarsTorchDataset
-    from mars.context import DistributedContext
+    from mars.learn.contrib.pytorch.dataset import MarsDataset, enter_mars_context
 
     dist.init_process_group(backend='gloo')
     torch.manual_seed(42)
 
-    def enter_mars_context():
-        scheduler = os.environ['MARS_SCHEDULER']
-        session_id = os.environ['MARS_SESSION']
-        return DistributedContext(scheduler_address=scheduler, session_id=session_id)
-
     with enter_mars_context():
-        data = mt.named_tensor('data')
-        labels = mt.named_tensor('labels')
-        train_dataset = MarsTorchDataset(data, labels)
+        train_dataset = MarsDataset('data', 'labels')
 
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset,

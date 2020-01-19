@@ -357,7 +357,7 @@ class Test(SchedulerIntegratedTest):
         targets = [a.key]
         graph_key = uuid.uuid1()
         session_ref.submit_tileable_graph(json.dumps(graph.to_json()), graph_key,
-                                          target_tileables=targets, name=['test'])
+                                          target_tileables=targets, names=['test'])
 
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)

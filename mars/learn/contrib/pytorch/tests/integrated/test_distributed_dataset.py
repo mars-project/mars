@@ -8,7 +8,7 @@ import numpy as np
 
 import mars.tensor as mt
 from mars.learn.tests.integrated.base import LearnIntegrationTestBase
-from mars.learn.contrib.pytorch.dataset import MarsTorchDataset
+from mars.learn.contrib.pytorch.dataset import MarsDataset
 from mars.context import DistributedContext
 from mars.session import new_session
 from mars.utils import lazy_import
@@ -27,8 +27,7 @@ class Test(LearnIntegrationTestBase):
             data.execute(name='data', session=sess)
 
             with DistributedContext(scheduler_address=scheduler_ep, session_id=sess.session_id):
-                t = mt.named_tensor('data')
-                dataset = MarsTorchDataset(t)
+                dataset = MarsDataset('data')
                 self.assertEqual(len(dataset), 100)
 
                 sample = [2, 5, 7, 9, 10]

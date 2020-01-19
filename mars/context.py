@@ -191,6 +191,8 @@ class LocalContext(ContextBase, dict):
         return self._ncores
 
     def get_chunk_metas(self, chunk_keys, filter_fields=None):
+        if filter_fields is not None:  # pragma: no cover
+            raise NotImplementedError("Local context doesn't support filter fields now")
         metas = []
         for chunk_key in chunk_keys:
             chunk_data = self.get(chunk_key)
@@ -308,7 +310,7 @@ class DistributedContext(ContextBase):
         chunk_idx_to_keys = dict(zip(chunk_indexes, chunk_keys))
         chunk_keys_to_idx = dict(zip(chunk_keys, chunk_indexes))
         endpoints = self.get_chunk_metas(chunk_keys, filter_fields=['workers'])
-        chunk_keys_to_worker = dict((chunk_key, random.choice(es)) for es, chunk_key in zip(endpoints, chunk_keys))
+        chunk_keys_to_worker = dict((chunk_key, random.choice(es[0])) for es, chunk_key in zip(endpoints, chunk_keys))
 
         chunk_workers = defaultdict(list)
         [chunk_workers[e].append(chunk_key) for chunk_key, e in chunk_keys_to_worker.items()]
@@ -323,6 +325,7 @@ class DistributedContext(ContextBase):
                 d = [dataserializer.loads(db) for db in d]
                 chunk_results.update(dict(zip([chunk_keys_to_idx[k] for k in chunks], d)))
         else:
+            # TODO: make a common util to handle indexes
             if any(isinstance(ind, TENSOR_TYPE) for ind in indexes):
                 raise TypeError("Doesn't support indexing by tensors")
             # Reuse the getitem logic to get each chunk's indexes

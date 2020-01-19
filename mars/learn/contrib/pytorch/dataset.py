@@ -12,27 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 try:
     from torch.utils.data import Dataset
 except ImportError:  # pragma: no cover
-    Dataset = None
+    Dataset = object
 
-from ....context import get_context
+from ....context import get_context, DistributedContext
 from ....tensor.indexing.core import process_index
+from ....tensor.fetch import TensorFetch
+from ....utils import require_not_none
 
 
-MarsTorchDataset = None
-if Dataset:
-    class MarsTorchDataset(Dataset):
-        def __init__(self, *tensors):
-            self._context = get_context()
-            self.tensors = tensors
+@require_not_none(Dataset)
+class MarsDataset(Dataset):
+    def __init__(self, *names):
+        self._context = get_context()
 
-        def __len__(self):
-            return self.tensors[0].shape[0]
+        tensors = []
+        for name in names:
+            tileable_key = self._context.get_tileable_key_by_name(name)
+            nsplits = self._context.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+            shape = tuple(sum(s) for s in nsplits)
+            tensors.append(TensorFetch().new_tensor([], shape=shape, _key=tileable_key))
+        self.tensors = tensors
 
-        def __getitem__(self, item):
-            indexes = process_index(self.tensors[0].ndim, item)
-            return tuple(self._context.get_tileable_data(t.key, indexes) for t in self.tensors)
+    def __len__(self):
+        return self.tensors[0].shape[0]
+
+    def __getitem__(self, item):
+        indexes = process_index(self.tensors[0].ndim, item)
+        return tuple(self._context.get_tileable_data(t.key, indexes) for t in self.tensors)
+
+
+def enter_mars_context():
+    scheduler = os.environ['MARS_SCHEDULER']
+    session_id = os.environ['MARS_SESSION']
+    return DistributedContext(scheduler_address=scheduler, session_id=session_id)
 
 

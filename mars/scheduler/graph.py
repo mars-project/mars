@@ -1077,20 +1077,27 @@ class GraphActor(SchedulerActor):
         :return: metas list.
         """
         meta_names = ['nsplits', 'chunk_keys', 'chunk_indexes']
+        filter_fields = filter_fields or meta_names
+        for field in filter_fields:
+            if field not in ['nsplits', 'chunk_keys', 'chunk_indexes']:
+                raise ValueError('Field {} is invalid'.format(field))
+        ret_nsplits = 'nsplits' in filter_fields
         metas = []
         for tileable_key in tileable_keys:
+            meta = dict()
             tileable = self._get_tileable_by_key(tileable_key)
             chunk_keys, chunk_indexes = tuple(zip(*[(c.key, c.index) for c in tileable.chunks]))
-            if hasattr(tileable, 'shape') and np.nan in tileable.shape:
-                chunk_shapes = self.chunk_meta.batch_get_chunk_shape(self._session_id, chunk_indexes)
-                nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes, chunk_shapes)))
-            else:
-                nsplits = tileable.nsplits
-            meta = [nsplits, chunk_keys, chunk_indexes]
-            if filter_fields is not None:
-                meta = [meta[i] for i, k in enumerate(filter_fields) if k in meta_names]
-            metas.append(meta)
-
+            meta['chunk_keys'] = chunk_keys
+            meta['chunk_indexes'] = chunk_indexes
+            if ret_nsplits:
+                if hasattr(tileable, 'shape') and np.nan in tileable.shape:
+                    chunk_shapes = self.chunk_meta.batch_get_chunk_shape(self._session_id,  chunk_keys)
+                    nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes, chunk_shapes)))
+                else:
+                    nsplits = tileable.nsplits
+                meta['nsplits'] = nsplits
+                if filter_fields is not None:
+                    metas.append([meta[k] for k in filter_fields])
         return metas
 
     def build_fetch_graph(self, tileable_key):
