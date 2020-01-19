@@ -31,6 +31,7 @@ from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 from mars.utils import build_tileable_graph
 from mars.serialize.dataserializer import loads
 from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf
+from mars.context import DistributedContext
 
 logger = logging.getLogger(__name__)
 
@@ -338,3 +339,46 @@ class Test(SchedulerIntegratedTest):
         expected = np.histogram(np.sort(raw), bins='scott')
         assert_allclose(loads(res[0]), expected[0])
         assert_allclose(loads(res[1]), expected[1])
+
+    def testDistributedContext(self):
+        self.start_processes(etcd=False)
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+        rs = np.random.RandomState(0)
+
+        context = DistributedContext(scheduler_address=self.scheduler_endpoints[0], session_id=session_id)
+
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        raw1 = rs.rand(10, 10)
+        a = mt.tensor(raw1, chunk_size=4)
+
+        graph = a.build_graph()
+        targets = [a.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()), graph_key,
+                                          target_tileables=targets, names=['test'])
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        tileable_key = context.get_tileable_key_by_name('test')
+        self.assertEqual(a.key, tileable_key)
+
+        nsplits = context.get_tileable_metas([a.key], filter_fields=['nsplits'])[0][0]
+        self.assertEqual(((4, 4, 2), (4, 4, 2)), nsplits)
+
+        r = context.get_tileable_data(a.key)
+        np.testing.assert_array_equal(raw1, r)
+
+        indexes = [slice(3, 9), slice(0, 7)]
+        r = context.get_tileable_data(a.key, indexes)
+        np.testing.assert_array_equal(raw1[tuple(indexes)], r)
+
+        indexes = [[1, 2, 4, 5], slice(None, None, None)]
+        r = context.get_tileable_data(a.key, indexes)
+        np.testing.assert_array_equal(raw1[tuple(indexes)], r)
+
+        indexed = a[[0, 1, 2, 9], [0, 0, 4, 4]]
+        r = context.get_tileable_data(a.key, indexed.op.indexes)
+        np.testing.assert_array_equal(raw1[[0, 1, 2, 9], [0, 0, 4, 4]], r)

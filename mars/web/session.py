@@ -39,7 +39,7 @@ class Session(object):
         self._endpoint = endpoint.rstrip('/')
         self._session_id = session_id
         self._args = args or dict()
-        # dict structure: {ttileable_key -> graph_key, tileable_ids}
+        # dict structure: {tileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tileable id
         self._executed_tileables = dict()
 
@@ -137,11 +137,19 @@ class Session(object):
         timeout = kw.pop('timeout', -1)
         compose = kw.pop('compose', True)
         fetch = kw.pop('fetch', True)
+        name = kw.pop('name', None)
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
         # those executed tileables should fetch data directly, submit the others
         run_tileables = [t for t in tileables if t.key not in self._executed_tileables]
+
+        if name is not None:
+            if not isinstance(name, (list, tuple)):
+                name = [name]
+            if len(name) != len(tileables):
+                raise TypeError('Name must match execute tileables')
+            name = ','.join(name)
 
         graph = build_tileable_graph(run_tileables, set(self._executed_tileables.keys()))
         targets = [t.key for t in run_tileables]
@@ -150,7 +158,7 @@ class Session(object):
         session_url = self._endpoint + '/api/session/' + self._session_id
         graph_json = graph.to_json()
 
-        resp_json = self._submit_graph(graph_json, targets_join, compose=compose)
+        resp_json = self._submit_graph(graph_json, targets_join, names=name or '', compose=compose)
         graph_key = resp_json['graph_key']
         graph_url = '%s/graph/%s' % (session_url, graph_key)
 
@@ -345,11 +353,12 @@ class Session(object):
             raise SystemError('Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
                               (resp.status_code, resp.reason, resp.text))
 
-    def _submit_graph(self, graph_json, targets, compose=True):
+    def _submit_graph(self, graph_json, targets, names=None, compose=True):
         session_url = self._endpoint + '/api/session/' + self._session_id
         resp = self._req_session.post(session_url + '/graph', dict(
             graph=json.dumps(graph_json),
             target=targets,
+            names=names,
             compose='1' if compose else '0'
         ))
         if resp.status_code >= 400:

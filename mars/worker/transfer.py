@@ -783,8 +783,19 @@ class ResultSenderActor(WorkerActor):
         self._result_copy_ref.destroy()
         super().pre_destroy()
 
-    def fetch_data(self, session_id, chunk_key, index_obj=None):
-        compression_type = dataserializer.CompressType(options.worker.transfer_compression)
+    def fetch_batch_data(self, session_id, chunk_keys, index_objs=None, compression_type=None):
+        results = []
+        if index_objs is not None:
+            for chunk_key, index_obj in zip(chunk_keys, index_objs):
+                results.append(self.fetch_data(session_id, chunk_key, index_obj, compression_type=compression_type))
+        else:
+            for chunk_key in chunk_keys:
+                results.append(self.fetch_data(session_id, chunk_key, compression_type=compression_type))
+        return results
+
+    def fetch_data(self, session_id, chunk_key, index_obj=None, compression_type=None):
+        if compression_type is None:
+            compression_type = dataserializer.CompressType(options.worker.transfer_compression)
         if index_obj is None:
             target_devs = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
             ev = self._result_copy_ref.start_copy(session_id, chunk_key, target_devs)

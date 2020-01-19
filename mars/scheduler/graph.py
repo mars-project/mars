@@ -336,9 +336,8 @@ class GraphActor(SchedulerActor):
     @property
     def context(self):
         if self._context is None:
-            self._context = DistributedContext(
-                self._cluster_info_ref, self._session_id, self.address,
-                self.chunk_meta, self._resource_actor_ref, self.ctx)
+            self._context = DistributedContext(self.address, self._session_id,
+                                               actor_ctx=self.ctx, address=self.address)
         return self._context
 
     @final_state.setter
@@ -1071,21 +1070,36 @@ class GraphActor(SchedulerActor):
                 check=False, _tell=not wait, _wait=False))
         [f.result() for f in futures]
 
-    def get_tileable_meta(self, tileable_key):
+    def get_tileable_metas(self, tileable_keys, filter_fields=None):
         """
-        Get tileable meta including nsplit, chunk keys and chunk indexes.
-        :param tileable_key: tileable_key
-        :return: tuple, (nsplits, OrderedDict(chunk_index -> chunk_key))
+        Get tileable meta including nsplits, chunk keys and chunk indexes.
+        :param tileable_keys: tileable_keys.
+        :param filter_fields: filter the fields('nsplits', 'chunk_keys', 'chunk_indexes') in meta.
+        :return: metas list.
         """
-        tileable = self._get_tileable_by_key(tileable_key)
-        chunk_indexes = OrderedDict((c.index, c.key) for c in tileable.chunks)
-        nsplits = tileable.nsplits
-        if hasattr(tileable, 'shape') and np.nan in tileable.shape:
-            chunk_shapes = self.chunk_meta.batch_get_chunk_shape(
-                self._session_id, list(chunk_indexes.values()))
-            nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes.keys(), chunk_shapes)))
-
-        return nsplits, chunk_indexes
+        meta_names = ['nsplits', 'chunk_keys', 'chunk_indexes']
+        filter_fields = filter_fields or meta_names
+        for field in filter_fields:
+            if field not in ['nsplits', 'chunk_keys', 'chunk_indexes']:
+                raise ValueError('Field {} is invalid'.format(field))
+        ret_nsplits = 'nsplits' in filter_fields
+        metas = []
+        for tileable_key in tileable_keys:
+            meta = dict()
+            tileable = self._get_tileable_by_key(tileable_key)
+            chunk_keys, chunk_indexes = tuple(zip(*[(c.key, c.index) for c in tileable.chunks]))
+            meta['chunk_keys'] = chunk_keys
+            meta['chunk_indexes'] = chunk_indexes
+            if ret_nsplits:
+                if hasattr(tileable, 'shape') and np.nan in tileable.shape:
+                    chunk_shapes = self.chunk_meta.batch_get_chunk_shape(self._session_id,  chunk_keys)
+                    nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes, chunk_shapes)))
+                else:
+                    nsplits = tileable.nsplits
+                meta['nsplits'] = nsplits
+                if filter_fields is not None:
+                    metas.append([meta[k] for k in filter_fields])
+        return metas
 
     def build_fetch_graph(self, tileable_key):
         """
@@ -1105,7 +1119,7 @@ class GraphActor(SchedulerActor):
         Find the owner of the input tileable node and ask for tiling
         """
         tileable_key = tileable.key
-        graph_ref = self.ctx.actor_ref(self._session_ref.get_graph_ref_by_tleable_key(tileable_key))
+        graph_ref = self.ctx.actor_ref(self._session_ref.get_graph_ref_by_tileable_key(tileable_key))
         fetch_graph = deserialize_graph(graph_ref.build_fetch_graph(tileable_key))
         return list(fetch_graph)[0]
 

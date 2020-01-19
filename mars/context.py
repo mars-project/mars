@@ -14,7 +14,8 @@
 
 import sys
 import threading
-from collections import namedtuple
+import random
+from collections import namedtuple, defaultdict
 from enum import Enum
 from typing import List
 
@@ -70,11 +71,12 @@ class ContextBase(object):
     # Meta relative
     # ---------------
 
-    def get_chunk_metas(self, chunk_keys):
+    def get_chunk_metas(self, chunk_keys, filter_fields=None):
         """
         Get chunk metas according to the given chunk keys.
 
         :param chunk_keys: chunk keys
+        :param filter_fields: filter the fields in meta
         :return: List of chunk metas
         """
         raise NotImplementedError
@@ -188,7 +190,9 @@ class LocalContext(ContextBase, dict):
     def get_ncores(self):
         return self._ncores
 
-    def get_chunk_metas(self, chunk_keys):
+    def get_chunk_metas(self, chunk_keys, filter_fields=None):
+        if filter_fields is not None:  # pragma: no cover
+            raise NotImplementedError("Local context doesn't support filter fields now")
         metas = []
         for chunk_key in chunk_keys:
             chunk_data = self.get(chunk_key)
@@ -219,17 +223,29 @@ class LocalContext(ContextBase, dict):
 
 
 class DistributedContext(ContextBase):
-    def __init__(self, cluster_info, session_id, addr, chunk_meta_client,
-                 resource_actor_ref, actor_ctx, **kw):
-        self._cluster_info = cluster_info
-        is_distributed = cluster_info.is_distributed()
+    def __init__(self, scheduler_address, session_id, actor_ctx=None, **kw):
+        from .worker.api import WorkerAPI
+        from .scheduler.api import MetaAPI
+        from .scheduler.resource import ResourceActor
+        from .scheduler.utils import SchedulerClusterInfoActor
+        from .actors import new_client
+
+        self._session_id = session_id
+        self._scheduler_address = scheduler_address
+        self._worker_api = WorkerAPI()
+        self._meta_api = MetaAPI(actor_ctx=actor_ctx, scheduler_endpoint=scheduler_address)
+
+        self._running_mode = None
+        self._actor_ctx = actor_ctx or new_client()
+        self._cluster_info = self._actor_ctx.actor_ref(
+            SchedulerClusterInfoActor.default_uid(), address=scheduler_address)
+        is_distributed = self._cluster_info.is_distributed()
         self._running_mode = RunningMode.local_cluster \
             if not is_distributed else RunningMode.distributed
-        self._session_id = session_id
-        self._address = addr
-        self._chunk_meta_client = chunk_meta_client
-        self._resource_actor_ref = resource_actor_ref
-        self._actor_ctx = actor_ctx
+        self._address = kw.pop('address', None)
+        self._resource_actor_ref = self._actor_ctx.actor_ref(
+            ResourceActor.default_uid(), address=scheduler_address)
+
         self._extra_info = kw
 
     @property
@@ -252,10 +268,6 @@ class DistributedContext(ContextBase):
     def get_ncores(self):
         return self._extra_info.get('n_cpu')
 
-    def get_chunk_metas(self, chunk_keys):
-        return self._chunk_meta_client.batch_get_chunk_meta(
-            self._session_id, chunk_keys)
-
     def get_chunk_results(self, chunk_keys: List[str]) -> List:
         from .serialize import dataserializer
         from .worker.transfer import ResultSenderActor
@@ -268,6 +280,93 @@ class DistributedContext(ContextBase):
             results.append(
                 dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk_key)))
         return results
+
+    # Meta API
+    def get_tileable_metas(self, tileable_keys, filter_fields: List[str]=None) -> List:
+        return self._meta_api.get_tileable_metas(self._session_id, tileable_keys, filter_fields)
+
+    def get_chunk_metas(self, chunk_keys, filter_fields: List[str] = None) -> List:
+        return self._meta_api.get_chunk_metas(self._session_id, chunk_keys, filter_fields)
+
+    def get_tileable_key_by_name(self, name: str):
+        return self._meta_api.get_tileable_key_by_name(self._session_id, name)
+
+    # Worker API
+    def get_chunks_data(self, worker: str, chunk_keys: List[str], indexes: List=None,
+                        compression_types: List[str]=None):
+        return self._worker_api.get_chunks_data(self._session_id, worker, chunk_keys, indexes=indexes,
+                                                compression_types=compression_types)
+
+    # Fetch tileable data by tileable keys and indexes.
+    def get_tileable_data(self, tileable_key: str, indexes: List=None,
+                          compression_types: List[str]=None):
+        from .serialize import dataserializer
+        from .utils import merge_chunks
+        from .tensor.core import TENSOR_TYPE
+        from .tensor.datasource import empty
+        from .tensor.indexing.getitem import TensorIndexTilesHandler
+
+        nsplits, chunk_keys, chunk_indexes = self.get_tileable_metas([tileable_key])[0]
+        chunk_idx_to_keys = dict(zip(chunk_indexes, chunk_keys))
+        chunk_keys_to_idx = dict(zip(chunk_keys, chunk_indexes))
+        endpoints = self.get_chunk_metas(chunk_keys, filter_fields=['workers'])
+        chunk_keys_to_worker = dict((chunk_key, random.choice(es[0])) for es, chunk_key in zip(endpoints, chunk_keys))
+
+        chunk_workers = defaultdict(list)
+        [chunk_workers[e].append(chunk_key) for chunk_key, e in chunk_keys_to_worker.items()]
+
+        chunk_results = dict()
+        if not indexes:
+            datas = []
+            for endpoint, chunks in chunk_workers.items():
+                datas.append(self.get_chunks_data(endpoint, chunks, compression_types=compression_types))
+            datas = [d.result() for d in datas]
+            for (endpoint, chunks), d in zip(chunk_workers.items(), datas):
+                d = [dataserializer.loads(db) for db in d]
+                chunk_results.update(dict(zip([chunk_keys_to_idx[k] for k in chunks], d)))
+        else:
+            # TODO: make a common util to handle indexes
+            if any(isinstance(ind, TENSOR_TYPE) for ind in indexes):
+                raise TypeError("Doesn't support indexing by tensors")
+            # Reuse the getitem logic to get each chunk's indexes
+            tileable_shape = tuple(sum(s) for s in nsplits)
+            empty_tileable = empty(tileable_shape, chunk_size=nsplits)._inplace_tile()
+            indexed = empty_tileable[tuple(indexes)]
+            index_handler = TensorIndexTilesHandler(indexed.op)
+            index_handler._extract_indexes_info()
+            index_handler._preprocess_fancy_indexes()
+            index_handler._process_fancy_indexes()
+            index_handler._process_in_tensor()
+
+            result_chunks = dict()
+            for c in index_handler._out_chunks:
+                result_chunks[chunk_idx_to_keys[c.inputs[0].index]] = [c.index, c.op.indexes]
+
+            chunk_datas = dict()
+            for endpoint, chunks in chunk_workers.items():
+                to_fetch_keys = []
+                to_fetch_indexes = []
+                to_fetch_idx = []
+                for r_chunk, (chunk_index, index_obj) in result_chunks.items():
+                    if r_chunk in chunks:
+                        to_fetch_keys.append(r_chunk)
+                        to_fetch_indexes.append(index_obj)
+                        to_fetch_idx.append(chunk_index)
+                if to_fetch_keys:
+                    datas = self.get_chunks_data(endpoint, to_fetch_keys, indexes=to_fetch_indexes,
+                                                 compression_types=compression_types)
+                    chunk_datas[tuple(to_fetch_idx)] = datas
+            chunk_datas = dict((k, v.result()) for k, v in chunk_datas.items())
+            for idx, d in chunk_datas.items():
+                d = [dataserializer.loads(db) for db in d]
+                chunk_results.update(dict(zip(idx, d)))
+
+        chunk_results = [(k, v) for k, v in chunk_results.items()]
+        if len(chunk_results) == 1:
+            ret = chunk_results[0][1]
+        else:
+            ret = merge_chunks(chunk_results)
+        return ret
 
 
 class DistributedDictContext(DistributedContext, dict):

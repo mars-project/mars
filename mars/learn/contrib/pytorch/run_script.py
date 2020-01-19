@@ -125,6 +125,12 @@ class RunPyTorch(LearnMergeDictOperand):
                 env['MASTER_ADDR'] = str(op.master_addr)
             env['RANK'] = str(op.rank)
             env['WORLD_SIZE'] = str(op.world_size)
+
+            # set mars envs
+            if ctx.running_mode != RunningMode.local:
+                env['MARS_SCHEDULER'] = str(ctx._scheduler_address)
+                env['MARS_SESSION'] = str(ctx._session_id)
+
             # exec pytorch code in a new process
             process = subprocess.Popen(
                 [sys.executable, filename] + op.command_args, env=env)

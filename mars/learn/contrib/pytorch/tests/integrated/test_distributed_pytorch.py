@@ -36,3 +36,20 @@ class Test(LearnIntegrationTestBase):
                 path, n_workers=2, command_argv=['multiple'],
                 port=9945, session=sess, run_kwargs=run_kwargs
             )['status'], 'ok')
+
+    def testDistributedRunPyTorchDataset(self):
+        import mars.tensor as mt
+
+        service_ep = 'http://127.0.0.1:' + self.web_port
+        with new_session(service_ep) as sess:
+            data = mt.random.rand(1000, 32, dtype='f4', chunk_size=100)
+            labels = mt.random.randint(0, 1, (1000, 10), dtype='f4', chunk_size=100)
+            data.execute(name='data', session=sess)
+            labels.execute(name='labels', session=sess)
+
+            path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                'dataset_sample.py')
+            self.assertEqual(run_pytorch_script(
+                path, n_workers=2, command_argv=['multiple'],
+                port=9945, session=sess
+            )['status'], 'ok')

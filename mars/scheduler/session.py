@@ -28,6 +28,8 @@ class SessionActor(SchedulerActor):
         self._session_id = session_id
         self._args = kwargs
 
+        self._tileable_names = dict()
+
         self._cluster_info_ref = None
         self._assigner_ref = None
         self._manager_ref = None
@@ -43,13 +45,16 @@ class SessionActor(SchedulerActor):
     def get_argument(self, key):
         return self._args[key]
 
+    def get_tileable_key(self, name):
+        return self._tileable_names[name]
+
     def get_graph_refs(self):
         return self._graph_refs
 
     def get_graph_meta_refs(self):
         return self._graph_meta_refs
 
-    def get_graph_ref_by_tleable_key(self, tileable_key):
+    def get_graph_ref_by_tileable_key(self, tileable_key):
         return self._tileable_to_graph[tileable_key]
 
     def post_create(self):
@@ -73,10 +78,11 @@ class SessionActor(SchedulerActor):
             self.ctx.destroy_actor(mut_tensor_ref)
 
     @log_unhandled
-    def submit_tileable_graph(self, serialized_graph, graph_key, target_tileables=None, compose=True):
+    def submit_tileable_graph(self, serialized_graph, graph_key, target_tileables=None, names=None, compose=True):
         from .graph import GraphActor, GraphMetaActor
 
         graph_uid = GraphActor.gen_uid(self._session_id, graph_key)
+
         graph_addr = self.get_scheduler(graph_uid)
         graph_ref = self.ctx.create_actor(GraphActor, self._session_id, graph_key,
                                           serialized_graph, target_tileables=target_tileables,
@@ -86,9 +92,13 @@ class SessionActor(SchedulerActor):
             GraphMetaActor.gen_uid(self._session_id, graph_key), address=graph_addr)
 
         graph_ref.execute_graph(_tell=True, compose=compose)
+
         for tileable_key in target_tileables or ():
             if tileable_key not in self._tileable_to_graph:
                 self._tileable_to_graph[tileable_key] = graph_ref
+
+        if names:
+            self._tileable_names.update(zip(names, target_tileables))
         return graph_ref
 
     @log_unhandled
@@ -221,10 +231,13 @@ class SessionManagerActor(SchedulerActor):
     def create_session(self, session_id, **kwargs):
         uid = SessionActor.gen_uid(session_id)
         scheduler_address = self.get_scheduler(uid)
-        session_ref = self.ctx.create_actor(SessionActor, uid=uid, address=scheduler_address,
-                                            session_id=session_id, **kwargs)
-        self._session_refs[session_id] = session_ref
-        return session_ref
+        if session_id in self._session_refs:
+            return self._session_refs[session_id]
+        else:
+            session_ref = self.ctx.create_actor(SessionActor, uid=uid, address=scheduler_address,
+                                                session_id=session_id, **kwargs)
+            self._session_refs[session_id] = session_ref
+            return session_ref
 
     @log_unhandled
     def has_session(self, session_id):

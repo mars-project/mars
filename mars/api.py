@@ -95,11 +95,11 @@ class MarsAPI(object):
         return self.session_manager.has_session(session_id)
 
     def submit_graph(self, session_id, serialized_graph, graph_key, target,
-                     compose=True, wait=True):
+                     names=None, compose=True, wait=True):
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
         session_ref.submit_tileable_graph(
-            serialized_graph, graph_key, target, compose=compose, _tell=not wait)
+            serialized_graph, graph_key, target, names=names, compose=compose, _tell=not wait)
 
     def create_mutable_tensor(self, session_id, name, shape, dtype, *args, **kwargs):
         session_uid = SessionActor.gen_uid(session_id)
@@ -176,11 +176,11 @@ class MarsAPI(object):
     def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None, compressions=None):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        nsplits, chunk_indexes = graph_ref.get_tileable_meta(tileable_key)
-
+        nsplits, chunk_keys, chunk_indexes = graph_ref.get_tileable_metas([tileable_key])[0]
+        chunk_index_to_key = dict((index, key) for index, key in zip(chunk_indexes, chunk_keys))
         if not index_obj:
             chunk_results = dict((idx, self.fetch_chunk_data(session_id, k)) for
-                                 idx, k in chunk_indexes.items())
+                                 idx, k in zip(chunk_indexes, chunk_keys))
         else:
             chunk_results = dict()
             indexes = dict()
@@ -194,7 +194,7 @@ class MarsAPI(object):
                 # `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array
                 # index, `arr[np.array(seq)]`, which will result either in an error or a different result.
                 slice_obj = tuple(indexes[axis][chunk_idx] for axis, chunk_idx in enumerate(chunk_index))
-                chunk_key = chunk_indexes[chunk_index]
+                chunk_key = chunk_index_to_key[chunk_index]
                 chunk_results[chunk_index] = self.fetch_chunk_data(session_id, chunk_key, slice_obj)
 
         chunk_results = [(idx, dataserializer.loads(f.result())) for
@@ -210,8 +210,7 @@ class MarsAPI(object):
         endpoints = self.chunk_meta_client.get_workers(session_id, chunk_key)
         sender_ref = self.actor_client.actor_ref(ResultSenderActor.default_uid(),
                                                  address=random.choice(endpoints))
-        future = sender_ref.fetch_data(session_id, chunk_key, index_obj, _wait=False)
-        return future
+        return sender_ref.fetch_data(session_id, chunk_key, index_obj, _wait=False)
 
     def delete_data(self, session_id, graph_key, tileable_key, wait=False):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
@@ -223,4 +222,4 @@ class MarsAPI(object):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
 
-        return graph_ref.get_tileable_meta(tileable_key)[0]
+        return graph_ref.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]

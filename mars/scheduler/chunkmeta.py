@@ -485,11 +485,12 @@ class ChunkMetaClient(object):
             .get_chunk_meta(session_id, chunk_key)
         return meta
 
-    def batch_get_chunk_meta(self, session_id, chunk_keys):
+    def batch_get_chunk_meta(self, session_id, chunk_keys, filter_fields=None):
         """
         Obtain chunk metadata in batch
         :param session_id: session id
         :param chunk_keys: chunk keys
+        :param filter_fields: filter the fields('chunk_size', 'chunk_shape', 'workers') in meta.
         """
         chunk_keys = tuple(chunk_keys)
         query_dict = defaultdict(set)
@@ -522,7 +523,14 @@ class ChunkMetaClient(object):
         for keys, future in zip(query_dict.values(), futures):
             results = future.result()
             meta_dict.update(zip(keys, results))
-        return [meta_dict.get(k) for k in chunk_keys]
+
+        metas = []
+        for chunk_key in chunk_keys:
+            meta = meta_dict.get(chunk_key)
+            if filter_fields:
+                meta = [getattr(meta, field) for field in filter_fields]
+            metas.append(meta)
+        return metas
 
     def batch_set_chunk_meta(self, session_id, keys, metas, _tell=False, _wait=True):
         """
