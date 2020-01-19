@@ -60,7 +60,7 @@ jobs:
         fi
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
-        if [[ $UNAME == "mingw"* ]]; then
+        if [[ $UNAME == "windows" ]]; then
           pip install virtualenv flake8
         else
           pip install virtualenv flake8 etcd-gevent
@@ -84,7 +84,7 @@ jobs:
               source $DEFAULT_VENV/bin/activate
             fi
           fi
-          source ./.github/workflows/download-etcd.sh
+          ./.github/workflows/download-etcd.sh
           if [ -n "$WITH_KUBERNETES" ]; then
             ./.github/workflows/install-minikube.sh
             pip install kubernetes

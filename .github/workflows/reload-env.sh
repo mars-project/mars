@@ -8,7 +8,8 @@ if [[ "$GITHUB_REF" =~ ^"refs/tags/" ]]; then
   export GIT_TAG=$(echo "$GITHUB_REF" | sed -e "s/refs\/tags\///g")
 fi
 
-if [[ $UNAME == "mingw"* ]]; then
+if [[ $UNAME == "mingw"* ]] || [[ $UNAME == "msys"* ]]; then
+  export UNAME="windows"
   CONDA=$(echo "/$CONDA" | sed -e 's/\\/\//g' -e 's/://')
   export PATH="$CONDA/Library:$CONDA/Library/bin:$CONDA/Scripts:$CONDA:$PATH"
   export PATH="$CONDA/envs/test/Library:$CONDA/envs/test/Library/bin:$CONDA/envs/test/Scripts:$CONDA/envs/test:$PATH"
