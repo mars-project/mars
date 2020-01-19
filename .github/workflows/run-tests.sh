@@ -16,6 +16,7 @@ if [ -n "$WITH_CYTHON" ]; then
 fi
 if [ -z "$NO_COMMON_TESTS" ]; then
   if [[ "$UNAME" == "windows" ]]; then
+    export NO_SERIALIZE_IN_TEST_EXECUTOR=1
     python -m pytest $PYTEST_CONFIG --ignore=mars/scheduler --ignore=mars/worker --timeout=1500
     coverage report
   else
