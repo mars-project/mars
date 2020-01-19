@@ -15,13 +15,12 @@ SCRIPT_PATH="$(cd "$(realpath "$(dirname "${BASH_SOURCE[0]}")")" ; pwd -P )"
 ETCD_PATH="$(dirname "$(dirname "$SCRIPT_PATH")")/bin"
 
 FILE_EXT=".zip"
-if [[ $UNAME == mingw* ]]; then UNAME="windows"; fi
 if [[ $UNAME == "linux" ]]; then FILE_EXT=".tar.gz"; fi
 
 mkdir -p $ETCD_PATH
 URL="https://github.com/coreos/etcd/releases/download/v${VERSION}/etcd-v${VERSION}-${UNAME}-amd64${FILE_EXT}"
 curl -L $URL | tar -C $ETCD_PATH --strip-components=1 -xzvf - "etcd-v${VERSION}-${UNAME}-amd64/etcd"
-if [[ $UNAME != "mingw"* ]]; then
+if [[ $UNAME != "windows" ]]; then
   chmod a+x $ETCD_PATH/etcd
 fi
 export PATH=$PATH:$ETCD_PATH
