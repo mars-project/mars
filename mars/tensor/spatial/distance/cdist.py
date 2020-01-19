@@ -525,7 +525,7 @@ def cdist(XA, XB, metric='euclidean', **kwargs):
         raise TypeError('3rd argument metric must be a string identifier '
                         'or a function.')
 
-    p = kwargs.pop('p', 2.)
+    p = kwargs.pop('p', None)
     w = kwargs.pop('w', None)
     if w is not None:
         w = astensor(w)

@@ -687,7 +687,7 @@ def isreal(x, **kw):
 
 
 def where(cond, x, y):
-    if any([i.ndim != 2 for i in (cond, x, y)]):
+    if any([i.ndim not in (0, 2) for i in (cond, x, y)]):
         raise NotImplementedError
 
     from .matrix import where as matrix_where

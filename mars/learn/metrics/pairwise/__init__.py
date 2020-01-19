@@ -12,13 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-from .utils.shuffle import shuffle
-from .contrib import xgboost, tensorflow, pytorch
-from .metrics import pairwise
-from . import preprocessing
-
-for _mod in [xgboost, tensorflow, pytorch]:
-    _mod.register_op()
-
-del _mod, shuffle, pairwise, preprocessing
+from .euclidean import euclidean_distances
+from .haversine import haversine_distances
+from .manhattan import manhattan_distances
+from .cosine import cosine_distances, cosine_similarity
+from .pairwise import pairwise_distances

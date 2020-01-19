@@ -33,9 +33,6 @@ class DataFrameReductionOperand(DataFrameOperand):
     _numeric_only = BoolField('numeric_only')
     _min_count = Int32Field('min_count')
 
-    _stage = Int32Field('stage', on_serialize=lambda x: getattr(x, 'value', None),
-                        on_deserialize=OperandStage)
-
     _dtype = DataTypeField('dtype')
     _combine_size = Int32Field('combine_size')
 
@@ -64,10 +61,6 @@ class DataFrameReductionOperand(DataFrameOperand):
     @property
     def min_count(self):
         return self._min_count
-
-    @property
-    def stage(self):
-        return self._stage
 
     @property
     def dtype(self):

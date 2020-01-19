@@ -30,6 +30,10 @@ class SparseToDense(TensorHasInput):
     def __init__(self, dtype=None, gpu=None, order=None, **kw):
         super().__init__(_dtype=dtype, _gpu=gpu, _sparse=False, _order=order, **kw)
 
+    @property
+    def order(self):
+        return self._order
+
     @classmethod
     def execute(cls, ctx, op):
         ctx[op.outputs[0].key] = \

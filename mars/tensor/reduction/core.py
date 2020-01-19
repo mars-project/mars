@@ -57,6 +57,10 @@ class TensorReductionMixin(TensorOperandMixin):
     def _calc_order(cls, a, out):
         return out.order if out is not None else a.order
 
+    @classmethod
+    def _is_sparse(cls, input_sparse, shape):
+        return False
+
     def _call(self, a, out):
         a = astensor(a)
         if out is not None and not isinstance(out, Tensor):
@@ -80,6 +84,7 @@ class TensorReductionMixin(TensorOperandMixin):
             shape = tuple(s if i not in axis else 1 for i, s in enumerate(a.shape)
                           if keepdims or i not in axis)
 
+        self._sparse = self._is_sparse(a.issparse(), shape)
         t = self.new_tensor([a], shape, order=order)
 
         if out is None:

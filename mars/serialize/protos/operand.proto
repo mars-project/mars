@@ -238,6 +238,7 @@ message OperandDef {
         NANSTD = 325;
         NANCUMSUM = 326;
         NANCUMPROD = 327;
+        COUNT = 343;
 
         // tensor operand
         RESHAPE = 401;
@@ -270,6 +271,7 @@ message OperandDef {
         PARTITION = 432;
         QUANTILE = 440;
         FILL_DIAGONAL = 441;
+        NORMALIZE = 442;
         // fancy index, distributed phase is a shuffle operation that
         // the fancy indexes will be distributed to the left chunks
         // the concat phase will concat back the indexed left chunks and index
@@ -348,9 +350,6 @@ message OperandDef {
         DATAFRAME_SHUFFLE_MERGE = 2010;
         DATAFRAME_SHUFFLE_MERGE_ALIGN = 2011;
 
-        // dataframe reduction
-        COUNT = 2025;
-
         // reset index
         RESET_INDEX = 2028;
 
@@ -373,6 +372,12 @@ message OperandDef {
 
         // machine learning
 
+        // pairwise distances
+        PAIRWISE_EUCLIDEAN_DISTANCES = 2200;
+        PAIRWISE_MANHATTAN_DISTANCES = 2201;
+        PAIRWISE_COSINE_DISTANCES = 2202;
+        PAIRWISE_HAVERSINE_DISTANCES = 2203;
+
         // XGBoost
         XGBOOST_TRAIN = 3001;
         XGBOOST_PREDICT = 3002;
@@ -384,6 +389,9 @@ message OperandDef {
 
         // PyTorch
         RUN_PYTORCH = 3011;
+
+        // Check non negative
+        CHECK_NON_NEGATIVE = 3300;
 
         CHOLESKY_FUSE = 999988;
 

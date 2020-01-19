@@ -68,8 +68,10 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(
             raw.max(axis=0), self.executor.execute_tensor(arr.max(axis=0), concat=True)[0])
+        self.assertFalse(arr.max(axis=0).issparse())
         np.testing.assert_array_equal(
             raw.min(axis=0), self.executor.execute_tensor(arr.min(axis=0), concat=True)[0])
+        self.assertFalse(arr.min(axis=0).issparse())
 
         np.testing.assert_array_equal(
             raw.max(axis=(1, 2)), self.executor.execute_tensor(arr.max(axis=(1, 2)), concat=True)[0])
@@ -82,6 +84,15 @@ class Test(unittest.TestCase):
 
         self.assertEqual([raw.max()], self.executor.execute_tensor(arr.max()))
         self.assertEqual([raw.min()], self.executor.execute_tensor(arr.min()))
+
+        np.testing.assert_almost_equal(
+            raw.max(axis=1).A.ravel(),
+            self.executor.execute_tensor(arr.max(axis=1), concat=True)[0].toarray())
+        self.assertTrue(arr.max(axis=1).issparse())
+        np.testing.assert_almost_equal(
+            raw.min(axis=1).A.ravel(),
+            self.executor.execute_tensor(arr.min(axis=1), concat=True)[0].toarray())
+        self.assertTrue(arr.min(axis=1).issparse())
 
     def testAllAnyExecution(self):
         raw1 = np.zeros((10, 15))

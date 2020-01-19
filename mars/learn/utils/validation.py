@@ -20,6 +20,7 @@ from numpy.core.numeric import ComplexWarning
 
 from ... import tensor as mt
 from ...lib.sparse import issparse
+from .checks import check_non_negative_then_return_value
 
 
 # ---------------------------------------------------------
@@ -360,3 +361,18 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
         array = mt.array(array, dtype=dtype, order=order)
 
     return array
+
+
+def check_non_negative(X, whom):
+    """
+    Check if there is any negative value in a tensor.
+
+    Parameters
+    ----------
+    X : array-like or sparse matrix
+        Input data.
+
+    whom : string
+        Who passed X to this function.
+    """
+    return check_non_negative_then_return_value(X, X, whom)
