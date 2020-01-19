@@ -347,6 +347,7 @@ class ExecutorForTest(Executor):
     __test__ = False
 
     def execute_graph(self, graph, keys, **kw):
-        graph = type(graph).from_pb(graph.to_pb())
-        graph = type(graph).from_json(graph.to_json())
+        if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
+            graph = type(graph).from_pb(graph.to_pb())
+            graph = type(graph).from_json(graph.to_json())
         return super(ExecutorForTest, self).execute_graph(graph, keys, **kw)

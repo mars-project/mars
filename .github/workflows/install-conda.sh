@@ -11,7 +11,7 @@ if [[ "$UNAME" == "darwin" ]]; then
 elif [[ $UNAME == "linux" ]]; then
   sudo apt-get install -y liblz4-dev
   CONDA_OS="Linux"
-elif [[ $UNAME == "mingw"* ]]; then
+elif [[ $UNAME == "mingw"* ]] || [[ $UNAME == "msys"* ]]; then
   CONDA_OS="Windows"
   FILE_EXT="exe"
   # VS2015 needed by Python 3.5
