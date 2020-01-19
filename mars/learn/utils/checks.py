@@ -150,30 +150,30 @@ class CheckNonNegative(CheckBase):
         ctx[op.outputs[0].key] = np.array(True)
 
     @classmethod
-    def _execute_chunk(cls, ctx, op):
+    def _execute_map(cls, ctx, op):
         if isinstance(op.inputs[0], TENSOR_CHUNK_TYPE):
             return cls._execute_tensor(ctx, op)
         else:
             return cls._execute_df(ctx, op)
 
     @classmethod
-    def _execute_merge(cls, ctx, op):
+    def _execute_combine(cls, ctx, op):
         # just pass value cuz all inputs executed successfully
         ctx[op.outputs[0].key] = np.array(True)
 
     @classmethod
-    def _execute_final(cls, ctx, op):
+    def _execute_agg(cls, ctx, op):
         ctx[op.outputs[0].key] = ctx[op.value.key]
 
     @classmethod
     def execute(cls, ctx, op):
         if op.stage == OperandStage.map:
-            return cls._execute_chunk(ctx, op)
+            return cls._execute_map(ctx, op)
         elif op.stage == OperandStage.combine:
-            return cls._execute_merge(ctx, op)
+            return cls._execute_combine(ctx, op)
         else:
             assert op.stage == OperandStage.agg
-            return cls._execute_final(ctx, op)
+            return cls._execute_agg(ctx, op)
 
 
 def check_non_negative_then_return_value(to_check, value, whom):
