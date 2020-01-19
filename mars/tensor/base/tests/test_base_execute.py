@@ -26,7 +26,7 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, flip, flipud, fliplr, repeat, tile, \
-    isin, searchsorted, unique, sort, partition, to_gpu, to_cpu
+    isin, searchsorted, unique, sort, partition, topk, to_gpu, to_cpu
 from mars.tests.core import require_cupy, ExecutorForTest
 
 
@@ -1317,3 +1317,38 @@ class Test(unittest.TestCase):
         kth_res = self.executor.execute_tensor(kth, concat=True)[0]
         sort_res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res[:, kth_res], sort_res[:, kth_res])
+
+    @staticmethod
+    def _topk_slow(a, k, axis, largest):
+        if axis is None:
+            a = a.flatten()
+            axis = 0
+        a = np.sort(a, axis=axis)
+        if largest:
+            a = a[(slice(None),) * axis + (slice(None, None, -1),)]
+        return a[(slice(None),) * axis + (slice(k),)]
+
+    def testTopkExecution(self):
+        raw = np.random.rand(9, 10, 11)
+
+        for chunk_size in [11, 4]:
+            a = tensor(raw, chunk_size=chunk_size)
+            for axis in [0, 1, 2, None]:
+                size = raw.shape[axis] if axis is not None else raw.size
+                for largest in [True, False]:
+                    for to_sort in [True, False]:
+                        for parallel_kind in ['tree']:
+                            for k in [2, size -2, size, size + 2]:
+                                r = topk(a, k, axis=axis, largest=largest,
+                                         sorted=to_sort, parallel_kind=parallel_kind)
+
+                                result = self.executor.execute_tensor(r, concat=True)[0]
+
+                                if not to_sort:
+                                    result = np.sort(result, axis=axis)
+                                    if largest:
+                                        ax = axis if axis is not None else 0
+                                        result = result[(slice(None),) * ax + (slice(None, None, -1),)]
+
+                                expected = self._topk_slow(raw, k, axis, largest)
+                                np.testing.assert_array_equal(result, expected)
