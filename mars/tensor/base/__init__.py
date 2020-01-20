@@ -48,7 +48,9 @@ from .isin import isin, TensorIsIn
 from .searchsorted import searchsorted, TensorSearchsorted
 from .unique import unique
 from .sort import sort
+from .argsort import argsort
 from .partition import partition
+from .argpartition import argpartition
 from .topk import topk
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
