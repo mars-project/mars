@@ -52,6 +52,7 @@ from .argsort import argsort
 from .partition import partition
 from .argpartition import argpartition
 from .topk import topk
+from .argtopk import argtopk
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 

@@ -20,11 +20,13 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import ValueType, KeyField, Int64Field, Int32Field, \
     BoolField, StringField, ListField
-from ...utils import ceildiv
-from ..operands import TensorOperand, TensorOperandMixin
+from ...operands import OperandStage
+from ...tiles import TilesError
+from ...utils import ceildiv, flatten
+from ..operands import TensorOperand, TensorOperandMixin, TensorOrder
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
-from ..utils import validate_axis
+from ..utils import validate_axis, recursive_tile
 
 
 class TensorTopk(TensorOperand, TensorOperandMixin):
@@ -37,12 +39,18 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
     _sorted = BoolField('sorted')
     _parallel_kind = StringField('parallel_kind')
     _psrs_kinds = ListField('psrs_kinds', ValueType.string)
+    _return_value = BoolField('return_value')
+    _return_indices = BoolField('return_indices')
+    _axis_offset = Int64Field('axis_offset')
 
     def __init__(self, k=None, axis=None, largest=None, sorted=None,
-                 parallel_kind=None, psrs_kinds=None, dtype=None,
-                 gpu=None, **kw):
+                 parallel_kind=None, psrs_kinds=None, return_value=None,
+                 return_indices=None, axis_offset=None, stage=None,
+                 dtype=None, gpu=None, **kw):
         super().__init__(_k=k, _axis=axis, _largest=largest, _sorted=sorted,
                          _parallel_kind=parallel_kind, _psrs_kinds=psrs_kinds,
+                         _return_value=return_value, _return_indices=return_indices,
+                         _axis_offset=axis_offset, _stage=stage,
                          _dtype=dtype, _gpu=gpu, **kw)
 
     @property
@@ -73,6 +81,25 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
     def psrs_kinds(self):
         return self._psrs_kinds
 
+    @property
+    def return_value(self):
+        return self._return_value
+
+    @property
+    def return_indices(self):
+        return self._return_indices
+
+    @property
+    def axis_offset(self):
+        return self._axis_offset
+
+    @property
+    def output_limit(self):
+        if self._stage != OperandStage.agg:
+            return 1
+        else:
+            return int(bool(self._return_value)) + int(bool(self._return_indices))
+
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
@@ -80,33 +107,105 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
     def __call__(self, a):
         shape = list(a.shape)
         shape[self._axis] = min(a.shape[self._axis], self._k)
-        return self.new_tensor([a], shape=tuple(shape), order=a.order)
+        kws = []
+        if self._return_value:
+            kws.append({
+                'shape': tuple(shape),
+                'order': a.order,
+                'dtype': a.dtype,
+                'type': 'topk'
+            })
+        if self._return_indices:
+            kws.append({
+                'shape': tuple(shape),
+                'order': TensorOrder.C_ORDER,
+                'dtype': np.dtype(np.int64),
+                'type': 'argtopk'
+            })
+        ret = self.new_tensors([a], kws=kws)
+        if len(kws) == 1:
+            return ret[0]
+        return ret
 
     @classmethod
     def _tile_one_chunk(cls, op):
+        return_value, return_indices = op.return_value ,op.return_indices
         out = op.outputs[0]
         chunk_op = op.copy().reset_key()
-        chunk = chunk_op.new_chunk([op.input.chunks[0]], shape=out.shape,
-                                   order=out.order)
+        kws = []
+        if return_value:
+            kws.append({
+                'shape': out.shape,
+                'order': out.order,
+                'index': (0,) * out.ndim,
+                'dtype': out.dtype,
+                'type': 'topk'
+            })
+        if return_indices:
+            kws.append({
+                'shape': out.shape,
+                'order': TensorOrder.C_ORDER,
+                'index': (0,) * out.ndim,
+                'dtype': np.dtype(np.int64),
+                'type': 'argtopk'
+            })
+        chunks = chunk_op.new_chunks([op.input.chunks[0]], kws=kws)
+        kws = [out.params for out in op.outputs]
+        nsplits = tuple((s,) for s in out.shape)
+        if return_value:
+            kws[0]['nsplits'] = nsplits
+            kws[0]['chunks'] = [chunks[0]]
+        if return_indices:
+            kws[-1]['nsplits'] = nsplits
+            kws[-1]['chunks'] = [chunks[1]]
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
-                                  chunks=[chunk], nsplits=tuple((s,) for s in out.shape))
+        return new_op.new_tensors(op.inputs, kws=kws)
 
     @classmethod
     def _tile_via_psrs(cls, op):
         pass
 
     @classmethod
-    def _gen_topk_chunk(cls, input_chunk, op, is_terminate_node, chunk_index=None):
+    def _gen_topk_chunk(cls, input_chunk, op, is_terminate_node,
+                        axis_offset=None, chunk_index=None):
         chunk_op = op.copy().reset_key()
+        if axis_offset is not None:
+            chunk_op._axis_offset = axis_offset
         if not is_terminate_node:
             # no need to sort if not the terminated node
             chunk_op._sorted = False
         shape = list(input_chunk.shape)
         shape[op.axis] = min(op.k, input_chunk.shape[op.axis])
-        return chunk_op.new_chunk([input_chunk], shape=tuple(shape),
-                                  order=input_chunk.order,
-                                  index=chunk_index)
+        if not is_terminate_node:
+            # whenever return_indices, value is required
+            chunk_op._return_value = True
+            if axis_offset is not None:
+                chunk_op._stage = OperandStage.map
+            else:
+                chunk_op._stage = OperandStage.combine
+            return chunk_op.new_chunk([input_chunk], shape=tuple(shape),
+                                      order=input_chunk.order,
+                                      index=chunk_index)
+        else:
+            chunk_op._stage = OperandStage.agg
+            kws = []
+            if op.return_value:
+                kws.append({
+                    'shape': shape,
+                    'order': input_chunk.order,
+                    'dtype': input_chunk.dtype,
+                    'index': chunk_index,
+                    'type': 'topk'
+                })
+            if op.return_indices:
+                kws.append({
+                    'shape': shape,
+                    'order': TensorOrder.C_ORDER,
+                    'dtype': np.dtype(np.int64),
+                    'index': chunk_index,
+                    'type': 'argtopk'
+                })
+            return chunk_op.new_chunks([input_chunk], kws=kws)
 
     @classmethod
     def _merge_chunks(cls, input_chunks, axis):
@@ -126,10 +225,11 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
     def _tile_via_tree(cls, op):
         a = op.input
         axis = op.axis
-        out = op.outputs[0]
+        return_value, return_indices = op.return_value, op.return_indices
         combine_size = options.combine_size
+        axis_offsets = [0] + np.cumsum(a.nsplits[axis]).tolist()[:-1]
 
-        out_chunks = []
+        out_chunks, indices_chunks = [], []
         for other_idx in itertools.product(
                 *(range(s) for i, s in enumerate(a.chunk_shape) if i != axis)):
             merge_chunks = []
@@ -137,7 +237,8 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
                 idx = list(other_idx)
                 idx.insert(axis, j)
                 input_chunk = a.cix[tuple(idx)]
-                merge_chunks.append(cls._gen_topk_chunk(input_chunk, op, False))
+                merge_chunks.append(cls._gen_topk_chunk(input_chunk, op, False,
+                                                        axis_offset=axis_offsets[j]))
             while len(merge_chunks) > combine_size:
                 new_size = ceildiv(len(merge_chunks), combine_size)
                 new_merge_chunks = []
@@ -151,14 +252,24 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
             merge_chunk = cls._merge_chunks(merge_chunks, axis)
             chunk_index = list(other_idx)
             chunk_index.insert(axis, 0)
-            out_chunks.append(cls._gen_topk_chunk(merge_chunk, op, True,
-                                                  chunk_index=tuple(chunk_index)))
+            chunks = \
+                cls._gen_topk_chunk(merge_chunk, op, True, chunk_index=tuple(chunk_index))
+            if return_value:
+                out_chunks.append(chunks[0])
+            if return_indices:
+                indices_chunks.append(chunks[-1])
 
         new_op = op.copy()
         nsplits = list(a.nsplits)
         nsplits[axis] = (op.k,)
-        return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
-                                  chunks=out_chunks, nsplits=tuple(nsplits))
+        kws = [out.params for out in op.outputs]
+        if return_value:
+            kws[0]['nsplits'] = nsplits
+            kws[0]['chunks'] = out_chunks
+        if return_indices:
+            kws[-1]['nsplits'] = nsplits
+            kws[-1]['chunks'] = indices_chunks
+        return new_op.new_tensors(op.inputs, kws=kws)
 
     @classmethod
     def tile(cls, op):
@@ -195,43 +306,108 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
             op._parallel_kind = 'psrs'
             return cls._tile_via_psrs(op)
 
+    @staticmethod
+    def _gen_indices(shape, axis, xp):
+        ap = xp.swapaxes(xp.empty(shape, dtype=np.int64), axis, -1)
+        ap[...] = xp.arange(shape[axis]).reshape((1,) * (ap.ndim - 1) + (-1,))
+        return xp.swapaxes(ap, -1, axis)
+
     @classmethod
     def execute(cls, ctx, op):
-        (a,), device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
-        out = op.outputs[0]
+        inputs, device_id, xp = as_same_device(
+            flatten([ctx[inp.key] for inp in op.inputs]),
+            device=op.device, ret_extra=True)
+        if len(inputs) == 2:
+            a, indices = inputs
+        else:
+            a, indices = inputs[0], None
+
         k = op.k
         axis = op.axis
         to_sort = op.sorted
         largest = op.largest
+        return_value = op.return_value
+        return_indices = op.return_indices
+        axis_offset = op.axis_offset
 
         with device(device_id):
             size = a.shape[axis]
             base_slc = (slice(None),) * axis
 
-            if k >= size:
-                if to_sort:
-                    a = xp.sort(a, axis=axis)
+            ap = None
+            if return_indices:
+                # do partition
                 if largest:
-                    a = a[base_slc + (slice(None, None, -1),)]
-                ctx[out.key] = a
-                return
-
-            if largest:
-                length = size - k
-                a = xp.partition(a, length, axis=axis)[base_slc + (slice(-k, None),)]
-                if to_sort:
-                    # sort then reverse
-                    a = xp.sort(a, axis=axis)[base_slc + (slice(None, None, -1),)]
+                    if k < size:
+                        length = size - k
+                        ap = xp.argpartition(a, length, axis=axis)[
+                            base_slc + (slice(-k, None),)]
+                        av = xp.take_along_axis(a, ap, axis)
+                        if indices is not None:
+                            ap = xp.take_along_axis(indices, ap, axis)
+                    else:
+                        av = a
+                        if indices is not None:
+                            ap = indices
+                        else:
+                            ap = cls._gen_indices(a.shape, axis, xp)
+                    if to_sort:
+                        # sort then reverse
+                        ags = xp.argsort(av, axis=axis)[
+                            base_slc + (slice(None, None, -1),)]
+                        ap = xp.take_along_axis(ap, ags, axis)
+                        av = xp.take_along_axis(av, ags, axis)
+                else:
+                    if k < size:
+                        ap = xp.argpartition(a, k, axis=axis)[
+                            base_slc + (slice(k),)]
+                        av = xp.take_along_axis(a, ap, axis)
+                        if indices is not None:
+                            ap = xp.take_along_axis(indices, ap, axis)
+                    else:
+                        av = a
+                        if indices is not None:
+                            ap = indices
+                        else:
+                            ap = cls._gen_indices(a.shape, axis, xp)
+                    if to_sort:
+                        ags = xp.argsort(av, axis=axis)
+                        ap = xp.take_along_axis(ap, ags, axis)
+                        av = xp.take_along_axis(av, ags, axis)
+                if axis_offset:
+                    ap = ap + axis_offset
             else:
-                a = xp.partition(a, k, axis=axis)[base_slc + (slice(k),)]
-                if to_sort:
-                    a = xp.sort(a, axis=axis)
+                assert return_value
+                if largest:
+                    if k < size:
+                        length = size - k
+                        av = xp.partition(a, length, axis=axis)[base_slc + (slice(-k, None),)]
+                    else:
+                        av = a
+                    if to_sort:
+                        # sort then reverse
+                        av = xp.sort(av, axis=axis)[base_slc + (slice(None, None, -1),)]
+                else:
+                    if k < size:
+                        av = xp.partition(a, k, axis=axis)[base_slc + (slice(k),)]
+                    else:
+                        av = a
+                    if to_sort:
+                        av = xp.sort(av, axis=axis)
 
-            ctx[out.key] = a
+            if op.stage != OperandStage.agg:
+                out = [av]
+                if op.return_indices:
+                    out.append(ap)
+                ctx[op.outputs[0].key] = tuple(out)
+            else:
+                if op.return_value:
+                    ctx[op.outputs[0].key] = av
+                if op.return_indices:
+                    ctx[op.outputs[-1].key] = ap
 
 
-def topk(a, k, axis=-1, largest=True, sorted=True, parallel_kind='auto', psrs_kinds=None):
+def _validate_topk_arguments(a, k, axis, largest, sorted, parallel_kind, pars_kinds):
     a = astensor(a)
     if axis is None:
         a = a.flatten()
@@ -240,8 +416,15 @@ def topk(a, k, axis=-1, largest=True, sorted=True, parallel_kind='auto', psrs_ki
         axis = validate_axis(a.ndim, axis)
     if parallel_kind.lower() not in {'auto', 'tree', 'psrs'}:
         raise ValueError('`parallel_kind` could only be `auto`, `tree`, or `psrs`')
+    return a, k, axis, largest, sorted, parallel_kind, pars_kinds
 
+
+def topk(a, k, axis=-1, largest=True, sorted=True, parallel_kind='auto',
+         psrs_kinds=None, return_index=False):
+    a, k, axis, largest, sorted, parallel_kind, psrs_kinds = _validate_topk_arguments(
+        a, k, axis, largest, sorted, parallel_kind, psrs_kinds)
     op = TensorTopk(k=k, axis=axis, largest=largest, sorted=sorted,
                     parallel_kind=parallel_kind, psrs_kinds=psrs_kinds,
-                    dtype=a.dtype)
+                    dtype=a.dtype, return_value=True, return_indices=return_index,
+                    stage=OperandStage.agg)
     return op(a)

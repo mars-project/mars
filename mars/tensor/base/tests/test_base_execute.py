@@ -26,7 +26,7 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, flip, flipud, fliplr, repeat, tile, \
-    isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, to_gpu, to_cpu
+    isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, to_gpu, to_cpu
 from mars.tests.core import require_cupy, ExecutorForTest
 
 
@@ -1437,27 +1437,70 @@ class Test(unittest.TestCase):
             a = a[(slice(None),) * axis + (slice(None, None, -1),)]
         return a[(slice(None),) * axis + (slice(k),)]
 
-    def testTopkExecution(self):
-        raw = np.random.rand(9, 10, 11)
+    @staticmethod
+    def _handle_result(result, axis, largest):
+        result = np.sort(result, axis=axis)
+        if largest:
+            ax = axis if axis is not None else 0
+            result = result[(slice(None),) * ax + (slice(None, None, -1),)]
+        return result
 
-        for chunk_size in [11, 4]:
+    def testTopkExecution(self):
+        raw = np.random.rand(5, 6, 7)
+
+        for chunk_size in [7, 2]:
             a = tensor(raw, chunk_size=chunk_size)
             for axis in [0, 1, 2, None]:
                 size = raw.shape[axis] if axis is not None else raw.size
                 for largest in [True, False]:
                     for to_sort in [True, False]:
                         for parallel_kind in ['tree']:
-                            for k in [2, size -2, size, size + 2]:
+                            for k in [2, size - 2, size, size + 2]:
                                 r = topk(a, k, axis=axis, largest=largest,
                                          sorted=to_sort, parallel_kind=parallel_kind)
 
                                 result = self.executor.execute_tensor(r, concat=True)[0]
 
                                 if not to_sort:
-                                    result = np.sort(result, axis=axis)
-                                    if largest:
-                                        ax = axis if axis is not None else 0
-                                        result = result[(slice(None),) * ax + (slice(None, None, -1),)]
-
+                                    result = self._handle_result(result, axis, largest)
                                 expected = self._topk_slow(raw, k, axis, largest)
                                 np.testing.assert_array_equal(result, expected)
+
+                                r = topk(a, k, axis=axis, largest=largest,
+                                         sorted=to_sort, parallel_kind=parallel_kind,
+                                         return_index=True)
+
+                                ta, ti = self.executor.execute_tensors(r)
+                                raw2 = raw
+                                if axis is None:
+                                    raw2 = raw.flatten()
+                                np.testing.assert_array_equal(ta, np.take_along_axis(raw2, ti, axis))
+                                if not to_sort:
+                                    ta = self._handle_result(ta, axis, largest)
+                                np.testing.assert_array_equal(ta, expected)
+
+    def testArgtopk(self):
+        # only 1 chunk when axis = -1
+        raw = np.random.rand(100, 10)
+        x = tensor(raw, chunk_size=10)
+
+        pa = argtopk(x, 3, parallel_kind='tree')
+
+        r = self.executor.execute_tensor(pa, concat=True)[0]
+        np.testing.assert_array_equal(np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1))
+
+        x = tensor(raw, chunk_size=(22, 4))
+
+        pa = argtopk(x, 3, parallel_kind='tree')
+
+        r = self.executor.execute_tensor(pa, concat=True)[0]
+        np.testing.assert_array_equal(np.sort(raw)[:, -1:-4:-1], np.take_along_axis(raw, r, axis=-1))
+
+        raw = np.random.rand(100)
+
+        x = tensor(raw, chunk_size=23)
+
+        pa = argtopk(x, 3, axis=0, parallel_kind='tree')
+
+        r = self.executor.execute_tensor(pa, concat=True)[0]
+        np.testing.assert_array_equal(np.sort(raw, axis=0)[-1:-4:-1], raw[r])
