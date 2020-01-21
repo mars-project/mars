@@ -288,7 +288,7 @@ def _sort(a, op, xp, axis=None, kind=None, order=None, inplace=False):
     if xp is np:
         method = a.sort if inplace else partial(np.sort, a)
         return method(axis=axis, kind=kind, order=order)
-    else:
+    else:  # pragma: no cover
         # cupy does not support structure type
         assert xp is cp
         assert order is not None
@@ -303,7 +303,7 @@ def _argsort(a, op, xp, axis=None, kind=None, order=None):
     order = order if order is not None else op.order
     if xp is np:
         return np.argsort(a, axis=axis, kind=kind, order=order)
-    else:
+    else:  # pragma: no cover
         # cupy does not support structure type
         assert xp is cp
         assert order is not None

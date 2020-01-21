@@ -27,7 +27,7 @@ from ..operands import TensorOperand, TensorOperandMixin, TensorOrder
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
 from ..utils import validate_axis, validate_order, recursive_tile
-from .sort import _AVAILABLE_KINDS
+from .sort import _validate_sort_psrs_kinds
 
 
 class TensorTopk(TensorOperand, TensorOperandMixin):
@@ -41,20 +41,17 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
     _order = ListField('order', ValueType.string)
     _parallel_kind = StringField('parallel_kind')
     _psrs_kinds = ListField('psrs_kinds', ValueType.string)
-    _need_align = BoolField('need_align')
     _return_value = BoolField('return_value')
     _return_indices = BoolField('return_indices')
     _axis_offset = Int64Field('axis_offset')
 
     def __init__(self, k=None, axis=None, largest=None, sorted=None, order=None,
-                 parallel_kind=None, psrs_kinds=None, need_align=None,
-                 return_value=None, return_indices=None, axis_offset=None,
-                 stage=None, dtype=None, gpu=None, **kw):
+                 parallel_kind=None, psrs_kinds=None, return_value=None, return_indices=None,
+                 axis_offset=None, stage=None, dtype=None, gpu=None, **kw):
         super().__init__(_k=k, _axis=axis, _largest=largest, _sorted=sorted,
                          _parallel_kind=parallel_kind, _psrs_kinds=psrs_kinds,
-                         _need_align=need_align, _return_value=return_value,
-                         _return_indices=return_indices, _order=order,
-                         _axis_offset=axis_offset, _stage=stage,
+                         _return_value=return_value, _return_indices=return_indices,
+                         _order=order, _axis_offset=axis_offset, _stage=stage,
                          _dtype=dtype, _gpu=gpu, **kw)
 
     @property
@@ -88,10 +85,6 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
     @property
     def psrs_kinds(self):
         return self._psrs_kinds
-
-    @property
-    def need_align(self):
-        return self._need_align
 
     @property
     def return_value(self):
@@ -181,10 +174,10 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
         return_indices = op.return_indices
 
         # just sort, force need_align=True
+        psrs_kinds = op.psrs_kinds or ['quicksort', 'mergesort', 'mergesort']
         sort_op = TensorSort(axis=op.axis, order=op.order,
-                             psrs_kinds=['quicksort', 'mergesort', 'mergesort'],
-                             return_value=return_value, return_indices=return_indices,
-                             need_align=True)
+                             psrs_kinds=psrs_kinds, need_align=True,
+                             return_value=return_value, return_indices=return_indices)
         ret = sort_op(op.input)
 
         if not isinstance(ret, tuple):
@@ -475,23 +468,9 @@ def _validate_topk_arguments(a, k, axis, largest, sorted, order,
     order = validate_order(a.dtype, order)
     if parallel_kind.lower() not in {'auto', 'tree', 'psrs'}:
         raise ValueError('`parallel_kind` could only be `auto`, `tree`, or `psrs`')
-    if psrs_kinds is not None:
-        if isinstance(psrs_kinds, (list, tuple)):
-            psrs_kinds = list(psrs_kinds)
-            if len(psrs_kinds) != 3:
-                raise ValueError('psrs_kinds should have 3 elements')
-            for i, psrs_kind in enumerate(psrs_kinds):
-                if psrs_kind is not None:
-                    upper_psrs_kind = psrs_kind.upper()
-                    if upper_psrs_kind not in _AVAILABLE_KINDS:
-                        raise ValueError('{} is an unrecognized kind '
-                                         'in psrs_kinds'.format(psrs_kind))
-        else:
-            raise TypeError('psrs_kinds should be list or tuple')
-    else:
-        # when merging data in PSRSShuffle(reduce),
-        # we don't need sort, thus set psrs_kinds[2] to None
-        psrs_kinds = ['quicksort', 'mergesort', None]
+    # if psrs is chosen, sort will be used,
+    # psrs_kinds will be passed into it, so use the validation logic in sort
+    psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     return a, k, axis, largest, sorted, order, parallel_kind, psrs_kinds
 
 
