@@ -16,6 +16,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, Int32Field, StringField, ListField, BoolField
+from ...core import ExecutableTuple
 from ..operands import TensorOperand, TensorShuffleProxy, TensorOrder
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
@@ -99,7 +100,7 @@ class TensorSort(TensorOperand, PSRSOperandMixin):
         ret = self.new_tensors([a], kws=kws)
         if len(kws) == 1:
             return ret[0]
-        return ret
+        return ExecutableTuple(ret)
 
     @classmethod
     def _tile_psrs(cls, op):
@@ -285,7 +286,7 @@ def _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order):
 
 
 def sort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None,
-         order=None, return_index=False):
+         order=None, return_index=False, **kw):
     r"""
     Return a sorted copy of a tensor.
 
@@ -412,10 +413,14 @@ def sort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None,
            ('Arthur', 1.8, 41)],
           dtype=[('name', '|S10'), ('height', '<f8'), ('age', '<i4')])
     """
+    need_align = kw.pop('need_align', None)
+    if len(kw) > 0:
+        raise TypeError('sort() got an unexpected keyword '
+                        'argument \'{}\''.format(next(iter(kw))))
     a, axis, kind, parallel_kind, psrs_kinds, order = \
         _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order)
     op = TensorSort(axis=axis, kind=kind, parallel_kind=parallel_kind,
-                    order=order, psrs_kinds=psrs_kinds,
+                    order=order, psrs_kinds=psrs_kinds, need_align=need_align,
                     return_value=True, return_indices=return_index,
                     dtype=a.dtype, gpu=a.op.gpu)
     return op(a)

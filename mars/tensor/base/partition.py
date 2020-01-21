@@ -21,7 +21,7 @@ from ...serialize import ValueType, KeyField, Int32Field, \
     StringField, ListField, BoolField, AnyField
 from ...utils import check_chunks_unknown_shape, flatten, stack_back
 from ...tiles import TilesError
-from ...core import Base, Entity
+from ...core import Base, Entity, ExecutableTuple
 from ..operands import TensorOperand, TensorShuffleProxy
 from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
 from ..array_utils import as_same_device, device
@@ -44,7 +44,7 @@ class ParallelPartitionMixin(PSRSOperandMixin):
         kws = []
         for i, sort_info_chunk in enumerate(sort_info_chunks):
             kws.append({
-                'shape': sort_info_chunk.shape + (len(op.kth),),
+                'shape': sort_info_chunk.shape + (len(kth),),
                 'order': sort_info_chunk.order,
                 'index': sort_info_chunk.index,
                 'pos': i
@@ -124,8 +124,8 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
 
     @property
     def psrs_kinds(self):
-        # to keep compatibility with PSRSSorter
-        # remember when merging data in PSRSShuffleReduce,
+        # to keep compatibility with PSRS
+        # remember when merging data in PSRSShuffle(reduce),
         # we don't need sort, thus set psrs_kinds[2] to None
         return ['quicksort', 'mergesort', None]
 
@@ -185,7 +185,7 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
         ret = self.new_tensors(inputs, kws=kws)
         if len(kws) == 1:
             return ret[0]
-        return ret
+        return ExecutableTuple(ret)
 
     @classmethod
     def _tile_psrs(cls, op, kth):
@@ -291,7 +291,6 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
         if in_tensor.chunk_shape[op.axis] == 1:
             out_chunks, out_indices_chunks = [], []
             for chunk in in_tensor.chunks:
-                chunk_op = op.copy().reset_key()
                 chunk_op = op.copy().reset_key()
                 kws = []
                 if return_value:
