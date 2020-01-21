@@ -22,7 +22,6 @@ from ...core import ExecutableTuple
 from ...serialize import ValueType, KeyField, Int64Field, Int32Field, \
     BoolField, StringField, ListField
 from ...operands import OperandStage
-from ...tiles import TilesError
 from ...utils import ceildiv, flatten
 from ..operands import TensorOperand, TensorOperandMixin, TensorOrder
 from ..datasource import tensor as astensor
@@ -176,108 +175,36 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def _tile_via_psrs(cls, op):
-        from .sort import sort
+        from .sort import TensorSort
 
         return_value = op.return_value
         return_indices = op.return_indices
 
-        s = op.input.shape[op.axis]
-        if np.isnan(s):
-            raise TilesError('input tensor on axis {} has unknown shape'.format(op.axis))
+        # just sort, force need_align=True
+        sort_op = TensorSort(axis=op.axis, order=op.order,
+                             psrs_kinds=['quicksort', 'mergesort', 'mergesort'],
+                             return_value=return_value, return_indices=return_indices,
+                             need_align=True)
+        ret = sort_op(op.input)
 
-        ret = sort(op.input, axis=op.axis, order=op.order,
-                   return_index=op.return_indices, need_align=True)
-        if isinstance(ret, tuple):
-            ret = tuple(recursive_tile(t) for t in ret)
+        if not isinstance(ret, tuple):
+            ret = (ret,)
+
+        base_slcs = (slice(None),) * op.axis
+        if op.largest:
+            ret = [r[base_slcs + (slice(-1, -op.k - 1, -1),)] for r in ret]
         else:
-            ret = (recursive_tile(ret),)
-        nsplits = ret[0].nsplits
+            ret = [r[base_slcs + (slice(op.k),)] for r in ret]
 
-        out_value_chunks, out_indices_chunks = [], []
-        nsplit_on_axis = None
-        for out_idx in itertools.product(*(range(len(s)) for ax, s in enumerate(nsplits)
-                                           if ax != op.axis)):
-            nsplit = nsplits[op.axis]
-            align_reduce_value_chunks, align_reduce_indices_chunks = [], []
-            for i in range(len(nsplit)):
-                idx = list(out_idx)
-                idx.insert(op.axis, i)
-                align_reduce_value_chunks.append(ret[0].cix[tuple(idx)])
-                if return_indices and len(ret) == 2:
-                    align_reduce_indices_chunks.append(ret[1].cix[tuple(idx)])
-
-            if op.largest:
-                it = itertools.zip_longest(itertools.count(), nsplit[::-1],
-                                           align_reduce_value_chunks[::-1],
-                                           align_reduce_indices_chunks[::-1])
-            else:
-                it = itertools.zip_longest(itertools.count(), nsplit,
-                                           align_reduce_value_chunks,
-                                           align_reduce_indices_chunks)
-
-            rest = op.k
-            value_chunks, indices_chunks, new_nsplit = [], [], []
-            for j, ns, value_chunk, indices_chunk in it:
-                if ns is None:
-                    break
-
-                size = min(ns, rest)
-                topk_chunk_op = op.copy().reset_key()
-                topk_chunk_op._k = size
-                topk_chunk_op._stage = OperandStage.agg
-                # do slice
-                chunk_shape = list((value_chunk or indices_chunk).shape)
-                chunk_shape[op.axis] = size
-                chunk_index = list(out_idx)
-                chunk_index.insert(op.axis, j)
-                topk_chunk_inputs = [value_chunk]
-                if return_indices:
-                    topk_chunk_inputs.append(indices_chunk)
-                kws = []
-                if return_value:
-                    kws.append({
-                        'shape': tuple(chunk_shape),
-                        'dtype': value_chunk.dtype,
-                        'order': value_chunk.order,
-                        'index': tuple(chunk_index),
-                        'type': 'topk'
-                    })
-                if return_indices:
-                    kws.append({
-                        'shape': tuple(chunk_shape),
-                        'dtype': indices_chunk.dtype,
-                        'order': indices_chunk.order,
-                        'index': tuple(chunk_index),
-                        'type': 'argtopk'
-                    })
-                chunks = topk_chunk_op.new_chunks(topk_chunk_inputs, kws=kws)
-                if return_value:
-                    value_chunks.append(chunks[0])
-                if return_indices:
-                    indices_chunks.append(chunks[-1])
-                new_nsplit.append(size)
-                rest -= size
-                if rest == 0:
-                    break
-
-            out_value_chunks.extend(value_chunks)
-            out_indices_chunks.extend(indices_chunks)
-            if nsplit_on_axis is None:
-                nsplit_on_axis = new_nsplit
-
+        ret = [recursive_tile(r) for r in ret]
         new_op = op.copy()
-        nsplits = list(nsplits)
-        nsplits[op.axis] = nsplit_on_axis
-        kws = [out.params for out in op.outputs]
+        kws = [o.params for o in op.outputs]
         if return_value:
-            kws[0]['nsplits'] = tuple(nsplits)
-            kws[0]['chunks'] = out_value_chunks
-            kws[0]['type'] = 'topk'
+            kws[0]['nsplits'] = ret[0].nsplits
+            kws[0]['chunks'] = ret[0].chunks
         if return_indices:
-            kws[-1]['nsplits'] = tuple(nsplits)
-            kws[-1]['chunks'] = out_indices_chunks
-            kws[-1]['type'] = 'argtopk'
-
+            kws[-1]['nsplits'] = ret[-1].nsplits
+            kws[-1]['chunks'] = ret[-1].chunks
         return new_op.new_tensors(op.inputs, kws=kws)
 
     @classmethod
