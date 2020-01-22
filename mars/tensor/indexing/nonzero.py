@@ -47,7 +47,7 @@ class TensorNonzero(TensorHasInput, TensorOperandMixin):
     def tile(cls, op):
         from ..datasource import arange
 
-        in_tensor = op.input
+        in_tensor = astensor(op.input)
 
         flattened = in_tensor.astype(bool).flatten()
         recursive_tile(flattened)
