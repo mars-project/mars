@@ -402,7 +402,21 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
         else:
             return TensorOrder.F_ORDER
 
+    def _call_tensor_ufunc(self, x, out=None, where=None):
+        if hasattr(x, '__tensor_ufunc__'):
+            ret = x.__tensor_ufunc__(type(self), [x], out, where=where)
+            if ret is NotImplemented:
+                return
+            return ret
+
     def _call(self, x, out=None, where=None):
+        # check tensor ufunc, if x is not a tensor, e.g. Mars DataFrame
+        # which implements tensor ufunc, will delegate the computation
+        # to it if possible
+        ret = self._call_tensor_ufunc(x, out=out, where=where)
+        if ret is not None:
+            return ret
+
         x, out, where = self._process_inputs(x, out, where)
         shape = x.shape
         order = self._calc_order(x, out)

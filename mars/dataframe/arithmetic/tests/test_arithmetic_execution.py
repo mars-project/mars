@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from mars.tests.core import TestBase, parameterized, ExecutorForTest
+from mars import tensor as mt
 from mars.tensor.datasource import array as from_array
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -541,6 +542,41 @@ class TestUnary(TestBase):
         result = self.executor.execute_dataframe(abs(df1), concat=True)[0]
         expected = data1.abs()
         pd.testing.assert_frame_equal(expected, result)
+
+    def testUfunc(self):
+        df_raw = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)),
+                              index=pd.RangeIndex(9, -1, -1))
+        df = from_pandas(df_raw, chunk_size=5)
+
+        series_raw = pd.Series(np.random.uniform(size=10),
+                               index=pd.RangeIndex(9, -1, -1))
+        series = from_pandas_series(series_raw, chunk_size=5)
+
+        ufuncs = [
+            [np.log, mt.log]
+        ]
+
+        for raw, data in [(df_raw, df), (series_raw, series)]:
+            for npf, mtf in ufuncs:
+                r = mtf(data)
+
+                result = self.executor.execute_tensor(r, concat=True)[0]
+                expected = npf(raw)
+
+                if isinstance(raw, pd.DataFrame):
+                    pd.testing.assert_frame_equal(result, expected)
+                else:
+                    pd.testing.assert_series_equal(result, expected)
+
+                # test numpy ufunc
+                r = npf(data)
+
+                result = self.executor.execute_tensor(r, concat=True)[0]
+
+                if isinstance(raw, pd.DataFrame):
+                    pd.testing.assert_frame_equal(result, expected)
+                else:
+                    pd.testing.assert_series_equal(result, expected)
 
 
 if __name__ == '__main__':  # pragma: no cover

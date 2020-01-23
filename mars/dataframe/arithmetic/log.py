@@ -17,16 +17,11 @@ from ...utils import classproperty
 from .core import DataFrameUnaryUfunc
 
 
-class DataFrameAbs(DataFrameUnaryUfunc):
-    _op_type_ = OperandDef.ABS
-    _func_name = 'abs'
+class DataFrameLog(DataFrameUnaryUfunc):
+    _op_type_ = OperandDef.LOG
+    _func_name = 'log'
 
     @classproperty
     def tensor_op_type(self):
-        from ...tensor.arithmetic import TensorAbs
-        return TensorAbs
-
-
-def abs(df):
-    op = DataFrameAbs()
-    return op(df)
+        from ...tensor.arithmetic import TensorLog
+        return TensorLog

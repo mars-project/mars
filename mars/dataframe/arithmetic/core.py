@@ -27,6 +27,7 @@ from ..align import align_series_series, align_dataframe_series, align_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
 from ..operands import DataFrameOperandMixin, ObjectType, DataFrameOperand
 from ..initializer import Series, DataFrame
+from ..ufunc.tensor import TensorUfuncMixin
 from ..utils import parse_index, infer_dtypes, infer_index_value
 
 
@@ -496,23 +497,51 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
         out_chunks = []
         for in_chunk in in_df.chunks:
             out_op = op.copy().reset_key()
-            out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=in_chunk.index,
-                                         index_value=in_chunk.index_value,
-                                         columns_value=in_chunk.columns_value)
+            if op.object_type == ObjectType.dataframe:
+                out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape,
+                                             index=in_chunk.index,
+                                             index_value=in_chunk.index_value,
+                                             columns_value=in_chunk.columns_value)
+            else:
+                out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape,
+                                             index=in_chunk.index,
+                                             dtype=in_chunk.dtype,
+                                             index_value=in_chunk.index_value,
+                                             name=in_chunk.name)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, out_df.shape, dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value,
-                                     columns_value=out_df.columns_value,
-                                     chunks=out_chunks, nsplits=in_df.nsplits)
+        kw = out_df.params
+        kw['nsplits'] = in_df.nsplits
+        kw['chunks'] =  out_chunks
+        return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod
     def execute(cls, ctx, op):
         df = ctx[op.inputs[0].key]
         func_name = getattr(cls, '_func_name')
-        ctx[op.outputs[0].key] = getattr(df, func_name)()
+        if hasattr(df, func_name):
+            ctx[op.outputs[0].key] = getattr(df, func_name)()
+        else:
+            ctx[op.outputs[0].key] = getattr(np, func_name)(df)
+
+
+class DataFrameUnaryOp(DataFrameOperand, DataFrameUnaryOpMixin):
+    def __init__(self, object_type=None, **kw):
+        super().__init__(_object_type=object_type, **kw)
 
     def __call__(self, df):
-        return self.new_dataframe([df], df.shape, dtypes=df.dtypes,
-                                  columns_value=df.columns_value, index_value=df.index_value)
+        self._object_type = df.op.object_type
+        if self._object_type == ObjectType.dataframe:
+            return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
+                                      columns_value=df.columns_value,
+                                      index_value=df.index_value)
+        else:
+            series = df
+            return self.new_series([series], shape=series.shape, name=series.name,
+                                   index_value=series.index_value,
+                                   dtype=series.dtype)
+
+
+class DataFrameUnaryUfunc(DataFrameUnaryOp, TensorUfuncMixin):
+    pass

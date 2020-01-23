@@ -15,6 +15,7 @@
 from ...core import build_mode
 from ..core import DATAFRAME_TYPE
 from ..utils import wrap_notimplemented_exception
+from ..ufunc.tensor import register_tensor_unary_ufunc
 from .abs import abs, DataFrameAbs
 from .add import add, radd, DataFrameAdd
 from .subtract import subtract, rsubtract, DataFrameSubtract
@@ -26,6 +27,7 @@ from .less import lt, DataFrameLess
 from .greater import gt, DataFrameGreater
 from .less_equal import le, DataFrameLessEqual
 from .greater_equal import ge, DataFrameGreaterEqual
+from .log import DataFrameLog
 
 
 def _wrap_eq():
@@ -56,6 +58,10 @@ def _wrap_comparison(func):
 
 def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE
+
+    # register mars unary ufuncs
+    register_tensor_unary_ufunc(DataFrameAbs)
+    register_tensor_unary_ufunc(DataFrameLog)
 
     for entity in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(entity, 'abs', abs)
