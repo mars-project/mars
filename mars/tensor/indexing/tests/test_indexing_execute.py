@@ -526,6 +526,13 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(res, expected)
 
+        t = hstack((x > 1).nonzero())
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.hstack(np.nonzero(data > 1))
+
+        np.testing.assert_array_equal(res, expected)
+
     def testFlatnonzeroExecution(self):
         x = arange(-2, 3, chunk_size=2)
 
