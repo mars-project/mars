@@ -544,7 +544,7 @@ class TestUnary(TestBase):
         pd.testing.assert_frame_equal(expected, result)
 
     def testUfunc(self):
-        df_raw = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)),
+        df_raw = pd.DataFrame(np.random.uniform(size=(10, 10)),
                               index=pd.RangeIndex(9, -1, -1))
         df = from_pandas(df_raw, chunk_size=5)
 
@@ -553,7 +553,22 @@ class TestUnary(TestBase):
         series = from_pandas_series(series_raw, chunk_size=5)
 
         ufuncs = [
-            [np.log, mt.log]
+            [np.abs, mt.abs],
+            [np.log, mt.log],
+            [np.log2, mt.log2],
+            [np.log10, mt.log10],
+            [np.sin, mt.sin],
+            [np.cos, mt.cos],
+            [np.tan, mt.tan],
+            [np.sinh, mt.sinh],
+            [np.cosh, mt.cosh],
+            [np.tanh, mt.tanh],
+            [np.arcsin, mt.arcsin],
+            [np.arccos, mt.arccos],
+            [np.arctan, mt.arctan],
+            [np.arcsinh, mt.arcsinh],
+            [np.arccosh, mt.arccosh],
+            [np.arctanh, mt.arctanh],
         ]
 
         for raw, data in [(df_raw, df), (series_raw, series)]:

@@ -28,6 +28,20 @@ from .greater import gt, DataFrameGreater
 from .less_equal import le, DataFrameLessEqual
 from .greater_equal import ge, DataFrameGreaterEqual
 from .log import DataFrameLog
+from .log2 import DataFrameLog2
+from .log10 import DataFrameLog10
+from .sin import DataFrameSin
+from .cos import DataFrameCos
+from .tan import DataFrameTan
+from .sinh import DataFrameSinh
+from .cosh import DataFrameCosh
+from .tanh import DataFrameTanh
+from .arcsin import DataFrameArcsin
+from .arccos import DataFrameArccos
+from .arctan import DataFrameArctan
+from .arcsinh import DataFrameArcsinh
+from .arccosh import DataFrameArccosh
+from .arctanh import DataFrameArctanh
 
 
 def _wrap_eq():
@@ -60,8 +74,15 @@ def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE
 
     # register mars unary ufuncs
-    register_tensor_unary_ufunc(DataFrameAbs)
-    register_tensor_unary_ufunc(DataFrameLog)
+    unary_ops = [
+        DataFrameAbs, DataFrameLog, DataFrameLog2, DataFrameLog10,
+        DataFrameSin, DataFrameCos, DataFrameTan,
+        DataFrameSinh, DataFrameCosh, DataFrameTanh,
+        DataFrameArcsin, DataFrameArccos, DataFrameArctan,
+        DataFrameArcsinh, DataFrameArccosh, DataFrameArctanh,
+    ]
+    for unary_op in unary_ops:
+        register_tensor_unary_ufunc(unary_op)
 
     for entity in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(entity, 'abs', abs)

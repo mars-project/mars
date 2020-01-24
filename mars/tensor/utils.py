@@ -215,21 +215,32 @@ def infer_dtype(np_func, empty=True, reverse=False, check=True):
                 arg = arg.op.data
             return arg[(0,) * max(1, arg.ndim)]
 
+    tensor_ufunc = '__tensor_ufunc__'
+
+    def is_arg(arg):
+        if hasattr(arg, tensor_ufunc):
+            return False
+        return hasattr(arg, 'ndim') and hasattr(arg, 'dtype')
+
     def inner(func):
         @wraps(func)
         def h(*tensors, **kw):
             usr_dtype = np.dtype(kw.pop('dtype')) if 'dtype' in kw else None
-            args = [make_arg(t) if hasattr(t, 'ndim') and hasattr(t, 'dtype') else t
-                    for t in tensors]
+            args = [make_arg(t) if is_arg(t) else t for t in tensors]
             if reverse:
                 args = args[::-1]
-            np_kw = dict((k, make_arg(v) if hasattr(v, 'ndim') and hasattr(v, 'dtype') else v)
-                         for k, v in kw.items() if k != 'out')
-            try:
-                with np.errstate(all='ignore'):
-                    dtype = np_func(*args, **np_kw).dtype
-            except:  # noqa: E722
-                dtype = None
+            np_kw = dict((k, v) for k, v in kw.items() if is_arg(v) and k != 'out')
+
+            dtype = None
+            if not any(hasattr(arg, tensor_ufunc)
+                       for arg in itertools.chain(args, np_kw.values())):
+                # skip infer if encounter mars DataFrame etc
+                # that implements __tensor_ufunc__
+                try:
+                    with np.errstate(all='ignore'):
+                        dtype = np_func(*args, **np_kw).dtype
+                except:  # noqa: E722
+                    dtype = None
 
             if usr_dtype and dtype:
                 can_cast_kwargs = {}
