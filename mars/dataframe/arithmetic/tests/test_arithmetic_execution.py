@@ -14,6 +14,7 @@
 
 import operator
 import unittest
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -569,6 +570,14 @@ class TestUnary(TestBase):
             [np.arcsinh, mt.arcsinh],
             [np.arccosh, mt.arccosh],
             [np.arctanh, mt.arctanh],
+            [np.radians, mt.radians],
+            [np.degrees, mt.degrees],
+            [np.ceil, mt.ceil],
+            [np.floor, mt.floor],
+            [partial(np.around, decimals=2), partial(mt.around, decimals=2)],
+            [np.exp, mt.exp],
+            [np.exp2, mt.exp2],
+            [np.expm1, mt.expm1],
         ]
 
         for raw, data in [(df_raw, df), (series_raw, series)]:

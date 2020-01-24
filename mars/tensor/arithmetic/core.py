@@ -402,9 +402,14 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
         else:
             return TensorOrder.F_ORDER
 
+    @property
+    def ufunc_extra_params(self):
+        return dict()
+
     def _call_tensor_ufunc(self, x, out=None, where=None):
         if hasattr(x, '__tensor_ufunc__'):
-            ret = x.__tensor_ufunc__(type(self), [x], out, where=where)
+            ret = x.__tensor_ufunc__(type(self), [x], out, where,
+                                     **self.ufunc_extra_params)
             if ret is NotImplemented:
                 return
             return ret

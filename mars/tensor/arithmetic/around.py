@@ -40,6 +40,10 @@ class TensorAround(TensorUnaryOp):
         super().__init__(_decimals=decimals, _casting=casting, _err=err, _dtype=dtype,
                          _sparse=sparse, **kw)
 
+    @property
+    def ufunc_extra_params(self):
+        return {'decimals': self._decimals}
+
     @classmethod
     def execute(cls, ctx, op):
         (a,), device_id, xp = as_same_device(

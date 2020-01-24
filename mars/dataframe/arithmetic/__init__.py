@@ -42,6 +42,14 @@ from .arctan import DataFrameArctan
 from .arcsinh import DataFrameArcsinh
 from .arccosh import DataFrameArccosh
 from .arctanh import DataFrameArctanh
+from .radians import DataFrameRadians
+from .degrees import DataFrameDegrees
+from .ceil import DataFrameCeil
+from .floor import DataFrameFloor
+from .around import DataFrameAround, round
+from .exp import DataFrameExp
+from .exp2 import DataFrameExp2
+from .expm1 import DataFrameExpm1
 
 
 def _wrap_eq():
@@ -80,12 +88,16 @@ def _install():
         DataFrameSinh, DataFrameCosh, DataFrameTanh,
         DataFrameArcsin, DataFrameArccos, DataFrameArctan,
         DataFrameArcsinh, DataFrameArccosh, DataFrameArctanh,
+        DataFrameRadians, DataFrameDegrees,
+        DataFrameCeil, DataFrameFloor, DataFrameAround,
+        DataFrameExp, DataFrameExp2, DataFrameExpm1,
     ]
     for unary_op in unary_ops:
         register_tensor_unary_ufunc(unary_op)
 
     for entity in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(entity, 'abs', abs)
+        setattr(entity, 'round', round)
 
         setattr(entity, '__add__', wrap_notimplemented_exception(add))
         setattr(entity, '__radd__', wrap_notimplemented_exception(radd))

@@ -35,9 +35,11 @@ class TensorUfuncMixin:
         raise NotImplementedError
 
     @classmethod
-    def ufunc_call(cls, tensor_op, inputs, out, **kw):
+    def ufunc_call(cls, tensor_op, inputs, out, where, **kw):
         if out is not None:
             return NotImplemented
+        if where is not None:
+            raise NotImplementedError
 
         try:
             op = _tensor_op_to_df_op[tensor_op](**kw)
@@ -46,8 +48,8 @@ class TensorUfuncMixin:
             return NotImplemented
 
 
-def _tensor_ufunc(_, tensor_op, inputs, out, **kw):
+def _tensor_ufunc(_, tensor_op, inputs, out, where, **kw):
     op = get_tensor_ufunc_implementation(tensor_op)
     if op is not None:
-        return op.ufunc_call(tensor_op, inputs, out, **kw)
+        return op.ufunc_call(tensor_op, inputs, out, where, **kw)
     return NotImplemented
