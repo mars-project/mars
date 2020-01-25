@@ -91,7 +91,7 @@ class Test(unittest.TestCase):
             x_sq = (x ** 2).astype(np.float32)
             y_sq = (y ** 2).astype(np.float32)
 
-            distance = euclidean_distances(x_sq, y_sq, squred=True)
+            distance = euclidean_distances(x_sq, y_sq, squared=True)
 
             x_raw_sq = (raw_x ** 2).astype(np.float32)
             y_raw_sq = (raw_y ** 2).astype(np.float32)

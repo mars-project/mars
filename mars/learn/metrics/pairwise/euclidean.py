@@ -145,7 +145,7 @@ class EuclideanDistances(PairwiseDistances):
         return [recursive_tile(distances)]
 
 
-def euclidean_distances(X, Y=None, Y_norm_squared=None, squred=False,
+def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,
                         X_norm_squared=None):
     """
     Considering the rows of X (and Y=X) as vectors, compute the
@@ -213,7 +213,7 @@ def euclidean_distances(X, Y=None, Y_norm_squared=None, squred=False,
     paired_distances : distances betweens pairs of elements of X and Y.
     """
     op = EuclideanDistances(x=X, y=Y, x_norm_squared=X_norm_squared,
-                            y_norm_squared=Y_norm_squared, squared=squred,
+                            y_norm_squared=Y_norm_squared, squared=squared,
                             dtype=np.dtype(np.float64))
     return op(X, Y=Y, Y_norm_squared=Y_norm_squared,
               X_norm_squared=X_norm_squared)
