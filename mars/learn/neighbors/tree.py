@@ -20,7 +20,7 @@ import numpy as np
 from ...serialize import KeyField, Int32Field, DictField, StringField, BytesField, BoolField
 from ...tiles import TilesError
 from ...tensor.core import TensorOrder
-from ...utils import check_chunks_unknown_shape, classproperty, tokenize
+from ...utils import check_chunks_unknown_shape, tokenize
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 
 
@@ -89,10 +89,6 @@ class TreeBase(LearnOperand, LearnOperandMixin):
         tileable_kw['chunks'] = [chunk]
         return new_op.new_tileables(op.inputs, kws=[tileable_kw])
 
-    @classproperty
-    def _tree_type(self):
-        raise NotImplementedError
-
     @classmethod
     def execute(cls, ctx, op):
         if op.gpu:  # pragma: no cover
@@ -104,7 +100,7 @@ class TreeBase(LearnOperand, LearnOperandMixin):
         tree = cls._tree_type(
             a, op.leaf_size, metric=metric,
             **(op.metric_params or dict()))
-        ctx[op.outputs[0].key] = pickle.dumps(tree)
+        ctx[op.outputs[0].key] = cloudpickle.dumps(tree)
 
 
 class TreeQueryBase(LearnOperand, LearnOperandMixin):
@@ -150,7 +146,7 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
         values = []
         for value in self._values_:
             if isinstance(value, self._tree_type):
-                values.append(pickle.dumps(value))
+                values.append(cloudpickle.dumps(value))
             else:
                 values.append(value)
         self._obj_set('_key', tokenize(type(self).__name__, *values))
@@ -211,10 +207,6 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
         kws[-1]['nsplits'] = tuple(nsplits)
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=kws, output_limit=len(kws))
-
-    @classproperty
-    def _tree_type(self):
-        raise NotImplementedError
 
     @classmethod
     def execute(cls, ctx, op):

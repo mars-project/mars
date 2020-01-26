@@ -20,7 +20,7 @@ from numpy.core.numeric import ComplexWarning
 try:
     from sklearn.utils.validation import check_is_fitted
 except ImportError:  # pragma: no cover:
-    pass
+    check_is_fitted = None
 
 from ... import tensor as mt
 from ...lib.sparse import issparse
@@ -380,3 +380,6 @@ def check_non_negative(X, whom):
         Who passed X to this function.
     """
     return check_non_negative_then_return_value(X, X, whom)
+
+
+check_is_fitted = check_is_fitted

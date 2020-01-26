@@ -52,9 +52,8 @@ def kd_tree_query(tree, data, n_neighbors, return_distance):
 
 @require_not_none(SkKDTree)
 def KDTree(X, leaf_size, metric=None, **metric_params):
-    metric_func = None
-    if callable(metric):
-        metric_func, metric = metric, None
-    op = _KDTree(leaf_size=leaf_size, metric=metric, metric_func=metric_func,
+    # kd_tree cannot accept callable metric
+    assert not callable(metric)
+    op = _KDTree(leaf_size=leaf_size, metric=metric,
                  **metric_params)
     return op(X)

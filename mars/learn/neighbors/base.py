@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pickle
 import warnings
 from abc import ABCMeta, abstractmethod
 
+import cloudpickle
 import numpy as np
 from sklearn.base import BaseEstimator, MultiOutputMixin
 from sklearn.neighbors.ball_tree import BallTree as SklearnBallTree
 from sklearn.neighbors.kd_tree import KDTree as SklearnKDTree
 
 from ... import tensor as mt
+from ...tensor.reshape.reshape import _reshape as reshape_unchecked
 from ..metrics.pairwise import PAIRWISE_DISTANCE_FUNCTIONS
 from ..metrics import pairwise_distances
 from ..utils import check_array
@@ -123,7 +124,7 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
         # For minkowski distance, use more efficient methods where available
         if self.metric == 'minkowski':
             p = self.effective_metric_params_.pop('p', 2)
-            if p < 1:
+            if p < 1:  # pragma: no cover
                 raise ValueError("p must be greater than one "
                                  "for minkowski metric")
             elif p == 1:
@@ -142,22 +143,18 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
             return self
 
         elif isinstance(X, SklearnBallTree):
-            self._fit_X = X.data
+            self._fit_X = mt.tensor(X.data)
             self._tree = X
             self._fit_method = 'ball_tree'
             return self
 
         elif isinstance(X, SklearnKDTree):
-            self._fit_X = X.data
+            self._fit_X = mt.tensor(X.data)
             self._tree = X
             self._fit_method = 'kd_tree'
             return self
 
         X = check_array(X, accept_sparse=True)
-
-        n_samples = X.shape[0]
-        if n_samples == 0:
-            raise ValueError("n_samples must be greater than 0")
 
         if X.issparse():
             if self.algorithm not in ('auto', 'brute'):
@@ -199,17 +196,17 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
             tree = BallTree(X, self.leaf_size,
                             metric=self.effective_metric_,
                             **self.effective_metric_params_)
-            self._tree = pickle.loads(
+            self._tree = cloudpickle.loads(
                 tree.execute(session=session, **(run_kwargs or dict())))
         elif self._fit_method == 'kd_tree':
             tree = KDTree(X, self.leaf_size,
                           metric=self.effective_metric_,
                           **self.effective_metric_params_)
-            self._tree = pickle.loads(
+            self._tree = cloudpickle.loads(
                 tree.execute(session=session, **(run_kwargs or dict())))
         elif self._fit_method == 'brute':
             self._tree = None
-        else:
+        else:  # pragma: no cover
             raise ValueError("algorithm = '%s' not recognized"
                              % self.algorithm)
 
@@ -227,11 +224,6 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
                         type(self.n_neighbors))
 
         return self
-
-    @property
-    def _pairwise(self):
-        # For cross-validation routines to split data correctly
-        return self.metric == 'precomputed'
 
 
 class KNeighborsMixin:
@@ -299,7 +291,7 @@ class KNeighborsMixin:
 
             query = ball_tree_query if self._fit_method == 'ball_tree' else kd_tree_query
             result = query(self._tree, X, n_neighbors, return_distance)
-        else:
+        else:  # pragma: no cover
             raise ValueError("internal: _fit_method not recognized")
 
         if not query_is_train:
@@ -326,12 +318,12 @@ class KNeighborsMixin:
             dup_gr_nbrs = mt.all(sample_mask, axis=1)
             sample_mask[:, 0] = mt.where(dup_gr_nbrs, False, sample_mask[:, 0])
 
-            neigh_ind = mt.reshape(
+            neigh_ind = reshape_unchecked(
                 neigh_ind[sample_mask], (n_samples, n_neighbors - 1))
 
             if return_distance:
-                dist = mt.reshape(
-                    dist[sample_mask], (n_samples, n_neighbors))
+                dist = reshape_unchecked(
+                    dist[sample_mask], (n_samples, n_neighbors - 1))
                 ret = mt.ExecutableTuple([dist, neigh_ind])
                 ret.execute(session=session, fetch=False,
                             **(run_kwargs or dict()))

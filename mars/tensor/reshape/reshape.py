@@ -512,7 +512,12 @@ def reshape(a, newshape, order='C'):
     if a.shape == newshape and tensor_order == a.order:
         # does not need to reshape
         return a
+    return _reshape(a, newshape, order=order, tensor_order=tensor_order)
 
+
+def _reshape(a, newshape, order='C', tensor_order=None):
+    if tensor_order is None:
+        tensor_order = get_order(order, a.order, available_options='CFA')
     op = TensorReshape(newshape, order, dtype=a.dtype,
                        create_view=tensor_order == a.order)
     return op(a, tensor_order)
