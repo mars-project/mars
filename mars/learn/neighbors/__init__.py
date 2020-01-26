@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-from .utils.shuffle import shuffle
-from .contrib import xgboost, tensorflow, pytorch
-from .metrics import pairwise
-from . import preprocessing
-from . import neighbors
+try:
+    from .unsupervised import NearestNeighbors
+except ImportError:  # pragma: no cover
+    pass
 
-for _mod in [xgboost, tensorflow, pytorch, neighbors]:
-    _mod.register_op()
 
-del _mod, shuffle, pairwise, preprocessing
+def register_op():
+    from .ball_tree import BallTree, BallTreeQuery
+    from .kd_tree import KDTree, KDTreeQuery
+
+    del BallTree, BallTreeQuery, KDTree, KDTreeQuery

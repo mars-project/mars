@@ -384,6 +384,14 @@ message OperandDef {
         PAIRWISE_COSINE_DISTANCES = 2202;
         PAIRWISE_HAVERSINE_DISTANCES = 2203;
 
+        // nearest neighbors
+        KD_TREE_TRAIN = 2230;
+        KD_TREE_QUERY = 2231;
+        BALL_TREE_TRAIN = 2232;
+        BALL_TREE_QUERY = 2233;
+        FAISS_TRAIN = 2234;
+        FAISS_QUERY = 2235;
+
         // XGBoost
         XGBOOST_TRAIN = 3001;
         XGBOOST_PREDICT = 3002;

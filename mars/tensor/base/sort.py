@@ -185,7 +185,7 @@ class TensorSort(TensorOperand, PSRSOperandMixin):
                         'shape': chunk.shape,
                         'index': chunk.index,
                         'order': chunk.order,
-                        'dtyep': chunk.dtype,
+                        'dtype': chunk.dtype,
                         'type': 'sorted'
                     })
                 if return_indices:

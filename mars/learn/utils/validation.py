@@ -17,6 +17,10 @@ import numbers
 
 import numpy as np
 from numpy.core.numeric import ComplexWarning
+try:
+    from sklearn.utils.validation import check_is_fitted
+except ImportError:  # pragma: no cover:
+    pass
 
 from ... import tensor as mt
 from ...lib.sparse import issparse
