@@ -18,26 +18,20 @@ except ImportError:  # pragma: no cover
     SkBallTree = None
 
 from ... import opcodes as OperandDef
-from ...utils import classproperty, require_not_none
+from ...utils import require_not_none
 from .tree import TreeBase, TreeQueryBase
 
 
 @require_not_none(SkBallTree)
 class _BallTree(TreeBase):
     _op_type_ = OperandDef.BALL_TREE_TRAIN
-
-    @classproperty
-    def _tree_type(self):
-        return SkBallTree
+    _tree_type = SkBallTree
 
 
 @require_not_none(SkBallTree)
 class BallTreeQuery(TreeQueryBase):
     _op_type_ = OperandDef.BALL_TREE_QUERY
-
-    @classproperty
-    def _tree_type(self):
-        return SkBallTree
+    _tree_type = SkBallTree
 
 
 @require_not_none(SkBallTree)

@@ -18,26 +18,20 @@ except ImportError:  # pragma: no cover
     SkKDTree = None
 
 from ... import opcodes as OperandDef
-from ...utils import classproperty, require_not_none
+from ...utils import require_not_none
 from .tree import TreeBase, TreeQueryBase
 
 
 @require_not_none(SkKDTree)
 class _KDTree(TreeBase):
     _op_type_ = OperandDef.KD_TREE_TRAIN
-
-    @classproperty
-    def _tree_type(self):
-        return SkKDTree
+    _tree_type = SkKDTree
 
 
 @require_not_none(SkKDTree)
 class KDTreeQuery(TreeQueryBase):
     _op_type_ = OperandDef.KD_TREE_QUERY
-
-    @classproperty
-    def _tree_type(self):
-        return SkKDTree
+    _tree_type = SkKDTree
 
 
 @require_not_none(SkKDTree)
