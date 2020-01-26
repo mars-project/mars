@@ -146,7 +146,7 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
         return new_op.new_tensors(op.inputs, shape=out_tensor.shape,
                                   order=out_tensor.order,
                                   chunks=out_chunks,
-                                  nsplits=(xa.nsplits[0], xb.nsplits[1]))
+                                  nsplits=(xa.nsplits[0], xb.nsplits[0]))
 
     @classmethod
     def tile(cls, op):

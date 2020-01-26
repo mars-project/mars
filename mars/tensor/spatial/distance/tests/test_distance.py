@@ -97,6 +97,8 @@ class Test(unittest.TestCase):
 
         dist = dist.tiles()
         self.assertEqual(len(dist.chunks), (100 // 15 + 1) * (90 // 16 + 1))
+        self.assertEqual(dist.nsplits, (get_tiled(a).nsplits[0],
+                                        get_tiled(b).nsplits[0]))
         for c in dist.chunks:
             ta = get_tiled(a)
             tb = get_tiled(b)
