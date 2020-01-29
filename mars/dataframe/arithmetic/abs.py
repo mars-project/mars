@@ -27,6 +27,6 @@ class DataFrameAbs(DataFrameUnaryUfunc):
         return TensorAbsolute
 
 
-def abs(df):
+def abs_(df):
     op = DataFrameAbs()
     return op(df)

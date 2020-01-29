@@ -48,7 +48,7 @@ class DataFrameAround(DataFrameUnaryUfunc):
             ctx[op.outputs[0].key] = getattr(np, func_name)(df, decimals=op.decimals)
 
 
-def round(df, decimals=0, *args, **kwargs):
+def around(df, decimals=0, *args, **kwargs):
     if len(args) > 0:
         raise TypeError('round() takes 0 positional arguments '
                         'but {} was given'.format(len(args)))

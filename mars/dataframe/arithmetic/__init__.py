@@ -16,7 +16,7 @@ from ...core import build_mode
 from ..core import DATAFRAME_TYPE
 from ..utils import wrap_notimplemented_exception
 from ..ufunc.tensor import register_tensor_unary_ufunc
-from .abs import abs, DataFrameAbs
+from .abs import abs_, DataFrameAbs
 from .add import add, radd, DataFrameAdd
 from .subtract import subtract, rsubtract, DataFrameSubtract
 from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
@@ -46,7 +46,7 @@ from .radians import DataFrameRadians
 from .degrees import DataFrameDegrees
 from .ceil import DataFrameCeil
 from .floor import DataFrameFloor
-from .around import DataFrameAround, round
+from .around import DataFrameAround, around
 from .exp import DataFrameExp
 from .exp2 import DataFrameExp2
 from .expm1 import DataFrameExpm1
@@ -96,8 +96,9 @@ def _install():
         register_tensor_unary_ufunc(unary_op)
 
     for entity in DATAFRAME_TYPE + SERIES_TYPE:
-        setattr(entity, 'abs', abs)
-        setattr(entity, 'round', round)
+        setattr(entity, '__abs__', abs_)
+        setattr(entity, 'abs', abs_)
+        setattr(entity, 'round', around)
 
         setattr(entity, '__add__', wrap_notimplemented_exception(add))
         setattr(entity, '__radd__', wrap_notimplemented_exception(radd))

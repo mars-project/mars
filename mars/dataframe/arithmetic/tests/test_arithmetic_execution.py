@@ -24,7 +24,6 @@ from mars import tensor as mt
 from mars.tensor.datasource import array as from_array
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.arithmetic import abs
 from mars.dataframe.arithmetic.tests.test_arithmetic import comp_func
 
 
@@ -540,8 +539,11 @@ class TestUnary(TestBase):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))
         df1 = from_pandas(data1, chunk_size=5)
 
-        result = self.executor.execute_dataframe(abs(df1), concat=True)[0]
+        result = self.executor.execute_dataframe(df1.abs(), concat=True)[0]
         expected = data1.abs()
+        pd.testing.assert_frame_equal(expected, result)
+
+        result = self.executor.execute_dataframe(abs(df1), concat=True)[0]
         pd.testing.assert_frame_equal(expected, result)
 
     def testUfunc(self):
