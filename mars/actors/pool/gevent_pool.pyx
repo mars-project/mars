@@ -227,6 +227,10 @@ cdef class ActorContext:
     def asyncpool(size=None):
         return gevent.pool.Pool(size)
 
+    @staticmethod
+    def lock():
+        return gevent.lock.Semaphore()
+
 
 cdef class LocalActorPool:
     """
@@ -1681,3 +1685,7 @@ cdef class ActorClient:
     @staticmethod
     def asyncpool(size=None):
         return gevent.pool.Pool(size)
+
+    @staticmethod
+    def lock():
+        return gevent.lock.Semaphore()

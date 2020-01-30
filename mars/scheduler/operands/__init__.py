@@ -17,3 +17,4 @@ from .core import register_operand_class, get_operand_actor_class, \
     OperandState
 from .common import OperandActor
 from .shuffle import ShuffleProxyActor
+from .successors_exclusive import SuccessorsExclusiveOperandActor

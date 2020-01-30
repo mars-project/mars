@@ -372,6 +372,9 @@ message OperandDef {
         // store
         READ_CSV = 2100;
 
+        // successors exclusive
+        SUCCESSORS_EXCLUSIVE = 2002;
+
         // machine learning
 
         // pairwise distances

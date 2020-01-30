@@ -83,6 +83,8 @@ def get_fs(path, storage_options):
         scheme = 'file'
     else:
         scheme = urlparse(path).scheme
+    if scheme == '':
+        scheme = 'file'
     if scheme == 'file':
         return file_systems[scheme].get_instance()
     else:
