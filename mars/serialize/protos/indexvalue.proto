@@ -83,6 +83,7 @@ message IndexValue {
         Value tz = 8;
         bool dayfirst = 9;
         bool yearfirst = 10;
+        Value ambiguous = 11;
         // public fields
         string key = 51;
         bool is_monotonic_increasing = 52;

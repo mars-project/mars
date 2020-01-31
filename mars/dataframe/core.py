@@ -87,7 +87,8 @@ class IndexValue(Serializable):
             kw = {field.tag_name(None): getattr(self, attr, None)
                   for attr, field in self._FIELDS.items()
                   if attr not in super(type(self), self)._FIELDS}
-            if kw['data'] is None:
+            kw = {k: v for k, v in kw.items() if v is not None}
+            if kw.get('data') is None:
                 kw['data'] = []
             return getattr(pd, type(self).__name__)(**kw)
 
@@ -129,6 +130,7 @@ class IndexValue(Serializable):
         _end = AnyField('end')
         _closed = AnyField('closed')
         _tz = AnyField('tz')
+        _ambiguous = AnyField('ambiguous')
         _dayfirst = BoolField('dayfirst')
         _yearfirst = BoolField('yearfirst')
 
