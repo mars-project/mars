@@ -18,6 +18,7 @@ import itertools
 import numpy as np
 
 from ...config import options
+from ...serialize import ValueType, StringField, TupleField
 from ..utils import normalize_shape, decide_chunk_sizes
 from ..core import TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
@@ -132,3 +133,53 @@ class TensorLike(TensorHasInput):
         # FIXME: remove when cupy supports other dtypes
         if self._gpu and self._dtype not in (np.float32, np.float64):
             raise NotImplementedError('Sparse tensor on GPU only supports float32 and float64')
+
+
+class TensorFromHDF5Like(TensorNoInput):
+    _filename = StringField('filename')
+    _group = StringField('group')
+    _dataset = StringField('dataset')
+    _axis_offsets = TupleField('axis_offsets', ValueType.int64)
+
+    def __init__(self, filename=None, group=None, dataset=None,
+                 dtype=None, **kw):
+        super().__init__(_filename=filename, _group=group,
+                         _dataset=dataset, _dtype=dtype, **kw)
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @property
+    def group(self):
+        return self._group
+
+    @property
+    def dataset(self):
+        return self._dataset
+
+    @property
+    def axis_offsets(self):
+        return self._axis_offsets
+
+    @property
+    def path(self):
+        return self.get_path(self.group, self.dataset)
+
+    def to_chunk_op(self, *args):
+        _, chunk_index, nsplits = args
+        chunk_op = super().to_chunk_op(*args)
+        cum_offsets = [[0] + np.cumsum(ns).tolist() for ns in nsplits]
+        axis_offsets = []
+        for axis, idx in enumerate(chunk_index):
+            axis_offsets.append(cum_offsets[axis][idx])
+        chunk_op._axis_offsets = tuple(axis_offsets)
+        return chunk_op
+
+    @staticmethod
+    def get_path(group, dataset):
+        paths = []
+        if group:
+            paths.append(group)
+        paths.append(dataset)
+        return '/'.join(paths)

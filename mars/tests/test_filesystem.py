@@ -17,7 +17,7 @@ import shutil
 import tempfile
 
 from mars.tests.core import TestBase
-from mars.filesystem import _parse_from_path, LocalFileSystem, glob
+from mars.filesystem import _parse_from_path, LocalFileSystem, glob, FSMap
 
 
 class Test(TestBase):
@@ -45,3 +45,40 @@ class Test(TestBase):
             self.assertEqual(len(glob(tempdir + '*')), 1)
         finally:
             shutil.rmtree(tempdir)
+
+    def testFSMap(self):
+        fs = LocalFileSystem.get_instance()
+        with tempfile.TemporaryDirectory() as root:
+            fs_map = FSMap(root, fs, check=True)
+
+            path = '/to/path/test_file'
+            test_content = b'text for test'
+            fs_map[path] = test_content
+            self.assertEqual(fs_map[path], test_content)
+            self.assertEqual(len(fs_map), 1)
+            self.assertIn(path, fs_map)
+
+            path2 = '/to/path2/test_file2'
+            fs_map[path2] = test_content
+            self.assertEqual(len(fs_map), 2)
+
+            del fs_map[path]
+            self.assertEqual(list(fs_map), ['to/path2/test_file2'])
+
+            path3 = '/to2/path3/test_file3'
+            fs_map[path3] = test_content
+            self.assertEqual(fs_map.pop(path3), test_content)
+            self.assertEqual(fs_map.pop(path3, 'fake_content'), 'fake_content')
+            with self.assertRaises(KeyError):
+                fs_map.pop('not_exist')
+
+            fs_map.clear()
+            self.assertEqual(len(fs_map), 0)
+
+            # test root not exist
+            with self.assertRaises(ValueError):
+                _ = FSMap(root + '/path2', fs, check=True)
+
+            # create root
+            fs_map = FSMap(root + '/path2', fs, create=True)
+            self.assertEqual(len(fs_map), 0)

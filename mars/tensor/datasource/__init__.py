@@ -33,4 +33,5 @@ from .from_dense import fromdense, DenseToSparse
 from .from_sparse import fromsparse, SparseToDense
 from .from_tiledb import fromtiledb, TensorTileDBDataSource
 from .from_hdf5 import fromhdf5, TensorHDF5DataSource
+from .from_zarr import fromzarr, TensorFromZarr
 from .from_dataframe import from_dataframe, from_series, TensorFromDataFrame

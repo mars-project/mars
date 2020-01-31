@@ -30,16 +30,20 @@ try:
     import h5py
 except ImportError:  # pragma: no cover
     h5py = None
+try:
+    import zarr
+except ImportError:  # pragma: no cover
+    zarr = None
 
 from mars.tests.core import TestBase, ExecutorForTest
+from mars.tiles import get_tiled
+from mars.lib.sparse import SparseNDArray
 from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, full_like, \
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
-    triu, tril, fromtiledb, fromhdf5
-from mars.lib.sparse import SparseNDArray
+    triu, tril, from_dataframe, fromtiledb, fromhdf5, fromzarr
 from mars.tensor.lib import nd_grid
-import mars.dataframe as md
 import mars.tensor as mt
-from mars.tensor.datasource.from_dataframe import from_dataframe
+import mars.dataframe as md
 
 
 class Test(TestBase):
@@ -1007,3 +1011,36 @@ class Test(TestBase):
 
                 result = self.executor.execute_tensor(r, concat=True)[0]
                 np.testing.assert_array_equal(result, test_array)
+
+    @unittest.skipIf(zarr is None, 'zarr not installed')
+    def testReadZarrExecution(self):
+        test_array = np.random.RandomState(0).rand(20, 10)
+        group_name = 'test_group'
+        dataset_name = 'test_dataset'
+
+        with self.assertRaises(TypeError):
+            fromzarr(object())
+
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'test_read_{}.zarr'.format(int(time.time())))
+
+            group = zarr.group(path)
+            arr = group.array(group_name + '/' + dataset_name, test_array, chunks=(7, 4))
+
+            r = fromzarr(arr)
+
+            result = self.executor.execute_tensor(r, concat=True)[0]
+            np.testing.assert_array_equal(result, test_array)
+            self.assertGreater(len(get_tiled(r).chunks), 1)
+
+            r = fromzarr(path, group=group_name, dataset=dataset_name)
+
+            result = self.executor.execute_tensor(r, concat=True)[0]
+            np.testing.assert_array_equal(result, test_array)
+            self.assertGreater(len(get_tiled(r).chunks), 1)
+
+            r = fromzarr(path + '/' + group_name + '/' + dataset_name)
+
+            result = self.executor.execute_tensor(r, concat=True)[0]
+            np.testing.assert_array_equal(result, test_array)
+            self.assertGreater(len(get_tiled(r).chunks), 1)

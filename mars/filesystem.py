@@ -13,12 +13,16 @@
 # limitations under the License.
 
 import os
+import shutil
+from collections.abc import MutableMapping
 import glob as local_glob
 from gzip import GzipFile
 from urllib.parse import urlparse
 
+from pyarrow import FileSystem
 from pyarrow import LocalFileSystem as ArrowLocalFileSystem
 from pyarrow import HadoopFileSystem
+from pyarrow.util import implements
 try:
     import lz4
     import lz4.frame
@@ -33,6 +37,8 @@ compressions = {
 if lz4:
     compressions['lz4'] = lz4.frame.open
 
+FileSystem = FileSystem
+
 
 class LocalFileSystem(ArrowLocalFileSystem):
     _fs_instance = None
@@ -42,6 +48,15 @@ class LocalFileSystem(ArrowLocalFileSystem):
         if cls._fs_instance is None:
             cls._fs_instance = LocalFileSystem()
         return cls._fs_instance
+
+    @implements(FileSystem.delete)
+    def delete(self, path, recursive=False):
+        if os.path.isfile(path):
+            os.remove(path)
+        elif not recursive:
+            os.rmdir(path)
+        else:
+            shutil.rmtree(path)
 
     def stat(self, path):
         os_stat = os.stat(path)
@@ -116,3 +131,115 @@ def glob(path, storage_options=None):
 def file_size(path, storage_options=None):
     fs = get_fs(path, storage_options)
     return fs.stat(path)['size']
+
+
+class FSMap(MutableMapping):
+    """Wrap a FileSystem instance as a mutable wrapping.
+    The keys of the mapping become files under the given root, and the
+    values (which must be bytes) the contents of those files.
+    Parameters
+    ----------
+    root: string
+        prefix for all the files
+    fs: FileSystem instance
+    check: bool (=True)
+        performs a touch at the location, to check for write access.
+    """
+    def __init__(self, root, fs, check=False, create=False):
+        self.fs = fs
+        self.root = urlparse(root).path
+        if create:
+            if not self.fs.exists(root):
+                self.fs.mkdir(root)
+        if check:
+            if not self.fs.exists(root):
+                raise ValueError(
+                    "Path %s does not exist. Create "
+                    " with the ``create=True`` keyword" % root
+                )
+            with self.fs.open(root + "/a", 'w'):
+                pass
+            self.fs.rm(root + "/a")
+
+    def clear(self):
+        """Remove all keys below root - empties out mapping
+        """
+        try:
+            self.fs.rm(self.root, True)
+            self.fs.mkdir(self.root)
+        except:  # noqa: E722
+            pass
+
+    def _key_to_str(self, key):
+        """Generate full path for the key"""
+        if isinstance(key, (tuple, list)):
+            key = str(tuple(key))
+        else:
+            key = str(key)
+        return "/".join([self.root, key]) if self.root else key
+
+    def _str_to_key(self, s):
+        """Strip path of to leave key name"""
+        return s[len(self.root) :].lstrip("/")
+
+    def __getitem__(self, key, default=None):
+        """Retrieve data"""
+        key = self._key_to_str(key)
+        try:
+            result = self.fs.cat(key)
+        except:  # noqa: E722
+            if default is not None:
+                return default
+            raise KeyError(key)
+        return result
+
+    def pop(self, key, default=None):
+        result = self.__getitem__(key, default)
+        try:
+            del self[key]
+        except KeyError:
+            pass
+        return result
+
+    @staticmethod
+    def _parent(fs, path):
+        path = urlparse(path).path
+        if '/' in path:
+            return path.rsplit('/', 1)[0]
+        else:
+            return ''
+
+    def __setitem__(self, key, value):
+        """Store value in key"""
+        key = self._key_to_str(key)
+        self.fs.mkdir(self._parent(self.fs, key))
+        with self.fs.open(key, "wb") as f:
+            f.write(value)
+
+    @staticmethod
+    def _find(fs, path):
+        out = set()
+        for path, dirs, files in fs.walk(path):
+            out.update(fs.pathsep.join([path, f]) for f in files)
+        if fs.isfile(path) and path not in out:
+            # walk works on directories, but find should also return [path]
+            # when path happens to be a file
+            out.add(path)
+        return sorted(out)
+
+    def __iter__(self):
+        return (self._str_to_key(x) for x in self._find(self.fs, self.root))
+
+    def __len__(self):
+        return len(self._find(self.fs, self.root))
+
+    def __delitem__(self, key):
+        """Remove key"""
+        try:
+            self.fs.rm(self._key_to_str(key))
+        except:  # noqa: E722
+            raise KeyError
+
+    def __contains__(self, key):
+        """Does key exist in mapping?"""
+        return self.fs.exists(self._key_to_str(key))
