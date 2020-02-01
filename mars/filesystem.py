@@ -147,7 +147,7 @@ class FSMap(MutableMapping):
     """
     def __init__(self, root, fs, check=False, create=False):
         self.fs = fs
-        self.root = urlparse(root).path
+        self.root = self._get_path(fs, root)
         if create:
             if not self.fs.exists(root):
                 self.fs.mkdir(root)
@@ -157,9 +157,35 @@ class FSMap(MutableMapping):
                     "Path %s does not exist. Create "
                     " with the ``create=True`` keyword" % root
                 )
-            with self.fs.open(root + "/a", 'w'):
+            with self.fs.open(fs.pathsep.join([root, "a"]), 'w'):
                 pass
-            self.fs.rm(root + "/a")
+            self.fs.rm(fs.pathsep.join([root, "a"]))
+
+    @staticmethod
+    def _get_path(fs, path):
+        return path if isinstance(fs, LocalFileSystem) else urlparse(path).path
+
+    @staticmethod
+    def _normalize_path(fs, path, lstrip=False, rstrip=False):
+        if fs.pathsep != '/':
+            path = path.replace('/', fs.pathsep)
+        if lstrip:
+            path = path.lstrip(fs.pathsep)
+        if rstrip:
+            path = path.rstrip(fs.pathsep)
+        return path
+
+    @staticmethod
+    def _join_path(fs, paths):
+        if fs.pathsep == '/':
+            return '/'.join(paths)
+
+        new_paths = []
+        for i, path in enumerate(paths):
+            path = FSMap._normalize_path(fs, path, lstrip=i > 0,
+                                         rstrip=i < len(paths) - 1)
+            new_paths.append(path)
+        return fs.pathsep.join(new_paths)
 
     def clear(self):
         """Remove all keys below root - empties out mapping
@@ -176,11 +202,14 @@ class FSMap(MutableMapping):
             key = str(tuple(key))
         else:
             key = str(key)
-        return "/".join([self.root, key]) if self.root else key
+        return self._join_path(self.fs, [self.root, key]) if self.root else key
 
     def _str_to_key(self, s):
         """Strip path of to leave key name"""
-        return s[len(self.root) :].lstrip("/")
+        key = self._normalize_path(self.fs, s[len(self.root):], lstrip=True)
+        if self.fs.pathsep != '/':
+            key = key.replace(self.fs.pathsep, '/')
+        return key
 
     def __getitem__(self, key, default=None):
         """Retrieve data"""
@@ -203,16 +232,19 @@ class FSMap(MutableMapping):
 
     @staticmethod
     def _parent(fs, path):
-        path = urlparse(path).path
-        if '/' in path:
-            return path.rsplit('/', 1)[0]
+        path = FSMap._get_path(fs, path.rstrip(fs.pathsep))
+        if fs.pathsep in path:
+            return path.rsplit(fs.pathsep, 1)[0]
         else:
             return ''
 
     def __setitem__(self, key, value):
         """Store value in key"""
         key = self._key_to_str(key)
-        self.fs.mkdir(self._parent(self.fs, key))
+        try:
+            self.fs.mkdir(self._parent(self.fs, key))
+        except FileExistsError:
+            pass
         with self.fs.open(key, "wb") as f:
             f.write(value)
 

@@ -19,7 +19,7 @@ from .datasource import tensor, array, asarray, ascontiguousarray, asfortranarra
     scalar, empty, empty_like, ones, ones_like, zeros, zeros_like, \
     full, full_like, arange, diag, diagflat, eye, identity, linspace, \
     meshgrid, indices, tril, triu, fromtiledb, from_dataframe
-from .datastore import totiledb, tohdf5
+from .datastore import totiledb, tohdf5, tozarr
 from .base import result_type, ndim, copyto, transpose, where, broadcast_to, broadcast_arrays, \
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, \

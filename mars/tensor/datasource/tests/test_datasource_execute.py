@@ -1033,6 +1033,13 @@ class Test(TestBase):
             np.testing.assert_array_equal(result, test_array)
             self.assertGreater(len(get_tiled(r).chunks), 1)
 
+            arr = zarr.open_array('{}/{}/{}'.format(path, group_name, dataset_name))
+            r = fromzarr(arr)
+
+            result = self.executor.execute_tensor(r, concat=True)[0]
+            np.testing.assert_array_equal(result, test_array)
+            self.assertGreater(len(get_tiled(r).chunks), 1)
+
             r = fromzarr(path, group=group_name, dataset=dataset_name)
 
             result = self.executor.execute_tensor(r, concat=True)[0]

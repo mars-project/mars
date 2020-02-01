@@ -28,10 +28,15 @@ try:
     import h5py
 except ImportError:  # pragma: no cover
     h5py = None
+try:
+    import zarr
+    from numcodecs import Zstd, Delta, Blosc
+except ImportError:  # pragma: no cover
+    zarr = None
 
 from mars.tests.core import TestBase, ExecutorForTest
 from mars.context import LocalContext
-from mars.tensor import tensor, arange, totiledb, tohdf5
+from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr
 from mars.tiles import get_tiled
 
 
@@ -125,7 +130,7 @@ class Test(TestBase):
         executor = ExecutorForTest('numpy', storage=ctx)
         with ctx:
             with tempfile.TemporaryDirectory() as d:
-                filename = os.path.join(d, 'test_read_{}.hdf5'.format(int(time.time())))
+                filename = os.path.join(d, 'test_store_{}.hdf5'.format(int(time.time())))
 
                 # test 1 chunk
                 r = tohdf5(filename, t1, group=group_name, dataset=dataset_name)
@@ -177,3 +182,41 @@ class Test(TestBase):
                 with h5py.File(filename, 'r') as f:
                     result = np.asarray(f['{}/{}'.format(group_name, dataset_name)])
                     np.testing.assert_array_equal(result, raw)
+
+    @unittest.skipIf(zarr is None, 'zarr not installed')
+    def testStoreZarrExecution(self):
+        raw = np.random.RandomState(0).rand(10, 20)
+
+        group_name = 'test_group'
+        dataset_name = 'test_dataset'
+
+        t = tensor(raw, chunk_size=6)
+
+        with self.assertRaises(TypeError):
+            tozarr(object(), t)
+
+        with tempfile.TemporaryDirectory() as d:
+            filename = os.path.join(d, 'test_store_{}.zarr'.format(int(time.time())))
+            path = '{}/{}/{}'.format(filename, group_name, dataset_name)
+
+            r = tozarr(filename, t, group=group_name, dataset=dataset_name, compressor=Zstd(level=3))
+            self.executor.execute_tensor(r)
+
+            arr = zarr.open(path)
+            np.testing.assert_array_equal(arr, raw)
+            self.assertEqual(arr.compressor, Zstd(level=3))
+
+            r = tozarr(path, t + 2)
+            self.executor.execute_tensor(r)
+
+            arr = zarr.open(path)
+            np.testing.assert_array_equal(arr, raw + 2)
+
+            filters = [Delta(dtype='i4')]
+            compressor = Blosc(cname='zstd', clevel=1, shuffle=Blosc.SHUFFLE)
+            arr = zarr.open(path, compressor=compressor, filters=filters)
+
+            r = tozarr(arr, t + 1)
+            self.executor.execute_tensor(r)
+            result = zarr.open_array(path)
+            np.testing.assert_array_equal(result, raw + 1)

@@ -53,6 +53,8 @@ def fromzarr(path, group=None, dataset=None, chunk_size=None):
             if '/' in arr.path and group is None:
                 group = arr.path.rsplit('/', 1)[0]
             dataset = arr.basename
+            if not dataset:
+                path, dataset = path.rsplit('/', 1)
         shape = arr.shape
     elif isinstance(path, str):
         fs = get_fs(path, None)
@@ -74,4 +76,4 @@ def fromzarr(path, group=None, dataset=None, chunk_size=None):
     chunk_size = chunk_size if chunk_size is not None else arr.chunks
     op = TensorFromZarr(filename=path, group=group, dataset=dataset,
                         dtype=arr.dtype)
-    return op(shape, chunk_size=chunk_size, order=TensorOrder.C_ORDER)
+    return op(shape, chunk_size=chunk_size, order=TensorOrder(arr.order))
