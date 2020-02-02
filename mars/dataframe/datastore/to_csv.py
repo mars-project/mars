@@ -342,6 +342,91 @@ def to_csv(df, path, sep=',', na_rep='', float_format=None, columns=None, header
            index=True, index_label=None, mode='w', encoding=None, compression='infer',
            quoting=None, quotechar='"', line_terminator=None, chunksize=None, date_format=None,
            doublequote=True, escapechar=None, decimal='.', storage_options=None):
+    r"""
+    Write object to a comma-separated values (csv) file.
+
+    Parameters
+    ----------
+    path : str
+        File path.
+        If path is a string with wildcard e.g. '/to/path/out-*.csv',
+        to_csv will try to write multiple files, for instance,
+        chunk (0, 0) will write data into '/to/path/out-0.csv'.
+        If path is a string without wildcard,
+        all data will be written into a single file.
+    sep : str, default ','
+        String of length 1. Field delimiter for the output file.
+    na_rep : str, default ''
+        Missing data representation.
+    float_format : str, default None
+        Format string for floating point numbers.
+    columns : sequence, optional
+        Columns to write.
+    header : bool or list of str, default True
+        Write out the column names. If a list of strings is given it is
+        assumed to be aliases for the column names.
+    index : bool, default True
+        Write row names (index).
+    index_label : str or sequence, or False, default None
+        Column label for index column(s) if desired. If None is given, and
+        `header` and `index` are True, then the index names are used. A
+        sequence should be given if the object uses MultiIndex. If
+        False do not print fields for index names. Use index_label=False
+        for easier importing in R.
+    mode : str
+        Python write mode, default 'w'.
+    encoding : str, optional
+        A string representing the encoding to use in the output file,
+        defaults to 'utf-8'.
+    compression : str or dict, default 'infer'
+        If str, represents compression mode. If dict, value at 'method' is
+        the compression mode. Compression mode may be any of the following
+        possible values: {'infer', 'gzip', 'bz2', 'zip', 'xz', None}. If
+        compression mode is 'infer' and `path_or_buf` is path-like, then
+        detect compression mode from the following extensions: '.gz',
+        '.bz2', '.zip' or '.xz'. (otherwise no compression). If dict given
+        and mode is 'zip' or inferred as 'zip', other entries passed as
+        additional compression options.
+    quoting : optional constant from csv module
+        Defaults to csv.QUOTE_MINIMAL. If you have set a `float_format`
+        then floats are converted to strings and thus csv.QUOTE_NONNUMERIC
+        will treat them as non-numeric.
+    quotechar : str, default '\"'
+        String of length 1. Character used to quote fields.
+    line_terminator : str, optional
+        The newline character or character sequence to use in the output
+        file. Defaults to `os.linesep`, which depends on the OS in which
+        this method is called ('\n' for linux, '\r\n' for Windows, i.e.).
+    chunksize : int or None
+        Rows to write at a time.
+    date_format : str, default None
+        Format string for datetime objects.
+    doublequote : bool, default True
+        Control quoting of `quotechar` inside a field.
+    escapechar : str, default None
+        String of length 1. Character used to escape `sep` and `quotechar`
+        when appropriate.
+    decimal : str, default '.'
+        Character recognized as decimal separator. E.g. use ',' for
+        European data.
+    Returns
+    -------
+    None or str
+        If path_or_buf is None, returns the resulting csv format as a
+        string. Otherwise returns None.
+    See Also
+    --------
+    read_csv : Load a CSV file into a DataFrame.
+    to_excel : Write DataFrame to an Excel file.
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'name': ['Raphael', 'Donatello'],
+    ...                    'mask': ['red', 'purple'],
+    ...                    'weapon': ['sai', 'bo staff']})
+    >>> df.to_csv('out.csv', index=False)
+    """
+
     if mode != 'w':  # pragma: no cover
         raise NotImplementedError("only support to_csv with mode 'w' for now")
     op = DataFrameToCSV(path=path, sep=sep, na_rep=na_rep, float_format=float_format,
