@@ -17,6 +17,8 @@ import time
 import unittest
 from datetime import datetime
 
+import pandas as pd
+
 from mars.worker.events import WorkerEvent, EventCategory, EventLevel, \
     ProcedureEventType
 from mars.web.worker_pages import EventUpdater
@@ -45,9 +47,10 @@ class Test(unittest.TestCase):
         # three horizontal bars with ranges (0.5, 1.5), (1.5, 2.5), (2.5, 3.5) respectively
         self.assertEqual(updater.y_range, (0.5, 3.5))
 
-        self.assertEqual(df.iloc[0].right, datetime.fromtimestamp(base_time + 10))
-        self.assertEqual(df.iloc[1].right, datetime.fromtimestamp(base_time + 10))
-        self.assertEqual(df.iloc[2].right, datetime.fromtimestamp(base_time + 1))
+        convert = lambda item: item if isinstance(item, pd.Timestamp) else pd.Timestamp(item)
+        self.assertEqual(convert(df.iloc[0].right), datetime.fromtimestamp(base_time + 10))
+        self.assertEqual(convert(df.iloc[1].right), datetime.fromtimestamp(base_time + 10))
+        self.assertEqual(convert(df.iloc[2].right), datetime.fromtimestamp(base_time + 1))
         self.assertEqual(len(patches), 0)
 
         events2 = [

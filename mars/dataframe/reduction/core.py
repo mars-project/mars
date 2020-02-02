@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
+
 import numpy as np
 import pandas as pd
 
@@ -145,10 +147,10 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
 
         chunk_dtypes = []
         if op.numeric_only and op.axis == 0:
-            cum_nsplits = np.cumsum((0,) + in_df.nsplits[0])
+            cum_nsplits = np.cumsum((0,) + in_df.nsplits[1])
             for i in range(len(cum_nsplits) - 1):
-                chunk_dtypes.append(build_empty_df(
-                    in_df.dtypes[cum_nsplits[i]: cum_nsplits[i + 1]]).select_dtypes(np.number).dtypes)
+                chunk_empty_df = build_empty_df(in_df.dtypes[cum_nsplits[i]: cum_nsplits[i + 1]])
+                chunk_dtypes.append(chunk_empty_df.select_dtypes([np.number, 'bool']).dtypes)
 
         # build reduction chunks
         reduction_chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
@@ -310,7 +312,13 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if isinstance(in_data, xdf.Series) or op.object_type == ObjectType.series:
             ctx[op.outputs[0].key] = r
         else:
-            ctx[op.outputs[0].key] = xdf.DataFrame(r).transpose() if op.axis == 0 else xdf.DataFrame(r)
+            if op.axis == 0:
+                # cannot just do xdf.DataFrame(r).T
+                # cuz the dtype will be object since pandas 1.0
+                df = xdf.DataFrame(OrderedDict((d, [v]) for d, v in r.iteritems()))
+            else:
+                df = xdf.DataFrame(r)
+            ctx[op.outputs[0].key] = df
 
     @classmethod
     def _execute_map(cls, ctx, op):

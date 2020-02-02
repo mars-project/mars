@@ -166,9 +166,7 @@ class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        from pandas.core.groupby.groupby import groupby
-
         inputs = [ctx[input.key] for input in op.inputs]
         input_data = [group[1] for inp in inputs if len(inp) > 1 for group in inp]
         obj = pd.concat(input_data)
-        ctx[op.outputs[0].key] = groupby(obj, by=op.by)
+        ctx[op.outputs[0].key] = obj.groupby(by=op.by)

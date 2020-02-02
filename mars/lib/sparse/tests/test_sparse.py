@@ -50,14 +50,7 @@ class Test(TestBase):
         self.assertArrayEqual(v.toarray(), self.v1_data)
         self.assertArrayEqual(v, self.v1_data)
 
-    def _nan_equal(self, a, b):
-        try:
-            np.testing.assert_equal(a, b)
-        except AssertionError:
-            return False
-        return True
-
-    def assertArrayEqual(self, a, b):
+    def assertArrayEqual(self, a, b, almost=False):
         if issparse(a):
             a = a.toarray()
         else:
@@ -66,7 +59,10 @@ class Test(TestBase):
             b = b.toarray()
         else:
             b = np.asarray(b)
-        return self.assertTrue(self._nan_equal(a, b))
+        if not almost:
+            np.testing.assert_array_equal(a, b)
+        else:
+            np.testing.assert_almost_equal(a, b)
 
     def testSparseAdd(self):
         s1 = SparseNDArray(self.s1)
@@ -268,8 +264,8 @@ class Test(TestBase):
         self.assertArrayEqual(mls.dot(s2, v1), self.s2.dot(self.v1_data))
         self.assertArrayEqual(mls.dot(v2, s1), self.v2_data.dot(self.s1.A))
         self.assertArrayEqual(mls.dot(v2, s2), self.v2_data.dot(self.s2.A))
-        self.assertArrayEqual(mls.dot(v1, v1), self.v1_data.dot(self.v1_data))
-        self.assertArrayEqual(mls.dot(v2, v2), self.v2_data.dot(self.v2_data))
+        self.assertArrayEqual(mls.dot(v1, v1), self.v1_data.dot(self.v1_data), almost=True)
+        self.assertArrayEqual(mls.dot(v2, v2), self.v2_data.dot(self.v2_data), almost=True)
 
         self.assertArrayEqual(mls.dot(v2, s1, sparse=False), self.v2_data.dot(self.s1.A))
         self.assertArrayEqual(mls.dot(v1, v1, sparse=False), self.v1_data.dot(self.v1_data))
