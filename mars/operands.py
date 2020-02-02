@@ -19,12 +19,14 @@ from enum import Enum
 
 import numpy as np
 
+from . import opcodes as OperandDef
 from .serialize import SerializableMetaclass, ValueType, ProviderType, \
     IdentityField, ListField, DictField, Int32Field, BoolField, StringField
-from .core import Entity, AttributeAsDictKey, ExecutableTuple, FuseChunkData, FuseChunk
+from .core import Entity, AttributeAsDictKey, ExecutableTuple, FuseChunkData, FuseChunk, \
+    ObjectChunkData, ObjectChunk, ObjectData, Object
 from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode
 from .tiles import NotSupportTile
-from . import opcodes as OperandDef
+from .context import RunningMode, get_context
 
 
 operand_type_to_oprand_cls = {}
@@ -133,7 +135,8 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         return 1
 
     def get_dependent_data_keys(self):
-        return [dep.key for dep in self.inputs or ()]
+        return [dep.key for dep, has_dep
+                in zip(self.inputs or (), self.prepare_inputs) if has_dep]
 
     @property
     def gpu(self):
@@ -535,3 +538,61 @@ class OperandStage(Enum):
     reduce = 1
     combine = 2
     agg = 3
+
+
+class ObjectOperand(Operand):
+    pass
+
+
+class ObjectOperandMixin(TileableOperandMixin):
+    def _create_chunk(self, output_idx, index, **kw):
+        data = ObjectChunkData(op=self, index=index, i=output_idx, **kw)
+        return ObjectChunk(data)
+
+    def _create_tileable(self, output_idx, **kw):
+        data = ObjectData(op=self, i=output_idx, **kw)
+        return Object(data)
+
+    def get_fetch_op_cls(self, obj):
+        return ObjectFetch
+
+
+class ObjectFetchMixin(ObjectOperandMixin, FetchMixin):
+    __slots__ = ()
+
+
+class ObjectFetch(Fetch, ObjectFetchMixin):
+    def __init__(self, to_fetch_key=None, **kw):
+        super().__init__(_to_fetch_key=to_fetch_key, **kw)
+
+    def _new_chunks(self, inputs, kws=None, **kw):
+        if '_key' in kw and self._to_fetch_key is None:
+            self._to_fetch_key = kw['_key']
+        return super()._new_chunks(inputs, kws=kws, **kw)
+
+    def _new_tileables(self, inputs, kws=None, **kw):
+        if '_key' in kw and self._to_fetch_key is None:
+            self._to_fetch_key = kw['_key']
+        return super()._new_tileables(inputs, kws=kws, **kw)
+
+
+class SuccessorsExclusive(VirtualOperand, ObjectOperandMixin):
+    _op_module_ = 'core'
+    _op_type_ = OperandDef.SUCCESSORS_EXCLUSIVE
+
+    def _new_chunks(self, inputs, kws=None, **kw):
+        ctx = get_context()
+        if ctx.running_mode == RunningMode.local:
+            # set inputs to None if local
+            inputs = None
+        return super()._new_chunks(inputs, kws=kws, **kw)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        # only for local
+        if ctx.running_mode == RunningMode.local:
+            ctx[op.outputs[0].key] = ctx.create_lock()
+        else:  # pragma: no cover
+            raise RuntimeError('Cannot execute SuccessorsExclusive '
+                               'which is a virtual operand '
+                               'for the distributed runtime')

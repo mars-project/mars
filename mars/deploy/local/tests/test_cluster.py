@@ -19,12 +19,17 @@ import logging
 import os
 import sys
 import time
+import tempfile
 import traceback
 import unittest
 import uuid
 
 import numpy as np
 import pandas as pd
+try:
+    import h5py
+except ImportError:
+    h5py = None
 
 from mars import tensor as mt
 from mars import dataframe as md
@@ -877,3 +882,24 @@ class Test(unittest.TestCase):
 
             result = session.run(data2)
             np.testing.assert_array_equal(raw * raw.nbytes, result)
+
+    @unittest.skipIf(h5py is None, 'h5py not installed')
+    def testStoreHDF5ForLocalCluster(self):
+        with new_cluster(worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+
+            raw = np.random.RandomState(0).rand(10, 20)
+            t = mt.tensor(raw, chunk_size=11)
+
+            dataset = 'test_dataset'
+            with tempfile.TemporaryDirectory() as d:
+                filename = os.path.join(d, 'test_read_{}.hdf5'.format(int(time.time())))
+
+                r = mt.tohdf5(filename, t, dataset=dataset)
+
+                session.run(r, timeout=_exec_timeout)
+
+                with h5py.File(filename, 'r') as f:
+                    result = np.asarray(f[dataset])
+                    np.testing.assert_array_equal(result, raw)

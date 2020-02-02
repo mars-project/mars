@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
+import os
 import shutil
+import tempfile
+import time
 import unittest
 
 import numpy as np
@@ -22,9 +24,15 @@ try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
     tiledb = None
+try:
+    import h5py
+except ImportError:  # pragma: no cover
+    h5py = None
 
 from mars.tests.core import TestBase, ExecutorForTest
-from mars.tensor import tensor, arange, totiledb
+from mars.context import LocalContext
+from mars.tensor import tensor, arange, totiledb, tohdf5
+from mars.tiles import get_tiled
 
 
 class Test(TestBase):
@@ -93,3 +101,79 @@ class Test(TestBase):
                 self.assertEqual(arr.schema.cell_order, 'col-major')
         finally:
             shutil.rmtree(tempdir)
+
+    @unittest.skipIf(h5py is None, 'h5py not installed')
+    def testStoreHDF5Execution(self):
+        raw = np.random.RandomState(0).rand(10, 20)
+
+        group_name = 'test_group'
+        dataset_name = 'test_dataset'
+
+        t1 = tensor(raw, chunk_size=20)
+        t2 = tensor(raw, chunk_size=9)
+
+        with self.assertRaises(TypeError):
+            tohdf5(object(), t2)
+
+        this = self
+
+        class MockSession:
+            def __init__(self):
+                self.executor = this.executor
+
+        ctx = LocalContext(MockSession())
+        executor = ExecutorForTest('numpy', storage=ctx)
+        with ctx:
+            with tempfile.TemporaryDirectory() as d:
+                filename = os.path.join(d, 'test_read_{}.hdf5'.format(int(time.time())))
+
+                # test 1 chunk
+                r = tohdf5(filename, t1, group=group_name, dataset=dataset_name)
+
+                executor.execute_tensor(r)
+
+                with h5py.File(filename, 'r') as f:
+                    result = np.asarray(f['{}/{}'.format(group_name, dataset_name)])
+                    np.testing.assert_array_equal(result, raw)
+
+                # test filename
+                r = tohdf5(filename, t2, group=group_name, dataset=dataset_name)
+
+                executor.execute_tensor(r)
+
+                rt = get_tiled(r)
+                self.assertEqual(type(rt.chunks[0].inputs[1].op).__name__, 'SuccessorsExclusive')
+                self.assertEqual(len(rt.chunks[0].inputs[1].inputs), 0)
+
+                with h5py.File(filename, 'r') as f:
+                    result = np.asarray(f['{}/{}'.format(group_name, dataset_name)])
+                    np.testing.assert_array_equal(result, raw)
+
+                with self.assertRaises(ValueError):
+                    tohdf5(filename, t2)
+
+                with h5py.File(filename, 'r') as f:
+                    # test file
+                    r = tohdf5(f, t2, group=group_name, dataset=dataset_name)
+
+                executor.execute_tensor(r)
+
+                with h5py.File(filename, 'r') as f:
+                    result = np.asarray(f['{}/{}'.format(group_name, dataset_name)])
+                    np.testing.assert_array_equal(result, raw)
+
+                with self.assertRaises(ValueError):
+                    with h5py.File(filename, 'r') as f:
+                        tohdf5(f, t2)
+
+                with h5py.File(filename, 'r') as f:
+                    # test dataset
+                    ds = f['{}/{}'.format(group_name, dataset_name)]
+                    # test file
+                    r = tohdf5(ds, t2)
+
+                executor.execute_tensor(r)
+
+                with h5py.File(filename, 'r') as f:
+                    result = np.asarray(f['{}/{}'.format(group_name, dataset_name)])
+                    np.testing.assert_array_equal(result, raw)

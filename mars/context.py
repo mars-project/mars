@@ -152,6 +152,13 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
+    # ------
+    # Others
+    # ------
+
+    def create_lock(self):
+        raise NotImplementedError
+
 
 ChunkMeta = namedtuple('ChunkMeta', ['chunk_size', 'chunk_shape', 'workers'])
 
@@ -220,6 +227,9 @@ class LocalContext(ContextBase, dict):
         # As the context is actually holding the data,
         # so for the local context, we just fetch data from itself
         return [self[chunk_key] for chunk_key in chunk_keys]
+
+    def create_lock(self):
+        return self._local_session.executor._sync_provider.lock()
 
 
 class DistributedContext(ContextBase):
@@ -367,6 +377,9 @@ class DistributedContext(ContextBase):
         else:
             ret = merge_chunks(chunk_results)
         return ret
+
+    def create_lock(self):
+        return self._actor_ctx.lock()
 
 
 class DistributedDictContext(DistributedContext, dict):

@@ -14,4 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .totiledb import totiledb, TensorTileDBDataStore, TensorTileDBConsolidate
+from .to_tiledb import totiledb, TensorTileDBDataStore, TensorTileDBConsolidate
+from .to_hdf5 import tohdf5, TensorHDF5DataStore

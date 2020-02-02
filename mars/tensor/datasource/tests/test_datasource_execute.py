@@ -17,6 +17,8 @@
 import tempfile
 import shutil
 import unittest
+import os
+import time
 
 import numpy as np
 import scipy.sparse as sps
@@ -24,11 +26,15 @@ try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
     tiledb = None
+try:
+    import h5py
+except ImportError:  # pragma: no cover
+    h5py = None
 
 from mars.tests.core import TestBase, ExecutorForTest
 from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, full_like, \
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
-    triu, tril, fromtiledb
+    triu, tril, fromtiledb, fromhdf5
 from mars.lib.sparse import SparseNDArray
 from mars.tensor.lib import nd_grid
 import mars.dataframe as md
@@ -953,3 +959,51 @@ class Test(TestBase):
         series = md.Series(range(10), chunk_size=3)
         tensor_result = series.to_tensor().execute()
         np.testing.assert_array_equal(tensor_result, np.arange(10))
+
+    @unittest.skipIf(h5py is None, 'h5py not installed')
+    def testReadHDF5Execution(self):
+        test_array = np.random.RandomState(0).rand(20, 10)
+        group_name = 'test_group'
+        dataset_name = 'test_dataset'
+
+        with self.assertRaises(TypeError):
+            fromhdf5(object())
+
+        with tempfile.TemporaryDirectory() as d:
+            filename = os.path.join(d, 'test_read_{}.hdf5'.format(int(time.time())))
+            with h5py.File(filename, 'w') as f:
+                g = f.create_group(group_name)
+                g.create_dataset(dataset_name, chunks=(7, 4), data=test_array)
+
+            # test filename
+            r = fromhdf5(filename, group=group_name, dataset=dataset_name)
+
+            result = self.executor.execute_tensor(r, concat=True)[0]
+            np.testing.assert_array_equal(result, test_array)
+            self.assertEqual(r.extra_params['raw_chunk_size'], (7, 4))
+
+            with self.assertRaises(ValueError):
+                fromhdf5(filename)
+
+            with self.assertRaises(ValueError):
+                fromhdf5(filename, dataset='non_exist')
+
+            with h5py.File(filename, 'r') as f:
+                # test file
+                r = fromhdf5(f, group=group_name, dataset=dataset_name)
+
+                result = self.executor.execute_tensor(r, concat=True)[0]
+                np.testing.assert_array_equal(result, test_array)
+
+                with self.assertRaises(ValueError):
+                    fromhdf5(f)
+
+                with self.assertRaises(ValueError):
+                    fromhdf5(f, dataset='non_exist')
+
+                # test dataset
+                ds = f['{}/{}'.format(group_name, dataset_name)]
+                r = fromhdf5(ds)
+
+                result = self.executor.execute_tensor(r, concat=True)[0]
+                np.testing.assert_array_equal(result, test_array)

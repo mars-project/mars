@@ -35,7 +35,7 @@ from ..actors.errors import ActorAlreadyExist
 from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
-from ..operands import Fetch, ShuffleProxy, VirtualOperand
+from ..operands import Fetch, ShuffleProxy, VirtualOperand, SuccessorsExclusive
 from ..serialize import dataserializer
 from ..tiles import handler, IterativeChunkGraphBuilder, \
     TileableGraphBuilder, get_tiled
@@ -776,6 +776,7 @@ class GraphActor(SchedulerActor):
         no_prepare_chunk_keys = set()
         chunk_keys = set()
         shuffle_keys = dict()
+        predecessors_to_successors = dict()
 
         for c in chunks:
             # handling predecessor args
@@ -796,6 +797,9 @@ class GraphActor(SchedulerActor):
             if isinstance(c.op, ShuffleProxy):
                 for sn in graph.iter_successors(c):
                     shuffle_keys[sn.op.key] = get_chunk_shuffle_key(sn)
+            if isinstance(c.op, SuccessorsExclusive):
+                for sn in graph.iter_successors(c):
+                    predecessors_to_successors[sn.inputs[0].op.key] = sn.op.key
 
             chunk_keys.update(co.key for co in c.op.outputs)
 
@@ -809,6 +813,8 @@ class GraphActor(SchedulerActor):
         )
         if shuffle_keys:
             io_meta['shuffle_keys'] = [shuffle_keys.get(k) for k in io_meta['successors']]
+        if predecessors_to_successors:
+            io_meta['predecessors_to_successors'] = predecessors_to_successors
         return io_meta
 
     @log_unhandled

@@ -32,6 +32,8 @@ message OperandDef {
         TENSOR_STORE_TILEDB = 19;
         TENSOR_STORE_TILEDB_CONSOLIDATE = 20;
         TENSOR_FROM_DATAFRAME = 22;
+        TENSOR_FROM_HDF5 = 27;
+        TENSOR_STORE_HDF5 = 28;
         // dataframe
         DATAFRAME_DATA_SOURCE = 17;
         DATAFRAME_FROM_TENSOR = 21;
@@ -369,6 +371,9 @@ message OperandDef {
 
         // store
         READ_CSV = 2100;
+
+        // successors exclusive
+        SUCCESSORS_EXCLUSIVE = 2002;
 
         // machine learning
 
