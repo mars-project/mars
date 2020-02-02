@@ -16,3 +16,4 @@
 
 from .to_tiledb import totiledb, TensorTileDBDataStore, TensorTileDBConsolidate
 from .to_hdf5 import tohdf5, TensorHDF5DataStore
+from .to_zarr import tozarr, TensorToZarrDataStore

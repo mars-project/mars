@@ -21,6 +21,7 @@ from ...filesystem import open_file
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ...operands import SuccessorsExclusive
+from ..datasource import tensor as astensor
 from .core import TensorDataStore
 
 
@@ -160,6 +161,7 @@ class TensorHDF5DataStore(TensorDataStore):
 def tohdf5(hdf5_file, x, group=None, dataset=None, **kwds):
     import h5py
 
+    x = astensor(x)
     if isinstance(hdf5_file, h5py.Dataset):
         filename = hdf5_file.file.filename
         group = hdf5_file.parent.name

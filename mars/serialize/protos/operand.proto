@@ -34,6 +34,8 @@ message OperandDef {
         TENSOR_FROM_DATAFRAME = 22;
         TENSOR_FROM_HDF5 = 27;
         TENSOR_STORE_HDF5 = 28;
+        TENSOR_FROM_ZARR = 29;
+        TENSOR_STORE_ZARR = 32;
         // dataframe
         DATAFRAME_DATA_SOURCE = 17;
         DATAFRAME_FROM_TENSOR = 21;
