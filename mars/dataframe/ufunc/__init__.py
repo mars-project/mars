@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ... import opcodes as OperandDef
-from ...utils import classproperty
-from .core import DataFrameUnaryUfunc
+
+def _install():
+    from ..core import DataFrame, Series
+    from .ufunc import _array_ufunc
+    from .tensor import _tensor_ufunc
+
+    for Entity in (DataFrame, Series):
+        Entity.__array_ufunc__ = _array_ufunc
+        Entity.__tensor_ufunc__ = _tensor_ufunc
 
 
-class DataFrameAbs(DataFrameUnaryUfunc):
-    _op_type_ = OperandDef.ABS
-    _func_name = 'abs'
-
-    @classproperty
-    def tensor_op_type(self):
-        from ...tensor.arithmetic import TensorAbsolute
-        return TensorAbsolute
-
-
-def abs_(df):
-    op = DataFrameAbs()
-    return op(df)
+_install()
+del _install
