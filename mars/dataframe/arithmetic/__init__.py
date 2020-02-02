@@ -15,7 +15,8 @@
 from ...core import build_mode
 from ..core import DATAFRAME_TYPE
 from ..utils import wrap_notimplemented_exception
-from .abs import abs, DataFrameAbs
+from ..ufunc.tensor import register_tensor_unary_ufunc
+from .abs import abs_, DataFrameAbs
 from .add import add, radd, DataFrameAdd
 from .subtract import subtract, rsubtract, DataFrameSubtract
 from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
@@ -26,6 +27,29 @@ from .less import lt, DataFrameLess
 from .greater import gt, DataFrameGreater
 from .less_equal import le, DataFrameLessEqual
 from .greater_equal import ge, DataFrameGreaterEqual
+from .log import DataFrameLog
+from .log2 import DataFrameLog2
+from .log10 import DataFrameLog10
+from .sin import DataFrameSin
+from .cos import DataFrameCos
+from .tan import DataFrameTan
+from .sinh import DataFrameSinh
+from .cosh import DataFrameCosh
+from .tanh import DataFrameTanh
+from .arcsin import DataFrameArcsin
+from .arccos import DataFrameArccos
+from .arctan import DataFrameArctan
+from .arcsinh import DataFrameArcsinh
+from .arccosh import DataFrameArccosh
+from .arctanh import DataFrameArctanh
+from .radians import DataFrameRadians
+from .degrees import DataFrameDegrees
+from .ceil import DataFrameCeil
+from .floor import DataFrameFloor
+from .around import DataFrameAround, around
+from .exp import DataFrameExp
+from .exp2 import DataFrameExp2
+from .expm1 import DataFrameExpm1
 
 
 def _wrap_eq():
@@ -57,8 +81,24 @@ def _wrap_comparison(func):
 def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE
 
+    # register mars unary ufuncs
+    unary_ops = [
+        DataFrameAbs, DataFrameLog, DataFrameLog2, DataFrameLog10,
+        DataFrameSin, DataFrameCos, DataFrameTan,
+        DataFrameSinh, DataFrameCosh, DataFrameTanh,
+        DataFrameArcsin, DataFrameArccos, DataFrameArctan,
+        DataFrameArcsinh, DataFrameArccosh, DataFrameArctanh,
+        DataFrameRadians, DataFrameDegrees,
+        DataFrameCeil, DataFrameFloor, DataFrameAround,
+        DataFrameExp, DataFrameExp2, DataFrameExpm1,
+    ]
+    for unary_op in unary_ops:
+        register_tensor_unary_ufunc(unary_op)
+
     for entity in DATAFRAME_TYPE + SERIES_TYPE:
-        setattr(entity, 'abs', abs)
+        setattr(entity, '__abs__', abs_)
+        setattr(entity, 'abs', abs_)
+        setattr(entity, 'round', around)
 
         setattr(entity, '__add__', wrap_notimplemented_exception(add))
         setattr(entity, '__radd__', wrap_notimplemented_exception(radd))

@@ -14,15 +14,16 @@
 
 import operator
 import unittest
+from functools import partial
 
 import numpy as np
 import pandas as pd
 
 from mars.tests.core import TestBase, parameterized, ExecutorForTest
+from mars import tensor as mt
 from mars.tensor.datasource import array as from_array
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.arithmetic import abs
 from mars.dataframe.arithmetic.tests.test_arithmetic import comp_func
 
 
@@ -538,9 +539,70 @@ class TestUnary(TestBase):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))
         df1 = from_pandas(data1, chunk_size=5)
 
-        result = self.executor.execute_dataframe(abs(df1), concat=True)[0]
+        result = self.executor.execute_dataframe(df1.abs(), concat=True)[0]
         expected = data1.abs()
         pd.testing.assert_frame_equal(expected, result)
+
+        result = self.executor.execute_dataframe(abs(df1), concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+    def testUfunc(self):
+        df_raw = pd.DataFrame(np.random.uniform(size=(10, 10)),
+                              index=pd.RangeIndex(9, -1, -1))
+        df = from_pandas(df_raw, chunk_size=5)
+
+        series_raw = pd.Series(np.random.uniform(size=10),
+                               index=pd.RangeIndex(9, -1, -1))
+        series = from_pandas_series(series_raw, chunk_size=5)
+
+        ufuncs = [
+            [np.abs, mt.abs],
+            [np.log, mt.log],
+            [np.log2, mt.log2],
+            [np.log10, mt.log10],
+            [np.sin, mt.sin],
+            [np.cos, mt.cos],
+            [np.tan, mt.tan],
+            [np.sinh, mt.sinh],
+            [np.cosh, mt.cosh],
+            [np.tanh, mt.tanh],
+            [np.arcsin, mt.arcsin],
+            [np.arccos, mt.arccos],
+            [np.arctan, mt.arctan],
+            [np.arcsinh, mt.arcsinh],
+            [np.arccosh, mt.arccosh],
+            [np.arctanh, mt.arctanh],
+            [np.radians, mt.radians],
+            [np.degrees, mt.degrees],
+            [np.ceil, mt.ceil],
+            [np.floor, mt.floor],
+            [partial(np.around, decimals=2), partial(mt.around, decimals=2)],
+            [np.exp, mt.exp],
+            [np.exp2, mt.exp2],
+            [np.expm1, mt.expm1],
+        ]
+
+        for raw, data in [(df_raw, df), (series_raw, series)]:
+            for npf, mtf in ufuncs:
+                r = mtf(data)
+
+                result = self.executor.execute_tensor(r, concat=True)[0]
+                expected = npf(raw)
+
+                if isinstance(raw, pd.DataFrame):
+                    pd.testing.assert_frame_equal(result, expected)
+                else:
+                    pd.testing.assert_series_equal(result, expected)
+
+                # test numpy ufunc
+                r = npf(data)
+
+                result = self.executor.execute_tensor(r, concat=True)[0]
+
+                if isinstance(raw, pd.DataFrame):
+                    pd.testing.assert_frame_equal(result, expected)
+                else:
+                    pd.testing.assert_series_equal(result, expected)
 
 
 if __name__ == '__main__':  # pragma: no cover
