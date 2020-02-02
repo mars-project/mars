@@ -12,23 +12,92 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, Int32Field, \
     StringField, ListField, BoolField, AnyField
-from ...utils import check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape, flatten, stack_back
 from ...tiles import TilesError
-from ...core import Base, Entity
-from ..operands import TensorOperand, TensorOperandMixin, TensorShuffleProxy
-from ..core import TENSOR_TYPE, CHUNK_TYPE
+from ...core import Base, Entity, ExecutableTuple
+from ..operands import TensorOperand, TensorShuffleProxy
+from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..utils import validate_axis, validate_order
-from .sort import PSRSSorter, PSRSOperandMixin
+from .psrs import PSRSOperandMixin
 
 
-class TensorPartition(TensorOperand, TensorOperandMixin):
+class ParallelPartitionMixin(PSRSOperandMixin):
+    @classmethod
+    def calc_paritions_info(cls, op, kth, size, sort_info_chunks):
+        # stage5, collect sort infos and calculate partition info for each partitions
+        if isinstance(kth, TENSOR_TYPE):
+            kth = kth.chunks[0]
+            is_kth_input = True
+        else:
+            is_kth_input = False
+        calc_op = CalcPartitionsInfo(kth=kth, size=size,
+                                     dtype=np.dtype(np.int32), gpu=op.gpu)
+        kws = []
+        for i, sort_info_chunk in enumerate(sort_info_chunks):
+            kws.append({
+                'shape': sort_info_chunk.shape + (len(kth),),
+                'order': sort_info_chunk.order,
+                'index': sort_info_chunk.index,
+                'pos': i
+            })
+        inputs = list(sort_info_chunks)
+        if is_kth_input:
+            inputs.insert(0, kth)
+        return calc_op.new_chunks(inputs, kws=kws, output_limit=len(kws))
+
+    @classmethod
+    def partition_on_merged(cls, op, need_align, partition_merged_chunks,
+                            partition_indices_chunks, partition_info_chunks):
+        # Stage 6: partition on each partitions
+        return_value, return_indices = op.return_value, op.return_indices
+        partitioned_chunks, partitioned_indices_chunks = [], []
+        for i, partition_merged_chunk, partition_info_chunk in \
+                zip(itertools.count(), partition_merged_chunks, partition_info_chunks):
+            partition_op = PartitionMerged(
+                return_value=return_value, return_indices=return_indices,
+                order=op.order, kind=op.kind, need_align=need_align,
+                dtype=partition_merged_chunk.dtype, gpu=op.gpu)
+            chunk_inputs = []
+            kws = []
+            if return_value:
+                chunk_inputs.append(partition_merged_chunk)
+                kws.append({
+                    'shape': partition_merged_chunk.shape,
+                    'order': partition_merged_chunk.order,
+                    'index': partition_merged_chunk.index,
+                    'type': 'partitioned'
+                })
+            if return_indices:
+                if not return_value:
+                    # value is required even it's not returned
+                    chunk_inputs.append(partition_merged_chunk)
+                chunk_inputs.append(partition_indices_chunks[i])
+                kws.append({
+                    'shape': partition_merged_chunk.shape,
+                    'order': TensorOrder.C_ORDER,
+                    'index': partition_merged_chunk.index,
+                    'type': 'argpartition'
+                })
+            chunk_inputs.append(partition_info_chunk)
+            partition_chunks = partition_op.new_chunks(chunk_inputs, kws=kws)
+            if return_value:
+                partitioned_chunks.append(partition_chunks[0])
+            if return_indices:
+                partitioned_indices_chunks.append(partition_chunks[-1])
+
+        return partitioned_chunks, partitioned_indices_chunks
+
+
+class TensorPartition(TensorOperand, ParallelPartitionMixin):
     _op_type_ = OperandDef.PARTITION
 
     _input = KeyField('input')
@@ -37,11 +106,15 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
     _kind = StringField('kind')
     _order = ListField('order', ValueType.string)
     _need_align = BoolField('need_align')
+    _return_value = BoolField('return_value')
+    _return_indices = BoolField('return_indices')
 
     def __init__(self, kth=None, axis=None, kind=None, order=None,
-                 need_align=None, dtype=None, gpu=None, **kw):
+                 need_align=None, return_value=None, return_indices=None,
+                 dtype=None, gpu=None, **kw):
         super().__init__(_kth=kth, _axis=axis, _kind=kind, _order=order,
-                         _need_align=need_align, _dtype=dtype, _gpu=gpu, **kw)
+                         _need_align=need_align, _return_value=return_value,
+                         _return_indices=return_indices, _dtype=dtype, _gpu=gpu, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -51,8 +124,8 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
 
     @property
     def psrs_kinds(self):
-        # to keep compatibility with PSRSSorter
-        # remember when merging data in PSRSShuffleReduce,
+        # to keep compatibility with PSRS
+        # remember when merging data in PSRSShuffle(reduce),
         # we don't need sort, thus set psrs_kinds[2] to None
         return ['quicksort', 'mergesort', None]
 
@@ -80,11 +153,127 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
     def order(self):
         return self._order
 
+    @property
+    def return_value(self):
+        return self._return_value
+
+    @property
+    def return_indices(self):
+        return self._return_indices
+
+    @property
+    def output_limit(self):
+        return int(bool(self._return_value)) + int(bool(self._return_indices))
+
     def __call__(self, a, kth):
         inputs = [a]
         if isinstance(kth, TENSOR_TYPE):
             inputs.append(kth)
-        return self.new_tensor(inputs, shape=a.shape, order=a.order)
+        kws = []
+        if self._return_value:
+            kws.append({
+                'shape': a.shape,
+                'order': a.order,
+                'type': 'sorted'
+            })
+        if self._return_indices:
+            kws.append({
+                'shape': a.shape,
+                'order': TensorOrder.C_ORDER,
+                'type': 'argsort'
+            })
+        ret = self.new_tensors(inputs, kws=kws)
+        if len(kws) == 1:
+            return ret[0]
+        return ExecutableTuple(ret)
+
+    @classmethod
+    def _tile_psrs(cls, op, kth):
+        """
+        Approach here would be almost like PSRSSorter, but there are definitely some differences
+        Main processes are listed below:
+        Stage 1, local sort and regular samples collected
+        State 2, gather and merge samples, choose and broadcast p-1 pivots
+        Stage 3, Local data is partitioned
+        Stage 4: all *ith* classes are gathered and merged, sizes should be calculated as well
+        Stage 5: collect sizes from partitions, calculate how to partition given kth
+        Stage 6: partition on each partitions
+        Stage 7: align if axis is given, and more than 1 dimension
+        """
+        out_tensor = op.outputs[0]
+        return_value, return_indices = op.return_value, op.return_indices
+        # preprocess, to make sure chunk shape on axis are approximately same
+        in_tensor, axis_chunk_shape, out_idxes, need_align = cls.preprocess(op)
+        axis_offsets = [0] + np.cumsum(in_tensor.nsplits[op.axis]).tolist()[:-1]
+
+        out_chunks, out_indices_chunks = [], []
+        for out_idx in out_idxes:
+            # stage 1: local sort and regular samples collected
+            sorted_chunks, indices_chunks, sampled_chunks = \
+                cls.local_sort_and_regular_sample(op, in_tensor, axis_chunk_shape,
+                                                  axis_offsets, out_idx)
+
+            # stage 2: gather and merge samples, choose and broadcast p-1 pivots
+            concat_pivot_chunk = cls.concat_and_pivot(
+                op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks)
+
+            # stage 3: Local data is partitioned
+            partition_chunks = cls.partition_local_data(
+                op, axis_chunk_shape, sorted_chunks, indices_chunks, concat_pivot_chunk)
+
+            proxy_chunk = TensorShuffleProxy(dtype=partition_chunks[0].dtype).new_chunk(
+                partition_chunks, shape=())
+
+            # stage 4: all *ith* classes are gathered and merged,
+            # note that we don't need sort here, op.psrs_kinds[2] is None
+            # force need_align=True to get sort info
+            partition_merged_chunks, partition_indices_chunks, sort_info_chunks = \
+                cls.partition_merge_data(op, True, True, partition_chunks, proxy_chunk)
+
+            # stage5, collect sort infos and calculate partition info for each partitions
+            partition_info_chunks = cls.calc_paritions_info(
+                op, kth, in_tensor.shape[op.axis], sort_info_chunks)
+
+            # Stage 6: partition on each partitions
+            partitioned_chunks, partitioned_indices_chunks = cls.partition_on_merged(
+                op, need_align, partition_merged_chunks, partition_indices_chunks, partition_info_chunks)
+
+            if not need_align:
+                if return_value:
+                    out_chunks.extend(partitioned_chunks)
+                if return_indices:
+                    out_indices_chunks.extend(partitioned_indices_chunks)
+            else:
+                align_reduce_chunks, align_reduce_indices_chunks = cls.align_partitions_data(
+                    op, out_idx, in_tensor, partitioned_chunks,
+                    partitioned_indices_chunks, sort_info_chunks)
+                if return_value:
+                    out_chunks.extend(align_reduce_chunks)
+                if return_indices:
+                    out_indices_chunks.extend(align_reduce_indices_chunks)
+
+        new_op = op.copy()
+        nsplits = list(in_tensor.nsplits)
+        if not need_align:
+            nsplits[op.axis] = (np.nan,) * axis_chunk_shape
+        kws = []
+        if return_value:
+            kws.append({
+                'shape': out_tensor.shape,
+                'order': out_tensor.order,
+                'chunks': out_chunks,
+                'nsplits': tuple(nsplits),
+                'type': 'partitioned'
+            })
+        if return_indices:
+            kws.append({
+                'shape': out_tensor.shape,
+                'order': TensorOrder.C_ORDER,
+                'chunks': out_indices_chunks,
+                'nsplits': tuple(nsplits),
+                'type': 'argpartition'
+            })
+        return new_op.new_tensors(op.inputs, kws=kws)
 
     @classmethod
     def tile(cls, op):
@@ -98,22 +287,48 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
             check_chunks_unknown_shape([kth], TilesError)
             kth = kth.rechunk(kth.shape)._inplace_tile()
 
+        return_value, return_indices = op.return_value, op.return_indices
         if in_tensor.chunk_shape[op.axis] == 1:
-            out_chunks = []
+            out_chunks, out_indices_chunks = [], []
             for chunk in in_tensor.chunks:
                 chunk_op = op.copy().reset_key()
+                kws = []
+                if return_value:
+                    kws.append({
+                        'shape': chunk.shape,
+                        'index': chunk.index,
+                        'order': chunk.order,
+                        'dtyep': chunk.dtype,
+                        'type': 'partitioned'
+                    })
+                if return_indices:
+                    kws.append({
+                        'shape': chunk.shape,
+                        'index': chunk.index,
+                        'order': TensorOrder.C_ORDER,
+                        'dtype': np.dtype(np.int64),
+                        'type': 'argpartition'
+                    })
                 chunk_inputs = [chunk]
                 if isinstance(kth, TENSOR_TYPE):
                     chunk_inputs.append(kth.chunks[0])
-                out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
-                                               index=chunk.index, order=chunk.order)
-                out_chunks.append(out_chunk)
+                chunks = chunk_op.new_chunks(chunk_inputs, kws=kws)
+                if return_value:
+                    out_chunks.append(chunks[0])
+                if return_indices:
+                    out_indices_chunks.append(chunks[-1])
 
             new_op = op.copy()
-            return new_op.new_tensors([in_tensor], shape=in_tensor.shape, order=in_tensor.order,
-                                      chunks=out_chunks, nsplits=in_tensor.nsplits)
+            kws = [out.params for out in op.outputs]
+            if return_value:
+                kws[0]['nsplits'] = in_tensor.nsplits
+                kws[0]['chunks'] = out_chunks
+            if return_indices:
+                kws[-1]['nsplits'] = in_tensor.nsplits
+                kws[-1]['chunks'] = out_indices_chunks
+            return new_op.new_tensors([in_tensor], kws=kws)
         else:
-            return ParallelPartition.tile(op, kth)
+            return cls._tile_psrs(op, kth)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -124,115 +339,23 @@ class TensorPartition(TensorOperand, TensorOperandMixin):
             kth = inputs[1]
         else:
             kth = op.kth
+        return_value, return_indices = op.return_value, op.return_indices
 
         with device(device_id):
-            ctx[op.outputs[0].key] = xp.partition(
-                a, kth, axis=op.axis, kind=op.kind, order=op.order)
+            kw = {}
+            if op.kind is not None:
+                kw['kind'] = op.kind
+            if op.order is not None:
+                kw['order'] = op.order
 
-
-class ParallelPartition:
-    @classmethod
-    def calc_paritions_info(cls, op, kth, size, sort_info_chunks):
-        # stage5, collect sort infos and calculate partition info for each partitions
-        if isinstance(kth, TENSOR_TYPE):
-            kth = kth.chunks[0]
-            is_kth_input = True
-        else:
-            is_kth_input = False
-        calc_op = CalcPartitionsInfo(kth=kth, size=size,
-                                     dtype=np.dtype(np.int32), gpu=op.gpu)
-        kws = []
-        for i, sort_info_chunk in enumerate(sort_info_chunks):
-            kws.append({
-                'shape': sort_info_chunk.shape + (len(op.kth),),
-                'order': sort_info_chunk.order,
-                'index': sort_info_chunk.index,
-                'pos': i
-            })
-        inputs = list(sort_info_chunks)
-        if is_kth_input:
-            inputs.insert(0, kth)
-        return calc_op.new_chunks(inputs, kws=kws, output_limit=len(kws))
-
-    @classmethod
-    def partition_on_merged(cls, op, need_align, partition_merged_chunks, partition_info_chunks):
-        # Stage 6: partition on each partitions
-        partitioned_chunks = []
-        for partition_merged_chunk, partition_info_chunk in \
-                zip(partition_merged_chunks, partition_info_chunks):
-            partition_op = PartitionMerged(
-                order=op.order, kind=op.kind, need_align=need_align,
-                dtype=partition_merged_chunk.dtype, gpu=op.gpu)
-            partition_chunk = partition_op.new_chunk(
-                [partition_merged_chunk, partition_info_chunk],
-                shape=partition_merged_chunk.shape,
-                order=partition_merged_chunk.order,
-                index=partition_merged_chunk.index)
-            partitioned_chunks.append(partition_chunk)
-
-        return partitioned_chunks
-
-    @classmethod
-    def tile(cls, op, kth):
-        """
-        Approach here would be almost like PSRSSorter, but there are definitely some differences
-        Main processes are listed below:
-        Stage 1, local sort and regular samples collected
-        State 2, gather and merge samples, choose and broadcast p-1 pivots
-        Stage 3, Local data is partitioned
-        Stage 4: all *ith* classes are gathered and merged, sizes should be calculated as well
-        Stage 5: collect sizes from partitions, calculate how to partition given kth
-        Stage 6: partition on each partitions
-        Stage 7: align if axis is given, and more than 1 dimension
-        """
-        out_tensor = op.outputs[0]
-        # preprocess, to make sure chunk shape on axis are approximately same
-        in_tensor, axis_chunk_shape, out_idxes, need_align = PSRSSorter.preprocess(op)
-
-        out_chunks = []
-        for out_idx in out_idxes:
-            # stage 1: local sort and regular samples collected
-            sorted_chunks, sampled_chunks = PSRSSorter.local_sort_and_regular_sample(
-                op, in_tensor, axis_chunk_shape, out_idx)
-
-            # stage 2: gather and merge samples, choose and broadcast p-1 pivots
-            concat_pivot_chunk = PSRSSorter.concat_and_pivot(
-                op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks)
-
-            # stage 3: Local data is partitioned
-            partition_chunks = PSRSSorter.partition_local_data(
-                op, axis_chunk_shape, sorted_chunks, concat_pivot_chunk)
-
-            proxy_chunk = TensorShuffleProxy(dtype=partition_chunks[0].dtype).new_chunk(
-                partition_chunks, shape=())
-
-            # stage 4: all *ith* classes are gathered and merged,
-            # note that we don't need sort here, op.psrs_kinds[2] is None
-            # force need_align=True to get sort info
-            partition_merged_chunks, sort_info_chunks = PSRSSorter.partition_merge_data(
-                op, True, partition_chunks, proxy_chunk)
-
-            # stage5, collect sort infos and calculate partition info for each partitions
-            partition_info_chunks = cls.calc_paritions_info(
-                op, kth, in_tensor.shape[op.axis], sort_info_chunks)
-
-            # Stage 6: partition on each partitions
-            partitioned_chunks = cls.partition_on_merged(
-                op, need_align, partition_merged_chunks, partition_info_chunks)
-
-            if not need_align:
-                out_chunks.extend(partitioned_chunks)
+            if return_indices:
+                if not return_value:
+                    ctx[op.outputs[0].key] = xp.argpartition(a, kth, axis=op.axis, **kw)
+                else:
+                    argparts = ctx[op.outputs[1].key] = xp.argpartition(a, kth, axis=op.axis, **kw)
+                    ctx[op.outputs[0].key] = xp.take_along_axis(a, argparts, op.axis)
             else:
-                align_reduce_chunks = PSRSSorter.align_partitions_data(
-                    op, out_idx, in_tensor, partitioned_chunks, sort_info_chunks)
-                out_chunks.extend(align_reduce_chunks)
-
-        new_op = op.copy()
-        nsplits = list(in_tensor.nsplits)
-        if not need_align:
-            nsplits[op.axis] = (np.nan,) * axis_chunk_shape
-        return new_op.new_tensors(op.inputs, shape=out_tensor.shape, order=out_tensor.order,
-                                  chunks=out_chunks, nsplits=tuple(nsplits))
+                ctx[op.outputs[0].key] = xp.partition(a, kth, axis=op.axis, **kw)
 
 
 class CalcPartitionsInfo(TensorOperand, PSRSOperandMixin):
@@ -302,13 +425,25 @@ class CalcPartitionsInfo(TensorOperand, PSRSOperandMixin):
 class PartitionMerged(TensorOperand, PSRSOperandMixin):
     _op_type_ = OperandDef.PARTITION_MERGED
 
+    _return_value = BoolField('return_value')
+    _return_indices = BoolField('return_indices')
     _order = ListField('order', ValueType.string)
     _kind = StringField('kind')
     _need_align = BoolField('need_align')
 
-    def __init__(self, order=None, kind=None, need_align=None, dtype=None, gpu=None, **kw):
-        super().__init__(_order=order, _kind=kind, _need_align=need_align,
+    def __init__(self, return_value=None, return_indices=None, order=None, kind=None,
+                 need_align=None, dtype=None, gpu=None, **kw):
+        super().__init__(_return_value=return_value, _return_indices=return_indices,
+                         _order=order, _kind=kind, _need_align=need_align,
                          _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def return_value(self):
+        return self._return_value
+
+    @property
+    def return_indices(self):
+        return self._return_indices
 
     @property
     def order(self):
@@ -322,30 +457,69 @@ class PartitionMerged(TensorOperand, PSRSOperandMixin):
     def need_align(self):
         return self._need_align
 
+    @property
+    def output_limit(self):
+        return int(bool(self._return_value)) + int(bool(self._return_indices))
+
     @classmethod
     def execute(cls, ctx, op):
-        merged_data = ctx[op.inputs[0].key]
-        partition_info = ctx[op.inputs[1].key]
-        inputs, device_id, xp = as_same_device(
-            merged_data + (partition_info,), device=op.device, ret_extra=True)
-        merged_data = inputs[:-1]
-        partition_info = inputs[-1]
+        return_value, return_indices = op.return_value, op.return_indices
 
-        outs = []
+        raw_inputs = [ctx[inp.key] for inp in op.inputs]
+        flatten_inputs = flatten(raw_inputs)
+        inputs, device_id, xp = as_same_device(flatten_inputs, device=op.device, ret_extra=True)
+        inputs = stack_back(inputs, raw_inputs)
+        partition_info = inputs[-1]
+        merged_data, merged_indices = None, None
+        if return_value:
+            merged_data = inputs[0]
+        if return_indices:
+            # if return indices, value should be returned
+            assert len(inputs) == 3
+            if not return_value:
+                merged_data = inputs[0]
+            merged_indices = inputs[1]
+
+        outs, out_indices = [], []
         with device(device_id):
+            kw = {}
+            if op.kind is not None:
+                kw['kind'] = op.kind
+            if op.order is not None:
+                kw['order'] = op.order
+
             ravel_partition_info = partition_info.reshape(-1, partition_info.shape[-1])
-            for merged_vec, kth in zip(merged_data, ravel_partition_info):
+            for i, merged_vec, kth in zip(itertools.count(), merged_data, ravel_partition_info):
                 kth = kth[kth > -1]
                 if kth.size == 0:
-                    outs.append(merged_vec)
+                    if return_value:
+                        outs.append(merged_vec)
+                    if return_indices:
+                        out_indices.append(merged_indices[i])
                 else:
-                    outs.append(xp.partition(merged_vec, kth, kind=op.kind, order=op.order))
+                    if return_indices:
+                        argparts = xp.argpartition(merged_vec, kth, **kw)
+                        if return_value:
+                            outs.append(xp.take(merged_vec, argparts))
+                        out_indices.append(xp.take(merged_indices[i], argparts))
+                    else:
+                        outs.append(xp.partition(merged_vec, kth, **kw))
 
         if not op.need_align:
-            assert len(outs) == 1
-            ctx[op.outputs[0].key] = outs[0]
+            assert len(outs or out_indices) == 1
+            i = 0
+            if return_value:
+                ctx[op.outputs[0].key] = outs[0]
+                i += 1
+            if return_indices:
+                ctx[op.outputs[i].key] = out_indices[0]
         else:
-            ctx[op.outputs[0].key] = tuple(outs)
+            i = 0
+            if return_value:
+                ctx[op.outputs[0].key] = tuple(outs)
+                i += 1
+            if return_indices:
+                ctx[op.outputs[i].key] = tuple(out_indices)
 
 
 def _check_kth_dtype(dtype):
@@ -360,6 +534,33 @@ def _validate_kth_value(kth, size):
         raise ValueError('kth(={}) out of bounds ({})'.format(
             invalid_kth, size))
     return kth
+
+
+def _validate_partition_arguments(a, kth, axis, kind, order, kw):
+    a = astensor(a)
+    if axis is None:
+        a = a.flatten()
+        axis = 0
+    else:
+        axis = validate_axis(a.ndim, axis)
+    if isinstance(kth, (Base, Entity)):
+        kth = astensor(kth)
+        _check_kth_dtype(kth.dtype)
+    else:
+        kth = np.atleast_1d(kth)
+        kth = _validate_kth_value(kth, a.shape[axis])
+    if kth.ndim > 1:
+        raise ValueError('object too deep for desired array')
+    if kind != 'introselect':
+        raise ValueError('{} is an unrecognized kind of select'.format(kind))
+    # if a is structure type and order is not None
+    order = validate_order(a.dtype, order)
+    need_align = kw.pop('need_align', None)
+    if len(kw) > 0:
+        raise TypeError('partition() got an unexpected keyword '
+                        'argument \'{}\''.format(next(iter(kw))))
+
+    return a, kth, axis, kind, order, need_align
 
 
 def partition(a, kth, axis=-1, kind='introselect', order=None, **kw):
@@ -441,29 +642,11 @@ def partition(a, kth, axis=-1, kind='introselect', order=None, **kw):
     >>> mt.partition(a, (1, 3)).execute()
     array([1, 2, 3, 4])
     """
-    a = astensor(a)
-    if axis is None:
-        a = a.flatten()
-        axis = 0
-    else:
-        axis = validate_axis(a.ndim, axis)
-    if isinstance(kth, (Base, Entity)):
-        kth = astensor(kth)
-        _check_kth_dtype(kth.dtype)
-    else:
-        kth = np.atleast_1d(kth)
-        kth = _validate_kth_value(kth, a.shape[axis])
-    if kth.ndim > 1:
-        raise ValueError('object too deep for desired array')
-    if kind != 'introselect':
-        raise ValueError('{} is an unrecognized kind of select'.format(kind))
-    # if a is structure type and order is not None
-    order = validate_order(a.dtype, order)
-    need_align = kw.pop('need_align', None)
-    if len(kw) > 0:
-        raise TypeError('partition() got an unexpected keyword '
-                        'argument \'{}\''.format(next(iter(kw))))
-
+    return_indices = kw.pop('return_index', False)
+    a, kth, axis, kind, order, need_align = \
+        _validate_partition_arguments(a, kth, axis, kind, order, kw)
     op = TensorPartition(kth=kth, axis=axis, kind=kind, order=order,
-                         need_align=need_align, dtype=a.dtype, gpu=a.op.gpu)
+                         need_align=need_align, return_value=True,
+                         return_indices=return_indices,
+                         dtype=a.dtype, gpu=a.op.gpu)
     return op(a, kth)
