@@ -71,7 +71,7 @@ class Test(unittest.TestCase):
         raw = np.random.random((11, 8, 12, 14))
         arr = tensor(raw, chunk_size=(2, 3, 2, 3))
 
-        index = [8, 10, 3, 1, 9, 10]
+        index = [9, 10, 3, 1, 8, 10]
         arr2 = arr[index]
 
         res = self.executor.execute_tensor(arr2, concat=True)

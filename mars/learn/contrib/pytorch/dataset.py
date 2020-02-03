@@ -15,8 +15,10 @@
 import os
 
 try:
+    import torch
     from torch.utils.data import Dataset
 except ImportError:  # pragma: no cover
+    torch = None
     Dataset = object
 
 from ....context import get_context, DistributedContext
@@ -25,7 +27,7 @@ from ....tensor.fetch import TensorFetch
 from ....utils import require_not_none
 
 
-@require_not_none(Dataset)
+@require_not_none(torch)
 class MarsDataset(Dataset):
     def __init__(self, *names):
         self._context = get_context()
@@ -37,13 +39,25 @@ class MarsDataset(Dataset):
             shape = tuple(sum(s) for s in nsplits)
             tensors.append(TensorFetch().new_tensor([], shape=shape, _key=tileable_key))
         self.tensors = tensors
+        self._datas = None
+        self._offset = 0
+
+    def prefetch(self, indices):
+        self._datas = self._get_data(indices)
+        self._offset = 0
+
+    def _get_data(self, item):
+        indexes = process_index(self.tensors[0].ndim, item)
+        return tuple(self._context.get_tileable_data(t.key, indexes) for t in self.tensors)
 
     def __len__(self):
         return self.tensors[0].shape[0]
 
     def __getitem__(self, item):
-        indexes = process_index(self.tensors[0].ndim, item)
-        return tuple(self._context.get_tileable_data(t.key, indexes) for t in self.tensors)
+        if self._datas is not None:
+            return tuple(data[self._offset] for data in self._datas)
+        else:
+            return self._get_data(item)
 
 
 def enter_mars_context():

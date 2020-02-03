@@ -314,7 +314,7 @@ class DistributedContext(ContextBase):
         from .utils import merge_chunks
         from .tensor.core import TENSOR_TYPE
         from .tensor.datasource import empty
-        from .tensor.indexing.getitem import TensorIndexTilesHandler
+        from .tensor.indexing.getitem import TensorIndexTilesHandler, calc_pos
 
         nsplits, chunk_keys, chunk_indexes = self.get_tileable_metas([tileable_key])[0]
         chunk_idx_to_keys = dict(zip(chunk_indexes, chunk_keys))
@@ -326,6 +326,7 @@ class DistributedContext(ContextBase):
         [chunk_workers[e].append(chunk_key) for chunk_key, e in chunk_keys_to_worker.items()]
 
         chunk_results = dict()
+        select_pos = None
         if not indexes:
             datas = []
             for endpoint, chunks in chunk_workers.items():
@@ -347,6 +348,11 @@ class DistributedContext(ContextBase):
             index_handler._preprocess_fancy_indexes()
             index_handler._process_fancy_indexes()
             index_handler._process_in_tensor()
+
+            # Select by order
+            if len(index_handler._fancy_index_infos) != 0:
+                index_shape = index_handler._fancy_index_info.chunk_unified_fancy_indexes[0].shape
+                select_pos = calc_pos(index_shape, index_handler._fancy_index_info.chunk_index_to_pos)
 
             result_chunks = dict()
             for c in index_handler._out_chunks:
@@ -376,6 +382,8 @@ class DistributedContext(ContextBase):
             ret = chunk_results[0][1]
         else:
             ret = merge_chunks(chunk_results)
+        if select_pos is not None:
+            ret = ret[select_pos]
         return ret
 
     def create_lock(self):

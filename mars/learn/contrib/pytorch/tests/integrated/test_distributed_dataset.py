@@ -30,6 +30,6 @@ class Test(LearnIntegrationTestBase):
                 dataset = MarsDataset('data')
                 self.assertEqual(len(dataset), 100)
 
-                sample = [2, 5, 7, 9, 10]
+                sample = np.random.randint(0, 100, (10,))
                 r1 = dataset[sample][0]
                 np.testing.assert_array_equal(raw[sample], r1)
