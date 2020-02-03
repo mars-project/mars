@@ -261,7 +261,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         # do not output header if index of chunk > 0
         cls._to_csv(op, df, sio, header=header)
 
-        ret = sio.getvalue()
+        ret = sio.getvalue().encode(op.encoding or 'utf-8')
         ctx[op.outputs[0].key] = ret
         ctx[op.outputs[1].key] = len(ret)
 
@@ -275,7 +275,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         offset_start = offsets[i]
 
         # write csv bytes into file
-        with open_file(path, mode='r+', storage_options=op.storage_options) as f:
+        with open_file(path, mode='r+b', storage_options=op.storage_options) as f:
             f.seek(offset_start)
             f.write(csv_bytes)
 
@@ -327,12 +327,12 @@ class DataFrameToCSVStat(TensorOperand, TensorOperandMixin):
         offsets = np.cumsum([0] + sizes)[:-1]
 
         # write NULL bytes into file
-        with open_file(op.path, mode='w', storage_options=op.storage_options) as f:
+        with open_file(op.path, mode='wb', storage_options=op.storage_options) as f:
             rest = total_bytes
             while rest > 0:
                 # at most 4M
                 write_bytes = min(4 * 1024 ** 2, rest)
-                f.write('\00' * write_bytes)
+                f.write(b'\00' * write_bytes)
                 rest -= write_bytes
 
         ctx[op.outputs[0].key] = offsets

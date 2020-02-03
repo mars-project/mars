@@ -43,7 +43,7 @@ class Test(TestBase):
             r = df.to_csv(path)
             self.executor.execute_dataframe(r)
 
-            result = pd.read_csv(path)
+            result = pd.read_csv(path, dtype=raw.dtypes.to_dict())
             result.set_index('index', inplace=True)
             pd.testing.assert_frame_equal(result, raw)
 
@@ -52,7 +52,8 @@ class Test(TestBase):
             r = df.to_csv(path)
             self.executor.execute_dataframe(r)
 
-            dfs = [pd.read_csv(os.path.join(base_path, 'out-{}.csv'.format(i)))
+            dfs = [pd.read_csv(os.path.join(base_path, 'out-{}.csv'.format(i)),
+                               dtype=raw.dtypes.to_dict())
                    for i in range(4)]
             result = pd.concat(dfs, axis=0)
             result.set_index('index', inplace=True)
