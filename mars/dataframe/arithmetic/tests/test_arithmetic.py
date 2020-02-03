@@ -26,7 +26,7 @@ from mars.dataframe.utils import split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
 from mars.dataframe.datasource.dataframe import from_pandas, DataFrameDataSource
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series, SeriesDataSource
-from mars.dataframe.arithmetic import abs, DataFrameAbs, DataFrameAdd, DataFrameSubtract, \
+from mars.dataframe.arithmetic import DataFrameAbs, DataFrameAdd, DataFrameSubtract, \
     DataFrameFloorDiv, DataFrameTrueDiv, DataFrameEqual, DataFrameNotEqual, \
     DataFrameGreater, DataFrameLess, DataFrameGreaterEqual, DataFrameLessEqual
 from mars.dataframe.align import DataFrameIndexAlign, DataFrameShuffleProxy
@@ -1105,7 +1105,7 @@ class TestUnary(TestBase):
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
         df1 = from_pandas(data1, chunk_size=(5, 10))
 
-        df2 = abs(df1)
+        df2 = df1.abs()
 
         # test df2's index and columns
         pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df1.columns_value.to_pandas())
