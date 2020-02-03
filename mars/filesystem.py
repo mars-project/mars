@@ -98,7 +98,7 @@ def get_fs(path, storage_options):
         scheme = 'file'
     else:
         scheme = urlparse(path).scheme
-    if scheme == '':
+    if scheme == '' or len(scheme) == 1:  # len == 1 for windows
         scheme = 'file'
     if scheme == 'file':
         return file_systems[scheme].get_instance()

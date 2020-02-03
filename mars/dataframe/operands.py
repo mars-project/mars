@@ -66,9 +66,11 @@ class DataFrameOperandMixin(TileableOperandMixin):
         return cls._OBJECT_TYPE_TO_TILEABLE_TYPES[object_type]
 
     def _create_chunk(self, output_idx, index, **kw):
-        object_type = getattr(self, '_object_type', None)
+        object_type = kw.pop('object_type', getattr(self, '_object_type', None))
         if object_type is None:
             raise ValueError('object_type should be specified')
+        if isinstance(object_type, (list, tuple)):
+            object_type = object_type[output_idx]
         chunk_type, chunk_data_type = self._chunk_types(object_type)
         kw['op'] = self
         kw['index'] = index
@@ -79,9 +81,11 @@ class DataFrameOperandMixin(TileableOperandMixin):
         return chunk_type(data)
 
     def _create_tileable(self, output_idx, **kw):
-        object_type = getattr(self, '_object_type', None)
+        object_type = kw.pop('object_type', getattr(self, '_object_type', None))
         if object_type is None:
             raise ValueError('object_type should be specified')
+        if isinstance(object_type, (list, tuple)):
+            object_type = object_type[output_idx]
         tileable_type, tileable_data_type = self._tileable_types(object_type)
         kw['op'] = self
         if object_type == ObjectType.scalar:

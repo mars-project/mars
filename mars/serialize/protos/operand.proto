@@ -374,6 +374,13 @@ message OperandDef {
 
         // store
         READ_CSV = 2100;
+        TO_CSV = 2101;
+        READ_PARQUET = 2103;
+        TO_PARQUET = 2104;
+        READ_SQL = 2105;
+        TO_SQL = 2106;
+
+        TO_CSV_STAT = 2102;
 
         // successors exclusive
         SUCCESSORS_EXCLUSIVE = 2002;
