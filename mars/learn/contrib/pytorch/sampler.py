@@ -31,12 +31,11 @@ class MarsSampler(Sampler):
         import torch.distributed as dist
 
         super().__init__(dataset)
-
-        if num_replicas is None:
+        if num_replicas is None:  # pragma: no cover
             if not dist.is_available():
                 raise RuntimeError("Requires distributed package to be available")
             num_replicas = dist.get_world_size()
-        if rank is None:
+        if rank is None:  # pragma: no cover
             if not dist.is_available():
                 raise RuntimeError("Requires distributed package to be available")
             rank = dist.get_rank()
@@ -55,7 +54,7 @@ class MarsSampler(Sampler):
         g.manual_seed(self.epoch)
         if self.shuffle:
             indices = torch.randperm(len(self.dataset), generator=g).tolist()
-        else:
+        else:  # pragma: no cover
             indices = list(range(len(self.dataset)))
 
         # add extra samples to make it evenly divisible
@@ -65,6 +64,7 @@ class MarsSampler(Sampler):
         # subsample
         indices = indices[self.rank:self.total_size:self.num_replicas]
         assert len(indices) == self.num_samples
+
         self.dataset.prefetch(indices)
         return indices
 

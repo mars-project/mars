@@ -55,7 +55,9 @@ class MarsDataset(Dataset):
 
     def __getitem__(self, item):
         if self._datas is not None:
-            return tuple(data[self._offset] for data in self._datas)
+            ret = tuple(data[self._offset] for data in self._datas)
+            self._offset += 1
+            return ret
         else:
             return self._get_data(item)
 
