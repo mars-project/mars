@@ -23,6 +23,7 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.session import new_session
 from mars.tests.core import TestBase, require_cudf, ExecutorForTest
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -336,5 +337,24 @@ class Test(TestBase):
                                                    concat=True)[0]
             pd.testing.assert_frame_equal(pdf.reset_index(drop=True), mdf2.to_pandas().reset_index(drop=True))
 
+        finally:
+            shutil.rmtree(tempdir)
+
+    def testReadCSVWithoutIndex(self):
+        sess = new_session()
+
+        # test csv file without storing index
+        tempdir = tempfile.mkdtemp()
+        file_path = os.path.join(tempdir, 'test.csv')
+        try:
+            df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+            df.to_csv(file_path, index=False)
+
+            pdf = pd.read_csv(file_path)
+            mdf = sess.run(md.read_csv(file_path))
+            pd.testing.assert_frame_equal(pdf, mdf)
+
+            mdf2 = sess.run(md.read_csv(file_path, chunk_bytes=10))
+            pd.testing.assert_frame_equal(pdf, mdf2)
         finally:
             shutil.rmtree(tempdir)
