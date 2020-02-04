@@ -383,7 +383,7 @@ message OperandDef {
         TO_CSV_STAT = 2102;
 
         // standardize range index
-        STANDARDIZE_RANGE_INDEX = 2102;
+        STANDARDIZE_RANGE_INDEX = 2107;
 
         // successors exclusive
         SUCCESSORS_EXCLUSIVE = 2002;
