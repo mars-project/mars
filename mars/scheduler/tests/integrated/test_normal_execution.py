@@ -377,13 +377,13 @@ class Test(SchedulerIntegratedTest):
         r = context.get_tileable_data(a.key, indexes)
         np.testing.assert_array_equal(raw1[tuple(indexes)], r)
 
-        indexes = [[1, 2, 4, 5], slice(None, None, None)]
+        indexes = [[1, 4, 2, 4, 5], slice(None, None, None)]
         r = context.get_tileable_data(a.key, indexes)
         np.testing.assert_array_equal(raw1[tuple(indexes)], r)
 
-        indexed = a[[0, 1, 2, 9], [0, 0, 4, 4]]
+        indexed = a[[9, 1, 2, 0], [0, 0, 4, 4]]
         r = context.get_tileable_data(a.key, indexed.op.indexes)
-        np.testing.assert_array_equal(raw1[[0, 1, 2, 9], [0, 0, 4, 4]], r)
+        np.testing.assert_array_equal(raw1[[9, 1, 2, 0], [0, 0, 4, 4]], r)
 
     def testOperandsWithoutPrepareInputs(self):
         self.start_processes(etcd=False, modules=['mars.scheduler.tests.integrated.no_prepare_op'])

@@ -33,15 +33,15 @@ def main():
     import torch.distributed as dist
     import torch.optim as optim
     import torch.utils.data
-    from mars.learn.contrib.pytorch.dataset import MarsDataset, enter_mars_context
+    from mars.learn.contrib.pytorch import MarsDataset, MarsSampler
+    from mars.learn.contrib.pytorch.dataset import enter_mars_context
 
     dist.init_process_group(backend='gloo')
     torch.manual_seed(42)
 
     with enter_mars_context():
         train_dataset = MarsDataset('data', 'labels')
-
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+        train_sampler = MarsSampler(train_dataset)
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                    batch_size=32,
                                                    shuffle=False,
