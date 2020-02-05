@@ -192,7 +192,7 @@ class WorkerService(object):
         else:
             # create StatusActor
             self._status_ref = pool.create_actor(
-                StatusActor, endpoint, uid=StatusActor.default_uid())
+                StatusActor, endpoint, with_gpu=self._n_cuda_process > 0, uid=StatusActor.default_uid())
 
             actor_holder = pool
 
