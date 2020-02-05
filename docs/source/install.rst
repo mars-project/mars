@@ -160,8 +160,8 @@ be found at the next section.
 +-------------------+----------------------------------------------------------------+
 | ``--net-procs``   | Number of processes for network transfer. 4 by default         |
 +-------------------+----------------------------------------------------------------+
-| ``--cuda-device`` | Index of CUDA devices, separated by commas. If not specified,  |
-|                   | CPUs will be used only.                                        |
+| ``--cuda-device`` | Index of the CUDA device to use. If not specified, CPUs will   |
+|                   | be used only.                                                  |
 +-------------------+----------------------------------------------------------------+
 | ``--phy-mem``     | Limit of physical memory, can be percentages of total memory   |
 |                   | or multiple of bytes. For instance, ``4g`` or ``80%`` are both |
