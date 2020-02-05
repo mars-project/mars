@@ -69,13 +69,10 @@ class WorkerService(object):
 
         self._advertise_addr = kwargs.pop('advertise_addr', None)
 
-        cuda_devices = kwargs.pop('cuda_devices', None)
-        if cuda_devices is not None and len(cuda_devices) == 0:
+        cuda_devices = kwargs.pop('cuda_devices', None) or os.environ.get('CUDA_VISIBLE_DEVICES')
+        if not cuda_devices:
             self._n_cuda_process = 0
         else:
-            if cuda_devices is None:
-                cuda_devices = [int(d) for d in os.environ['CUDA_VISIBLE_DEVICES'].split(',')] \
-                    if os.environ.get('CUDA_VISIBLE_DEVICES') else []
             cuda_devices = os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(d) for d in cuda_devices)
             if cuda_devices:
                 logger.info('Started Mars worker with CUDA cards %s', cuda_devices)
