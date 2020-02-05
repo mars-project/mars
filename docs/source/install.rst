@@ -152,32 +152,35 @@ Extra arguments for schedulers are listed below.
 Extra arguments for workers are listed below. Details about memory tuning can
 be found at the next section.
 
-+------------------+----------------------------------------------------------------+
-| Argument         | Description                                                    |
-+==================+================================================================+
-| ``--cpu-procs``  | Number of computation processes on CPUs. If absent, the value  |
-|                  | will be the available number of cores                          |
-+------------------+----------------------------------------------------------------+
-| ``--net-procs``  | Number of processes for network transfer. 4 by default         |
-+------------------+----------------------------------------------------------------+
-| ``--phy-mem``    | Limit of physical memory, can be percentages of total memory   |
-|                  | or multiple of bytes. For instance, ``4g`` or ``80%`` are both |
-|                  | acceptable. If absent, the size of physical memory will be     |
-|                  | used                                                           |
-+------------------+----------------------------------------------------------------+
-| ``--cache-mem``  | Size of shared memory, can be percentages of total memory or   |
-|                  | multiple of bytes. For instance, ``4g`` or ``80%`` are both    |
-|                  | acceptable. If absent, 50% of free memory will be used         |
-+------------------+----------------------------------------------------------------+
-| ``--min-mem``    | Minimal free memory to start worker, can be percentages of     |
-|                  | total memory or multiple of bytes. For instance, ``4g`` or     |
-|                  | ``80%`` are both acceptable. ``128m`` by default               |
-+------------------+----------------------------------------------------------------+
-| ``--spill-dir``  | Directories to spill to, separated by : in MacOS or Linux.     |
-+------------------+----------------------------------------------------------------+
-| ``--plasma-dir`` | Directory of plasma store. When specified, the size of plasma  |
-|                  | store will not be considered in memory management.             |
-+------------------+----------------------------------------------------------------+
++-------------------+----------------------------------------------------------------+
+| Argument          | Description                                                    |
++===================+================================================================+
+| ``--cpu-procs``   | Number of computation processes on CPUs. If absent, the value  |
+|                   | will be the available number of cores                          |
++-------------------+----------------------------------------------------------------+
+| ``--net-procs``   | Number of processes for network transfer. 4 by default         |
++-------------------+----------------------------------------------------------------+
+| ``--cuda-device`` | Index of the CUDA device to use. If not specified, CPUs will   |
+|                   | be used only.                                                  |
++-------------------+----------------------------------------------------------------+
+| ``--phy-mem``     | Limit of physical memory, can be percentages of total memory   |
+|                   | or multiple of bytes. For instance, ``4g`` or ``80%`` are both |
+|                   | acceptable. If absent, the size of physical memory will be     |
+|                   | used                                                           |
++-------------------+----------------------------------------------------------------+
+| ``--cache-mem``   | Size of shared memory, can be percentages of total memory or   |
+|                   | multiple of bytes. For instance, ``4g`` or ``80%`` are both    |
+|                   | acceptable. If absent, 50% of free memory will be used         |
++-------------------+----------------------------------------------------------------+
+| ``--min-mem``     | Minimal free memory to start worker, can be percentages of     |
+|                   | total memory or multiple of bytes. For instance, ``4g`` or     |
+|                   | ``80%`` are both acceptable. ``128m`` by default               |
++-------------------+----------------------------------------------------------------+
+| ``--spill-dir``   | Directories to spill to, separated by : in MacOS or Linux.     |
++-------------------+----------------------------------------------------------------+
+| ``--plasma-dir``  | Directory of plasma store. When specified, the size of plasma  |
+|                   | store will not be considered in memory management.             |
++-------------------+----------------------------------------------------------------+
 
 For instance, if you want to start a Mars cluster with two schedulers, two
 workers and one web service, you can run commands below (memory and CPU tunings
