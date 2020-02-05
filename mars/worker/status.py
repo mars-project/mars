@@ -27,9 +27,10 @@ logger = logging.getLogger(__name__)
 
 
 class StatusReporterActor(WorkerActor):
-    def __init__(self, endpoint):
+    def __init__(self, endpoint, with_gpu=True):
         super().__init__()
         self._endpoint = endpoint
+        self._with_gpu = with_gpu
 
         self._upload_status = False
 
@@ -66,7 +67,7 @@ class StatusReporterActor(WorkerActor):
             hw_metrics['cpu_used'] = cpu_percent / 100.0
             hw_metrics['cpu_total'] = resource.cpu_count()
 
-            cuda_info = resource.cuda_info()
+            cuda_info = resource.cuda_info() if self._with_gpu else None
             if cuda_info:
                 hw_metrics['cuda'] = cuda_info.gpu_count
                 hw_metrics['cuda_total'] = cuda_info.gpu_count
@@ -124,7 +125,7 @@ class StatusReporterActor(WorkerActor):
                 hw_metrics['disk_used'] = agg_disk_used
                 hw_metrics['disk_total'] = agg_disk_total
 
-            cuda_card_stats = resource.cuda_card_stats()
+            cuda_card_stats = resource.cuda_card_stats() if self._with_gpu else None
             if cuda_card_stats:
                 hw_metrics['cuda_stats'] = [dict(
                     product_name=stat.product_name,
@@ -159,10 +160,11 @@ class StatusReporterActor(WorkerActor):
 
 
 class StatusActor(WorkerActor):
-    def __init__(self, endpoint):
+    def __init__(self, endpoint, with_gpu=True):
         super().__init__()
         self._speed_holders = defaultdict(ExpMeanHolder)
         self._endpoint = endpoint
+        self._with_gpu = with_gpu
         self._reporter_ref = None
         self._stats = dict()
         self._slots = dict()
@@ -174,7 +176,8 @@ class StatusActor(WorkerActor):
     def post_create(self):
         super().post_create()
         self._reporter_ref = self.ctx.create_actor(
-            StatusReporterActor, self._endpoint, uid=StatusReporterActor.default_uid())
+            StatusReporterActor, self._endpoint, with_gpu=self._with_gpu,
+            uid=StatusReporterActor.default_uid())
 
     def pre_destroy(self):
         self.ctx.destroy_actor(self._reporter_ref)
