@@ -805,6 +805,14 @@ class Test(unittest.TestCase):
         t = t.tiles()
         self.assertEqual(t.op.parallel_kind, 'tree')
 
-        # t = topk(a, 3)
-        # t = t.tiles()
-        # self.assertEqual(t.op.parallel_kind, 'psrs')
+        t = topk(a, 3)
+        t = t.tiles()
+        self.assertEqual(t.op.parallel_kind, 'psrs')
+
+        t = topk(sort(a), 3)
+        t = t.tiles()
+        # k is less than 100
+        self.assertEqual(t.op.parallel_kind, 'tree')
+
+        with self.assertRaises(ValueError):
+            topk(a, 3, parallel_kind='unknown')
