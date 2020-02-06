@@ -139,8 +139,6 @@ class SchedulerIntegratedTest(unittest.TestCase):
 
         if 'DUMP_GRAPH_DATA' in os.environ:
             append_args_scheduler += ['-Dscheduler.dump_graph_data=true']
-        if not cuda:
-            append_args_worker += ['--no-cuda']
 
         proc_env = os.environ.copy()
         if env:
@@ -168,7 +166,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
                               '--log-format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
                               '--cache-mem', '16m',
                               '--ignore-avail-mem',
-                              '--cuda-device', str(cuda_devices[idx % cuda_count]) if cuda_count else '0',
+                              '--cuda-device', str(cuda_devices[idx % cuda_count]) if cuda_count else '',
                               '-Dworker.prepare_data_timeout=30']
                              + append_args + append_args_worker, env=proc_env)
             for idx in range(n_workers)

@@ -39,8 +39,8 @@ class WorkerApplication(BaseApplication):
 
     def config_args(self, parser):
         parser.add_argument('--cpu-procs', help='number of processes used for cpu')
-        parser.add_argument('--no-cuda', action='store_true', help='does not use CUDA')
-        parser.add_argument('--cuda-device', help='CUDA device to use')
+        parser.add_argument('--cuda-device', help='CUDA device to use, if not specified, will '
+                                                  'use CPU only')
         parser.add_argument('--net-procs', help='number of processes used for networking')
         parser.add_argument('--io-procs', help=argparse.SUPPRESS,
                             action=arg_deprecated_action('--net-procs'))
@@ -89,7 +89,7 @@ class WorkerApplication(BaseApplication):
             advertise_addr=self.args.advertise,
             n_cpu_process=self.args.cpu_procs,
             n_net_process=self.args.net_procs or self.args.io_procs,
-            cuda_devices=cuda_devices if not self.args.no_cuda else [],
+            cuda_devices=cuda_devices,
             spill_dirs=self.args.spill_dir or os.environ.get('MARS_SPILL_DIRS'),
             lock_free_fileio=lock_free_fileio,
             total_mem=self.args.phy_mem,

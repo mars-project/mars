@@ -176,7 +176,11 @@ def get_device_count():
         return None
 
     if 'CUDA_VISIBLE_DEVICES' in os.environ:
-        _gpu_count = len(os.environ['CUDA_VISIBLE_DEVICES'].split(','))
+        devices = os.environ['CUDA_VISIBLE_DEVICES'].strip()
+        if not devices:
+            _gpu_count = 0
+        else:
+            _gpu_count = len(devices.split(','))
     else:
         n_gpus = c_uint()
         _cu_check_error(_nvml_lib.nvmlDeviceGetCount(byref(n_gpus)))

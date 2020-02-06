@@ -103,7 +103,7 @@ class Test(unittest.TestCase):
         return worker_ips[0]
 
     @contextlib.contextmanager
-    def _start_worker_process(self, no_cuda=True, cuda_device=None):
+    def _start_worker_process(self, cuda=False, cuda_device=None):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
         try:
             with create_actor_pool(n_process=1, backend='gevent',
@@ -122,9 +122,7 @@ class Test(unittest.TestCase):
                         '--spill-dir', self._spill_dir,
                         '--ignore-avail-mem']
                 env = os.environ.copy()
-                if no_cuda:
-                    args.append('--no-cuda')
-                else:
+                if cuda:
                     env['CUDA_VISIBLE_DEVICES'] = cuda_device
                 proc = subprocess.Popen(args, env=env)
                 worker_endpoint = self._wait_worker_ready(proc, resource_ref)
@@ -157,7 +155,7 @@ class Test(unittest.TestCase):
     @require_cupy
     def testExecuteCudaWorker(self):
         dev_id = os.environ.get('CUDA_VISIBLE_DEVICES', '0').split(',', 1)[0]
-        with self._start_worker_process(no_cuda=False, cuda_device=dev_id) as (pool, worker_endpoint):
+        with self._start_worker_process(cuda=True, cuda_device=dev_id) as (pool, worker_endpoint):
             test_ref = pool.create_actor(WorkerProcessTestActor)
             test_ref.run_test(worker_endpoint, calc_device='cuda', _tell=True)
 

@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 def gather_node_info():
     from .lib.mkl_interface import mkl_get_version
+    from .lib.nvutils import NVError
     mem_stats = resource.virtual_memory()
 
     node_info = {
@@ -58,7 +59,11 @@ def gather_node_info():
         'k8s_pod_name': os.environ.get('MARS_K8S_POD_NAME'),
     }
 
-    cuda_info = resource.cuda_info()
+    try:
+        cuda_info = resource.cuda_info()
+    except NVError:
+        logger.exception('NVError encountered, cannot gather CUDA devices.')
+        cuda_info = None
     if cuda_info:
         node_info['cuda_info'] = 'Driver: %s\nCUDA: %s\nProducts: %s\n' % \
                                  (cuda_info.driver_version, cuda_info.cuda_version,
