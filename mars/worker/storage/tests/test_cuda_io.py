@@ -20,7 +20,7 @@ import pandas as pd
 from numpy.testing import assert_allclose
 
 from mars.serialize import dataserializer
-from mars.tests.core import require_cupy, require_cudf
+from mars.tests.core import aio_case, require_cupy, require_cudf
 from mars.utils import get_next_port, lazy_import
 from mars.worker import WorkerDaemonActor, QuotaActor, MemQuotaActor
 from mars.worker.tests.base import WorkerCase
@@ -33,16 +33,17 @@ cudf = lazy_import('cudf', globals=globals())
 
 @require_cupy
 @require_cudf
+@aio_case
 class Test(WorkerCase):
-    def testCudaMemPutAndGet(self):
+    async def testCudaMemPutAndGet(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
-        with self.create_pool(n_process=1, address=test_addr) as pool, \
+        async with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
-            pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
-            storage_manager_ref = pool.create_actor(
+            await pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
+            storage_manager_ref = await pool.create_actor(
                 StorageManagerActor, uid=StorageManagerActor.default_uid())
-            pool.create_actor(QuotaActor, 1024 ** 2, uid=MemQuotaActor.default_uid())
-            pool.create_actor(CudaHolderActor)
+            await pool.create_actor(QuotaActor, 1024 ** 2, uid=MemQuotaActor.default_uid())
+            await pool.create_actor(CudaHolderActor)
 
             test_data = np.random.random((10, 10))
             test_suites = [
@@ -63,35 +64,35 @@ class Test(WorkerCase):
                 storage_client = test_actor.storage_client
                 handler = storage_client.get_storage_handler((0, DataStorageDevice.CUDA))
 
-                handler.put_objects(session_id, [data_key1], [data])
-                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
+                await handler.put_objects(session_id, [data_key1], [data])
+                self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                                  [(0, DataStorageDevice.CUDA)])
-                self.assertIsInstance(handler.get_objects(session_id, [data_key1])[0], cuda_type)
-                assert_obj_equal(data, move_to_mem(handler.get_objects(session_id, [data_key1])[0]))
+                self.assertIsInstance((await handler.get_objects(session_id, [data_key1]))[0], cuda_type)
+                assert_obj_equal(data, move_to_mem((await handler.get_objects(session_id, [data_key1]))[0]))
 
-                handler.delete(session_id, [data_key1])
-                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]), [])
+                await handler.delete(session_id, [data_key1])
+                self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]), [])
                 with self.assertRaises(KeyError):
-                    handler.get_objects(session_id, [data_key1])
+                    await handler.get_objects(session_id, [data_key1])
 
-                handler.put_objects(session_id, [data_key2], [ser_data], serialize=True)
-                self.assertIsInstance(handler.get_objects(session_id, [data_key2])[0], cuda_type)
-                assert_obj_equal(data, move_to_mem(handler.get_objects(session_id, [data_key2])[0]))
-                handler.delete(session_id, [data_key2])
+                await handler.put_objects(session_id, [data_key2], [ser_data], serialize=True)
+                self.assertIsInstance((await handler.get_objects(session_id, [data_key2]))[0], cuda_type)
+                assert_obj_equal(data, move_to_mem((await handler.get_objects(session_id, [data_key2]))[0]))
+                await handler.delete(session_id, [data_key2])
 
-    def testCudaMemLoad(self):
+    async def testCudaMemLoad(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
-        with self.create_pool(n_process=1, address=test_addr) as pool, \
+        async with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
-            pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
-            storage_manager_ref = pool.create_actor(
+            await pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
+            storage_manager_ref = await pool.create_actor(
                 StorageManagerActor, uid=StorageManagerActor.default_uid())
 
-            pool.create_actor(QuotaActor, 1024 ** 2, uid=MemQuotaActor.default_uid())
-            pool.create_actor(CudaHolderActor)
+            await pool.create_actor(QuotaActor, 1024 ** 2, uid=MemQuotaActor.default_uid())
+            await pool.create_actor(CudaHolderActor)
 
-            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
-            pool.create_actor(SharedHolderActor, uid=SharedHolderActor.default_uid())
+            await pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
+            await pool.create_actor(SharedHolderActor, uid=SharedHolderActor.default_uid())
 
             data1 = np.random.random((10, 10))
             data2 = np.random.random((10, 10))
@@ -102,44 +103,44 @@ class Test(WorkerCase):
             data_key2 = str(uuid.uuid4())
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler((0, DataStorageDevice.CUDA))
+            handler = await storage_client.get_storage_handler((0, DataStorageDevice.CUDA))
 
             # load from bytes io
-            disk_handler = storage_client.get_storage_handler((0, DataStorageDevice.DISK))
-            with disk_handler.create_bytes_writer(
+            disk_handler = await storage_client.get_storage_handler((0, DataStorageDevice.DISK))
+            async with await disk_handler.create_bytes_writer(
                     session_id, data_key1, ser_data1.total_bytes) as writer:
                 ser_data1.write_to(writer)
 
-            handler.load_from_bytes_io(session_id, [data_key1], disk_handler) \
+            (await handler.load_from_bytes_io(session_id, [data_key1], disk_handler)) \
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
-            self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
+            await self.get_result(5)
+            self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                              [(0, DataStorageDevice.CUDA), (0, DataStorageDevice.DISK)])
 
-            disk_handler.delete(session_id, [data_key1])
+            await disk_handler.delete(session_id, [data_key1])
 
-            data_load = handler.get_objects(session_id, [data_key1])[0]
+            data_load = await handler.get_objects(session_id, [data_key1])[0]
             ref_data = weakref.ref(data_load)
             del data_load
-            handler.delete(session_id, [data_key1])
+            await handler.delete(session_id, [data_key1])
             self.assertIsNone(ref_data())
 
             # load from object io
-            shared_handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
-            shared_handler.put_objects(session_id, [data_key2], [data2])
+            shared_handler = await storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
+            await shared_handler.put_objects(session_id, [data_key2], [data2])
 
-            handler.load_from_object_io(session_id, [data_key2], shared_handler) \
+            (await handler.load_from_object_io(session_id, [data_key2], shared_handler)) \
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
-            self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key2])[0]),
+            await self.get_result(5)
+            self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key2]))[0]),
                              [(0, DataStorageDevice.CUDA), (0, DataStorageDevice.SHARED_MEMORY)])
 
-            shared_handler.delete(session_id, [data_key2])
+            await shared_handler.delete(session_id, [data_key2])
 
-            data_load = handler.get_objects(session_id, [data_key2])[0]
+            data_load = (await handler.get_objects(session_id, [data_key2]))[0]
             ref_data = weakref.ref(data_load)
             del data_load
-            handler.delete(session_id, [data_key2])
+            await handler.delete(session_id, [data_key2])
             self.assertIsNone(ref_data())

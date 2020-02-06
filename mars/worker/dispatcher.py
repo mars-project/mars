@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from collections import deque, OrderedDict
 
@@ -34,21 +35,21 @@ class DispatchActor(WorkerActor):
         self._free_slot_requests = dict()
         self._status_ref = None
 
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
         try:
-            self.set_cluster_info_ref()
+            await self.set_cluster_info_ref()
         except ActorNotExist:
             pass
 
         from .status import StatusActor
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
-        if not self.ctx.has_actor(self._status_ref):
+        if not await self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
-    def _safe_tell_promise_slot(self, callback, queue_name, slot):
+    async def _safe_tell_promise_slot(self, callback, queue_name, slot):
         try:
-            self.tell_promise(callback, slot)
+            await self.tell_promise(callback, slot, _wait=True)
         except (ActorNotExist, BrokenPipeError, ConnectionRefusedError,
                 TimeoutError, promise.PromiseTimeout) as ex:
             from ..scheduler import ResourceActor
@@ -58,20 +59,20 @@ class DispatchActor(WorkerActor):
             callback_addr = callback[0][-1]
             if callback_addr != self.address and self.get_schedulers() and \
                     not isinstance(ex, (TimeoutError, promise.PromiseTimeout)):
-                self.get_actor_ref(ResourceActor.default_uid()).detach_dead_workers([callback_addr], _tell=True)
+                await self.get_actor_ref(ResourceActor.default_uid()).detach_dead_workers([callback_addr], _tell=True)
 
             if slot is not None:
-                self.ref().register_free_slot(slot, queue_name, _tell=True)
+                await self.ref().register_free_slot(slot, queue_name, _tell=True)
 
     @log_unhandled
-    def get_free_slot(self, queue_name, callback=None):
+    async def get_free_slot(self, queue_name, callback=None):
         """
         Get uid of a free actor when available
         :param queue_name: queue name
         :param callback: promise callback
         """
         if queue_name not in self._free_slots:
-            self._safe_tell_promise_slot(callback, queue_name, None)
+            await self._safe_tell_promise_slot(callback, queue_name, None)
             return
         if not self._free_slots[queue_name]:
             # no slots free, we queue the callback
@@ -83,11 +84,11 @@ class DispatchActor(WorkerActor):
         free_slot = self._free_slots[queue_name].popitem()[0]
         logger.debug('Slot %s allocated for queue %s on %s. slot dump: %r',
                      free_slot, queue_name, self.address, self.get_free_slots_num())
-        self._safe_tell_promise_slot(callback, queue_name, free_slot)
+        await self._safe_tell_promise_slot(callback, queue_name, free_slot)
 
         if self._status_ref is not None:
-            self._status_ref.update_slots({queue_name: len(self._free_slots[queue_name])},
-                                          _tell=True, _wait=False)
+            self._status_ref.update_slots(
+                {queue_name: len(self._free_slots[queue_name])}, _tell=True, _wait=False)
 
     @log_unhandled
     def get_hash_slot(self, queue_name, key):
@@ -123,7 +124,7 @@ class DispatchActor(WorkerActor):
         return dict((k, len(v)) for k, v in self._free_slots.items())
 
     @log_unhandled
-    def register_free_slot(self, uid, queue_name):
+    async def register_free_slot(self, uid, queue_name):
         """
         Register free uid of a queue
         :param uid: uid of free actor
@@ -142,8 +143,9 @@ class DispatchActor(WorkerActor):
             free_slot = self._free_slots[queue_name].popitem()[0]
             logger.debug('Slot %s allocated for queue %s on %s. slot dump: %r',
                          free_slot, queue_name, self.address, self.get_free_slots_num())
-            self._safe_tell_promise_slot(self._free_slot_requests[queue_name].popleft(), queue_name, free_slot)
+            await self._safe_tell_promise_slot(
+                self._free_slot_requests[queue_name].popleft(), queue_name, free_slot)
 
         if self._status_ref is not None:
-            self._status_ref.update_slots({queue_name: len(self._free_slots[queue_name])},
-                                          _tell=True, _wait=False)
+            self._status_ref.update_slots(
+                {queue_name: len(self._free_slots[queue_name])}, _tell=True, _wait=False)

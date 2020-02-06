@@ -67,7 +67,7 @@ class PlasmaKeyMapActor(FunctionActor):
             self.delete(session_id, k)
 
 
-class PlasmaSharedStore(object):
+class PlasmaSharedStore:
     """
     Wrapper of plasma client for Mars objects
     """
@@ -112,7 +112,7 @@ class PlasmaSharedStore(object):
             self._actual_size = total_size
         return self._actual_size
 
-    def _new_object_id(self, session_id, data_key):
+    async def _new_object_id(self, session_id, data_key):
         """
         Calc unique object id for chunks
         """
@@ -120,17 +120,17 @@ class PlasmaSharedStore(object):
             new_id = plasma.ObjectID.from_random()
             if not self._plasma_client.contains(new_id):
                 break
-        self._mapper_ref.put(session_id, data_key, new_id)
+        await self._mapper_ref.put(session_id, data_key, new_id)
         return new_id
 
-    def _get_object_id(self, session_id, data_key):
-        obj_id = self._mapper_ref.get(session_id, data_key)
+    async def _get_object_id(self, session_id, data_key):
+        obj_id = await self._mapper_ref.get(session_id, data_key)
         if obj_id is None:
             raise KeyError((session_id, data_key))
         return obj_id
 
-    def create(self, session_id, data_key, size):
-        obj_id = self._new_object_id(session_id, data_key)
+    async def create(self, session_id, data_key, size):
+        obj_id = await self._new_object_id(session_id, data_key)
 
         try:
             self._plasma_client.evict(size)
@@ -138,63 +138,63 @@ class PlasmaSharedStore(object):
             return buffer
         except PlasmaStoreFull:
             exc_type = PlasmaStoreFull
-            self._mapper_ref.delete(session_id, data_key)
+            await self._mapper_ref.delete(session_id, data_key)
             logger.warning('Data %s(%d) failed to store to plasma due to StorageFull',
                            data_key, size)
         except:  # noqa: E722
-            self._mapper_ref.delete(session_id, data_key)
+            await self._mapper_ref.delete(session_id, data_key)
             raise
 
         if exc_type is PlasmaStoreFull:
             raise StorageFull(request_size=size, capacity=self._actual_size,
                               affected_keys=[data_key])
 
-    def seal(self, session_id, data_key):
-        obj_id = self._get_object_id(session_id, data_key)
+    async def seal(self, session_id, data_key):
+        obj_id = await self._get_object_id(session_id, data_key)
         try:
             self._plasma_client.seal(obj_id)
         except PlasmaObjectNotFound:
-            self._mapper_ref.delete(session_id, data_key)
+            await self._mapper_ref.delete(session_id, data_key)
             raise KeyError((session_id, data_key))
 
-    def get(self, session_id, data_key):
+    async def get(self, session_id, data_key):
         """
         Get deserialized Mars object from plasma store
         """
-        obj_id = self._get_object_id(session_id, data_key)
+        obj_id = await self._get_object_id(session_id, data_key)
         obj = self._plasma_client.get(obj_id, serialization_context=self._serialize_context, timeout_ms=10)
         if obj is plasma.ObjectNotAvailable:
-            self._mapper_ref.delete(session_id, data_key)
+            await self._mapper_ref.delete(session_id, data_key)
             raise KeyError((session_id, data_key))
         return obj
 
-    def get_buffer(self, session_id, data_key):
+    async def get_buffer(self, session_id, data_key):
         """
         Get raw buffer from plasma store
         """
-        obj_id = self._get_object_id(session_id, data_key)
+        obj_id = await self._get_object_id(session_id, data_key)
         [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
         if buf is None:
-            self._mapper_ref.delete(session_id, data_key)
+            await self._mapper_ref.delete(session_id, data_key)
             raise KeyError((session_id, data_key))
         return buf
 
-    def get_actual_size(self, session_id, data_key):
+    async def get_actual_size(self, session_id, data_key):
         """
         Get actual size of Mars object from plasma store
         """
         buf = None
         try:
-            obj_id = self._get_object_id(session_id, data_key)
+            obj_id = await self._get_object_id(session_id, data_key)
             [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
             if buf is None:
-                self._mapper_ref.delete(session_id, data_key)
+                await self._mapper_ref.delete(session_id, data_key)
                 raise KeyError((session_id, data_key))
             return buf.size
         finally:
             del buf
 
-    def put(self, session_id, data_key, value):
+    async def put(self, session_id, data_key, value):
         """
         Put a Mars object into plasma store
         :param session_id: session id
@@ -204,9 +204,9 @@ class PlasmaSharedStore(object):
         data_size = None
 
         try:
-            obj_id = self._new_object_id(session_id, data_key)
+            obj_id = await self._new_object_id(session_id, data_key)
         except StorageDataExists:
-            obj_id = self._get_object_id(session_id, data_key)
+            obj_id = await self._get_object_id(session_id, data_key)
             if self._plasma_client.contains(obj_id):
                 logger.debug('Data %s already exists, returning existing', data_key)
                 [buffer] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
@@ -214,7 +214,7 @@ class PlasmaSharedStore(object):
                 return buffer
             else:
                 logger.warning('Data %s registered but no data found, reconstructed', data_key)
-                self._mapper_ref.delete(session_id, data_key)
+                await self._mapper_ref.delete(session_id, data_key)
                 obj_id = self._new_object_id(session_id, data_key)
 
         try:
@@ -225,40 +225,40 @@ class PlasmaSharedStore(object):
                 buffer = self._plasma_client.create(obj_id, serialized.total_bytes)
                 stream = pyarrow.FixedSizeBufferWriter(buffer)
                 stream.set_memcopy_threads(6)
-                self._pool.submit(serialized.write_to, stream).result()
+                serialized.write_to(stream)
                 self._plasma_client.seal(obj_id)
             finally:
                 del serialized
             return buffer
         except PlasmaStoreFull:
-            self._mapper_ref.delete(session_id, data_key)
+            await self._mapper_ref.delete(session_id, data_key)
             logger.warning('Data %s(%d) failed to store to plasma due to StorageFull',
                            data_key, data_size)
             exc = PlasmaStoreFull
         except:  # noqa: E722
-            self._mapper_ref.delete(session_id, data_key)
+            await self._mapper_ref.delete(session_id, data_key)
             raise
 
         if exc is PlasmaStoreFull:
             raise StorageFull(request_size=data_size, capacity=self._actual_size,
                               affected_keys=[data_key])
 
-    def contains(self, session_id, data_key):
+    async def contains(self, session_id, data_key):
         """
         Check if given chunk key exists in current plasma store
         """
         try:
-            obj_id = self._get_object_id(session_id, data_key)
+            obj_id = await self._get_object_id(session_id, data_key)
             if self._plasma_client.contains(obj_id):
                 return True
             else:
-                self._mapper_ref.delete(session_id, data_key)
+                await self._mapper_ref.delete(session_id, data_key)
                 return False
         except KeyError:
             return False
 
-    def delete(self, session_id, data_key):
-        self._mapper_ref.delete(session_id, data_key)
+    async def delete(self, session_id, data_key):
+        await self._mapper_ref.delete(session_id, data_key)
 
-    def batch_delete(self, session_id, data_keys):
-        self._mapper_ref.batch_delete(session_id, data_keys)
+    async def batch_delete(self, session_id, data_keys):
+        await self._mapper_ref.batch_delete(session_id, data_keys)

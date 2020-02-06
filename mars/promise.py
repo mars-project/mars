@@ -370,7 +370,10 @@ def reject_on_exception(func):
             callback = args[callback_pos]
 
         try:
-            return await func(*args, **kwargs)
+            ret = func(*args, **kwargs)
+            if asyncio.iscoroutine(ret):
+                ret = await ret
+            return ret
         except:  # noqa: E722
             actor = args[0]
             logger.exception('Unhandled exception in promise call')

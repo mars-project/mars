@@ -412,7 +412,7 @@ class Test(unittest.TestCase):
 
     async def testPromiseActor(self):
         try:
-            async with await create_actor_pool(n_process=1) as pool:
+            async with create_actor_pool(n_process=1) as pool:
                 serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = await pool.create_actor(PromiseTestActor)
 
@@ -504,7 +504,7 @@ class Test(unittest.TestCase):
 
     async def testSpawnPromisedActor(self):
         try:
-            async with await create_actor_pool(n_process=1) as pool:
+            async with create_actor_pool(n_process=1) as pool:
                 serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = await pool.create_actor(PromiseTestActor)
 
@@ -533,7 +533,7 @@ class Test(unittest.TestCase):
 
     async def testAllActor(self):
         try:
-            async with await create_actor_pool(n_process=1) as pool:
+            async with create_actor_pool(n_process=1) as pool:
                 serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = await pool.create_actor(PromiseTestActor)
 
@@ -549,7 +549,7 @@ class Test(unittest.TestCase):
 
     async def testTimeoutActor(self):
         try:
-            async with await create_actor_pool(n_process=1) as pool:
+            async with create_actor_pool(n_process=1) as pool:
                 serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = await pool.create_actor(PromiseTestActor)
 
@@ -562,7 +562,7 @@ class Test(unittest.TestCase):
 
     async def testNoTimeoutActor(self):
         try:
-            async with await create_actor_pool(n_process=1) as pool:
+            async with create_actor_pool(n_process=1) as pool:
                 serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = await pool.create_actor(PromiseTestActor)
 
@@ -576,7 +576,7 @@ class Test(unittest.TestCase):
 
     async def testRefReject(self):
         try:
-            async with await create_actor_pool(n_process=1) as pool:
+            async with create_actor_pool(n_process=1) as pool:
                 serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = await pool.create_actor(PromiseTestActor)
 
@@ -589,7 +589,7 @@ class Test(unittest.TestCase):
 
     async def testAddrReject(self):
         try:
-            async with await create_actor_pool(n_process=1) as pool:
+            async with create_actor_pool(n_process=1) as pool:
                 serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = await pool.create_actor(PromiseTestActor)
 
@@ -602,7 +602,7 @@ class Test(unittest.TestCase):
 
     async def testClosureRefcount(self):
         try:
-            async with await create_actor_pool(n_process=1) as pool:
+            async with create_actor_pool(n_process=1) as pool:
                 serve_ref = await pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = await pool.create_actor(PromiseTestActor)
 

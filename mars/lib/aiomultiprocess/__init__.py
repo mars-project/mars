@@ -12,3 +12,7 @@ from .core import Process, Worker, set_context, set_start_method
 from .pool import Pool
 from .scheduler import RoundRobin, Scheduler
 from .types import QueueID, TaskID
+
+from multiprocessing.process import active_children
+
+active_children = active_children

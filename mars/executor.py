@@ -43,14 +43,6 @@ try:
 except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
-try:
-    import gevent
-except ImportError:  # pragma: no cover
-    gevent = None
-
-if gevent:
-    from .actors.pool.gevent_pool import GeventThreadPool
-
 logger = logging.getLogger(__name__)
 
 

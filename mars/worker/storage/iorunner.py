@@ -44,38 +44,38 @@ class IORunnerActor(WorkerActor):
 
         self._dispatched = dispatched
 
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
 
         if self._dispatched:
             from ..dispatcher import DispatchActor
             dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid())
-            dispatch_ref.register_free_slot(self.uid, 'iorunner')
+            await dispatch_ref.register_free_slot(self.uid, 'iorunner')
 
     @promise.reject_on_exception
     @log_unhandled
-    def load_from(self, dest_device, session_id, data_keys, src_device, callback):
+    async def load_from(self, dest_device, session_id, data_keys, src_device, callback):
         logger.debug('Copying %r from %s into %s submitted in %s',
                      data_keys, src_device, dest_device, self.uid)
         self._work_items.append((dest_device, session_id, data_keys, src_device, False, callback))
         if self._lock_free or not self._cur_work_items:
-            self._submit_next()
+            await self._submit_next()
 
-    def lock(self, session_id, data_keys, callback):
+    async def lock(self, session_id, data_keys, callback):
         logger.debug('Requesting lock for %r on %s', data_keys, self.uid)
         self._work_items.append((None, session_id, data_keys, None, True, callback))
         if self._lock_free or not self._cur_work_items:
-            self._submit_next()
+            await self._submit_next()
 
-    def unlock(self, work_item_id):
+    async def unlock(self, work_item_id):
         data_keys = self._lock_work_items.pop(work_item_id)[2]
         logger.debug('%s unlocked for %r on work item %d', self.uid, data_keys, work_item_id)
         if work_item_id is not None:  # pragma: no branch
             self._cur_work_items.pop(work_item_id)
-            self._submit_next()
+            await self._submit_next()
 
     @log_unhandled
-    def _submit_next(self):
+    async def _submit_next(self):
         if not self._work_items:
             return
         work_item_id = self._max_work_item_id
@@ -85,22 +85,22 @@ class IORunnerActor(WorkerActor):
 
         if is_lock:
             self._lock_work_items[work_item_id] = self._cur_work_items[work_item_id]
-            self.tell_promise(cb, work_item_id)
+            await self.tell_promise(cb, work_item_id)
             logger.debug('%s locked for %r on work item %d', self.uid, data_keys, work_item_id)
             return
 
         @log_unhandled
-        def _finalize(*exc):
+        async def _finalize(*exc):
             del self._cur_work_items[work_item_id]
             if not exc:
-                self.tell_promise(cb)
+                await self.tell_promise(cb)
             else:
-                self.tell_promise(cb, *exc, _accept=False)
-            self._submit_next()
+                await self.tell_promise(cb, *exc, _accept=False)
+            await self._submit_next()
 
         logger.debug('Start copying %r from %s into %s in %s',
                      data_keys, src_device, dest_device, self.uid)
-        src_handler = self.storage_client.get_storage_handler(src_device)
-        dest_handler = self.storage_client.get_storage_handler(dest_device)
-        dest_handler.load_from(session_id, data_keys, src_handler) \
+        src_handler = await self.storage_client.get_storage_handler(src_device)
+        dest_handler = await self.storage_client.get_storage_handler(dest_device)
+        (await dest_handler.load_from(session_id, data_keys, src_handler)) \
             .then(lambda *_: _finalize(), _finalize)

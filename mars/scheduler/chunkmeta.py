@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import itertools
 import logging
 import os
 from collections import defaultdict, OrderedDict
 
 from .kvstore import KVStoreActor
-from .utils import SchedulerActor, CombinedFutureWaiter
+from .utils import SchedulerActor
+from ..actors.errors import ActorNotExist
 from ..config import options
 from ..utils import BlacklistSet
 
@@ -171,12 +173,12 @@ class ChunkMetaActor(SchedulerActor):
         self._kv_store_ref = None
         self._worker_blacklist = BlacklistSet(options.scheduler.worker_blacklist_time)
 
-    def post_create(self):
+    async def post_create(self):
         logger.debug('Actor %s running in process %d at %s', self.uid, os.getpid(), self.address)
-        super().post_create()
+        await super().post_create()
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
-        if not self.ctx.has_actor(self._kv_store_ref):
+        if not await self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
     def set_chunk_broadcasts(self, session_id, chunk_key, broadcast_dests):
@@ -210,8 +212,8 @@ class ChunkMetaActor(SchedulerActor):
         """
         return self._meta_broadcasts.get((session_id, chunk_key))
 
-    def set_chunk_meta(self, session_id, chunk_key, size=None, shape=None, workers=None,
-                       broadcast=True):
+    async def set_chunk_meta(self, session_id, chunk_key, size=None, shape=None,
+                             workers=None, broadcast=True):
         """
         Update chunk meta in current storage
         :param session_id: session id
@@ -238,11 +240,11 @@ class ChunkMetaActor(SchedulerActor):
         if self._kv_store_ref is not None:
             path = '/sessions/%s/chunks/%s' % (session_id, chunk_key)
             if size is not None:
-                self._kv_store_ref.write(path + '/data_size', size, _tell=True, _wait=False)
+                await self._kv_store_ref.write(path + '/data_size', size, _tell=True, _wait=False)
             if shape is not None:
-                self._kv_store_ref.write(path + '/data_shape', shape, _tell=True, _wait=False)
+                await self._kv_store_ref.write(path + '/data_shape', shape, _tell=True, _wait=False)
             for w in workers:
-                self._kv_store_ref.write(path + '/workers/%s' % w, '', _tell=True, _wait=False)
+                await self._kv_store_ref.write(path + '/workers/%s' % w, '', _tell=True, _wait=False)
 
         meta = self._meta_store[query_key] = WorkerMeta(size, shape, tuple(workers))
         logger.debug('Set chunk meta for %s: %r', chunk_key, meta)
@@ -255,9 +257,9 @@ class ChunkMetaActor(SchedulerActor):
                     self.ctx.actor_ref(self.default_uid(), address=dest)
                         .batch_cache_chunk_meta(session_id, [chunk_key], [meta], _wait=False, _tell=True)
                 )
-            [f.result() for f in futures]
+            await asyncio.wait(futures)
 
-    def batch_set_chunk_meta(self, session_id, keys, metas):
+    async def batch_set_chunk_meta(self, session_id, keys, metas):
         """
         Set chunk metas in batch
         :param session_id: session id
@@ -267,8 +269,8 @@ class ChunkMetaActor(SchedulerActor):
         query_dict = defaultdict(lambda: (list(), list()))
 
         for key, meta in zip(keys, metas):
-            self.set_chunk_meta(session_id, key, size=meta.chunk_size, shape=meta.chunk_shape,
-                                workers=meta.workers, broadcast=False)
+            await self.set_chunk_meta(session_id, key, size=meta.chunk_size, shape=meta.chunk_shape,
+                                      workers=meta.workers, broadcast=False)
             try:
                 dests = self._meta_broadcasts[(session_id, key)]
             except KeyError:
@@ -284,7 +286,8 @@ class ChunkMetaActor(SchedulerActor):
                 self.ctx.actor_ref(self.default_uid(), address=dest)
                     .batch_cache_chunk_meta(session_id, chunk_keys, metas, _wait=False, _tell=True)
             )
-        [f.result() for f in futures]
+        if futures:
+            await asyncio.wait(futures)
 
     def batch_cache_chunk_meta(self, session_id, chunk_keys, metas):
         """
@@ -385,15 +388,16 @@ class ChunkMetaClient(object):
     def __init__(self, ctx, cluster_info_ref, has_local_cache=True):
         self._cluster_info = cluster_info_ref
         self.ctx = ctx
-        self._local_meta_store_ref = ctx.actor_ref(
-            ChunkMetaActor.default_uid(), address=cluster_info_ref.address)
-        if not has_local_cache or not ctx.has_actor(self._local_meta_store_ref):
+        if has_local_cache:
+            self._local_meta_store_ref = self.ctx.actor_ref(
+                ChunkMetaActor.default_uid(), address=cluster_info_ref.address)
+        else:
             self._local_meta_store_ref = None
 
     def get_scheduler(self, key):
         return self._cluster_info.get_scheduler(key)
 
-    def set_chunk_broadcasts(self, session_id, chunk_key, broadcast_dests):
+    async def set_chunk_broadcasts(self, session_id, chunk_key, broadcast_dests):
         """
         Update metadata broadcast destinations for chunks. After configuration,
         when the meta of the chunk updates, the update will be broadcast
@@ -402,25 +406,25 @@ class ChunkMetaClient(object):
         :param chunk_key: chunk key
         :param broadcast_dests: destination addresses for broadcast
         """
-        addr = self.get_scheduler((session_id, chunk_key))
-        self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
+        addr = await self.get_scheduler((session_id, chunk_key))
+        await self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
             .set_chunk_broadcasts(session_id, chunk_key, broadcast_dests, _tell=True, _wait=False)
 
-    def batch_set_chunk_broadcasts(self, session_id, chunk_keys, broadcast_dests,
+    async def batch_set_chunk_broadcasts(self, session_id, chunk_keys, broadcast_dests,
                                    _tell=False, _wait=True):
         query_chunk = defaultdict(lambda: (list(), list()))
         for key, dests in zip(chunk_keys, broadcast_dests):
-            addr = self.get_scheduler((session_id, key))
+            addr = await self.get_scheduler((session_id, key))
             query_chunk[addr][0].append(key)
             query_chunk[addr][1].append(dests)
 
         for addr, (chunk_keys, dest_groups) in query_chunk.items():
-            self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
+            await self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
                 .batch_set_chunk_broadcasts(session_id, chunk_keys, dest_groups,
                                             _tell=_tell, _wait=_wait)
 
-    def set_chunk_meta(self, session_id, chunk_key, size=None, shape=None, workers=None,
-                       _tell=False, _wait=True):
+    async def set_chunk_meta(self, session_id, chunk_key, size=None, shape=None, workers=None,
+                             _tell=False, _wait=True):
         """
         Update chunk metadata
         :param session_id: session id
@@ -429,63 +433,67 @@ class ChunkMetaClient(object):
         :param shape: shape of the chunk
         :param workers: workers holding the chunk
         """
-        addr = self.get_scheduler((session_id, chunk_key))
-        return self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
+        addr = await self.get_scheduler((session_id, chunk_key))
+        return await self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
             .set_chunk_meta(session_id, chunk_key, size=size, shape=shape, workers=workers,
                             _tell=_tell, _wait=_wait)
 
     def set_chunk_size(self, session_id, chunk_key, size):
-        self.set_chunk_meta(session_id, chunk_key, size=size)
+        return self.set_chunk_meta(session_id, chunk_key, size=size)
 
-    def get_chunk_size(self, session_id, chunk_key):
-        meta = self.get_chunk_meta(session_id, chunk_key)
+    async def get_chunk_size(self, session_id, chunk_key):
+        meta = await self.get_chunk_meta(session_id, chunk_key)
         return meta.chunk_size if meta is not None else None
 
     def set_chunk_shape(self, session_id, chunk_key, shape, _tell=False, _wait=True):
-        self.set_chunk_meta(session_id, chunk_key, shape=shape, _tell=_tell, _wait=_wait)
+        return self.set_chunk_meta(session_id, chunk_key, shape=shape, _tell=_tell, _wait=_wait)
 
-    def get_chunk_shape(self, session_id, chunk_key):
-        meta = self.get_chunk_meta(session_id, chunk_key)
+    async def get_chunk_shape(self, session_id, chunk_key):
+        meta = await self.get_chunk_meta(session_id, chunk_key)
         return meta.chunk_shape if meta is not None else None
 
     def add_worker(self, session_id, chunk_key, worker_addr, _tell=False, _wait=True):
-        self.set_chunk_meta(session_id, chunk_key, workers=(worker_addr,), _tell=_tell, _wait=_wait)
+        return self.set_chunk_meta(session_id, chunk_key, workers=(worker_addr,), _tell=_tell, _wait=_wait)
 
-    def get_workers(self, session_id, chunk_key):
-        meta = self.get_chunk_meta(session_id, chunk_key)
+    async def get_workers(self, session_id, chunk_key):
+        meta = await self.get_chunk_meta(session_id, chunk_key)
         return meta.workers if meta is not None else None
 
-    def batch_get_workers(self, session_id, chunk_keys):
-        metas = self.batch_get_chunk_meta(session_id, chunk_keys)
+    async def batch_get_workers(self, session_id, chunk_keys):
+        metas = await self.batch_get_chunk_meta(session_id, chunk_keys)
         return [meta.workers if meta is not None else None for meta in metas]
 
-    def batch_get_chunk_size(self, session_id, chunk_keys):
-        metas = self.batch_get_chunk_meta(session_id, chunk_keys)
+    async def batch_get_chunk_size(self, session_id, chunk_keys):
+        metas = await self.batch_get_chunk_meta(session_id, chunk_keys)
         return [meta.chunk_size if meta is not None else None for meta in metas]
 
-    def batch_get_chunk_shape(self, session_id, chunk_keys):
-        metas = self.batch_get_chunk_meta(session_id, chunk_keys)
+    async def batch_get_chunk_shape(self, session_id, chunk_keys):
+        metas = await self.batch_get_chunk_meta(session_id, chunk_keys)
         return [meta.chunk_shape if meta is not None else None for meta in metas]
 
-    def get_chunk_meta(self, session_id, chunk_key):
+    async def get_chunk_meta(self, session_id, chunk_key):
         """
         Obtain chunk metadata
         :param session_id: session id
         :param chunk_key: chunk key
         """
         if self._local_meta_store_ref is not None:
-            local_result = self._local_meta_store_ref.get_chunk_meta(session_id, chunk_key)
+            try:
+                local_result = await self._local_meta_store_ref.get_chunk_meta(session_id, chunk_key)
+            except ActorNotExist:
+                self._local_meta_store_ref = None
+                local_result = None
         else:
             local_result = None
         if local_result is not None:
             return local_result
 
-        addr = self.get_scheduler((session_id, chunk_key))
-        meta = self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
+        addr = await self.get_scheduler((session_id, chunk_key))
+        meta = await self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
             .get_chunk_meta(session_id, chunk_key)
         return meta
 
-    def batch_get_chunk_meta(self, session_id, chunk_keys, filter_fields=None):
+    async def batch_get_chunk_meta(self, session_id, chunk_keys, filter_fields=None):
         """
         Obtain chunk metadata in batch
         :param session_id: session id
@@ -498,7 +506,11 @@ class ChunkMetaClient(object):
 
         # try obtaining metadata from local cache
         if self._local_meta_store_ref is not None:
-            local_results = self._local_meta_store_ref.batch_get_chunk_meta(session_id, chunk_keys)
+            try:
+                local_results = await self._local_meta_store_ref.batch_get_chunk_meta(session_id, chunk_keys)
+            except ActorNotExist:
+                self._local_meta_store_ref = None
+                local_results = itertools.repeat(None)
         else:
             local_results = itertools.repeat(None)
 
@@ -508,7 +520,7 @@ class ChunkMetaClient(object):
                 meta_dict[chunk_key] = local_result
             else:
                 k = (session_id, chunk_key)
-                query_dict[self.get_scheduler(k)].add(chunk_key)
+                query_dict[await self.get_scheduler(k)].add(chunk_key)
 
         query_dict = dict((k, list(v)) for k, v in query_dict.items())
 
@@ -521,7 +533,7 @@ class ChunkMetaClient(object):
             )
         # accept results and merge
         for keys, future in zip(query_dict.values(), futures):
-            results = future.result()
+            results = await future
             meta_dict.update(zip(keys, results))
 
         metas = []
@@ -532,7 +544,7 @@ class ChunkMetaClient(object):
             metas.append(meta)
         return metas
 
-    def batch_set_chunk_meta(self, session_id, keys, metas, _tell=False, _wait=True):
+    async def batch_set_chunk_meta(self, session_id, keys, metas, _tell=False, _wait=True):
         """
         Set chunk meta in batch
 
@@ -545,7 +557,7 @@ class ChunkMetaClient(object):
         # collect dispatch destinations for non-local metadata
         for chunk_key, meta in zip(keys, metas):
             k = (session_id, chunk_key)
-            list_tuple = update_dict[self.get_scheduler(k)]
+            list_tuple = update_dict[await self.get_scheduler(k)]
             list_tuple[0].append(chunk_key)
             list_tuple[1].append(meta)
 
@@ -556,18 +568,19 @@ class ChunkMetaClient(object):
                 self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr)
                     .batch_set_chunk_meta(session_id, k, m, _tell=_tell, _wait=False)
             )
-        if _wait:
-            [f.result() for f in futures]
-        else:
-            return CombinedFutureWaiter(futures)
+        if futures:
+            if _wait:
+                await asyncio.wait(futures)
+            else:
+                return asyncio.ensure_future(asyncio.wait(futures))
 
-    def delete_meta(self, session_id, chunk_key, _tell=False, _wait=True):
+    async def delete_meta(self, session_id, chunk_key, _tell=False, _wait=True):
         query_key = (session_id, chunk_key)
-        addr = self.get_scheduler(query_key)
-        self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
+        addr = await self.get_scheduler(query_key)
+        await self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
             .delete_meta(session_id, chunk_key, _tell=_tell, _wait=_wait)
 
-    def batch_delete_meta(self, session_id, chunk_keys, _tell=False, _wait=True):
+    async def batch_delete_meta(self, session_id, chunk_keys, _tell=False, _wait=True):
         """
         Delete chunk metadata in batch
         :param session_id: session id
@@ -578,7 +591,7 @@ class ChunkMetaClient(object):
         query_dict = defaultdict(set)
         for chunk_key in chunk_keys:
             k = (session_id, chunk_key)
-            query_dict[self.get_scheduler(k)].add(chunk_key)
+            query_dict[await self.get_scheduler(k)].add(chunk_key)
         # dispatch delete requests and wait
         futures = []
         for addr, keys in query_dict.items():
@@ -586,5 +599,5 @@ class ChunkMetaClient(object):
                 self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr)
                     .batch_delete_meta(session_id, list(keys), _wait=False, _tell=_tell)
             )
-        if _wait:
-            [f.result() for f in futures]
+        if futures and _wait:
+            await asyncio.wait(futures)

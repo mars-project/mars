@@ -34,7 +34,7 @@ from mars.context import LocalContext
 from mars.executor import Executor, GraphExecution
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
-from mars.utils import lazy_import
+from mars.utils import lazy_import, to_async_context_manager
 
 try:
     import pytest
@@ -314,13 +314,18 @@ class EtcdProcessHelper(object):
 
 
 def patch_method(method, *args, **kwargs):
+    async_ = kwargs.pop('async_', False)
     if hasattr(method, '__qualname__'):
-        return mock.patch(method.__module__ + '.' + method.__qualname__, *args, **kwargs)
+        p = mock.patch(method.__module__ + '.' + method.__qualname__, *args, **kwargs)
     elif hasattr(method, 'im_class'):
-        return mock.patch('.'.join([method.im_class.__module__, method.im_class.__name__, method.__name__]),
+        p = mock.patch('.'.join([method.im_class.__module__, method.im_class.__name__, method.__name__]),
                           *args, **kwargs)
     else:
-        return mock.patch(method.__module__ + '.' + method.__name__, *args, **kwargs)
+        p = mock.patch(method.__module__ + '.' + method.__name__, *args, **kwargs)
+    if async_:
+        return to_async_context_manager(p)
+    else:
+        return p
 
 
 def require_cupy(func):
@@ -340,22 +345,24 @@ def require_cudf(func):
 def aio_case(obj):
     @functools.wraps(obj)
     def func_wrapper(*args, **kwargs):
-        asyncio.run(obj(*args, **kwargs))
+        ret = obj(*args, **kwargs)
+        if asyncio.iscoroutine(ret):
+            asyncio.run(ret)
 
     if isinstance(obj, type):
         for name, val in obj.__dict__.items():
-            if name.startswith('test') and asyncio.iscoroutinefunction(val):
+            if name.startswith('test'):
                 setattr(obj, name, aio_case(val))
         return obj
     return func_wrapper
 
 
-async def create_actor_pool(*args, **kwargs):
+def create_actor_pool(*args, **kwargs):
     from mars.actors import create_actor_pool as new_actor_pool
 
     address = kwargs.pop('address', None)
     if not address:
-        return await new_actor_pool(*args, **kwargs)
+        return new_actor_pool(*args, **kwargs)
 
     if isinstance(address, str):
         host = address.rsplit(':')[0]
@@ -368,7 +375,7 @@ async def create_actor_pool(*args, **kwargs):
     for _ in range(5):
         try:
             address = '{0}:{1}'.format(host, next(it))
-            return await new_actor_pool(address, *args, **kwargs)
+            return new_actor_pool(address, *args, **kwargs)
         except (OSError, socket.error):
             continue
     raise OSError("Failed to create actor pool")

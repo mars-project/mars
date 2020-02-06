@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import math
 import os
@@ -102,7 +103,7 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
         Handle process down event
         :param halt_refs: actor refs in halt processes
         """
-        handled_refs = await self.reject_promise_refs(halt_refs, *build_exc_info(WorkerProcessStopped))
+        handled_refs = self.reject_promise_refs(halt_refs, *build_exc_info(WorkerProcessStopped))
         logger.debug('Process halt detected. Affected promises %r rejected.',
                      [ref.uid for ref in handled_refs])
 
@@ -110,9 +111,9 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
         from .daemon import WorkerDaemonActor
 
         daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
-        if self.ctx.has_actor(daemon_ref):
-            daemon_ref.register_actor_callback(self.ref(), self.handle_actors_down.__name__,
-                                               _tell=True)
+        if await self.ctx.has_actor(daemon_ref):
+            daemon_ref.register_actor_callback(
+                self.ref(), self.handle_actors_down.__name__, _tell=True, _wait=False)
 
 
 class ExpMeanHolder(object):

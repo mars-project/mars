@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import logging
 import os
@@ -35,14 +36,14 @@ class ResourceHeartbeatActor(SchedulerActor):
         super().__init__()
         self._resource_ref = resource_ref
 
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
         self._resource_ref = self.ctx.actor_ref(self._resource_ref)
-        self.ref().do_heartbeat(_tell=True)
+        await self.ref().do_heartbeat(_tell=True)
 
-    def do_heartbeat(self):
-        self._resource_ref.heartbeat(_tell=True)
-        self.ref().do_heartbeat(_tell=True, _delay=1)
+    async def do_heartbeat(self):
+        await self._resource_ref.heartbeat(_tell=True)
+        await self.ref().do_heartbeat(_tell=True, _delay=1)
 
 
 class ResourceActor(SchedulerActor):
@@ -61,14 +62,14 @@ class ResourceActor(SchedulerActor):
         self._kv_store_ref = None
         self._heartbeat_ref = None
 
-    def post_create(self):
+    async def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
-        super().post_create()
-        self.set_cluster_info_ref()
+        await super().post_create()
+        await self.set_cluster_info_ref()
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
-        if not self.ctx.has_actor(self._kv_store_ref):
+        if not await self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
         try:
@@ -78,21 +79,21 @@ class ResourceActor(SchedulerActor):
                 ResourceHeartbeatActor.default_uid(), self.uid, delta=1)
         except AttributeError:
             heartbeat_uid = ResourceHeartbeatActor.default_uid()
-        self._heartbeat_ref = self.ctx.create_actor(
+        self._heartbeat_ref = await self.ctx.create_actor(
             ResourceHeartbeatActor, self.ref(), uid=heartbeat_uid)
 
-        self.ref().detect_dead_workers(_tell=True)
+        asyncio.ensure_future(self.ref().detect_dead_workers(_tell=True))
 
-    def pre_destroy(self):
-        self._heartbeat_ref.destroy()
-        super().pre_destroy()
+    async def pre_destroy(self):
+        await self._heartbeat_ref.destroy()
+        await super().pre_destroy()
 
     def heartbeat(self):
         t = time.time()
         self._last_heartbeat_interval = t - self._last_heartbeat_time
         self._last_heartbeat_time = t
 
-    def detect_dead_workers(self):
+    async def detect_dead_workers(self):
         """
         Remove worker when it does not update its status for a long time
         """
@@ -110,10 +111,10 @@ class ResourceActor(SchedulerActor):
             except (KeyError, TypeError, ValueError):
                 pass
 
-        self.detach_dead_workers(dead_workers)
-        self.ref().detect_dead_workers(_tell=True, _delay=1)
+        await self.detach_dead_workers(dead_workers)
+        asyncio.ensure_future(self.ref().detect_dead_workers(_tell=True, _delay=1))
 
-    def detach_dead_workers(self, workers):
+    async def detach_dead_workers(self, workers):
         from ..worker.execution import ExecutionActor
 
         workers = [w for w in workers if w in self._meta_cache and
@@ -127,8 +128,8 @@ class ResourceActor(SchedulerActor):
             del self._meta_cache[w]
             self._worker_blacklist.add(w)
 
-        self._broadcast_sessions(SessionActor.handle_worker_change, [], workers)
-        self._broadcast_workers(ExecutionActor.handle_worker_change, [], workers)
+        await self._broadcast_sessions(SessionActor.handle_worker_change, [], workers)
+        await self._broadcast_workers(ExecutionActor.handle_worker_change, [], workers)
 
     def get_worker_count(self):
         return len(self._meta_cache)
@@ -152,7 +153,7 @@ class ResourceActor(SchedulerActor):
         else:
             return [available_workers[i] for i in idx]
 
-    def set_worker_meta(self, worker, worker_meta):
+    async def set_worker_meta(self, worker, worker_meta):
         from ..worker.execution import ExecutionActor
 
         if worker in self._worker_blacklist:
@@ -165,15 +166,15 @@ class ResourceActor(SchedulerActor):
 
         self._meta_cache[worker] = worker_meta
         if self._kv_store_ref is not None:
-            self._kv_store_ref.write('/workers/meta/%s' % worker, json.dumps(worker_meta),
-                                     _tell=True, _wait=False)
-            self._kv_store_ref.write('/workers/meta_timestamp', str(int(time.time())),
-                                     _tell=True, _wait=False)
+            asyncio.ensure_future(self._kv_store_ref.write(
+                '/workers/meta/%s' % worker, json.dumps(worker_meta), _tell=True))
+            asyncio.ensure_future(self._kv_store_ref.write(
+                '/workers/meta_timestamp', str(int(time.time())), _tell=True))
         if is_new:
-            self._broadcast_sessions(SessionActor.handle_worker_change, [worker], [])
-            self._broadcast_workers(ExecutionActor.handle_worker_change, [worker], [])
+            await self._broadcast_sessions(SessionActor.handle_worker_change, [worker], [])
+            await self._broadcast_workers(ExecutionActor.handle_worker_change, [worker], [])
 
-    def _broadcast_sessions(self, handler, *args, **kwargs):
+    async def _broadcast_sessions(self, handler, *args, **kwargs):
         if not options.scheduler.enable_failover:  # pragma: no cover
             return
 
@@ -181,13 +182,13 @@ class ResourceActor(SchedulerActor):
             handler = handler.__name__
 
         futures = []
-        kwargs.update(dict(_tell=True, _wait=False))
+        kwargs.update(dict(_tell=True))
         for ep in self.get_schedulers():
             ref = self.ctx.actor_ref(SessionManagerActor.default_uid(), address=ep)
-            futures.append(ref.broadcast_sessions(handler, *args, **kwargs))
-        [f.result() for f in futures]
+            futures.append(asyncio.ensure_future(ref.broadcast_sessions(handler, *args, **kwargs)))
+        await asyncio.wait(futures)
 
-    def _broadcast_workers(self, handler, *args, **kwargs):
+    async def _broadcast_workers(self, handler, *args, **kwargs):
         from ..worker.execution import ExecutionActor
 
         if not options.scheduler.enable_failover:  # pragma: no cover
@@ -196,10 +197,10 @@ class ResourceActor(SchedulerActor):
         if hasattr(handler, '__name__'):
             handler = handler.__name__
 
-        kwargs.update(dict(_tell=True, _wait=False))
+        kwargs.update(dict(_tell=True))
         for w in self._meta_cache.keys():
             ref = self.ctx.actor_ref(ExecutionActor.default_uid(), address=w)
-            getattr(ref, handler)(*args, **kwargs)
+            asyncio.ensure_future(getattr(ref, handler)(*args, **kwargs))
 
     def allocate_resource(self, session_id, op_key, endpoint, alloc_dict):
         """

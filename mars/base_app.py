@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import asyncio
 import logging
 import os
 import sys
@@ -75,9 +76,9 @@ class BaseApplication(object):
             except:  # noqa: E722
                 setattr(conf_obj, conf_parts[-1], val)
 
-        return self._main(new_argv)
+        return asyncio.run(self._main(new_argv))
 
-    def _main(self, argv=None):
+    async def _main(self, argv=None):
         parser = argparse.ArgumentParser(description=self.service_description)
         parser.add_argument('-a', '--advertise', help='advertise ip exposed to other services')
         parser.add_argument('-e', '--endpoint', help='endpoint of the service')
@@ -133,13 +134,13 @@ class BaseApplication(object):
             parser.error('Failed to start application: %s' % ex)
 
         if getattr(self, 'require_pool', True):
-            self.endpoint, self.pool = self._try_create_pool(
+            self.endpoint, self.pool = await self._try_create_pool(
                 endpoint=endpoint, host=host, port=port, advertise_address=args.advertise)
             self.service_logger.info('%s started at %s.', self.service_description, self.endpoint)
 
         self.create_scheduler_discoverer()
         try:
-            self.main_loop()
+            await self.main_loop()
         except KeyboardInterrupt:
             pass
 
@@ -181,10 +182,10 @@ class BaseApplication(object):
             schedulers = to_str(self.args.schedulers).split(',')
             self.scheduler_discoverer = StaticSchedulerDiscoverer(schedulers)
 
-    def _try_create_pool(self, endpoint=None, host=None, port=None, advertise_address=None):
+    async def _try_create_pool(self, endpoint=None, host=None, port=None, advertise_address=None):
         pool = None
         if endpoint:
-            pool = self.create_pool(address=endpoint, advertise_address=advertise_address)
+            pool = await self.create_pool(address=endpoint, advertise_address=advertise_address)
         else:
             use_port = None
             retrial = 5
@@ -192,7 +193,7 @@ class BaseApplication(object):
                 use_port = port or get_next_port()
                 try:
                     endpoint = '{0}:{1}'.format(host, use_port)
-                    pool = self.create_pool(address=endpoint, advertise_address=advertise_address)
+                    pool = await self.create_pool(address=endpoint, advertise_address=advertise_address)
                     break
                 except:  # noqa: E722
                     retrial -= 1
@@ -205,32 +206,38 @@ class BaseApplication(object):
                         raise
         return endpoint, pool
 
-    def create_pool(self, *args, **kwargs):
-        kwargs.update(dict(n_process=self.n_process, backend='gevent'))
+    async def create_pool(self, *args, **kwargs):
+        kwargs.update(dict(n_process=self.n_process))
         return create_actor_pool(*args, **kwargs)
 
-    def main_loop(self):
+    async def main_loop(self):
+        import psutil
         try:
-            with self.pool:
+            async with self.pool:
                 try:
-                    self.start()
+                    await self.start()
                     self._running = True
                     while True:
-                        self.pool.join(1)
+                        await self.pool.join(1)
                         stopped = []
                         for idx, proc in enumerate(self.pool.processes):
-                            if not proc.is_alive():
+                            try:
+                                p = psutil.Process(proc.pid)
+                                if p.status() == psutil.STATUS_ZOMBIE:
+                                    stopped.append(idx)
+                            except psutil.NoSuchProcess:
                                 stopped.append(idx)
+                        print([p.pid for p in self.pool.processes], stopped)
                         if stopped:
-                            self.handle_process_down(stopped)
+                            await self.handle_process_down(stopped)
                 except KeyboardInterrupt:
                     pass
                 finally:
-                    self.stop()
+                    await self.stop()
         finally:
             self._running = False
 
-    def handle_process_down(self, proc_indices):
+    async def handle_process_down(self, proc_indices):
         """
         Handle process down event, the default action is to quit
         the whole application. Applications can inherit this method
@@ -250,8 +257,8 @@ class BaseApplication(object):
     def config_args(self, parser):
         raise NotImplementedError
 
-    def start(self):
+    async def start(self):
         raise NotImplementedError
 
-    def stop(self):
+    async def stop(self):
         raise NotImplementedError

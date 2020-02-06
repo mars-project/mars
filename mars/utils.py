@@ -800,6 +800,17 @@ def ignore_warning(func):
     return inner
 
 
+def to_async_context_manager(sync_context_manager):
+    class _AsyncContextManager:
+        async def __aenter__(self):
+            return sync_context_manager.__enter__()
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            return sync_context_manager.__exit__(exc_type, exc_val, exc_tb)
+
+    return _AsyncContextManager()
+
+
 def flatten(nested_iterable):
     """
     Flatten a nested iterable into a list.

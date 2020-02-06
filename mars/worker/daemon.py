@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from collections import defaultdict
 
 import psutil
 
 from .utils import WorkerActor
 from ..utils import kill_process_tree
+
+logger = logging.getLogger(__name__)
 
 
 class WorkerDaemonActor(WorkerActor):
@@ -34,11 +37,11 @@ class WorkerDaemonActor(WorkerActor):
         self._actor_callbacks = []
         self._proc_callbacks = []
 
-    def create_actor(self, *args, **kwargs):
+    async def create_actor(self, *args, **kwargs):
         """
         Create an actor and record its creation args for recovery
         """
-        ref = self.ctx.create_actor(*args, **kwargs)
+        ref = await self.ctx.create_actor(*args, **kwargs)
         proc_idx = self.ctx.distributor.distribute(ref.uid)
         ref_key = (ref.uid, ref.address)
         self._proc_actors[proc_idx][ref_key] = (ref_key, args, kwargs, False)
@@ -84,6 +87,7 @@ class WorkerDaemonActor(WorkerActor):
         try:
             pid = self._proc_pids[proc_idx]
             self._killed_pids.add(pid)
+            logger.warning('Process %d terminated!', pid)
             kill_process_tree(pid)
         except (KeyError, OSError):
             pass
@@ -98,7 +102,7 @@ class WorkerDaemonActor(WorkerActor):
             return False
         return psutil.pid_exists(pid)
 
-    def handle_process_down(self, proc_indices):
+    async def handle_process_down(self, proc_indices):
         """
         When process down is detected,
         :param proc_indices: indices of processes in Mars Worker
@@ -107,7 +111,7 @@ class WorkerDaemonActor(WorkerActor):
         for cb in self._proc_callbacks:
             uid, addr, func = cb
             ref = self.ctx.actor_ref(uid, address=addr)
-            getattr(ref, func)(proc_indices, _tell=True)
+            await getattr(ref, func)(proc_indices, _tell=True)
 
         # recreate actors given previous records
         refs = set()
@@ -116,7 +120,7 @@ class WorkerDaemonActor(WorkerActor):
                 ref_key, args, kw, is_child = actor_args
                 refs.add(ref_key)
                 if not is_child:
-                    self.ctx.create_actor(*args, **kw)
+                    await self.ctx.create_actor(*args, **kw)
 
         # invoke registered callbacks for actors
         for cb in self._actor_callbacks:
@@ -124,4 +128,4 @@ class WorkerDaemonActor(WorkerActor):
             ref = self.ctx.actor_ref(uid, address=addr)
             clean_refs = [self.ctx.actor_ref(u, address=None) for u, _ in refs] \
                 + [self.ctx.actor_ref(u, address=a) for u, a in refs]
-            getattr(ref, func)(clean_refs, _tell=True)
+            await getattr(ref, func)(clean_refs, _tell=True)

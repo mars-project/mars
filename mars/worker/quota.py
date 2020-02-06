@@ -58,16 +58,16 @@ class QuotaActor(WorkerActor):
         self._hold_sizes = dict()
         self._total_hold = 0
 
-    def post_create(self):
+    async def post_create(self):
         from .status import StatusActor
 
-        super().post_create()
+        await super().post_create()
 
         status_ref = self.ctx.actor_ref(StatusActor.default_uid())
-        if self.ctx.has_actor(status_ref):
+        if await self.ctx.has_actor(status_ref):
             self._status_ref = status_ref
 
-    def _has_space(self, delta):
+    async def _has_space(self, delta):
         return self._allocated_size + delta <= self._total_size
 
     def _log_allocate(self, msg, *args, **kwargs):
@@ -76,7 +76,7 @@ class QuotaActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def request_batch_quota(self, batch, process_quota=False, callback=None):
+    async def request_batch_quota(self, batch, process_quota=False, callback=None):
         """
         Request for resources in a batch
         :param batch: the request dict in form {request_key: request_size, ...}
@@ -98,21 +98,21 @@ class QuotaActor(WorkerActor):
         delta = sum(v - self._allocations.get(k, 0) for k, v in batch.items())
 
         # if all requested and allocation can still be applied, apply directly
-        if all_allocated and self._has_space(delta):
+        if all_allocated and await self._has_space(delta):
             self._log_allocate('Quota request %r already allocated.', batch)
             if process_quota:
                 self.process_quotas(list(batch.keys()))
             if callback is not None:
-                self.tell_promise(callback)
+                await self.tell_promise(callback)
             return True
 
         # make allocated requests the highest priority to be allocated
-        return self._request_quota(keys, values, delta, callback, multiple=True,
-                                   make_first=all_allocated, process_quota=process_quota)
+        return await self._request_quota(keys, values, delta, callback, multiple=True,
+                                         make_first=all_allocated, process_quota=process_quota)
 
     @promise.reject_on_exception
     @log_unhandled
-    def request_quota(self, key, quota_size, process_quota=False, callback=None):
+    async def request_quota(self, key, quota_size, process_quota=False, callback=None):
         """
         Request for resource
         :param key: request key
@@ -128,21 +128,21 @@ class QuotaActor(WorkerActor):
         if key in self._allocations:
             old_size = self._allocations[key]
             # if all requested and allocation can still be applied, apply directly
-            if old_size >= quota_size and self._has_space(quota_size - old_size):
+            if old_size >= quota_size and await self._has_space(quota_size - old_size):
                 if process_quota:
                     self.process_quotas([key])
                 if callback is not None:
-                    self.tell_promise(callback)
+                    await self.tell_promise(callback)
                 return True
             else:
                 # make allocated requests the highest priority to be allocated
                 make_first = True
         else:
             old_size = 0
-        return self._request_quota(key, quota_size, quota_size - old_size, callback,
-                                   make_first=make_first, process_quota=process_quota)
+        return await self._request_quota(key, quota_size, quota_size - old_size, callback,
+                                         make_first=make_first, process_quota=process_quota)
 
-    def _request_quota(self, keys, quota_sizes, delta, callback, multiple=False,
+    async def _request_quota(self, keys, quota_sizes, delta, callback, multiple=False,
                        make_first=False, process_quota=False):
         """
         Actually process requests
@@ -165,7 +165,7 @@ class QuotaActor(WorkerActor):
                 self._requests.move_to_end(keys, False)
             return False
 
-        if self._has_space(delta):
+        if await self._has_space(delta):
             if not self._requests:
                 # if no previous requests, we can apply directly
                 allocated = True
@@ -173,10 +173,10 @@ class QuotaActor(WorkerActor):
                 self._log_allocate('Quota request met for key %r on %s.', keys, self.uid)
 
                 alter_allocation = self.alter_allocations if multiple else self.alter_allocation
-                alter_allocation(keys, quota_sizes, allocate=True, process_quota=process_quota)
+                await alter_allocation(keys, quota_sizes, allocate=True, process_quota=process_quota)
 
                 if callback:
-                    self.tell_promise(callback)
+                    await self.tell_promise(callback)
             else:
                 # otherwise, previous requests are satisfied first
                 allocated = False
@@ -185,7 +185,7 @@ class QuotaActor(WorkerActor):
                 quota_request = QuotaRequest(quota_sizes, delta, time.time(), multiple, process_quota, [])
                 self._enqueue_request(keys, quota_request, callback=callback, make_first=make_first)
 
-            self._process_requests()
+            await self._process_requests()
             return allocated
         else:
             # current free space cannot satisfy the request, the request is queued
@@ -208,7 +208,7 @@ class QuotaActor(WorkerActor):
             self._requests.move_to_end(keys, False)
 
     @log_unhandled
-    def cancel_requests(self, keys, reject_exc=None):
+    async def cancel_requests(self, keys, reject_exc=None):
         """
         Cancel a request if it is not assigned
         :param keys: request keys
@@ -222,12 +222,12 @@ class QuotaActor(WorkerActor):
             try:
                 if reject_exc:
                     for cb in self._requests[k].callbacks:
-                        self.tell_promise(cb, *reject_exc, _accept=False)
+                        await self.tell_promise(cb, *reject_exc, _accept=False)
                 del self._requests[k]
                 logger.debug('Quota request %s cancelled', k)
             except KeyError:
                 pass
-        self._process_requests()
+        await self._process_requests()
 
     @log_unhandled
     def process_quotas(self, keys):
@@ -260,7 +260,7 @@ class QuotaActor(WorkerActor):
             self._total_proc -= self._proc_sizes.pop(key, 0)
 
     @log_unhandled
-    def release_quotas(self, keys):
+    async def release_quotas(self, keys):
         """
         Release allocated quota in batch
         :param keys: request keys
@@ -279,7 +279,7 @@ class QuotaActor(WorkerActor):
 
         self._allocated_size -= total_alloc_size
         if total_alloc_size:
-            self._process_requests()
+            await self._process_requests()
             self._log_allocate('Quota key %s released on %s.', keys, self.uid)
 
     def dump_data(self):
@@ -289,8 +289,8 @@ class QuotaActor(WorkerActor):
         # get total allocated size, for debug purpose
         return self._allocated_size
 
-    def alter_allocations(self, keys, quota_sizes=None, handle_shrink=True, new_keys=None,
-                          allocate=False, process_quota=False):
+    async def alter_allocations(self, keys, quota_sizes=None, handle_shrink=True, new_keys=None,
+                                allocate=False, process_quota=False):
         """
         Alter multiple requests
         :param keys: keys to update
@@ -305,15 +305,15 @@ class QuotaActor(WorkerActor):
         new_keys = new_keys or itertools.repeat(None)
         shrink = False
         for k, s, nk in zip(keys, quota_sizes, new_keys):
-            cur_shrink = self.alter_allocation(
+            cur_shrink = await self.alter_allocation(
                 k, s, handle_shrink=False, new_key=nk, allocate=allocate, process_quota=process_quota)
             shrink = shrink or cur_shrink
         if shrink and handle_shrink:
-            self._process_requests()
+            await self._process_requests()
 
     @log_unhandled
-    def alter_allocation(self, key, quota_size=None, handle_shrink=True, new_key=None,
-                         allocate=False, process_quota=False):
+    async def alter_allocation(self, key, quota_size=None, handle_shrink=True, new_key=None,
+                               allocate=False, process_quota=False):
         """
         Alter a single request by changing its name or request size
         :param key: request key
@@ -355,28 +355,27 @@ class QuotaActor(WorkerActor):
 
         if quota_size is not None and quota_size < old_size:
             if handle_shrink:
-                self._process_requests()
+                await self._process_requests()
             return True
         return False
 
     @log_unhandled
-    def _process_requests(self):
+    async def _process_requests(self):
         """
         Process quota requests in the queue
         """
         removed = []
         for k, req in self._requests.items():
             try:
-                if self._has_space(req.delta):
+                if await self._has_space(req.delta):
                     alter_allocation = self.alter_allocations if req.multiple else self.alter_allocation
-                    alter_allocation(k, req.req_size, handle_shrink=False, allocate=True,
-                                     process_quota=req.process_quota)
+                    await alter_allocation(k, req.req_size, handle_shrink=False, allocate=True,
+                                           process_quota=req.process_quota)
                     for cb in req.callbacks:
-                        self.tell_promise(cb)
+                        await self.tell_promise(cb)
                     if self._status_ref:
-                        self._status_ref.update_mean_stats(
-                            'wait_time.' + self.uid.replace('Actor', ''), time.time() - req.req_time,
-                            _tell=True, _wait=False)
+                        self._status_ref.update_mean_stats('wait_time.' + self.uid.replace('Actor', ''),
+                                                           time.time() - req.req_time, _tell=True, _wait=False)
                     removed.append(k)
                 else:
                     # Quota left cannot satisfy the next request, we quit
@@ -385,7 +384,7 @@ class QuotaActor(WorkerActor):
                 removed.append(k)
                 # just in case the quota is allocated
                 for cb in req.callbacks:
-                    self.tell_promise(cb, *sys.exc_info(), _accept=False, _wait=False)
+                    await self.tell_promise(cb, *sys.exc_info(), _accept=False, _wait=False)
         for k in removed:
             self._requests.pop(k, None)
 
@@ -402,27 +401,27 @@ class MemQuotaActor(QuotaActor):
 
         self._dispatch_ref = None
 
-    def post_create(self):
+    async def post_create(self):
         from .dispatcher import DispatchActor
 
-        super().post_create()
-        self.update_mem_stats()
+        await super().post_create()
+        await self.update_mem_stats()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
 
         self._update_status(allocated=self._allocated_size, hold=self._total_hold, total=self._total_size)
 
-    def update_mem_stats(self):
+    async def update_mem_stats(self):
         """
         Refresh memory usage
         """
         cur_mem_available = resource.virtual_memory().available
         if cur_mem_available > self._last_memory_available:
             # memory usage reduced: try reallocate existing requests
-            self._process_requests()
+            await self._process_requests()
         self._last_memory_available = cur_mem_available
-        self.ref().update_mem_stats(_tell=True, _delay=self._refresh_time)
+        await self.ref().update_mem_stats(_tell=True, _delay=self._refresh_time)
 
-    def _has_space(self, delta):
+    async def _has_space(self, delta):
         mem_stats = resource.virtual_memory()
         # calc available physical memory
         available_size = mem_stats.available - max(0, mem_stats.total - self._overall_size) \
@@ -430,10 +429,10 @@ class MemQuotaActor(QuotaActor):
         if max(delta, 0) >= available_size:
             logger.warning('%s met hard memory limitation: request %d, available %d, hard limit %d',
                            self.uid, delta, available_size, self._overall_size)
-            for slot in self._dispatch_ref.get_slots('process_helper'):
+            for slot in await self._dispatch_ref.get_slots('process_helper'):
                 self.ctx.actor_ref(slot).free_mkl_buffers(_tell=True, _wait=False)
             return False
-        return super()._has_space(delta)
+        return await super()._has_space(delta)
 
     def _log_allocate(self, msg, *args, **kwargs):
         mem_stats = resource.virtual_memory()
@@ -453,9 +452,9 @@ class MemQuotaActor(QuotaActor):
         if self._status_ref:
             self._status_ref.set_mem_quota_allocations(kwargs, _tell=True, _wait=False)
 
-    def alter_allocation(self, key, quota_size=None, handle_shrink=True, new_key=None,
-                         allocate=False, process_quota=False):
-        ret = super().alter_allocation(
+    async def alter_allocation(self, key, quota_size=None, handle_shrink=True, new_key=None,
+                               allocate=False, process_quota=False):
+        ret = await super().alter_allocation(
             key, quota_size, handle_shrink=handle_shrink, new_key=new_key,
             allocate=allocate, process_quota=process_quota)
         if quota_size:

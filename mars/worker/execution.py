@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import logging
 import random
@@ -130,30 +131,30 @@ class ExecutionActor(WorkerActor):
 
         self._peer_blacklist = BlacklistSet(options.worker.peer_blacklist_time)
 
-    def post_create(self):
+    async def post_create(self):
         from .daemon import WorkerDaemonActor
         from .dispatcher import DispatchActor
         from .quota import MemQuotaActor
         from .status import StatusActor
 
-        super().post_create()
-        self.set_cluster_info_ref()
+        await super().post_create()
+        await self.set_cluster_info_ref()
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
         self._daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
-        if not self.ctx.has_actor(self._daemon_ref):
+        if not await self.ctx.has_actor(self._daemon_ref):
             self._daemon_ref = None
         else:
-            self.register_actors_down_handler()
+            await self.register_actors_down_handler()
 
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
-        if not self.ctx.has_actor(self._status_ref):
+        if not await self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
         self._receiver_manager_ref = self.ctx.actor_ref(ReceiverManagerActor.default_uid())
-        if not self.ctx.has_actor(self._receiver_manager_ref):
+        if not await self.ctx.has_actor(self._receiver_manager_ref):
             self._receiver_manager_ref = None
         else:
             self._receiver_manager_ref = self.promise_ref(self._receiver_manager_ref)
@@ -174,16 +175,16 @@ class ExecutionActor(WorkerActor):
             cls._last_dump_time = time.time()
             if self._graph_records:
                 self._dump_execution_states()
-        self.ref().periodical_dump(_tell=True, _delay=10)
+        asyncio.ensure_future(self.ref().periodical_dump(_tell=True, _delay=10))
 
-    def _pin_shared_data_keys(self, session_id, graph_key, data_keys):
+    async def _pin_shared_data_keys(self, session_id, graph_key, data_keys):
         if not data_keys:
             return []
         try:
             graph_record = self._graph_records[(session_id, graph_key)]
         except KeyError:
             return []
-        pinned_keys = self.storage_client.pin_data_keys(
+        pinned_keys = await self.storage_client.pin_data_keys(
             session_id, data_keys, graph_key, [graph_record.preferred_data_device])
         graph_record.pinned_keys.update(pinned_keys)
         return pinned_keys
@@ -205,7 +206,7 @@ class ExecutionActor(WorkerActor):
                 target_sizes[key] = (r[0], max(r[1], r[1] * executor.mock_max_memory // total_mem))
         return target_sizes
 
-    def _prepare_quota_request(self, session_id, graph_key):
+    async def _prepare_quota_request(self, session_id, graph_key):
         """
         Calculate quota request for an execution graph
         :param session_id: session id
@@ -225,7 +226,7 @@ class ExecutionActor(WorkerActor):
         input_chunk_keys = dict()
 
         if self._status_ref:
-            self.estimate_graph_finish_time(session_id, graph_key)
+            await self.estimate_graph_finish_time(session_id, graph_key)
 
         if graph_record.preferred_data_device == DataStorageDevice.SHARED_MEMORY or \
                 graph_record.preferred_data_device == DataStorageDevice.VINEYARD:  # pragma: no cover
@@ -261,7 +262,7 @@ class ExecutionActor(WorkerActor):
 
         keys_to_pin = list(input_chunk_keys.keys())
         graph_record.pinned_keys = set()
-        self._pin_shared_data_keys(session_id, graph_key, keys_to_pin)
+        await self._pin_shared_data_keys(session_id, graph_key, keys_to_pin)
 
         load_chunk_sizes = dict((k, v) for k, v in input_chunk_keys.items()
                                 if k not in graph_record.pinned_keys)
@@ -269,13 +270,14 @@ class ExecutionActor(WorkerActor):
                                for k, v in load_chunk_sizes.items()
                                if k not in graph_record.shared_input_chunks)
         if alloc_cache_batch:
-            storage_client.spill_size(sum(alloc_cache_batch.values()), [graph_record.preferred_data_device])
+            await storage_client.spill_size(
+                sum(alloc_cache_batch.values()), [graph_record.preferred_data_device])
 
         graph_record.mem_request = alloc_mem_batch or dict()
         return alloc_mem_batch
 
     @log_unhandled
-    def _fetch_remote_data(self, session_id, graph_key, chunk_key, remote_addr, *_, **kwargs):
+    async def _fetch_remote_data(self, session_id, graph_key, chunk_key, remote_addr, *_, **kwargs):
         """
         Asynchronously send data receiving command to a remote address
         :param session_id: session id
@@ -297,28 +299,29 @@ class ExecutionActor(WorkerActor):
         graph_record = self._graph_records[(session_id, graph_key)]
 
         @log_unhandled
-        def _finish_fetch(*_):
-            locations = set(l[1] for l in storage_client.get_data_locations(session_id, [chunk_key])[0])
+        async def _finish_fetch(*_):
+            locations = set(l[1] for l in (await storage_client.get_data_locations(session_id, [chunk_key]))[0])
             if DataStorageDevice.PROC_MEMORY not in locations:
-                self._pin_shared_data_keys(session_id, graph_key, [chunk_key])
-                self._mem_quota_ref.release_quotas(
+                await self._pin_shared_data_keys(session_id, graph_key, [chunk_key])
+                await self._mem_quota_ref.release_quotas(
                     [build_quota_key(session_id, chunk_key, owner=graph_key)], _tell=True, _wait=False)
                 if graph_record.preferred_data_device not in locations:
-                    return storage_client.copy_to(session_id, [chunk_key], [graph_record.preferred_data_device])
+                    return await storage_client.copy_to(
+                        session_id, [chunk_key], [graph_record.preferred_data_device])
 
         @log_unhandled
-        def _handle_network_error(*exc):
+        async def _handle_network_error(*exc):
             try:
                 logger.warning('Communicating to %s encountered %s when fetching %s',
                                remote_addr, exc[0].__name__, chunk_key)
 
-                if not storage_client.get_data_locations(session_id, [chunk_key])[0]:
+                if not (await storage_client.get_data_locations(session_id, [chunk_key]))[0]:
                     logger.debug('Deleting chunk %s from worker because of failure of transfer', chunk_key)
-                    storage_client.delete(session_id, [chunk_key])
+                    await storage_client.delete(session_id, [chunk_key])
                 else:
                     # as data already transferred, we can skip the error
                     logger.debug('Chunk %s already transferred', chunk_key)
-                    _finish_fetch()
+                    await _finish_fetch()
                     return
 
                 raise exc[1].with_traceback(exc[2])
@@ -328,12 +331,12 @@ class ExecutionActor(WorkerActor):
                 raise DependencyMissing((session_id, chunk_key))
 
         @log_unhandled
-        def _fetch_step(sender_uid):
+        async def _fetch_step(sender_uid):
             if remote_addr in self._peer_blacklist:
                 raise DependencyMissing((session_id, chunk_key))
 
             if graph_record.stop_requested:
-                remote_disp_ref.register_free_slot(sender_uid, 'sender', _tell=True)
+                await remote_disp_ref.register_free_slot(sender_uid, 'sender', _tell=True)
                 raise ExecutionInterrupted
 
             sender_ref = self.promise_ref(sender_uid, address=remote_addr)
@@ -350,7 +353,7 @@ class ExecutionActor(WorkerActor):
             .then(_fetch_step) \
             .catch(_handle_network_error)
 
-    def estimate_graph_finish_time(self, session_id, graph_key, calc_fetch=True, base_time=None):
+    async def estimate_graph_finish_time(self, session_id, graph_key, calc_fetch=True, base_time=None):
         """
         Calc predictions for given chunk graph
         """
@@ -365,8 +368,8 @@ class ExecutionActor(WorkerActor):
 
         stats = defaultdict(lambda: dict(count=0))
         if self._status_ref:
-            stats.update(self._status_ref.get_stats(['disk_read_speed', 'disk_write_speed',
-                                                     'net_transfer_speed', op_calc_key]))
+            stats.update(await self._status_ref.get_stats(['disk_read_speed', 'disk_write_speed',
+                                                           'net_transfer_speed', op_calc_key]))
 
         if op_calc_key not in stats:
             return None
@@ -386,7 +389,7 @@ class ExecutionActor(WorkerActor):
                     break
                 data_size = calc_data_size(c)
                 input_size += data_size
-                data_locations = self.storage_client.get_data_locations(session_id, [c.key])[0]
+                data_locations = (await self.storage_client.get_data_locations(session_id, [c.key]))[0]
                 if (0, DataStorageDevice.VINEYARD) in data_locations or \
                         (0, DataStorageDevice.SHARED_MEMORY) in data_locations:  # pragma: no cover
                     continue
@@ -410,7 +413,8 @@ class ExecutionActor(WorkerActor):
             max_est_finish_time=max(rec.est_finish_time for rec in self._graph_records.values()),
         ), _tell=True, _wait=False)
 
-        self.ref().estimate_graph_finish_time(session_id, graph_key, _tell=True, _delay=1)
+        asyncio.ensure_future(self.ref().estimate_graph_finish_time(
+            session_id, graph_key, _tell=True, _delay=1))
 
     def _update_state(self, session_id, key, state):
         logger.debug('Operand %s switched to %s', key, getattr(state, 'name'))
@@ -422,8 +426,8 @@ class ExecutionActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_metas,
-                      calc_device=None, send_addresses=None, callback=None):
+    async def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_metas,
+                            calc_device=None, send_addresses=None, callback=None):
         """
         Submit graph to the worker and control the execution
         :param session_id: session id
@@ -460,7 +464,7 @@ class ExecutionActor(WorkerActor):
 
         # todo change this when handling multiple devices
         if preferred_data_device == DataStorageDevice.CUDA:
-            slot = self._dispatch_ref.get_slots(calc_device)[0]
+            slot = (await self._dispatch_ref.get_slots(calc_device))[0]
             proc_id = self.ctx.distributor.distribute(slot)
             preferred_data_device = (proc_id, preferred_data_device)
 
@@ -488,11 +492,11 @@ class ExecutionActor(WorkerActor):
             pass
 
         @log_unhandled
-        def _handle_success(*_):
-            self._invoke_finish_callbacks(session_id, graph_key)
+        async def _handle_success(*_):
+            await self._invoke_finish_callbacks(session_id, graph_key)
 
         @log_unhandled
-        def _handle_rejection(*exc):
+        async def _handle_rejection(*exc):
             # some error occurred...
             logger.debug('Entering _handle_rejection() for graph %s', graph_key)
             self._dump_execution_states()
@@ -508,20 +512,20 @@ class ExecutionActor(WorkerActor):
                 logger.exception('Unexpected error occurred in executing graph %s', graph_key, exc_info=exc)
 
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, succeeded=False)
-            self._invoke_finish_callbacks(session_id, graph_key)
+            await self._invoke_finish_callbacks(session_id, graph_key)
 
         # collect target data already computed
-        sizes = self.storage_client.get_data_sizes(session_id, graph_record.data_targets)
+        sizes = await self.storage_client.get_data_sizes(session_id, graph_record.data_targets)
         save_sizes = dict((k, v) for k, v in zip(graph_record.data_targets, sizes) if v)
 
         # when all target data are computed, report success directly
         if all(k in save_sizes for k in graph_record.data_targets):
             logger.debug('All predecessors of graph %s already computed, call finish directly.', graph_key)
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
-            _handle_success()
+            await _handle_success()
         else:
             try:
-                quota_request = self._prepare_quota_request(session_id, graph_key)
+                quota_request = await self._prepare_quota_request(session_id, graph_key)
             except PinDataKeyFailed:
                 logger.debug('Failed to pin chunk for graph %s', graph_key)
 
@@ -546,7 +550,7 @@ class ExecutionActor(WorkerActor):
                 .then(_handle_success, _handle_rejection)
 
     @log_unhandled
-    def _prepare_graph_inputs(self, session_id, graph_key):
+    async def _prepare_graph_inputs(self, session_id, graph_key):
         """
         Load input data from spilled storage and other workers
         :param session_id: session id
@@ -581,19 +585,19 @@ class ExecutionActor(WorkerActor):
 
         local_keys = graph_record.pinned_keys & set(input_keys)
         non_local_keys = [k for k in input_keys if k not in local_keys]
-        non_local_locations = storage_client.get_data_locations(session_id, non_local_keys)
+        non_local_locations = await storage_client.get_data_locations(session_id, non_local_keys)
         copy_keys = set(k for k, loc in zip(non_local_keys, non_local_locations) if loc)
         remote_keys = [k for k in non_local_keys if k not in copy_keys]
 
         # handle local keys
-        self._mem_quota_ref.release_quotas(
+        await self._mem_quota_ref.release_quotas(
             [build_quota_key(session_id, k, owner=graph_key) for k in local_keys], _tell=True)
         # handle move keys
         prepare_promises.extend(
-            self._prepare_copy_keys(session_id, graph_key, copy_keys))
+            await self._prepare_copy_keys(session_id, graph_key, copy_keys))
         # handle remote keys
         prepare_promises.extend(
-            self._prepare_remote_keys(session_id, graph_key, remote_keys, input_metas))
+            await self._prepare_remote_keys(session_id, graph_key, remote_keys, input_metas))
 
         logger.debug('Graph key %s: Targets %r, loaded keys %r, copy keys %s, remote keys %r',
                      graph_key, graph_record.chunk_targets, local_keys, copy_keys, remote_keys)
@@ -602,15 +606,15 @@ class ExecutionActor(WorkerActor):
         return p
 
     @log_unhandled
-    def _prepare_copy_keys(self, session_id, graph_key, copy_keys):
+    async def _prepare_copy_keys(self, session_id, graph_key, copy_keys):
         promises = []
         graph_record = self._graph_records[(session_id, graph_key)]
         ensure_shared_keys = [k for k in copy_keys if k in graph_record.shared_input_chunks]
         better_shared_keys = [k for k in copy_keys if k not in graph_record.shared_input_chunks]
 
-        def _release_copied_keys(keys):
-            actual_moved_keys = self._pin_shared_data_keys(session_id, graph_key, keys)
-            self._mem_quota_ref.release_quotas(
+        async def _release_copied_keys(keys):
+            actual_moved_keys = await self._pin_shared_data_keys(session_id, graph_key, keys)
+            await self._mem_quota_ref.release_quotas(
                 [build_quota_key(session_id, k, owner=graph_key) for k in actual_moved_keys],
                 _tell=True)
 
@@ -624,22 +628,22 @@ class ExecutionActor(WorkerActor):
             )
         if better_shared_keys:
             promises.append(
-                self.storage_client.copy_to(
+                (await self.storage_client.copy_to(
                     session_id, better_shared_keys, [graph_record.preferred_data_device],
-                    ensure=False, pin_token=graph_key)
+                    ensure=False, pin_token=graph_key))
                 .then(lambda *_: _release_copied_keys(better_shared_keys),
                       lambda *_: _release_copied_keys(better_shared_keys))
             )
         return promises
 
     @log_unhandled
-    def _prepare_remote_keys(self, session_id, graph_key, remote_keys, input_metas):
+    async def _prepare_remote_keys(self, session_id, graph_key, remote_keys, input_metas):
         promises = []
         graph_record = self._graph_records[(session_id, graph_key)]
 
         filtered_remote_keys = remote_keys
         if self._receiver_manager_ref:
-            transferring_keys = set(self._receiver_manager_ref.filter_receiving_keys(
+            transferring_keys = set(await self._receiver_manager_ref.filter_receiving_keys(
                 session_id, remote_keys))
             if transferring_keys:
                 logger.debug('Data %s already scheduled for fetch, just wait.', transferring_keys)
@@ -669,7 +673,7 @@ class ExecutionActor(WorkerActor):
         return promises
 
     @log_unhandled
-    def _send_calc_request(self, session_id, graph_key, calc_uid):
+    async def _send_calc_request(self, session_id, graph_key, calc_uid):
         """
         Start actual calculation in CpuCalcActor
         :param session_id: session id
@@ -690,7 +694,7 @@ class ExecutionActor(WorkerActor):
             for chunk in graph_record.graph:
                 quota_key = None
                 if isinstance(chunk.op, Fetch):
-                    locations = storage_client.get_data_locations(session_id, [chunk.key])[0]
+                    locations = (await storage_client.get_data_locations(session_id, [chunk.key]))[0]
                     if (0, graph_record.preferred_data_device) not in locations:
                         quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)
                 elif chunk.key in graph_record.chunk_targets:
@@ -702,9 +706,9 @@ class ExecutionActor(WorkerActor):
             self._update_state(session_id, graph_key, ExecutionState.CALCULATING)
             calc_ref = self.promise_ref(calc_uid)
 
-            def _start_calc(*_):
+            async def _start_calc(*_):
                 logger.debug('Submit calculation for graph %s in actor %s', graph_key, calc_uid)
-                if self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(calc_ref):
+                if self._daemon_ref is None or await self._daemon_ref.is_actor_process_alive(calc_ref):
                     return calc_ref.calc(
                         session_id, graph_key, graph_record.graph_serialized, graph_record.chunk_targets,
                         _promise=True
@@ -712,9 +716,9 @@ class ExecutionActor(WorkerActor):
                 else:
                     raise WorkerProcessStopped
 
-            self.estimate_graph_finish_time(session_id, graph_key, calc_fetch=False)
+            await self.estimate_graph_finish_time(session_id, graph_key, calc_fetch=False)
         except:  # noqa: E722
-            self._dispatch_ref.register_free_slot(calc_uid, 'cpu', _tell=True)
+            await self._dispatch_ref.register_free_slot(calc_uid, 'cpu', _tell=True)
             raise
 
         # make sure that memory suffices before actually run execution
@@ -728,7 +732,7 @@ class ExecutionActor(WorkerActor):
             return _start_calc()
 
     @log_unhandled
-    def _do_active_transfer(self, session_id, graph_key, data_to_addresses):
+    async def _do_active_transfer(self, session_id, graph_key, data_to_addresses):
         if graph_key:
             logger.debug('Start active transfer for graph %s', graph_key)
             graph_record = self._graph_records[session_id, graph_key]
@@ -737,9 +741,9 @@ class ExecutionActor(WorkerActor):
 
         # transfer the result chunk to expected endpoints
         @log_unhandled
-        def _send_chunk(sender_uid, data_keys, target_addr):
+        async def _send_chunk(sender_uid, data_keys, target_addr):
             if graph_record and graph_record.stop_requested:
-                self._dispatch_ref.register_free_slot(sender_uid, 'sender', _tell=True)
+                await self._dispatch_ref.register_free_slot(sender_uid, 'sender', _tell=True)
                 raise ExecutionInterrupted
 
             sender_ref = self.promise_ref(sender_uid)
@@ -751,7 +755,7 @@ class ExecutionActor(WorkerActor):
 
         if graph_record:
             if graph_record.mem_request:
-                self._mem_quota_ref.release_quotas(tuple(graph_record.mem_request.keys()), _tell=True)
+                await self._mem_quota_ref.release_quotas(tuple(graph_record.mem_request.keys()), _tell=True)
                 graph_record.mem_request = dict()
 
         promises = []
@@ -774,7 +778,7 @@ class ExecutionActor(WorkerActor):
         return promise.all_(promises)
 
     @log_unhandled
-    def _store_results(self, session_id, graph_key, saved_keys):
+    async def _store_results(self, session_id, graph_key, saved_keys):
         """
         Store calc results into shared cache or spill
         :param session_id: session id
@@ -797,19 +801,19 @@ class ExecutionActor(WorkerActor):
 
         if graph_record.stop_requested:
             logger.debug('Graph %s already marked for stop, quit.', graph_key)
-            if (self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(raw_calc_ref)) \
-                    and self.ctx.has_actor(raw_calc_ref):
+            if (self._daemon_ref is None or await self._daemon_ref.is_actor_process_alive(raw_calc_ref)) \
+                    and await self.ctx.has_actor(raw_calc_ref):
                 logger.debug('Try remove keys for graph %s.', graph_key)
                 raw_calc_ref.remove_cache(session_id, list(saved_keys), _tell=True)
             logger.debug('Graph %s already marked for stop, quit.', graph_key)
             raise ExecutionInterrupted
 
-        storage_client.unpin_data_keys(session_id, graph_record.pinned_keys, graph_key)
+        await storage_client.unpin_data_keys(session_id, graph_record.pinned_keys, graph_key)
         self._dump_execution_states()
 
-        data_attrs = storage_client.get_data_attrs(session_id, saved_keys)
+        data_attrs = await storage_client.get_data_attrs(session_id, saved_keys)
 
-        if self._daemon_ref is not None and not self._daemon_ref.is_actor_process_alive(raw_calc_ref):
+        if self._daemon_ref is not None and not await self._daemon_ref.is_actor_process_alive(raw_calc_ref):
             raise WorkerProcessStopped
 
         def _cache_result(*_):
@@ -849,7 +853,7 @@ class ExecutionActor(WorkerActor):
         except:  # noqa: E722
             pass
 
-    def _cleanup_graph(self, session_id, graph_key):
+    async def _cleanup_graph(self, session_id, graph_key):
         """
         Do clean up after graph is executed
         :param session_id: session id
@@ -862,17 +866,17 @@ class ExecutionActor(WorkerActor):
             return
 
         mem_quota_keys = tuple(graph_record.mem_request.keys())
-        self._mem_quota_ref.cancel_requests(mem_quota_keys, _tell=True)
+        await self._mem_quota_ref.cancel_requests(mem_quota_keys, _tell=True)
         if graph_record.mem_request:
-            self._mem_quota_ref.release_quotas(mem_quota_keys, _tell=True)
+            await self._mem_quota_ref.release_quotas(mem_quota_keys, _tell=True)
             if graph_record.calc_actor_uid:
                 target_proc_id = self.ctx.distributor.distribute(graph_record.calc_actor_uid)
                 owned_quota_keys = tuple(change_quota_key_owner(k, target_proc_id)
                                          for k in mem_quota_keys)
-                self._mem_quota_ref.release_quotas(owned_quota_keys, _tell=True)
+                await self._mem_quota_ref.release_quotas(owned_quota_keys, _tell=True)
 
         if graph_record.pinned_keys:
-            self.storage_client.unpin_data_keys(session_id, graph_record.pinned_keys, graph_key)
+            await self.storage_client.unpin_data_keys(session_id, graph_record.pinned_keys, graph_key)
 
         if self._status_ref:
             self._status_ref.remove_progress(session_id, graph_key, _tell=True, _wait=False)
@@ -880,7 +884,7 @@ class ExecutionActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def add_finish_callback(self, session_id, graph_key, callback):
+    async def add_finish_callback(self, session_id, graph_key, callback):
         """
         Register a callback to callback store
         :param session_id: session id
@@ -890,13 +894,13 @@ class ExecutionActor(WorkerActor):
         logger.debug('Adding callback %r for graph %s', callback, graph_key)
         try:
             args, kwargs = self._result_cache[(session_id, graph_key)].build_args()
-            self.tell_promise(callback, *args, **kwargs)
+            await self.tell_promise(callback, *args, **kwargs)
         except KeyError:
             self._graph_records[(session_id, graph_key)].finish_callbacks.append(callback)
 
     @promise.reject_on_exception
     @log_unhandled
-    def send_data_to_workers(self, session_id, data_to_addresses, callback=None):
+    async def send_data_to_workers(self, session_id, data_to_addresses, callback=None):
         """
         Send data stored in worker to other addresses
         :param session_id: session id
@@ -904,12 +908,12 @@ class ExecutionActor(WorkerActor):
         :param callback: promise call
         :return:
         """
-        self._do_active_transfer(session_id, None, data_to_addresses) \
+        (await self._do_active_transfer(session_id, None, data_to_addresses)) \
             .then(lambda *_: self.tell_promise(callback) if callback else None) \
             .catch(lambda *exc: self.tell_promise(*exc, _accept=False) if callback else None)
 
     @log_unhandled
-    def stop_execution(self, session_id, graph_key):
+    async def stop_execution(self, session_id, graph_key):
         """
         Mark graph for stopping
         :param session_id: session id
@@ -924,18 +928,19 @@ class ExecutionActor(WorkerActor):
         graph_record.stop_requested = True
         if graph_record.state == ExecutionState.ALLOCATING:
             if graph_record.mem_request:
-                self._mem_quota_ref.cancel_requests(
+                await self._mem_quota_ref.cancel_requests(
                     tuple(graph_record.mem_request.keys()), build_exc_info(ExecutionInterrupted), _tell=True)
         elif graph_record.state == ExecutionState.CALCULATING:
             if self._daemon_ref is not None and graph_record.calc_actor_uid is not None:
-                self._daemon_ref.kill_actor_process(self.ctx.actor_ref(graph_record.calc_actor_uid), _tell=True)
+                await self._daemon_ref.kill_actor_process(
+                    self.ctx.actor_ref(graph_record.calc_actor_uid), _tell=True)
 
     @log_unhandled
     def delete_data_by_keys(self, session_id, keys):
         self.storage_client.delete(session_id, keys, _tell=True)
 
     @log_unhandled
-    def handle_worker_change(self, _adds, removes):
+    async def handle_worker_change(self, _adds, removes):
         """
         Handle worker dead event
         :param removes: list of dead workers
@@ -948,13 +953,13 @@ class ExecutionActor(WorkerActor):
         logger.debug('Peer worker halt received. Affected promises %r rejected.',
                      [ref.uid for ref in handled_refs])
 
-        for sender_slot in self._dispatch_ref.get_slots('sender'):
-            self.ctx.actor_ref(sender_slot).reject_dead_endpoints(removes, _tell=True)
-        for receiver_slot in self._dispatch_ref.get_slots('receiver'):
-            self.ctx.actor_ref(receiver_slot).notify_dead_senders(removes, _tell=True)
+        for sender_slot in await self._dispatch_ref.get_slots('sender'):
+            await self.ctx.actor_ref(sender_slot).reject_dead_endpoints(removes, _tell=True)
+        for receiver_slot in await self._dispatch_ref.get_slots('receiver'):
+            await self.ctx.actor_ref(receiver_slot).notify_dead_senders(removes, _tell=True)
 
     @log_unhandled
-    def _invoke_finish_callbacks(self, session_id, graph_key):
+    async def _invoke_finish_callbacks(self, session_id, graph_key):
         """
         Call finish callback when execution is done
         :param session_id: session id
@@ -967,8 +972,8 @@ class ExecutionActor(WorkerActor):
         logger.debug('Send finish callback for graph %s into %d targets', graph_key, len(callbacks))
         kwargs['_wait'] = False
         for cb in callbacks:
-            self.tell_promise(cb, *args, **kwargs)
-        self._cleanup_graph(session_id, graph_key)
+            await self.tell_promise(cb, *args, **kwargs)
+        await self._cleanup_graph(session_id, graph_key)
 
     def _dump_execution_states(self):
         if logger.getEffectiveLevel() <= logging.DEBUG:

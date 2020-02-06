@@ -14,66 +14,70 @@
 
 import uuid
 
+from mars.tests.core import aio_case
 from mars.utils import get_next_port
 from mars.worker import WorkerDaemonActor
 from mars.worker.tests.base import WorkerCase
 from mars.worker.storage import StorageManagerActor, DataStorageDevice
 
 
+@aio_case
 class Test(WorkerCase):
-    def testStorageManager(self):
+    async def testStorageManager(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
-        with self.create_pool(n_process=1, address=test_addr) as pool:
+        async with self.create_pool(n_process=1, address=test_addr) as pool:
             session_id = str(uuid.uuid4())
             data_key1 = str(uuid.uuid4())
             data_key2 = str(uuid.uuid4())
 
-            pool.create_actor(WorkerDaemonActor,
-                              uid=WorkerDaemonActor.default_uid())
-            manager_ref = pool.create_actor(StorageManagerActor,
-                                            uid=StorageManagerActor.default_uid())
+            await pool.create_actor(WorkerDaemonActor,
+                                    uid=WorkerDaemonActor.default_uid())
+            manager_ref = await pool.create_actor(StorageManagerActor,
+                                                  uid=StorageManagerActor.default_uid())
 
-            self.assertEqual(list(manager_ref.get_data_locations(session_id, ['NON_EXIST'])[0]), [])
+            self.assertEqual(list((await manager_ref.get_data_locations(session_id, ['NON_EXIST']))[0]), [])
 
-            manager_ref.register_data(session_id, [data_key1],
-                                      (0, DataStorageDevice.SHARED_MEMORY), [1024], shapes=[(16, 8)])
-            manager_ref.register_data(session_id, [data_key1],
-                                      (1, DataStorageDevice.PROC_MEMORY), [1024], shapes=[(16, 8)])
-            manager_ref.register_data(session_id, [data_key1],
-                                      (0, DataStorageDevice.DISK), [2048])
+            await manager_ref.register_data(
+                session_id, [data_key1], (0, DataStorageDevice.SHARED_MEMORY), [1024], shapes=[(16, 8)])
+            await manager_ref.register_data(
+                session_id, [data_key1], (1, DataStorageDevice.PROC_MEMORY), [1024], shapes=[(16, 8)])
+            await manager_ref.register_data(
+                session_id, [data_key1], (0, DataStorageDevice.DISK), [2048])
             self.assertEqual([(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK),
                               (1, DataStorageDevice.PROC_MEMORY)],
-                             sorted(manager_ref.get_data_locations(session_id, [data_key1])[0]))
-            self.assertEqual(2048, manager_ref.get_data_sizes(session_id, [data_key1])[0])
-            self.assertEqual((16, 8), manager_ref.get_data_shapes(session_id, [data_key1])[0])
+                             sorted((await manager_ref.get_data_locations(session_id, [data_key1]))[0]))
+            self.assertEqual(2048, (await manager_ref.get_data_sizes(session_id, [data_key1]))[0])
+            self.assertEqual((16, 8), (await manager_ref.get_data_shapes(session_id, [data_key1]))[0])
 
-            manager_ref.register_data(session_id, [data_key2],
-                                      (0, DataStorageDevice.SHARED_MEMORY), [1024])
-            manager_ref.register_data(session_id, [data_key2],
-                                      (1, DataStorageDevice.PROC_MEMORY), [1024])
+            await manager_ref.register_data(
+                session_id, [data_key2], (0, DataStorageDevice.SHARED_MEMORY), [1024])
+            await manager_ref.register_data(
+                session_id, [data_key2], (1, DataStorageDevice.PROC_MEMORY), [1024])
             self.assertEqual([(0, DataStorageDevice.SHARED_MEMORY), (1, DataStorageDevice.PROC_MEMORY)],
-                             sorted(manager_ref.get_data_locations(session_id, [data_key2])[0]))
+                             sorted((await manager_ref.get_data_locations(session_id, [data_key2]))[0]))
 
-            manager_ref.unregister_data(session_id, [data_key2],
-                                        (0, DataStorageDevice.SHARED_MEMORY))
+            await manager_ref.unregister_data(
+                session_id, [data_key2], (0, DataStorageDevice.SHARED_MEMORY))
             self.assertEqual([(1, DataStorageDevice.PROC_MEMORY)],
-                             sorted(manager_ref.get_data_locations(session_id, [data_key2])[0]))
-            self.assertEqual(1024, manager_ref.get_data_sizes(session_id, [data_key2])[0])
-            self.assertEqual([data_key1],
-                             list(manager_ref.filter_exist_keys(session_id, [data_key1, data_key2, 'non-exist'],
-                                                                [(0, DataStorageDevice.SHARED_MEMORY)])))
+                             sorted((await manager_ref.get_data_locations(session_id, [data_key2]))[0]))
+            self.assertEqual(1024, (await manager_ref.get_data_sizes(session_id, [data_key2]))[0])
+            self.assertEqual(
+                [data_key1],
+                list(await manager_ref.filter_exist_keys(session_id, [data_key1, data_key2, 'non-exist'],
+                                                         [(0, DataStorageDevice.SHARED_MEMORY)]))
+            )
 
-            manager_ref.unregister_data(session_id, [data_key2],
-                                        (1, DataStorageDevice.PROC_MEMORY))
-            self.assertEqual(list(manager_ref.get_data_locations(session_id, [data_key2])[0]), [])
-            self.assertIsNone(manager_ref.get_data_sizes(session_id, [data_key2])[0])
-            self.assertIsNone(manager_ref.get_data_shapes(session_id, data_key2)[0])
+            await manager_ref.unregister_data(
+                session_id, [data_key2], (1, DataStorageDevice.PROC_MEMORY))
+            self.assertEqual(list((await manager_ref.get_data_locations(session_id, [data_key2]))[0]), [])
+            self.assertIsNone((await manager_ref.get_data_sizes(session_id, [data_key2]))[0])
+            self.assertIsNone((await manager_ref.get_data_shapes(session_id, data_key2))[0])
 
-            manager_ref.register_data(session_id, [data_key2],
-                                      (1, DataStorageDevice.PROC_MEMORY), [1024])
-            manager_ref.handle_process_down([1])
+            await manager_ref.register_data(
+                session_id, [data_key2], (1, DataStorageDevice.PROC_MEMORY), [1024])
+            await manager_ref.handle_process_down([1])
             self.assertEqual([(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)],
-                             sorted(manager_ref.get_data_locations(session_id, [data_key1])[0]))
-            self.assertEqual(list(manager_ref.get_data_locations(session_id, [data_key2])[0]), [])
-            self.assertIsNone(manager_ref.get_data_sizes(session_id, [data_key2])[0])
-            self.assertIsNone(manager_ref.get_data_shapes(session_id, [data_key2])[0])
+                             sorted((await manager_ref.get_data_locations(session_id, [data_key1]))[0]))
+            self.assertEqual(list((await manager_ref.get_data_locations(session_id, [data_key2]))[0]), [])
+            self.assertIsNone((await manager_ref.get_data_sizes(session_id, [data_key2]))[0])
+            self.assertIsNone((await manager_ref.get_data_shapes(session_id, [data_key2]))[0])

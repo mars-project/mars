@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
 import logging
 
@@ -164,10 +165,10 @@ class WorkerService(object):
             self._cache_mem_limit, plasma_directory=self._plasma_dir)
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()
 
-    def start(self, endpoint, pool, distributed=True, discoverer=None, process_start_index=0):
+    async def start(self, endpoint, pool, distributed=True, discoverer=None, process_start_index=0):
         # create plasma key mapper
         from .storage import PlasmaKeyMapActor
-        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
+        await pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
 
         # create vineyard key mapper
         if options.vineyard.socket:  # pragma: no cover
@@ -175,25 +176,25 @@ class WorkerService(object):
             pool.create_actor(VineyardKeyMapActor, uid=VineyardKeyMapActor.default_uid())
 
         # create WorkerClusterInfoActor
-        self._cluster_info_ref = pool.create_actor(
+        self._cluster_info_ref = await pool.create_actor(
             WorkerClusterInfoActor, discoverer, distributed=distributed,
             uid=WorkerClusterInfoActor.default_uid())
 
         if distributed:
             # create process daemon
             from .daemon import WorkerDaemonActor
-            actor_holder = self._daemon_ref = pool.create_actor(
+            actor_holder = self._daemon_ref = await pool.create_actor(
                 WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
 
             # create StatusActor
             if ':' not in self._advertise_addr:
                 self._advertise_addr += ':' + endpoint.rsplit(':', 1)[-1]
 
-            self._status_ref = pool.create_actor(
+            self._status_ref = await pool.create_actor(
                 StatusActor, self._advertise_addr, uid=StatusActor.default_uid())
         else:
             # create StatusActor
-            self._status_ref = pool.create_actor(
+            self._status_ref = await pool.create_actor(
                 StatusActor, endpoint, with_gpu=self._n_cuda_process > 0, uid=StatusActor.default_uid())
 
             actor_holder = pool
@@ -201,41 +202,41 @@ class WorkerService(object):
         if self._ignore_avail_mem:
             # start a QuotaActor instead of MemQuotaActor to avoid memory size detection
             # for debug purpose only, DON'T USE IN PRODUCTION
-            self._mem_quota_ref = pool.create_actor(
+            self._mem_quota_ref = await pool.create_actor(
                 QuotaActor, self._soft_mem_limit, uid=MemQuotaActor.default_uid())
         else:
-            self._mem_quota_ref = pool.create_actor(
+            self._mem_quota_ref = await pool.create_actor(
                 MemQuotaActor, self._soft_quota_limit, self._hard_mem_limit, uid=MemQuotaActor.default_uid())
 
         # create StorageManagerActor
-        self._storage_manager_ref = pool.create_actor(
+        self._storage_manager_ref = await pool.create_actor(
             StorageManagerActor, uid=StorageManagerActor.default_uid())
         # create SharedHolderActor
-        self._shared_holder_ref = pool.create_actor(
+        self._shared_holder_ref = await pool.create_actor(
             SharedHolderActor, self._cache_mem_limit, uid=SharedHolderActor.default_uid())
         # create DispatchActor
-        self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+        self._dispatch_ref = await pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         # create EventsActor
-        self._events_ref = pool.create_actor(EventsActor, uid=EventsActor.default_uid())
+        self._events_ref = await pool.create_actor(EventsActor, uid=EventsActor.default_uid())
         # create ReceiverNotifierActor
-        self._receiver_manager_ref = pool.create_actor(ReceiverManagerActor, uid=ReceiverManagerActor.default_uid())
+        self._receiver_manager_ref = await pool.create_actor(ReceiverManagerActor, uid=ReceiverManagerActor.default_uid())
         # create ExecutionActor
-        self._execution_ref = pool.create_actor(ExecutionActor, uid=ExecutionActor.default_uid())
+        self._execution_ref = await pool.create_actor(ExecutionActor, uid=ExecutionActor.default_uid())
 
         # create CpuCalcActor and InProcHolderActor
         if not distributed:
-            self._n_cpu_process = pool.cluster_info.n_process - 1 - process_start_index
+            self._n_cpu_process = await pool.cluster_info.n_process - 1 - process_start_index
 
         for cpu_id in range(self._n_cpu_process):
             uid = 'w:%d:mars-cpu-calc-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
-            actor = actor_holder.create_actor(CpuCalcActor, uid=uid)
+            actor = await actor_holder.create_actor(CpuCalcActor, uid=uid)
             self._cpu_calc_actors.append(actor)
 
             uid = 'w:%d:mars-inproc-holder-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
-            actor = actor_holder.create_actor(InProcHolderActor, uid=uid)
+            actor = await actor_holder.create_actor(InProcHolderActor, uid=uid)
             self._inproc_holder_actors.append(actor)
 
-            actor = actor_holder.create_actor(
+            actor = await actor_holder.create_actor(
                 IORunnerActor, lock_free=True, dispatched=False, uid=IORunnerActor.gen_uid(cpu_id + 1))
             self._inproc_io_runner_actors.append(actor)
 
@@ -245,15 +246,15 @@ class WorkerService(object):
         for cuda_id, stat in enumerate(stats):
             for thread_no in range(options.worker.cuda_thread_num):
                 uid = 'w:%d:mars-cuda-calc-%d-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id, thread_no)
-                actor = actor_holder.create_actor(CudaCalcActor, uid=uid)
+                actor = await actor_holder.create_actor(CudaCalcActor, uid=uid)
                 self._cuda_calc_actors.append(actor)
 
             uid = 'w:%d:mars-cuda-holder-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id)
-            actor = actor_holder.create_actor(
+            actor = await actor_holder.create_actor(
                 CudaHolderActor, stat.fb_mem_info.total, device_id=stat.index, uid=uid)
             self._cuda_holder_actors.append(actor)
 
-            actor = actor_holder.create_actor(
+            actor = await actor_holder.create_actor(
                 IORunnerActor, lock_free=True, dispatched=False, uid=IORunnerActor.gen_uid(start_pid + cuda_id))
             self._inproc_io_runner_actors.append(actor)
 
@@ -263,63 +264,64 @@ class WorkerService(object):
             # create SenderActor and ReceiverActor
             for sender_id in range(self._n_net_process):
                 uid = 'w:%d:mars-sender-%d-%d' % (start_pid + sender_id, os.getpid(), sender_id)
-                actor = actor_holder.create_actor(SenderActor, uid=uid)
+                actor = await actor_holder.create_actor(SenderActor, uid=uid)
                 self._sender_actors.append(actor)
 
         # Mutable requires ReceiverActor (with LocalClusterSession)
         for receiver_id in range(2 * self._n_net_process):
             uid = 'w:%d:mars-receiver-%d-%d' % (start_pid + receiver_id // 2, os.getpid(), receiver_id)
-            actor = actor_holder.create_actor(ReceiverWorkerActor, uid=uid)
+            actor = await actor_holder.create_actor(ReceiverWorkerActor, uid=uid)
             self._receiver_actors.append(actor)
 
         # create ProcessHelperActor
         for proc_id in range(pool.cluster_info.n_process - process_start_index):
             uid = 'w:%d:mars-process-helper-%d-%d' % (proc_id, os.getpid(), proc_id)
-            actor = actor_holder.create_actor(ProcessHelperActor, uid=uid)
+            actor = await actor_holder.create_actor(ProcessHelperActor, uid=uid)
             self._process_helper_actors.append(actor)
 
         # create ResultSenderActor
-        self._result_sender_ref = pool.create_actor(ResultSenderActor, uid=ResultSenderActor.default_uid())
+        self._result_sender_ref = await pool.create_actor(
+            ResultSenderActor, uid=ResultSenderActor.default_uid())
 
         # create SpillActor
         start_pid = pool.cluster_info.n_process - 1
         if options.worker.spill_directory:
             for spill_id in range(len(options.worker.spill_directory)):
                 uid = 'w:%d:mars-global-io-runner-%d-%d' % (start_pid, os.getpid(), spill_id)
-                actor = actor_holder.create_actor(IORunnerActor, uid=uid)
+                actor = await actor_holder.create_actor(IORunnerActor, uid=uid)
                 self._spill_actors.append(actor)
 
         # worker can be registered when everything is ready
-        self._status_ref.enable_status_upload(_tell=True)
+        await self._status_ref.enable_status_upload(_tell=True)
 
-    def handle_process_down(self, pool, proc_indices):
+    async def handle_process_down(self, pool, proc_indices):
         logger.debug('Process %r halt. Trying to recover.', proc_indices)
         for pid in proc_indices:
-            pool.restart_process(pid)
-        self._daemon_ref.handle_process_down(proc_indices, _tell=True)
+            await pool.restart_process(pid)
+        await self._daemon_ref.handle_process_down(proc_indices, _tell=True)
 
-    def stop(self):
+    async def stop(self):
         try:
             for actor in (self._cpu_calc_actors + self._sender_actors + self._inproc_holder_actors
                           + self._inproc_io_runner_actors + self._cuda_calc_actors
                           + self._cuda_holder_actors + self._receiver_actors + self._spill_actors
                           + self._process_helper_actors):
                 if actor and actor.ctx:
-                    actor.destroy(wait=False)
+                    asyncio.ensure_future(actor.destroy())
 
             if self._result_sender_ref:
-                self._result_sender_ref.destroy(wait=False)
+                asyncio.ensure_future(self._result_sender_ref.destroy())
             if self._status_ref:
-                self._status_ref.destroy(wait=False)
+                asyncio.ensure_future(self._status_ref.destroy())
             if self._shared_holder_ref:
-                self._shared_holder_ref.destroy(wait=False)
+                asyncio.ensure_future(self._shared_holder_ref.destroy())
             if self._storage_manager_ref:
-                self._storage_manager_ref.destroy(wait=False)
+                asyncio.ensure_future(self._storage_manager_ref.destroy())
             if self._events_ref:
-                self._events_ref.destroy(wait=False)
+                asyncio.ensure_future(self._events_ref.destroy())
             if self._dispatch_ref:
-                self._dispatch_ref.destroy(wait=False)
+                asyncio.ensure_future(self._dispatch_ref.destroy())
             if self._execution_ref:
-                self._execution_ref.destroy(wait=False)
+                asyncio.ensure_future(self._execution_ref.destroy())
         finally:
             self._plasma_store.__exit__(None, None, None)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import os
 import shutil
@@ -22,6 +23,7 @@ from ... import promise
 from ...config import options
 from ...serialize import dataserializer
 from ...errors import SpillNotConfigured, StorageDataExists
+from ...lib.asyncinit import asyncinit
 from ...utils import mod_hash
 from ..dataio import FileBufferIO
 from ..events import EventsActor, EventCategory, EventLevel, ProcedureEventType
@@ -56,11 +58,12 @@ def _build_file_name(session_id, data_key, writing=False):
     return os.path.join(spill_dir, data_key)
 
 
+@asyncinit
 class DiskIO(BytesStorageIO):
     storage_type = DataStorageDevice.DISK
 
-    def __init__(self, session_id, data_key, mode='r', nbytes=None, compress=None,
-                 packed=False, handler=None):
+    async def __init__(self, session_id, data_key, mode='r', nbytes=None, compress=None,
+                       packed=False, handler=None):
         super().__init__(session_id, data_key, mode=mode, handler=handler)
         block_size = options.worker.copy_block_size
         dirs = options.worker.spill_directory = parse_spill_dirs(options.worker.spill_directory)
@@ -76,7 +79,7 @@ class DiskIO(BytesStorageIO):
         filename = self._dest_filename = self._filename = _build_file_name(session_id, data_key)
         if self.is_writable:
             if os.path.exists(self._dest_filename):
-                exist_devs = self._storage_ctx.manager_ref.get_data_locations(session_id, [data_key])[0]
+                exist_devs = (await self._storage_ctx.manager_ref.get_data_locations(session_id, [data_key]))[0]
                 if (0, DataStorageDevice.DISK) in exist_devs:
                     self._closed = True
                     raise StorageDataExists('File for data (%s, %s) already exists.' % (session_id, data_key))
@@ -126,9 +129,10 @@ class DiskIO(BytesStorageIO):
     def filename(self):
         return self._dest_filename
 
-    def get_io_pool(self, pool_name=None):
-        return super().get_io_pool(
-            '%s__%d' % (pool_name or '', _get_file_dir_id(self._session_id, self._data_key)))
+    def execute_in_pool(self, fun, *args, **kwargs):
+        pool_name = kwargs.pop('_pool_name', None) or ''
+        pool_name = '%s__%d' % (pool_name, _get_file_dir_id(self._session_id, self._data_key))
+        return super().execute_in_pool(fun, *args, _pool_name=pool_name, **kwargs)
 
     def read(self, size=-1):
         start = time.time()
@@ -144,7 +148,7 @@ class DiskIO(BytesStorageIO):
             self._buf.write(d)
         self._total_time += time.time() - start
 
-    def close(self, finished=True):
+    async def close(self, finished=True):
         if self._closed:
             return
 
@@ -161,33 +165,35 @@ class DiskIO(BytesStorageIO):
             status_key = 'disk_write_speed'
             if finished:
                 shutil.move(self._filename, self._dest_filename)
-                self.register(self._nbytes)
+                await self.register(self._nbytes)
             else:
                 os.unlink(self._filename)
         else:
             status_key = 'disk_read_speed'
 
         if self._handler.status_ref and transfer_speed is not None:
-            self._handler.status_ref.update_mean_stats(status_key, transfer_speed, _tell=True, _wait=False)
+            self._handler.status_ref.update_mean_stats(
+                status_key, transfer_speed, _tell=True, _wait=False)
         if self._event_id:
             self._handler.events_ref.close_event(self._event_id, _tell=True, _wait=False)
 
-        super().close(finished=finished)
+        await super().close(finished=finished)
 
 
+@asyncinit
 class DiskHandler(StorageHandler, BytesStorageMixin):
     storage_type = DataStorageDevice.DISK
 
-    def __init__(self, storage_ctx, proc_id=None):
+    async def __init__(self, storage_ctx, proc_id=None):
         super().__init__(storage_ctx, proc_id=proc_id)
         self._compress = dataserializer.CompressType(options.worker.disk_compression)
 
         self._status_ref = self._storage_ctx.actor_ref(StatusActor.default_uid())
-        if not self._storage_ctx.has_actor(self._status_ref):
+        if not await self._storage_ctx.has_actor(self._status_ref):
             self._status_ref = None
 
         self._events_ref = self._storage_ctx.actor_ref(EventsActor.default_uid())
-        if not self._storage_ctx.has_actor(self._events_ref):
+        if not await self._storage_ctx.has_actor(self._events_ref):
             self._events_ref = None
 
     @property
@@ -199,28 +205,32 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
         return self._events_ref
 
     @wrap_promised
-    def create_bytes_reader(self, session_id, data_key, packed=False, packed_compression=None,
+    async def create_bytes_reader(self, session_id, data_key, packed=False, packed_compression=None,
                             _promise=False):
-        return DiskIO(session_id, data_key, 'r', packed=packed, compress=packed_compression, handler=self)
+        return await DiskIO(session_id, data_key, 'r', packed=packed, compress=packed_compression,
+                            handler=self)
 
     @wrap_promised
-    def create_bytes_writer(self, session_id, data_key, total_bytes, packed=False,
+    async def create_bytes_writer(self, session_id, data_key, total_bytes, packed=False,
                             packed_compression=None, auto_register=True, pin_token=None,
                             _promise=False):
-        return DiskIO(session_id, data_key, 'w', total_bytes, compress=self._compress,
-                      packed=packed, handler=self)
+        return await DiskIO(session_id, data_key, 'w', total_bytes, compress=self._compress,
+                            packed=packed, handler=self)
 
-    def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
-        def _fallback(*_):
-            return promise.all_(
-                src_handler.create_bytes_reader(session_id, k, _promise=True)
-                .then(lambda reader: self.create_bytes_writer(
+    async def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
+        async def _copy_data(k, reader):
+            p = await self.create_bytes_writer(
                     session_id, k, reader.nbytes, _promise=True)
-                      .then(lambda writer: self._copy_bytes_data(reader, writer),
-                            lambda *exc: self.pass_on_exc(reader.close, exc)))
-                for k in data_keys)
+            return p.then(lambda writer: self._copy_bytes_data(reader, writer),
+                          lambda *exc: self.pass_on_exc(reader.close, exc))
 
-        return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
+        async def _fallback(*_):
+            return promise.all_([
+                (await src_handler.create_bytes_reader(session_id, k, _promise=True))
+                .then(functools.partial(_copy_data, k))
+                for k in data_keys])
+
+        return await self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
     @staticmethod
     def _get_serialized_data_size(serialized_obj):
@@ -232,36 +242,36 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
         finally:
             del serialized_obj
 
-    def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
+    async def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
         data_dict = dict()
 
-        def _load_single_data(key):
+        async def _load_single_data(key):
             data_size = self._get_serialized_data_size(data_dict[key])
-            return self.create_bytes_writer(session_id, key, data_size, _promise=True) \
+            return (await self.create_bytes_writer(session_id, key, data_size, _promise=True)) \
                 .then(lambda writer: self._copy_object_data(data_dict.pop(key), writer),
                       lambda *exc: self.pass_on_exc(functools.partial(data_dict.pop, key), exc))
 
-        def _load_all_data(objs):
+        async def _load_all_data(objs):
             data_dict.update(zip(data_keys, objs))
             objs[:] = []
-            return promise.all_(_load_single_data(k) for k in data_keys) \
+            return promise.all_([await _load_single_data(k) for k in data_keys]) \
                 .catch(lambda *exc: self.pass_on_exc(data_dict.clear, exc))
 
-        def _fallback(*_):
-            return src_handler.get_objects(session_id, data_keys, serialize=True, _promise=True) \
+        async def _fallback(*_):
+            return (await src_handler.get_objects(session_id, data_keys, serialize=True, _promise=True)) \
                 .then(_load_all_data, lambda *exc: self.pass_on_exc(data_dict.clear, exc))
 
-        return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
+        return await self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
-    def delete(self, session_id, data_keys, _tell=False):
+    async def delete(self, session_id, data_keys, _tell=False):
         for data_key in data_keys:
             file_name = _build_file_name(session_id, data_key)
             if sys.platform == 'win32':  # pragma: no cover
                 CREATE_NO_WINDOW = 0x08000000
-                self._actor_ctx.popen(['del', file_name], creationflags=CREATE_NO_WINDOW)
+                await asyncio.create_subprocess_exec('del', file_name, creationflags=CREATE_NO_WINDOW)
             else:
-                self._actor_ctx.popen(['rm', '-f', file_name])
-        self.unregister_data(session_id, data_keys, _tell=_tell)
+                await asyncio.create_subprocess_exec('rm', '-f', file_name)
+        await self.unregister_data(session_id, data_keys, _tell=_tell)
 
 
 register_storage_handler_cls(DataStorageDevice.DISK, DiskHandler)

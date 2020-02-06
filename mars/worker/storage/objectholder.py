@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import logging
 import os
@@ -52,12 +53,12 @@ class ObjectHolderActor(WorkerActor):
         self._status_ref = None
         self._storage_handler = None
 
-    def post_create(self):
+    async def post_create(self):
         from ..dispatcher import DispatchActor
         from ..status import StatusActor
 
-        super().post_create()
-        self.register_actors_down_handler()
+        await super().post_create()
+        await self.register_actors_down_handler()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
 
         parse_num, is_percent = parse_readable_size(options.worker.min_spill_size)
@@ -66,19 +67,19 @@ class ObjectHolderActor(WorkerActor):
         self._max_spill_size = int(self._size_limit * parse_num if is_percent else parse_num)
 
         status_ref = self.ctx.actor_ref(StatusActor.default_uid())
-        self._status_ref = status_ref if self.ctx.has_actor(status_ref) else None
+        self._status_ref = status_ref if await self.ctx.has_actor(status_ref) else None
 
-        self._storage_handler = self.storage_client.get_storage_handler(
+        self._storage_handler = await self.storage_client.get_storage_handler(
             self._storage_device.build_location(self.proc_id))
 
-    def pre_destroy(self):
+    async def pre_destroy(self):
         for k in self._data_holder:
             self._data_holder[k] = None
 
     def update_cache_status(self):
         raise NotImplementedError
 
-    def post_delete(self, session_id, data_keys):
+    async def post_delete(self, session_id, data_keys):
         raise NotImplementedError
 
     def get_size_limit(self):
@@ -86,7 +87,7 @@ class ObjectHolderActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def spill_size(self, size, multiplier=1, callback=None):
+    async def spill_size(self, size, multiplier=1, callback=None):
         if not self._spill_devices:  # pragma: no cover
             raise SpillNotConfigured
 
@@ -122,10 +123,10 @@ class ObjectHolderActor(WorkerActor):
                          len(free_keys), free_keys, self.uid, request_size, spill_ref_key)
 
             @log_unhandled
-            def _release_spill_allocations(key):
+            async def _release_spill_allocations(key):
                 logger.debug('Removing reference of data %s from %s when spilling. ref_key=%s',
                              key, self.uid, spill_ref_key)
-                self.delete_objects(key[0], [key[1]])
+                await self.delete_objects(key[0], [key[1]])
 
             @log_unhandled
             def _handle_spill_reject(*exc, **kwargs):
@@ -134,25 +135,25 @@ class ObjectHolderActor(WorkerActor):
                 raise exc[1].with_traceback(exc[2])
 
             @log_unhandled
-            def _spill_key(key):
+            async def _spill_key(key):
                 if key in self._pinned_counter or key not in self._data_holder:
                     self._remove_spill_pending(*key)
                     return
                 logger.debug('Spilling key %s in %s. ref_key=%s', key, self.uid, spill_ref_key)
-                return self.storage_client.copy_to(key[0], [key[1]], self._spill_devices) \
+                return (await self.storage_client.copy_to(key[0], [key[1]], self._spill_devices)) \
                     .then(lambda *_: _release_spill_allocations(key),
                           functools.partial(_handle_spill_reject, session_data_key=key))
 
             @log_unhandled
-            def _finalize_spill(*_):
+            async def _finalize_spill(*_):
                 logger.debug('Finish spilling %d data keys in %s. ref_key=%s',
                              len(free_keys), self.uid, spill_ref_key)
                 self._plasma_client.evict(request_size)
                 if callback:
-                    self.tell_promise(callback)
+                    await self.tell_promise(callback)
                 self.update_cache_status()
 
-            promise.all_(_spill_key(k) for k in free_keys).then(_finalize_spill) \
+            promise.all_([await _spill_key(k) for k in free_keys]).then(_finalize_spill) \
                 .catch(lambda *exc: self.tell_promise(callback, *exc, _accept=False))
         else:
             logger.debug('No need to spill in %s. request=%d ref_key=%s',
@@ -160,7 +161,7 @@ class ObjectHolderActor(WorkerActor):
 
             self._plasma_client.evict(request_size)
             if callback:
-                self.tell_promise(callback)
+                await self.tell_promise(callback)
 
     @log_unhandled
     def _internal_put_object(self, session_id, data_key, obj, size):
@@ -191,7 +192,7 @@ class ObjectHolderActor(WorkerActor):
             pass
 
     @log_unhandled
-    def delete_objects(self, session_id, data_keys):
+    async def delete_objects(self, session_id, data_keys):
         actual_removed = []
         for data_key in data_keys:
             session_data_key = (session_id, data_key)
@@ -211,7 +212,7 @@ class ObjectHolderActor(WorkerActor):
                 del self._data_holder[session_data_key]
                 del self._data_sizes[session_data_key]
 
-        self.post_delete(session_id, actual_removed)
+        await self.post_delete(session_id, actual_removed)
         if actual_removed:
             logger.debug('Data %s unregistered in %s. total_hold=%d', actual_removed, self.uid, self._total_hold)
             self.update_cache_status()
@@ -259,10 +260,10 @@ class ObjectHolderActor(WorkerActor):
 
 
 class SimpleObjectHolderActor(ObjectHolderActor):
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
         manager_ref = self.ctx.actor_ref(StorageManagerActor.default_uid())
-        manager_ref.register_process_holder(
+        await manager_ref.register_process_holder(
             self.proc_id, self._storage_device, self.ref())
 
     def put_objects(self, session_id, data_keys, data_objs, data_sizes, pin_token=None):
@@ -284,7 +285,7 @@ class SimpleObjectHolderActor(ObjectHolderActor):
     def update_cache_status(self):
         pass
 
-    def post_delete(self, session_id, data_keys):
+    async def post_delete(self, session_id, data_keys):
         pass
 
 
@@ -295,8 +296,8 @@ class SharedHolderActor(ObjectHolderActor):
         _storage_device = DataStorageDevice.SHARED_MEMORY
     _spill_devices = (DataStorageDevice.DISK,)
 
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
         self._size_limit = self._shared_store.get_actual_capacity(self._size_limit)
         logger.info('Detected actual plasma store size: %s', readable_size(self._size_limit))
 
@@ -305,16 +306,16 @@ class SharedHolderActor(ObjectHolderActor):
             self._status_ref.set_cache_allocations(
                 dict(hold=self._total_hold, total=self._size_limit), _tell=True, _wait=False)
 
-    def post_delete(self, session_id, data_keys):
-        self._shared_store.batch_delete(session_id, data_keys)
-        self._storage_handler.unregister_data(session_id, data_keys)
+    async def post_delete(self, session_id, data_keys):
+        await self._shared_store.batch_delete(session_id, data_keys)
+        await self._storage_handler.unregister_data(session_id, data_keys)
 
-    def put_objects_by_keys(self, session_id, data_keys, shapes=None, pin_token=None):
+    async def put_objects_by_keys(self, session_id, data_keys, shapes=None, pin_token=None):
         sizes = []
         for data_key in data_keys:
             buf = None
             try:
-                buf = self._shared_store.get_buffer(session_id, data_key)
+                buf = await self._shared_store.get_buffer(session_id, data_key)
                 size = len(buf)
                 self._internal_put_object(session_id, data_key, buf, size)
             finally:
@@ -323,7 +324,7 @@ class SharedHolderActor(ObjectHolderActor):
         if pin_token:
             self.pin_data_keys(session_id, data_keys, pin_token)
 
-        self.storage_client.register_data(
+        await self.storage_client.register_data(
             session_id, data_keys, (0, self._storage_device), sizes, shapes=shapes)
 
 

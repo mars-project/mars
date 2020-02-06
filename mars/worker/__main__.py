@@ -77,7 +77,7 @@ class WorkerApplication(BaseApplication):
         if self.args.transfer_compression.lower() not in compress_types:
             raise StartArgumentError('illegal transfer compression config %s.' % self.args.transfer_compression)
 
-    def create_pool(self, *args, **kwargs):
+    async def create_pool(self, *args, **kwargs):
         # here we create necessary actors on worker
         # and distribute them over processes
 
@@ -106,21 +106,21 @@ class WorkerApplication(BaseApplication):
 
         self.n_process = self._service.n_process
         kwargs['distributor'] = MarsDistributor(self.n_process, 'w:0:')
-        return super().create_pool(*args, **kwargs)
+        return await super().create_pool(*args, **kwargs)
 
     def create_scheduler_discoverer(self):
         super().create_scheduler_discoverer()
         if self.scheduler_discoverer is None:
             raise StartArgumentError('either schedulers or url of kv store is required.')
 
-    def start(self):
-        self._service.start(self.endpoint, self.pool, discoverer=self.scheduler_discoverer)
+    async def start(self):
+        await self._service.start(self.endpoint, self.pool, discoverer=self.scheduler_discoverer)
 
-    def handle_process_down(self, proc_indices):
-        self._service.handle_process_down(self.pool, proc_indices)
+    async def handle_process_down(self, proc_indices):
+        await self._service.handle_process_down(self.pool, proc_indices)
 
-    def stop(self):
-        self._service.stop()
+    async def stop(self):
+        await self._service.stop()
 
 
 main = WorkerApplication()

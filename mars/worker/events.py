@@ -132,12 +132,19 @@ class EventsActor(WorkerActor):
 class EventContext(object):
     def __init__(self, events_ref, category, level, event_type, owner=None):
         self._events_ref = events_ref
-        if events_ref is not None:
-            self._event_id = events_ref.add_open_event(category, level, event_type, owner)
+        self._event_id = None
 
-    def __enter__(self):
+        self._category = category
+        self._level = level
+        self._event_type = event_type
+        self._owner = owner
+
+    async def __aenter__(self):
+        if self._events_ref is not None:
+            self._event_id = await self._events_ref.add_open_event(
+                self._category, self._level, self._event_type, self._owner)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self._events_ref is not None:
-            self._events_ref.close_event(self._event_id)
+            await self._events_ref.close_event(self._event_id)

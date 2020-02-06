@@ -18,7 +18,7 @@ from collections import defaultdict
 from ..utils import WorkerActor
 
 
-class DataAttrs(object):
+class DataAttrs:
     __slots__ = 'size', 'shape'
 
     def __init__(self, size=None, shape=None):
@@ -43,13 +43,13 @@ class StorageManagerActor(WorkerActor):
 
         self._proc_holders = dict()
 
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
 
         from ..daemon import WorkerDaemonActor
         daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
-        if self.ctx.has_actor(daemon_ref):  # pragma: no branch
-            daemon_ref.register_process_callback(
+        if await self.ctx.has_actor(daemon_ref):  # pragma: no branch
+            await daemon_ref.register_process_callback(
                 self.ref(), self.handle_process_down.__name__)
 
     def register_process_holder(self, proc_id, device, holder_ref):

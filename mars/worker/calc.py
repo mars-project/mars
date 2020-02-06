@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 from .. import promise
 from ..config import options
@@ -49,8 +51,8 @@ class BaseCalcActor(WorkerActor):
         self._execution_pool = None
         self._n_cpu = None
 
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
 
         from .quota import MemQuotaActor
         from .dispatcher import DispatchActor
@@ -60,18 +62,18 @@ class BaseCalcActor(WorkerActor):
 
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
-        self._dispatch_ref.register_free_slot(self.uid, self._slot_name)
+        await self._dispatch_ref.register_free_slot(self.uid, self._slot_name)
 
         status_ref = self.ctx.actor_ref(StatusActor.default_uid())
-        self._status_ref = status_ref if self.ctx.has_actor(status_ref) else None
+        self._status_ref = status_ref if await self.ctx.has_actor(status_ref) else None
 
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
-        if not self.ctx.has_actor(self._events_ref):
+        if not await self.ctx.has_actor(self._events_ref):
             self._events_ref = None
 
-        self._execution_pool = self.ctx.threadpool(1)
+        self._execution_pool = ThreadPoolExecutor(1)
 
     @staticmethod
     def _get_keys_to_fetch(graph):
@@ -91,30 +93,29 @@ class BaseCalcActor(WorkerActor):
                         exclude_fetch_keys.add(inp.key)
         return list(fetch_keys - exclude_fetch_keys)
 
-    def _make_quotas_local(self, session_id, graph_key, data_keys, process_quota=False):
+    async def _make_quotas_local(self, session_id, graph_key, data_keys, process_quota=False):
         old_keys, new_keys = [], []
         for k in data_keys:
             old_keys.append(build_quota_key(session_id, k, owner=graph_key))
             new_keys.append(build_quota_key(session_id, k, owner=self.proc_id))
-        self._mem_quota_ref.alter_allocations(
+        await self._mem_quota_ref.alter_allocations(
             old_keys, new_keys=new_keys, process_quota=process_quota)
         return new_keys
 
     def _release_local_quotas(self, session_id, data_keys):
-        self._mem_quota_ref.release_quotas(
-            [build_quota_key(session_id, k, owner=self.proc_id) for k in data_keys],
-            _tell=True, _wait=False)
+        asyncio.ensure_future(self._mem_quota_ref.release_quotas(
+            [build_quota_key(session_id, k, owner=self.proc_id) for k in data_keys], _tell=True))
 
-    def _fetch_keys_to_process(self, session_id, keys_to_fetch):
+    async def _fetch_keys_to_process(self, session_id, keys_to_fetch):
         context_dict = dict()
         storage_client = self.storage_client
 
         if not keys_to_fetch:
             return promise.finished(context_dict)
 
-        def _handle_loaded(objs):
+        async def _handle_loaded(objs):
             try:
-                data_locations = storage_client.get_data_locations(session_id, keys_to_fetch)
+                data_locations = await storage_client.get_data_locations(session_id, keys_to_fetch)
                 shared_quota_keys = []
                 inproc_keys = []
                 inproc_quota_keys = []
@@ -131,29 +132,29 @@ class BaseCalcActor(WorkerActor):
                 if shared_quota_keys:
                     self._mem_quota_ref.release_quotas(shared_quota_keys, _tell=True, _wait=False)
                 if inproc_keys:
-                    self._mem_quota_ref.hold_quotas(inproc_quota_keys, _tell=True)
+                    self._mem_quota_ref.hold_quotas(inproc_quota_keys, _tell=True, _wait=False)
                     if self._remove_intermediate:
-                        storage_client.delete(session_id, inproc_keys, [self._calc_intermediate_device])
+                        await storage_client.delete(session_id, inproc_keys, [self._calc_intermediate_device])
             finally:
                 objs[:] = []
 
-        def _handle_load_fail(*exc):
+        async def _handle_load_fail(*exc):
             if self._remove_intermediate:
-                storage_client.delete(session_id, keys_to_fetch, [self._calc_intermediate_device])
+                await storage_client.delete(session_id, keys_to_fetch, [self._calc_intermediate_device])
             self._release_local_quotas(session_id, keys_to_fetch)
 
             context_dict.clear()
             raise exc[1].with_traceback(exc[2])
 
-        return storage_client.get_objects(session_id, keys_to_fetch, self._calc_source_devices) \
+        return (await storage_client.get_objects(session_id, keys_to_fetch, self._calc_source_devices)) \
             .then(_handle_loaded, _handle_load_fail).then(lambda *_: context_dict)
 
-    def _get_n_cpu(self):
+    async def _get_n_cpu(self):
         if self._n_cpu is None:
-            self._n_cpu = len(self._dispatch_ref.get_slots('cpu'))
+            self._n_cpu = len(await self._dispatch_ref.get_slots('cpu'))
         return self._n_cpu
 
-    def _calc_results(self, session_id, graph_key, graph, context_dict, chunk_targets):
+    async def _calc_results(self, session_id, graph_key, graph, context_dict, chunk_targets):
         _, op_name = concat_operand_keys(graph, '_')
 
         logger.debug('Start calculating operand %s in %s.', graph_key, self.uid)
@@ -161,16 +162,18 @@ class BaseCalcActor(WorkerActor):
 
         local_context_dict = DistributedDictContext(
             self.get_scheduler(self.default_uid()), session_id, actor_ctx=self.ctx,
-            address=self.address, n_cpu=self._get_n_cpu())
+            address=self.address, n_cpu=await self._get_n_cpu())
         local_context_dict.update(context_dict)
         context_dict.clear()
 
+        def _execute_fun():
+            executor = Executor(storage=local_context_dict)
+            executor.execute_graph(graph, chunk_targets, retval=False)
+
         # start actual execution
-        executor = Executor(storage=local_context_dict)
-        with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
-                          self._calc_event_type, self.uid):
-            self._execution_pool.submit(executor.execute_graph, graph,
-                                        chunk_targets, retval=False).result()
+        async with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
+                                self._calc_event_type, self.uid):
+            await asyncio.get_event_loop().run_in_executor(self._execution_pool, _execute_fun)
 
         end_time = time.time()
 
@@ -192,7 +195,7 @@ class BaseCalcActor(WorkerActor):
                 result_sizes.append(calc_data_size(v))
                 collected_chunk_keys.add(chunk_key)
 
-        local_context_dict.clear()
+        # local_context_dict.clear()
 
         # check if all targets generated
         if any(k not in collected_chunk_keys for k in chunk_targets):
@@ -207,23 +210,24 @@ class BaseCalcActor(WorkerActor):
         for k, v in apply_allocs.items():
             apply_alloc_quota_keys.append(build_quota_key(session_id, k, owner=self.proc_id))
             apply_alloc_sizes.append(v)
-        self._mem_quota_ref.alter_allocations(apply_alloc_quota_keys, apply_alloc_sizes, _tell=True, _wait=False)
-        self._mem_quota_ref.hold_quotas(apply_alloc_quota_keys, _tell=True)
+        asyncio.ensure_future(self._mem_quota_ref.alter_allocations(
+            apply_alloc_quota_keys, apply_alloc_sizes, _tell=True))
+        await self._mem_quota_ref.hold_quotas(apply_alloc_quota_keys, _tell=True)
 
         if self._status_ref:
-            self._status_ref.update_mean_stats(
+            asyncio.ensure_future(self._status_ref.update_mean_stats(
                 'calc_speed.' + op_name, sum(apply_alloc_sizes) * 1.0 / (end_time - start_time),
-                _tell=True, _wait=False)
+                _tell=True))
 
         logger.debug('Finish calculating operand %s.', graph_key)
 
-        return self.storage_client.put_objects(
-            session_id, result_keys, result_values, [self._calc_intermediate_device], sizes=result_sizes) \
+        return (await self.storage_client.put_objects(
+            session_id, result_keys, result_values, [self._calc_intermediate_device], sizes=result_sizes)) \
             .then(lambda *_: result_keys)
 
     @promise.reject_on_exception
     @log_unhandled
-    def calc(self, session_id, graph_key, ser_graph, chunk_targets, callback):
+    async def calc(self, session_id, graph_key, ser_graph, chunk_targets, callback):
         """
         Do actual calculation. This method should be called when all data
         is available (i.e., either in shared cache or in memory)
@@ -237,14 +241,15 @@ class BaseCalcActor(WorkerActor):
         chunk_targets = set(chunk_targets)
         keys_to_fetch = self._get_keys_to_fetch(graph)
 
-        self._make_quotas_local(session_id, graph_key, keys_to_fetch + list(chunk_targets),
-                                process_quota=True)
+        await self._make_quotas_local(session_id, graph_key, keys_to_fetch + list(chunk_targets),
+                                      process_quota=True)
 
         def _start_calc(context_dict):
             return self._calc_results(session_id, graph_key, graph, context_dict, chunk_targets)
 
-        def _finalize(keys, exc_info):
-            self._dispatch_ref.register_free_slot(self.uid, self._slot_name, _tell=True, _wait=False)
+        async def _finalize(keys, exc_info):
+            asyncio.ensure_future(self._dispatch_ref.register_free_slot(
+                self.uid, self._slot_name, _tell=True))
             keys_to_delete = []
             keys_to_release = []
 
@@ -255,25 +260,25 @@ class BaseCalcActor(WorkerActor):
                     keys_to_release.append(k)
 
             if not exc_info:
-                self.tell_promise(callback, keys)
+                await self.tell_promise(callback, keys)
             else:
                 for k in chunk_targets:
                     if self._remove_intermediate:
                         keys_to_delete.append(k)
                     keys_to_release.append(k)
-                self.tell_promise(callback, *exc_info, _accept=False)
+                await self.tell_promise(callback, *exc_info, _accept=False)
 
             if keys_to_delete:
-                self.storage_client.delete(session_id, keys_to_delete, [self._calc_intermediate_device])
+                await self.storage_client.delete(session_id, keys_to_delete, [self._calc_intermediate_device])
             self._release_local_quotas(session_id, keys_to_release)
 
-        return self._fetch_keys_to_process(session_id, keys_to_fetch) \
+        return (await self._fetch_keys_to_process(session_id, keys_to_fetch)) \
             .then(lambda context_dict: _start_calc(context_dict)) \
             .then(lambda keys: _finalize(keys, None), lambda *exc_info: _finalize(None, exc_info))
 
     @promise.reject_on_exception
     @log_unhandled
-    def store_results(self, session_id, graph_key, keys_to_store, data_attrs, callback):
+    async def store_results(self, session_id, graph_key, keys_to_store, data_attrs, callback):
         logger.debug('Start dumping keys for graph %s', graph_key)
         from ..scheduler.chunkmeta import WorkerMeta
 
@@ -281,7 +286,7 @@ class BaseCalcActor(WorkerActor):
         store_keys, store_metas = [], []
 
         if data_attrs is None:
-            data_attrs = storage_client.get_data_attrs(session_id, keys_to_store)
+            data_attrs = await storage_client.get_data_attrs(session_id, keys_to_store)
 
         for k, attr in zip(keys_to_store, data_attrs):
             if attr is None or isinstance(k, tuple):
@@ -294,13 +299,13 @@ class BaseCalcActor(WorkerActor):
         def _delete_keys(*_):
             logger.debug('Finish dumping keys for graph %s', graph_key)
             if self._remove_intermediate:
-                storage_client.delete(
-                    session_id, keys_to_store, [self._calc_intermediate_device], _tell=True)
+                asyncio.ensure_future(storage_client.delete(
+                    session_id, keys_to_store, [self._calc_intermediate_device], _tell=True))
             self._release_local_quotas(session_id, keys_to_store)
 
-        return storage_client.copy_to(session_id, keys_to_store, self._calc_dest_devices) \
+        return (await storage_client.copy_to(session_id, keys_to_store, self._calc_dest_devices)) \
             .then(_delete_keys) \
-            .then(lambda *_: meta_future.result()) \
+            .then(lambda *_: meta_future) \
             .then(lambda *_: self.tell_promise(callback),
                   lambda *exc: self.tell_promise(callback, *exc, _accept=False))
 

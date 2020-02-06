@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import logging
 import sys
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
 from ... import promise
@@ -51,7 +53,7 @@ class DataStorageDevice(Enum):
             return proc_id, self
 
 
-class BytesStorageIO(object):
+class BytesStorageIO:
     storage_type = None
 
     def __init__(self, session_id, data_key, mode='w', handler=None, **kwargs):
@@ -78,24 +80,24 @@ class BytesStorageIO(object):
     def closed(self):
         return self._closed
 
-    def __enter__(self):
+    async def __aenter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close(finished=exc_val is None)
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close(finished=exc_val is None)
 
     def __del__(self):
-        self.close()
+        asyncio.ensure_future(self.close())
 
-    def get_io_pool(self, pool_name=None):
-        return self._handler.get_io_pool(pool_name)
+    def execute_in_pool(self, fun, *args, **kwargs):
+        return self._handler.execute_in_pool(fun, *args, **kwargs)
 
-    def register(self, size, shape=None):
+    async def register(self, size, shape=None):
         location = self.storage_type.build_location(self._storage_ctx.proc_id)
-        self._storage_ctx.manager_ref \
-            .register_data(self._session_id, [self._data_key], location, [size], shapes=[shape])
+        await self._storage_ctx.manager_ref.register_data(
+            self._session_id, [self._data_key], location, [size], shapes=[shape])
 
-    def close(self, finished=True):
+    async def close(self, finished=True):
         self._closed = True
 
     @property
@@ -109,7 +111,7 @@ class BytesStorageIO(object):
         raise NotImplementedError
 
 
-class StorageHandler(object):
+class StorageHandler:
     storage_type = None
 
     def __init__(self, storage_ctx, proc_id=None):
@@ -122,12 +124,19 @@ class StorageHandler(object):
         from ..dispatcher import DispatchActor
         self._dispatch_ref = self.actor_ref(DispatchActor.default_uid())
 
-    def get_io_pool(self, pool_name=None):
+    async def execute_in_pool(self, fun, *args, **kwargs):
+        def _wrapped():
+            return fun(*args, **kwargs)
+
         actor_obj = self.host_actor
-        pool_var = '_pool_%s_attr_%s' % (pool_name or '', self.storage_type.value)
-        if getattr(actor_obj, pool_var, None) is None:
-            setattr(actor_obj, pool_var, self._actor_ctx.threadpool(1))
-        return getattr(actor_obj, pool_var)
+        pool_name = kwargs.pop('_pool_name', None)
+        pool_var = '_pool_%s_attr_%s' % (pool_name, self.storage_type.value)
+        try:
+            pool = getattr(actor_obj, pool_var, None)
+        except AttributeError:
+            pool = ThreadPoolExecutor(1)
+            setattr(actor_obj, pool_var, pool)
+        return await asyncio.get_event_loop().run_in_executor(pool, _wrapped)
 
     @classmethod
     def is_device_global(cls):
@@ -166,7 +175,7 @@ class StorageHandler(object):
     def promise_ref(self, *args, **kwargs):
         return self._storage_ctx.host_actor.promise_ref(self.actor_ref(*args, **kwargs))
 
-    def delete(self, session_id, data_keys, _tell=False):
+    async def delete(self, session_id, data_keys, _tell=False):
         raise NotImplementedError
 
     def load_from(self, session_id, data_keys, src_handler, pin_token=None):
@@ -197,27 +206,27 @@ class StorageHandler(object):
     def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
         raise NotImplementedError
 
-    def register_data(self, session_id, data_keys, sizes, shapes=None):
-        self._storage_ctx.manager_ref \
-            .register_data(session_id, data_keys, self.location, sizes, shapes=shapes)
+    async def register_data(self, session_id, data_keys, sizes, shapes=None):
+        await self._storage_ctx.manager_ref.register_data(
+            session_id, data_keys, self.location, sizes, shapes=shapes)
 
-    def _dispatch_keys_to_uids(self, session_id, data_keys):
+    async def _dispatch_keys_to_uids(self, session_id, data_keys):
         uid_to_keys = defaultdict(list)
-        runner_uids = self._dispatch_ref.get_hash_slots(
+        runner_uids = await self._dispatch_ref.get_hash_slots(
             'iorunner', [(session_id, k) for k in data_keys])
         for k, uid in zip(data_keys, runner_uids):
             uid_to_keys[uid].append(k)
         return uid_to_keys.items()
 
-    def transfer_in_runner(self, session_id, data_keys, src_handler, fallback=None):
+    async def transfer_in_runner(self, session_id, data_keys, src_handler, fallback=None):
         if self.is_io_runner():
-            return fallback() if fallback is not None else promise.finished()
+            return await fallback() if fallback is not None else promise.finished()
 
         if self.is_device_global() and src_handler.is_device_global():
             return promise.all_(
                 self.promise_ref(uid).load_from(
                     self.location, session_id, keys, src_handler.location, _promise=True)
-                for uid, keys in self._dispatch_keys_to_uids(session_id, data_keys))
+                for uid, keys in await self._dispatch_keys_to_uids(session_id, data_keys))
         elif self.is_device_global() or src_handler.is_device_global():
             if self.is_other_process() or src_handler.is_other_process():
                 runner_proc_id = self.proc_id or src_handler.proc_id
@@ -227,16 +236,16 @@ class StorageHandler(object):
             elif fallback is not None:
                 if src_handler.storage_type != DataStorageDevice.DISK and \
                         self.storage_type != DataStorageDevice.DISK:
-                    return fallback()
+                    return await fallback()
 
                 uid_to_work_item_ids = dict()
 
-                def _fallback_runner(uid, work_item_id):
+                async def _fallback_runner(uid, work_item_id):
                     uid_to_work_item_ids[uid] = work_item_id
-                    return fallback()
+                    return await fallback()
 
-                def _unlocker(uid, *exc, **kwargs):
-                    self.promise_ref(uid).unlock(uid_to_work_item_ids[uid])
+                async def _unlocker(uid, *exc, **kwargs):
+                    await self.promise_ref(uid).unlock(uid_to_work_item_ids[uid])
                     if not kwargs.get('accept', True):
                         raise exc[1].with_traceback(exc[2])
 
@@ -244,19 +253,19 @@ class StorageHandler(object):
                     self.promise_ref(uid).lock(session_id, keys, _promise=True)
                         .then(functools.partial(_fallback_runner, uid))
                         .then(functools.partial(_unlocker, uid), functools.partial(_unlocker, uid, accept=False))
-                    for uid, keys in self._dispatch_keys_to_uids(session_id, data_keys)
+                    for uid, keys in await self._dispatch_keys_to_uids(session_id, data_keys)
                 )
             else:
                 return promise.finished()
         else:
-            return fallback() if fallback is not None else promise.finished()
+            return await fallback() if fallback is not None else promise.finished()
 
-    def unregister_data(self, session_id, data_keys, _tell=False):
-        self._storage_ctx.manager_ref \
+    async def unregister_data(self, session_id, data_keys, _tell=False):
+        await self._storage_ctx.manager_ref \
             .unregister_data(session_id, data_keys, self.location, _tell=_tell)
 
 
-class BytesStorageMixin(object):
+class BytesStorageMixin:
     _has_bytes_io = True
 
     def create_bytes_reader(self, session_id, data_key, packed=False, packed_compression=None,
@@ -270,30 +279,27 @@ class BytesStorageMixin(object):
 
     def _copy_bytes_data(self, reader, writer, on_close=None):
         copy_block_size = options.worker.copy_block_size
-        async_read_pool = reader.get_io_pool()
-        async_write_pool = writer.get_io_pool()
 
         @log_unhandled
-        def _copy(_reader, _writer):
+        async def _copy(_reader, _writer):
             with_exc = False
-            block = None
             write_future = None
+            block = None
             try:
                 while True:
-                    block = async_read_pool.submit(_reader.read, copy_block_size).result()
+                    block = await _reader.execute_in_pool(_reader.read, copy_block_size)
                     if write_future:
-                        write_future.result()
+                        await write_future
                     if not block:
                         break
-                    write_future = async_write_pool.submit(_writer.write, block)
+                    write_future = asyncio.ensure_future(_writer.execute_in_pool(_writer.write, block))
             except:  # noqa: E722
                 with_exc = True
                 raise
             finally:
                 if on_close:
-                    on_close(_reader, _writer, not with_exc)
-                _reader.close()
-                _writer.close(finished=not with_exc)
+                    await on_close(_reader, _writer, not with_exc)
+                await asyncio.wait([_reader.close(), _writer.close(finished=not with_exc)])
                 del _reader, _writer, block
 
         try:
@@ -302,14 +308,13 @@ class BytesStorageMixin(object):
             del reader, writer
 
     def _copy_object_data(self, serialized_obj, writer):
-        def _copy(ser):
+        async def _copy(ser):
             try:
-                with writer:
-                    async_write_pool = writer.get_io_pool()
+                async with writer:
                     if hasattr(ser, 'write_to'):
-                        async_write_pool.submit(ser.write_to, writer).result()
+                        await self.execute_in_pool(ser.write_to, writer)
                     else:
-                        async_write_pool.submit(writer.write, ser).result()
+                        await self.execute_in_pool(writer.write, ser)
             finally:
                 del ser
 
@@ -319,7 +324,7 @@ class BytesStorageMixin(object):
             del serialized_obj
 
 
-class ObjectStorageMixin(object):
+class ObjectStorageMixin:
     _has_object_io = True
 
     @staticmethod
@@ -329,11 +334,11 @@ class ObjectStorageMixin(object):
         else:
             return dataserializer.deserialize(obj)
 
-    def _batch_load_objects(self, session_id, data_keys, key_loader,
+    async def _batch_load_objects(self, session_id, data_keys, key_loader,
                             batch_get=False, serialize=False, pin_token=None):
         is_success = True
         data_dict = dict()
-        sizes = self._storage_ctx.manager_ref.get_data_sizes(session_id, data_keys)
+        sizes = await self._storage_ctx.manager_ref.get_data_sizes(session_id, data_keys)
 
         def _record_data(k, o):
             try:
@@ -342,13 +347,13 @@ class ObjectStorageMixin(object):
             finally:
                 del o
 
-        def _put_objects(*_):
+        async def _put_objects(*_):
             keys, objs = zip(*data_dict.items())
             data_dict.clear()
             key_list, obj_list = list(keys), list(objs)
             try:
-                return self.put_objects(session_id, key_list, obj_list, sizes, serialize=serialize,
-                                        pin_token=pin_token, _promise=True)
+                return await self.put_objects(session_id, key_list, obj_list, sizes, serialize=serialize,
+                                              pin_token=pin_token, _promise=True)
             finally:
                 del objs
                 obj_list[:] = []
@@ -367,11 +372,11 @@ class ObjectStorageMixin(object):
                 del objs
 
         if batch_get:
-            return key_loader(data_keys).then(_batch_put_objects)
+            return (await key_loader(data_keys)).then(_batch_put_objects)
         else:
-            return promise.all_(
-                key_loader(k).then(functools.partial(_record_data, k), _handle_err)
-                for k in data_keys).then(_put_objects, _handle_err)
+            return promise.all_([
+                (await key_loader(k)).then(functools.partial(_record_data, k), _handle_err)
+                for k in data_keys]).then(_put_objects, _handle_err)
 
     def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
         raise NotImplementedError
@@ -381,7 +386,7 @@ class ObjectStorageMixin(object):
         raise NotImplementedError
 
 
-class SpillableStorageMixin(object):
+class SpillableStorageMixin:
     _spillable = True
 
     def spill_size(self, size, multiplier=1):
@@ -399,14 +404,14 @@ class SpillableStorageMixin(object):
 
 def wrap_promised(func):
     @functools.wraps(func)
-    def _wrapped(*args, **kwargs):
+    async def _wrapped(*args, **kwargs):
         try:
             promised = kwargs.get('_promise')
             if not promised:
-                return func(*args, **kwargs)
+                return await func(*args, **kwargs)
             else:
                 try:
-                    val = func(*args, **kwargs)
+                    val = await func(*args, **kwargs)
                     if isinstance(val, promise.Promise):
                         return val
                     else:

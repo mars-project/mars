@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import copy
 import os
 import time
@@ -37,18 +38,18 @@ class StatusReporterActor(WorkerActor):
         self._status_ref = None
         self._resource_ref = None
 
-    def post_create(self):
+    async def post_create(self):
         from ..scheduler import ResourceActor
 
-        super().post_create()
+        await super().post_create()
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
-        self.ref().collect_status(_tell=True)
+        self.ref().collect_status(_tell=True, _wait=False)
 
     def enable_status_upload(self):
         self._upload_status = True
 
-    def collect_status(self):
+    async def collect_status(self):
         """
         Collect worker status and write to kvstore
         """
@@ -87,12 +88,12 @@ class StatusReporterActor(WorkerActor):
             hw_metrics['memory_used'] = int(mem_stats.used)
             hw_metrics['memory_total'] = int(mem_stats.total)
 
-            cache_allocations = self._status_ref.get_cache_allocations()
+            cache_allocations = await self._status_ref.get_cache_allocations()
             cache_total = cache_allocations.get('total', 0)
             hw_metrics['cached_total'] = int(cache_total)
             hw_metrics['cached_hold'] = int(cache_allocations.get('hold', 0))
 
-            mem_quota_allocations = self._status_ref.get_mem_quota_allocations()
+            mem_quota_allocations = await self._status_ref.get_mem_quota_allocations()
             mem_quota_total = mem_quota_allocations.get('total', 0)
             mem_quota_allocated = mem_quota_allocations.get('allocated', 0)
             hw_metrics['mem_quota'] = int(mem_quota_total - mem_quota_allocated)
@@ -141,15 +142,15 @@ class StatusReporterActor(WorkerActor):
             meta_dict['stats'] = dict()
             meta_dict['slots'] = dict()
 
-            status_data = self._status_ref.get_stats()
+            status_data = await self._status_ref.get_stats()
             for k, v in status_data.items():
                 meta_dict['stats'][k] = v
 
-            slots_data = self._status_ref.get_slots()
+            slots_data = await self._status_ref.get_slots()
             for k, v in slots_data.items():
                 meta_dict['slots'][k] = v
 
-            meta_dict['progress'] = self._status_ref.get_progress()
+            meta_dict['progress'] = await self._status_ref.get_progress()
             meta_dict['details'] = gather_node_info()
 
             if options.vineyard.socket:  # pragma: no cover
@@ -157,11 +158,11 @@ class StatusReporterActor(WorkerActor):
                 client = vineyard.connect(options.vineyard.socket)
                 meta_dict['vineyard'] = {'instance_id': client.instance_id}
 
-            self._resource_ref.set_worker_meta(self._endpoint, meta_dict)
+            await self._resource_ref.set_worker_meta(self._endpoint, meta_dict)
         except Exception as ex:
             logger.error('Failed to save status: %s. repr(meta_dict)=%r', str(ex), meta_dict)
         finally:
-            self.ref().collect_status(_tell=True, _delay=1)
+            self.ref().collect_status(_tell=True, _wait=False, _delay=1)
 
 
 class StatusActor(WorkerActor):
@@ -178,17 +179,17 @@ class StatusActor(WorkerActor):
         self._mem_quota_allocations = {}
         self._cache_allocations = {}
 
-    def post_create(self):
-        super().post_create()
-        self._reporter_ref = self.ctx.create_actor(
+    async def post_create(self):
+        await super().post_create()
+        self._reporter_ref = await self.ctx.create_actor(
             StatusReporterActor, self._endpoint, with_gpu=self._with_gpu,
             uid=StatusReporterActor.default_uid())
 
-    def pre_destroy(self):
-        self.ctx.destroy_actor(self._reporter_ref)
+    async def pre_destroy(self):
+        await self.ctx.destroy_actor(self._reporter_ref)
 
-    def enable_status_upload(self):
-        self._reporter_ref.enable_status_upload(_tell=True)
+    async def enable_status_upload(self):
+        await self._reporter_ref.enable_status_upload(_tell=True)
 
     def get_stats(self, items=None):
         if not items:

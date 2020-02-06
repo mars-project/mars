@@ -153,7 +153,11 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     tensor_order = get_order(order, tensor.order)
 
     if tensor.dtype == dtype and tensor.order == tensor_order:
-        return tensor if not copy else tensor.copy(order=order)
+        try:
+            return tensor if not copy else tensor.copy(order=order)
+        except TypeError:
+            print(type(tensor))
+            raise
     elif not np.can_cast(tensor.dtype, dtype, casting=casting):
         raise TypeError('Cannot cast array from {0!r} to {1!r} '
                         'according to the rule {2!s}'.format(tensor.dtype, dtype, casting))

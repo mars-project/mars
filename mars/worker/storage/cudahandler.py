@@ -35,18 +35,17 @@ class CudaHandler(StorageHandler, ObjectStorageMixin, SpillableStorageMixin):
         self._cuda_store_ref_attr = None
         self._cuda_size_limit_attr = None
 
-    @property
-    def _cuda_store_ref(self):
+    async def _get_cuda_store_ref(self):
         if self._cuda_store_ref_attr is None:
             self._cuda_store_ref_attr = self._storage_ctx.promise_ref(
-                self._storage_ctx.manager_ref.get_process_holder(
+                await self._storage_ctx.manager_ref.get_process_holder(
                     self._proc_id, DataStorageDevice.CUDA))
         return self._cuda_store_ref_attr
 
-    @property
-    def _cuda_size_limit(self):
+    async def _get_cuda_size_limit(self):
         if self._cuda_size_limit_attr is None:
-            self._cuda_size_limit_attr = self._cuda_store_ref.get_size_limit()
+            ref = await self._get_cuda_store_ref()
+            self._cuda_size_limit_attr = await ref.get_size_limit()
         return self._cuda_size_limit_attr
 
     @staticmethod
@@ -77,15 +76,16 @@ class CudaHandler(StorageHandler, ObjectStorageMixin, SpillableStorageMixin):
         return o
 
     @wrap_promised
-    def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
-        objs = self._cuda_store_ref.get_objects(session_id, data_keys)
+    async def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
+        ref = await self._get_cuda_store_ref()
+        objs = await ref.get_objects(session_id, data_keys)
         if serialize:
             objs = [dataserializer.serialize(self._obj_to_mem(o)) for o in objs]
         return objs
 
     @wrap_promised
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
-                    pin_token=None, _promise=False):
+    async def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
+                          pin_token=None, _promise=False):
         objs = [self._deserial(obj) if serialize else obj for obj in objs]
         sizes = sizes or [calc_data_size(obj) for obj in objs]
 
@@ -93,6 +93,8 @@ class CudaHandler(StorageHandler, ObjectStorageMixin, SpillableStorageMixin):
         succ_keys, succ_objs, succ_sizes, succ_shapes = [], [], [], []
         affected_keys = []
         request_size, capacity = 0, 0
+
+        ref = await self._get_cuda_store_ref()
         try:
             for idx, key, obj, size in zip(itertools.count(0), data_keys, objs, sizes):
                 try:
@@ -104,11 +106,11 @@ class CudaHandler(StorageHandler, ObjectStorageMixin, SpillableStorageMixin):
                 except StorageFull:
                     affected_keys.append(key)
                     request_size += size
-                    capacity = self._cuda_size_limit
+                    capacity = await self._get_cuda_size_limit()
 
-            self._cuda_store_ref.put_objects(
+            await ref.put_objects(
                 session_id, succ_keys, succ_objs, succ_sizes, pin_token=pin_token)
-            self.register_data(session_id, succ_keys, succ_sizes, succ_shapes)
+            await self.register_data(session_id, succ_keys, succ_sizes, succ_shapes)
 
             if affected_keys:
                 raise StorageFull(request_size=request_size, capacity=capacity,
@@ -118,38 +120,44 @@ class CudaHandler(StorageHandler, ObjectStorageMixin, SpillableStorageMixin):
             objs[:] = []
             succ_objs[:] = []
 
-    def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
-        return self._batch_load_objects(
-            session_id, data_keys,
-            lambda keys: src_handler.get_objects(session_id, keys, _promise=True),
-            pin_token=pin_token, batch_get=True)
-
-    def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
-        def _read_serialized(reader):
-            with reader:
-                return reader.get_io_pool().submit(reader.read).result()
+    async def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
+        async def keys_loader(keys):
+            return await src_handler.get_objects(session_id, keys, _promise=True)
 
         return self._batch_load_objects(
+            session_id, data_keys, keys_loader, pin_token=pin_token, batch_get=True)
+
+    async def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
+        async def _read_serialized(reader):
+            async with reader:
+                return await reader.execute_in_pool(reader.read)
+
+        return await self._batch_load_objects(
             session_id, data_keys,
             lambda k: src_handler.create_bytes_reader(session_id, k, _promise=True).then(_read_serialized),
             serialize=True, pin_token=pin_token,
         )
 
-    def delete(self, session_id, data_keys, _tell=False):
-        self._cuda_store_ref.delete_objects(session_id, data_keys, _tell=_tell)
-        self.unregister_data(session_id, data_keys, _tell=_tell)
+    async def delete(self, session_id, data_keys, _tell=False):
+        ref = await self._get_cuda_store_ref()
+        await ref.delete_objects(session_id, data_keys, _tell=_tell)
+        await self.unregister_data(session_id, data_keys, _tell=_tell)
 
-    def spill_size(self, size, multiplier=1):
-        return self._cuda_store_ref.spill_size(size, multiplier, _promise=True)
+    async def spill_size(self, size, multiplier=1):
+        ref = await self._get_cuda_store_ref()
+        return ref.spill_size(size, multiplier, _promise=True)
 
-    def lift_data_keys(self, session_id, data_keys):
-        self._cuda_store_ref.lift_data_keys(session_id, data_keys, _tell=True)
+    async def lift_data_keys(self, session_id, data_keys):
+        ref = await self._get_cuda_store_ref()
+        await ref.lift_data_keys(session_id, data_keys, _tell=True)
 
-    def pin_data_keys(self, session_id, data_keys, token):
-        return self._cuda_store_ref.pin_data_keys(session_id, data_keys, token)
+    async def pin_data_keys(self, session_id, data_keys, token):
+        ref = await self._get_cuda_store_ref()
+        return await ref.pin_data_keys(session_id, data_keys, token)
 
-    def unpin_data_keys(self, session_id, data_keys, token, _tell=False):
-        return self._cuda_store_ref.unpin_data_keys(session_id, data_keys, token, _tell=_tell)
+    async def unpin_data_keys(self, session_id, data_keys, token, _tell=False):
+        ref = await self._get_cuda_store_ref()
+        return await ref.unpin_data_keys(session_id, data_keys, token, _tell=_tell)
 
 
 register_storage_handler_cls(DataStorageDevice.CUDA, CudaHandler)

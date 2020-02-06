@@ -62,13 +62,5 @@ class SchedulerActor(SchedulerHasClusterInfoActor, PromiseActor):
             return self._chunk_meta_client
 
 
-class CombinedFutureWaiter(object):
-    def __init__(self, futures):
-        self._futures = futures
-
-    def result(self):
-        return [f.result() for f in self._futures]
-
-
 def array_to_bytes(typecode, initializer):
     return array.array(typecode, initializer).tobytes()

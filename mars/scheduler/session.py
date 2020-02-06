@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import os
 import uuid
@@ -57,42 +58,41 @@ class SessionActor(SchedulerActor):
     def get_graph_ref_by_tileable_key(self, tileable_key):
         return self._tileable_to_graph[tileable_key]
 
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
-        self.set_cluster_info_ref()
+        await self.set_cluster_info_ref()
         self._manager_ref = self.ctx.actor_ref(SessionManagerActor.default_uid())
 
         from .assigner import AssignerActor
         assigner_uid = AssignerActor.gen_uid(self._session_id)
         address = self.get_scheduler(assigner_uid)
-        self._assigner_ref = self.ctx.create_actor(AssignerActor, uid=assigner_uid, address=address)
+        self._assigner_ref = await self.ctx.create_actor(AssignerActor, uid=assigner_uid, address=address)
 
-    def pre_destroy(self):
-        super().pre_destroy()
-        self._manager_ref.delete_session(self._session_id, _tell=True)
-        self.ctx.destroy_actor(self._assigner_ref)
+    async def pre_destroy(self):
+        await super().pre_destroy()
+        await self._manager_ref.delete_session(self._session_id, _tell=True)
+        await self.ctx.destroy_actor(self._assigner_ref)
         for graph_ref in self._graph_refs.values():
-            self.ctx.destroy_actor(graph_ref)
+            await self.ctx.destroy_actor(graph_ref)
         for mut_tensor_ref in self._mut_tensor_refs.values():
-            self.ctx.destroy_actor(mut_tensor_ref)
+            await self.ctx.destroy_actor(mut_tensor_ref)
 
     @log_unhandled
-    def submit_tileable_graph(self, serialized_graph, graph_key, target_tileables=None, names=None, compose=True):
+    async def submit_tileable_graph(self, serialized_graph, graph_key, target_tileables=None, names=None, compose=True):
         from .graph import GraphActor, GraphMetaActor
 
         graph_uid = GraphActor.gen_uid(self._session_id, graph_key)
 
         graph_addr = self.get_scheduler(graph_uid)
-        graph_ref = self.ctx.create_actor(GraphActor, self._session_id, graph_key,
-                                          serialized_graph, target_tileables=target_tileables,
-                                          uid=graph_uid, address=graph_addr)
+        graph_ref = await self.ctx.create_actor(
+            GraphActor, self._session_id, graph_key, serialized_graph,
+            target_tileables=target_tileables, uid=graph_uid, address=graph_addr)
         self._graph_refs[graph_key] = graph_ref
         self._graph_meta_refs[graph_key] = self.ctx.actor_ref(
             GraphMetaActor.gen_uid(self._session_id, graph_key), address=graph_addr)
 
-        graph_ref.execute_graph(_tell=True, compose=compose)
-
+        await graph_ref.execute_graph(compose=compose, _tell=True)
         for tileable_key in target_tileables or ():
             if tileable_key not in self._tileable_to_graph:
                 self._tileable_to_graph[tileable_key] = graph_ref
@@ -102,25 +102,25 @@ class SessionActor(SchedulerActor):
         return graph_ref
 
     @log_unhandled
-    def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
+    async def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
         from .mutable import MutableTensorActor
         if name in self._mut_tensor_refs:
             raise ValueError("The mutable tensor named '%s' already exists." % name)
         graph_key = uuid.uuid4()
         mut_tensor_uid = MutableTensorActor.gen_uid(self._session_id, name)
         mut_tensor_addr = self.get_scheduler(mut_tensor_uid)
-        mut_tensor_ref = self.ctx.create_actor(MutableTensorActor, self._session_id, name,
-                                               shape, dtype, graph_key, uid=mut_tensor_uid,
-                                               address=mut_tensor_addr, *args, **kwargs)
+        mut_tensor_ref = await self.ctx.create_actor(
+            MutableTensorActor, self._session_id, name, shape, dtype, graph_key,
+            uid=mut_tensor_uid, address=mut_tensor_addr, *args, **kwargs)
         self._mut_tensor_refs[name] = mut_tensor_ref
-        return mut_tensor_ref.tensor_meta()
+        return await mut_tensor_ref.tensor_meta()
 
     @log_unhandled
-    def get_mutable_tensor(self, name):
+    async def get_mutable_tensor(self, name):
         tensor_ref = self._mut_tensor_refs.get(name)
-        if tensor_ref is None or tensor_ref.sealed():
+        if tensor_ref is None or await tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
-        return tensor_ref.tensor_meta()
+        return await tensor_ref.tensor_meta()
 
     @log_unhandled
     def write_mutable_tensor(self, name, index, value):
@@ -180,7 +180,7 @@ class SessionActor(SchedulerActor):
         return graph_ref.fetch_tileable_result(tileable_key, _check=check)
 
     @log_unhandled
-    def handle_worker_change(self, adds, removes):
+    async def handle_worker_change(self, adds, removes):
         """
         Receive changes in worker list, collect relevant data losses
         and notify graphs to handle these changes.
@@ -201,7 +201,7 @@ class SessionActor(SchedulerActor):
                 futures.append(ref.remove_workers_in_session(self._session_id, removes, _wait=False))
 
             for f in futures:
-                lost_chunks.update(f.result())
+                lost_chunks.update(await f)
             lost_chunks = list(lost_chunks)
             logger.debug('Meta collection done, %d chunks lost.', len(lost_chunks))
         else:
@@ -211,7 +211,7 @@ class SessionActor(SchedulerActor):
         futures = []
         for ref in self._graph_refs.values():
             futures.append(ref.handle_worker_change(adds, removes, lost_chunks, _wait=False, _tell=True))
-        [f.result() for f in futures]
+        await asyncio.wait(futures)
 
 
 class SessionManagerActor(SchedulerActor):
@@ -219,35 +219,35 @@ class SessionManagerActor(SchedulerActor):
         super().__init__()
         self._session_refs = dict()
 
-    def post_create(self):
+    async def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
-        self.set_cluster_info_ref()
+        await self.set_cluster_info_ref()
 
     def get_sessions(self):
         return self._session_refs
 
     @log_unhandled
-    def create_session(self, session_id, **kwargs):
+    async def create_session(self, session_id, **kwargs):
         uid = SessionActor.gen_uid(session_id)
         scheduler_address = self.get_scheduler(uid)
         if session_id in self._session_refs:
             return self._session_refs[session_id]
         else:
-            session_ref = self.ctx.create_actor(SessionActor, uid=uid, address=scheduler_address,
-                                                session_id=session_id, **kwargs)
-            self._session_refs[session_id] = session_ref
-            return session_ref
+            session_ref = await self.ctx.create_actor(
+                SessionActor, uid=uid, address=scheduler_address, session_id=session_id, **kwargs)
+        self._session_refs[session_id] = session_ref
+        return session_ref
 
     @log_unhandled
     def has_session(self, session_id):
         return session_id in self._session_refs
 
     @log_unhandled
-    def delete_session(self, session_id):
+    async def delete_session(self, session_id):
         if session_id in self._session_refs:
             session_ref = self._session_refs[session_id]
-            session_ref.destroy()
+            await session_ref.destroy()
             del self._session_refs[session_id]
 
     @log_unhandled

@@ -33,10 +33,10 @@ from mars.utils import to_binary
 DEFAULT_PORT = 12345
 
 
-async def create_actor_pool(*args, **kwargs):
+def create_actor_pool(*args, **kwargs):
     address = kwargs.pop('address', None)
     if not address:
-        return await new_actor_pool(*args, **kwargs)
+        return new_actor_pool(*args, **kwargs)
 
     if isinstance(address, str):
         port = int(address.rsplit(':', 1)[1])
@@ -48,7 +48,7 @@ async def create_actor_pool(*args, **kwargs):
     while True:
         try:
             address = '127.0.0.1:{0}'.format(next(it))
-            return await new_actor_pool(address, *args, **kwargs)
+            return new_actor_pool(address, *args, **kwargs)
         except socket.error:
             if auto_port:
                 continue
@@ -177,7 +177,7 @@ class AdminDistributor(Distributor):
 @aio_case
 class Test(unittest.TestCase):
     async def testSimpleLocalActorPool(self):
-        async with await create_actor_pool(n_process=1) as pool:
+        async with create_actor_pool(n_process=1) as pool:
             actor_ref = await pool.create_actor(DummyActor, 100)
             self.assertEqual(await actor_ref.send(('add', 1)), 101)
             await actor_ref.tell(('add', 1))
@@ -192,12 +192,12 @@ class Test(unittest.TestCase):
             self.assertEqual(await pool.actor_ref(uid=actor_ref.uid).send(('add', 2)), 104)
 
     async def testLocalPostCreatePreDestroy(self):
-        async with await create_actor_pool(n_process=1) as pool:
+        async with create_actor_pool(n_process=1) as pool:
             actor_ref = await pool.create_actor(EventActor)
             await actor_ref.destroy()
 
     async def testFunctionActor(self):
-        async with await create_actor_pool(n_process=1) as pool:
+        async with create_actor_pool(n_process=1) as pool:
             actor_ref = await pool.create_actor(DummyFunctionActor, 1)
             self.assertEqual(await actor_ref.sync_func(2), 3)
             self.assertEqual(await actor_ref.async_func(2), 3)
@@ -218,7 +218,7 @@ class Test(unittest.TestCase):
             await actor_ref.destroy()
 
     async def testLocalCreateActor(self):
-        async with await create_actor_pool(n_process=1) as pool:
+        async with create_actor_pool(n_process=1) as pool:
             actor_ref = await pool.create_actor(DummyActor, 1)
             self.assertIsNotNone(actor_ref._ctx)
             # create actor inside on_receive
@@ -230,7 +230,7 @@ class Test(unittest.TestCase):
             self.assertEqual(r, 6)
 
     async def testLocalCreateActorError(self):
-        async with await create_actor_pool(n_process=1) as pool:
+        async with create_actor_pool(n_process=1) as pool:
             ref1 = await pool.create_actor(DummyActor, 1, uid='dummy1')
             with self.assertRaises(ActorAlreadyExist):
                 await pool.create_actor(DummyActor, 1, uid='dummy1')
@@ -243,13 +243,13 @@ class Test(unittest.TestCase):
                 await ref1.send(('create', (DummyActor, -2)))
 
     async def testLocalSend(self):
-        async with await create_actor_pool(n_process=1) as pool:
+        async with create_actor_pool(n_process=1) as pool:
             ref1 = await pool.create_actor(DummyActor, 1)
             ref2 = pool.actor_ref(await ref1.send(('create', (DummyActor, 2))))
             self.assertEqual(await ref1.send(('send', ref2, 'add', 3)), 5)
 
     async def testLocalSendError(self):
-        async with await create_actor_pool(n_process=1) as pool:
+        async with create_actor_pool(n_process=1) as pool:
             ref1 = await pool.create_actor(DummyActor, 1)
             with self.assertRaises(TypeError):
                 await ref1.send(('add', 1.0))
@@ -260,7 +260,7 @@ class Test(unittest.TestCase):
                 await pool.actor_ref('fake_uid').send(('add', 1))
 
     async def testLocalTell(self):
-        async with await create_actor_pool(n_process=1) as pool:
+        async with create_actor_pool(n_process=1) as pool:
             ref1 = await pool.create_actor(DummyActor, 1)
             ref2 = pool.actor_ref(await ref1.send(('create', (DummyActor, 2))))
             self.assertIsNone(await ref1.send(('tell', ref2, 'add', 3)))
@@ -276,7 +276,7 @@ class Test(unittest.TestCase):
                 await ref1.send(('tell', pool.actor_ref(set()), 'add', 3))
 
     async def testLocalDestroyHasActor(self):
-        async with await create_actor_pool(n_process=1) as pool:
+        async with create_actor_pool(n_process=1) as pool:
             ref1 = await pool.create_actor(DummyActor, 1)
             self.assertTrue(await pool.has_actor(ref1))
 
@@ -309,7 +309,7 @@ class Test(unittest.TestCase):
             await pool.has_actor(ref1)
 
     async def testSimpleMultiprocessActorPool(self):
-        async with await create_actor_pool(n_process=2) as pool:
+        async with create_actor_pool(n_process=2) as pool:
             self.assertIsInstance(pool._dispatcher, Dispatcher)
 
             actor_ref = await pool.create_actor(DummyActor, 101)
@@ -320,14 +320,12 @@ class Test(unittest.TestCase):
             self.assertEqual(res, 103)
 
     async def testProcessPostCreatePreDestroy(self):
-        async with await create_actor_pool(
-                n_process=3, distributor=DummyDistributor(2)) as pool:
+        async with create_actor_pool(n_process=3, distributor=DummyDistributor(2)) as pool:
             actor_ref = await pool.create_actor(EventActor)
             await actor_ref.destroy()
 
     async def testProcessCreateActor(self):
-        async with await create_actor_pool(
-                n_process=3, distributor=DummyDistributor(2)) as pool:
+        async with create_actor_pool(n_process=3, distributor=DummyDistributor(2)) as pool:
             actor_ref = await pool.create_actor(DummyActor, 1, uid='admin-1')
             self.assertIsNotNone(actor_ref._ctx)
             self.assertEqual(await actor_ref.send(('index',)), 0)
@@ -346,8 +344,7 @@ class Test(unittest.TestCase):
             self.assertEqual(r, 6)
 
     async def testProcessCreateActorError(self):
-        async with await create_actor_pool(
-                n_process=2, distributor=DummyDistributor(2)) as pool:
+        async with create_actor_pool(n_process=2, distributor=DummyDistributor(2)) as pool:
             with self.assertRaises(ValueError):
                 await pool.create_actor(DummyActor, -1)
             ref1 = await pool.create_actor(DummyActor, 1, uid='admin-1')
@@ -356,8 +353,7 @@ class Test(unittest.TestCase):
             await ref1.send(('create_ignore', (DummyActor, -3)))
 
     async def testProcessRestart(self):
-        async with await create_actor_pool(
-                n_process=2, distributor=DummyDistributor(2)) as pool:
+        async with create_actor_pool(n_process=2, distributor=DummyDistributor(2)) as pool:
             ref1 = await pool.create_actor(DummyActor, 1, uid='admin-1')
             ref2 = await pool.create_actor(DummyActor, 2, uid='user-2')
             self.assertEqual(await ref1.send(('send', ref2, 'add', 3)), 5)
@@ -367,15 +363,13 @@ class Test(unittest.TestCase):
             self.assertEqual(await ref1.send(('send', ref2, 'add', 5)), 7)
 
     async def testProcessSend(self):
-        async with await create_actor_pool(
-                n_process=2, distributor=DummyDistributor(2)) as pool:
+        async with create_actor_pool(n_process=2, distributor=DummyDistributor(2)) as pool:
             ref1 = await pool.create_actor(DummyActor, 1, uid='admin-1')
             ref2 = pool.actor_ref(await ref1.send(('create', (DummyActor, 2))))
             self.assertEqual(await ref1.send(('send', ref2, 'add', 3)), 5)
 
     async def testProcessSendError(self):
-        async with await create_actor_pool(
-                n_process=2, distributor=DummyDistributor(2)) as pool:
+        async with create_actor_pool(n_process=2, distributor=DummyDistributor(2)) as pool:
             ref1 = await pool.create_actor(DummyActor, 1, uid='admin-1')
             with self.assertRaises(TypeError):
                 await ref1.send(('add', 1.0))
@@ -386,8 +380,7 @@ class Test(unittest.TestCase):
                 await pool.actor_ref('fake_uid').send(('add', 1))
 
     async def testProcessTell(self):
-        async with await create_actor_pool(
-                n_process=2, distributor=DummyDistributor(2)) as pool:
+        async with create_actor_pool(n_process=2, distributor=DummyDistributor(2)) as pool:
             ref1 = await pool.create_actor(DummyActor, 1, uid='admin-1')
             ref2 = pool.actor_ref(await ref1.send(('create', (DummyActor, 2))))
             self.assertIsNone(await ref1.send(('tell', ref2, 'add', 3)))
@@ -403,8 +396,7 @@ class Test(unittest.TestCase):
                 await ref1.send(('tell', pool.actor_ref(set()), 'add', 3))
 
     async def testProcessDestroyHas(self):
-        async with await create_actor_pool(
-                n_process=2, distributor=DummyDistributor(2)) as pool:
+        async with create_actor_pool(n_process=2, distributor=DummyDistributor(2)) as pool:
             ref1 = await pool.create_actor(DummyActor, 1, uid='admin-1')
             self.assertTrue(await pool.has_actor(ref1))
             await pool.destroy_actor(ref1)
@@ -427,8 +419,7 @@ class Test(unittest.TestCase):
             self.assertFalse(await pool.has_actor(ref1))
 
     async def testProcessUnpickled(self):
-        async with await create_actor_pool(
-                n_process=2, distributor=DummyDistributor(2)) as pool:
+        async with create_actor_pool(n_process=2, distributor=DummyDistributor(2)) as pool:
             ref1 = await pool.create_actor(DummyActor, 1)
             with self.assertRaises(pickle.PickleError):
                 await ref1.send(lambda x: x)
@@ -447,7 +438,7 @@ class Test(unittest.TestCase):
                 await ref1.send(('create_unpickled',))
 
     async def testRemoteConnections(self):
-        async with await create_actor_pool(address=True, n_process=2) as pool:
+        async with create_actor_pool(address=True, n_process=2) as pool:
             addr = pool.cluster_info.address
 
             connections = await Connections.create(addr)
@@ -467,8 +458,7 @@ class Test(unittest.TestCase):
             connections1 = await Connections.create(addr)
             conns1 = [await connections1.connect() for _ in range(100)]
 
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=2) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 connections2 = await Connections.create(addr2)
@@ -482,8 +472,7 @@ class Test(unittest.TestCase):
                 self.assertTrue(conn.lock.locked())
                 conn.release()
 
-                async with await create_actor_pool(
-                        address='127.0.0.1:12347', n_process=2) as pool3:
+                async with create_actor_pool(address='127.0.0.1:12347', n_process=2) as pool3:
                     addr3 = pool3.cluster_info.address
 
                     _conns3 = await Connections.create(addr3)
@@ -500,7 +489,7 @@ class Test(unittest.TestCase):
                     del _conns3
 
     async def testRemotePostCreatePreDestroy(self):
-        async with await create_actor_pool(address=True, n_process=1) as pool:
+        async with create_actor_pool(address=True, n_process=1) as pool:
             addr = pool.cluster_info.address
 
             client = new_client()
@@ -509,7 +498,7 @@ class Test(unittest.TestCase):
 
     async def testRemoteCreateLocalPoolActor(self):
         # client -> local pool
-        async with await create_actor_pool(address=True, n_process=1) as pool:
+        async with create_actor_pool(address=True, n_process=1) as pool:
             addr = pool.cluster_info.address
 
             client = new_client()
@@ -534,7 +523,7 @@ class Test(unittest.TestCase):
 
     async def testRemoteCreateProcessPoolActor(self):
         # client -> process pool
-        async with await create_actor_pool(address=True, n_process=2) as pool:
+        async with create_actor_pool(address=True, n_process=2) as pool:
             addr = pool.cluster_info.address
 
             client = new_client()
@@ -555,9 +544,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteCreateLocalPoolToLocalPoolActor(self):
         # client -> local pool -> local pool
-        async with await create_actor_pool(address=True, n_process=1) as pool1:
+        async with create_actor_pool(address=True, n_process=1) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(address='127.0.0.1:12346', n_process=1) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=1) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -577,10 +566,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteCreateProcessPoolToProcessPoolActor(self):
         # client -> process pool -> process pool
-        async with await create_actor_pool(address=True, n_process=2) as pool1:
+        async with create_actor_pool(address=True, n_process=2) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=2) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -601,10 +589,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteCreateLocalPoolToProcessPoolActor(self):
         # client -> local pool -> process pool
-        async with await create_actor_pool(address=True, n_process=1) as pool1:
+        async with create_actor_pool(address=True, n_process=1) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=2) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -625,10 +612,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteCreateProcessPoolToLocalPoolActor(self):
         # client -> process pool -> local pool
-        async with await create_actor_pool(address=True, n_process=2) as pool1:
+        async with create_actor_pool(address=True, n_process=2) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=1) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=1) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -649,7 +635,7 @@ class Test(unittest.TestCase):
 
     async def testRemoteSendLocalPool(self):
         # client -> local pool
-        async with await create_actor_pool(address=True, n_process=1) as pool:
+        async with create_actor_pool(address=True, n_process=1) as pool:
             addr = pool.cluster_info.address
 
             client = new_client()
@@ -668,7 +654,7 @@ class Test(unittest.TestCase):
 
     async def testRemoteSendProcessPool(self):
         # client -> process pool
-        async with await create_actor_pool(address=True, n_process=2) as pool:
+        async with create_actor_pool(address=True, n_process=2) as pool:
             addr = pool.cluster_info.address
 
             client = new_client()
@@ -687,10 +673,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteSendLocalPoolToLocalPool(self):
         # client -> local pool -> local pool
-        async with await create_actor_pool(address=True, n_process=1) as pool1:
+        async with create_actor_pool(address=True, n_process=1) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=1) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=1) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -709,10 +694,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteSendProcessPoolToProcessPool(self):
         # client -> process pool -> process pool
-        async with await create_actor_pool(address=True, n_process=2) as pool1:
+        async with create_actor_pool(address=True, n_process=2) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=2) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -731,10 +715,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteSendLocalPoolToProcessPool(self):
         # client -> local pool -> process pool
-        async with await create_actor_pool(address=True, n_process=1) as pool1:
+        async with create_actor_pool(address=True, n_process=1) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=2) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -753,10 +736,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteSendProcessPoolToLocalPool(self):
         # client -> process pool -> local pool
-        async with await create_actor_pool(address=True, n_process=2) as pool1:
+        async with create_actor_pool(address=True, n_process=2) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=1) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=1) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -775,7 +757,7 @@ class Test(unittest.TestCase):
 
     async def testRemoteTellLocalPool(self):
         # client -> local pool
-        async with await create_actor_pool(address=True, n_process=1) as pool:
+        async with create_actor_pool(address=True, n_process=1) as pool:
             addr = pool.cluster_info.address
 
             client = new_client()
@@ -791,7 +773,7 @@ class Test(unittest.TestCase):
 
     async def testRemoteTellProcessPool(self):
         # client -> process pool
-        async with await create_actor_pool(address=True, n_process=2) as pool:
+        async with create_actor_pool(address=True, n_process=2) as pool:
             addr = pool.cluster_info.address
 
             client = new_client()
@@ -807,10 +789,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteTellLocalPoolToLocalPool(self):
         # client -> local pool -> local pool
-        async with await create_actor_pool(address=True, n_process=1) as pool1:
+        async with create_actor_pool(address=True, n_process=1) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=1) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=1) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -826,10 +807,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteTellProcessPoolToProcessPool(self):
         # client -> process pool -> process pool
-        async with await create_actor_pool(address=True, n_process=2) as pool1:
+        async with create_actor_pool(address=True, n_process=2) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=2) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 ref1 = await pool2.create_actor(DummyActor, 1, address=addr1)
@@ -850,10 +830,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteTellLocalPoolToProcessPool(self):
         # client -> local pool -> process pool
-        async with await create_actor_pool(address=True, n_process=1) as pool1:
+        async with create_actor_pool(address=True, n_process=1) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=2) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -869,10 +848,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteTellProcessPoolToLocalPool(self):
         # client -> process pool -> local pool
-        async with await create_actor_pool(address=True, n_process=2) as pool1:
+        async with create_actor_pool(address=True, n_process=2) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=1) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=1) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -888,7 +866,7 @@ class Test(unittest.TestCase):
 
     async def testRemoteDestroyHasLocalPool(self):
         # client -> local pool
-        async with await create_actor_pool(address=True, n_process=1) as pool:
+        async with create_actor_pool(address=True, n_process=1) as pool:
             addr = pool.cluster_info.address
 
             client = new_client()
@@ -918,7 +896,7 @@ class Test(unittest.TestCase):
 
     async def testRemoteDestroyHasProcessPool(self):
         # client -> process pool
-        async with await create_actor_pool(address=True, n_process=2) as pool:
+        async with create_actor_pool(address=True, n_process=2) as pool:
             addr = pool.cluster_info.address
 
             client = new_client()
@@ -949,10 +927,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteDestroyHasLocalPoolToLocalPool(self):
         # client -> local pool -> local pool
-        async with await create_actor_pool(address=True, n_process=1) as pool1:
+        async with create_actor_pool(address=True, n_process=1) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=1) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=1) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -983,10 +960,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteDestroyHasProcessPoolToProcessPool(self):
         # client -> process pool -> process pool
-        async with await create_actor_pool(address=True, n_process=2) as pool1:
+        async with create_actor_pool(address=True, n_process=2) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=2) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 ref1 = await pool2.create_actor(DummyActor, 1, address=addr1)
@@ -1022,10 +998,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteDestroyHasLocalPoolToProcessPool(self):
         # client -> local pool -> process pool
-        async with await create_actor_pool(address=True, n_process=1) as pool1:
+        async with create_actor_pool(address=True, n_process=1) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
-                    address='127.0.0.1:12346', n_process=2) as pool2:
+            async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 client = new_client()
@@ -1055,9 +1030,9 @@ class Test(unittest.TestCase):
 
     async def testRemoteDestroyHasProcessPoolToLocalPool(self):
         # client -> process pool -> local pool
-        async with await create_actor_pool(address=True, n_process=2) as pool1:
+        async with create_actor_pool(address=True, n_process=2) as pool1:
             addr1 = pool1.cluster_info.address
-            async with await create_actor_pool(
+            async with create_actor_pool(
                     address='127.0.0.1:12346', n_process=1) as pool2:
                 addr2 = pool2.cluster_info.address
 
@@ -1088,7 +1063,7 @@ class Test(unittest.TestCase):
                 self.assertFalse(await client.has_actor(ref1))
 
     async def testRemoteProcessPoolUnpickled(self):
-        async with await create_actor_pool(
+        async with create_actor_pool(
                 address=True, n_process=2, distributor=DummyDistributor(2)) as pool:
             addr = pool.cluster_info.address
 
@@ -1112,7 +1087,7 @@ class Test(unittest.TestCase):
                 await ref1.send(('create_unpickled',))
 
     async def testRemoteEmpty(self):
-        async with await create_actor_pool(
+        async with create_actor_pool(
                 address=True, n_process=2, distributor=AdminDistributor(2)) as pool:
             addr = pool.cluster_info.address
 
@@ -1122,7 +1097,7 @@ class Test(unittest.TestCase):
             self.assertIsNone(await ref.send(None))
 
     async def testPoolJoin(self):
-        async with await create_actor_pool(
+        async with create_actor_pool(
                 address=True, n_process=2, distributor=AdminDistributor(2)) as pool:
             start = time.time()
             await pool.join(0.2)
@@ -1139,7 +1114,7 @@ class Test(unittest.TestCase):
             self.assertGreaterEqual(time.time() - start, 0.2)
 
     async def testConcurrentSend(self):
-        async with await create_actor_pool(
+        async with create_actor_pool(
                 address=True, n_process=4, distributor=AdminDistributor(4)) as pool:
             ref1 = await pool.create_actor(DummyActor, 0)
 

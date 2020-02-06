@@ -83,7 +83,7 @@ class KVStoreSchedulerDiscoverer(object):
         ait = self._client.eternal_watch(SCHEDULER_PATH).__aiter__()
 
         class _AsyncIterator(object):
-            def __aiter__(self):
+            async def __aiter__(self):
                 return self
 
             async def __anext__(self):
@@ -103,7 +103,7 @@ class _ClusterInfoWatchActor(FunctionActor):
     async def get_schedulers(self):
         return await self._discoverer.get()
 
-    def watch(self):
+    async def watch(self):
         async for schedulers in self._discoverer.watch():
             self._cluster_info_ref.set_schedulers(schedulers, _tell=True)
 
@@ -124,20 +124,20 @@ class ClusterInfoActor(FunctionActor):
     def default_uid(cls):
         raise NotImplementedError
 
-    def post_create(self):
+    async def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
         if self._discoverer.dynamic:
             watcher = self._watcher = self.ctx.create_actor(
                 _ClusterInfoWatchActor, self._discoverer, self.ref())
-            watcher.watch(_tell=True)
-        self._schedulers = self._discoverer.get()
+            await watcher.watch(_tell=True)
+        self._schedulers = await self._discoverer.get()
 
         self._hash_ring = create_hash_ring(self._schedulers)
 
-    def pre_destroy(self):
+    async def pre_destroy(self):
         if self._watcher:
-            self.ctx.destroy_actor(self._watcher)
+            await self.ctx.destroy_actor(self._watcher)
 
     def register_observer(self, observer, fun_name):
         self._observer_refs.append((self.ctx.actor_ref(observer), fun_name))
@@ -191,10 +191,10 @@ class HasClusterInfoActor(PromiseActor):
         # cluster_info_actor is created when scheduler initialized
         self._cluster_info_ref = self.ctx.actor_ref(self.cluster_info_uid)
         # when some schedulers lost, notification will be received
-        await self._cluster_info_ref.register_observer(
-            self.ref(), set_schedulers_fun_name, _tell=True, _wait=False)
+        asyncio.ensure_future(self._cluster_info_ref.register_observer(
+            self.ref(), set_schedulers_fun_name, _tell=True))
         if not self._schedulers:
-            self.set_schedulers(self._cluster_info_ref.get_schedulers())
+            self.set_schedulers(await self._cluster_info_ref.get_schedulers())
 
     def get_actor_ref(self, key):
         addr = self.get_scheduler(key)

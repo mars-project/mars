@@ -18,23 +18,24 @@ import uuid
 import numpy as np
 from numpy.testing import assert_allclose
 
-from mars.tests.core import create_actor_pool
+from mars.tests.core import aio_case, create_actor_pool
 from mars.errors import StorageDataExists, StorageFull
-from mars.utils import get_next_port
+from mars.utils import get_next_port, to_async_context_manager
 from mars.worker.storage import PlasmaKeyMapActor
 from mars.worker.storage.sharedstore import PlasmaSharedStore
 
 
+@aio_case
 class Test(unittest.TestCase):
-    def testPlasmaSharedStore(self):
+    async def testPlasmaSharedStore(self):
         import pyarrow
         from pyarrow import plasma
 
         store_size = 10 * 1024 ** 2
         test_addr = '127.0.0.1:%d' % get_next_port()
-        with plasma.start_plasma_store(store_size) as (sckt, _), \
+        async with to_async_context_manager(plasma.start_plasma_store(store_size)) as (sckt, _), \
                 create_actor_pool(n_process=1, address=test_addr) as pool:
-            km_ref = pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
+            km_ref = await pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
             try:
                 plasma_client = plasma.connect(sckt)
             except TypeError:
@@ -48,72 +49,72 @@ class Test(unittest.TestCase):
                          for _ in range(20)]
             key_list = [str(uuid.uuid4()) for _ in range(20)]
 
-            self.assertFalse(store.contains(session_id, str(uuid.uuid4())))
+            self.assertFalse(await store.contains(session_id, str(uuid.uuid4())))
             with self.assertRaises(KeyError):
-                store.get(session_id, str(uuid.uuid4()))
+                await store.get(session_id, str(uuid.uuid4()))
             with self.assertRaises(KeyError):
-                store.get_actual_size(session_id, str(uuid.uuid4()))
+                await store.get_actual_size(session_id, str(uuid.uuid4()))
             with self.assertRaises(KeyError):
-                store.seal(session_id, str(uuid.uuid4()))
+                await store.seal(session_id, str(uuid.uuid4()))
 
             fake_data_key = str(uuid.uuid4())
-            km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
-            self.assertFalse(store.contains(session_id, fake_data_key))
-            self.assertIsNone(km_ref.get(session_id, fake_data_key))
+            await km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
+            self.assertFalse(await store.contains(session_id, fake_data_key))
+            self.assertIsNone(await km_ref.get(session_id, fake_data_key))
             with self.assertRaises(KeyError):
-                km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
-                store.get(session_id, fake_data_key)
-            self.assertIsNone(km_ref.get(session_id, fake_data_key))
+                await km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
+                await store.get(session_id, fake_data_key)
+            self.assertIsNone(await km_ref.get(session_id, fake_data_key))
             with self.assertRaises(KeyError):
-                km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
-                store.seal(session_id, fake_data_key)
-            self.assertIsNone(km_ref.get(session_id, fake_data_key))
+                await km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
+                await store.seal(session_id, fake_data_key)
+            self.assertIsNone(await km_ref.get(session_id, fake_data_key))
             with self.assertRaises(KeyError):
-                km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
-                store.get_actual_size(session_id, fake_data_key)
-            self.assertIsNone(km_ref.get(session_id, fake_data_key))
+                await km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
+                await store.get_actual_size(session_id, fake_data_key)
+            self.assertIsNone(await km_ref.get(session_id, fake_data_key))
             with self.assertRaises(KeyError):
-                km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
-                store.get_buffer(session_id, fake_data_key)
-            self.assertIsNone(km_ref.get(session_id, fake_data_key))
-            store.delete(session_id, fake_data_key)
+                await km_ref.put(session_id, fake_data_key, plasma.ObjectID.from_random())
+                await store.get_buffer(session_id, fake_data_key)
+            self.assertIsNone(await km_ref.get(session_id, fake_data_key))
+            await store.delete(session_id, fake_data_key)
 
             with self.assertRaises(Exception):
                 non_serial = type('non_serial', (object,), dict(nbytes=10))
-                store.put(session_id, fake_data_key, non_serial())
-            self.assertIsNone(km_ref.get(session_id, fake_data_key))
+                await store.put(session_id, fake_data_key, non_serial())
+            self.assertIsNone(await km_ref.get(session_id, fake_data_key))
             with self.assertRaises(Exception):
-                store.create(session_id, fake_data_key, 'abcd')
-            self.assertIsNone(km_ref.get(session_id, fake_data_key))
+                await store.create(session_id, fake_data_key, 'abcd')
+            self.assertIsNone(await km_ref.get(session_id, fake_data_key))
             with self.assertRaises(StorageFull):
-                store.create(session_id, fake_data_key, store_size * 2)
-            self.assertIsNone(km_ref.get(session_id, fake_data_key))
+                await store.create(session_id, fake_data_key, store_size * 2)
+            self.assertIsNone(await km_ref.get(session_id, fake_data_key))
 
             arrow_ser = pyarrow.serialize(data_list[0])
-            buf = store.create(session_id, key_list[0], arrow_ser.total_bytes)
+            buf = await store.create(session_id, key_list[0], arrow_ser.total_bytes)
             writer = pyarrow.FixedSizeBufferWriter(buf)
             arrow_ser.write_to(writer)
             writer.close()
-            store.seal(session_id, key_list[0])
+            await store.seal(session_id, key_list[0])
 
-            self.assertTrue(store.contains(session_id, key_list[0]))
-            self.assertEqual(store.get_actual_size(session_id, key_list[0]),
+            self.assertTrue(await store.contains(session_id, key_list[0]))
+            self.assertEqual(await store.get_actual_size(session_id, key_list[0]),
                              arrow_ser.total_bytes)
-            assert_allclose(store.get(session_id, key_list[0]),
+            assert_allclose(await store.get(session_id, key_list[0]),
                             data_list[0])
-            assert_allclose(pyarrow.deserialize(store.get_buffer(session_id, key_list[0])),
+            assert_allclose(pyarrow.deserialize(await store.get_buffer(session_id, key_list[0])),
                             data_list[0])
 
             with self.assertRaises(StorageDataExists):
-                store.create(session_id, key_list[0], arrow_ser.total_bytes)
-            self.assertIsNotNone(km_ref.get(session_id, key_list[0]))
-            store.delete(session_id, key_list[0])
+                await store.create(session_id, key_list[0], arrow_ser.total_bytes)
+            self.assertIsNotNone(await km_ref.get(session_id, key_list[0]))
+            await store.delete(session_id, key_list[0])
             del buf
 
             bufs = []
             for key, data in zip(key_list, data_list):
                 try:
-                    bufs.append(store.put(session_id, key, data))
+                    bufs.append(await store.put(session_id, key, data))
                 except StorageFull:
                     break
             del bufs

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import copy
 import sys
 import unittest
@@ -21,10 +22,11 @@ from mars.actors import new_client
 from mars.scheduler.chunkmeta import WorkerMeta, ChunkMetaStore, ChunkMetaCache, \
     ChunkMetaActor, ChunkMetaClient
 from mars.scheduler.utils import SchedulerClusterInfoActor
-from mars.tests.core import patch_method, create_actor_pool
+from mars.tests.core import aio_case, patch_method, create_actor_pool
 from mars.utils import get_next_port
 
 
+@aio_case
 class Test(unittest.TestCase):
     def testChunkMetaStore(self):
         store = ChunkMetaStore()
@@ -95,28 +97,26 @@ class Test(unittest.TestCase):
         self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
 
     @unittest.skipIf(sys.platform == 'win32', 'Currently not support multiple pools under Windows')
-    @patch_method(ChunkMetaClient.get_scheduler)
-    def testChunkMetaActors(self, *_):
+    async def testChunkMetaActors(self):
         proc_count = 2
         endpoints = ['127.0.0.1:%d' % get_next_port() for _ in range(proc_count)]
         keys = []
 
-        def _mock_get_scheduler(key):
+        async def _mock_get_scheduler(_self, key):
             return endpoints[keys.index(key[1]) % len(endpoints)]
-
-        ChunkMetaClient.get_scheduler.side_effect = _mock_get_scheduler
 
         session1 = str(uuid.uuid4())
         session2 = str(uuid.uuid4())
-        with create_actor_pool(n_process=1, backend='gevent', address=endpoints[0]) as pool1:
-            cluster_info1 = pool1.create_actor(SchedulerClusterInfoActor, endpoints,
-                                               uid=SchedulerClusterInfoActor.default_uid())
-            pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+        async with create_actor_pool(n_process=1, address=endpoints[0]) as pool1, \
+                create_actor_pool(n_process=1, address=endpoints[1]) as pool2:
+            with patch_method(ChunkMetaClient.get_scheduler, _mock_get_scheduler):
+                cluster_info1 = await pool1.create_actor(SchedulerClusterInfoActor, endpoints,
+                                                         uid=SchedulerClusterInfoActor.default_uid())
+                await pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
-            with create_actor_pool(n_process=1, backend='gevent', address=endpoints[1]) as pool2:
-                cluster_info2 = pool2.create_actor(SchedulerClusterInfoActor, endpoints,
-                                                   uid=SchedulerClusterInfoActor.default_uid())
-                pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+                cluster_info2 = await pool2.create_actor(SchedulerClusterInfoActor, endpoints,
+                                                         uid=SchedulerClusterInfoActor.default_uid())
+                await pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
                 actor_client = new_client()
                 client1 = ChunkMetaClient(actor_client, actor_client.actor_ref(cluster_info1))
@@ -132,100 +132,98 @@ class Test(unittest.TestCase):
                 key5 = str(uuid.uuid4())
                 key6 = str(uuid.uuid4())
                 keys = [key1, key2, key3, key4, key5, key6]
-                client1.set_chunk_size(session1, key1, 512)
-                client2.set_chunk_size(session1, key2, 1024)
-                client2.set_chunk_size(session2, key3, 1024)
+                await client1.set_chunk_size(session1, key1, 512)
+                await client2.set_chunk_size(session1, key2, 1024)
+                await client2.set_chunk_size(session2, key3, 1024)
 
-                self.assertEqual(client1.get_chunk_size(session1, key1), 512)
-                self.assertEqual(client2.get_chunk_size(session1, key2), 1024)
-                self.assertEqual(client1.get_chunk_size(session1, key2), 1024)
-                self.assertEqual(client2.get_chunk_size(session1, key1), 512)
+                self.assertEqual(await client1.get_chunk_size(session1, key1), 512)
+                self.assertEqual(await client2.get_chunk_size(session1, key2), 1024)
+                self.assertEqual(await client1.get_chunk_size(session1, key2), 1024)
+                self.assertEqual(await client2.get_chunk_size(session1, key1), 512)
 
-                self.assertListEqual(client1.batch_get_chunk_size(session1, [key1, key2]), [512, 1024])
-                self.assertListEqual(client2.batch_get_chunk_size(session1, [key1, key2]), [512, 1024])
+                self.assertListEqual(await client1.batch_get_chunk_size(session1, [key1, key2]), [512, 1024])
+                self.assertListEqual(await client2.batch_get_chunk_size(session1, [key1, key2]), [512, 1024])
 
-                client1.set_chunk_shape(session1, key1, (10,))
-                client2.set_chunk_shape(session1, key2, (10,) * 2)
-                client2.set_chunk_shape(session2, key3, (10,) * 2)
+                await client1.set_chunk_shape(session1, key1, (10,))
+                await client2.set_chunk_shape(session1, key2, (10,) * 2)
+                await client2.set_chunk_shape(session2, key3, (10,) * 2)
 
-                self.assertEqual(client1.get_chunk_shape(session1, key1), (10,))
-                self.assertEqual(client2.get_chunk_shape(session1, key2), (10,) * 2)
-                self.assertEqual(client1.get_chunk_shape(session1, key2), (10,) * 2)
-                self.assertEqual(client2.get_chunk_shape(session1, key1), (10,))
+                self.assertEqual(await client1.get_chunk_shape(session1, key1), (10,))
+                self.assertEqual(await client2.get_chunk_shape(session1, key2), (10,) * 2)
+                self.assertEqual(await client1.get_chunk_shape(session1, key2), (10,) * 2)
+                self.assertEqual(await client2.get_chunk_shape(session1, key1), (10,))
 
-                self.assertListEqual(client1.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
-                self.assertListEqual(client2.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
+                self.assertListEqual(await client1.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
+                self.assertListEqual(await client2.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
 
                 mock_endpoint = '127.0.0.1:%d' % get_next_port()
-                with create_actor_pool(n_process=1, backend='gevent', address=mock_endpoint) as pool3:
-                    cluster_info3 = pool3.create_actor(SchedulerClusterInfoActor, endpoints,
-                                                       uid=SchedulerClusterInfoActor.default_uid())
+                async with create_actor_pool(n_process=1, address=mock_endpoint) as pool3:
+                    cluster_info3 = await pool3.create_actor(SchedulerClusterInfoActor, endpoints,
+                                                             uid=SchedulerClusterInfoActor.default_uid())
                     client3 = ChunkMetaClient(actor_client, actor_client.actor_ref(cluster_info3))
-                    self.assertListEqual(client3.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
+                    self.assertListEqual(await client3.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
 
-                client1.add_worker(session1, key1, 'abc')
-                client1.add_worker(session1, key1, 'def')
-                client2.add_worker(session1, key2, 'ghi')
+                await client1.add_worker(session1, key1, 'abc')
+                await client1.add_worker(session1, key1, 'def')
+                await client2.add_worker(session1, key2, 'ghi')
 
-                client1.add_worker(session2, key3, 'ghi')
+                await client1.add_worker(session2, key3, 'ghi')
 
-                self.assertEqual(sorted(client1.get_workers(session1, key1)), sorted(('abc', 'def')))
-                self.assertEqual(sorted(client2.get_workers(session1, key2)), sorted(('ghi',)))
+                self.assertEqual(sorted(await client1.get_workers(session1, key1)), sorted(('abc', 'def')))
+                self.assertEqual(sorted(await client2.get_workers(session1, key2)), sorted(('ghi',)))
 
-                batch_result = client1.batch_get_workers(session1, [key1, key2])
+                batch_result = await client1.batch_get_workers(session1, [key1, key2])
                 self.assertEqual(sorted(batch_result[0]), sorted(('abc', 'def')))
                 self.assertEqual(sorted(batch_result[1]), sorted(('ghi',)))
 
                 affected = []
                 for loc_ref in (loc_ref1, loc_ref2):
-                    affected.extend(loc_ref.remove_workers_in_session(session2, ['ghi']))
+                    affected.extend(await loc_ref.remove_workers_in_session(session2, ['ghi']))
                 self.assertEqual(affected, [key3])
-                self.assertEqual(sorted(client1.get_workers(session1, key2)), sorted(('ghi',)))
-                self.assertIsNone(client1.get_workers(session2, key3))
+                self.assertEqual(sorted(await client1.get_workers(session1, key2)), sorted(('ghi',)))
+                self.assertIsNone(await client1.get_workers(session2, key3))
 
-                client1.delete_meta(session1, key1)
-                self.assertIsNone(client1.get_workers(session1, key1))
-                self.assertIsNone(client1.batch_get_chunk_size(session1, [key1, key2])[0])
-                self.assertIsNone(client1.batch_get_workers(session1, [key1, key2])[0])
+                await client1.delete_meta(session1, key1)
+                self.assertIsNone(await client1.get_workers(session1, key1))
+                self.assertIsNone((await client1.batch_get_chunk_size(session1, [key1, key2]))[0])
+                self.assertIsNone((await client1.batch_get_workers(session1, [key1, key2]))[0])
 
-                client2.batch_delete_meta(session1, [key1, key2])
-                self.assertIsNone(client1.get_workers(session1, key2))
-                self.assertIsNone(client1.batch_get_chunk_size(session1, [key1, key2])[1])
-                self.assertIsNone(client1.batch_get_workers(session1, [key1, key2])[1])
+                await client2.batch_delete_meta(session1, [key1, key2])
+                self.assertIsNone(await client1.get_workers(session1, key2))
+                self.assertIsNone((await client1.batch_get_chunk_size(session1, [key1, key2]))[1])
+                self.assertIsNone((await client1.batch_get_workers(session1, [key1, key2]))[1])
 
                 meta4 = WorkerMeta(chunk_size=512, chunk_shape=(10,) * 2, workers=(endpoints[0],))
-                loc_ref2.batch_set_chunk_meta(session1, [key4], [meta4])
-                self.assertEqual(loc_ref2.get_chunk_meta(session1, key4).chunk_size, 512)
-                self.assertEqual(loc_ref2.get_chunk_meta(session1, key4).chunk_shape, (10,) * 2)
+                await loc_ref2.batch_set_chunk_meta(session1, [key4], [meta4])
+                self.assertEqual((await loc_ref2.get_chunk_meta(session1, key4)).chunk_size, 512)
+                self.assertEqual((await loc_ref2.get_chunk_meta(session1, key4)).chunk_shape, (10,) * 2)
 
                 meta5 = WorkerMeta(chunk_size=512, chunk_shape=(10,) * 2, workers=(endpoints[0],))
                 meta6 = WorkerMeta(chunk_size=512, chunk_shape=(10,) * 2, workers=(endpoints[0],))
-                client1.batch_set_chunk_meta(session1, [key5, key6], [meta5, meta6])
-                self.assertEqual(loc_ref1.get_chunk_meta(session1, key5).chunk_size, 512)
-                self.assertEqual(loc_ref2.get_chunk_meta(session1, key6).chunk_size, 512)
+                await client1.batch_set_chunk_meta(session1, [key5, key6], [meta5, meta6])
+                self.assertEqual((await loc_ref1.get_chunk_meta(session1, key5)).chunk_size, 512)
+                self.assertEqual((await loc_ref2.get_chunk_meta(session1, key6)).chunk_size, 512)
 
     @unittest.skipIf(sys.platform == 'win32', 'Currently not support multiple pools under Windows')
-    @patch_method(ChunkMetaClient.get_scheduler)
-    def testChunkBroadcast(self, *_):
+    async def testChunkBroadcast(self, *_):
         proc_count = 2
         endpoints = ['127.0.0.1:%d' % get_next_port() for _ in range(proc_count)]
         keys = []
 
-        def _mock_get_scheduler(key):
+        async def _mock_get_scheduler(_self, key):
             return endpoints[keys.index(key[1]) % len(endpoints)]
 
-        ChunkMetaClient.get_scheduler.side_effect = _mock_get_scheduler
-
         session_id = str(uuid.uuid4())
-        with create_actor_pool(n_process=1, backend='gevent', address=endpoints[0]) as pool1:
-            cluster_info1 = pool1.create_actor(SchedulerClusterInfoActor, endpoints,
-                                               uid=SchedulerClusterInfoActor.default_uid())
-            pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+        async with create_actor_pool(n_process=1, address=endpoints[0]) as pool1, \
+                create_actor_pool(n_process=1, address=endpoints[1]) as pool2:
+            with patch_method(ChunkMetaClient.get_scheduler, _mock_get_scheduler):
+                cluster_info1 = await pool1.create_actor(SchedulerClusterInfoActor, endpoints,
+                                                         uid=SchedulerClusterInfoActor.default_uid())
+                await pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
-            with create_actor_pool(n_process=1, backend='gevent', address=endpoints[1]) as pool2:
-                cluster_info2 = pool2.create_actor(SchedulerClusterInfoActor, endpoints,
-                                                   uid=SchedulerClusterInfoActor.default_uid())
-                pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+                cluster_info2 = await pool2.create_actor(SchedulerClusterInfoActor, endpoints,
+                                                         uid=SchedulerClusterInfoActor.default_uid())
+                await pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
                 actor_client = new_client()
                 client1 = ChunkMetaClient(actor_client, actor_client.actor_ref(cluster_info1))
@@ -238,40 +236,40 @@ class Test(unittest.TestCase):
                 key3 = str(uuid.uuid4())
                 keys = [key1, key2, key3]
 
-                client1.set_chunk_broadcasts(session_id, key1, [endpoints[1]])
-                client1.set_chunk_size(session_id, key1, 512)
-                client1.set_chunk_shape(session_id, key1, (10,) * 2)
-                client1.add_worker(session_id, key1, 'abc')
-                client2.set_chunk_broadcasts(session_id, key2, [endpoints[0]])
-                client2.set_chunk_size(session_id, key2, 512)
-                client1.set_chunk_shape(session_id, key2, (10,) * 2)
-                client2.add_worker(session_id, key2, 'def')
-                pool2.sleep(0.1)
+                await client1.set_chunk_broadcasts(session_id, key1, [endpoints[1]])
+                await client1.set_chunk_size(session_id, key1, 512)
+                await client1.set_chunk_shape(session_id, key1, (10,) * 2)
+                await client1.add_worker(session_id, key1, 'abc')
+                await client2.set_chunk_broadcasts(session_id, key2, [endpoints[0]])
+                await client2.set_chunk_size(session_id, key2, 512)
+                await client1.set_chunk_shape(session_id, key2, (10,) * 2)
+                await client2.add_worker(session_id, key2, 'def')
+                await asyncio.sleep(0.1)
 
-                self.assertEqual(local_ref1.get_chunk_meta(session_id, key1).chunk_size, 512)
-                self.assertEqual(local_ref1.get_chunk_meta(session_id, key1).chunk_shape, (10,) * 2)
-                self.assertEqual(local_ref1.get_chunk_broadcasts(session_id, key1), [endpoints[1]])
-                self.assertEqual(local_ref2.get_chunk_meta(session_id, key1).chunk_size, 512)
-                self.assertEqual(local_ref2.get_chunk_meta(session_id, key1).chunk_shape, (10,) * 2)
-                self.assertEqual(local_ref2.get_chunk_broadcasts(session_id, key2), [endpoints[0]])
+                self.assertEqual((await local_ref1.get_chunk_meta(session_id, key1)).chunk_size, 512)
+                self.assertEqual((await local_ref1.get_chunk_meta(session_id, key1)).chunk_shape, (10,) * 2)
+                self.assertEqual(await local_ref1.get_chunk_broadcasts(session_id, key1), [endpoints[1]])
+                self.assertEqual((await local_ref2.get_chunk_meta(session_id, key1)).chunk_size, 512)
+                self.assertEqual((await local_ref2.get_chunk_meta(session_id, key1)).chunk_shape, (10,) * 2)
+                self.assertEqual(await local_ref2.get_chunk_broadcasts(session_id, key2), [endpoints[0]])
 
-                client1.batch_set_chunk_broadcasts(session_id, [key3], [[endpoints[1]]])
+                await client1.batch_set_chunk_broadcasts(session_id, [key3], [[endpoints[1]]])
                 meta3 = WorkerMeta(chunk_size=512, chunk_shape=(10,) * 2, workers=(endpoints[0],))
-                local_ref1.batch_set_chunk_meta(session_id, [key3], [meta3])
-                self.assertEqual(local_ref2.get_chunk_meta(session_id, key3).chunk_size, 512)
-                self.assertEqual(local_ref2.get_chunk_meta(session_id, key3).chunk_shape, (10,) * 2)
+                await local_ref1.batch_set_chunk_meta(session_id, [key3], [meta3])
+                self.assertEqual((await local_ref2.get_chunk_meta(session_id, key3)).chunk_size, 512)
+                self.assertEqual((await local_ref2.get_chunk_meta(session_id, key3)).chunk_shape, (10,) * 2)
 
-                client1.delete_meta(session_id, key1)
-                pool2.sleep(0.1)
+                await client1.delete_meta(session_id, key1)
+                await asyncio.sleep(0.1)
 
-                self.assertIsNone(local_ref1.get_chunk_meta(session_id, key1))
-                self.assertIsNone(local_ref2.get_chunk_meta(session_id, key1))
-                self.assertIsNone(local_ref1.get_chunk_broadcasts(session_id, key1))
+                self.assertIsNone(await local_ref1.get_chunk_meta(session_id, key1))
+                self.assertIsNone(await local_ref2.get_chunk_meta(session_id, key1))
+                self.assertIsNone(await local_ref1.get_chunk_broadcasts(session_id, key1))
 
-                local_ref1.remove_workers_in_session(session_id, ['def'])
-                local_ref2.remove_workers_in_session(session_id, ['def'])
-                pool2.sleep(0.1)
+                await local_ref1.remove_workers_in_session(session_id, ['def'])
+                await local_ref2.remove_workers_in_session(session_id, ['def'])
+                await asyncio.sleep(0.1)
 
-                self.assertIsNone(local_ref1.get_chunk_meta(session_id, key2))
-                self.assertIsNone(local_ref2.get_chunk_meta(session_id, key2))
-                self.assertIsNone(local_ref2.get_chunk_broadcasts(session_id, key2))
+                self.assertIsNone(await local_ref1.get_chunk_meta(session_id, key2))
+                self.assertIsNone(await local_ref2.get_chunk_meta(session_id, key2))
+                self.assertIsNone(await local_ref2.get_chunk_broadcasts(session_id, key2))

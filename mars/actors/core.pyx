@@ -57,11 +57,19 @@ cdef class ActorRef:
             return object.__getattribute__(self, item)
 
         def _mt_call(*args, **kwargs):
+            cdef bint wait
+            wait = kwargs.pop('_wait', True)
+
             if kwargs.pop('_tell', False):
                 delay = kwargs.pop('_delay', None)
-                return self.tell((item,) + args + (kwargs,), delay=delay)
+                ret = self.tell((item,) + args + (kwargs,), delay=delay)
             else:
-                return self.send((item,) + args + (kwargs,))
+                ret = self.send((item,) + args + (kwargs,))
+
+            if not wait:
+                return asyncio.ensure_future(ret)
+            else:
+                return ret
 
         return _mt_call
 
@@ -122,8 +130,8 @@ class FunctionActor(Actor):
         return ret
 
 
-async def create_actor_pool(str address=None, int n_process=0, object distributor=None,
-                            object parallel=None, str advertise_address=None):
+def create_actor_pool(str address=None, int n_process=0, object distributor=None,
+                      object parallel=None, str advertise_address=None):
     cdef bint standalone
     cdef ClusterInfo cluster_info
 
@@ -139,7 +147,6 @@ async def create_actor_pool(str address=None, int n_process=0, object distributo
 
     from .pool.aio_pool import ActorPool
     pool = ActorPool(cluster_info, distributor=distributor, parallel=parallel)
-    await pool.run()
     return pool
 
 

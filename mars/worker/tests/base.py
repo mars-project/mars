@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
+import asyncio.locks
 import os
-import sys
 import unittest
-
-import gevent.event
 
 from mars import promise
 from mars.tests.core import create_actor_pool
@@ -34,19 +31,17 @@ class WorkerTestActor(WorkerActor):
     def set_test_object(self, test_obj):
         self.test_obj = test_obj
 
-    def run_test(self):
-        yield self
-        v = yield
-        del v
+    def get_actor_obj(self):
+        return self
 
-    def run_later(self, fun, *args, **kw):
+    async def run_later(self, fun, *args, **kw):
         delay = kw.get('_delay')
         if not delay:
             kw.pop('_delay', None)
-            return fun(*args, **kw)
+            return await fun(*args, **kw)
         else:
             kw['_tell'] = True
-            self.ref().run_later(fun, *args, **kw)
+            await self.ref().run_later(fun, *args, **kw)
 
     def set_result(self, result, accept=True):
         self.test_obj._result_store = (result, accept)
@@ -58,9 +53,12 @@ class StorageClientActor(WorkerActor):
         if item.startswith('_'):
             return object.__getattribute__(self, item)
 
-        def _wrapped_call(*args, **kwargs):
+        async def _wrapped_call(*args, **kwargs):
             callback = kwargs.pop('callback', None)
             ret = getattr(self.storage_client, item)(*args, **kwargs)
+            if asyncio.iscoroutine(ret):
+                ret = await ret
+
             if isinstance(ret, promise.Promise):
                 if callback:
                     ret.then(lambda *a, **k: self.tell_promise(callback, *a, **k))
@@ -112,25 +110,29 @@ class WorkerCase(unittest.TestCase):
         self._test_actor = None
         self._test_actor_ref = None
         self._result_store = None
-        self._result_event = gevent.event.Event()
+        self._result_event = None
 
-    @contextlib.contextmanager
     def run_actor_test(self, pool):
-        self._test_pool = pool
-        self._test_actor_ref = pool.create_actor(WorkerTestActor)
-        self._test_actor_ref.set_test_object(self)
-        gen = self._test_actor_ref.run_test()
-        try:
-            self._test_actor = next(gen)
-            yield self._test_actor
-        except:  # noqa: E722
-            self._result_store = (sys.exc_info(), False)
-            self._result_event.set()
-            raise
-        finally:
-            gen.send(None)
+        this = self
+        self._result_event = asyncio.locks.Event()
 
-    def waitp(self, *promises, **kw):
+        class _AsyncContextManager(object):
+            async def __aenter__(self):
+                this._test_pool = pool
+                this._test_actor_ref = await pool.create_actor(WorkerTestActor)
+                await this._test_actor_ref.set_test_object(this)
+                this._test_actor = await this._test_actor_ref.get_actor_obj()
+                return this._test_actor
+
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                if exc_type is not None:
+                    this._result_store = ((exc_type, exc_val, exc_tb), False)
+                    this._result_event.set()
+                    raise exc_val.with_traceback(exc_tb) from None
+
+        return _AsyncContextManager()
+
+    async def waitp(self, *promises, **kw):
         timeout = kw.pop('timeout', 10)
         if len(promises) > 1:
             p = promise.all_(promises)
@@ -138,11 +140,13 @@ class WorkerCase(unittest.TestCase):
             p = promises[0]
         p.then(lambda *s: self._test_actor_ref.set_result(s, _tell=True),
                lambda *exc: self._test_actor_ref.set_result(exc, accept=False, _tell=True))
-        return self.get_result(timeout)
+        return await self.get_result(timeout)
 
-    def get_result(self, timeout=None):
-        if not self._result_event.wait(timeout):
-            raise TimeoutError
+    async def get_result(self, timeout=None):
+        try:
+            await asyncio.wait_for(self._result_event.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            raise TimeoutError from None
         self._result_event.clear()
         r, accept = self._result_store
         if accept:
@@ -162,13 +166,22 @@ class WorkerCase(unittest.TestCase):
             shutil.rmtree(d, ignore_errors=True)
 
     @staticmethod
-    @contextlib.contextmanager
     def create_pool(*args, **kwargs):
         from mars.worker import SharedHolderActor
+        pool = None
 
-        pool = create_actor_pool(*args, **kwargs)
-        yield pool
+        class _AsyncContextManager(object):
+            async def __aenter__(self):
+                nonlocal pool
+                pool = create_actor_pool(*args, **kwargs)
+                await pool.__aenter__()
+                return pool
 
-        shared_ref = pool.actor_ref(SharedHolderActor.default_uid())
-        if pool.has_actor(shared_ref):
-            shared_ref.destroy()
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                shared_ref = pool.actor_ref(SharedHolderActor.default_uid())
+                if await pool.has_actor(shared_ref):
+                    await shared_ref.destroy()
+                await pool.__aexit__(exc_type, exc_val, exc_tb)
+
+        return _AsyncContextManager()
+

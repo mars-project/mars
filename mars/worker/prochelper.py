@@ -29,17 +29,17 @@ class ProcessHelperActor(WorkerActor):
         self._dispatch_ref = None
         self._daemon_ref = None
 
-    def post_create(self):
+    async def post_create(self):
         from .dispatcher import DispatchActor
         from .daemon import WorkerDaemonActor
 
-        super().post_create()
+        await super().post_create()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
-        self._dispatch_ref.register_free_slot(self.uid, 'process_helper')
+        await self._dispatch_ref.register_free_slot(self.uid, 'process_helper')
 
         self._daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
-        if self.ctx.has_actor(self._daemon_ref):
-            self._daemon_ref.register_process(self.ref(), os.getpid(), _tell=True)
+        if await self.ctx.has_actor(self._daemon_ref):
+            await self._daemon_ref.register_process(self.ref(), os.getpid(), _tell=True)
         else:
             self._daemon_ref = None
 
