@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .map import map_
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 from .rechunk import rechunk
@@ -31,6 +32,7 @@ def _install():
         setattr(t, 'to_cpu', to_cpu)
         setattr(t, 'rechunk', rechunk)
         setattr(t, 'reset_index', series_reset_index)
+        setattr(t, 'map', map_)
 
 
 _install()

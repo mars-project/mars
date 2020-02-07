@@ -185,3 +185,75 @@ class Test(TestBase):
         result = result.sort_values(by=result.columns[0])
         expected = (data1 + data2).reset_index()
         np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
+
+    def testSeriesMapExecution(self):
+        raw = pd.Series(np.arange(10))
+        s = from_pandas_series(raw, chunk_size=7)
+
+        with self.assertRaises(ValueError):
+            # cannot infer dtype, the inferred is int,
+            # but actually it is float
+            # just due to nan
+            s.map({5: 10})
+
+        r = s.map({5: 10}, dtype=float)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map({5: 10})
+        pd.testing.assert_series_equal(result, expected)
+
+        r = s.map({i: 10 + i for i in range(7)}, dtype=float)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map({i: 10 + i for i in range(7)})
+        pd.testing.assert_series_equal(result, expected)
+
+        r = s.map({5: 10}, dtype=float, na_action='ignore')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map({5: 10}, na_action='ignore')
+        pd.testing.assert_series_equal(result, expected)
+
+        # dtype can be inferred
+        r = s.map({5: 10.})
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map({5: 10.})
+        pd.testing.assert_series_equal(result, expected)
+
+        r = s.map(lambda x: x + 1, dtype=int)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map(lambda x: x + 1)
+        pd.testing.assert_series_equal(result, expected)
+
+        def f(x: int) -> int:
+            return x + 1
+
+        # dtype can be inferred for function
+        r = s.map(f)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map(lambda x: x + 1)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test arg is a md.Series
+        raw2 = pd.Series([10], index=[5])
+        s2 = from_pandas_series(raw2)
+
+        r = s.map(s2, dtype=float)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map(raw2)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test arg is a md.Series, and dtype can be inferred
+        raw2 = pd.Series([10.], index=[5])
+        s2 = from_pandas_series(raw2)
+
+        r = s.map(s2)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map(raw2)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test str
+        raw = pd.Series(['a', 'b', 'c', 'd'])
+        s = from_pandas_series(raw, chunk_size=2)
+
+        r = s.map({'c': 'e'})
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map({'c': 'e'})
+        pd.testing.assert_series_equal(result, expected)
