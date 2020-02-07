@@ -222,13 +222,13 @@ class Test(TestBase):
         expected = raw.map(lambda x: x + 1)
         pd.testing.assert_series_equal(result, expected)
 
-        def f(x: int) -> int:
-            return x + 1
+        def f(x: int) -> float:
+            return x + 1.
 
         # dtype can be inferred for function
         r = s.map(f)
         result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = raw.map(lambda x: x + 1)
+        expected = raw.map(lambda x: x + 1.)
         pd.testing.assert_series_equal(result, expected)
 
         # test arg is a md.Series

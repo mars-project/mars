@@ -65,33 +65,35 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         if len(inputs) == 2:
             self._arg = self._inputs[1]
 
-    def __call__(self, series, dtype, test_size=3):
+    def __call__(self, series, dtype):
         if dtype is None:
+            inferred_dtype = None
             if self._arg_func is not None:
                 # arg is a function, try to inspect the signature
                 sig = inspect.signature(self._arg_func)
                 return_type = sig.return_annotation
                 if return_type is not inspect._empty:
-                    dtype = np.dtype(return_type)
+                    inferred_dtype = np.dtype(return_type)
             else:
                 if isinstance(self._arg, MutableMapping):
                     inferred_dtype = pd.Series(self._arg).dtype
                 else:
                     inferred_dtype = self._arg.dtype
-                if np.issubdtype(inferred_dtype, np.number):
-                    if np.issubdtype(inferred_dtype, np.inexact):
-                        # for the inexact e.g. float
-                        # we can make the decision,
-                        # but for int, due to the nan which may occur,
-                        # we cannot infer the dtype
-                        dtype = inferred_dtype
-                else:
+            if inferred_dtype is not None and np.issubdtype(inferred_dtype, np.number):
+                if np.issubdtype(inferred_dtype, np.inexact):
+                    # for the inexact e.g. float
+                    # we can make the decision,
+                    # but for int, due to the nan which may occur,
+                    # we cannot infer the dtype
                     dtype = inferred_dtype
+            else:
+                dtype = inferred_dtype
 
         if dtype is None:
             raise ValueError('cannot infer dtype, '
                              'it needs to be specified manually for `map`')
         else:
+            dtype = np.int64 if dtype is int else dtype
             dtype = np.dtype(dtype)
 
         inputs = [series]
@@ -147,11 +149,11 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         ctx[out.key] = ret
 
 
-def map_(series, arg, na_action=None, dtype=None, test_size=3):
+def map_(series, arg, na_action=None, dtype=None):
     if callable(arg):
         arg_func, arg = arg, None
     else:
         arg_func = None
 
     op = DataFrameMap(arg=arg, arg_func=arg_func, na_action=na_action)
-    return op(series, dtype=dtype, test_size=test_size)
+    return op(series, dtype=dtype)
