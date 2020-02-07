@@ -30,12 +30,14 @@ def _install():
     from .count import count_series, count_dataframe
     from .mean import mean_series, mean_dataframe
     from .var import var_series, var_dataframe
+    from .std import std_series, std_dataframe
 
-    func_names = ['sum', 'prod', 'max', 'min', 'count', 'mean', 'var']
+    func_names = ['sum', 'prod', 'max', 'min', 'count',
+                  'mean', 'var', 'std']
     series_funcs = [sum_series, prod_series, max_series, min_series,
-                    count_series, mean_series, var_series]
+                    count_series, mean_series, var_series, std_series]
     df_funcs = [sum_dataframe, prod_dataframe, max_dataframe, min_dataframe,
-                count_dataframe, mean_dataframe, var_dataframe]
+                count_dataframe, mean_dataframe, var_dataframe, std_dataframe]
     for func_name, series_func, df_func in zip(func_names, series_funcs, df_funcs):
         for t in DATAFRAME_TYPE:
             setattr(t, func_name, df_func)

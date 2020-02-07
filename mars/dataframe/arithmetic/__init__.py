@@ -47,6 +47,7 @@ from .degrees import DataFrameDegrees
 from .ceil import DataFrameCeil
 from .floor import DataFrameFloor
 from .around import DataFrameAround, around
+from .sqrt import DataFrameSqrt
 from .exp import DataFrameExp
 from .exp2 import DataFrameExp2
 from .expm1 import DataFrameExpm1
@@ -91,6 +92,7 @@ def _install():
         DataFrameRadians, DataFrameDegrees,
         DataFrameCeil, DataFrameFloor, DataFrameAround,
         DataFrameExp, DataFrameExp2, DataFrameExpm1,
+        DataFrameSqrt,
     ]
     for unary_op in unary_ops:
         register_tensor_unary_ufunc(unary_op)

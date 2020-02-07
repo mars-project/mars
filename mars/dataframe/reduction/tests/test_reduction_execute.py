@@ -28,7 +28,8 @@ reduction_functions = dict(
     min=dict(func_name='min', has_min_count=False),
     max=dict(func_name='max', has_min_count=False),
     mean=dict(func_name='mean', has_min_count=False),
-    var = dict(func_name='var', has_min_count=False),
+    var=dict(func_name='var', has_min_count=False),
+    std=dict(func_name='std', has_min_count=False),
 )
 
 
