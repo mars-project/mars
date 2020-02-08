@@ -325,6 +325,10 @@ message OperandDef {
         DENSE_TO_SPARSE = 702;
         SPARSE_TO_DENSE = 703;
 
+        // Functions
+        MAP = 710;
+        APPLY = 711;
+
         FUSE = 801;
 
         // control
