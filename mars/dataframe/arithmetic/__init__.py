@@ -19,6 +19,7 @@ from ..ufunc.tensor import register_tensor_unary_ufunc
 from .abs import abs_, DataFrameAbs
 from .add import add, radd, DataFrameAdd
 from .subtract import subtract, rsubtract, DataFrameSubtract
+from .multiply import mul, rmul, DataFrameMul
 from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
 from .truediv import truediv, rtruediv, DataFrameTrueDiv
 from .equal import eq, DataFrameEqual
@@ -111,6 +112,12 @@ def _install():
         setattr(entity, '__rsub__', wrap_notimplemented_exception(rsubtract))
         setattr(entity, 'sub', subtract)
         setattr(entity, 'rsub', rsubtract)
+
+        setattr(entity, '__mul__', wrap_notimplemented_exception(mul))
+        setattr(entity, '__rmul__', wrap_notimplemented_exception(rmul))
+        setattr(entity, 'mul', mul)
+        setattr(entity, 'multiply', mul)
+        setattr(entity, 'rmul', rmul)
 
         setattr(entity, '__floordiv__', wrap_notimplemented_exception(floordiv))
         setattr(entity, '__rfloordiv__', wrap_notimplemented_exception(rfloordiv))
