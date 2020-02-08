@@ -35,6 +35,7 @@ binary_functions = dict(
                   rfunc_name='rfloordiv'),
     truediv=dict(func=operator.truediv, func_name='truediv',
                  rfunc_name='rtruediv'),
+    power=dict(func=operator.pow, func_name='pow', rfunc_name='rpow'),
     equal=dict(func=comp_func('eq', 'eq'), func_name='eq', rfunc_name='eq'),
     not_equal=dict(func=comp_func('ne', 'ne'), func_name='ne', rfunc_name='ne'),
     greater=dict(func=comp_func('gt', 'lt'), func_name='gt', rfunc_name='lt'),

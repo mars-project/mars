@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+
 from ...core import build_mode
 from ..core import DATAFRAME_TYPE
 from ..utils import wrap_notimplemented_exception
@@ -22,6 +24,7 @@ from .subtract import subtract, rsubtract, DataFrameSubtract
 from .multiply import mul, rmul, DataFrameMul
 from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
 from .truediv import truediv, rtruediv, DataFrameTrueDiv
+from .power import power, rpower, DataFramePower
 from .equal import eq, DataFrameEqual
 from .not_equal import ne, DataFrameNotEqual
 from .less import lt, DataFrameLess
@@ -55,6 +58,7 @@ from .expm1 import DataFrameExpm1
 
 
 def _wrap_eq():
+    @functools.wraps(eq)
     def call(df, other, **kw):
         if build_mode().is_build_mode:
             return df._equals(other)
@@ -63,6 +67,7 @@ def _wrap_eq():
 
 
 def _wrap_comparison(func):
+    @functools.wraps(func)
     def call(df, other, **kw):
         if isinstance(df, DATAFRAME_TYPE) and isinstance(other, DATAFRAME_TYPE):
             # index and columns should be identical
@@ -131,6 +136,11 @@ def _install():
         setattr(entity, 'rtruediv', rtruediv)
         setattr(entity, 'div', truediv)
         setattr(entity, 'rdiv', rtruediv)
+
+        setattr(entity, '__pow__', wrap_notimplemented_exception(power))
+        setattr(entity, '__rpow__', wrap_notimplemented_exception(rpower))
+        setattr(entity, 'pow', power)
+        setattr(entity, 'rpow', rpower)
 
         setattr(entity, '__eq__', _wrap_eq())
         setattr(entity, 'eq', eq)

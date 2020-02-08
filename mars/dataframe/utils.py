@@ -552,6 +552,7 @@ def in_range_index(i, pd_range_index):
 
 
 def wrap_notimplemented_exception(func):
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
