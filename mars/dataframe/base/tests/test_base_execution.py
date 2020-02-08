@@ -257,3 +257,32 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = raw.map({'c': 'e'})
         pd.testing.assert_series_equal(result, expected)
+
+    def testDescribeExecution(self):
+        s_raw = pd.Series(np.random.rand(10))
+
+        # test one chunk
+        series = from_pandas_series(s_raw, chunk_size=10)
+
+        r = series.describe()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.describe()
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.describe(percentiles=[])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.describe(percentiles=[])
+        pd.testing.assert_series_equal(result, expected)
+
+        # test multi chunks
+        series = from_pandas_series(s_raw, chunk_size=3)
+
+        r = series.describe()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.describe()
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.describe(percentiles=[])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.describe(percentiles=[])
+        pd.testing.assert_series_equal(result, expected)

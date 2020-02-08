@@ -56,7 +56,11 @@ class Series(_Series):
                 data = data.rechunk(chunk_size)
             series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)
         elif isinstance(data, SERIES_TYPE):
-            series = data
+            if not hasattr(data, 'data'):
+                # SeriesData
+                series = _Series(data)
+            else:
+                series = data
         else:
             pd_series = pd.Series(data, index=index, dtype=dtype, name=name, copy=copy)
             series = from_pandas_series(pd_series, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
