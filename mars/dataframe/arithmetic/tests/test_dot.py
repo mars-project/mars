@@ -40,6 +40,12 @@ class Test(unittest.TestCase):
         expected = df1_raw.dot(df2_raw)
         pd.testing.assert_frame_equal(result, expected)
 
+        # test @
+        r = df1 @ df2
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df1_raw @ df2_raw
+        pd.testing.assert_frame_equal(result, expected)
+
         series1 = Series(s1_raw, chunk_size=5)
 
         # df.dot(series)
