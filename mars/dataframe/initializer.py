@@ -32,7 +32,11 @@ class DataFrame(_Frame):
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
-            df = data
+            if not hasattr(data, 'data'):
+                # DataFrameData
+                df = _Frame(data)
+            else:
+                df = data
         elif isinstance(data, dict) and any(isinstance(v, (Base, Entity)) for v in data.values()):
             # data is a dict and some value is tensor
             columns = list(data.keys()) if columns is None else columns

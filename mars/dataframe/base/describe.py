@@ -20,7 +20,7 @@ from ... import tensor as mt
 from ...serialize import ValueType, KeyField, ListField
 from ...tensor.utils import recursive_tile
 from ..core import SERIES_TYPE
-from ..initializer import Series
+from ..initializer import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index, build_empty_df
 
@@ -127,7 +127,25 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_dataframe(cls, op):
-        pass
+        df = DataFrame(op.input)
+        out = op.outputs[0]
+        index = out.index_value.to_pandas()
+        dtypes = out.dtypes
+        columns = dtypes.index.tolist()
+        # ['count', 'mean', 'std', 'min', {percentiles}, 'max']
+        names = index.tolist()
+
+        df = df.rechunk({1: df.shape[1]})
+
+        values = [None] * 6
+        for i, agg in enumerate(names[:4]):
+            values[i] = getattr(df[columns], agg)().to_tensor()[None, :]
+        values[-1] = getattr(df[columns], names[-1])().to_tensor()[None, :]
+        values[4] = df[columns].quantile(op.percentiles).to_tensor()
+
+        t = mt.concatenate(values).rechunk((len(index), len(columns)))
+        ret = DataFrame(t, index=index, columns=columns)
+        return [recursive_tile(ret)]
 
     @classmethod
     def execute(cls, ctx, op):
