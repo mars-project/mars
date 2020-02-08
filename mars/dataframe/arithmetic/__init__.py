@@ -55,6 +55,7 @@ from .sqrt import DataFrameSqrt
 from .exp import DataFrameExp
 from .exp2 import DataFrameExp2
 from .expm1 import DataFrameExpm1
+from .dot import dot
 
 
 def _wrap_eq():
@@ -154,6 +155,9 @@ def _install():
         setattr(entity, 'ge', ge)
         setattr(entity, '__le__', _wrap_comparison(le))
         setattr(entity, 'le', le)
+
+        setattr(entity, '__matmul__', dot)
+        setattr(entity, 'dot', dot)
 
 
 _install()
