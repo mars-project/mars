@@ -30,10 +30,12 @@ from mars.dataframe.arithmetic.tests.test_arithmetic import comp_func
 binary_functions = dict(
     add=dict(func=operator.add, func_name='add', rfunc_name='radd'),
     subtract=dict(func=operator.sub, func_name='sub', rfunc_name='rsub'),
+    multiply=dict(func=operator.mul, func_name='mul', rfunc_name='rmul'),
     floordiv=dict(func=operator.floordiv, func_name='floordiv',
                   rfunc_name='rfloordiv'),
     truediv=dict(func=operator.truediv, func_name='truediv',
                  rfunc_name='rtruediv'),
+    power=dict(func=operator.pow, func_name='pow', rfunc_name='rpow'),
     equal=dict(func=comp_func('eq', 'eq'), func_name='eq', rfunc_name='eq'),
     not_equal=dict(func=comp_func('ne', 'ne'), func_name='ne', rfunc_name='ne'),
     greater=dict(func=comp_func('gt', 'lt'), func_name='gt', rfunc_name='lt'),

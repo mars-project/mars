@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+
 from ...core import build_mode
 from ..core import DATAFRAME_TYPE
 from ..utils import wrap_notimplemented_exception
@@ -19,8 +21,10 @@ from ..ufunc.tensor import register_tensor_unary_ufunc
 from .abs import abs_, DataFrameAbs
 from .add import add, radd, DataFrameAdd
 from .subtract import subtract, rsubtract, DataFrameSubtract
+from .multiply import mul, rmul, DataFrameMul
 from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
 from .truediv import truediv, rtruediv, DataFrameTrueDiv
+from .power import power, rpower, DataFramePower
 from .equal import eq, DataFrameEqual
 from .not_equal import ne, DataFrameNotEqual
 from .less import lt, DataFrameLess
@@ -51,9 +55,11 @@ from .sqrt import DataFrameSqrt
 from .exp import DataFrameExp
 from .exp2 import DataFrameExp2
 from .expm1 import DataFrameExpm1
+from .dot import dot
 
 
 def _wrap_eq():
+    @functools.wraps(eq)
     def call(df, other, **kw):
         if build_mode().is_build_mode:
             return df._equals(other)
@@ -62,6 +68,7 @@ def _wrap_eq():
 
 
 def _wrap_comparison(func):
+    @functools.wraps(func)
     def call(df, other, **kw):
         if isinstance(df, DATAFRAME_TYPE) and isinstance(other, DATAFRAME_TYPE):
             # index and columns should be identical
@@ -112,6 +119,12 @@ def _install():
         setattr(entity, 'sub', subtract)
         setattr(entity, 'rsub', rsubtract)
 
+        setattr(entity, '__mul__', wrap_notimplemented_exception(mul))
+        setattr(entity, '__rmul__', wrap_notimplemented_exception(rmul))
+        setattr(entity, 'mul', mul)
+        setattr(entity, 'multiply', mul)
+        setattr(entity, 'rmul', rmul)
+
         setattr(entity, '__floordiv__', wrap_notimplemented_exception(floordiv))
         setattr(entity, '__rfloordiv__', wrap_notimplemented_exception(rfloordiv))
         setattr(entity, '__truediv__', wrap_notimplemented_exception(truediv))
@@ -125,6 +138,11 @@ def _install():
         setattr(entity, 'div', truediv)
         setattr(entity, 'rdiv', rtruediv)
 
+        setattr(entity, '__pow__', wrap_notimplemented_exception(power))
+        setattr(entity, '__rpow__', wrap_notimplemented_exception(rpower))
+        setattr(entity, 'pow', power)
+        setattr(entity, 'rpow', rpower)
+
         setattr(entity, '__eq__', _wrap_eq())
         setattr(entity, 'eq', eq)
         setattr(entity, '__ne__', _wrap_comparison(ne))
@@ -137,6 +155,9 @@ def _install():
         setattr(entity, 'ge', ge)
         setattr(entity, '__le__', _wrap_comparison(le))
         setattr(entity, 'le', le)
+
+        setattr(entity, '__matmul__', dot)
+        setattr(entity, 'dot', dot)
 
 
 _install()
