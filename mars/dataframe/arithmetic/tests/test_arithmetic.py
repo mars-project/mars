@@ -27,8 +27,9 @@ from mars.dataframe.utils import split_monotonic_index_min_max, \
 from mars.dataframe.datasource.dataframe import from_pandas, DataFrameDataSource
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series, SeriesDataSource
 from mars.dataframe.arithmetic import DataFrameAbs, DataFrameAdd, DataFrameSubtract, \
-    DataFrameFloorDiv, DataFrameTrueDiv, DataFrameEqual, DataFrameNotEqual, \
-    DataFrameGreater, DataFrameLess, DataFrameGreaterEqual, DataFrameLessEqual
+    DataFrameMul, DataFrameFloorDiv, DataFrameTrueDiv, DataFramePower, \
+    DataFrameEqual, DataFrameNotEqual, DataFrameGreater, DataFrameLess, \
+    DataFrameGreaterEqual, DataFrameLessEqual
 from mars.dataframe.align import DataFrameIndexAlign, DataFrameShuffleProxy
 from mars.tiles import get_tiled
 from mars.tests.core import TestBase, parameterized
@@ -46,10 +47,13 @@ def comp_func(name, reverse_name):
 binary_functions = dict(
     add=dict(func=operator.add, op=DataFrameAdd, func_name='add', rfunc_name='radd'),
     subtract=dict(func=operator.sub, op=DataFrameSubtract, func_name='sub', rfunc_name='rsub'),
+    multiply=dict(func=operator.mul, op=DataFrameMul, func_name='mul', rfunc_name='rmul'),
     floordiv=dict(func=operator.floordiv, op=DataFrameFloorDiv,
                   func_name='floordiv', rfunc_name='rfloordiv'),
     truediv=dict(func=operator.truediv, op=DataFrameTrueDiv,
                  func_name='truediv', rfunc_name='rtruediv'),
+    power=dict(func=operator.pow, op=DataFramePower,
+               func_name='pow', rfunc_name='rpow'),
     equal=dict(func=comp_func('eq', 'eq'), op=DataFrameEqual,
                func_name='eq', rfunc_name='eq'),
     not_equal=dict(func=comp_func('ne', 'ne'), op=DataFrameNotEqual,
