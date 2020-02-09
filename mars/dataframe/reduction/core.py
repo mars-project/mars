@@ -77,14 +77,21 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     @classmethod
     def _tile_one_chunk(cls, op):
         df = op.outputs[0]
+        params = df.params
+
         chk = op.inputs[0].chunks[0]
+        chunk_params = {k: v for k, v in chk.params.items()
+                        if k in df.params}
+        chunk_params['shape'] = df.shape
+        chunk_params['index'] = chk.index
         new_chunk_op = op.copy().reset_key()
-        chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, shape=df.shape, index=chk.index,
-                                       index_value=df.index_value, dtype=df.dtype)
+        chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, kws=[chunk_params])
+
         new_op = op.copy()
         nsplits = tuple((s,) for s in chunk.shape)
-        return new_op.new_seriess(op.inputs, df.shape, nsplits=nsplits, chunks=[chunk],
-                                  index_value=df.index_value, dtype=df.dtype)
+        params['chunks'] = [chunk]
+        params['nsplits'] = nsplits
+        return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
     def _tree_reduction(cls, chunks, op, combine_size, idx):
@@ -195,7 +202,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op._stage = OperandStage.map
-            chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=df.dtype, index_value=df.index_value)
+            chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=df.dtype)
 
         while len(chunks) > combine_size:
             new_chunks = []
@@ -207,6 +214,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 chk = concat_op.new_chunk(chks, shape=(length,), index=(i,), dtype=chks[0].dtype,
                                           index_value=parse_index(pd.RangeIndex(range_num), [c.key for c in chks]))
                 new_op = op.copy().reset_key()
+                new_op._object_type = ObjectType.series
                 new_op._stage = OperandStage.combine
                 new_chunks.append(new_op.new_chunk([chk], shape=(), index=(i,), dtype=chk.dtype,
                                                    index_value=parse_index(pd.RangeIndex(-1))))
@@ -219,14 +227,13 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                                   index_value=parse_index(pd.RangeIndex(range_num)))
         chunk_op = op.copy().reset_key()
         chunk_op._stage = OperandStage.agg
-        chunk = chunk_op.new_chunk([chk], shape=(), index=(0,), dtype=chk.dtype,
-                                   index_value=parse_index(pd.RangeIndex(-1)))
+        chunk = chunk_op.new_chunk([chk], shape=(), index=(0,), dtype=chk.dtype)
 
         new_op = op.copy().reset_key()
         nsplits = tuple((s,) for s in chunk.shape)
-        return new_op.new_seriess(op.inputs, df.shape,
-                                  nsplits=tuple(tuple(ns) for ns in nsplits),
-                                  chunks=[chunk], dtype=df.dtype, index_value=df.index_value)
+        return new_op.new_tileables(op.inputs, df.shape,
+                                    nsplits=tuple(tuple(ns) for ns in nsplits),
+                                    chunks=[chunk], dtype=df.dtype)
 
     @classmethod
     def tile(cls, op):
@@ -385,8 +392,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             raise NotImplementedError('Not support specified level now')
 
-        return self.new_series([series], shape=(), dtype=series.dtype,
-                               index_value=parse_index(pd.RangeIndex(-1)), name=series.name)
+        return self.new_scalar([series], dtype=series.dtype)
 
     def __call__(self, a):
         if isinstance(a, DATAFRAME_TYPE):

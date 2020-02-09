@@ -23,7 +23,7 @@ class DataFrameMax(DataFrameReductionOperand, DataFrameReductionMixin):
 
 def max_series(df, axis=None, skipna=None, level=None, combine_size=None):
     op = DataFrameMax(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
-                      object_type=ObjectType.series)
+                      object_type=ObjectType.scalar)
     return op(df)
 
 

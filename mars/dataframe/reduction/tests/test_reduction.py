@@ -18,6 +18,7 @@ import unittest
 
 from mars import opcodes as OperandDef
 from mars.tests.core import TestBase, parameterized
+from mars.tensor import Tensor
 from mars.dataframe.core import IndexValue, Series
 from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, DataFrameMax, \
     DataFrameCount, DataFrameMean, DataFrameVar
@@ -66,10 +67,8 @@ class Test(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.name, chunk2.name)
         self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
         self.assertEqual(chunk.op.axis, chunk2.op.axis)
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
         # json
         chunk = reduction_df.chunks[0]
@@ -80,18 +79,14 @@ class Test(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk2.name, chunk.name)
         self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
         self.assertEqual(chunk.op.axis, chunk2.op.axis)
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
     def testSeriesReduction(self):
         data = pd.Series({'a': list(range(20))}, index=[str(i) for i in range(20)])
         series = getattr(from_pandas_series(data, chunk_size=3), self.func_name)()
 
-        self.assertIsInstance(series, Series)
-        self.assertEqual(series.name, data.name)
-        self.assertIsInstance(series.index_value._index_value, IndexValue.RangeIndex)
+        self.assertIsInstance(series, Tensor)
         self.assertEqual(series.shape, ())
 
         series = series.tiles()
@@ -108,9 +103,7 @@ class Test(TestBase):
             kwargs = dict()
         series = getattr(from_pandas_series(data, chunk_size=7), self.func_name)(**kwargs)
 
-        self.assertIsInstance(series, Series)
-        self.assertEqual(series.name, data.name)
-        self.assertIsInstance(series.index_value._index_value, IndexValue.RangeIndex)
+        self.assertIsInstance(series, Tensor)
         self.assertEqual(series.shape, ())
 
         series = series.tiles()

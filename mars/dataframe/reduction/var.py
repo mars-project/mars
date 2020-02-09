@@ -103,7 +103,7 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
 def var_series(series, axis=None, skipna=None, level=None, ddof=1, combine_size=None):
     op = DataFrameVar(axis=axis, skipna=skipna, level=level, ddof=ddof,
                       combine_size=combine_size,
-                      object_type=ObjectType.series)
+                      object_type=ObjectType.scalar)
     return op(series)
 
 

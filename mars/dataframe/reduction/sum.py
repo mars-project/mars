@@ -23,7 +23,7 @@ class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
 
 def sum_series(df, axis=None, skipna=None, level=None, min_count=0, combine_size=None):
     op = DataFrameSum(axis=axis, skipna=skipna, level=level, min_count=min_count, combine_size=combine_size,
-                      object_type=ObjectType.series)
+                      object_type=ObjectType.scalar)
     return op(df)
 
 
