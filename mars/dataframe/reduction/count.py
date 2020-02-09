@@ -46,7 +46,7 @@ class DataFrameCount(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def count_series(series, level=None, combine_size=None):
-    op = DataFrameCount(level=level, combine_size=combine_size, object_type=ObjectType.series)
+    op = DataFrameCount(level=level, combine_size=combine_size, object_type=ObjectType.scalar)
     return op(series)
 
 

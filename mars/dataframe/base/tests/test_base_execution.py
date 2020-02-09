@@ -171,3 +171,64 @@ class Test(TestBase):
 
         expected = (data1 + data2).reset_index()
         np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
+
+    def testDescribeExecution(self):
+        s_raw = pd.Series(np.random.rand(10))
+
+        # test one chunk
+        series = from_pandas_series(s_raw, chunk_size=10)
+
+        r = series.describe()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.describe()
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.describe(percentiles=[])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.describe(percentiles=[])
+        pd.testing.assert_series_equal(result, expected)
+
+        # test multi chunks
+        series = from_pandas_series(s_raw, chunk_size=3)
+
+        r = series.describe()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.describe()
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.describe(percentiles=[])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.describe(percentiles=[])
+        pd.testing.assert_series_equal(result, expected)
+
+        df_raw = pd.DataFrame(np.random.rand(10, 4), columns=list('abcd'))
+        df_raw['e'] = np.random.randint(100, size=10)
+
+        # test one chunk
+        df = from_pandas_df(df_raw, chunk_size=10)
+
+        r = df.describe()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.describe()
+        pd.testing.assert_frame_equal(result, expected)
+
+        r = series.describe(percentiles=[], include=np.float64)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.describe(percentiles=[], include=np.float64)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test multi chunks
+        df = from_pandas_df(df_raw, chunk_size=3)
+
+        r = df.describe()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.describe()
+        pd.testing.assert_frame_equal(result, expected)
+
+        r = df.describe(percentiles=[], include=np.float64)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.describe(percentiles=[], include=np.float64)
+        pd.testing.assert_frame_equal(result, expected)
+
+        with self.assertRaises(ValueError):
+            df.describe(percentiles=[1.1])

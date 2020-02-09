@@ -16,6 +16,7 @@ from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 from .rechunk import rechunk
 from .reset_index import df_reset_index, series_reset_index
+from .describe import describe
 
 
 def _install():
@@ -26,11 +27,13 @@ def _install():
         setattr(t, 'to_cpu', to_cpu)
         setattr(t, 'rechunk', rechunk)
         setattr(t, 'reset_index', df_reset_index)
+        setattr(t, 'describe', describe)
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
         setattr(t, 'to_cpu', to_cpu)
         setattr(t, 'rechunk', rechunk)
         setattr(t, 'reset_index', series_reset_index)
+        setattr(t, 'describe', describe)
 
 
 _install()
