@@ -136,12 +136,13 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
         names = index.tolist()
 
         df = df.rechunk({1: df.shape[1]})
+        df = df[columns]
 
         values = [None] * 6
         for i, agg in enumerate(names[:4]):
-            values[i] = getattr(df[columns], agg)().to_tensor()[None, :]
-        values[-1] = getattr(df[columns], names[-1])().to_tensor()[None, :]
-        values[4] = df[columns].quantile(op.percentiles).to_tensor()
+            values[i] = getattr(df, agg)().to_tensor()[None, :]
+        values[-1] = getattr(df, names[-1])().to_tensor()[None, :]
+        values[4] = df.quantile(op.percentiles).to_tensor()
 
         t = mt.concatenate(values).rechunk((len(index), len(columns)))
         ret = DataFrame(t, index=index, columns=columns)
