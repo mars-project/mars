@@ -18,10 +18,9 @@ _jinja_env = get_jinja_env()
 
 
 class DashboardHandler(MarsRequestHandler):
-    def get(self):
-        web_api = MarsWebAPI(self._scheduler)
-        scheduler_infos = web_api.get_schedulers_info()
-        worker_infos = web_api.get_workers_meta()
+    async def get(self):
+        scheduler_infos = await self.web_api.get_schedulers_info()
+        worker_infos = await self.web_api.get_workers_meta()
 
         scheduler_summary = {
             'count': len(scheduler_infos),

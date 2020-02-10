@@ -24,15 +24,13 @@ from concurrent.futures import ThreadPoolExecutor
 from tornado import gen, web
 
 from ..tensor.core import Indexes
-from ..actors import new_client
 from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import CompressType
 from ..utils import to_str, tokenize, numpy_dtype_from_descr_json
-from .server import MarsWebAPI, MarsRequestHandler, register_web_handler
+from .server import MarsRequestHandler, register_web_handler
 
 pickling_support.install()
-_actor_client = new_client()
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +57,7 @@ class ApiEntryHandler(MarsApiRequestHandler):
 
 
 class SessionsApiHandler(MarsApiRequestHandler):
-    def post(self):
+    async def post(self):
         args = {k: self.get_argument(k) for k in self.request.arguments}
 
         try:
@@ -71,29 +69,29 @@ class SessionsApiHandler(MarsApiRequestHandler):
             raise web.HTTPError(400, reason='Python version not consistent')
 
         session_id = tokenize(str(uuid.uuid1()))
-        self.web_api.create_session(session_id, **args)
+        await self.web_api.create_session(session_id, **args)
         self.write(json.dumps(dict(session_id=session_id)))
 
 
 class SessionApiHandler(MarsApiRequestHandler):
-    def head(self, session_id):
-        if not self.web_api.has_session(session_id):
+    async def head(self, session_id):
+        if not await self.web_api.has_session(session_id):
             raise web.HTTPError(404, 'Session doesn\'t not exists')
 
-    def delete(self, session_id):
-        self.web_api.delete_session(session_id)
+    async def delete(self, session_id):
+        await self.web_api.delete_session(session_id)
 
 
 class GraphsApiHandler(MarsApiRequestHandler):
-    def get(self, session_id):
+    async def get(self, session_id):
         try:
-            graph_states = self.web_api.get_tasks_info(session_id)
+            graph_states = await self.web_api.get_tasks_info(session_id)
             tasks_dict = graph_states[session_id]['tasks']
             self.write(json.dumps(tasks_dict))
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 
-    def post(self, session_id):
+    async def post(self, session_id):
         try:
             graph = self.get_argument('graph')
             target = self.get_argument('target').split(',')
@@ -105,7 +103,7 @@ class GraphsApiHandler(MarsApiRequestHandler):
 
         try:
             graph_key = tokenize(str(uuid.uuid4()))
-            self.web_api.submit_graph(session_id, graph, graph_key, target, names=names, compose=compose)
+            await self.web_api.submit_graph(session_id, graph, graph_key, target, names=names, compose=compose)
             self.write(json.dumps(dict(graph_key=graph_key)))
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
@@ -114,24 +112,14 @@ class GraphsApiHandler(MarsApiRequestHandler):
 class GraphApiHandler(MarsApiRequestHandler):
     _executor = ThreadPoolExecutor(1)
 
-    @gen.coroutine
-    def get(self, session_id, graph_key):
+    async def get(self, session_id, graph_key):
         from ..scheduler.utils import GraphState
 
         wait_timeout = int(self.get_argument('wait_timeout', None))
 
         try:
-            if wait_timeout:
-                if wait_timeout <= 0:
-                    wait_timeout = None
-
-                def _wait_fun():
-                    web_api = MarsWebAPI(self._scheduler)
-                    return web_api.wait_graph_finish(session_id, graph_key, wait_timeout)
-
-                _ = yield self._executor.submit(_wait_fun)  # noqa: F841
-
-            state = self.web_api.get_graph_state(session_id, graph_key)
+            await self.web_api.wait_graph_finish(session_id, graph_key, wait_timeout)
+            state = await self.web_api.get_graph_state(session_id, graph_key)
         except GraphNotExists:
             raise web.HTTPError(404, 'Graph not exists')
 
@@ -143,9 +131,9 @@ class GraphApiHandler(MarsApiRequestHandler):
                 resp['exc_info_text'] = ''.join(traceback.format_exception(*exc_info))
         self.write(json.dumps(resp))
 
-    def delete(self, session_id, graph_key):
+    async def delete(self, session_id, graph_key):
         try:
-            self.web_api.stop_graph(session_id, graph_key)
+            await self.web_api.stop_graph(session_id, graph_key)
         except:  # noqa: E722
             self._dump_exception(sys.exc_info(), 404)
 
@@ -153,8 +141,7 @@ class GraphApiHandler(MarsApiRequestHandler):
 class GraphDataApiHandler(MarsApiRequestHandler):
     _executor = ThreadPoolExecutor(1)
 
-    @gen.coroutine
-    def get(self, session_id, graph_key, tileable_key):
+    async def get(self, session_id, graph_key, tileable_key):
         data_type = self.get_argument('type', None)
         try:
             compressions_arg = self.get_argument('compressions', None)
@@ -165,45 +152,41 @@ class GraphDataApiHandler(MarsApiRequestHandler):
                 slices_arg = Indexes.from_json(json.loads(to_str(slices_arg[0]))).indexes
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
+
         if data_type:
             if data_type == 'nsplits':
-                nsplits = self.web_api.get_tileable_nsplits(session_id, graph_key, tileable_key)
+                nsplits = await self.web_api.get_tileable_nsplits(session_id, graph_key, tileable_key)
                 self.write(json.dumps(nsplits))
             else:
                 raise web.HTTPError(403, 'Unknown data type requests')
         else:
-
-            def _fetch_fun():
-                web_api = MarsWebAPI(self._scheduler)
-                return web_api.fetch_data(session_id, graph_key, tileable_key, index_obj=slices_arg,
-                                          compressions=compressions_arg)
-
-            data = yield self._executor.submit(_fetch_fun)
+            data = await self.web_api.fetch_data(session_id, graph_key, tileable_key, index_obj=slices_arg,
+                                                 compressions=compressions_arg)
             self.write(data)
 
-    def delete(self, session_id, graph_key, tileable_key):
+    async def delete(self, session_id, graph_key, tileable_key):
         wait = int(self.get_argument('wait', '0'))
-        self.web_api.delete_data(session_id, graph_key, tileable_key, wait=wait)
+        await self.web_api.delete_data(session_id, graph_key, tileable_key, wait=wait)
 
 
 class WorkersApiHandler(MarsApiRequestHandler):
-    def get(self):
+    async def get(self):
         action = self.get_argument('action', None)
         if action == 'count':
-            self.write(json.dumps(self.web_api.count_workers()))
+            self.write(json.dumps(await self.web_api.count_workers()))
         else:
-            self.write(json.dumps(self.web_api.get_workers_meta()))
+            self.write(json.dumps(await self.web_api.get_workers_meta()))
 
 
 class MutableTensorApiHandler(MarsApiRequestHandler):
-    def get(self, session_id, name):
+    async def get(self, session_id, name):
         try:
-            meta = self.web_api.get_mutable_tensor(session_id, name)
+            meta = await self.web_api.get_mutable_tensor(session_id, name)
             self.write(json.dumps(meta))
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 
-    def post(self, session_id, name):
+    async def post(self, session_id, name):
         try:
             action = self.get_argument('action', None)
             if action == 'create':
@@ -212,22 +195,22 @@ class MutableTensorApiHandler(MarsApiRequestHandler):
                 dtype = numpy_dtype_from_descr_json(req_json['dtype'])
                 fill_value = req_json['fill_value']
                 chunk_size = req_json['chunk_size']
-                meta = self.web_api.create_mutable_tensor(session_id, name, shape, dtype,
-                                                          fill_value=fill_value, chunk_size=chunk_size)
+                meta = await self.web_api.create_mutable_tensor(
+                    session_id, name, shape, dtype, fill_value=fill_value, chunk_size=chunk_size)
                 self.write(json.dumps(meta))
             elif action == 'seal':
-                info = self.web_api.seal(session_id, name)
+                info = await self.web_api.seal(session_id, name)
                 self.write(json.dumps(info))
             else:
                 raise web.HTTPError(400, reason='Invalid argument')
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 
-    def put(self, session_id, name):
+    async def put(self, session_id, name):
         try:
             payload_type = self.get_argument('payload_type', None)
             body = self.request.body
-            self.web_api.write_mutable_tensor(session_id, name, payload_type, body)
+            await self.web_api.write_mutable_tensor(session_id, name, payload_type, body)
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 

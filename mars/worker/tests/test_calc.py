@@ -38,7 +38,7 @@ class Test(WorkerCase):
         this = self
         mock_addr = '127.0.0.1:%d' % get_next_port()
 
-        class _AsyncContextManager(object):
+        class _AsyncContextManager:
             async def __aenter__(self):
                 self._pool_ctx = this.create_pool(n_process=1, address=mock_addr)
                 self._pool = pool = await self._pool_ctx.__aenter__()

@@ -34,7 +34,7 @@ from ..utils import build_tileable_graph, sort_dataframe_result, numpy_dtype_fro
 logger = logging.getLogger(__name__)
 
 
-class Session(object):
+class Session:
     def __init__(self, endpoint, session_id=None, req_session=None, args=None):
         self._endpoint = endpoint.rstrip('/')
         self._session_id = session_id

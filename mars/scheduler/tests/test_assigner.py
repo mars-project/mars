@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import unittest
 import uuid
 
-import gevent
-
 from mars.scheduler import ResourceActor, AssignerActor, ChunkMetaClient, \
     ChunkMetaActor, OperandActor
-from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.actors import FunctionActor, create_actor_pool
+from mars.scheduler.utils import SchedulerClusterInfoActor
+from mars.tests.core import aio_case
 from mars.utils import get_next_port
 
 
@@ -32,28 +32,25 @@ class MockOperandActor(FunctionActor):
         return getattr(self, '_worker_ep', None)
 
 
+@aio_case
 class Test(unittest.TestCase):
-
-    def testAssignerActor(self):
+    async def testAssignerActor(self):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
-        with create_actor_pool(n_process=1, backend='gevent', address=mock_scheduler_addr) as pool:
-            cluster_info_ref = pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
-                                                 uid=SchedulerClusterInfoActor.default_uid())
-            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
-            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+        async with create_actor_pool(n_process=1, address=mock_scheduler_addr) as pool:
+            cluster_info_ref = await pool.create_actor(
+                SchedulerClusterInfoActor, [pool.cluster_info.address],
+                uid=SchedulerClusterInfoActor.default_uid())
+            resource_ref = await pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
+            await pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
             endpoint1 = 'localhost:12345'
             endpoint2 = 'localhost:23456'
             res = dict(hardware=dict(cpu=4, memory=4096))
 
-            def write_mock_meta():
-                resource_ref.set_worker_meta(endpoint1, res)
-                resource_ref.set_worker_meta(endpoint2, res)
+            await resource_ref.set_worker_meta(endpoint1, res)
+            await resource_ref.set_worker_meta(endpoint2, res)
 
-            g = gevent.spawn(write_mock_meta)
-            g.join()
-
-            assigner_ref = pool.create_actor(AssignerActor, uid=AssignerActor.default_uid())
+            assigner_ref = await pool.create_actor(AssignerActor, uid=AssignerActor.default_uid())
 
             session_id = str(uuid.uuid4())
             op_key = str(uuid.uuid4())
@@ -74,14 +71,14 @@ class Test(unittest.TestCase):
             }
 
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
-            chunk_meta_client.set_chunk_meta(session_id, chunk_key1, size=512, workers=(endpoint1,))
-            chunk_meta_client.set_chunk_meta(session_id, chunk_key2, size=512, workers=(endpoint1,))
-            chunk_meta_client.set_chunk_meta(session_id, chunk_key3, size=512, workers=(endpoint2,))
+            await chunk_meta_client.set_chunk_meta(session_id, chunk_key1, size=512, workers=(endpoint1,))
+            await chunk_meta_client.set_chunk_meta(session_id, chunk_key2, size=512, workers=(endpoint1,))
+            await chunk_meta_client.set_chunk_meta(session_id, chunk_key3, size=512, workers=(endpoint2,))
 
             uid = OperandActor.gen_uid(session_id, op_key)
-            reply_ref = pool.create_actor(MockOperandActor, uid=uid)
-            assigner_ref.apply_for_resource(session_id, op_key, op_info)
+            reply_ref = await pool.create_actor(MockOperandActor, uid=uid)
+            await assigner_ref.apply_for_resource(session_id, op_key, op_info)
 
-            while not reply_ref.get_worker_ep():
-                gevent.sleep(0.1)
-            self.assertEqual(reply_ref.get_worker_ep(), endpoint1)
+            while not await reply_ref.get_worker_ep():
+                await asyncio.sleep(0.1)
+            self.assertEqual(await reply_ref.get_worker_ep(), endpoint1)

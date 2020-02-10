@@ -116,7 +116,7 @@ class WorkerCase(unittest.TestCase):
         this = self
         self._result_event = asyncio.locks.Event()
 
-        class _AsyncContextManager(object):
+        class _AsyncContextManager:
             async def __aenter__(self):
                 this._test_pool = pool
                 this._test_actor_ref = await pool.create_actor(WorkerTestActor)
@@ -170,7 +170,7 @@ class WorkerCase(unittest.TestCase):
         from mars.worker import SharedHolderActor
         pool = None
 
-        class _AsyncContextManager(object):
+        class _AsyncContextManager:
             async def __aenter__(self):
                 nonlocal pool
                 pool = create_actor_pool(*args, **kwargs)

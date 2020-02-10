@@ -18,16 +18,16 @@ _jinja_env = get_jinja_env()
 
 
 class SchedulerListHandler(MarsRequestHandler):
-    def get(self):
-        schedulers_info = self.web_api.get_schedulers_info()
+    async def get(self):
+        schedulers_info = await self.web_api.get_schedulers_info()
 
         template = _jinja_env.get_template('scheduler_pages/list.html')
         self.write(template.render(scheduler_metrics=schedulers_info))
 
 
 class SchedulerHandler(MarsRequestHandler):
-    def get(self, endpoint):
-        schedulers_info = self.web_api.get_schedulers_info()
+    async def get(self, endpoint):
+        schedulers_info = await self.web_api.get_schedulers_info()
 
         template = _jinja_env.get_template('scheduler_pages/detail.html')
         self.write(template.render(

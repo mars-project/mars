@@ -49,7 +49,7 @@ class ProcedureEventType(Enum):
     NETWORK = 'NETWORK'
 
 
-class WorkerEvent(object):
+class WorkerEvent:
     __slots__ = 'event_id', 'category', 'level', 'event_type', 'owner', 'time_start', 'time_end'
 
     def __init__(self, category=None, level=None, event_type=None, owner=None,
@@ -102,7 +102,7 @@ class EventsActor(WorkerActor):
     def query_by_time(self, category, time_start=None, time_end=None):
         self._purge_old_events(category)
 
-        class ItemWrapper(object):
+        class ItemWrapper:
             def __init__(self, l):
                 self._l = l
 
@@ -129,7 +129,7 @@ class EventsActor(WorkerActor):
             timeline.popleft()
 
 
-class EventContext(object):
+class EventContext:
     def __init__(self, events_ref, category, level, event_type, owner=None):
         self._events_ref = events_ref
         self._event_id = None

@@ -52,17 +52,17 @@ class MutableTensorActor(SchedulerActor):
         self._resource_ref = None
 
     @log_unhandled
-    def post_create(self):
+    async def post_create(self):
         from .resource import ResourceActor
         from ..tensor.core import MutableTensor, MutableTensorData
         from ..tensor.utils import create_fetch_tensor
 
-        super().post_create()
-        self.set_cluster_info_ref()
+        await super().post_create()
+        await self.set_cluster_info_ref()
         self._resource_ref = self.ctx.actor_ref(ResourceActor.default_uid())
 
         tensor = create_fetch_tensor(self._chunk_size, self._shape, self._dtype)
-        endpoints = self._resource_ref.select_worker(size=len(tensor.chunks))
+        endpoints = await self._resource_ref.select_worker(size=len(tensor.chunks))
 
         for chunk, endpoint in zip(tensor.chunks, endpoints):
             self._chunk_to_endpoint[chunk.key] = endpoint
@@ -93,9 +93,9 @@ class MutableTensorActor(SchedulerActor):
         raise NotImplementedError
 
     @log_unhandled
-    def write(self, index, value):
+    async def write(self, index, value):
         chunk_records_to_send = self._tensor._do_write(index, value)
-        self._send_chunk_records(chunk_records_to_send)
+        await self._send_chunk_records(chunk_records_to_send)
 
     @log_unhandled
     def append_chunk_records(self, chunk_records):
@@ -103,13 +103,13 @@ class MutableTensorActor(SchedulerActor):
             self._chunk_map[chunk_key].append(record_chunk_key)
 
     @log_unhandled
-    def seal(self):
+    async def seal(self):
         from ..worker.seal import SealActor
         self._sealed = True
 
         # dump current buffers to worker
         chunk_records_to_send = self._tensor._do_flush()
-        self._send_chunk_records(chunk_records_to_send)
+        await self._send_chunk_records(chunk_records_to_send)
 
         endpoint_to_sealer = dict()
 
@@ -120,18 +120,19 @@ class MutableTensorActor(SchedulerActor):
                 sealer_ref = endpoint_to_sealer[ep]
             else:
                 sealer_uid = SealActor.gen_uid(self._session_id, chunk.key)
-                sealer_ref = endpoint_to_sealer[ep] = self.ctx.create_actor(SealActor, uid=sealer_uid, address=ep)
-            sealer_ref.seal_chunk(self._session_id, self._graph_key,
-                                  chunk.key, self._chunk_map[chunk.key],
-                                  chunk.shape, self._record_type, self._dtype, self._fill_value)
+                sealer_ref = endpoint_to_sealer[ep] = \
+                    await self.ctx.create_actor(SealActor, uid=sealer_uid, address=ep)
+            await sealer_ref.seal_chunk(self._session_id, self._graph_key,
+                                        chunk.key, self._chunk_map[chunk.key],
+                                        chunk.shape, self._record_type, self._dtype, self._fill_value)
 
         for sealer_ref in endpoint_to_sealer.values():
-            sealer_ref.destroy()
+            await sealer_ref.destroy()
         # return the hex of self._graph_key since UUID is not json serializable.
         return self._graph_key.hex, self._tensor.key, self._tensor.id, self.tensor_meta()
 
     @log_unhandled
-    def _send_chunk_records(self, chunk_records_to_send):
+    async def _send_chunk_records(self, chunk_records_to_send):
         from ..worker.transfer import put_remote_chunk
 
         chunk_records = []
@@ -140,7 +141,7 @@ class MutableTensorActor(SchedulerActor):
             record_chunk_key = tokenize(chunk_key, uuid.uuid4().hex)
             # send record chunk
             receiver_manager_ref = self.ctx.actor_ref(ReceiverManagerActor.default_uid(), address=ep)
-            put_remote_chunk(self._session_id, record_chunk_key, records, receiver_manager_ref)
+            await put_remote_chunk(self._session_id, record_chunk_key, records, receiver_manager_ref)
             chunk_records.append((chunk_key, record_chunk_key))
 
         # register the record chunks

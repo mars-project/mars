@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import logging
 import os
@@ -27,23 +28,25 @@ from mars.serialize.dataserializer import loads
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 from mars.actors.core import new_client
 from mars.scheduler.graph import GraphState
+from mars.tests.core import aio_case
 
 logger = logging.getLogger(__name__)
 
 
 @unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
+@aio_case
 class Test(SchedulerIntegratedTest):
-    def testCommonOperandFailover(self):
+    async def testCommonOperandFailover(self):
         delay_file = self.add_state_file('OP_DELAY_STATE_FILE')
         open(delay_file, 'w').close()
 
         terminate_file = self.add_state_file('OP_TERMINATE_STATE_FILE')
 
-        self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'], log_worker=True)
+        await self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'], log_worker=True)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
         np_a = np.random.random((100, 100))
         np_b = np.random.random((100, 100))
@@ -54,33 +57,33 @@ class Test(SchedulerIntegratedTest):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(
+        await session_ref.submit_tileable_graph(
             json.dumps(graph.to_json()), graph_key, target_tileables=targets)
 
         while not os.path.exists(terminate_file):
-            actor_client.sleep(0.01)
+            await asyncio.sleep(0.01)
 
         self.kill_process_tree(self.proc_workers[0])
         logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
         self.proc_workers = self.proc_workers[1:]
         os.unlink(delay_file)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, c.key)
+        result = await session_ref.fetch_result(graph_key, c.key)
         expected = (np_a * 2 + 1).dot(np_b * 2 + 1) * 2 + 1
         assert_allclose(loads(result), expected)
 
-    def testShuffleFailoverBeforeSuccStart(self):
+    async def testShuffleFailoverBeforeSuccStart(self):
         pred_finish_file = self.add_state_file('SHUFFLE_ALL_PRED_FINISHED_FILE')
         succ_start_file = self.add_state_file('SHUFFLE_START_SUCC_FILE')
 
-        self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'], log_worker=True)
+        await self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'], log_worker=True)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
         a = mt.ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
@@ -88,33 +91,33 @@ class Test(SchedulerIntegratedTest):
         graph = b.build_graph()
         targets = [b.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
-        actor_client.sleep(1)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
+        await asyncio.sleep(1)
 
         while not os.path.exists(pred_finish_file):
-            actor_client.sleep(0.01)
+            await asyncio.sleep(0.01)
 
         self.kill_process_tree(self.proc_workers[0])
         logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
         self.proc_workers = self.proc_workers[1:]
         open(succ_start_file, 'w').close()
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, b.key)
+        result = await session_ref.fetch_result(graph_key, b.key)
         assert_allclose(loads(result), np.ones((27, 31)))
 
-    def testShuffleFailoverBeforeAllSuccFinish(self):
+    async def testShuffleFailoverBeforeAllSuccFinish(self):
         pred_finish_file = self.add_state_file('SHUFFLE_ALL_PRED_FINISHED_FILE')
         succ_finish_file = self.add_state_file('SHUFFLE_HAS_SUCC_FINISH_FILE')
 
-        self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'], log_worker=True)
+        await self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'], log_worker=True)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
         a = mt.ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
@@ -123,12 +126,12 @@ class Test(SchedulerIntegratedTest):
         graph = r.build_graph()
         targets = [r.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
-        actor_client.sleep(1)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
+        await asyncio.sleep(1)
 
         while not os.path.exists(succ_finish_file):
-            actor_client.sleep(0.01)
+            await asyncio.sleep(0.01)
 
         self.kill_process_tree(self.proc_workers[0])
         logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
@@ -137,21 +140,21 @@ class Test(SchedulerIntegratedTest):
         os.unlink(pred_finish_file)
         os.unlink(succ_finish_file)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, r.key)
+        result = await session_ref.fetch_result(graph_key, r.key)
         assert_allclose(loads(result), np.inner(np.ones((27, 31)) + 1, np.ones((27, 31)) + 1))
 
-    def testShuffleFailoverAfterAllSuccFinish(self):
+    async def testShuffleFailoverAfterAllSuccFinish(self):
         all_succ_finish_file = self.add_state_file('SHUFFLE_ALL_SUCC_FINISH_FILE')
 
-        self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'],
-                             log_worker=True)
+        await self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'],
+                                   log_worker=True)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
         a = mt.ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
@@ -160,12 +163,12 @@ class Test(SchedulerIntegratedTest):
         graph = r.build_graph()
         targets = [r.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
-        actor_client.sleep(1)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
+        await asyncio.sleep(1)
 
         while not os.path.exists(all_succ_finish_file):
-            actor_client.sleep(0.01)
+            await asyncio.sleep(0.01)
 
         self.kill_process_tree(self.proc_workers[0])
         logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
@@ -173,8 +176,8 @@ class Test(SchedulerIntegratedTest):
 
         os.unlink(all_succ_finish_file)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, r.key)
+        result = await session_ref.fetch_result(graph_key, r.key)
         assert_allclose(loads(result), np.inner(np.ones((27, 31)) + 1, np.ones((27, 31)) + 1))

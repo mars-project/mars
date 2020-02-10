@@ -35,7 +35,7 @@ from .utils import WorkerActor, ExpiringCache, ExecutionState, concat_operand_ke
 logger = logging.getLogger(__name__)
 
 
-class GraphExecutionRecord(object):
+class GraphExecutionRecord:
     """
     Execution records of the graph
     """
@@ -90,7 +90,7 @@ class GraphExecutionRecord(object):
         self.state_time = time.time()
 
 
-class GraphResultRecord(object):
+class GraphResultRecord:
     """
     Execution result of a graph
     """
@@ -936,8 +936,8 @@ class ExecutionActor(WorkerActor):
                     self.ctx.actor_ref(graph_record.calc_actor_uid), _tell=True)
 
     @log_unhandled
-    def delete_data_by_keys(self, session_id, keys):
-        self.storage_client.delete(session_id, keys, _tell=True)
+    async def delete_data_by_keys(self, session_id, keys):
+        await self.storage_client.delete(session_id, keys, _tell=True)
 
     @log_unhandled
     async def handle_worker_change(self, _adds, removes):

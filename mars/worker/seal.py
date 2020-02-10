@@ -31,15 +31,15 @@ class SealActor(WorkerActor):
         super().__init__()
         self._mem_quota_ref = None
 
-    def post_create(self):
+    async def post_create(self):
         from .quota import MemQuotaActor
-        super().post_create()
+        await super().post_create()
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
     @log_unhandled
-    def seal_chunk(self, session_id, graph_key, chunk_key, keys, shape, record_type, dtype, fill_value):
+    async def seal_chunk(self, session_id, graph_key, chunk_key, keys, shape, record_type, dtype, fill_value):
         chunk_bytes_size = np.prod(shape) * dtype.itemsize
-        self._mem_quota_ref.request_batch_quota({chunk_key: chunk_bytes_size})
+        await self._mem_quota_ref.request_batch_quota({chunk_key: chunk_bytes_size})
         if fill_value is None:
             ndarr = np.zeros(shape, dtype=dtype)
         else:
@@ -51,7 +51,7 @@ class SealActor(WorkerActor):
             buffer = None
             try:
                 # todo potential memory quota issue must be dealt with
-                obj = self.storage_client.get_object(
+                obj = await self.storage_client.get_object(
                     session_id, key, [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK], _promise=False)
                 record_view = obj.view(dtype=record_type, type=np.recarray)
 
@@ -63,12 +63,12 @@ class SealActor(WorkerActor):
                 del buffer
 
             # clean up
-            self.storage_client.delete(session_id, [key])
-            self.get_meta_client().delete_meta(session_id, key, False)
+            await self.storage_client.delete(session_id, [key])
+            await self.get_meta_client().delete_meta(session_id, key, False)
 
-        self._mem_quota_ref.release_quotas(keys)
+        await self._mem_quota_ref.release_quotas(keys)
 
-        self.storage_client.put_objects(
+        await self.storage_client.put_objects(
             session_id, [chunk_key], [ndarr], [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK])
-        self.get_meta_client().set_chunk_meta(session_id, chunk_key, size=chunk_bytes_size,
-                                              shape=shape, workers=(self.address,))
+        await self.get_meta_client().set_chunk_meta(session_id, chunk_key, size=chunk_bytes_size,
+                                                    shape=shape, workers=(self.address,))

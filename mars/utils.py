@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import importlib
 import inspect
@@ -224,7 +225,7 @@ def mod_hash(val, modulus):
     return tokenize_int(val) % modulus
 
 
-class classproperty(object):
+class classproperty:
     def __init__(self, f):
         self.f = f
 
@@ -236,7 +237,7 @@ def lazy_import(name, package=None, globals=None, locals=None, rename=None):
     rename = rename or name
     prefix_name = name.split('.', 1)[0]
 
-    class LazyModule(object):
+    class LazyModule:
         def __getattr__(self, item):
             real_mod = importlib.import_module(name, package=package)
             if globals is not None and rename in globals:
@@ -428,7 +429,7 @@ def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
 _build_mode = threading.local()
 
 
-class BuildMode(object):
+class BuildMode:
     def __init__(self):
         self.is_build_mode = False
         self._old_mode = None
@@ -465,9 +466,16 @@ def enter_build_mode(func):
     :param func: function
     :return: the result of function
     """
-    def inner(*args, **kwargs):
-        with build_mode():
-            return func(*args, **kwargs)
+    if asyncio.iscoroutinefunction(func):
+        @functools.wraps(func)
+        async def inner(*args, **kwargs):
+            with build_mode():
+                return await func(*args, **kwargs)
+    else:
+        @functools.wraps(func)
+        def inner(*args, **kwargs):
+            with build_mode():
+                return func(*args, **kwargs)
     return inner
 
 
@@ -485,7 +493,7 @@ def build_exc_info(exc_type, *args, **kwargs):
         return exc_info[:2] + (tb_builder.as_traceback(),)
 
 
-class BlacklistSet(object):
+class BlacklistSet:
     def __init__(self, expire_time):
         self._key_time = dict()
         self._expire_time = expire_time
@@ -802,11 +810,21 @@ def ignore_warning(func):
 
 def to_async_context_manager(sync_context_manager):
     class _AsyncContextManager:
+        def __enter__(self):
+            return sync_context_manager.__enter__()
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return sync_context_manager.__exit__(exc_type, exc_val, exc_tb)
+
         async def __aenter__(self):
             return sync_context_manager.__enter__()
 
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return sync_context_manager.__exit__(exc_type, exc_val, exc_tb)
+
+        if callable(sync_context_manager):  # pragma: no branch
+            def __call__(self, *args, **kwargs):
+                return sync_context_manager(*args, **kwargs)
 
     return _AsyncContextManager()
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from collections import defaultdict
 
@@ -41,21 +42,22 @@ class ShuffleProxyActor(BaseOperandActor):
         self._mapper_op_to_chunk = dict()
         self._reducer_to_mapper = defaultdict(dict)
 
-    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
-        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
+    async def add_finished_predecessor(self, op_key, worker, output_sizes=None):
+        await super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
 
         from ..chunkmeta import WorkerMeta
         chunk_key = next(iter(output_sizes.keys()))[0]
         self._mapper_op_to_chunk[op_key] = chunk_key
         if op_key not in self._worker_to_mappers[worker]:
             self._worker_to_mappers[worker].add(op_key)
-            self.chunk_meta.add_worker(self._session_id, chunk_key, worker, _tell=True)
+            await self.chunk_meta.add_worker(self._session_id, chunk_key, worker, _tell=True)
 
         shuffle_keys_to_op = self._shuffle_keys_to_op
 
         if not self._reducer_workers:
-            self._reducer_workers = self._graph_refs[0].assign_operand_workers(
-                self._succ_keys, input_chunk_metas=self._reducer_to_mapper)
+            worker_slots = await self._graph_refs[0].get_worker_slots()
+            self._reducer_workers = await self._graph_refs[0].assign_operand_workers(
+                self._succ_keys, input_chunk_metas=self._reducer_to_mapper, worker_slots=worker_slots)
         reducer_workers = self._reducer_workers
         data_to_addresses = dict()
 
@@ -71,15 +73,15 @@ class ShuffleProxyActor(BaseOperandActor):
         if data_to_addresses:
             try:
                 with rewrite_worker_errors():
-                    self._get_raw_execution_ref(address=worker) \
+                    await self._get_raw_execution_ref(address=worker) \
                         .send_data_to_workers(self._session_id, data_to_addresses, _tell=True)
             except WorkerDead:
-                self._resource_ref.detach_dead_workers([worker], _tell=True)
+                await self._resource_ref.detach_dead_workers([worker], _tell=True)
 
         if all(k in self._finish_preds for k in self._pred_keys):
-            self._start_successors()
+            await self._start_successors()
 
-    def _start_successors(self):
+    async def _start_successors(self):
         self._all_deps_built = True
         futures = []
 
@@ -97,11 +99,11 @@ class ShuffleProxyActor(BaseOperandActor):
                 target_worker=self._reducer_workers.get(succ_key),
                 _tell=True, _wait=False))
 
-        [f.result() for f in futures]
-        self.ref().start_operand(OperandState.FINISHED, _tell=True)
+        await asyncio.wait(futures)
+        await self.ref().start_operand(OperandState.FINISHED, _tell=True)
 
-    def add_finished_successor(self, op_key, worker):
-        super().add_finished_successor(op_key, worker)
+    async def add_finished_successor(self, op_key, worker):
+        await super().add_finished_successor(op_key, worker)
         shuffle_key = self._op_to_shuffle_keys[op_key]
 
         # input data in reduce nodes can be freed safely
@@ -110,16 +112,16 @@ class ShuffleProxyActor(BaseOperandActor):
         for pred_key, meta in self._reducer_to_mapper[op_key].items():
             data_keys.append((self._mapper_op_to_chunk[pred_key], shuffle_key))
             workers_list.append((self._reducer_workers[op_key],))
-        self._free_data_in_worker(data_keys, workers_list)
+        await self._free_data_in_worker(data_keys, workers_list)
 
         if all(k in self._finish_succs for k in self._succ_keys):
-            self.free_predecessors()
+            await self.free_predecessors()
 
-    def free_predecessors(self):
-        can_be_freed, deterministic = self.check_can_be_freed()
+    async def free_predecessors(self):
+        can_be_freed, deterministic = await self.check_can_be_freed()
         if not deterministic:
             # if we cannot determine whether to do failover, just delay and retry
-            self.ref().free_predecessors(_delay=1, _tell=True)
+            await self.ref().free_predecessors(_delay=1, _tell=True)
             return
         elif not can_be_freed:
             return
@@ -136,23 +138,23 @@ class ShuffleProxyActor(BaseOperandActor):
             for pred_key, meta in self._reducer_to_mapper[op_key].items():
                 data_keys.append((self._mapper_op_to_chunk[pred_key], shuffle_key))
                 workers_list.append(tuple(set(meta.workers + (self._reducer_workers[op_key],))))
-        self._free_data_in_worker(data_keys, workers_list)
+        await self._free_data_in_worker(data_keys, workers_list)
 
         inp_chunk_keys = [self._mapper_op_to_chunk[k] for k in self._pred_keys
                           if k in self._mapper_op_to_chunk]
-        self.chunk_meta.batch_delete_meta(
-            self._session_id, inp_chunk_keys, _tell=True, _wait=False)
-        [f.result() for f in futures]
+        futures.append(self.chunk_meta.batch_delete_meta(
+            self._session_id, inp_chunk_keys, _tell=True, _wait=False))
+        await asyncio.wait(futures)
 
-        self.ref().start_operand(OperandState.FREED, _tell=True)
+        await self.ref().start_operand(OperandState.FREED, _tell=True)
 
     def update_demand_depths(self, depth):
         pass
 
-    def propose_descendant_workers(self, input_key, worker_scores, depth=1):
+    async def propose_descendant_workers(self, input_key, worker_scores, depth=1):
         pass
 
-    def move_failover_state(self, from_states, state, new_target, dead_workers):
+    async def move_failover_state(self, from_states, state, new_target, dead_workers):
         if self.state not in from_states:
             return
 
@@ -178,10 +180,11 @@ class ShuffleProxyActor(BaseOperandActor):
         self._finish_succs.difference_update(missing_succs)
 
         if missing_succs:
-            self._reducer_workers.update(self._graph_refs[0].assign_operand_workers(
-                missing_succs, input_chunk_metas=self._reducer_to_mapper))
+            worker_slots = await self._graph_refs[0].get_worker_slots()
+            self._reducer_workers.update(await self._graph_refs[0].assign_operand_workers(
+                missing_succs, input_chunk_metas=self._reducer_to_mapper, worker_slots=worker_slots))
 
-        super().move_failover_state(
+        await super().move_failover_state(
             from_states, state, new_target, dead_workers)
 
     def free_data(self, state=OperandState.FREED, check=True):

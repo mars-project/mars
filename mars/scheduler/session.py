@@ -117,35 +117,35 @@ class SessionActor(SchedulerActor):
 
     @log_unhandled
     async def get_mutable_tensor(self, name):
-        tensor_ref = self._mut_tensor_refs.get(name)
+        tensor_ref = await self._mut_tensor_refs.get(name)
         if tensor_ref is None or await tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
         return await tensor_ref.tensor_meta()
 
     @log_unhandled
-    def write_mutable_tensor(self, name, index, value):
-        tensor_ref = self._mut_tensor_refs.get(name)
-        if tensor_ref is None or tensor_ref.sealed():
+    async def write_mutable_tensor(self, name, index, value):
+        tensor_ref = await self._mut_tensor_refs.get(name)
+        if tensor_ref is None or await tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
-        return tensor_ref.write(index, value)
+        return await tensor_ref.write(index, value)
 
     @log_unhandled
-    def append_chunk_records(self, name, chunk_records):
-        tensor_ref = self._mut_tensor_refs.get(name)
-        if tensor_ref is None or tensor_ref.sealed():
+    async def append_chunk_records(self, name, chunk_records):
+        tensor_ref = await self._mut_tensor_refs.get(name)
+        if tensor_ref is None or await tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
-        return tensor_ref.append_chunk_records(chunk_records)
+        return await tensor_ref.append_chunk_records(chunk_records)
 
     @log_unhandled
-    def seal(self, name):
+    async def seal(self, name):
         from .graph import GraphActor, GraphMetaActor
         from .utils import GraphState
 
-        tensor_ref = self._mut_tensor_refs.get(name)
-        if tensor_ref is None or tensor_ref.sealed():
+        tensor_ref = await self._mut_tensor_refs.get(name)
+        if tensor_ref is None or await tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
 
-        graph_key_hex, tensor_key, tensor_id, tensor_meta = tensor_ref.seal()
+        graph_key_hex, tensor_key, tensor_id, tensor_meta = await tensor_ref.seal()
         shape, dtype, chunk_size, chunk_keys, _ = tensor_meta
         graph_key = uuid.UUID(graph_key_hex)
 
@@ -153,31 +153,31 @@ class SessionActor(SchedulerActor):
         graph_uid = GraphActor.gen_uid(self._session_id, graph_key)
         graph_addr = self.get_scheduler(graph_uid)
 
-        graph_ref = self.ctx.create_actor(GraphActor, self._session_id, graph_key,
-                                          serialized_tileable_graph=None,
-                                          state=GraphState.SUCCEEDED, final_state=GraphState.SUCCEEDED,
-                                          uid=graph_uid, address=graph_addr)
+        graph_ref = await self.ctx.create_actor(
+            GraphActor, self._session_id, graph_key, serialized_tileable_graph=None,
+            state=GraphState.SUCCEEDED, final_state=GraphState.SUCCEEDED,
+            uid=graph_uid, address=graph_addr)
         self._graph_refs[graph_key] = graph_ref
         self._graph_meta_refs[graph_key] = self.ctx.actor_ref(
             GraphMetaActor.gen_uid(self._session_id, graph_key), address=tensor_ref.__getstate__()[0])
 
         # Add the tensor to the GraphActor
-        graph_ref.add_fetch_tileable(tensor_key, tensor_id, shape, dtype, chunk_size, chunk_keys)
+        await graph_ref.add_fetch_tileable(tensor_key, tensor_id, shape, dtype, chunk_size, chunk_keys)
         self._tileable_to_graph[tensor_key] = graph_ref
 
         # Clean up mutable tensor refs.
         actor_ref = self._mut_tensor_refs[name]
-        actor_ref.destroy()
+        await actor_ref.destroy()
         del self._mut_tensor_refs[name]
         return graph_key_hex, tensor_key, tensor_id, tensor_meta
 
-    def graph_state(self, graph_key):
-        return self._graph_refs[graph_key].get_state()
+    async def graph_state(self, graph_key):
+        return await self._graph_refs[graph_key].get_state()
 
-    def fetch_result(self, graph_key, tileable_key, check=False):
+    async def fetch_result(self, graph_key, tileable_key, check=False):
         # TODO just for test, should move to web handler
         graph_ref = self._graph_refs[graph_key]
-        return graph_ref.fetch_tileable_result(tileable_key, _check=check)
+        return await graph_ref.fetch_tileable_result(tileable_key, _check=check)
 
     @log_unhandled
     async def handle_worker_change(self, adds, removes):
@@ -251,18 +251,17 @@ class SessionManagerActor(SchedulerActor):
             del self._session_refs[session_id]
 
     @log_unhandled
-    def broadcast_sessions(self, handler, *args, **kwargs):
+    async def broadcast_sessions(self, handler, *args, **kwargs):
         from .assigner import AssignerActor
         futures = []
         for key in self._session_refs.keys():
             ref = self.get_actor_ref(AssignerActor.gen_uid(key))
             futures.append(ref.mark_metrics_expired(_tell=True, _wait=False))
-        [f.result() for f in futures]
-        for f in futures:
-            f.result()
+        if futures:
+            await asyncio.wait(futures)
 
         futures = []
         for ref in self._session_refs.values():
-            kwargs.update(dict(_wait=False, _tell=True))
-            futures.append(getattr(ref, handler)(*args, **kwargs))
-        [f.result() for f in futures]
+            futures.append(getattr(ref, handler)(*args, _wait=False, _tell=True, **kwargs))
+        if futures:
+            await asyncio.wait(futures)

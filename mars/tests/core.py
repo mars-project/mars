@@ -314,18 +314,19 @@ class EtcdProcessHelper(object):
 
 
 def patch_method(method, *args, **kwargs):
-    async_ = kwargs.pop('async_', False)
+    async def _mock_async_fun(*_, **__):
+        pass
+
+    if kwargs.pop('new_async', False):
+        kwargs['new'] = _mock_async_fun
     if hasattr(method, '__qualname__'):
         p = mock.patch(method.__module__ + '.' + method.__qualname__, *args, **kwargs)
     elif hasattr(method, 'im_class'):
         p = mock.patch('.'.join([method.im_class.__module__, method.im_class.__name__, method.__name__]),
-                          *args, **kwargs)
+                       *args, **kwargs)
     else:
         p = mock.patch(method.__module__ + '.' + method.__name__, *args, **kwargs)
-    if async_:
-        return to_async_context_manager(p)
-    else:
-        return p
+    return to_async_context_manager(p)
 
 
 def require_cupy(func):
@@ -343,18 +344,29 @@ def require_cudf(func):
 
 
 def aio_case(obj):
-    @functools.wraps(obj)
-    def func_wrapper(*args, **kwargs):
-        ret = obj(*args, **kwargs)
-        if asyncio.iscoroutine(ret):
-            asyncio.run(ret)
-
     if isinstance(obj, type):
         for name, val in obj.__dict__.items():
-            if name.startswith('test'):
+            if callable(val) and name.startswith('test'):
                 setattr(obj, name, aio_case(val))
         return obj
-    return func_wrapper
+    elif callable(obj):
+        try:
+            patchings = obj.patchings
+            obj.patchings = []
+        except AttributeError:
+            patchings = []
+
+        @functools.wraps(obj)
+        def func_wrapper(*args, **kwargs):
+            ret = obj(*args, **kwargs)
+            if asyncio.iscoroutine(ret):
+                asyncio.run(ret)
+
+        if patchings:
+            for patching in patchings:
+                func_wrapper = patching.decorate_callable(func_wrapper)
+
+        return func_wrapper
 
 
 def create_actor_pool(*args, **kwargs):

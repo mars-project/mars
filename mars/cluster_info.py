@@ -40,7 +40,7 @@ def get_scheduler(hash_ring, key, size=1):
     return tuple(it['nodename'] for it in hash_ring.range(key, size=size))
 
 
-class StaticSchedulerDiscoverer(object):
+class StaticSchedulerDiscoverer:
     dynamic = False
 
     def __init__(self, schedulers):
@@ -56,7 +56,7 @@ class StaticSchedulerDiscoverer(object):
         raise NotImplementedError
 
 
-class KVStoreSchedulerDiscoverer(object):
+class KVStoreSchedulerDiscoverer:
     dynamic = True
 
     def __init__(self, address):
@@ -82,7 +82,7 @@ class KVStoreSchedulerDiscoverer(object):
         this = self
         ait = self._client.eternal_watch(SCHEDULER_PATH).__aiter__()
 
-        class _AsyncIterator(object):
+        class _AsyncIterator:
             async def __aiter__(self):
                 return self
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import contextlib
 import itertools
 import logging
@@ -20,6 +21,7 @@ import os
 import random
 import time
 from collections import defaultdict, OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache, reduce
 
 import numpy as np
@@ -74,25 +76,25 @@ class GraphMetaActor(SchedulerActor):
         self._op_infos = defaultdict(dict)
         self._state_to_infos = defaultdict(dict)
 
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
-        if not self.ctx.has_actor(self._kv_store_ref):
+        if not await self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
-        self._graph_finish_event = self.ctx.event()
+        self._graph_finish_event = asyncio.Event()
         graph_wait_uid = GraphWaitActor.gen_uid(self._session_id, self._graph_key)
         try:
             graph_wait_uid = self.ctx.distributor.make_same_process(
                 graph_wait_uid, self.uid)
         except AttributeError:
             pass
-        self._graph_wait_ref = self.ctx.create_actor(
+        self._graph_wait_ref = await self.ctx.create_actor(
             GraphWaitActor, self._graph_finish_event, uid=graph_wait_uid)
 
-    def pre_destroy(self):
-        self._graph_wait_ref.destroy()
-        super().pre_destroy()
+    async def pre_destroy(self):
+        await self._graph_wait_ref.destroy()
+        await super().pre_destroy()
 
     def get_graph_info(self):
         return self._start_time, self._end_time, len(self._op_infos)
@@ -108,7 +110,8 @@ class GraphMetaActor(SchedulerActor):
         self._state = state
         if self._kv_store_ref is not None:
             self._kv_store_ref.write(
-                '/sessions/%s/graph/%s/state' % (self._session_id, self._graph_key), state.name, _tell=True)
+                '/sessions/%s/graph/%s/state' % (self._session_id, self._graph_key),
+                state.name, _tell=True, _wait=False)
 
     def get_state(self):
         return self._state
@@ -126,7 +129,8 @@ class GraphMetaActor(SchedulerActor):
         self._final_state = state
         if self._kv_store_ref is not None:
             self._kv_store_ref.write(
-                '/sessions/%s/graph/%s/final_state' % (self._session_id, self._graph_key), state.name, _tell=True)
+                '/sessions/%s/graph/%s/final_state' % (self._session_id, self._graph_key),
+                state.name, _tell=True, _wait=False)
 
     def get_final_state(self):
         return self._final_state
@@ -206,8 +210,8 @@ class GraphWaitActor(SchedulerActor):
         super().__init__()
         self._graph_event = graph_event
 
-    def wait(self, timeout=None):
-        self._graph_event.wait(timeout)
+    async def wait(self, timeout=None):
+        await asyncio.wait_for(self._graph_event.wait(), timeout)
 
 
 class GraphActor(SchedulerActor):
@@ -272,29 +276,29 @@ class GraphActor(SchedulerActor):
 
         self._graph_analyze_pool = None
 
-    def post_create(self):
-        super().post_create()
+    async def post_create(self):
+        await super().post_create()
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
         random.seed(int(time.time()))
-        self.set_cluster_info_ref()
+        await self.set_cluster_info_ref()
         self._assigner_actor_ref = self.get_actor_ref(AssignerActor.gen_uid(self._session_id))
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_uid())
         self._session_ref = self.ctx.actor_ref(SessionActor.gen_uid(self._session_id))
 
         uid = GraphMetaActor.gen_uid(self._session_id, self._graph_key)
-        self._graph_meta_ref = self.ctx.create_actor(
+        self._graph_meta_ref = await self.ctx.create_actor(
             GraphMetaActor, self._session_id, self._graph_key, uid=uid)
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
-        if not self.ctx.has_actor(self._kv_store_ref):
+        if not await self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
-        self._graph_analyze_pool = self.ctx.threadpool(1)
+        self._graph_analyze_pool = ThreadPoolExecutor(1)
 
-    def pre_destroy(self):
-        super().pre_destroy()
-        self._graph_meta_ref.destroy()
+    async def pre_destroy(self):
+        await self._graph_meta_ref.destroy()
+        await super().pre_destroy()
 
     @contextlib.contextmanager
     def _open_dump_file(self, prefix):  # pragma: no cover
@@ -322,8 +326,8 @@ class GraphActor(SchedulerActor):
         self._graph_meta_ref.set_state(value, _tell=True, _wait=False)
 
     @log_unhandled
-    def reload_state(self):
-        result = self._graph_meta_ref.get_state()
+    async def reload_state(self):
+        result = await self._graph_meta_ref.get_state()
         if result is None:
             return
         state = self._state = result
@@ -333,42 +337,45 @@ class GraphActor(SchedulerActor):
     def final_state(self):
         return self._final_state
 
-    @property
-    def context(self):
-        if self._context is None:
-            self._context = DistributedContext(self.address, self._session_id,
-                                               actor_ctx=self.ctx, address=self.address)
-        return self._context
-
     @final_state.setter
     def final_state(self, value):
         self._final_state = value
         self._graph_meta_ref.set_final_state(value, _tell=True, _wait=False)
 
-    def _detect_cancel(self, callback=None):
-        if self.reload_state() == GraphState.CANCELLING:
+    async def get_context(self):
+        if self._context is None:
+            is_distributed = await self._cluster_info_ref.is_distributed()
+            self._context = DistributedContext(
+                self.address, self._session_id, actor_ctx=self.ctx, address=self.address,
+                is_distributed=is_distributed)
+        return self._context
+
+    async def _detect_cancel(self, callback=None):
+        if await self.reload_state() == GraphState.CANCELLING:
             logger.info('Cancel detected, stopping')
             if callback:
-                callback()
+                r = callback()
+                if asyncio.iscoroutine(r):  # pragma: no branch
+                    await r
             else:
                 self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
                 self.state = GraphState.CANCELLED
             raise ExecutionInterrupted
 
     @log_unhandled
-    def execute_graph(self, compose=True):
+    async def execute_graph(self, compose=True):
         """
         Start graph execution
         """
 
         self._graph_meta_ref.set_graph_start(_tell=True, _wait=False)
         self.state = GraphState.PREPARING
-        self._execute_graph(compose=compose)
+        await self._execute_graph(compose=compose)
 
-    def _execute_graph(self, compose=True):
+    async def _execute_graph(self, compose=True):
         try:
-            self.prepare_graph(compose=compose)
-            self._detect_cancel()
+            await self.prepare_graph(compose=compose)
+            await self._detect_cancel()
 
             with self._open_dump_file('graph') as outf:  # pragma: no cover
                 graph = self._chunk_graph_cache
@@ -379,16 +386,16 @@ class GraphActor(SchedulerActor):
                             ','.join(succ.op.key for succ in graph.iter_successors(n)))
                     )
 
-            self.analyze_graph()
-            self._detect_cancel()
+            await self.analyze_graph()
+            await self._detect_cancel()
 
-            self.create_operand_actors()
-            self._detect_cancel(self.stop_graph)
+            await self.create_operand_actors()
+            await self._detect_cancel(self.stop_graph)
         except ExecutionInterrupted:
             pass
         except:  # noqa: E722
             logger.exception('Failed to start graph execution.')
-            self.stop_graph()
+            await self.stop_graph()
             self.state = GraphState.FAILED
             self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
             raise
@@ -398,7 +405,7 @@ class GraphActor(SchedulerActor):
             self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
 
     @log_unhandled
-    def stop_graph(self):
+    async def stop_graph(self):
         """
         Stop graph execution
         """
@@ -414,6 +421,7 @@ class GraphActor(SchedulerActor):
             return
 
         has_stopping = False
+        stop_futures = []
         for chunk in chunk_graph:
             if chunk.op.key not in self._operand_infos:
                 continue
@@ -424,7 +432,10 @@ class GraphActor(SchedulerActor):
                 scheduler_addr = self.get_scheduler(op_uid)
                 ref = self.ctx.actor_ref(op_uid, address=scheduler_addr)
                 has_stopping = True
-                ref.stop_operand(_tell=True)
+                stop_futures.append(ref.stop_operand(_tell=True))
+        if stop_futures:
+            await asyncio.wait(stop_futures)
+
         if not has_stopping:
             self.state = GraphState.CANCELLED
             self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
@@ -545,7 +556,7 @@ class GraphActor(SchedulerActor):
 
     @log_unhandled
     @enter_build_mode
-    def prepare_graph(self, compose=True):
+    async def prepare_graph(self, compose=True):
         """
         Tile and compose tileable graph into chunk graph
         :param compose: if True, do compose after tiling
@@ -557,6 +568,7 @@ class GraphActor(SchedulerActor):
         if self._chunk_graph_builder is None:
             # gen target tileable keys if not provided
             self._scan_tileable_graph()
+            context = await self.get_context()
 
             def on_tile(raw_tileables, tileds):
                 first = tileds[0]
@@ -578,7 +590,7 @@ class GraphActor(SchedulerActor):
                     else:
                         return [self.tile_fetch_tileable(first)]
                 else:
-                    return self.context.wraps(handler.dispatch)(first.op)
+                    return context.wraps(handler.dispatch)(first.op)
 
             def on_tile_success(tiled_before, tiled_after):
                 if not isinstance(tiled_before.op, Fetch):
@@ -645,14 +657,14 @@ class GraphActor(SchedulerActor):
                         chunk_graph.add_node(inp)
                     chunk_graph.add_edge(inp, c)
 
-    def _get_worker_slots(self):
-        metrics = self._resource_actor_ref.get_workers_meta()
+    async def get_worker_slots(self):
+        metrics = await self._resource_actor_ref.get_workers_meta()
         return dict((ep, int(metrics[ep]['hardware']['cpu_total'])) for ep in metrics)
 
-    def _collect_external_input_metas(self, ext_chunks_to_inputs):
+    async def _collect_external_input_metas(self, ext_chunks_to_inputs):
         ext_chunk_keys = reduce(operator.add, ext_chunks_to_inputs.values(), [])
         metas = dict(zip(ext_chunk_keys,
-                         self.chunk_meta.batch_get_chunk_meta(self._session_id, ext_chunk_keys)))
+                         await self.chunk_meta.batch_get_chunk_meta(self._session_id, ext_chunk_keys)))
         input_chunk_metas = defaultdict(dict)
         for chunk_key, input_chunk_keys in ext_chunks_to_inputs.items():
             chunk_metas = input_chunk_metas[chunk_key]
@@ -660,7 +672,7 @@ class GraphActor(SchedulerActor):
                 chunk_metas[k] = metas[k]
         return input_chunk_metas
 
-    def assign_operand_workers(self, op_keys, input_chunk_metas=None, analyzer=None):
+    def assign_operand_workers(self, op_keys, input_chunk_metas=None, analyzer=None, worker_slots=None):
         operand_infos = self._operand_infos
         chunk_graph = self.get_chunk_graph()
 
@@ -671,29 +683,30 @@ class GraphActor(SchedulerActor):
             assignments = {c.op.key: c.op.expect_worker for c in initial_chunks}
         else:
             if analyzer is None:
-                analyzer = GraphAnalyzer(chunk_graph, self._get_worker_slots())
+                analyzer = GraphAnalyzer(chunk_graph, worker_slots)
             assignments = analyzer.calc_operand_assignments(op_keys, input_chunk_metas=input_chunk_metas)
         for idx, (k, v) in enumerate(assignments.items()):
             operand_infos[k]['optimize']['placement_order'] = idx
             operand_infos[k]['target_worker'] = v
         return assignments
 
-    def _assign_initial_workers(self, analyzer):
+    async def _assign_initial_workers(self, analyzer):
         # collect external inputs for eager mode
         ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
-        input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
+        input_chunk_metas = await self._collect_external_input_metas(ext_chunks_to_inputs)
+        worker_slots = await self.get_worker_slots()
 
         def _do_assign():
             # do placements
             return self.assign_operand_workers(
                 analyzer.get_initial_operand_keys(), input_chunk_metas=input_chunk_metas,
-                analyzer=analyzer
+                analyzer=analyzer, worker_slots=worker_slots
             )
 
-        return self._graph_analyze_pool.submit(_do_assign).result()
+        return await asyncio.get_event_loop().run_in_executor(self._graph_analyze_pool, _do_assign)
 
     @log_unhandled
-    def analyze_graph(self, **kwargs):
+    async def analyze_graph(self, **kwargs):
         operand_infos = self._operand_infos
         chunk_graph = self.get_chunk_graph()
 
@@ -717,7 +730,7 @@ class GraphActor(SchedulerActor):
             else:
                 operand_infos[k]['optimize']['successor_size'] = succ_size
 
-        worker_slots = self._get_worker_slots()
+        worker_slots = await self.get_worker_slots()
         self._assigned_workers = set(worker_slots)
         analyzer = GraphAnalyzer(chunk_graph, worker_slots)
 
@@ -729,7 +742,7 @@ class GraphActor(SchedulerActor):
 
         if kwargs.get('do_placement', True):
             logger.debug('Placing initial chunks for graph %s', self._graph_key)
-            self._assign_initial_workers(analyzer)
+            await self._assign_initial_workers(analyzer)
 
     @log_unhandled
     def get_executable_operand_dag(self, op_key, input_chunk_keys=None, serialize=True):
@@ -818,7 +831,7 @@ class GraphActor(SchedulerActor):
         return io_meta
 
     @log_unhandled
-    def create_operand_actors(self, _clean_info=True, _start=True):
+    async def create_operand_actors(self, _clean_info=True, _start=True):
         """
         Create operand actors for all operands
         """
@@ -874,12 +887,12 @@ class GraphActor(SchedulerActor):
                 kw['allocated'] = True
                 to_allocate_op_keys.add(op_key)
 
-            op_refs[op_key] = self.ctx.create_actor(
+            op_refs[op_key] = asyncio.ensure_future(self.ctx.create_actor(
                 op_cls, session_id, self._graph_key, op_key, op_info.copy(),
                 with_kvstore=self._kv_store_ref is not None,
                 schedulers=self.get_schedulers(),
-                uid=op_uid, address=scheduler_addr, wait=False, **kw
-            )
+                uid=op_uid, address=scheduler_addr, **kw
+            ))
             if _clean_info:
                 op_info.pop('executable_dag', None)
                 del op_info['io_meta']
@@ -891,7 +904,7 @@ class GraphActor(SchedulerActor):
             existing_keys = []
             for op_key, future in op_refs.items():
                 try:
-                    op_refs[op_key] = future.result()
+                    op_refs[op_key] = await future
                 except ActorAlreadyExist:
                     existing_keys.append(op_key)
 
@@ -910,15 +923,16 @@ class GraphActor(SchedulerActor):
                 if _clean_info:
                     op_info.pop('executable_dag', None)
                     del op_info['io_meta']
-            [future.result() for future in append_futures]
+            if append_futures:
+                await asyncio.wait(append_futures)
 
             res_applications = [(op_key, op_info) for op_key, op_info in operand_infos.items()
                                 if op_key in to_allocate_op_keys]
-            self._assigner_actor_ref.apply_for_multiple_resources(
+            await self._assigner_actor_ref.apply_for_multiple_resources(
                 session_id, res_applications, _tell=True)
 
     @log_unhandled
-    def add_finished_terminal(self, op_key, final_state=None, exc=None):
+    async def add_finished_terminal(self, op_key, final_state=None, exc=None):
         """
         Add a terminal operand to finished set. Calling this method
         will change graph state if all terminals are in finished states.
@@ -939,7 +953,7 @@ class GraphActor(SchedulerActor):
                 self._all_terminated_tileable_keys.add(tileable_key)
                 if len(self._terminated_tileable_keys) == len(self._terminal_tileable_key_to_chunk_op_keys):
                     # update shape if tileable or its chunks have unknown shape
-                    self._update_tileable_and_its_chunk_shapes()
+                    await self._update_tileable_and_its_chunk_shapes()
 
         terminated_chunks = self._op_key_to_chunk[op_key]
         self._terminated_chunk_keys.update([c.key for c in terminated_chunks
@@ -950,16 +964,16 @@ class GraphActor(SchedulerActor):
                     # if failed before, clear intermediate data
                     to_free_tileable_keys = \
                         self._all_terminated_tileable_keys - set(self._target_tileable_keys)
-                    [self.free_tileable_data(k) for k in to_free_tileable_keys]
+                    [await self.free_tileable_data(k) for k in to_free_tileable_keys]
                 self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
-                self._graph_meta_ref.set_graph_end(_tell=True)
+                await self._graph_meta_ref.set_graph_end(_tell=True)
             else:
-                self._execute_graph(compose=self._chunk_graph_builder.is_compose)
+                await self._execute_graph(compose=self._chunk_graph_builder.is_compose)
 
         if exc is not None:
             self._graph_meta_ref.set_exc_info(exc, _tell=True, _wait=False)
 
-    def _update_tileable_and_its_chunk_shapes(self):
+    async def _update_tileable_and_its_chunk_shapes(self):
         need_update_tileable_to_tiled = dict()
         for tileable in self._chunk_graph_builder.prev_tileable_graph:
             if tileable.key in self._target_tileable_finished:
@@ -972,7 +986,7 @@ class GraphActor(SchedulerActor):
             return
 
         need_update_chunks = list(c for t in need_update_tileable_to_tiled.values() for c in t.chunks)
-        chunk_metas = self.chunk_meta.batch_get_chunk_meta(
+        chunk_metas = await self.chunk_meta.batch_get_chunk_meta(
             self._session_id, list(c.key for c in need_update_chunks))
         for chunk, chunk_meta in zip(need_update_chunks, chunk_metas):
             chunk.data._shape = chunk_meta.chunk_shape
@@ -1075,15 +1089,15 @@ class GraphActor(SchedulerActor):
         return self._tileable_key_opid_to_tiled[(key, tid)][-1]
 
     @log_unhandled
-    def free_tileable_data(self, tileable_key, wait=False):
+    async def free_tileable_data(self, tileable_key, wait=False):
         tileable = self._get_tileable_by_key(tileable_key)
         futures = []
         for chunk in tileable.chunks:
             futures.append(self._get_operand_ref(chunk.op.key).free_data(
                 check=False, _tell=not wait, _wait=False))
-        [f.result() for f in futures]
+        await asyncio.wait(futures)
 
-    def get_tileable_metas(self, tileable_keys, filter_fields=None):
+    async def get_tileable_metas(self, tileable_keys, filter_fields=None):
         """
         Get tileable meta including nsplits, chunk keys and chunk indexes.
         :param tileable_keys: tileable_keys.
@@ -1105,7 +1119,7 @@ class GraphActor(SchedulerActor):
             meta['chunk_indexes'] = chunk_indexes
             if ret_nsplits:
                 if hasattr(tileable, 'shape') and np.nan in tileable.shape:
-                    chunk_shapes = self.chunk_meta.batch_get_chunk_shape(self._session_id,  chunk_keys)
+                    chunk_shapes = await self.chunk_meta.batch_get_chunk_shape(self._session_id,  chunk_keys)
                     nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes, chunk_shapes)))
                 else:
                     nsplits = tileable.nsplits
@@ -1138,7 +1152,7 @@ class GraphActor(SchedulerActor):
 
     @log_unhandled
     @enter_build_mode
-    def fetch_tileable_result(self, tileable_key, _check=True):
+    async def fetch_tileable_result(self, tileable_key, _check=True):
         # this function is for test usage
         from ..executor import Executor
         from ..worker.transfer import ResultSenderActor
@@ -1149,11 +1163,12 @@ class GraphActor(SchedulerActor):
 
         ctx = dict()
         for chunk in tileable.chunks:
-            endpoints = self.chunk_meta.get_workers(self._session_id, chunk.key)
+            endpoints = await self.chunk_meta.get_workers(self._session_id, chunk.key)
             if endpoints is None:
                 raise KeyError('cannot fetch meta of chunk {}'.format(chunk))
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
-            ctx[chunk.key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk.key))
+            ctx[chunk.key] = dataserializer.loads(
+                await sender_ref.fetch_data(self._session_id, chunk.key))
 
         if len(tileable.chunks) == 1:
             return dataserializer.dumps(ctx[tileable.chunks[0].key])
@@ -1204,7 +1219,7 @@ class GraphActor(SchedulerActor):
         return True
 
     @log_unhandled
-    def handle_worker_change(self, adds, removes, lost_chunks, handle_later=True):
+    async def handle_worker_change(self, adds, removes, lost_chunks, handle_later=True):
         """
         Calculate and propose changes of operand states given changes
         in workers and lost chunks.
@@ -1245,7 +1260,7 @@ class GraphActor(SchedulerActor):
                 and not any(ep in self._assigned_workers for ep in removes):
             return
 
-        worker_slots = self._get_worker_slots()
+        worker_slots = await self.get_worker_slots()
         self._assigned_workers = set(worker_slots)
         removes_set = set(removes)
 
@@ -1280,7 +1295,7 @@ class GraphActor(SchedulerActor):
                          len(new_states))
 
         logger.debug('Start reallocating initial operands')
-        new_targets = dict(self._assign_initial_workers(analyzer))
+        new_targets = dict(await self._assign_initial_workers(analyzer))
 
         futures = []
         # make sure that all readies and runnings are included to be checked
@@ -1317,7 +1332,7 @@ class GraphActor(SchedulerActor):
                 from_states = [from_state]
             futures.append(op_ref.move_failover_state(
                 from_states, state, new_target, removes, _tell=True, _wait=False))
-        [f.result() for f in futures]
+        await asyncio.wait(futures)
 
         self._dump_failover_info(adds, removes, lost_chunks, new_states)
 

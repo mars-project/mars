@@ -250,7 +250,7 @@ class Test(WorkerCase):
         pool_address = '127.0.0.1:%d' % get_next_port()
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
-        async with patch_method(SharedHolderActor.pin_data_keys, new=_mock_pin, async_=True), \
+        async with patch_method(SharedHolderActor.pin_data_keys, new=_mock_pin), \
                 create_actor_pool(n_process=1, address=pool_address) as pool:
             await self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             await pool.create_actor(MockSenderActor, [mock_data], 'in', uid='w:mock_sender')

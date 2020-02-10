@@ -162,10 +162,6 @@ cdef class ActorContext:
     cpdef tell(self, ActorRef actor_ref, object message, object delay=None, object callback=None):
         return self._comm.tell(actor_ref, message, delay=delay, callback=callback)
 
-    @staticmethod
-    def threadpool(size):
-        return AioThreadPool(size)
-
 
 cdef class LocalActorPool:
     """
@@ -1489,14 +1485,3 @@ cdef class ActorClient:
         if ref.address is None:
             raise ValueError('address must be provided')
         return ref
-
-    @staticmethod
-    def popen(*args, **kwargs):
-        new_args = args
-        if args:
-            new_args = tuple(args[0]) + args[1:]
-        return asyncio.create_subprocess_exec(*new_args, **kwargs)
-
-    @staticmethod
-    def threadpool(size):
-        return AioThreadPool(size)

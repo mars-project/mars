@@ -36,8 +36,8 @@ _dtype_datetime64_us = np.datetime64(datetime.now(), 'us').dtype
 
 
 class WorkerListHandler(MarsRequestHandler):
-    def get(self):
-        workers_meta = self.web_api.get_workers_meta()
+    async def get(self):
+        workers_meta = await self.web_api.get_workers_meta()
         for ep, meta in workers_meta.items():
             _worker_host_cache[ep] = meta['details']['host_name']
 
@@ -46,8 +46,8 @@ class WorkerListHandler(MarsRequestHandler):
 
 
 class WorkerHandler(MarsRequestHandler):
-    def get(self, endpoint):
-        workers_meta = self.web_api.get_workers_meta()
+    async def get(self, endpoint):
+        workers_meta = await self.web_api.get_workers_meta()
         for ep, meta in workers_meta.items():
             _worker_host_cache[ep] = meta['details']['host_name']
 
@@ -71,7 +71,7 @@ class WorkerHandler(MarsRequestHandler):
         ))
 
 
-class EventUpdater(object):
+class EventUpdater:
     def __init__(self):
         self.owner_to_ticker = OrderedDict()
         self.unfinished_to_indexes = dict()
@@ -175,14 +175,14 @@ class WorkerTimelineHandler(MarsRequestHandler):
         ))
 
     @staticmethod
-    def timeline_app(scheduler_ip, doc):
+    async def timeline_app(scheduler_ip, doc):
         from ..worker.events import EventCategory, ProcedureEventType
 
         worker_ep = to_str(doc.session_context.request.arguments.get('endpoint')[0])
         web_api = MarsWebAPI(scheduler_ip)
 
         last_query_time = time.time()
-        events = web_api.query_worker_events(
+        events = await web_api.query_worker_events(
             worker_ep, EventCategory.PROCEDURE, time_end=last_query_time)
 
         updater = EventUpdater()
@@ -223,10 +223,10 @@ class WorkerTimelineHandler(MarsRequestHandler):
 
         doc.add_root(p)
 
-        def _refresher():
+        async def _refresher():
             nonlocal last_query_time
             query_time = time.time()
-            events = web_api.query_worker_events(
+            events = await web_api.query_worker_events(
                 worker_ep, EventCategory.PROCEDURE, time_start=last_query_time, time_end=query_time)
             last_query_time = query_time
 

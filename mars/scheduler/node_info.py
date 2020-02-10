@@ -30,10 +30,9 @@ class NodeInfoActor(FunctionActor):
     def default_uid(cls):
         return 's:h1:' + cls.__name__
 
-    def post_create(self):
+    async def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
-
-        self.ref().gather_info()
+        await self.ref().gather_info()
 
     def gather_info(self):
         self._node_info = gather_node_info()

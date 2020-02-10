@@ -136,7 +136,7 @@ def start_transfer_test_pool(**kwargs):
     address = kwargs.pop('address')
     plasma_size = kwargs.pop('plasma_size')
 
-    class _AsyncContextManager(object):
+    class _AsyncContextManager:
         def __init__(self):
             self._pool = None
 
@@ -253,7 +253,7 @@ class Test(WorkerCase):
             this = self
             sp, rp = None, None
 
-            class _AsyncContextPool(object):
+            class _AsyncContextManager:
                 async def __aenter__(self):
                     nonlocal sp, rp
                     sp = await start_transfer_test_pool(
@@ -268,7 +268,7 @@ class Test(WorkerCase):
                     await rp.__aexit__(exc_type, exc_val, exc_tb)
                     await sp.__aexit__(exc_type, exc_val, exc_tb)
 
-            return _AsyncContextPool()
+            return _AsyncContextManager()
 
         async with start_send_recv_pool() as (send_pool, recv_pool), \
                 self.run_actor_test(send_pool) as test_actor:

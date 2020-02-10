@@ -33,11 +33,11 @@ class SchedulerApplication(BaseApplication):
     def config_args(self, parser):
         parser.add_argument('--nproc', help='number of processes')
 
-    def create_pool(self, *args, **kwargs):
+    async def create_pool(self, *args, **kwargs):
         self._service = SchedulerService()
         self.n_process = int(self.args.nproc or resource.cpu_count())
         kwargs['distributor'] = MarsDistributor(self.n_process, 's:h1:')
-        return super().create_pool(*args, **kwargs)
+        return await super().create_pool(*args, **kwargs)
 
     def create_scheduler_discoverer(self):
         advertise_endpoint = self.args.advertise or self.endpoint
@@ -51,11 +51,11 @@ class SchedulerApplication(BaseApplication):
 
         super().create_scheduler_discoverer()
 
-    def start(self):
-        self._service.start(self.endpoint, self.scheduler_discoverer, self.pool)
+    async def start(self):
+        await self._service.start(self.endpoint, self.scheduler_discoverer, self.pool)
 
-    def stop(self):
-        self._service.stop(self.pool)
+    async def stop(self):
+        await self._service.stop(self.pool)
 
 
 main = SchedulerApplication()

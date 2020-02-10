@@ -100,11 +100,11 @@ class SchedulerIntegratedTest(unittest.TestCase):
         self.state_files[environ] = fn
         return fn
 
-    def start_processes(self, *args, **kwargs):
+    async def start_processes(self, *args, **kwargs):
         fail_count = 0
         while True:
             try:
-                self._start_processes(*args, **kwargs)
+                await self._start_processes(*args, **kwargs)
                 break
             except ProcessRequirementUnmetError:
                 fail_count += 1
@@ -113,9 +113,9 @@ class SchedulerIntegratedTest(unittest.TestCase):
                 logger.error('Failed to start service, retrying')
                 self.terminate_processes()
 
-    def _start_processes(self, n_schedulers=2, n_workers=2, etcd=False, cuda=False, modules=None,
-                         log_scheduler=True, log_worker=True, env=None, scheduler_args=None,
-                         worker_args=None):
+    async def _start_processes(self, n_schedulers=2, n_workers=2, etcd=False, modules=None,
+                               log_scheduler=True, log_worker=True, env=None,
+                               scheduler_args=None, worker_args=None):
         old_not_errors = gevent.hub.Hub.NOT_ERROR
         gevent.hub.Hub.NOT_ERROR = (Exception,)
 
@@ -180,23 +180,23 @@ class SchedulerIntegratedTest(unittest.TestCase):
         while True:
             try:
                 try:
-                    started_schedulers = self.cluster_info.get_schedulers()
+                    started_schedulers = await self.cluster_info.get_schedulers()
                 except Exception as e:
                     raise ProcessRequirementUnmetError('Failed to get scheduler numbers, %s' % e)
                 if len(started_schedulers) < n_schedulers:
                     raise ProcessRequirementUnmetError('Schedulers does not met requirement: %d < %d.' % (
                         len(started_schedulers), n_schedulers
                     ))
-                actor_address = self.cluster_info.get_scheduler(SessionManagerActor.default_uid())
+                actor_address = await self.cluster_info.get_scheduler(SessionManagerActor.default_uid())
                 self.session_manager_ref = actor_client.actor_ref(
                     SessionManagerActor.default_uid(), address=actor_address)
 
-                actor_address = self.cluster_info.get_scheduler(ResourceActor.default_uid())
+                actor_address = await self.cluster_info.get_scheduler(ResourceActor.default_uid())
                 resource_ref = actor_client.actor_ref(ResourceActor.default_uid(), address=actor_address)
 
-                if resource_ref.get_worker_count() < n_workers:
+                if await resource_ref.get_worker_count() < n_workers:
                     raise ProcessRequirementUnmetError('Workers does not met requirement: %d < %d.' % (
-                        resource_ref.get_worker_count(), n_workers
+                        await resource_ref.get_worker_count(), n_workers
                     ))
                 break
             except:  # noqa: E722
@@ -209,12 +209,14 @@ class SchedulerIntegratedTest(unittest.TestCase):
     def check_process_statuses(self):
         for scheduler_proc in self.proc_schedulers:
             if scheduler_proc.poll() is not None:
-                raise ProcessRequirementUnmetError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+                raise ProcessRequirementUnmetError(
+                    'Scheduler not started. exit code %s' % self.proc_scheduler.poll())
         for worker_proc in self.proc_workers:
             if worker_proc.poll() is not None and worker_proc.pid not in self.intentional_death_pids:
-                raise ProcessRequirementUnmetError('Worker not started. exit code %s' % worker_proc.poll())
+                raise ProcessRequirementUnmetError(
+                    'Worker not started. exit code %s' % worker_proc.poll())
 
-    def wait_for_termination(self, actor_client, session_ref, graph_key):
+    async def wait_for_termination(self, actor_client, session_ref, graph_key):
         check_time = time.time()
         dump_time = time.time()
         check_timeout = int(os.environ.get('CHECK_TIMEOUT', 120))
@@ -225,11 +227,11 @@ class SchedulerIntegratedTest(unittest.TestCase):
                 raise SystemError('Check graph status timeout')
             if time.time() - dump_time > 10:
                 dump_time = time.time()
-                graph_refs = session_ref.get_graph_refs()
+                graph_refs = await session_ref.get_graph_refs()
                 try:
                     graph_ref = actor_client.actor_ref(graph_refs[graph_key])
-                    graph_ref.dump_unfinished_terminals()
+                    await graph_ref.dump_unfinished_terminals()
                 except KeyError:
                     pass
-            if session_ref.graph_state(graph_key) in GraphState.TERMINATED_STATES:
-                return session_ref.graph_state(graph_key)
+            if await session_ref.graph_state(graph_key) in GraphState.TERMINATED_STATES:
+                return await session_ref.graph_state(graph_key)

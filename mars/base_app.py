@@ -227,7 +227,6 @@ class BaseApplication(object):
                                     stopped.append(idx)
                             except psutil.NoSuchProcess:
                                 stopped.append(idx)
-                        print([p.pid for p in self.pool.processes], stopped)
                         if stopped:
                             await self.handle_process_down(stopped)
                 except KeyboardInterrupt:

@@ -25,7 +25,6 @@ from ..scheduler import OperandState
 from ..utils import to_str
 
 
-_actor_client = new_client()
 _jinja_env = get_jinja_env()
 
 PROGRESS_APP_NAME = 'bk_task_progress'
@@ -34,8 +33,8 @@ _base_palette = ['#e0f9ff', '#81d4dd', '#ff9e3b', '#399e34', '#2679b2', '#b3de8e
 
 
 class TaskListHandler(MarsRequestHandler):
-    def get(self):
-        sessions = self.web_api.get_tasks_info()
+    async def get(self):
+        sessions = await self.web_api.get_tasks_info()
 
         template = _jinja_env.get_template('task_pages/list.html')
         self.write(template.render(sessions=sessions))
@@ -57,14 +56,14 @@ class TaskHandler(MarsRequestHandler):
         ))
 
     @staticmethod
-    def task_progress_app(scheduler_ip, doc):
+    async def task_progress_app(scheduler_ip, doc):
         session_id = to_str(doc.session_context.request.arguments.get('session_id')[0])
         task_id = to_str(doc.session_context.request.arguments.get('task_id')[0])
-        web_api = MarsWebAPI(scheduler_ip)
 
         states = list(OperandState.__members__.values())
+        web_api = MarsWebAPI(scheduler_ip)
 
-        ops, stats, progress = web_api.get_task_detail(session_id, task_id)
+        ops, stats, progress = await web_api.get_task_detail(session_id, task_id)
         source = ColumnDataSource(stats)
         cols = list(stats)[1:]
         p = figure(y_range=ops, plot_height=500, plot_width=800, x_range=(0, 100),
@@ -86,9 +85,9 @@ class TaskHandler(MarsRequestHandler):
 
         doc.add_root(p)
 
-        def _refresher():
+        async def _refresher():
             try:
-                _, new_stats, new_progress = web_api.get_task_detail(session_id, task_id)
+                _, new_stats, new_progress = await web_api.get_task_detail(session_id, task_id)
             except ActorNotExist:  # pragma: no cover
                 doc.remove_periodic_callback(cb)
                 p.title.text = "Graph not found, session may be stopped"
@@ -104,10 +103,10 @@ class TaskHandler(MarsRequestHandler):
 
 
 class TaskRunningNodesHandler(MarsRequestHandler):
-    def get(self, session_id, graph_key):
+    async def get(self, session_id, graph_key):
         session_name = session_id
 
-        running_info = self.web_api.get_operand_info(session_id, graph_key, OperandState.RUNNING)
+        running_info = await self.web_api.get_operand_info(session_id, graph_key, OperandState.RUNNING)
         sorted_info = OrderedDict(
             sorted((item for item in running_info.items()), key=lambda it: (it[1].get('op_name'), it[0])))
 

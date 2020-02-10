@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import os
 
@@ -31,26 +32,29 @@ class KVStoreActor(SchedulerActor):
         super().__init__()
         self._store = kvstore.get(options.kv_store)
 
-    def post_create(self):
+    async def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
-        super().post_create()
+        await super().post_create()
 
-    def read(self, item, recursive=False, sort=False):
-        return self._store.read(item, recursive=recursive, sort=sort)
+    async def read(self, item, recursive=False, sort=False):
+        return await self._store.read(item, recursive=recursive, sort=sort)
 
-    def read_batch(self, items, recursive=False, sort=False):
-        return [self._store.read(item, recursive=recursive, sort=sort) for item in items]
+    async def read_batch(self, items, recursive=False, sort=False):
+        futures = [asyncio.ensure_future(self._store.read(item, recursive=recursive, sort=sort))
+                   for item in items]
+        return [await f for f in futures]
 
-    def write(self, key, value):
-        return self._store.write(key, value)
+    async def write(self, key, value):
+        return await self._store.write(key, value)
 
-    def write_batch(self, items):
+    async def write_batch(self, items):
         wrap = lambda x: (x,) if not isinstance(x, tuple) else x
-        [self.write(*wrap(it)) for it in items]
+        futures = [asyncio.ensure_future(self.write(*wrap(it))) for it in items]
+        await asyncio.wait(futures)
 
-    def delete(self, key, dir=False, recursive=False, silent=False):
+    async def delete(self, key, dir=False, recursive=False, silent=False):
         try:
-            return self._store.delete(key, dir=dir, recursive=recursive)
+            return await self._store.delete(key, dir=dir, recursive=recursive)
         except KeyError:
             if not silent:
                 raise

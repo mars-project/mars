@@ -31,29 +31,29 @@ class SuccessorsExclusiveOperandActor(BaseOperandActor):
         self._finished_sucessors = set()
         self._is_successor_running = False
 
-    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
-        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
+    async def add_finished_predecessor(self, op_key, worker, output_sizes=None):
+        await super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
 
         from ..chunkmeta import WorkerMeta
         data_meta = {k: WorkerMeta(chunk_size=v, workers=(worker,))
                      for k, v in output_sizes.items()}
         sucessor_op_key = self._predecessors_to_sucessors[op_key]
         self._ready_successors_queue.append((sucessor_op_key, data_meta))
-        self._pick_successor_to_run()
+        await self._pick_successor_to_run()
 
-    def add_finished_successor(self, op_key, worker):
-        super().add_finished_successor(op_key, worker)
+    async def add_finished_successor(self, op_key, worker):
+        await super().add_finished_successor(op_key, worker)
         self._finished_sucessors.add(op_key)
         if self._finished_sucessors == set(self._predecessors_to_sucessors.values()):
-            self.ref().start_operand(OperandState.FINISHED, _tell=True)
+            await self.ref().start_operand(OperandState.FINISHED, _tell=True)
         else:
             self._is_successor_running = False
-            self._pick_successor_to_run()
+            await self._pick_successor_to_run()
 
-    def _pick_successor_to_run(self):
+    async def _pick_successor_to_run(self):
         if not self._is_successor_running and len(self._ready_successors_queue) > 0:
             to_run_successor_op_key, data_meta = self._ready_successors_queue.pop(0)
-            self._get_operand_actor(to_run_successor_op_key).start_operand(
+            await self._get_operand_actor(to_run_successor_op_key).start_operand(
                 OperandState.READY, io_meta=dict(input_data_metas=data_meta), _tell=True)
             self._is_successor_running = True
 

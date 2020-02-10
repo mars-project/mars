@@ -14,13 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gevent.monkey
-gevent.monkey.patch_all(thread=False)
-
-import argparse  # noqa: E402
-import logging   # noqa: E402
-import random    # noqa: E402
-import time      # noqa: E402
+import argparse
+import asyncio
+import logging
+import random
 
 from ..base_app import BaseApplication, arg_deprecated_action  # noqa: E402
 from ..errors import StartArgumentError                        # noqa: E402
@@ -42,15 +39,15 @@ class WebApplication(BaseApplication):
         if self.scheduler_discoverer is None:
             raise StartArgumentError('Either schedulers or url of kv store is required.')
 
-    def main_loop(self):
+    async def main_loop(self):
         try:
-            self.start()
+            await self.start()
             while True:
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
         finally:
-            self.stop()
+            await self.stop()
 
-    def start(self):
+    async def start(self):
         from .server import MarsWeb
         if MarsWeb is None:
             self.mars_web = None
@@ -59,17 +56,17 @@ class WebApplication(BaseApplication):
             port_arg = self.args.ui_port or self.args.port
             ui_port = int(port_arg) if port_arg else None
 
-            schedulers = self.scheduler_discoverer.get()
+            schedulers = await self.scheduler_discoverer.get()
             logger.debug('Obtained schedulers: %r', schedulers)
             if not schedulers:
                 raise KeyError('No scheduler is available')
             scheduler_ep = random.choice(schedulers)
             self.mars_web = MarsWeb(port=ui_port, scheduler_ip=scheduler_ep)
-            self.mars_web.start()
+            await self.mars_web.start()
 
-    def stop(self):
+    async def stop(self):
         if self.mars_web:
-            self.mars_web.stop()
+            await self.mars_web.stop()
 
 
 main = WebApplication()

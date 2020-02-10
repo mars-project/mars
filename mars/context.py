@@ -263,7 +263,7 @@ class DistributedContext(ContextBase):
         self._actor_ctx = actor_ctx or new_client()
         self._cluster_info = self._actor_ctx.actor_ref(
             SchedulerClusterInfoActor.default_uid(), address=scheduler_address)
-        is_distributed = self._cluster_info.is_distributed()
+        is_distributed = kw.pop('is_distributed', False)
         self._running_mode = RunningMode.local_cluster \
             if not is_distributed else RunningMode.distributed
         self._address = kw.pop('address', None)

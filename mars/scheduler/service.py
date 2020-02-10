@@ -41,7 +41,7 @@ class SchedulerService(object):
         self._node_info_ref = None
         self._result_receiver_ref = None
 
-    def start(self, endpoint, discoverer, pool, distributed=True):
+    async def start(self, endpoint, discoverer, pool, distributed=True):
         """
         there are two way to start a scheduler
         1) if options.kv_store is specified as an etcd address, the endpoint will be written
@@ -50,32 +50,32 @@ class SchedulerService(object):
         2) if options.kv_store is not an etcd address, there will be only one scheduler
         """
         kv_store = kvstore.get(options.kv_store)
-        kv_store.write('/schedulers/%s' % endpoint, dir=True)
+        await kv_store.write('/schedulers/%s' % endpoint, dir=True)
 
         if not isinstance(kv_store, kvstore.LocalKVStore):
             # set etcd as service discover
             logger.info('Mars Scheduler started with kv store %s.', options.kv_store)
             # create KVStoreActor when there is a distributed KV store
-            self._kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())
+            self._kv_store_ref = await pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())
         else:
             # single scheduler
             logger.info('Mars Scheduler started in standalone mode.')
 
         # create ClusterInfoActor
-        self._cluster_info_ref = pool.create_actor(
+        self._cluster_info_ref = await pool.create_actor(
             SchedulerClusterInfoActor, discoverer, distributed=distributed,
             uid=SchedulerClusterInfoActor.default_uid())
         # create ChunkMetaActor
-        self._chunk_meta_ref = pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+        self._chunk_meta_ref = await pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
         # create SessionManagerActor
-        self._session_manager_ref = pool.create_actor(
+        self._session_manager_ref = await pool.create_actor(
             SessionManagerActor, uid=SessionManagerActor.default_uid())
         # create ResourceActor
-        self._resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
+        self._resource_ref = await pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
         # create NodeInfoActor
-        self._node_info_ref = pool.create_actor(NodeInfoActor, uid=NodeInfoActor.default_uid())
-        kv_store.write('/schedulers/%s/meta' % endpoint,
-                       json.dumps(self._resource_ref.get_workers_meta()))
+        self._node_info_ref = await pool.create_actor(NodeInfoActor, uid=NodeInfoActor.default_uid())
+        await kv_store.write('/schedulers/%s/meta' % endpoint,
+                             json.dumps(await self._resource_ref.get_workers_meta()))
 
-    def stop(self, pool):
-        pool.destroy_actor(self._resource_ref)
+    async def stop(self, pool):
+        await pool.destroy_actor(self._resource_ref)

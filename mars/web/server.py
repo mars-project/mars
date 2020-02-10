@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import json
 import logging
-import threading
 import os
 from collections import defaultdict
 
@@ -25,7 +25,8 @@ from bokeh.application import Application
 from bokeh.application.handlers import FunctionHandler
 from bokeh.server.server import Server
 import jinja2
-from tornado import web, ioloop
+from tornado import web
+from tornado.platform.asyncio import AsyncIOMainLoop
 
 from ..utils import get_next_port
 from ..scheduler import ResourceActor, SessionActor
@@ -78,17 +79,18 @@ class MarsRequestHandler(web.RequestHandler):
 class MarsWebAPI(MarsAPI):
     _schedulers_cache = None
 
-    def get_schedulers(self):
+    async def get_schedulers(self):
         cls = type(self)
         if not cls._schedulers_cache:
-            cls._schedulers_cache = self.cluster_info.get_schedulers()
+            cls._schedulers_cache = await self.cluster_info.get_schedulers()
         return cls._schedulers_cache
 
-    def get_tasks_info(self, select_session_id=None):
+    async def get_tasks_info(self, select_session_id=None):
         from ..scheduler import GraphState
 
         sessions = defaultdict(dict)
-        for session_id, session_ref in self.session_manager.get_sessions().items():
+        session_manager = await self.get_session_manager()
+        for session_id, session_ref in (await session_manager.get_sessions()).items():
             if select_session_id and session_id != select_session_id:
                 continue
             session_desc = sessions[session_id]
@@ -96,10 +98,10 @@ class MarsWebAPI(MarsAPI):
             session_desc['name'] = session_id
             session_desc['tasks'] = dict()
             session_ref = self.actor_client.actor_ref(session_ref)
-            for graph_key, graph_meta_ref in session_ref.get_graph_meta_refs().items():
+            for graph_key, graph_meta_ref in (await session_ref.get_graph_meta_refs()).items():
                 task_desc = dict()
 
-                state = self.get_graph_state(session_id, graph_key)
+                state = await self.get_graph_state(session_id, graph_key)
                 if state == GraphState.PREPARING:
                     task_desc['state'] = state.name.lower()
                     session_desc['tasks'][graph_key] = task_desc
@@ -107,8 +109,8 @@ class MarsWebAPI(MarsAPI):
 
                 graph_meta_ref = self.actor_client.actor_ref(graph_meta_ref)
                 task_desc['id'] = graph_key
-                task_desc['state'] = graph_meta_ref.get_state().value
-                start_time, end_time, graph_size = graph_meta_ref.get_graph_info()
+                task_desc['state'] = (await graph_meta_ref.get_state()).value
+                start_time, end_time, graph_size = await graph_meta_ref.get_graph_info()
                 task_desc['start_time'] = start_time
                 task_desc['end_time'] = end_time
                 task_desc['graph_size'] = graph_size
@@ -116,29 +118,29 @@ class MarsWebAPI(MarsAPI):
                 session_desc['tasks'][graph_key] = task_desc
         return sessions
 
-    def get_task_detail(self, session_id, task_id):
-        graph_meta_ref = self.get_graph_meta_ref(session_id, task_id)
-        return graph_meta_ref.calc_stats()
+    async def get_task_detail(self, session_id, task_id):
+        graph_meta_ref = await self.get_graph_meta_ref(session_id, task_id)
+        return await graph_meta_ref.calc_stats()
 
-    def get_operand_info(self, session_id, task_id, state=None):
-        graph_meta_ref = self.get_graph_meta_ref(session_id, task_id)
-        return graph_meta_ref.get_operand_info(state=state)
+    async def get_operand_info(self, session_id, task_id, state=None):
+        graph_meta_ref = await self.get_graph_meta_ref(session_id, task_id)
+        return await graph_meta_ref.get_operand_info(state=state)
 
-    def get_workers_meta(self):
+    async def get_workers_meta(self):
         resource_uid = ResourceActor.default_uid()
-        resource_ref = self.get_actor_ref(resource_uid)
-        return resource_ref.get_workers_meta()
+        resource_ref = await self.get_actor_ref(resource_uid)
+        return await resource_ref.get_workers_meta()
 
-    def query_worker_events(self, endpoint, category, time_start=None, time_end=None):
+    async def query_worker_events(self, endpoint, category, time_start=None, time_end=None):
         from ..worker import EventsActor
         ref = self.actor_client.actor_ref(EventsActor.default_uid(), address=endpoint)
-        return ref.query_by_time(category, time_start=time_start, time_end=time_end)
+        return await ref.query_by_time(category, time_start=time_start, time_end=time_end)
 
-    def write_mutable_tensor(self, session_id, name, payload_type, body):
+    async def write_mutable_tensor(self, session_id, name, payload_type, body):
         from ..serialize import dataserializer
         from ..tensor.core import Indexes
         session_uid = SessionActor.gen_uid(session_id)
-        session_ref = self.get_actor_ref(session_uid)
+        session_ref = await self.get_actor_ref(session_uid)
 
         index_json_size = np.frombuffer(body[0:8], dtype=np.int64).item()
         index_json = json.loads(body[8:8+index_json_size].decode('ascii'))
@@ -160,34 +162,18 @@ class MarsWebAPI(MarsAPI):
                 value = record_batch.to_pandas().to_records(index=False)
         else:
             raise ValueError('Not supported payload type: %s' % payload_type)
-        return session_ref.write_mutable_tensor(name, index, value)
+        return await session_ref.write_mutable_tensor(name, index, value)
 
 
-class MarsWeb(object):
+class MarsWeb:
     def __init__(self, port=None, scheduler_ip=None):
         self._port = port
         self._scheduler_ip = scheduler_ip
         self._server = None
-        self._server_thread = None
 
     @property
     def port(self):
         return self._port
-
-    @staticmethod
-    def _configure_loop():
-        try:
-            ioloop.IOLoop.current()
-        except RuntimeError:
-            import asyncio
-            asyncio.set_event_loop(asyncio.new_event_loop())
-            loop = None
-            try:
-                loop = ioloop.IOLoop.current()
-            except:  # noqa: E722
-                pass
-            if loop is None:
-                raise
 
     def _try_start_web_server(self):
         static_path = os.path.join(os.path.dirname(__file__), 'static')
@@ -228,26 +214,21 @@ class MarsWeb(object):
                 if retrial == 0:
                     raise
 
-    def start(self, event=None, block=False):
-        self._configure_loop()
+    async def start(self, event=None, block=False):
+        AsyncIOMainLoop().install()
         self._try_start_web_server()
 
-        if not block:
-            self._server_thread = threading.Thread(target=self._server.io_loop.start)
-            self._server_thread.daemon = True
-            self._server_thread.start()
+        if event:
+            event.set()
+        if block:
+            while True:
+                try:
+                    await asyncio.sleep(5, loop=self._server.io_loop)
+                except KeyboardInterrupt:
+                    return
 
-            if event:
-                event.set()
-        else:
-            if event:
-                event.set()
-
-            self._server.io_loop.start()
-
-    def stop(self):
+    async def stop(self):
         if self._server is not None:
-            self._server.io_loop.stop()
             self._server.stop()
 
 

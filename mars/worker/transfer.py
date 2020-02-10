@@ -43,7 +43,7 @@ class ReceiveStatus(Enum):
     ERROR = 4
 
 
-class EndpointTransferState(object):
+class EndpointTransferState:
     """
     Structure providing transfer status in an endpoint
     """
@@ -277,7 +277,7 @@ class SenderActor(WorkerActor):
                 await reader.close()
 
 
-class ReceiverDataMeta(object):
+class ReceiverDataMeta:
     __slots__ = 'start_time', 'chunk_size', 'source_address',\
                 'status', 'transfer_event_id', 'receiver_worker_uid', \
                 'callback_ids', 'callback_args', 'callback_kwargs'
@@ -536,7 +536,6 @@ class ReceiverWorkerActor(WorkerActor):
                             and when sill is needed, a StorageFull will be raised instead.
         :param callback: promise callback
         """
-        print('async def create_data_writers(self, session_id, chunk_keys, data_sizes, sender_ref,')
         promises = []
         failed = False
         if options.vineyard.socket:
@@ -609,7 +608,6 @@ class ReceiverWorkerActor(WorkerActor):
                           is the last part of the chunk.
         :param data_parts: data parts to be written
         """
-        print('async def receive_data_part(self, session_id, chunk_keys, end_marks, *data_parts):')
         try:
             finished_keys, finished_meta_keys, finished_metas = [], [], []
             for chunk_key, data_part, end_mark in zip(chunk_keys, data_parts, end_marks):
@@ -824,7 +822,7 @@ class ResultSenderActor(WorkerActor):
                 session_id, chunk_key, target_devs, packed=True,
                 packed_compression=compression_type, _promise=False)
 
-            with reader:
+            async with reader:
                 return await reader.execute_in_pool(reader.read)
         else:
             try:

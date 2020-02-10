@@ -118,18 +118,18 @@ class AssignerActor(SchedulerActor):
 
         self._allocate_requests = []
 
-    def post_create(self):
+    async def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
-        self.set_cluster_info_ref()
+        await self.set_cluster_info_ref()
         # the ref of the actor actually handling assignment work
         session_id = self.uid.rsplit('$', 1)[-1]
-        self._actual_ref = self.ctx.create_actor(AssignEvaluationActor, self.ref(),
-                                                 uid=AssignEvaluationActor.gen_uid(session_id))
+        self._actual_ref = await self.ctx.create_actor(
+            AssignEvaluationActor, self.ref(), uid=AssignEvaluationActor.gen_uid(session_id))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
-    def pre_destroy(self):
-        self._actual_ref.destroy()
+    async def pre_destroy(self):
+        await self._actual_ref.destroy()
 
     def allocate_top_resources(self, max_allocates=None):
         self._allocate_requests.append(max_allocates)
@@ -140,21 +140,21 @@ class AssignerActor(SchedulerActor):
         self._allocate_requests = []
         return reqs
 
-    def mark_metrics_expired(self):
+    async def mark_metrics_expired(self):
         logger.debug('Metrics cache marked as expired.')
         self._worker_metric_time = 0
-        self._actual_ref.mark_metrics_expired(_tell=True)
+        await self._actual_ref.mark_metrics_expired(_tell=True)
 
-    def _refresh_worker_metrics(self):
+    async def _refresh_worker_metrics(self):
         t = time.time()
         if self._worker_metrics is None or self._worker_metric_time + 1 < time.time():
             # update worker metrics from ResourceActor
-            self._worker_metrics = self._resource_ref.get_workers_meta()
+            self._worker_metrics = await self._resource_ref.get_workers_meta()
             self._worker_metric_time = t
 
-    def filter_alive_workers(self, workers, refresh=False):
+    async def filter_alive_workers(self, workers, refresh=False):
         if refresh:
-            self._refresh_worker_metrics()
+            await self._refresh_worker_metrics()
         return [w for w in workers if w in self._worker_metrics] if self._worker_metrics else []
 
     def _enqueue_operand(self, session_id, op_key, op_info, callback=None):
@@ -166,7 +166,7 @@ class AssignerActor(SchedulerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def apply_for_resource(self, session_id, op_key, op_info, callback=None):
+    async def apply_for_resource(self, session_id, op_key, op_info, callback=None):
         """
         Register resource request for an operand
         :param session_id: session id
@@ -175,20 +175,20 @@ class AssignerActor(SchedulerActor):
         :param callback: promise callback, called when the resource is assigned
         """
         self._allocate_requests.append(1)
-        self._refresh_worker_metrics()
+        await self._refresh_worker_metrics()
         self._enqueue_operand(session_id, op_key, op_info, callback)
         logger.debug('Operand %s enqueued', op_key)
         self._actual_ref.allocate_top_resources(fetch_requests=True, _tell=True, _wait=False)
 
     @log_unhandled
-    def apply_for_multiple_resources(self, session_id, applications):
+    async def apply_for_multiple_resources(self, session_id, applications):
         self._allocate_requests.append(len(applications))
-        self._refresh_worker_metrics()
+        await self._refresh_worker_metrics()
         logger.debug('%d operands applied for session %s', len(applications), session_id)
         for app in applications:
             op_key, op_info = app
             self._enqueue_operand(session_id, op_key, op_info)
-        self._actual_ref.allocate_top_resources(fetch_requests=True, _tell=True)
+        await self._actual_ref.allocate_top_resources(fetch_requests=True, _tell=True)
 
     @log_unhandled
     def update_priority(self, op_key, priority_data):
@@ -257,37 +257,37 @@ class AssignEvaluationActor(SchedulerActor):
         self._sufficient_operands = set()
         self._operand_sufficient_time = dict()
 
-    def post_create(self):
+    async def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
-        self.set_cluster_info_ref()
+        await self.set_cluster_info_ref()
         self._assigner_ref = self.ctx.actor_ref(self._assigner_ref)
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
-        self.periodical_allocate()
+        await self.periodical_allocate()
 
     def mark_metrics_expired(self):
         logger.debug('Metrics cache marked as expired.')
         self._worker_metric_time = 0
 
-    def periodical_allocate(self):
-        self.allocate_top_resources()
-        self.ref().periodical_allocate(_tell=True, _delay=0.5)
+    async def periodical_allocate(self):
+        await self.allocate_top_resources()
+        await self.ref().periodical_allocate(_tell=True, _delay=0.5)
 
-    def allocate_top_resources(self, fetch_requests=False):
+    async def allocate_top_resources(self, fetch_requests=False):
         """
         Allocate resources given the order in AssignerActor
         """
         t = time.time()
         if self._worker_metrics is None or self._worker_metric_time + 1 < time.time():
             # update worker metrics from ResourceActor
-            self._worker_metrics = self._resource_ref.get_workers_meta()
+            self._worker_metrics = await self._resource_ref.get_workers_meta()
             self._worker_metric_time = t
         if not self._worker_metrics:
             return
 
         if fetch_requests:
-            requests = self._assigner_ref.get_allocate_requests()
+            requests = await self._assigner_ref.get_allocate_requests()
             if not requests:
                 return
             max_allocates = sys.maxsize if any(v is None for v in requests) else sum(requests)
@@ -300,38 +300,38 @@ class AssignEvaluationActor(SchedulerActor):
         # the assigning procedure will continue till all workers rejected
         # or max_allocates reached
         while len(reject_workers) < len(self._worker_metrics) and assigned < max_allocates:
-            item = self._assigner_ref.pop_head()
+            item = await self._assigner_ref.pop_head()
             if not item:
                 break
 
             try:
-                alloc_ep, rejects = self._allocate_resource(
+                alloc_ep, rejects = await self._allocate_resource(
                     item.session_id, item.op_key, item.op_info, item.target_worker,
                     reject_workers=reject_workers)
             except:  # noqa: E722
                 logger.exception('Unexpected error occurred in %s', self.uid)
                 if item.callback:  # pragma: no branch
-                    self.tell_promise(item.callback, *sys.exc_info(), _accept=False)
+                    await self.tell_promise(item.callback, *sys.exc_info(), _accept=False)
                 continue
 
             # collect workers failed to assign operand to
             reject_workers.update(rejects)
             if alloc_ep:
                 # assign successfully, we remove the application
-                self._assigner_ref.remove_apply(item.op_key, _tell=True)
+                await self._assigner_ref.remove_apply(item.op_key, _tell=True)
                 assigned += 1
             else:
                 # put the unassigned item into unassigned list to add back to the queue later
                 unassigned.append(item)
         if unassigned:
             # put unassigned back to the queue, if any
-            self._assigner_ref.extend(unassigned, _tell=True)
+            await self._assigner_ref.extend(unassigned, _tell=True)
 
         if not fetch_requests:
             self._assigner_ref.get_allocate_requests(_tell=True, _wait=False)
 
     @log_unhandled
-    def _allocate_resource(self, session_id, op_key, op_info, target_worker=None, reject_workers=None):
+    async def _allocate_resource(self, session_id, op_key, op_info, target_worker=None, reject_workers=None):
         """
         Allocate resource for single operand
         :param session_id: session id
@@ -353,7 +353,7 @@ class AssignEvaluationActor(SchedulerActor):
         except KeyError:
             input_data_keys = op_io_meta.get('input_chunks', {})
 
-            input_metas = self._get_chunks_meta(session_id, input_data_keys)
+            input_metas = await self._get_chunks_meta(session_id, input_data_keys)
             if any(m is None for m in input_metas.values()):
                 raise DependencyMissing('Dependency missing for operand %s' % op_key)
 
@@ -380,7 +380,7 @@ class AssignEvaluationActor(SchedulerActor):
 
         rejects = []
         for worker_ep in candidate_workers:
-            if self._resource_ref.allocate_resource(session_id, op_key, worker_ep, alloc_dict):
+            if await self._resource_ref.allocate_resource(session_id, op_key, worker_ep, alloc_dict):
                 logger.debug('Operand %s(%s) allocated to run in %s', op_key, op_info['op_name'], worker_ep)
 
                 self.get_actor_ref(BaseOperandActor.gen_uid(session_id, op_key)) \
@@ -389,10 +389,10 @@ class AssignEvaluationActor(SchedulerActor):
             rejects.append(worker_ep)
         return None, rejects
 
-    def _get_chunks_meta(self, session_id, keys):
+    async def _get_chunks_meta(self, session_id, keys):
         if not keys:
             return dict()
-        return dict(zip(keys, self.chunk_meta.batch_get_chunk_meta(session_id, keys)))
+        return dict(zip(keys, await self.chunk_meta.batch_get_chunk_meta(session_id, keys)))
 
     def _get_eps_by_worker_locality(self, input_keys, chunk_workers, input_sizes):
         locality_data = defaultdict(lambda: 0)

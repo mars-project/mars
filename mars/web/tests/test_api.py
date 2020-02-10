@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import base64
 import requests
 import json
@@ -36,7 +37,7 @@ from mars.config import options
 from mars.scheduler import ResourceActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps
-from mars.tests.core import mock
+from mars.tests.core import aio_case, mock
 from mars.utils import get_next_port
 
 
@@ -56,7 +57,35 @@ class Test(unittest.TestCase):
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
 
-    def _start_service(self):
+    async def wait_scheduler_worker_start(self):
+        actor_client = new_client()
+        time.sleep(1)
+        check_time = time.time()
+        while True:
+            try:
+                resource_ref = actor_client.actor_ref(
+                    ResourceActor.default_uid(), address='127.0.0.1:' + self.scheduler_port)
+                if await actor_client.has_actor(resource_ref):
+                    break
+                else:
+                    raise SystemError('Check meta_timestamp timeout')
+            except:  # noqa: E722
+                if time.time() - check_time > 10:
+                    raise
+                await asyncio.sleep(0.1)
+
+        check_time = time.time()
+        while not await resource_ref.get_worker_count():
+            if self.proc_scheduler.poll() is not None:
+                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+            if self.proc_worker.poll() is not None:
+                raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
+            if time.time() - check_time > 30:
+                raise SystemError('Check meta_timestamp timeout')
+
+            await asyncio.sleep(0.1)
+
+    def setUp(self):
         worker_port = self.worker_port = str(get_next_port())
         scheduler_port = self.scheduler_port = str(get_next_port())
         proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
@@ -79,32 +108,7 @@ class Test(unittest.TestCase):
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
 
-        actor_client = new_client()
-        time.sleep(1)
-        check_time = time.time()
-        while True:
-            try:
-                resource_ref = actor_client.actor_ref(
-                    ResourceActor.default_uid(), address='127.0.0.1:' + self.scheduler_port)
-                if actor_client.has_actor(resource_ref):
-                    break
-                else:
-                    raise SystemError('Check meta_timestamp timeout')
-            except:  # noqa: E722
-                if time.time() - check_time > 10:
-                    raise
-                time.sleep(0.1)
-
-        check_time = time.time()
-        while not resource_ref.get_worker_count():
-            if self.proc_scheduler.poll() is not None:
-                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
-            if self.proc_worker.poll() is not None:
-                raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
-            if time.time() - check_time > 30:
-                raise SystemError('Check meta_timestamp timeout')
-
-            time.sleep(0.1)
+        asyncio.run(self.wait_scheduler_worker_start())
 
         web_port = self.web_port = str(get_next_port())
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
@@ -145,20 +149,6 @@ class Test(unittest.TestCase):
         for p in procs:
             if p.poll() is None:
                 p.kill()
-
-    def setUp(self):
-        self.proc_scheduler = self.proc_worker = self.proc_web = None
-        for attempt in range(3):
-            try:
-                self._start_service()
-                break
-            except:  # noqa: E722
-                self._stop_service()
-                if attempt == 2:
-                    raise
-
-    def tearDown(self):
-        self._stop_service()
 
     def testWebApi(self):
         service_ep = 'http://127.0.0.1:' + self.web_port
@@ -242,11 +232,14 @@ class Test(unittest.TestCase):
             self.assertEqual(res.status_code, 200)
 
         # make sure all chunks freed when session quits
-        from mars.worker.storage import StorageManagerActor
-        actor_client = new_client()
-        storage_manager_ref = actor_client.actor_ref(StorageManagerActor.default_uid(),
-                                                     address='127.0.0.1:' + str(self.worker_port))
-        self.assertFalse(bool(storage_manager_ref.dump_keys()))
+        async def check_all_chunks_freed():
+            from mars.worker.storage import StorageManagerActor
+            actor_client = new_client()
+            storage_manager_ref = actor_client.actor_ref(StorageManagerActor.default_uid(),
+                                                         address='127.0.0.1:' + str(self.worker_port))
+            self.assertFalse(bool(await storage_manager_ref.dump_keys()))
+
+        asyncio.run(check_all_chunks_freed())
 
     def testWebApiException(self):
         def normalize_tbs(tb_lines):
@@ -313,7 +306,7 @@ class MockResponse:
         return self._status_code
 
 
-class MockedServer(object):
+class MockedServer:
     def __init__(self):
         self._data = None
 

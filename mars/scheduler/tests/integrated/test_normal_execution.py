@@ -30,23 +30,25 @@ from mars.scheduler.graph import GraphState
 from mars.scheduler.resource import ResourceActor
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 from mars.scheduler.tests.integrated.no_prepare_op import NoPrepareOperand
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.utils import build_tileable_graph
 from mars.serialize.dataserializer import loads
-from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf
+from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf, aio_case
 from mars.context import DistributedContext
 
 logger = logging.getLogger(__name__)
 
 
 @unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
+@aio_case
 class Test(SchedulerIntegratedTest):
-    def testMainTensorWithoutEtcd(self):
-        self.start_processes()
+    async def testMainTensorWithoutEtcd(self):
+        await self.start_processes()
 
         session_id = uuid.uuid1()
         actor_client = new_client()
 
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
         a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
@@ -54,13 +56,13 @@ class Test(SchedulerIntegratedTest):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, c.key)
+        result = await session_ref.fetch_result(graph_key, c.key)
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
         assert_allclose(loads(result), expected.sum())
 
@@ -70,12 +72,12 @@ class Test(SchedulerIntegratedTest):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
-        result = session_ref.fetch_result(graph_key, c.key)
+        result = await session_ref.fetch_result(graph_key, c.key)
         assert_allclose(loads(result), np.ones((100, 200)) * 450)
 
         base_arr = np.random.random((100, 100))
@@ -84,14 +86,14 @@ class Test(SchedulerIntegratedTest):
         graph = sumv.build_graph()
         targets = [sumv.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         expected = reduce(operator.add, [base_arr[:10, :10] for _ in range(10)])
-        result = session_ref.fetch_result(graph_key, sumv.key)
+        result = await session_ref.fetch_result(graph_key, sumv.key)
         assert_allclose(loads(result), expected)
 
         a = mt.ones((31, 27), chunk_size=10)
@@ -101,13 +103,13 @@ class Test(SchedulerIntegratedTest):
         graph = r.build_graph()
         targets = [r.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, r.key)
+        result = await session_ref.fetch_result(graph_key, r.key)
         assert_allclose(loads(result), np.ones((27, 31)).sum(axis=1))
 
         raw = np.random.RandomState(0).rand(10, 10)
@@ -116,25 +118,25 @@ class Test(SchedulerIntegratedTest):
         graph = b.build_graph()
         targets = [b.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, b.key)
+        result = await session_ref.fetch_result(graph_key, b.key)
 
         np.testing.assert_array_equal(loads(result), raw[raw.argmin(axis=1), np.arange(10)])
 
     @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
                      'does not run without etcd')
-    def testMainTensorWithEtcd(self):
-        self.start_processes(etcd=True)
+    async def testMainTensorWithEtcd(self):
+        await self.start_processes(etcd=True)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
 
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
         a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
@@ -142,25 +144,25 @@ class Test(SchedulerIntegratedTest):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, c.key)
+        result = await session_ref.fetch_result(graph_key, c.key)
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
         assert_allclose(loads(result), expected.sum())
 
     @require_cupy
     @require_cudf
-    def testMainTensorWithCuda(self):
-        self.start_processes(cuda=True)
+    async def testMainTensorWithCuda(self):
+        await self.start_processes(cuda=True)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
 
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
         a = mt.ones((100, 100), chunk_size=30, gpu=True) * 2 * 1 + 1
         b = mt.ones((100, 100), chunk_size=30, gpu=True) * 2 * 1 + 1
@@ -168,28 +170,28 @@ class Test(SchedulerIntegratedTest):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, c.key)
+        result = await session_ref.fetch_result(graph_key, c.key)
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
         assert_allclose(loads(result), expected.sum())
 
-    def testMainDataFrameWithoutEtcd(self):
+    async def testMainDataFrameWithoutEtcd(self):
         import pandas as pd
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.datasource.series import from_pandas as from_pandas_series
         from mars.dataframe.arithmetic import add
 
-        self.start_processes(etcd=False, scheduler_args=['-Dscheduler.aggressive_assign=true'])
+        await self.start_processes(etcd=False, scheduler_args=['-Dscheduler.aggressive_assign=true'])
 
         session_id = uuid.uuid1()
         actor_client = new_client()
 
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
         data1 = pd.DataFrame(np.random.rand(10, 10))
         df1 = from_pandas_df(data1, chunk_size=5)
@@ -201,14 +203,14 @@ class Test(SchedulerIntegratedTest):
         graph = df3.build_graph()
         targets = [df3.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         expected = data1 + data2
-        result = session_ref.fetch_result(graph_key, df3.key)
+        result = await session_ref.fetch_result(graph_key, df3.key)
         pd.testing.assert_frame_equal(expected, loads(result))
 
         data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
@@ -223,14 +225,14 @@ class Test(SchedulerIntegratedTest):
         graph = df3.build_graph()
         targets = [df3.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         expected = data1 + data2
-        result = session_ref.fetch_result(graph_key, df3.key)
+        result = await session_ref.fetch_result(graph_key, df3.key)
         pd.testing.assert_frame_equal(expected, loads(result))
 
         data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -245,14 +247,14 @@ class Test(SchedulerIntegratedTest):
         graph = df3.build_graph()
         targets = [df3.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         expected = data1 + data2
-        result = session_ref.fetch_result(graph_key, df3.key)
+        result = await session_ref.fetch_result(graph_key, df3.key)
         pd.testing.assert_frame_equal(expected, loads(result))
 
         s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
@@ -261,23 +263,23 @@ class Test(SchedulerIntegratedTest):
         graph = series1.build_graph()
         targets = [series1.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, series1.key)
+        result = await session_ref.fetch_result(graph_key, series1.key)
         pd.testing.assert_series_equal(s1, loads(result))
 
-    def testIterativeTilingWithoutEtcd(self):
-        self.start_processes(etcd=False)
+    async def testIterativeTilingWithoutEtcd(self):
+        await self.start_processes(etcd=False)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
         rs = np.random.RandomState(0)
 
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
         raw = rs.rand(100)
         a = mt.tensor(raw, chunk_size=10)
@@ -287,18 +289,18 @@ class Test(SchedulerIntegratedTest):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, c.key)
+        result = await session_ref.fetch_result(graph_key, c.key)
         expected = np.sort(raw)[:5]
         assert_allclose(loads(result), expected)
 
         with self.assertRaises(KeyError):
-            session_ref.fetch_result(graph_key, a.key, check=False)
+            await session_ref.fetch_result(graph_key, a.key, check=False)
 
         raw1 = rs.rand(20)
         raw2 = rs.rand(20)
@@ -312,13 +314,13 @@ class Test(SchedulerIntegratedTest):
         graph = d.build_graph()
         targets = [d.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, d.key)
+        result = await session_ref.fetch_result(graph_key, d.key)
         expected = np.sort(np.concatenate([np.sort(raw1)[:10], raw2 + 1]))[:5]
         assert_allclose(loads(result), expected)
 
@@ -330,26 +332,28 @@ class Test(SchedulerIntegratedTest):
         graph = build_tileable_graph(b, set())
         targets = [b[0].key, b[1].key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        res = session_ref.fetch_result(graph_key, b[0].key), \
-              session_ref.fetch_result(graph_key, b[1].key)
+        res = await session_ref.fetch_result(graph_key, b[0].key), \
+            await session_ref.fetch_result(graph_key, b[1].key)
         expected = np.histogram(np.sort(raw), bins='scott')
         assert_allclose(loads(res[0]), expected[0])
         assert_allclose(loads(res[1]), expected[1])
 
-    def testDistributedContext(self):
+    async def testDistributedContext(self):
         self.start_processes(etcd=False)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
         rs = np.random.RandomState(0)
 
-        context = DistributedContext(scheduler_address=self.scheduler_endpoints[0], session_id=session_id)
+        cluster_info_ref = actor_client.actor_ref(SchedulerClusterInfoActor.default_uid())
+        context = DistributedContext(scheduler_address=self.scheduler_endpoints[0],
+                                     session_id=session_id, is_distributed=await cluster_info_ref.is_distributed())
 
         session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
         raw1 = rs.rand(10, 10)

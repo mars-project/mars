@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import base64
 import logging
 import time
@@ -70,20 +71,18 @@ class OperandActor(BaseOperandActor):
 
     @retries.setter
     def retries(self, value):
-        futures = []
         self._retries = value
         self._info['retries'] = value
 
         if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write(
-                '%s/retries' % self._op_path, str(value), _tell=True, _wait=False))
+            self._kv_store_ref.write(
+                '%s/retries' % self._op_path, str(value), _tell=True, _wait=False)
 
         retry_timestamp = time.time()
         self._info['retry_timestamp'] = retry_timestamp
         if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write('%s/retry_timestamp' % self._op_path, str(value),
-                                                    _tell=True, _wait=False))
-        [f.result() for f in futures]
+            self._kv_store_ref.write(
+                '%s/retry_timestamp' % self._op_path, str(value), _tell=True, _wait=False)
 
     def append_graph(self, graph_key, op_info):
         from ..graph import GraphActor
@@ -99,41 +98,42 @@ class OperandActor(BaseOperandActor):
         if self._state not in OperandState.TERMINATED_STATES:
             self.start_operand()
 
-    def start_operand(self, state=None, **kwargs):
+    async def start_operand(self, state=None, **kwargs):
         target_worker = kwargs.get('target_worker')
         if target_worker:
             self._target_worker = target_worker
-        return super().start_operand(state=state, **kwargs)
+        return await super().start_operand(state=state, **kwargs)
 
-    def add_running_predecessor(self, op_key, worker):
-        super().add_running_predecessor(op_key, worker)
+    async def add_running_predecessor(self, op_key, worker):
+        await super().add_running_predecessor(op_key, worker)
         self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
 
-    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
+    async def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         """
         This function shall return whether current node is ready. The return values will
         be collected by the predecessor to judge if a node with lower-priority can be
         scheduled.
         """
-        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
+        await super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
         if all(k in self._finish_preds for k in self._pred_keys):
             # all predecessors done, the operand can be executed now
             if self.state == OperandState.UNSCHEDULED:
-                self.start_operand(OperandState.READY)
+                await self.start_operand(OperandState.READY)
             return True
         return False
 
-    def add_finished_successor(self, op_key, worker):
-        super().add_finished_successor(op_key, worker)
+    async def add_finished_successor(self, op_key, worker):
+        await super().add_finished_successor(op_key, worker)
         if not self._is_terminal and \
                 all(k in self._finish_succs for k in self._succ_keys):
             # make sure that all prior states are terminated (in case of failover)
             states = []
             for graph_ref in self._graph_refs:
-                states.extend(graph_ref.get_operand_states(self._succ_keys))
+                states.extend(await graph_ref.get_operand_states(self._succ_keys))
             # non-terminal operand with all successors done, the data can be freed
-            if all(k in OperandState.TERMINATED_STATES for k in states) and self._is_worker_alive():
-                self.ref().free_data(_tell=True)
+            if all(k in OperandState.TERMINATED_STATES for k in states) and \
+                    await self._is_worker_alive():
+                await self.ref().free_data(_tell=True)
 
     def update_demand_depths(self, depth):
         """
@@ -165,7 +165,7 @@ class OperandActor(BaseOperandActor):
                 if in_key not in self._finish_preds and in_key not in self._running_preds:
                     self._get_operand_actor(in_key).update_demand_depths(depth, _tell=True, _wait=False)
 
-    def propose_descendant_workers(self, input_key, worker_scores, depth=1):
+    async def propose_descendant_workers(self, input_key, worker_scores, depth=1):
         """
         Calculate likelihood of the operand being sent to workers
         :param input_key: input key that carries the scores
@@ -189,7 +189,7 @@ class OperandActor(BaseOperandActor):
                 if self._worker_scores[k] < 1e-6:
                     del self._worker_scores[k]
 
-        live_workers = set(self._assigner_ref.filter_alive_workers(list(self._worker_scores.keys())))
+        live_workers = set(await self._assigner_ref.filter_alive_workers(list(self._worker_scores.keys())))
         self._worker_scores = dict((k, v) for k, v in self._worker_scores.items()
                                    if k in live_workers)
 
@@ -199,7 +199,8 @@ class OperandActor(BaseOperandActor):
             for succ_key in self._succ_keys:
                 futures.append(self._get_operand_actor(succ_key).propose_descendant_workers(
                     self._op_key, self._worker_scores, depth=depth - 1, _tell=True, _wait=False))
-            [f.result() for f in futures]
+            if futures:
+                await asyncio.wait(futures)
         # pick the worker with largest likelihood
         max_score = 0
         max_worker = None
@@ -212,10 +213,10 @@ class OperandActor(BaseOperandActor):
                          self._op_key, self._op_name, max_worker, self._worker_scores)
             return self._input_chunks, max_worker
 
-    def _is_worker_alive(self):
-        return bool(self._assigner_ref.filter_alive_workers([self.worker], refresh=True))
+    async def _is_worker_alive(self):
+        return bool(await self._assigner_ref.filter_alive_workers([self.worker], refresh=True))
 
-    def move_failover_state(self, from_states, state, new_target, dead_workers):
+    async def move_failover_state(self, from_states, state, new_target, dead_workers):
         """
         Move the operand into new state when executing fail-over step
         :param from_states: the source states the operand should be in, when not match, we stopped.
@@ -264,27 +265,27 @@ class OperandActor(BaseOperandActor):
                     return
 
         self._allocated = False
-        super().move_failover_state(from_states, state, new_target, dead_workers)
+        await super().move_failover_state(from_states, state, new_target, dead_workers)
 
-    def free_data(self, state=OperandState.FREED, check=True):
+    async def free_data(self, state=OperandState.FREED, check=True):
         """
         Free output data of current operand
         :param state: target state
         :param check: ask GraphActor if we can free the data, useful when failover
         """
         if check:
-            can_be_freed, deterministic = self.check_can_be_freed(state)
+            can_be_freed, deterministic = await self.check_can_be_freed(state)
             if not deterministic:
-                self.ref().free_data(state, _delay=1, _tell=True)
+                await self.ref().free_data(state, _delay=1, _tell=True)
                 return
             elif not can_be_freed:
                 return
 
-        self.start_operand(state)
+        await self.start_operand(state)
 
         stored_keys = self._io_meta.get('data_targets')
         if stored_keys:
-            self._free_data_in_worker(stored_keys)
+            await self._free_data_in_worker(stored_keys)
 
     def _get_execution_ref(self, uid=None, address=None):
         """
@@ -297,7 +298,7 @@ class OperandActor(BaseOperandActor):
             self._execution_ref = ref
         return ref
 
-    def _get_target_predicts(self, worker):
+    async def _get_target_predicts(self, worker):
         target_predicts = dict()
         if options.scheduler.enable_active_push:
             # if active push enabled, we calculate the most possible target
@@ -306,7 +307,7 @@ class OperandActor(BaseOperandActor):
                 futures.append(self._get_operand_actor(succ_key).propose_descendant_workers(
                     self._op_key, {worker: 1.0}, _wait=False))
             for succ_key, future in zip(self._succ_keys, futures):
-                succ_worker_predict = future.result()
+                succ_worker_predict = await future
                 if not succ_worker_predict:
                     continue
                 keys, target = succ_worker_predict
@@ -326,10 +327,10 @@ class OperandActor(BaseOperandActor):
         return target_predicts
 
     @log_unhandled
-    def submit_to_worker(self, worker, data_metas):
+    async def submit_to_worker(self, worker, data_metas):
         # worker assigned, submit job
         if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
-            self.start_operand()
+            await self.start_operand()
             return
         if self.state == OperandState.RUNNING:
             # already running
@@ -337,7 +338,7 @@ class OperandActor(BaseOperandActor):
 
         self.worker = worker
 
-        target_predicts = self._get_target_predicts(worker)
+        target_predicts = await self._get_target_predicts(worker)
         try:
             input_metas = self._io_meta['input_data_metas']
             input_chunks = [k[0] if isinstance(k, tuple) else k for k in input_metas]
@@ -346,7 +347,7 @@ class OperandActor(BaseOperandActor):
 
         # submit job
         if set(input_chunks) != set(self._input_chunks) or self._executable_dag is None:
-            exec_graph = self._graph_refs[-1].get_executable_operand_dag(self._op_key, input_chunks)
+            exec_graph = await self._graph_refs[-1].get_executable_operand_dag(self._op_key, input_chunks)
         else:
             exec_graph = self._executable_dag
         self._execution_ref = self._get_execution_ref()
@@ -354,25 +355,26 @@ class OperandActor(BaseOperandActor):
             with rewrite_worker_errors():
                 self._submit_promise = self._execution_ref.execute_graph(
                     self._session_id, self._op_key, exec_graph, self._io_meta, data_metas,
-                    calc_device=self._calc_device, send_addresses=target_predicts, _promise=True, _spawn=False)
+                    calc_device=self._calc_device, send_addresses=target_predicts,
+                    _promise=True)
         except WorkerDead:
             logger.debug('Worker %s dead when submitting operand %s into queue',
                          worker, self._op_key)
-            self._resource_ref.detach_dead_workers([worker], _tell=True)
+            await self._resource_ref.detach_dead_workers([worker], _tell=True)
         else:
-            self.start_operand(OperandState.RUNNING)
+            await self.start_operand(OperandState.RUNNING)
 
     @log_unhandled
-    def _on_ready(self):
+    async def _on_ready(self):
         self.worker = None
         self._execution_ref = None
 
-        def _apply_fail(*exc_info):
+        async def _apply_fail(*exc_info):
             if issubclass(exc_info[0], DependencyMissing):
                 logger.warning('DependencyMissing met, operand %s will be back to UNSCHEDULED.',
                                self._op_key)
                 self.worker = None
-                self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
+                await self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             else:
                 raise exc_info[1].with_traceback(exc_info[2]) from None
 
@@ -385,7 +387,7 @@ class OperandActor(BaseOperandActor):
                 .catch(_apply_fail)
 
     @log_unhandled
-    def _on_running(self):
+    async def _on_running(self):
         self._execution_ref = self._get_execution_ref()
 
         # notify successors to propagate priority changes
@@ -394,19 +396,19 @@ class OperandActor(BaseOperandActor):
                 self._op_key, self.worker, _tell=True, _wait=False)
 
         @log_unhandled
-        def _acceptor(data_sizes):
+        async def _acceptor(data_sizes):
             self._allocated = False
-            if not self._is_worker_alive():
+            if not await self._is_worker_alive():
                 return
             self._resource_ref.deallocate_resource(
                 self._session_id, self._op_key, self.worker, _tell=True, _wait=False)
 
             self._data_sizes = data_sizes
             self._io_meta['data_targets'] = list(data_sizes)
-            self.start_operand(OperandState.FINISHED)
+            await self.start_operand(OperandState.FINISHED)
 
         @log_unhandled
-        def _rejecter(*exc):
+        async def _rejecter(*exc):
             self._allocated = False
             # handling exception occurrence of operand execution
             exc_type = exc[0]
@@ -415,13 +417,13 @@ class OperandActor(BaseOperandActor):
 
             if self.state == OperandState.CANCELLING:
                 logger.warning('Execution of operand %s cancelled.', self._op_key)
-                self.free_data(OperandState.CANCELLED)
+                await self.free_data(OperandState.CANCELLED)
                 return
 
             if issubclass(exc_type, ExecutionInterrupted):
                 # job cancelled: switch to cancelled
                 logger.warning('Execution of operand %s interrupted.', self._op_key)
-                self.free_data(OperandState.CANCELLED)
+                await self.free_data(OperandState.CANCELLED)
             elif issubclass(exc_type, DependencyMissing):
                 logger.warning('Operand %s moved to UNSCHEDULED because of DependencyMissing.',
                                self._op_key)
@@ -437,7 +439,7 @@ class OperandActor(BaseOperandActor):
                     self._exc = exc
                 else:
                     self.state = OperandState.READY
-                self.ref().start_operand(_tell=True)
+                await self.ref().start_operand(_tell=True)
 
         try:
             with rewrite_worker_errors():
@@ -448,14 +450,14 @@ class OperandActor(BaseOperandActor):
         except WorkerDead:
             logger.debug('Worker %s dead when adding callback for operand %s',
                          self.worker, self._op_key)
-            self._resource_ref.detach_dead_workers([self.worker], _tell=True)
+            await self._resource_ref.detach_dead_workers([self.worker], _tell=True)
         finally:
             self._submit_promise = None
 
     @log_unhandled
-    def _on_finished(self):
+    async def _on_finished(self):
         if self._last_state == OperandState.CANCELLING:
-            self.start_operand(OperandState.CANCELLING)
+            await self.start_operand(OperandState.CANCELLING)
             return
 
         use_aggressive_assign = options.scheduler.aggressive_assign
@@ -475,13 +477,14 @@ class OperandActor(BaseOperandActor):
         if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
             pred_futures.extend(self._add_finished_terminal())
-        [f.result() for f in pred_futures]
+        if pred_futures:
+            await asyncio.wait(pred_futures)
 
-        if use_aggressive_assign and not any(f.result() for f in succ_futures):
-            self._assigner_ref.allocate_top_resources(1, _tell=True)
+        if use_aggressive_assign and not any([await f for f in succ_futures]):
+            await self._assigner_ref.allocate_top_resources(1, _tell=True)
 
     @log_unhandled
-    def _on_fatal(self):
+    async def _on_fatal(self):
         if self._last_state == OperandState.FATAL:
             return
 
@@ -493,10 +496,10 @@ class OperandActor(BaseOperandActor):
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(
                 OperandState.FATAL, _tell=True, _wait=False))
-        [f.result() for f in futures]
+        await asyncio.wait(futures)
 
     @log_unhandled
-    def _on_cancelling(self):
+    async def _on_cancelling(self):
         if self._last_state == OperandState.CANCELLING:
             return
         elif self._last_state == OperandState.CANCELLED:
@@ -506,29 +509,29 @@ class OperandActor(BaseOperandActor):
             self._execution_ref = self._get_execution_ref()
             logger.debug('Sending stop on operand %s to %s', self._op_key, self.worker)
             with rewrite_worker_errors(ignore_error=True):
-                self._execution_ref.stop_execution(
+                await self._execution_ref.stop_execution(
                     self._session_id, self._op_key, _tell=True)
         elif self._last_state == OperandState.FINISHED:
             # delete data on cancelled
-            self.ref().free_data(state=OperandState.CANCELLED, _tell=True)
+            await self.ref().free_data(state=OperandState.CANCELLED, _tell=True)
         elif self._last_state == OperandState.READY:
             self._assigned_workers = set()
             self.state = OperandState.CANCELLED
-            self.ref().start_operand(OperandState.CANCELLED, _tell=True)
+            await self.ref().start_operand(OperandState.CANCELLED, _tell=True)
         else:
-            self.ref().start_operand(OperandState.CANCELLED, _tell=True)
+            await self.ref().start_operand(OperandState.CANCELLED, _tell=True)
 
     @log_unhandled
-    def _on_cancelled(self):
+    async def _on_cancelled(self):
         futures = []
         if self._is_terminal:
             futures.extend(self._add_finished_terminal(final_state=GraphState.CANCELLED))
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(
                 OperandState.CANCELLING, _tell=True, _wait=False))
-        [f.result() for f in futures]
+        await asyncio.wait(futures)
 
-    def _on_unscheduled(self):
+    async def _on_unscheduled(self):
         self.worker = None
 
     def _add_finished_terminal(self, final_state=None, exc=None):
@@ -538,7 +541,6 @@ class OperandActor(BaseOperandActor):
                 futures.append(graph_ref.add_finished_terminal(
                     self._op_key, final_state=final_state, exc=exc, _tell=True, _wait=False
                 ))
-
         return futures
 
 

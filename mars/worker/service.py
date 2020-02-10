@@ -41,7 +41,7 @@ from .utils import WorkerClusterInfoActor
 logger = logging.getLogger(__name__)
 
 
-class WorkerService(object):
+class WorkerService:
     def __init__(self, **kwargs):
         self._plasma_store = None
 

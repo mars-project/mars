@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from collections import defaultdict
 
@@ -80,13 +81,13 @@ class BaseOperandActor(SchedulerActor):
         if schedulers:  # pragma: no branch
             self.set_schedulers(schedulers)
 
-    def post_create(self):
+    async def post_create(self):
         from ..graph import GraphActor
         from ..assigner import AssignerActor
         from ..kvstore import KVStoreActor
         from ..resource import ResourceActor
 
-        self.set_cluster_info_ref()
+        await self.set_cluster_info_ref()
         self._assigner_ref = self.get_promise_ref(AssignerActor.gen_uid(self._session_id))
         self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
@@ -94,7 +95,7 @@ class BaseOperandActor(SchedulerActor):
         if self._with_kvstore:
             self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
 
-        self.ref().start_operand(_tell=True)
+        await self.ref().start_operand(_tell=True)
 
     @property
     def state(self):
@@ -120,17 +121,15 @@ class BaseOperandActor(SchedulerActor):
 
     @worker.setter
     def worker(self, value):
-        futures = []
         for graph_ref in self._graph_refs:
-            futures.append(graph_ref.set_operand_worker(self._op_key, value, _tell=True, _wait=False))
+            graph_ref.set_operand_worker(self._op_key, value, _tell=True, _wait=False)
         if self._kv_store_ref is not None:
             if value:
-                futures.append(self._kv_store_ref.write(
-                    '%s/worker' % self._op_path, value, _tell=True, _wait=False))
+                self._kv_store_ref.write(
+                    '%s/worker' % self._op_path, value, _tell=True, _wait=False)
             elif self._worker is not None:
-                futures.append(self._kv_store_ref.delete(
-                    '%s/worker' % self._op_path, silent=True, _tell=True, _wait=False))
-        [f.result() for f in futures]
+                self._kv_store_ref.delete(
+                    '%s/worker' % self._op_path, silent=True, _tell=True, _wait=False)
         self._worker = value
 
     def get_state(self):
@@ -152,25 +151,25 @@ class BaseOperandActor(SchedulerActor):
         op_uid = self.gen_uid(self._session_id, key)
         return self.ctx.actor_ref(op_uid, address=self.get_scheduler(op_uid))
 
-    def _wait_worker_futures(self, worker_futures):
+    async def _wait_worker_futures(self, worker_futures):
         dead_workers = []
         for ep, future in worker_futures:
             try:
                 with rewrite_worker_errors():
-                    future.result()
+                    await future
             except WorkerDead:
                 dead_workers.append(ep)
         if dead_workers:
-            self._resource_ref.detach_dead_workers(dead_workers, _tell=True)
+            await self._resource_ref.detach_dead_workers(dead_workers, _tell=True)
         return dead_workers
 
-    def _free_data_in_worker(self, data_keys, workers_list=None):
+    async def _free_data_in_worker(self, data_keys, workers_list=None):
         """
         Free data on single worker
         :param data_keys: keys of data in chunk meta
         """
         if not workers_list:
-            workers_list = self.chunk_meta.batch_get_workers(self._session_id, data_keys)
+            workers_list = await self.chunk_meta.batch_get_workers(self._session_id, data_keys)
         worker_data = defaultdict(list)
         for data_key, endpoints in zip(data_keys, workers_list):
             if endpoints is None:
@@ -178,7 +177,7 @@ class BaseOperandActor(SchedulerActor):
             for ep in endpoints:
                 worker_data[ep].append(data_key)
 
-        self.chunk_meta.batch_delete_meta(self._session_id, data_keys, _tell=True, _wait=False)
+        await self.chunk_meta.batch_delete_meta(self._session_id, data_keys, _tell=True, _wait=False)
 
         worker_futures = []
         for ep, data_keys in worker_data.items():
@@ -186,9 +185,9 @@ class BaseOperandActor(SchedulerActor):
             worker_futures.append((ep, ref.delete_data_by_keys(
                 self._session_id, data_keys, _tell=True, _wait=False)))
 
-        return self._wait_worker_futures(worker_futures)
+        return await self._wait_worker_futures(worker_futures)
 
-    def start_operand(self, state=None, **kwargs):
+    async def start_operand(self, state=None, **kwargs):
         """
         Start handling operand given self.state
         """
@@ -202,42 +201,42 @@ class BaseOperandActor(SchedulerActor):
             self._info['io_meta'] = self._io_meta
         self._info.update(kwargs)
 
-        self._state_handlers[self.state]()
+        await self._state_handlers[self.state]()
 
-    def stop_operand(self, state=OperandState.CANCELLING):
+    async def stop_operand(self, state=OperandState.CANCELLING):
         """
         Stop operand by starting CANCELLING procedure
         """
         if self.state == OperandState.CANCELLING or self.state == OperandState.CANCELLED:
             return
         if self.state != state:
-            self.start_operand(state)
+            await self.start_operand(state)
 
-    def add_running_predecessor(self, op_key, worker):
+    async def add_running_predecessor(self, op_key, worker):
         self._running_preds.add(op_key)
 
-    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
+    async def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         self._finish_preds.add(op_key)
 
-    def add_finished_successor(self, op_key, worker):
+    async def add_finished_successor(self, op_key, worker):
         self._finish_succs.add(op_key)
 
-    def remove_finished_predecessor(self, op_key):
+    async def remove_finished_predecessor(self, op_key):
         try:
             self._finish_preds.remove(op_key)
         except KeyError:
             pass
 
-    def remove_finished_successor(self, op_key):
+    async def remove_finished_successor(self, op_key):
         try:
             self._finish_succs.remove(op_key)
         except KeyError:
             pass
 
-    def propose_descendant_workers(self, input_key, worker_scores, depth=1):
+    async def propose_descendant_workers(self, input_key, worker_scores, depth=1):
         pass
 
-    def move_failover_state(self, from_states, state, new_target, dead_workers):
+    async def move_failover_state(self, from_states, state, new_target, dead_workers):
         if dead_workers:
             futures = []
             # remove executed traces in neighbor operands
@@ -251,12 +250,12 @@ class BaseOperandActor(SchedulerActor):
                 for graph_ref in self._graph_refs:
                     futures.append(graph_ref.remove_finished_terminal(
                         self._op_key, _tell=True, _wait=False))
-            [f.result() for f in futures]
+            await asyncio.wait(futures)
 
         # actual start the new state
-        self.start_operand(state)
+        await self.start_operand(state)
 
-    def check_can_be_freed(self, target_state=OperandState.FREED):
+    async def check_can_be_freed(self, target_state=OperandState.FREED):
         """
         Check if the data of the operand can be freed.
         :param target_state: The state to move into, FREED by default
@@ -268,8 +267,9 @@ class BaseOperandActor(SchedulerActor):
         if target_state == OperandState.CANCELLED:
             can_be_freed = True
         else:
-            can_be_freed_states = [graph_ref.check_operand_can_be_freed(self._succ_keys) for
-                                   graph_ref in self._graph_refs]
+            succ_reqs = [asyncio.ensure_future(graph_ref.check_operand_can_be_freed(self._succ_keys))
+                         for graph_ref in self._graph_refs]
+            can_be_freed_states = [await req for req in succ_reqs]
             if None in can_be_freed_states:
                 can_be_freed = None
             else:
@@ -280,26 +280,26 @@ class BaseOperandActor(SchedulerActor):
             return False, True
         return True, True
 
-    def _on_unscheduled(self):
+    async def _on_unscheduled(self):
         pass
 
-    def _on_ready(self):
+    async def _on_ready(self):
         pass
 
-    def _on_running(self):
+    async def _on_running(self):
         pass
 
-    def _on_finished(self):
+    async def _on_finished(self):
         pass
 
-    def _on_freed(self):
+    async def _on_freed(self):
         pass
 
-    def _on_fatal(self):
+    async def _on_fatal(self):
         pass
 
-    def _on_cancelling(self):
+    async def _on_cancelling(self):
         pass
 
-    def _on_cancelled(self):
+    async def _on_cancelled(self):
         pass

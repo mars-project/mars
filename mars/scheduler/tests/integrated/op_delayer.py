@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
 
 from mars.scheduler.operands import OperandActor, ShuffleProxyActor
@@ -28,43 +29,43 @@ def _write_state_file(var_name):
 
 
 class DelayedOperandActor(OperandActor):
-    def _on_ready(self):
+    async def _on_ready(self):
         for ctrl_file_var in ('OP_DELAY_STATE_FILE', 'SHUFFLE_ALL_PRED_FINISHED_FILE',
                               'SHUFFLE_ALL_SUCC_FINISH_FILE'):
             if ctrl_file_var in os.environ and os.path.exists(os.environ[ctrl_file_var]):
-                self.ctx.sleep(1)
+                await asyncio.sleep(1)
 
         while 'SHUFFLE_HAS_SUCC_FINISH_FILE' in os.environ and \
                 os.path.exists(os.environ['SHUFFLE_HAS_SUCC_FINISH_FILE']):
-            self.ctx.sleep(0.1)
+            await asyncio.sleep(0.1)
 
-        super()._on_ready()
+        await super()._on_ready()
 
-    def _on_finished(self):
-        super()._on_finished()
+    async def _on_finished(self):
+        await super()._on_finished()
         if self._is_terminal:
             _write_state_file('OP_TERMINATE_STATE_FILE')
 
 
 class DelayedShuffleProxyActor(ShuffleProxyActor):
-    def _start_successors(self):
+    async def _start_successors(self):
         _write_state_file('SHUFFLE_ALL_PRED_FINISHED_FILE')
 
         if 'SHUFFLE_START_SUCC_FILE' in os.environ:
             while not os.path.exists(os.environ['SHUFFLE_START_SUCC_FILE']):
-                self.ctx.sleep(0.1)
+                await asyncio.sleep(0.1)
 
-        super()._start_successors()
+        await super()._start_successors()
 
-    def add_finished_successor(self, op_key, worker):
+    async def add_finished_successor(self, op_key, worker):
         try:
-            return super().add_finished_successor(op_key, worker)
+            return await super().add_finished_successor(op_key, worker)
         finally:
             _write_state_file('SHUFFLE_HAS_SUCC_FINISH_FILE')
 
-    def free_predecessors(self):
+    async def free_predecessors(self):
         _write_state_file('SHUFFLE_ALL_SUCC_FINISH_FILE')
-        super().free_predecessors()
+        await super().free_predecessors()
 
 
 register_actor_implementation(OperandActor, DelayedOperandActor)
