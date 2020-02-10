@@ -18,8 +18,6 @@ from abc import ABCMeta, abstractmethod
 import cloudpickle
 import numpy as np
 from sklearn.base import BaseEstimator, MultiOutputMixin
-from sklearn.neighbors.ball_tree import BallTree as SklearnBallTree
-from sklearn.neighbors.kd_tree import KDTree as SklearnKDTree
 
 from ... import tensor as mt
 from ...tensor.reshape.reshape import _reshape as reshape_unchecked
@@ -27,8 +25,8 @@ from ..metrics.pairwise import PAIRWISE_DISTANCE_FUNCTIONS
 from ..metrics import pairwise_distances
 from ..utils import check_array
 from ..utils.validation import check_is_fitted
-from .ball_tree import BallTree, ball_tree_query
-from .kd_tree import KDTree, kd_tree_query
+from ._ball_tree import BallTree, ball_tree_query, SklearnBallTree
+from ._kd_tree import KDTree, kd_tree_query, SklearnKDTree
 
 
 VALID_METRICS = dict(ball_tree=SklearnBallTree.valid_metrics,

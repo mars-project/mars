@@ -18,8 +18,8 @@ import numpy as np
 import scipy.sparse as sps
 try:
     from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
-    from sklearn.neighbors.ball_tree import BallTree as SkBallTree
-    from sklearn.neighbors.kd_tree import KDTree as SkKDTree
+    from sklearn.neighbors import BallTree as SkBallTree
+    from sklearn.neighbors import KDTree as SkKDTree
     from sklearn.utils.testing import assert_warns
 except ImportError:  # pragma: no cover
     SkNearestNeighbors = None
