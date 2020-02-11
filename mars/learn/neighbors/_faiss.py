@@ -57,10 +57,10 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
 
     def __init__(self, faiss_index=None, n_sample=None, seed=None,
                  same_distribution=None, return_index_type=None, stage=None,
-                 output_types=None, **kw):
+                 output_types=None, gpu=None, **kw):
         super().__init__(_faiss_index=faiss_index, _n_sample=n_sample,
                          _seed=seed, _same_distribution=same_distribution,
-                         _return_index_type=return_index_type,
+                         _return_index_type=return_index_type, _gpu=gpu,
                          _stage=stage, _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
@@ -381,8 +381,8 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
 
 
 @require_not_none(faiss)
-def _build_faiss_index(X, index_name, n_sample, random_state=None,
-                       same_distribution=True, **kw):
+def build_faiss_index(X, index_name, n_sample, random_state=None,
+                      same_distribution=True, **kw):
     if index_name != 'auto':
         try:
             faiss.index_factory(X.shape[1], index_name)

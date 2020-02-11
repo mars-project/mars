@@ -80,7 +80,7 @@ jobs:
               pip install tensorflow
               pip install torch torchvision
             fi
-            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.7" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
+            if [[ $UNAME == "linux" ]] && [[ "$PYTHON" =~ "3.6" ]]; then
               conda install -n test --quiet --yes -c pytorch python=$PYTHON faiss-cpu
             fi
             virtualenv testenv && source testenv/bin/activate

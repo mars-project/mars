@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
     faiss = None
 
 from mars import tensor as mt
-from mars.learn.neighbors._faiss import _build_faiss_index, _load_index
+from mars.learn.neighbors._faiss import build_faiss_index, _load_index
 from mars.learn.neighbors import NearestNeighbors
 from mars.tiles import get_tiled
 from mars.tests.core import ExecutorForTest
@@ -46,11 +46,11 @@ class Test(unittest.TestCase):
         for index_type in ['object', 'filename', 'bytes']:
             # test brute-force search
             X = mt.tensor(x, chunk_size=10)
-            index = _build_faiss_index(X, 'Flat', None, random_state=0,
-                                       same_distribution=True, return_index_type=index_type)
+            index = build_faiss_index(X, 'Flat', None, random_state=0,
+                                      same_distribution=True, return_index_type=index_type)
             faiss_index = self.executor.execute_tileable(index)
 
-            index_shards = faiss.IndexShards()
+            index_shards = faiss.IndexShards(d)
             for ind in faiss_index:
                 shard = _load_index(None, index.op, ind, -1)
                 index_shards.add_shard(shard)
@@ -63,8 +63,8 @@ class Test(unittest.TestCase):
 
         # test one chunk, brute force
         X = mt.tensor(x, chunk_size=50)
-        index = _build_faiss_index(X, 'Flat', None, random_state=0,
-                                   same_distribution=True, return_index_type='object')
+        index = build_faiss_index(X, 'Flat', None, random_state=0,
+                                  same_distribution=True, return_index_type='object')
         faiss_index = self.executor.execute_tileable(index)[0]
 
         faiss_index.nprob = 10
@@ -74,8 +74,8 @@ class Test(unittest.TestCase):
 
         # test train, same distribution
         X = mt.tensor(x, chunk_size=10)
-        index = _build_faiss_index(X, 'IVF30,Flat', 30, random_state=0,
-                                   same_distribution=True, return_index_type='object')
+        index = build_faiss_index(X, 'IVF30,Flat', 30, random_state=0,
+                                  same_distribution=True, return_index_type='object')
         faiss_index = self.executor.execute_tileable(index)[0]
 
         self.assertIsInstance(faiss_index, faiss.IndexIVFFlat)
@@ -84,8 +84,8 @@ class Test(unittest.TestCase):
 
         # test train, distributions are variant
         X = mt.tensor(x, chunk_size=10)
-        index = _build_faiss_index(X, 'IVF10,Flat', None, random_state=0,
-                                   same_distribution=False, return_index_type='object')
+        index = build_faiss_index(X, 'IVF10,Flat', None, random_state=0,
+                                  same_distribution=False, return_index_type='object')
         faiss_index = self.executor.execute_tileable(index)
 
         self.assertEqual(len(faiss_index), 5)
@@ -95,8 +95,8 @@ class Test(unittest.TestCase):
 
         # test one chunk, train
         X = mt.tensor(x, chunk_size=50)
-        index = _build_faiss_index(X, 'IVF30,Flat', 30, random_state=0,
-                                   same_distribution=True, return_index_type='object')
+        index = build_faiss_index(X, 'IVF30,Flat', 30, random_state=0,
+                                  same_distribution=True, return_index_type='object')
         faiss_index = self.executor.execute_tileable(index)[0]
 
         self.assertIsInstance(faiss_index, faiss.IndexIVFFlat)
@@ -104,4 +104,4 @@ class Test(unittest.TestCase):
 
         # test wrong index
         with self.assertRaises(ValueError):
-            _build_faiss_index(X, 'unknown_index', None)
+            build_faiss_index(X, 'unknown_index', None)
