@@ -208,7 +208,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def _execute_map(cls, ctx, op):
-        (data,), device_id, xp = as_same_device(
+        (data,), device_id, _ = as_same_device(
             [ctx[op.inputs[0].key]], device=op.device, ret_extra=True)
         index = ctx[op.inputs[1].key] if len(op.inputs) == 2 else None
 
@@ -289,7 +289,7 @@ def _store_index(ctx, op, index, device_id):
         if device_id >= 0:  # pragma: no cover
             # for gpu, convert to cpu first
             index = faiss.index_gpu_to_cpu(index)
-        fn = tempfile.mktemp('.index', prefix='faiss_')
+        fn = tempfile.mkstemp('.index', prefix='faiss_')[1]
         faiss.write_index(index, fn)
 
         atexit.register(lambda: os.remove(fn))
@@ -300,7 +300,7 @@ def _store_index(ctx, op, index, device_id):
             # for gpu, convert to cpu first
             index = faiss.index_gpu_to_cpu(index)
         # distributed, save to file, then return in memory bytes
-        fn = tempfile.mktemp('.index', prefix='faiss_')
+        fn = tempfile.mkstemp('.index', prefix='faiss_')[1]
         faiss.write_index(index, fn)
         try:
             with open(fn, 'rb') as f:
@@ -320,7 +320,7 @@ def _load_index(ctx, op, index, device_id):
         return faiss.read_index(index)
     else:
         # distributed
-        fn = tempfile.mktemp('.index', prefix='faiss_')
+        fn = tempfile.mkstemp('.index', prefix='faiss_')[1]
         with open(fn, 'wb') as f:
             f.write(index)
         index = faiss.read_index(f.name)
@@ -365,7 +365,7 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        (data,), device_id, xp = as_same_device(
+        (data,), device_id, _ = as_same_device(
             [ctx[op.input.key]], device=op.device, ret_extra=True)
 
         with device(device_id):
@@ -383,10 +383,11 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
 @require_not_none(faiss)
 def _build_faiss_index(X, index_name, n_sample, random_state=None,
                        same_distribution=True, **kw):
-    try:
-        faiss.index_factory(X.shape[1], index_name)
-    except RuntimeError:
-        raise ValueError('illegal faiss index: {}'.format(index_name))
+    if index_name != 'auto':
+        try:
+            faiss.index_factory(X.shape[1], index_name)
+        except RuntimeError:
+            raise ValueError('illegal faiss index: {}'.format(index_name))
 
     rs = check_random_state(random_state)
     if isinstance(rs, RandomState):
