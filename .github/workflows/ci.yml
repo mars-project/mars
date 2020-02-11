@@ -79,6 +79,7 @@ jobs:
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               pip install tensorflow
               pip install torch torchvision
+              conda install -n test --quiet --yes -c pytorch python=$PYTHON faiss-cpu
             fi
             virtualenv testenv && source testenv/bin/activate
             pip install -r requirements.txt && pip install pytest pytest-timeout
