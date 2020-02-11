@@ -37,7 +37,7 @@ from mars.config import options
 from mars.scheduler import ResourceActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps
-from mars.tests.core import aio_case, mock
+from mars.tests.core import mock
 from mars.utils import get_next_port
 
 

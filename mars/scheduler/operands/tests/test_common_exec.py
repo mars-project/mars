@@ -20,7 +20,6 @@ import uuid
 from collections import defaultdict
 
 from mars import tensor as mt
-from mars.actors import ActorAlreadyExist
 from mars.config import options
 from mars.errors import ExecutionInterrupted
 from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActor, \

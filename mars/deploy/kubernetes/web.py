@@ -18,10 +18,10 @@ from .core import K8SServiceMixin
 
 
 class K8SWebApplication(K8SServiceMixin, WebApplication):
-    def start(self):
+    async def start(self):
         self.write_pid_file()
-        self.wait_all_schedulers_ready()
-        super().start()
+        await self.wait_all_schedulers_ready()
+        await super().start()
 
 
 main = K8SWebApplication()

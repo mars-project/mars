@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .server import MarsWebAPI, MarsRequestHandler, register_web_handler, get_jinja_env
+from .server import MarsRequestHandler, register_web_handler, get_jinja_env
 
 _jinja_env = get_jinja_env()
 

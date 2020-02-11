@@ -35,6 +35,15 @@ from ..api import MarsAPI
 logger = logging.getLogger(__name__)
 
 
+# patch AsyncIOMainLoop in tornado
+if not hasattr(AsyncIOMainLoop, 'create_future'):
+    def _create_future(self, *args, **kwargs):
+        return self.asyncio_loop.create_future(*args, **kwargs)
+
+    AsyncIOMainLoop.create_future = _create_future
+    del _create_future
+
+
 def get_jinja_env():
     from datetime import datetime
     from ..utils import readable_size

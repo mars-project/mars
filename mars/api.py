@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import functools
 import itertools
 import logging
 import random
@@ -229,3 +231,50 @@ class MarsAPI:
         graph_ref = await self.get_actor_ref(graph_uid)
 
         return (await graph_ref.get_tileable_metas([tileable_key], filter_fields=['nsplits']))[0][0]
+
+
+def _wrap_async_api(fun):
+    @functools.wraps(fun)
+    def _wrapped(self, *args, **kwargs):
+        return self._loop.run_until_complete(fun(self._async_api, *args, **kwargs))
+
+    return _wrapped
+
+
+class MarsSyncAPI:
+    def __init__(self, scheduler_ip, loop=None):
+        self._async_api = MarsAPI(scheduler_ip)
+        self._loop = loop or asyncio.get_event_loop()
+
+    get_session_manager = _wrap_async_api(MarsAPI.get_session_manager)
+    get_schedulers = _wrap_async_api(MarsAPI.get_schedulers)
+    get_scheduler = _wrap_async_api(MarsAPI.get_scheduler)
+    get_actor_ref = _wrap_async_api(MarsAPI.get_actor_ref)
+    get_graph_meta_ref = _wrap_async_api(MarsAPI.get_graph_meta_ref)
+    get_schedulers_info = _wrap_async_api(MarsAPI.get_schedulers_info)
+    count_workers = _wrap_async_api(MarsAPI.count_workers)
+    create_session = _wrap_async_api(MarsAPI.create_session)
+    delete_session = _wrap_async_api(MarsAPI.delete_session)
+    has_session = _wrap_async_api(MarsAPI.has_session)
+    submit_graph = _wrap_async_api(MarsAPI.submit_graph)
+    create_mutable_tensor = _wrap_async_api(MarsAPI.create_mutable_tensor)
+    get_mutable_tensor = _wrap_async_api(MarsAPI.get_mutable_tensor)
+    send_chunk_records = _wrap_async_api(MarsAPI.send_chunk_records)
+    seal = _wrap_async_api(MarsAPI.seal)
+    delete_graph = _wrap_async_api(MarsAPI.delete_graph)
+    stop_graph = _wrap_async_api(MarsAPI.stop_graph)
+    get_graph_state = _wrap_async_api(MarsAPI.get_graph_state)
+    get_graph_exc_info = _wrap_async_api(MarsAPI.get_graph_exc_info)
+    wait_graph_finish = _wrap_async_api(MarsAPI.wait_graph_finish)
+    fetch_data = _wrap_async_api(MarsAPI.fetch_data)
+    fetch_chunk_data = _wrap_async_api(MarsAPI.fetch_chunk_data)
+    delete_data = _wrap_async_api(MarsAPI.delete_data)
+    get_tileable_nsplits = _wrap_async_api(MarsAPI.get_tileable_nsplits)
+
+    for fun in list(locals().values()):
+        if callable(fun) and fun.__qualname__.startswith('MarsAPI.'):
+            fun.__qualname__ = fun.__qualname__.replace('MarsAPI.', 'MarsSyncAPI.')
+    del fun
+
+
+del _wrap_async_api

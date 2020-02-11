@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import os
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from ...actors import new_client, FunctionActor
 
@@ -31,7 +33,6 @@ class K8SPodsIPWatcher(object):
 
     def __init__(self, k8s_config=None, k8s_namespace=None, label_selector=None):
         from kubernetes import config, client
-        from gevent.threadpool import ThreadPool
 
         if k8s_config is not None:
             self._k8s_config = k8s_config
@@ -44,7 +45,7 @@ class K8SPodsIPWatcher(object):
         self._k8s_namespace = k8s_namespace or os.environ.get('MARS_K8S_POD_NAMESPACE') or 'default'
         self._label_selector = label_selector
         self._client = client.CoreV1Api(client.ApiClient(self._k8s_config))
-        self._pool = ThreadPool(1)
+        self._pool = ThreadPoolExecutor(1)
 
         self._pod_to_ep = None
 
@@ -64,10 +65,10 @@ class K8SPodsIPWatcher(object):
         return any(cond['type'] == 'Ready' and cond['status'] == 'True'
                    for cond in obj_data['status']['conditions'])
 
-    def _get_pod_to_ep(self):
-        query = self._pool.spawn(self._client.list_namespaced_pod,
-                                 namespace=self._k8s_namespace,
-                                 label_selector=self._label_selector).result().to_dict()
+    async def _get_pod_to_ep(self):
+        query = (await asyncio.get_event_loop().run_in_executor(
+            self._pool, lambda: self._client.list_namespaced_pod(
+                namespace=self._k8s_namespace, label_selector=self._label_selector))).to_dict()
         result = dict()
         for el in query['items']:
             name, pod_ep = self._extract_pod_name_ep(el)
@@ -76,49 +77,62 @@ class K8SPodsIPWatcher(object):
             result[name] = pod_ep
         return result
 
-    def get(self, update=False):
+    async def get(self, update=False):
         if self._pod_to_ep is None or update:
-            self._pod_to_ep = self._get_pod_to_ep()
+            self._pod_to_ep = await self._get_pod_to_ep()
         return sorted(a for a in self._pod_to_ep.values() if a is not None)
 
-    def is_all_ready(self):
-        self.get(True)
+    async def is_all_ready(self):
+        await self.get(True)
         return all(a is not None for a in self._pod_to_ep.values())
 
     def watch(self):
         from urllib3.exceptions import ReadTimeoutError
         from kubernetes import watch
 
-        cur_pods = set(self.get(True))
+        cur_pods = set()
+        this = self
+        streamer = None
         w = watch.Watch()
 
-        while True:
-            # when some schedulers are not ready, we refresh faster
-            linger = 10 if self.is_all_ready() else 1
-            streamer = w.stream(self._client.list_namespaced_pod,
-                                namespace=self._k8s_namespace,
-                                label_selector=self._label_selector,
-                                timeout_seconds=linger)
-            while True:
-                try:
-                    event = self._pool.spawn(next, streamer, StopIteration).result()
-                    if event is StopIteration:
-                        raise StopIteration
-                except (ReadTimeoutError, StopIteration):
-                    new_pods = set(self.get(True))
-                    if new_pods != cur_pods:
-                        cur_pods = new_pods
-                        yield self.get(False)
-                    break
-                except:  # noqa: E722
-                    logger.exception('Unexpected error when watching on kubernetes')
-                    break
+        class _AsyncIterator:
+            async def __aiter__(self):
+                nonlocal cur_pods
+                cur_pods = set(await this.get(True))
 
-                obj_dict = event['object'].to_dict()
-                pod_name, endpoint = self._extract_pod_name_ep(obj_dict)
-                self._pod_to_ep[pod_name] = endpoint \
-                    if endpoint and self._extract_pod_ready(obj_dict) else None
-                yield self.get(False)
+            async def __anext__(self):
+                nonlocal cur_pods, streamer
+                while True:
+                    if streamer is None:
+                        linger = 10 if await this.is_all_ready() else 1
+                        streamer = w.stream(this._client.list_namespaced_pod,
+                                            namespace=this._k8s_namespace,
+                                            label_selector=this._label_selector,
+                                            timeout_seconds=linger)
+                    try:
+                        event = await asyncio.get_event_loop().run_in_executor(
+                            this._pool, next, streamer, StopIteration)
+                        if event is StopIteration:
+                            raise StopIteration
+                    except (ReadTimeoutError, StopIteration):
+                        new_pods = set(await this.get(True))
+                        if new_pods != cur_pods:
+                            cur_pods = new_pods
+                            return await this.get(False)
+                        streamer = None
+                        continue
+                    except:  # noqa: E722
+                        logger.exception('Unexpected error when watching on kubernetes')
+                        streamer = None
+                        continue
+
+                    obj_dict = event['object'].to_dict()
+                    pod_name, endpoint = this._extract_pod_name_ep(obj_dict)
+                    this._pod_to_ep[pod_name] = endpoint \
+                        if endpoint and this._extract_pod_ready(obj_dict) else None
+                    return await this.get(False)
+
+        return _AsyncIterator()
 
 
 class ReadinessActor(FunctionActor):
@@ -136,17 +150,16 @@ class K8SServiceMixin(object):
         with open('/tmp/mars-service.pid', 'w') as pid_file:
             pid_file.write(str(os.getpid()))
 
-    def wait_all_schedulers_ready(self):
+    async def wait_all_schedulers_ready(self):
         """
         Wait till all containers are ready, both in kubernetes and in ClusterInfoActor
         """
         from ...scheduler.utils import SchedulerClusterInfoActor
 
         # check if all schedulers are ready using Kubernetes API
-        sleep_fun = (getattr(self, 'pool', None) or time).sleep
-        while not self.scheduler_discoverer.is_all_ready():
-            sleep_fun(1)
-        kube_schedulers = self.scheduler_discoverer.get()
+        while not await self.scheduler_discoverer.is_all_ready():
+            await asyncio.sleep(0.5)
+        kube_schedulers = await self.scheduler_discoverer.get()
 
         logger.debug('Schedulers all ready in kubernetes, waiting ClusterInfoActor to be ready')
         # check if all schedulers are registered in ClusterInfoActor
@@ -154,10 +167,10 @@ class K8SServiceMixin(object):
         while True:
             cluster_info = actor_client.actor_ref(
                 SchedulerClusterInfoActor.default_uid(), address=random.choice(kube_schedulers))
-            cluster_info_schedulers = cluster_info.get_schedulers()
+            cluster_info_schedulers = await cluster_info.get_schedulers()
             if set(cluster_info_schedulers) == set(kube_schedulers):
                 break
-            sleep_fun(1)  # pragma: no cover
+            await asyncio.sleep(0.5)  # pragma: no cover
 
     def create_scheduler_discoverer(self):
         self.scheduler_discoverer = K8SPodsIPWatcher(label_selector='name=marsscheduler')

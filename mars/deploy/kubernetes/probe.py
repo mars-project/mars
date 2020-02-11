@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
 import sys
 
@@ -28,7 +29,7 @@ def main():
     try:
         ref = client.actor_ref(ReadinessActor.default_uid(),
                                address='127.0.0.1:%s' % os.environ['MARS_K8S_SERVICE_PORT'])
-        sys.exit(0 if client.has_actor(ref) else 1)
+        sys.exit(0 if asyncio.run(client.has_actor(ref)) else 1)
     except (ActorNotExist, ConnectionRefusedError) as ex:  # noqa: E722
         sys.stderr.write('Probe error: %s' % type(ex).__name__)
         sys.exit(1)

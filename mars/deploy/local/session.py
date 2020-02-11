@@ -14,12 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import uuid
 import json
 import time
+import uuid
 from numbers import Integral
 
-from ...api import MarsAPI
+from ...api import MarsSyncAPI
 from ...config import options
 from ...errors import ExecutionFailed
 from ...scheduler.graph import GraphState
@@ -33,7 +33,7 @@ class LocalClusterSession(object):
         # dict structure: {tileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tilable id
         self._executed_tileables = dict()
-        self._api = MarsAPI(self._endpoint)
+        self._api = MarsSyncAPI(self._endpoint)
 
         if session_id is None:
             # create session on the cluster side
@@ -60,7 +60,7 @@ class LocalClusterSession(object):
     @endpoint.setter
     def endpoint(self, endpoint):
         self._endpoint = endpoint
-        self._api = MarsAPI(self._endpoint)
+        self._api = MarsSyncAPI(self._endpoint)
 
     def _get_tileable_graph_key(self, tileable_key):
         return self._executed_tileables[tileable_key][0]

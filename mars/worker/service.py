@@ -225,7 +225,7 @@ class WorkerService:
 
         # create CpuCalcActor and InProcHolderActor
         if not distributed:
-            self._n_cpu_process = await pool.cluster_info.n_process - 1 - process_start_index
+            self._n_cpu_process = pool.cluster_info.n_process - 1 - process_start_index
 
         for cpu_id in range(self._n_cpu_process):
             uid = 'w:%d:mars-cpu-calc-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)

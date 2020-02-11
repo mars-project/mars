@@ -20,7 +20,7 @@ from bokeh.plotting import figure
 
 from .server import MarsWebAPI, MarsRequestHandler, get_jinja_env, \
     register_bokeh_app, register_web_handler
-from ..actors import new_client, ActorNotExist
+from ..actors import ActorNotExist
 from ..scheduler import OperandState
 from ..utils import to_str
 

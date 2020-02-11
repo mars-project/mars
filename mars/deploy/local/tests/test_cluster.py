@@ -47,7 +47,7 @@ from mars.errors import ExecutionFailed
 from mars.config import options, option_context
 from mars.web.session import Session as WebSession
 from mars.context import get_context, RunningMode
-from mars.tests.core import mock, require_cudf
+from mars.tests.core import aio_case, mock, require_cudf
 
 logger = logging.getLogger(__name__)
 _exec_timeout = 120 if 'CI' in os.environ else -1
@@ -78,26 +78,27 @@ class Test(unittest.TestCase):
         super().tearDown()
         options.scheduler.default_cpu_usage = self._old_default_cpu_usage
 
-    def testLocalCluster(self, *_):
+    @aio_case
+    async def testLocalCluster(self, *_):
         endpoint = gen_endpoint('0.0.0.0')
-        with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3,
-                                     shared_memory='20M') as cluster:
+        async with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3,
+                                           shared_memory='20M') as cluster:
             pool = cluster.pool
 
-            self.assertTrue(pool.has_actor(pool.actor_ref(
+            self.assertTrue(await pool.has_actor(pool.actor_ref(
                 SchedulerClusterInfoActor.default_uid())))
-            self.assertTrue(pool.has_actor(pool.actor_ref(SessionManagerActor.default_uid())))
-            self.assertTrue(pool.has_actor(pool.actor_ref(DispatchActor.default_uid())))
+            self.assertTrue(await pool.has_actor(pool.actor_ref(SessionManagerActor.default_uid())))
+            self.assertTrue(await pool.has_actor(pool.actor_ref(DispatchActor.default_uid())))
 
             with new_session(endpoint) as session:
-                api = session._api
+                async_api = session._api._async_api
 
                 t = mt.ones((3, 3), chunk_size=2)
                 result = session.run(t, timeout=_exec_timeout)
 
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
-            self.assertNotIn(session._session_id, api.session_manager.get_sessions())
+            self.assertNotIn(session._session_id, await async_api.session_manager.get_sessions())
 
     def testLocalClusterWithWeb(self, *_):
         import psutil

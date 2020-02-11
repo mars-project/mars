@@ -16,7 +16,6 @@ import uuid
 import unittest
 
 import mars.tensor as mt
-from mars.scheduler.analyzer import GraphAnalyzer
 from mars.scheduler import GraphActor, GraphMetaActor, ResourceActor, ChunkMetaActor, \
     AssignerActor, GraphState, OperandState
 from mars.scheduler.utils import SchedulerClusterInfoActor

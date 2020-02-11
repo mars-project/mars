@@ -28,7 +28,7 @@ def _get_local_app_module(mod_name):
     return __name__.rsplit('.', 1)[0] + '.' + mod_name
 
 
-class RoleConfig(object):
+class RoleConfig:
     """
     Configuration builder for Kubernetes RBAC roles
     """
@@ -51,7 +51,7 @@ class RoleConfig(object):
         }
 
 
-class RoleBindingConfig(object):
+class RoleBindingConfig:
     """
     Configuration builder for Kubernetes RBAC role bindings
     """
@@ -78,7 +78,7 @@ class RoleBindingConfig(object):
         }
 
 
-class NamespaceConfig(object):
+class NamespaceConfig:
     """
     Configuration builder for Kubernetes namespaces
     """
@@ -97,7 +97,7 @@ class NamespaceConfig(object):
         }
 
 
-class ServiceConfig(object):
+class ServiceConfig:
     """
     Configuration builder for Kubernetes services
     """
@@ -130,7 +130,7 @@ class ServiceConfig(object):
         }
 
 
-class ResourceConfig(object):
+class ResourceConfig:
     """
     Configuration builder for Kubernetes computation resources
     """
@@ -146,7 +146,7 @@ class ResourceConfig(object):
         }
 
 
-class PortConfig(object):
+class PortConfig:
     """
     Configuration builder for Kubernetes ports definition for containers
     """
@@ -159,7 +159,7 @@ class PortConfig(object):
         }
 
 
-class VolumeConfig(object):
+class VolumeConfig:
     """
     Base configuration builder for Kubernetes volumes
     """
@@ -211,7 +211,7 @@ class EmptyDirVolumeConfig(VolumeConfig):
         return result
 
 
-class ContainerEnvConfig(object):
+class ContainerEnvConfig:
     """
     Configuration builder for Kubernetes container environments
     """
@@ -229,7 +229,7 @@ class ContainerEnvConfig(object):
         return result
 
 
-class ProbeConfig(object):
+class ProbeConfig:
     """
     Base configuration builder for Kubernetes liveness and readiness probes
     """
@@ -283,7 +283,7 @@ class TcpProbeConfig(ProbeConfig):
         return result
 
 
-class ReplicationControllerConfig(object):
+class ReplicationControllerConfig:
     """
     Base configuration builder for Kubernetes replication controllers
     """

@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import atexit
 import multiprocessing
 import os
@@ -24,7 +25,6 @@ import time
 from ...actors import create_actor_pool
 from ...cluster_info import StaticSchedulerDiscoverer
 from ...config import options
-from ...lib import gipc
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
 from ...session import new_session
@@ -87,19 +87,19 @@ class LocalDistributedCluster(object):
 
         return n_scheduler, n_worker
 
-    def _make_sure_scheduler_ready(self, timeout=120):
+    async def _make_sure_scheduler_ready(self, timeout=120):
         check_start_time = time.time()
         while True:
-            workers_meta = self._scheduler_service._resource_ref.get_workers_meta()
+            workers_meta = await self._scheduler_service._resource_ref.get_workers_meta()
             if not workers_meta:
                 # wait for worker to report status
-                self._pool.sleep(.5)
+                await asyncio.sleep(.5)
                 if time.time() - check_start_time > timeout:  # pragma: no cover
                     raise TimeoutError('Check worker ready timed out.')
             else:
                 break
 
-    def start_service(self):
+    async def start_service(self):
         if self._started:
             return
         self._started = True
@@ -111,45 +111,46 @@ class LocalDistributedCluster(object):
         n_process = self._scheduler_n_process + self._worker_n_process
         distributor = gen_distributor(self._scheduler_n_process, self._worker_n_process)
         self._pool = create_actor_pool(self._endpoint, n_process, distributor=distributor)
+        await self._pool.run()
 
         discoverer = StaticSchedulerDiscoverer([self._endpoint])
 
         # start scheduler first
-        self._scheduler_service.start(self._endpoint, discoverer, self._pool, distributed=False)
+        await self._scheduler_service.start(self._endpoint, discoverer, self._pool, distributed=False)
 
         # start worker next
-        self._worker_service.start(self._endpoint, self._pool, distributed=False,
-                                   discoverer=discoverer,
-                                   process_start_index=self._scheduler_n_process)
+        await self._worker_service.start(self._endpoint, self._pool, distributed=False,
+                                         discoverer=discoverer,
+                                         process_start_index=self._scheduler_n_process)
 
         # make sure scheduler is ready
-        self._make_sure_scheduler_ready()
+        await self._make_sure_scheduler_ready()
 
-    def stop_service(self):
+    async def stop_service(self):
         if self._stopped:
             return
 
         self._stopped = True
         try:
-            self._scheduler_service.stop(self._pool)
-            self._worker_service.stop()
+            await self._scheduler_service.stop(self._pool)
+            await self._worker_service.stop()
         finally:
-            self._pool.stop()
+            await self._pool.stop()
 
-    def serve_forever(self):
+    async def serve_forever(self):
         try:
-            self._pool.join()
+            await self._pool.join()
         except KeyboardInterrupt:
             pass
         finally:
-            self.stop_service()
+            await self.stop_service()
 
-    def __enter__(self):
-        self.start_service()
+    async def __aenter__(self):
+        await self.start_service()
         return self
 
-    def __exit__(self, *_):
-        self.stop_service()
+    async def __aexit__(self, *_):
+        await self.stop_service()
 
 
 def gen_endpoint(address):
@@ -171,12 +172,16 @@ def gen_endpoint(address):
 def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
     cluster = LocalDistributedCluster(endpoint, n_process=n_process,
                                       shared_memory=shared_memory, **kw)
-    cluster.start_service()
-    event.set()
-    try:
-        cluster.serve_forever()
-    finally:
-        cluster.stop_service()
+
+    async def _start():
+        await cluster.start_service()
+        event.set()
+        try:
+            await cluster.serve_forever()
+        finally:
+            await cluster.stop_service()
+
+    asyncio.run(_start())
 
 
 def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
@@ -185,7 +190,8 @@ def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
     kw = kw.copy()
     kw['n_process'] = n_process
     kw['shared_memory'] = shared_memory or '20%'
-    process = gipc.start_process(_start_cluster, args=(endpoint, event), kwargs=kw)
+    process = multiprocessing.Process(target=_start_cluster, args=(endpoint, event), kwargs=kw)
+    process.start()
 
     while True:
         event.wait(5)
@@ -201,23 +207,24 @@ def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
 
 
 def _start_web(scheduler_address, ui_port, event):
-    import gevent.monkey
-    gevent.monkey.patch_all(thread=False)
-
     from ...web import MarsWeb
 
-    web = MarsWeb(ui_port, scheduler_address)
-    try:
-        web.start(event=event, block=True)
-    finally:
-        web.stop()
+    async def _start():
+        web = MarsWeb(ui_port, scheduler_address)
+        try:
+            await web.start(event=event, block=True)
+        finally:
+            await web.stop()
+
+    asyncio.run(_start())
 
 
 def _start_web_process(scheduler_endpoint, web_endpoint):
     web_event = multiprocessing.Event()
     ui_port = int(web_endpoint.rsplit(':', 1)[1])
-    web_process = gipc.start_process(
-        _start_web, args=(scheduler_endpoint, ui_port, web_event), daemon=True)
+    web_process = multiprocessing.Process(
+        target=_start_web, args=(scheduler_endpoint, ui_port, web_event), daemon=True)
+    web_process.start()
 
     while True:
         web_event.wait(5)

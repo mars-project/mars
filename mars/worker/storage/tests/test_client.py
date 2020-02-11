@@ -172,7 +172,6 @@ class Test(WorkerCase):
                 self.assertFalse(os.path.exists(file_names[0]))
 
     async def testClientPutAndGet(self):
-        import gc
         test_addr = '127.0.0.1:%d' % get_next_port()
         async with self.create_pool(n_process=1, address=test_addr) as pool:
             await pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())

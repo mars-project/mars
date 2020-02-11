@@ -22,14 +22,14 @@ class K8SSchedulerApplication(K8SServiceMixin, SchedulerApplication):
         super().__init__(*args, **kwargs)
         self._readiness_ref = None
 
-    def start(self):
+    async def start(self):
         self.write_pid_file()
-        super().start()
-        self._readiness_ref = self.pool.create_actor(ReadinessActor, uid=ReadinessActor.default_uid())
+        await super().start()
+        self._readiness_ref = await self.pool.create_actor(ReadinessActor, uid=ReadinessActor.default_uid())
 
-    def stop(self):
-        self._readiness_ref.destroy()
-        super().stop()
+    async def stop(self):
+        await self._readiness_ref.destroy()
+        await super().stop()
 
 
 main = K8SSchedulerApplication()

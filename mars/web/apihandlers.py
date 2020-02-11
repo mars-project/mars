@@ -21,7 +21,7 @@ import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
-from tornado import gen, web
+from tornado import web
 
 from ..tensor.core import Indexes
 from ..errors import GraphNotExists

@@ -22,11 +22,11 @@ class K8SWorkerApplication(K8SServiceMixin, WorkerApplication):
         super().__init__(*args, **kwargs)
         self._readiness_ref = None
 
-    def start(self):
+    async def start(self):
         self.write_pid_file()
-        self.wait_all_schedulers_ready()
-        super().start()
-        self._readiness_ref = self.pool.create_actor(ReadinessActor, uid=ReadinessActor.default_uid())
+        await self.wait_all_schedulers_ready()
+        await super().start()
+        self._readiness_ref = await self.pool.create_actor(ReadinessActor, uid=ReadinessActor.default_uid())
 
 
 main = K8SWorkerApplication()

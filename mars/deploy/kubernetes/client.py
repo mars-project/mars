@@ -31,7 +31,7 @@ except ImportError:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-class KubernetesClusterClient(object):
+class KubernetesClusterClient:
     def __init__(self, kube_api_client, namespace, endpoint):
         self._kube_api_client = kube_api_client
         self._namespace = namespace

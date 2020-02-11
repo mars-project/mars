@@ -14,7 +14,6 @@
 
 import asyncio
 import pickle
-import time
 
 from mars.tests.core import aio_case, create_actor_pool
 from mars.config import options
