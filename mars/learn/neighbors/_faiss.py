@@ -29,6 +29,7 @@ from ...operands import OperandStage
 from ...serialize import KeyField, StringField, Int64Field, Int32Field, BoolField
 from ...tiles import TilesError
 from ...tensor import tensor as astensor
+from ...tensor.core import TensorOrder
 from ...tensor.random import RandomState
 from ...tensor.array_utils import as_same_device, device
 from ...tensor.utils import recursive_tile, check_random_state, gen_random_seeds
@@ -43,11 +44,22 @@ class MemoryRequirementGrade(Enum):
     higher = 3
 
 
+if faiss is not None:
+    METRIC_TO_FAISS_METRIC_TYPE = {
+        'l2': faiss.METRIC_L2,
+        'euclidean': faiss.METRIC_L2,
+        'innerproduct': faiss.METRIC_INNER_PRODUCT
+    }
+else:  # pragma: no cover
+    METRIC_TO_FAISS_METRIC_TYPE = {}
+
+
 @require_not_none(faiss)
 class FaissBuildIndex(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.FAISS_BUILD_INDEX
 
     _input = KeyField('input')
+    _metric = StringField('metric')
     _faiss_index = StringField('faiss_index')
     _n_sample = Int64Field('n_sample')
     _seed = Int32Field('seed')
@@ -55,10 +67,10 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
     # for test purpose, could be 'object', 'filename' or 'bytes'
     _return_index_type = StringField('return_index_type')
 
-    def __init__(self, faiss_index=None, n_sample=None, seed=None,
+    def __init__(self, metric=None, faiss_index=None, n_sample=None, seed=None,
                  same_distribution=None, return_index_type=None, stage=None,
                  output_types=None, gpu=None, **kw):
-        super().__init__(_faiss_index=faiss_index, _n_sample=n_sample,
+        super().__init__(_metric=metric, _faiss_index=faiss_index, _n_sample=n_sample,
                          _seed=seed, _same_distribution=same_distribution,
                          _return_index_type=return_index_type, _gpu=gpu,
                          _stage=stage, _output_types=output_types, **kw)
@@ -68,6 +80,14 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
     @property
     def input(self):
         return self._input
+
+    @property
+    def metric(self):
+        return self._metric
+
+    @property
+    def faiss_metric_type(self):
+        return METRIC_TO_FAISS_METRIC_TYPE[self._metric]
 
     @property
     def faiss_index(self):
@@ -135,7 +155,8 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         """
         n_sample = op.n_sample
 
-        faiss_index = faiss.index_factory(in_tensor.shape[1], op.faiss_index)
+        faiss_index = faiss.index_factory(in_tensor.shape[1], op.faiss_index,
+                                          op.faiss_metric_type)
         # Training on sample data when two conditions meet
         # 1. the index type requires for training, e.g. Flat does not require
         # 2. distributions of chunks are the same, in not,
@@ -151,7 +172,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             sample_tensor = recursive_tile(in_tensor[sampled_index])
             assert len(sample_tensor.chunks) == 1
             sample_chunk = sample_tensor.chunks[0]
-            train_op = FaissTrainSampledIndex(faiss_index=op.faiss_index,
+            train_op = FaissTrainSampledIndex(faiss_index=op.faiss_index, metric=op.metric,
                                               return_index_type=op.return_index_type)
             train_chunk = train_op.new_chunk([sample_chunk])
 
@@ -169,6 +190,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
 
         out_chunks = []
         if need_sample_train:
+            assert op.n_sample is not None
             # merge all indices into one, do only when trained on sample data
             out_chunk_op = op.copy().reset_key()
             out_chunk_op._stage = OperandStage.agg
@@ -188,7 +210,8 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
 
         with device(device_id):
             # create index
-            index = faiss.index_factory(inp.shape[1], op.faiss_index)
+            index = faiss.index_factory(inp.shape[1], op.faiss_index,
+                                        op.faiss_metric_type)
             # GPU
             if device_id >= 0:  # pragma: no cover
                 res = faiss.StandardGpuResources()
@@ -196,6 +219,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
 
             # train index
             if not index.is_trained:
+                assert op.n_sample is not None
                 sample_indices = xp.random.choice(inp.shape[0],
                                                   size=op.n_sample, replace=False)
                 sampled = inp[sample_indices]
@@ -223,7 +247,8 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
                     # https://github.com/facebookresearch/faiss/wiki/Threads-and-asynchronous-calls#thread-safety
                     trained_index = faiss.clone_index(trained_index)
             else:
-                trained_index = faiss.index_factory(data.shape[1], op.faiss_index)
+                trained_index = faiss.index_factory(data.shape[1], op.faiss_index,
+                                                    op.faiss_metric_type)
                 if op.same_distribution:
                     # no need to train, just create index
                     pass
@@ -335,13 +360,14 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.FAISS_TRAIN_SAMPLED_INDEX
 
     _input = KeyField('input')
+    _metric = StringField('metric')
     _faiss_index = StringField('faiss_index')
     # for test purpose, could be 'object', 'filename' or 'bytes'
     _return_index_type = StringField('return_index_type')
 
-    def __init__(self, faiss_index=None, return_index_type=None,
-                 output_types=None, **kw):
-        super().__init__(_faiss_index=faiss_index,
+    def __init__(self, faiss_index=None, metric=None,
+                 return_index_type=None, output_types=None, **kw):
+        super().__init__(_faiss_index=faiss_index, _metric=metric,
                          _return_index_type=return_index_type,
                          _output_types=output_types, **kw)
         if self._output_types is None:
@@ -350,6 +376,14 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
     @property
     def input(self):
         return self._input
+
+    @property
+    def metric(self):
+        return self._metric
+
+    @property
+    def faiss_metric_type(self):
+        return METRIC_TO_FAISS_METRIC_TYPE[self.metric]
 
     @property
     def faiss_index(self):
@@ -369,7 +403,8 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
             [ctx[op.input.key]], device=op.device, ret_extra=True)
 
         with device(device_id):
-            index = faiss.index_factory(data.shape[1], op.faiss_index)
+            index = faiss.index_factory(data.shape[1], op.faiss_index,
+                                        op.faiss_metric_type)
             # GPU
             if device_id >= 0:  # pragma: no cover
                 res = faiss.StandardGpuResources()
@@ -381,11 +416,16 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
 
 
 @require_not_none(faiss)
-def build_faiss_index(X, index_name, n_sample, random_state=None,
-                      same_distribution=True, **kw):
+def build_faiss_index(X, index_name, n_sample, metric="euclidean",
+                      random_state=None, same_distribution=True, **kw):
+    X = astensor(X)
+
+    if metric not in METRIC_TO_FAISS_METRIC_TYPE:
+        raise ValueError('unknown metric: {}'.format(metric))
     if index_name != 'auto':
         try:
-            faiss.index_factory(X.shape[1], index_name)
+            faiss.index_factory(X.shape[1], index_name,
+                                METRIC_TO_FAISS_METRIC_TYPE[metric])
         except RuntimeError:
             raise ValueError('illegal faiss index: {}'.format(index_name))
 
@@ -393,6 +433,147 @@ def build_faiss_index(X, index_name, n_sample, random_state=None,
     if isinstance(rs, RandomState):
         rs = rs.to_numpy()
     seed = gen_random_seeds(1, rs)[0]
-    op = FaissBuildIndex(faiss_index=index_name, n_sample=n_sample,
-                         seed=seed, same_distribution=same_distribution, **kw)
+    op = FaissBuildIndex(faiss_index=index_name, metric=metric,
+                         n_sample=n_sample, gpu=X.op.gpu, seed=seed,
+                         same_distribution=same_distribution, **kw)
     return op(X)
+
+
+class FaissQuery(LearnOperand, LearnOperandMixin):
+    _op_type_ = OperandDef.FAISS_QUERY
+
+    _input = KeyField('input')
+    _faiss_index = KeyField('faiss_index')
+    _n_neighbors = Int32Field('n_neighbors')
+    _return_distance = BoolField('return_distance')
+    # for test purpose, could be 'object', 'filename' or 'bytes'
+    _return_index_type = StringField('return_index_type')
+
+    def __init__(self, faiss_index=None, n_neighbors=None, return_distance=None,
+                 return_index_type=None, output_types=None, gpu=None, **kw):
+        super().__init__(_faiss_index=faiss_index, _n_neighbors=n_neighbors,
+                         _return_distance=return_distance, _output_types=output_types,
+                         _return_index_type=return_index_type, _gpu=gpu, **kw)
+        if self._output_types is None:
+            self._output_types = [OutputType.tensor] * self.output_limit
+
+    @property
+    def input(self):
+        return self._input
+
+    @property
+    def faiss_index(self):
+        return self._faiss_index
+
+    @property
+    def n_neighbors(self):
+        return self._n_neighbors
+
+    @property
+    def return_distance(self):
+        return self._return_distance
+
+    @property
+    def return_index_type(self):
+        return self._return_index_type
+
+    @property
+    def output_limit(self):
+        return 2 if self._return_distance else 1
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        self._input = self._inputs[0]
+        if self._faiss_index is not None:
+            self._faiss_index = self._inputs[1]
+
+    def __call__(self, y):
+        kws = []
+        if self._return_distance:
+            kws.append({'shape': (y.shape[0], self._n_neighbors),
+                        'dtype': np.dtype(np.float32),
+                        'order': TensorOrder.C_ORDER,
+                        'type': 'distance'})
+        kws.append({
+            'shape': (y.shape[0], self._n_neighbors),
+            'dtype': np.dtype(np.int64),
+            'order': TensorOrder.C_ORDER,
+            'type': 'indices'
+        })
+        return self.new_tileables([y, self._faiss_index], kws=kws)
+
+    @classmethod
+    def tile(cls, op):
+        in_tensor = op.input
+
+        if in_tensor.chunk_shape[1] != 1:
+            check_chunks_unknown_shape([in_tensor], TilesError)
+            in_tensor = in_tensor.rechunk({1: in_tensor.shape[1]})._inplace_tile()
+
+        out_chunks = [], []
+        for chunk in in_tensor.chunks:
+            chunk_op = op.copy().reset_key()
+            chunk_kws = []
+            if op.return_distance:
+                chunk_kws.append({
+                    'shape': (chunk.shape[0], op.n_neighbors),
+                    'dtype': np.dtype(np.float32),
+                    'order': TensorOrder.C_ORDER,
+                    'index': chunk.index,
+                    'type': 'distance'
+                })
+            chunk_kws.append({
+                'shape': (chunk.shape[0], op.n_neighbors),
+                'dtype': np.dtype(np.int64),
+                'order': TensorOrder.C_ORDER,
+                'index': chunk.index,
+                'type': 'indices'
+            })
+            in_chunks = [chunk]
+            in_chunks.extend(op.faiss_index.chunks)
+            chunks = chunk_op.new_chunks(in_chunks, kws=chunk_kws)
+            if op.return_distance:
+                out_chunks[0].append(chunks[0])
+            out_chunks[1].append(chunks[-1])
+
+        new_op = op.copy()
+        kws = [out.params for out in op.outputs]
+        if op.return_distance:
+            kws[0]['chunks'] = out_chunks[0]
+            kws[0]['nsplits'] = (in_tensor.nsplits[0], (op.n_neighbors,))
+        kws[-1]['chunks'] = out_chunks[1]
+        kws[-1]['nsplits'] = (in_tensor.nsplits[0], (op.n_neighbors,))
+        return new_op.new_tileables(op.inputs, kws=kws)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        (y,), device_id, xp = as_same_device(
+            [ctx[op.input.key]], device=op.device, ret_extra=True)
+        indexes = [_load_index(ctx, op, ctx[index.key], device_id)
+                   for index in op.inputs[1:]]
+
+        with device(device_id):
+            y = xp.ascontiguousarray(y)
+
+            if len(indexes) == 1:
+                index = indexes[0]
+            else:
+                index = faiss.IndexShards(indexes[0].d)
+                [index.add_shard(ind) for ind in indexes]
+
+            distances, indices = index.search(y, op.n_neighbors)
+            if op.return_distance:
+                if index.metric_type == faiss.METRIC_L2:
+                    distances = xp.sqrt(distances, out=distances)
+                ctx[op.outputs[0].key] = distances
+            ctx[op.outputs[-1].key] = indices
+
+
+@require_not_none(faiss)
+def faiss_query(faiss_index, data, n_neighbors, return_distance=True):
+    data = astensor(data)
+    op = FaissQuery(faiss_index=faiss_index, n_neighbors=n_neighbors,
+                    return_distance=return_distance,
+                    return_index_type=faiss_index.op.return_index_type,
+                    gpu=data.op.gpu)
+    return op(data)

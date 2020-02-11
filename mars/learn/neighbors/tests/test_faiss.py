@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
     faiss = None
 
 from mars import tensor as mt
-from mars.learn.neighbors._faiss import build_faiss_index, _load_index
+from mars.learn.neighbors._faiss import build_faiss_index, _load_index, faiss_query
 from mars.learn.neighbors import NearestNeighbors
 from mars.tiles import get_tiled
 from mars.tests.core import ExecutorForTest
@@ -105,3 +105,28 @@ class Test(unittest.TestCase):
         # test wrong index
         with self.assertRaises(ValueError):
             build_faiss_index(X, 'unknown_index', None)
+
+        # test unknown metric
+        with self.assertRaises(ValueError):
+            build_faiss_index(X, 'Flat', None, metric='unknown_metric')
+
+    def testFaissQuery(self):
+        d = 8
+        n = 50
+        n_test = 10
+        x = np.random.RandomState(0).rand(n, d).astype(np.float32)
+        y = np.random.RandomState(0).rand(n_test, d).astype(np.float32)
+
+        for X, Y in [(mt.tensor(x, chunk_size=20), mt.tensor(y, chunk_size=5)),
+                     (mt.tensor(x, chunk_size=50), mt.tensor(y, chunk_size=10))]:
+            faiss_index = build_faiss_index(X, 'Flat', None,
+                                            random_state=0, return_index_type='object')
+            d, i = faiss_query(faiss_index, Y, 5)
+            distance, indices = self.executor.execute_tensors([d, i])
+
+            nn = NearestNeighbors(algorithm='kd_tree')
+            nn.fit(x)
+            expected_distance, expected_indices = nn.kneighbors(y, 5)
+
+            np.testing.assert_array_equal(indices, expected_indices.fetch())
+            np.testing.assert_almost_equal(distance, expected_distance.fetch())
