@@ -1181,7 +1181,7 @@ class GraphActor(SchedulerActor):
             chunk_graph.add_node(fetch_chunk.data)
             chunk_graph.add_edge(fetch_chunk.data, concat_chunk)
         executor = Executor(storage=ctx)
-        concat_result = executor.execute_graph(chunk_graph, keys=[concat_chunk.key])[0]
+        concat_result = (await executor.execute_graph(chunk_graph, keys=[concat_chunk.key], _async=True))[0]
         return dataserializer.dumps(concat_result)
 
     @log_unhandled

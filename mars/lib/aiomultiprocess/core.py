@@ -84,7 +84,7 @@ class Process:
         name: str = None,
         args: Sequence[Any] = None,
         kwargs: Dict[str, Any] = None,
-        *,
+        *_,
         daemon: bool = None,
         initializer: Optional[Callable] = None,
         initargs: Sequence[Any] = (),
@@ -103,6 +103,7 @@ class Process:
             namespace=get_manager().Namespace(),
             initializer=initializer,
             initargs=initargs,
+            runner=None,
         )
         self.aio_process = context.Process(
             group=group,

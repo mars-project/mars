@@ -50,7 +50,7 @@ class Test(unittest.TestCase):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).randn(5, 5)))
 
     def testRandintExecution(self):
-        size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
+        size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.ThreadPoolExecutorType.MOCK)
 
         arr = tensor.random.randint(0, 2, size=(10, 30), chunk_size=3)
         size_res = size_executor.execute_tensor(arr, mock=True)
@@ -193,7 +193,7 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(res, expected)
 
     def testSparseRandintExecution(self):
-        size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
+        size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.ThreadPoolExecutorType.MOCK)
 
         arr = tensor.random.randint(1, 2, size=(30, 50), density=.1, chunk_size=10, dtype='f4')
         size_res = size_executor.execute_tensor(arr, mock=True)

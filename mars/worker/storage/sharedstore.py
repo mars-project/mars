@@ -79,7 +79,6 @@ class PlasmaSharedStore:
         self._serialize_context = mars_serialize_context()
 
         self._mapper_ref = mapper_ref
-        self._pool = mapper_ref.ctx.threadpool(1)
 
     def get_actual_capacity(self, store_limit):
         """

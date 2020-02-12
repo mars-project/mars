@@ -812,7 +812,7 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(res, 3.14, delta=1)
 
     def testTensordotExecution(self):
-        size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
+        size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.ThreadPoolExecutorType.MOCK)
 
         a_data = np.arange(60).reshape(3, 4, 5)
         a = tensor(a_data, chunk_size=2)
@@ -899,7 +899,7 @@ class Test(unittest.TestCase):
                 input_nbytes = dict((inp.op.key, inp.nbytes) for inp in op.inputs)
                 chunk_input_nbytes[chunk_key] = sum(input_nbytes.values())
 
-            size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
+            size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.ThreadPoolExecutorType.MOCK)
             try:
                 chunk_sizes.clear()
                 chunk_nbytes.clear()

@@ -16,9 +16,9 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 
 from .. import promise
+from ..actors.pool.aio_pool import AioThreadPool
 from ..config import options
 from ..executor import Executor
 from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size, \
@@ -73,7 +73,7 @@ class BaseCalcActor(WorkerActor):
         if not await self.ctx.has_actor(self._events_ref):
             self._events_ref = None
 
-        self._execution_pool = ThreadPoolExecutor(1)
+        self._execution_pool = AioThreadPool(1)
 
     @staticmethod
     def _get_keys_to_fetch(graph):
@@ -166,14 +166,14 @@ class BaseCalcActor(WorkerActor):
         local_context_dict.update(context_dict)
         context_dict.clear()
 
-        def _execute_fun():
+        async def _execute_fun():
             executor = Executor(storage=local_context_dict)
-            executor.execute_graph(graph, chunk_targets, retval=False)
+            await executor.execute_graph(graph, chunk_targets, retval=False, _async=True)
 
         # start actual execution
         async with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
                                 self._calc_event_type, self.uid):
-            await asyncio.get_event_loop().run_in_executor(self._execution_pool, _execute_fun)
+            await self._execution_pool.submit(_execute_fun)
 
         end_time = time.time()
 

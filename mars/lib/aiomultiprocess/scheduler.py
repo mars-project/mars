@@ -3,7 +3,7 @@
 
 import itertools
 from abc import ABC, abstractmethod
-from typing import Any, Awaitable, Callable, Dict, Iterator, List, Sequence
+from typing import Any, Awaitable, Callable, Dict, Sequence
 
 from .types import Queue, QueueID, R, TaskID
 
@@ -57,11 +57,11 @@ class RoundRobin(Scheduler):
     receiving double the number tasks of
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__()
-        self.qids: List[QueueID] = []
+        self.qids = []
         self.next_id = itertools.count()
-        self.cycler: Iterator[QueueID] = itertools.cycle([])
+        self.cycler = itertools.cycle([])
 
     def register_queue(self, tx: Queue) -> QueueID:
         return QueueID(next(self.next_id))

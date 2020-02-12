@@ -29,16 +29,15 @@ PoolTask = Optional[Tuple[TaskID, Callable[..., R], Sequence[T], Dict[str, T]]]
 PoolResult = Tuple[TaskID, Optional[R], Optional[TracebackStr]]
 
 
-class Unit(NamedTuple):
-    """Container for what to call on the child process."""
-
-    target: Callable
-    args: Sequence[Any]
-    kwargs: Dict[str, Any]
-    namespace: Any
-    initializer: Optional[Callable] = None
-    initargs: Sequence[Any] = ()
-    runner: Optional[Callable] = None
+Unit = NamedTuple('Unit', [
+    ('target', Callable),
+    ('args', Sequence[Any]),
+    ('kwargs', Dict[str, Any]),
+    ('namespace', Any),
+    ('initializer', Optional[Callable]),
+    ('initargs', Sequence[Any]),
+    ('runner', Optional[Callable]),
+])
 
 
 class ProxyException(Exception):

@@ -17,7 +17,6 @@ import asyncio
 import logging
 import os
 import random
-import time
 from concurrent.futures import ThreadPoolExecutor
 
 from ...actors import new_client, FunctionActor

@@ -345,7 +345,7 @@ class Test(SchedulerIntegratedTest):
         assert_allclose(loads(res[1]), expected[1])
 
     async def testDistributedContext(self):
-        self.start_processes(etcd=False)
+        await self.start_processes(etcd=False)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
@@ -389,17 +389,17 @@ class Test(SchedulerIntegratedTest):
         r = context.get_tileable_data(a.key, indexes)
         np.testing.assert_array_equal(raw1[[9, 1, 2, 0], [0, 0, 4, 4]], r)
 
-    def testOperandsWithoutPrepareInputs(self):
-        self.start_processes(etcd=False, modules=['mars.scheduler.tests.integrated.no_prepare_op'])
+    async def testOperandsWithoutPrepareInputs(self):
+        await self.start_processes(etcd=False, modules=['mars.scheduler.tests.integrated.no_prepare_op'])
 
         session_id = uuid.uuid1()
         actor_client = new_client()
 
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
-        actor_address = self.cluster_info.get_scheduler(ResourceActor.default_uid())
+        actor_address = await self.cluster_info.get_scheduler(ResourceActor.default_uid())
         resource_ref = actor_client.actor_ref(ResourceActor.default_uid(), address=actor_address)
-        worker_endpoints = resource_ref.get_worker_endpoints()
+        worker_endpoints = await resource_ref.get_worker_endpoints()
 
         t1 = mt.random.rand(10)
         t1.op._expect_worker = worker_endpoints[0]
@@ -412,8 +412,8 @@ class Test(SchedulerIntegratedTest):
         graph = t.build_graph()
         targets = [t.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
-                                          graph_key, target_tileables=targets)
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                                graph_key, target_tileables=targets)
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)

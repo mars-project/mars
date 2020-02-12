@@ -71,8 +71,8 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
         ctx[chunk.key] = res
 
     @classmethod
-    def estimate_size(cls, ctx, op):
-        estimate_fuse_size(ctx, op)
+    async def estimate_size(cls, ctx, op):
+        await estimate_fuse_size(ctx, op)
 
 
 # execution part

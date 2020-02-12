@@ -25,7 +25,7 @@ from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.graph import DirectedGraph
 from mars.actors import Distributor, Actor
 from mars.tiles import get_tiled
-from mars.tests.core import create_actor_pool
+from mars.tests.core import create_actor_pool, aio_case
 
 
 class FakeDistributor(Distributor):
@@ -34,23 +34,23 @@ class FakeDistributor(Distributor):
 
 
 class RunActor(Actor):
-    def on_receive(self, message):
+    async def on_receive(self, message):
         return message + 1
 
 
 class ExecutorActor(Actor):
     def __init__(self):
-        self._executor = Executor(sync_provider_type=Executor.SyncProviderType.GEVENT)
+        self._executor = Executor(sync_provider_type=Executor.ThreadPoolExecutorType.AIO)
 
-    def post_create(self):
+    async def post_create(self):
         register(FakeOperand, fake_execution_maker(self.ctx))
 
-    def on_receive(self, message):
+    async def on_receive(self, message):
         op = FakeOperand(_num=message)
         chunk = op.new_chunk(None, ())
         graph = DirectedGraph()
         graph.add_node(chunk.data)
-        res = self._executor.execute_graph(graph, [chunk.key])
+        res = await self._executor.execute_graph(graph, [chunk.key], _async=True)
         assert res[0] == message + 1
 
 
@@ -67,26 +67,27 @@ class SubFakeOperand(FakeOperand):
 
 
 def fake_execution_maker(actor_ctx):
-    def run(ctx, op):
-        actor = actor_ctx.create_actor(RunActor, uid='1-run')
-        ctx[op.outputs[0].key] = actor.send(op.num)
+    async def run(ctx, op):
+        actor = await actor_ctx.create_actor(RunActor, uid='1-run')
+        ctx[op.outputs[0].key] = await actor.send(op.num)
 
     return run
 
 
+@aio_case
 class Test(unittest.TestCase):
-    def testExecutorWithGeventProvider(self):
-        executor = Executor(sync_provider_type=Executor.SyncProviderType.GEVENT)
+    def testExecutorWithAioProvider(self):
+        executor = Executor(sync_provider_type=Executor.ThreadPoolExecutorType.AIO)
 
         a = mt.ones((10, 10), chunk_size=2)
         res = executor.execute_tensor(a, concat=True)[0]
         np.testing.assert_array_equal(res, np.ones((10, 10)))
 
     @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
-    def testActorInExecutor(self):
-        with create_actor_pool(n_process=2) as pool:
-            actor = pool.create_actor(ExecutorActor, uid='0-executor')
-            self.assertIsNone(actor.send(1))
+    async def testActorInExecutor(self):
+        async with create_actor_pool(n_process=2) as pool:
+            actor = await pool.create_actor(ExecutorActor, uid='0-executor')
+            self.assertIsNone(await actor.send(1))
 
     def testMockExecuteSize(self):
         import mars.tensor as mt
@@ -183,8 +184,8 @@ class Test(unittest.TestCase):
         self.assertEqual(a.cix[1, 0].device, a.cix[1, 1].device)
         self.assertNotEqual(a.cix[0, 0].device, a.cix[1, 0].device)
 
-    def testEventQueue(self):
-        q = EventQueue(threading.Event)
+    async def testEventQueue(self):
+        q = EventQueue()
 
         self.assertFalse(q._has_value.is_set())
         q.append(1)
@@ -193,7 +194,7 @@ class Test(unittest.TestCase):
         self.assertFalse(q._has_value.is_set())
         q.insert(0, 2)
         self.assertTrue(q._has_value.is_set())
-        q.wait()
+        await q.wait()
         q.clear()
         self.assertFalse(q._has_value.is_set())
         q.errored()

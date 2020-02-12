@@ -189,12 +189,13 @@ class ExecutionActor(WorkerActor):
         graph_record.pinned_keys.update(pinned_keys)
         return pinned_keys
 
-    def _estimate_calc_memory(self, session_id, graph_key):
+    async def _estimate_calc_memory(self, session_id, graph_key):
         graph_record = self._graph_records[(session_id, graph_key)]
         size_ctx = dict((k, (v.chunk_size, v.chunk_size))
                         for k, v in graph_record.data_metas.items())
-        executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
-        res = executor.execute_graph(graph_record.graph, graph_record.chunk_targets, mock=True)
+        executor = Executor(storage=size_ctx, sync_provider_type=Executor.ThreadPoolExecutorType.MOCK)
+        res = await executor.execute_graph(graph_record.graph, graph_record.chunk_targets,
+                                           mock=True, _async=True)
 
         targets = graph_record.chunk_targets
         target_sizes = dict(zip(targets, res))
@@ -230,7 +231,7 @@ class ExecutionActor(WorkerActor):
 
         if graph_record.preferred_data_device == DataStorageDevice.SHARED_MEMORY or \
                 graph_record.preferred_data_device == DataStorageDevice.VINEYARD:  # pragma: no cover
-            memory_estimations = self._estimate_calc_memory(session_id, graph_key)
+            memory_estimations = await self._estimate_calc_memory(session_id, graph_key)
         else:
             memory_estimations = dict()
 

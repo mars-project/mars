@@ -12,21 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio.locks
+import contextlib
 import datetime
+import functools
 import itertools
 import logging
-import sys
-import threading
-import weakref
 import operator
-import contextlib
+import sys
+import weakref
 from collections import deque, defaultdict, OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from numbers import Integral
 
 import numpy as np
+try:
+    from numpy.core._exceptions import UFuncTypeError
+except ImportError:  # pragma: no cover
+    UFuncTypeError = None
 
+from .actors.pool.aio_pool import AioThreadPool
 from .operands import Fetch, ShuffleProxy
 from .graph import DirectedGraph
 from .config import options
@@ -46,41 +52,12 @@ except ImportError:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-class ExecutorSyncProvider(object):
-    @classmethod
-    def thread_pool_executor(cls, n_workers):
-        raise NotImplementedError
-
-    @classmethod
-    def semaphore(cls, value):
-        raise NotImplementedError
-
-    @classmethod
-    def lock(cls):
-        raise NotImplementedError
-
-    @classmethod
-    def rlock(cls):
-        raise NotImplementedError
-
-    @classmethod
-    def event(cls):
-        raise NotImplementedError
-
-    @classmethod
-    def queue(cls, *args, **kwargs):
-        raise NotImplementedError
-
-
 class EventQueue(list):
-    def __init__(self, event_cls, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if event_cls is not None:
-            self._has_value = event_cls()
-            if len(self) > 0:
-                self._has_value.set()
-        else:
-            self._has_value = None
+        self._has_value = asyncio.Event()
+        if len(self) > 0:
+            self._has_value.set()
 
     def append(self, item):
         super().append(item)
@@ -103,104 +80,40 @@ class EventQueue(list):
         if self._has_value is not None:
             self._has_value.clear()
 
-    def wait(self, timeout=None):
+    async def wait(self, timeout=None):
         if self._has_value is not None:
-            self._has_value.wait(timeout)
+            await asyncio.wait_for(self._has_value, timeout=timeout)
 
     def errored(self):
         if self._has_value is not None:
             self._has_value.set()
 
 
-class ThreadExecutorSyncProvider(ExecutorSyncProvider):
-    @classmethod
-    def thread_pool_executor(cls, n_workers):
-        return ThreadPoolExecutor(n_workers)
+class WrappedThreadPoolExecutor:
+    def __init__(self, n_workers):
+        self._pool = ThreadPoolExecutor(n_workers)
 
-    @classmethod
-    def semaphore(cls, value):
-        return threading.Semaphore(value)
+    def submit(self, fn, *args, **kwargs):
+        def _wrapped_fn():
+            r = fn(*args, **kwargs)
+            if asyncio.iscoroutine(r):
+                r = asyncio.run(r)
+            return r
 
-    @classmethod
-    def lock(cls):
-        return threading.Lock()
-
-    @classmethod
-    def rlock(cls):
-        return threading.RLock()
-
-    @classmethod
-    def event(cls):
-        return threading.Event()
-
-    @classmethod
-    def queue(cls, *args, **kwargs):
-        return EventQueue(threading.Event, *args, **kwargs)
-
-
-class GeventExecutorSyncProvider(ExecutorSyncProvider):
-    @classmethod
-    def thread_pool_executor(cls, n_workers):
-        return GeventThreadPool(n_workers)
-
-    @classmethod
-    def semaphore(cls, value):
-        # as gevent threadpool is the **real** thread, so use threading.Semaphore
-        return threading.Semaphore(value)
-
-    @classmethod
-    def lock(cls):
-        # as gevent threadpool is the **real** thread, so use threading.Lock
-        return threading.Lock()
-
-    @classmethod
-    def rlock(cls):
-        # as gevent threadpool is the **real** thread, so use threading.RLock
-        return threading.RLock()
-
-    @classmethod
-    def event(cls):
-        # as gevent threadpool is the **real** thread, so use threading.Event
-        return threading.Event()
-
-    @classmethod
-    def queue(cls, *args, **kwargs):
-        return EventQueue(threading.Event, *args, **kwargs)
+        return asyncio.get_event_loop().run_in_executor(self._pool, _wrapped_fn)
 
 
 class MockThreadPoolExecutor(object):
-    class _MockResult(object):
-        def __init__(self, result=None, exc_info=None):
-            self._result = result
-            self._exc_info = exc_info
-
-        def result(self, *_):
-            if self._exc_info is not None:
-                raise self._exc_info[1] from None
-            else:
-                return self._result
-
-        def exception_info(self, *_):
-            return self._exc_info
-
     def __init__(self, *_):
         pass
 
     def submit(self, fn, *args, **kwargs):
-        try:
-            return self._MockResult(fn(*args, **kwargs))
-        except:  # noqa: E722
-            return self._MockResult(None, sys.exc_info())
+        async def fun():
+            r = fn(*args, **kwargs)
+            if asyncio.iscoroutine(r):
+                return await r
 
-    @classmethod
-    def queue(cls, *args, **kwargs):
-        return EventQueue(None, *args, **kwargs)
-
-
-class MockExecutorSyncProvider(ThreadExecutorSyncProvider):
-    @classmethod
-    def thread_pool_executor(cls, n_workers):
-        return MockThreadPoolExecutor(n_workers)
+        return asyncio.ensure_future(fun())
 
 
 class GraphDeviceAssigner(object):
@@ -328,7 +241,7 @@ class GraphExecution(object):
     Represent an execution for a specified graph.
     """
 
-    def __init__(self, chunk_results, graph, keys, executed_keys, sync_provider,
+    def __init__(self, chunk_results, graph, keys, executed_keys, thread_pool_executor,
                  n_parallel=None, engine=None, prefetch=False, print_progress=False,
                  mock=False, mock_max_memory=0, fetch_keys=None, no_intermediate=False):
         self._chunk_results = chunk_results
@@ -345,20 +258,20 @@ class GraphExecution(object):
         self._fetch_keys = fetch_keys or set()
 
         # pool executor for the operand execution
-        self._operand_executor = sync_provider.thread_pool_executor(self._n_parallel)
+        self._operand_executor = thread_pool_executor(self._n_parallel)
         # pool executor for prefetching
         if prefetch:
-            self._prefetch_executor = sync_provider.thread_pool_executor(self._n_parallel)
+            self._prefetch_executor = thread_pool_executor(self._n_parallel)
         else:
             self._prefetch_executor = None
         # global lock
-        self._lock = sync_provider.lock()
+        self._lock = asyncio.locks.Lock()
         # control the concurrence
-        self._semaphore = sync_provider.semaphore(self._n_parallel)
+        self._semaphore = asyncio.Semaphore(self._n_parallel)
         # event for setting error happened
-        self._has_error = sync_provider.event()
-        self._queue = sync_provider.queue(self._order_starts()) \
-            if len(graph) > 0 else sync_provider.queue()
+        self._has_error = asyncio.Event()
+        self._queue = EventQueue(self._order_starts()) \
+            if len(graph) > 0 else EventQueue()
         self._chunk_key_ref_counts = self._calc_ref_counts()
         self._op_key_to_ops = self._calc_op_key_to_ops()
         self._submitted_op_keys = set()
@@ -421,7 +334,7 @@ class GraphExecution(object):
 
         return op_key_to_ops
 
-    def _execute_operand(self, op):
+    async def _execute_operand(self, op):
         results = self._chunk_results
         ref_counts = self._chunk_key_ref_counts
         op_keys = self._executed_op_keys
@@ -432,7 +345,7 @@ class GraphExecution(object):
             # note that currently execution is the chunk-level
             # so we pass the first operand's first output to Executor.handle
             first_op = ops[0]
-            Executor.handle(first_op, results, self._mock)
+            await self._operand_executor.submit(Executor.handle, first_op, results, self._mock)
 
             # update maximal memory usage during execution
             if self._mock:
@@ -460,7 +373,7 @@ class GraphExecution(object):
                 # the output not in the graph will be skipped
                 if output not in self._graph:
                     continue
-                with self._lock:
+                async with self._lock:
                     # in case that operand has multiple outputs
                     # and some of the output not in result keys, delete them
                     if ref_counts.get(output.key) == 0:
@@ -494,43 +407,45 @@ class GraphExecution(object):
         finally:
             self._semaphore.release()
 
-    def _fetch_chunks(self, chunks):
+    async def _fetch_chunks(self, chunks):
         """
         Iterate all the successors of given chunks,
         if the successor's predecessors except that in the chunks have all finished,
         we will try to load the successor's all predecessors into memory in advance.
         """
+        def fetch(c):
+            to_fetch_chunk = None
+            for succ_chunk in self._graph.iter_successors(c):
+                accepted = True
+                for pred_chunk in self._graph.iter_predecessors(succ_chunk):
+                    if pred_chunk is c:
+                        continue
+                    if pred_chunk.op.key not in self._executed_op_keys:
+                        accepted = False
+                        break
+                if accepted:
+                    to_fetch_chunk = succ_chunk
+                    break
+            if to_fetch_chunk is None and len(self._queue) > 0:
+                to_fetch_chunk = self._queue[0]
+            for pred_chunk in self._graph.iter_predecessors(to_fetch_chunk):
+                # if predecessor is spilled
+                # the get will pull it back into memory
+                self._chunk_results.get(pred_chunk.key)
 
         for chunk in chunks:
-            with self._lock:
-                to_fetch_chunk = None
-                for succ_chunk in self._graph.iter_successors(chunk):
-                    accepted = True
-                    for pred_chunk in self._graph.iter_predecessors(succ_chunk):
-                        if pred_chunk is chunk:
-                            continue
-                        if pred_chunk.op.key not in self._executed_op_keys:
-                            accepted = False
-                            break
-                    if accepted:
-                        to_fetch_chunk = succ_chunk
-                        break
-                if to_fetch_chunk is None and len(self._queue) > 0:
-                    to_fetch_chunk = self._queue[0]
-                for pred_chunk in self._graph.iter_predecessors(to_fetch_chunk):
-                    # if predecessor is spilled
-                    # the get will pull it back into memory
-                    self._chunk_results.get(pred_chunk.key)
-
-    def _submit_operand_to_execute(self):
-        self._semaphore.acquire()
-        self._queue.wait()
+            async with self._lock:
+                self._prefetch_executor.submit(fetch, chunk)
+        await self._queue.wait()
 
         if self._has_error.is_set():
             # error happens, ignore
             return
 
-        with self._lock:
+    async def _submit_operand_to_execute(self):
+        await self._semaphore.acquire()
+
+        async with self._lock:
             to_submit_op = self._queue.pop(0)
         assert to_submit_op.key not in self._submitted_op_keys
         self._submitted_op_keys.add(to_submit_op.key)
@@ -543,27 +458,37 @@ class GraphExecution(object):
 
         if self._prefetch:
             # check the operand's outputs if any of its successor's predecessors can be prefetched
-            self._prefetch_executor.submit(self._fetch_chunks, to_submit_op.outputs)
+            await self._fetch_chunks(to_submit_op.outputs)
         # execute the operand and return future
-        return self._operand_executor.submit(self._execute_operand, to_submit_op)
+        return asyncio.ensure_future(self._execute_operand(to_submit_op))
 
-    def execute(self, retval=True):
+    async def execute(self, retval=True):
         executed_futures = []
         for _ in range(len(self._op_key_to_ops)):
             if self._has_error.is_set():
                 # something wrong happened
                 break
 
-            future = self._submit_operand_to_execute()
+            future = await self._submit_operand_to_execute()
             if future is not None:
                 executed_futures.append(future)
 
         # wait until all the futures completed
-        for future in executed_futures:
-            future.result()
+        await asyncio.wait(executed_futures)
 
         if retval:
             return [self._chunk_results[key] for key in self._keys]
+
+
+def _wrap_async_executor_method(fun):
+    @functools.wraps(fun)
+    def _wrapped(*args, **kwargs):
+        if kwargs.pop('_async', False):
+            return fun(*args, **kwargs)
+        else:
+            return asyncio.get_event_loop().run_until_complete(fun(*args, **kwargs))
+
+    return _wrapped
 
 
 class Executor(object):
@@ -571,19 +496,19 @@ class Executor(object):
     _op_size_estimators = {}
     _graph_execution_cls = GraphExecution
 
-    class SyncProviderType(Enum):
+    class ThreadPoolExecutorType(Enum):
         THREAD = 0
-        GEVENT = 1
+        AIO = 1
         MOCK = 2
 
-    _sync_provider = {
-        SyncProviderType.MOCK: MockExecutorSyncProvider,
-        SyncProviderType.THREAD: ThreadExecutorSyncProvider,
-        SyncProviderType.GEVENT: GeventExecutorSyncProvider,
+    _thread_pool_executors = {
+        ThreadPoolExecutorType.MOCK: MockThreadPoolExecutor,
+        ThreadPoolExecutorType.AIO: AioThreadPool,
+        ThreadPoolExecutorType.THREAD: WrappedThreadPoolExecutor,
     }
 
     def __init__(self, engine=None, storage=None, prefetch=False,
-                 sync_provider_type=SyncProviderType.THREAD):
+                 sync_provider_type=ThreadPoolExecutorType.THREAD):
         self._engine = engine
         self._chunk_result = storage if storage is not None else dict()
         self._prefetch = prefetch
@@ -596,7 +521,7 @@ class Executor(object):
         # executed key to ref counts
         self.key_to_ref_counts = defaultdict(lambda: 0)
         # synchronous provider
-        self._sync_provider = self._sync_provider[sync_provider_type]
+        self._thread_pool_executor = self._thread_pool_executors[sync_provider_type]
 
         self._mock_max_memory = 0
 
@@ -634,9 +559,10 @@ class Executor(object):
                     return runner(results, op)
             raise KeyError('No handler found for op: %s' % op)
 
-    def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
-                      mock=False, no_intermediate=False, compose=True, retval=True,
-                      chunk_result=None):
+    @_wrap_async_executor_method
+    async def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
+                            mock=False, no_intermediate=False, compose=True, retval=True,
+                            chunk_result=None):
         """
         :param graph: graph to execute
         :param keys: result keys
@@ -666,20 +592,21 @@ class Executor(object):
         executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tileables.values()]))
         chunk_result = self._chunk_result if chunk_result is None else chunk_result
         graph_execution = self._graph_execution_cls(
-            chunk_result, optimized_graph, keys, executed_keys, self._sync_provider,
+            chunk_result, optimized_graph, keys, executed_keys, self._thread_pool_executor,
             n_parallel=n_parallel, engine=self._engine, prefetch=self._prefetch,
             print_progress=print_progress, mock=mock, mock_max_memory=self._mock_max_memory,
             fetch_keys=fetch_keys, no_intermediate=no_intermediate)
-        res = graph_execution.execute(retval)
+        res = await graph_execution.execute(retval)
         self._mock_max_memory = max(self._mock_max_memory, graph_execution._mock_max_memory)
         if mock:
             chunk_result.clear()
         return res
 
+    @_wrap_async_executor_method
     @kernel_mode
     @enter_build_mode
-    def execute_tileable(self, tileable, n_parallel=None, n_thread=None, concat=False,
-                         print_progress=False, mock=False, compose=True):
+    async def execute_tileable(self, tileable, n_parallel=None, n_thread=None, concat=False,
+                                     print_progress=False, mock=False, compose=True):
         result_keys = []
         tileable_data = tileable.data if hasattr(tileable, 'data') else tileable
 
@@ -698,9 +625,9 @@ class Executor(object):
         chunk_graph_builder = ChunkGraphBuilder(graph_cls=DirectedGraph, compose=compose,
                                                 on_tile_success=_on_tile_success)
         chunk_graph = chunk_graph_builder.build([tileable], tileable_graph=tileable_graph)
-        ret = self.execute_graph(chunk_graph, result_keys, n_parallel=n_parallel or n_thread,
-                                 print_progress=print_progress, mock=mock,
-                                 chunk_result=chunk_result)
+        ret = await self.execute_graph(chunk_graph, result_keys, n_parallel=n_parallel or n_thread,
+                                       print_progress=print_progress, mock=mock,
+                                       chunk_result=chunk_result, _async=True)
         self._chunk_result.update(chunk_result)
         return ret
 
@@ -740,10 +667,11 @@ class Executor(object):
         else:
             yield chunk_result
 
+    @_wrap_async_executor_method
     @kernel_mode
     @enter_build_mode
-    def execute_tileables(self, tileables, fetch=True, n_parallel=None, n_thread=None,
-                          print_progress=False, mock=False, compose=True):
+    async def execute_tileables(self, tileables, fetch=True, n_parallel=None, n_thread=None,
+                                print_progress=False, mock=False, compose=True):
         # shallow copy chunk_result, prevent from any chunk key decref
         chunk_result = self._chunk_result.copy()
         tileables = [tileable.data if hasattr(tileable, 'data') else tileable
@@ -822,16 +750,15 @@ class Executor(object):
                                 for n in get_tiled(inp).chunks:
                                     temp_result_keys.add(n.key)
                 # execute chunk graph
-                self.execute_graph(chunk_graph, list(temp_result_keys),
-                                   n_parallel=n_parallel or n_thread,
-                                   print_progress=print_progress, mock=mock,
-                                   chunk_result=chunk_result)
+                await self.execute_graph(chunk_graph, list(temp_result_keys),
+                                         n_parallel=n_parallel or n_thread,
+                                         print_progress=print_progress, mock=mock,
+                                         chunk_result=chunk_result, _async=True)
 
                 # update shape of tileable and its chunks whatever it's successful or not
                 self._update_chunk_shape(chunk_graph, chunk_result)
                 self._update_tileable_and_chunk_shape(
                     tileable_graph, chunk_result, chunk_graph_builder.interrupted_ops)
-
                 if chunk_graph_builder.done:
                     if len(intermediate_result_keys) > 0:
                         # failed before
@@ -889,8 +816,9 @@ class Executor(object):
             if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
                 raise ValueError('Only support fetch data slices')
 
+    @_wrap_async_executor_method
     @kernel_mode
-    def fetch_tileables(self, tileables, **kw):
+    async def fetch_tileables(self, tileables, **kw):
         from .tensor.indexing import TensorIndex
         from .dataframe.indexing.iloc import DataFrameIlocGetItem
 
@@ -909,7 +837,7 @@ class Executor(object):
 
         try:
             # if chunk executed, fetch chunk mechanism will be triggered in execute_tileables
-            return self.execute_tileables(tileables, **kw)
+            return await self.execute_tileables(tileables, _async=True, **kw)
         finally:
             for to_release_tileable in to_release_tileables:
                 for c in get_tiled(to_release_tileable).chunks:

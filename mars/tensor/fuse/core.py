@@ -27,7 +27,7 @@ class TensorFuseChunk(TensorFuse, TensorFuseChunkMixin):
         super().__init__(_dtype=dtype, _sparse=sparse, **kw)
 
 
-def estimate_fuse_size(ctx, op):
+async def estimate_fuse_size(ctx, op):
     from ...graph import DAG
     from ...executor import Executor
 
@@ -46,7 +46,7 @@ def estimate_fuse_size(ctx, op):
 
     executor = Executor(storage=size_ctx)
     output_keys = [o.key for o in op.outputs]
-    results = executor.execute_graph(dag, output_keys, mock=True, no_intermediate=True)
+    results = await executor.execute_graph(dag, output_keys, mock=True, no_intermediate=True, _async=True)
     ctx.update(zip(output_keys, results))
 
     # update with the maximal memory cost during the whole execution

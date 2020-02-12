@@ -42,8 +42,8 @@ class TensorCpFuseChunk(TensorFuse, TensorFuseChunkMixin):
         ctx[chunk.key] = func(*[ctx[i.key] for i in op.inputs])
 
     @classmethod
-    def estimate_size(cls, ctx, op):
-        estimate_fuse_size(ctx, op)
+    async def estimate_size(cls, ctx, op):
+        await estimate_fuse_size(ctx, op)
 
 
 # execution part

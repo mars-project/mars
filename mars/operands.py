@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import asyncio.locks
 import weakref
 from copy import deepcopy
 from enum import Enum
@@ -597,7 +598,7 @@ class SuccessorsExclusive(VirtualOperand, ObjectOperandMixin):
     def execute(cls, ctx, op):
         # only for local
         if ctx.running_mode == RunningMode.local:
-            ctx[op.outputs[0].key] = ctx.create_lock()
+            ctx[op.outputs[0].key] = asyncio.locks.Lock()
         else:  # pragma: no cover
             raise RuntimeError('Cannot execute SuccessorsExclusive '
                                'which is a virtual operand '

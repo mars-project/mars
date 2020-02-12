@@ -34,25 +34,37 @@ DEFAULT_PORT = 12345
 
 
 def create_actor_pool(*args, **kwargs):
-    address = kwargs.pop('address', None)
-    if not address:
-        return new_actor_pool(*args, **kwargs)
+    pool = None
 
-    if isinstance(address, str):
-        port = int(address.rsplit(':', 1)[1])
-    else:
-        port = DEFAULT_PORT
-    it = itertools.count(port)
+    class _AsyncContextManager:
+        async def __aenter__(self):
+            nonlocal pool
+            address = kwargs.pop('address', None)
+            if not address:
+                pool = new_actor_pool(*args, **kwargs)
+                return await pool.__aenter__()
 
-    auto_port = kwargs.pop('auto_port', True)
-    while True:
-        try:
-            address = '127.0.0.1:{0}'.format(next(it))
-            return new_actor_pool(address, *args, **kwargs)
-        except socket.error:
-            if auto_port:
-                continue
-            raise
+            if isinstance(address, str):
+                port = int(address.rsplit(':', 1)[1])
+            else:
+                port = DEFAULT_PORT
+            it = itertools.count(port)
+
+            auto_port = kwargs.pop('auto_port', True)
+            while True:
+                try:
+                    address = '127.0.0.1:{0}'.format(next(it))
+                    pool = new_actor_pool(address, *args, **kwargs)
+                    return await pool.__aenter__()
+                except (socket.error, OSError):
+                    if auto_port:
+                        continue
+                    raise
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            return await pool.__aexit__(exc_type, exc_val, exc_tb)
+
+    return _AsyncContextManager()
 
 
 class DummyActor(Actor):
@@ -1139,24 +1151,19 @@ class Test(unittest.TestCase):
             await asyncio.wait(ps, return_when=asyncio.ALL_COMPLETED)
 
     async def testRemoteBrokenPipe(self):
-        pool1 = await create_actor_pool(address=True, n_process=1)
-        addr = pool1.cluster_info.address
+        async with create_actor_pool(address=True, n_process=1) as pool1:
+            addr = pool1.cluster_info.address
 
-        try:
             client = new_client(parallel=1)
             # make client create a connection
             await client.create_actor(DummyActor, 10, address=addr)
 
-            # stop
-            await pool1.stop()
+        # the connection is broken
+        with self.assertRaises(BrokenPipeError):
+            await client.create_actor(DummyActor, 10, address=addr)
 
-            # the connection is broken
-            with self.assertRaises(BrokenPipeError):
-                await client.create_actor(DummyActor, 10, address=addr)
-
-            pool1 = await create_actor_pool(address=addr, n_process=1, auto_port=False)
+        async with create_actor_pool(address=addr, n_process=1, auto_port=False) as pool2:
+            await pool2.run()
 
             # create a new pool, so the actor can be created
             await client.create_actor(DummyActor, 10, address=addr)
-        finally:
-            await pool1.stop()

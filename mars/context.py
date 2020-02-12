@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import sys
 import threading
 import random
@@ -280,11 +281,11 @@ class DistributedContext(ContextBase):
     def session_id(self):
         return self._session_id
 
-    def get_scheduler_addresses(self):
-        return self._cluster_info.get_schedulers()
+    async def get_scheduler_addresses(self):
+        return await self._cluster_info.get_schedulers()
 
-    def get_worker_addresses(self):
-        return self._resource_actor_ref.get_worker_endpoints()
+    async def get_worker_addresses(self):
+        return await self._resource_actor_ref.get_worker_endpoints()
 
     def get_worker_metas(self):  # pragma: no cover
         return self._resource_actor_ref.get_worker_metas()
@@ -295,48 +296,49 @@ class DistributedContext(ContextBase):
     def get_ncores(self):
         return self._extra_info.get('n_cpu')
 
-    def get_chunk_results(self, chunk_keys: List[str]) -> List:
+    async def get_chunk_results(self, chunk_keys: List[str]) -> List:
         from .serialize import dataserializer
         from .worker.transfer import ResultSenderActor
 
-        all_workers = [m.workers for m in self.get_chunk_metas(chunk_keys)]
+        all_workers = [m.workers for m in await self.get_chunk_metas(chunk_keys)]
         results = []
         for chunk_key, endpoints in zip(chunk_keys, all_workers):
             sender_ref = self._actor_ctx.actor_ref(
                 ResultSenderActor.default_uid(), address=endpoints[-1])
             results.append(
-                dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk_key)))
+                dataserializer.loads(await sender_ref.fetch_data(self._session_id, chunk_key)))
         return results
 
     # Meta API
-    def get_tileable_metas(self, tileable_keys, filter_fields: List[str] = None) -> List:
-        return self._meta_api.get_tileable_metas(self._session_id, tileable_keys, filter_fields)
+    async def get_tileable_metas(self, tileable_keys, filter_fields: List[str] = None) -> List:
+        return await self._meta_api.get_tileable_metas(self._session_id, tileable_keys, filter_fields)
 
-    def get_chunk_metas(self, chunk_keys, filter_fields: List[str] = None) -> List:
-        return self._meta_api.get_chunk_metas(self._session_id, chunk_keys, filter_fields)
+    async def get_chunk_metas(self, chunk_keys, filter_fields: List[str] = None) -> List:
+        return await self._meta_api.get_chunk_metas(self._session_id, chunk_keys, filter_fields)
 
-    def get_tileable_key_by_name(self, name: str):
-        return self._meta_api.get_tileable_key_by_name(self._session_id, name)
+    async def get_tileable_key_by_name(self, name: str):
+        return await self._meta_api.get_tileable_key_by_name(self._session_id, name)
 
     # Worker API
-    def get_chunks_data(self, worker: str, chunk_keys: List[str], indexes: List = None,
-                        compression_types: List[str] = None):
-        return self._worker_api.get_chunks_data(self._session_id, worker, chunk_keys, indexes=indexes,
-                                                compression_types=compression_types)
+    async def get_chunks_data(self, worker: str, chunk_keys: List[str], indexes: List = None,
+                              compression_types: List[str] = None):
+        return await self._worker_api.get_chunks_data(
+            self._session_id, worker, chunk_keys, indexes=indexes, compression_types=compression_types)
 
     # Fetch tileable data by tileable keys and indexes.
-    def get_tileable_data(self, tileable_key: str, indexes: List = None,
-                          compression_types: List[str] = None):
+    async def get_tileable_data(self, tileable_key: str, indexes: List = None,
+                                compression_types: List[str] = None):
         from .serialize import dataserializer
         from .utils import merge_chunks
         from .tensor.datasource import empty
         from .tensor.indexing.index_lib import NDArrayIndexesHandler
 
-        nsplits, chunk_keys, chunk_indexes = self.get_tileable_metas([tileable_key])[0]
+        nsplits, chunk_keys, chunk_indexes = (await self.get_tileable_metas([tileable_key]))[0]
         chunk_idx_to_keys = dict(zip(chunk_indexes, chunk_keys))
         chunk_keys_to_idx = dict(zip(chunk_keys, chunk_indexes))
-        endpoints = self.get_chunk_metas(chunk_keys, filter_fields=['workers'])
-        chunk_keys_to_worker = dict((chunk_key, random.choice(es[0])) for es, chunk_key in zip(endpoints, chunk_keys))
+        endpoints = await self.get_chunk_metas(chunk_keys, filter_fields=['workers'])
+        chunk_keys_to_worker = dict((chunk_key, random.choice(es[0]))
+                                    for es, chunk_key in zip(endpoints, chunk_keys))
 
         chunk_workers = defaultdict(list)
         [chunk_workers[e].append(chunk_key) for chunk_key, e in chunk_keys_to_worker.items()]
@@ -345,8 +347,9 @@ class DistributedContext(ContextBase):
         if indexes is None or len(indexes) == 0:
             datas = []
             for endpoint, chunks in chunk_workers.items():
-                datas.append(self.get_chunks_data(endpoint, chunks, compression_types=compression_types))
-            datas = [d.result() for d in datas]
+                datas.append(asyncio.ensure_future(
+                    self.get_chunks_data(endpoint, chunks, compression_types=compression_types)))
+            datas = [await d for d in datas]
             for (endpoint, chunks), d in zip(chunk_workers.items(), datas):
                 d = [dataserializer.loads(db) for db in d]
                 chunk_results.update(dict(zip([chunk_keys_to_idx[k] for k in chunks], d)))
@@ -382,10 +385,10 @@ class DistributedContext(ContextBase):
                         to_fetch_indexes.append(index_obj)
                         to_fetch_idx.append(chunk_index)
                 if to_fetch_keys:
-                    datas = self.get_chunks_data(endpoint, to_fetch_keys, indexes=to_fetch_indexes,
-                                                 compression_types=compression_types)
+                    datas = asyncio.ensure_future(self.get_chunks_data(
+                        endpoint, to_fetch_keys, indexes=to_fetch_indexes, compression_types=compression_types))
                     chunk_datas[tuple(to_fetch_idx)] = datas
-            chunk_datas = dict((k, v.result()) for k, v in chunk_datas.items())
+            chunk_datas = dict([(k, await v) for k, v in chunk_datas.items()])
             for idx, d in chunk_datas.items():
                 d = [dataserializer.loads(db) for db in d]
                 chunk_results.update(dict(zip(idx, d)))

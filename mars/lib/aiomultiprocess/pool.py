@@ -27,7 +27,7 @@ class PoolWorker(Process):
         rx: Queue,
         ttl: int = MAX_TASKS_PER_CHILD,
         concurrency: int = CHILD_CONCURRENCY,
-        *,
+        *_,
         initializer: Optional[Callable] = None,
         initargs: Sequence[Any] = (),
     ) -> None:
