@@ -48,7 +48,8 @@ if faiss is not None:
     METRIC_TO_FAISS_METRIC_TYPE = {
         'l2': faiss.METRIC_L2,
         'euclidean': faiss.METRIC_L2,
-        'innerproduct': faiss.METRIC_INNER_PRODUCT
+        'innerproduct': faiss.METRIC_INNER_PRODUCT,
+        'cosine': faiss.METRIC_INNER_PRODUCT,
     }
 else:  # pragma: no cover
     METRIC_TO_FAISS_METRIC_TYPE = {}
@@ -225,6 +226,12 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
                 sampled = inp[sample_indices]
                 index.train(sampled)
 
+            if op.metric == 'cosine':
+                # faiss does not support cosine distances directly,
+                # data needs to be normalize before adding to index,
+                # refer to:
+                # https://github.com/facebookresearch/faiss/wiki/FAQ#how-can-i-index-vectors-for-cosine-distance
+                faiss.normalize_L2(inp)
             # add vectors to index
             index.add(inp)
 
@@ -255,6 +262,12 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
                 else:
                     # distribution no the same, train on each chunk
                     trained_index.train(data)
+            if op.metric == 'cosine':
+                # faiss does not support cosine distances directly,
+                # data needs to be normalize before adding to index,
+                # refer to:
+                # https://github.com/facebookresearch/faiss/wiki/FAQ#how-can-i-index-vectors-for-cosine-distance
+                faiss.normalize_L2(data)
             # add data into index
             trained_index.add(data)
 
@@ -444,14 +457,16 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
 
     _input = KeyField('input')
     _faiss_index = KeyField('faiss_index')
+    _metric = StringField('metric')
     _n_neighbors = Int32Field('n_neighbors')
     _return_distance = BoolField('return_distance')
     # for test purpose, could be 'object', 'filename' or 'bytes'
     _return_index_type = StringField('return_index_type')
 
-    def __init__(self, faiss_index=None, n_neighbors=None, return_distance=None,
-                 return_index_type=None, output_types=None, gpu=None, **kw):
-        super().__init__(_faiss_index=faiss_index, _n_neighbors=n_neighbors,
+    def __init__(self, faiss_index=None, metric=None, n_neighbors=None,
+                 return_distance=None, return_index_type=None,
+                 output_types=None, gpu=None, **kw):
+        super().__init__(_faiss_index=faiss_index, _n_neighbors=n_neighbors, _metric=metric,
                          _return_distance=return_distance, _output_types=output_types,
                          _return_index_type=return_index_type, _gpu=gpu, **kw)
         if self._output_types is None:
@@ -464,6 +479,10 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
     @property
     def faiss_index(self):
         return self._faiss_index
+
+    @property
+    def metric(self):
+        return self._metric
 
     @property
     def n_neighbors(self):
@@ -504,7 +523,7 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        in_tensor = op.input
+        in_tensor = astensor(op.input)
 
         if in_tensor.chunk_shape[1] != 1:
             check_chunks_unknown_shape([in_tensor], TilesError)
@@ -561,10 +580,20 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
                 index = faiss.IndexShards(indexes[0].d)
                 [index.add_shard(ind) for ind in indexes]
 
+            if op.metric == 'cosine':
+                # faiss does not support cosine distances directly,
+                # data needs to be normalize before searching,
+                # refer to:
+                # https://github.com/facebookresearch/faiss/wiki/FAQ#how-can-i-index-vectors-for-cosine-distance
+                faiss.normalize_L2(y)
             distances, indices = index.search(y, op.n_neighbors)
             if op.return_distance:
                 if index.metric_type == faiss.METRIC_L2:
+                    # make it equivalent to `pairwise.euclidean_distances`
                     distances = xp.sqrt(distances, out=distances)
+                elif op.metric == 'cosine':
+                    # make it equivalent to `pairwise.cosine_distances`
+                    distances = xp.subtract(1, distances, out=distances)
                 ctx[op.outputs[0].key] = distances
             ctx[op.outputs[-1].key] = indices
 
@@ -573,7 +602,7 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
 def faiss_query(faiss_index, data, n_neighbors, return_distance=True):
     data = astensor(data)
     op = FaissQuery(faiss_index=faiss_index, n_neighbors=n_neighbors,
-                    return_distance=return_distance,
+                    metric=faiss_index.op.metric, return_distance=return_distance,
                     return_index_type=faiss_index.op.return_index_type,
                     gpu=data.op.gpu)
     return op(data)

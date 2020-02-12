@@ -767,6 +767,7 @@ def copy_tileables(tileables: List, **kwargs):
 def require_not_none(obj):
     def wrap(func):
         if obj is not None:
+            @functools.wraps(func)
             def inner(*args, **kwargs):
                 return func(*args, **kwargs)
             return inner
@@ -780,6 +781,7 @@ def require_module(module: str):
         try:
             importlib.import_module(module)
 
+            @functools.wraps(func)
             def inner(*args, **kwargs):
                 return func(*args, **kwargs)
             return inner

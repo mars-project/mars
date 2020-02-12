@@ -115,18 +115,25 @@ class Test(unittest.TestCase):
         n = 50
         n_test = 10
         x = np.random.RandomState(0).rand(n, d).astype(np.float32)
-        y = np.random.RandomState(0).rand(n_test, d).astype(np.float32)
+        y = np.random.RandomState(1).rand(n_test, d).astype(np.float32)
 
-        for X, Y in [(mt.tensor(x, chunk_size=20), mt.tensor(y, chunk_size=5)),
-                     (mt.tensor(x, chunk_size=50), mt.tensor(y, chunk_size=10))]:
-            faiss_index = build_faiss_index(X, 'Flat', None,
-                                            random_state=0, return_index_type='object')
-            d, i = faiss_query(faiss_index, Y, 5)
-            distance, indices = self.executor.execute_tensors([d, i])
+        test_tensors = [
+            # multi chunks
+            (mt.tensor(x, chunk_size=(20, 5)), mt.tensor(y, chunk_size=5)),
+            # one chunk
+            (mt.tensor(x, chunk_size=50), mt.tensor(y, chunk_size=10))
+        ]
 
-            nn = NearestNeighbors(algorithm='kd_tree')
-            nn.fit(x)
-            expected_distance, expected_indices = nn.kneighbors(y, 5)
+        for X, Y in test_tensors:
+            for metric in ['l2', 'cosine']:
+                faiss_index = build_faiss_index(X, 'Flat', None, metric=metric,
+                                                random_state=0, return_index_type='object')
+                d, i = faiss_query(faiss_index, Y, 5)
+                distance, indices = self.executor.execute_tensors([d, i])
 
-            np.testing.assert_array_equal(indices, expected_indices.fetch())
-            np.testing.assert_almost_equal(distance, expected_distance.fetch())
+                nn = NearestNeighbors(metric=metric)
+                nn.fit(x)
+                expected_distance, expected_indices = nn.kneighbors(y, 5)
+
+                np.testing.assert_array_equal(indices, expected_indices.fetch())
+                np.testing.assert_almost_equal(distance, expected_distance.fetch())
