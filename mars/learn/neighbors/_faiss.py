@@ -14,6 +14,7 @@
 
 import atexit
 import os
+import operator
 import tempfile
 from enum import Enum
 
@@ -26,7 +27,8 @@ except ImportError:  # pragma: no cover
 from ... import opcodes as OperandDef
 from ...context import RunningMode
 from ...operands import OperandStage
-from ...serialize import KeyField, StringField, Int64Field, Int32Field, BoolField
+from ...serialize import KeyField, StringField, Int64Field, \
+    Int32Field, BoolField, Int8Field
 from ...tiles import TilesError
 from ...tensor import tensor as astensor
 from ...tensor.core import TensorOrder
@@ -38,10 +40,10 @@ from ..operands import LearnOperand, LearnOperandMixin, OutputType
 
 
 class MemoryRequirementGrade(Enum):
-    lower = 0
+    minimum = 0
     low = 1
     high = 2
-    higher = 3
+    maximum = 3
 
 
 if faiss is not None:
@@ -65,15 +67,21 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
     _n_sample = Int64Field('n_sample')
     _seed = Int32Field('seed')
     _same_distribution = BoolField('same_distribution')
+    _accuracy = BoolField('accuracy')
+    _memory_require = Int8Field('memory_require',
+                                on_serialize=operator.attrgetter('value'),
+                                on_deserialize=MemoryRequirementGrade)
     # for test purpose, could be 'object', 'filename' or 'bytes'
     _return_index_type = StringField('return_index_type')
 
     def __init__(self, metric=None, faiss_index=None, n_sample=None, seed=None,
-                 same_distribution=None, return_index_type=None, stage=None,
-                 output_types=None, gpu=None, **kw):
+                 same_distribution=None, return_index_type=None,
+                 accuracy=None, memory_require=None,
+                 stage=None, output_types=None, gpu=None, **kw):
         super().__init__(_metric=metric, _faiss_index=faiss_index, _n_sample=n_sample,
                          _seed=seed, _same_distribution=same_distribution,
-                         _return_index_type=return_index_type, _gpu=gpu,
+                         _return_index_type=return_index_type,
+                         _accuracy=accuracy, _memory_require=memory_require, _gpu=gpu,
                          _stage=stage, _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
@@ -107,6 +115,14 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         return self._same_distribution
 
     @property
+    def accuracy(self):
+        return self._accuracy
+
+    @property
+    def memory_require(self):
+        return self._memory_require
+
+    @property
     def return_index_type(self):
         return self._return_index_type
 
@@ -122,19 +138,27 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         check_chunks_unknown_shape(op.inputs, TilesError)
 
         in_tensor = astensor(op.input, np.dtype(np.float32))
+        if op.faiss_index == 'auto':
+            faiss_index, n_sample = _gen_index_string_and_sample_count(
+                in_tensor.shape, op.n_sample, op.accuracy, op.memory_require,
+                gpu=op.gpu, **op.extra_params)
+        else:
+            faiss_index, n_sample = op.faiss_index, op.n_sample
 
         if len(in_tensor.chunks) == 1:
-            return cls._tile_one_chunk(op)
+            return cls._tile_one_chunk(op, faiss_index, n_sample)
 
         if in_tensor.chunk_shape[1] != 1:
             # make sure axis 1 has 1 chunk
             in_tensor = in_tensor.rechunk({1: in_tensor.shape[1]})._inplace_tile()
-        return cls._tile_chunks(op, in_tensor)
+        return cls._tile_chunks(op, in_tensor, faiss_index, n_sample)
 
     @classmethod
-    def _tile_one_chunk(cls, op):
+    def _tile_one_chunk(cls, op, faiss_index, n_sample):
         in_chunk = op.input.chunks[0]
         chunk_op = op.copy().reset_key()
+        chunk_op._faiss_index = faiss_index
+        chunk_op._n_sample = n_sample
         chunk = chunk_op.new_chunk([in_chunk], index=in_chunk.index)
 
         new_op = op.copy()
@@ -144,7 +168,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod
-    def _tile_chunks(cls, op, in_tensor):
+    def _tile_chunks(cls, op, in_tensor, faiss_index, n_sample):
         """
         If the distribution on each chunk is the same,
         refer to:
@@ -154,15 +178,13 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         2. for each node, load the trained index, add the local data to it, store the resulting populated index
         3. on a central node, load all the populated indexes and merge them.
         """
-        n_sample = op.n_sample
-
-        faiss_index = faiss.index_factory(in_tensor.shape[1], op.faiss_index,
-                                          op.faiss_metric_type)
+        faiss_index_ = faiss.index_factory(in_tensor.shape[1], faiss_index,
+                                           op.faiss_metric_type)
         # Training on sample data when two conditions meet
         # 1. the index type requires for training, e.g. Flat does not require
         # 2. distributions of chunks are the same, in not,
         #    train separately on each chunk data
-        need_sample_train = not faiss_index.is_trained and op.same_distribution
+        need_sample_train = not faiss_index_.is_trained and op.same_distribution
 
         train_chunk = None
         if need_sample_train:
@@ -173,7 +195,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             sample_tensor = recursive_tile(in_tensor[sampled_index])
             assert len(sample_tensor.chunks) == 1
             sample_chunk = sample_tensor.chunks[0]
-            train_op = FaissTrainSampledIndex(faiss_index=op.faiss_index, metric=op.metric,
+            train_op = FaissTrainSampledIndex(faiss_index=faiss_index, metric=op.metric,
                                               return_index_type=op.return_index_type)
             train_chunk = train_op.new_chunk([sample_chunk])
 
@@ -182,6 +204,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         for i, chunk in enumerate(in_tensor.chunks):
             build_index_op = op.copy().reset_key()
             build_index_op._stage = OperandStage.map
+            build_index_op._faiss_index = faiss_index
             if train_chunk is not None:
                 build_index_chunk = build_index_op.new_chunk(
                     [chunk, train_chunk], index=(i,))
@@ -194,6 +217,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             assert op.n_sample is not None
             # merge all indices into one, do only when trained on sample data
             out_chunk_op = op.copy().reset_key()
+            out_chunk_op._faiss_index = faiss_index
             out_chunk_op._stage = OperandStage.agg
             out_chunk = out_chunk_op.new_chunk(build_index_chunks, index=(0,))
             out_chunks.append(out_chunk)
@@ -428,9 +452,84 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
                 ctx, op, index, device_id)
 
 
+def _gen_index_string_and_sample_count(shape, n_sample, accuracy, memory_require, gpu=False, **kw):
+    """
+    Generate index string and sample count according to guidance of faiss:
+    https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
+    """
+    size, dim = shape
+    memory_require = _get_memory_require(memory_require)
+
+    if accuracy or size < 10 ** 5:
+        # Flat is the only index that guarantees exact results
+        # no need to train, thus sample count is None
+        return 'Flat', None
+
+    if memory_require == MemoryRequirementGrade.maximum and not gpu:
+        x = kw.get('M', 32)  # get medium number by default
+        if x < 4 or x > 64:
+            raise ValueError('HNSWx requires M that between 4 and 64, '
+                             'got {}'.format(x))
+        return 'HNSW%d' % x, None
+
+    if memory_require in (MemoryRequirementGrade.high, MemoryRequirementGrade.maximum):
+        basement = '{},Flat'
+    elif memory_require == MemoryRequirementGrade.low:
+        x = kw.get('dim', dim // 2)
+        basement = 'PCAR%d,{},SQ8' % x
+    elif memory_require == MemoryRequirementGrade.minimum:
+        x = kw.get('M', min(64, dim // 2))
+        if x > 64:
+            raise ValueError('PQx requires M <= 64, got {}'.format(x))
+        y = kw.get('dim', None)
+        if y is not None and y % x != 0:
+            raise ValueError('OPQx_y requires dim is a multiple of M({}), '
+                             'got dim: {}'.format(x, y))
+        y = min(dim, 4 * x)
+        y = x * (y // x)  # make sure y is a multiple of x
+        basement = 'OPQ%(x)d_%(y)d,{},PQ%(x)d' % {'x': x, 'y': y}
+    else:  # pragma: no cover
+        raise ValueError('unknown memory require')
+
+    # now choose the clustering options
+    if size < 10 ** 6 or (size < 10 ** 7 and gpu):
+        # < 1M, or <10M but need GPU
+        k = kw.get('k', 5 * int(np.sqrt(size)))
+        if k < 4 * int(np.sqrt(size)) or k > 16 * int(np.sqrt(size)):
+            raise ValueError('k should be between 4 * sqrt(N) and 16 * sqrt(N), '
+                             'got {}'.format(k))
+        index_str = basement.format('IVF%d' % k)
+        if n_sample is None:
+            # 30 * k - 256 * k
+            n_sample = min(30 * k, size)
+    elif size < 10 ** 7 and not gpu:
+        # 1M - 10M
+        index_str = basement.format('IVF65536_HNSW32')
+        if n_sample is None:
+            # between 30 * 65536 and 256 * 65536
+            n_sample = 32 * 65536
+    elif size < 10 ** 8:
+        index_str = basement.format('IVF65536_HNSW32')
+        n_sample = 64 * 65536 if n_sample is None else n_sample
+    else:
+        index_str = basement.format('IVF1048576_HNSW32')
+        n_sample = 64 * 65536 if n_sample is None else n_sample
+
+    return index_str, n_sample
+
+
+def _get_memory_require(memory_require):
+    if isinstance(memory_require, str):
+        return getattr(MemoryRequirementGrade, memory_require)
+    elif isinstance(memory_require, MemoryRequirementGrade):
+        return memory_require
+    return MemoryRequirementGrade(memory_require)
+
+
 @require_not_none(faiss)
-def build_faiss_index(X, index_name, n_sample, metric="euclidean",
-                      random_state=None, same_distribution=True, **kw):
+def build_faiss_index(X, index_name='auto', n_sample=None, metric="euclidean",
+                      random_state=None, same_distribution=True,
+                      accuracy=False, memory_require=None, **kw):
     X = astensor(X)
 
     if metric not in METRIC_TO_FAISS_METRIC_TYPE:
@@ -446,9 +545,14 @@ def build_faiss_index(X, index_name, n_sample, metric="euclidean",
     if isinstance(rs, RandomState):
         rs = rs.to_numpy()
     seed = gen_random_seeds(1, rs)[0]
+    if memory_require is None:
+        memory_require = MemoryRequirementGrade.low
+    else:
+        memory_require = _get_memory_require(memory_require)
     op = FaissBuildIndex(faiss_index=index_name, metric=metric,
                          n_sample=n_sample, gpu=X.op.gpu, seed=seed,
-                         same_distribution=same_distribution, **kw)
+                         same_distribution=same_distribution,
+                         accuracy=accuracy, memory_require=memory_require, **kw)
     return op(X)
 
 
@@ -460,15 +564,16 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
     _metric = StringField('metric')
     _n_neighbors = Int32Field('n_neighbors')
     _return_distance = BoolField('return_distance')
+    _nprobe = Int64Field('nprobe')
     # for test purpose, could be 'object', 'filename' or 'bytes'
     _return_index_type = StringField('return_index_type')
 
     def __init__(self, faiss_index=None, metric=None, n_neighbors=None,
                  return_distance=None, return_index_type=None,
-                 output_types=None, gpu=None, **kw):
+                 nprobe=None, output_types=None, gpu=None, **kw):
         super().__init__(_faiss_index=faiss_index, _n_neighbors=n_neighbors, _metric=metric,
                          _return_distance=return_distance, _output_types=output_types,
-                         _return_index_type=return_index_type, _gpu=gpu, **kw)
+                         _nprobe=nprobe, _return_index_type=return_index_type, _gpu=gpu, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor] * self.output_limit
 
@@ -487,6 +592,10 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
     @property
     def n_neighbors(self):
         return self._n_neighbors
+
+    @property
+    def nprobe(self):
+        return self._nprobe
 
     @property
     def return_distance(self):
@@ -586,6 +695,10 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
                 # refer to:
                 # https://github.com/facebookresearch/faiss/wiki/FAQ#how-can-i-index-vectors-for-cosine-distance
                 faiss.normalize_L2(y)
+
+            if op.nprobe is not None:
+                index.nprobe = op.nprobe
+
             distances, indices = index.search(y, op.n_neighbors)
             if op.return_distance:
                 if index.metric_type == faiss.METRIC_L2:
@@ -599,10 +712,10 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
 
 
 @require_not_none(faiss)
-def faiss_query(faiss_index, data, n_neighbors, return_distance=True):
+def faiss_query(faiss_index, data, n_neighbors, return_distance=True, nprobe=None):
     data = astensor(data)
     op = FaissQuery(faiss_index=faiss_index, n_neighbors=n_neighbors,
                     metric=faiss_index.op.metric, return_distance=return_distance,
                     return_index_type=faiss_index.op.return_index_type,
-                    gpu=data.op.gpu)
+                    nprobe=nprobe, gpu=data.op.gpu)
     return op(data)

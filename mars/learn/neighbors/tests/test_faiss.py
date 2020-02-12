@@ -21,7 +21,8 @@ except ImportError:  # pragma: no cover
     faiss = None
 
 from mars import tensor as mt
-from mars.learn.neighbors._faiss import build_faiss_index, _load_index, faiss_query
+from mars.learn.neighbors._faiss import build_faiss_index, _load_index, \
+    faiss_query, _gen_index_string_and_sample_count
 from mars.learn.neighbors import NearestNeighbors
 from mars.tiles import get_tiled
 from mars.tests.core import ExecutorForTest
@@ -128,7 +129,7 @@ class Test(unittest.TestCase):
             for metric in ['l2', 'cosine']:
                 faiss_index = build_faiss_index(X, 'Flat', None, metric=metric,
                                                 random_state=0, return_index_type='object')
-                d, i = faiss_query(faiss_index, Y, 5)
+                d, i = faiss_query(faiss_index, Y, 5, nprobe=10)
                 distance, indices = self.executor.execute_tensors([d, i])
 
                 nn = NearestNeighbors(metric=metric)
@@ -137,3 +138,74 @@ class Test(unittest.TestCase):
 
                 np.testing.assert_array_equal(indices, expected_indices.fetch())
                 np.testing.assert_almost_equal(distance, expected_distance.fetch())
+
+    def testGenIndexStringAndSampleCount(self):
+        d = 32
+
+        # accuracy=True, could be Flat only
+        ret = _gen_index_string_and_sample_count((10 ** 9, d), None, True, 'minimum')
+        self.assertEqual(ret, ('Flat', None))
+
+        # no memory concern
+        ret = _gen_index_string_and_sample_count((10 ** 5, d), None, False, 'maximum')
+        self.assertEqual(ret, ('HNSW32', None))
+        index = faiss.index_factory(d, ret[0])
+        self.assertTrue(index.is_trained)
+
+        # memory concern not much
+        ret = _gen_index_string_and_sample_count((10 ** 5, d), None, False, 'high')
+        self.assertEqual(ret, ('IVF1580,Flat', 47400))
+        index = faiss.index_factory(d, ret[0])
+        self.assertFalse(index.is_trained)
+
+        # memory quite important
+        ret = _gen_index_string_and_sample_count((5 * 10 ** 6, d), None, False, 'low')
+        self.assertEqual(ret, ('PCAR16,IVF65536_HNSW32,SQ8', 32 * 65536))
+        index = faiss.index_factory(d, ret[0])
+        self.assertFalse(index.is_trained)
+
+        # memory very important
+        ret = _gen_index_string_and_sample_count((10 ** 8, d), None, False, 'minimum')
+        self.assertEqual(ret, ('OPQ16_32,IVF1048576_HNSW32,PQ16', 64 * 65536))
+        index = faiss.index_factory(d, ret[0])
+        self.assertFalse(index.is_trained)
+
+        ret = _gen_index_string_and_sample_count((10 ** 10, d), None, False, 'low')
+        self.assertEqual(ret, ('PCAR16,IVF1048576_HNSW32,SQ8', 64 * 65536))
+        index = faiss.index_factory(d, ret[0])
+        self.assertFalse(index.is_trained)
+
+        with self.assertRaises(ValueError):
+            # M > 64 raise error
+            _gen_index_string_and_sample_count((10 ** 5, d), None, False, 'maximum', M=128)
+
+        with self.assertRaises(ValueError):
+            # M > 64
+            _gen_index_string_and_sample_count((10 ** 5, d), None, False, 'minimum', M=128)
+
+        with self.assertRaises(ValueError):
+            # dim should be multiple of M
+            _gen_index_string_and_sample_count((10 ** 5, d), None, False, 'minimum', M=16, dim=17)
+
+        with self.assertRaises(ValueError):
+            _gen_index_string_and_sample_count((10 ** 5, d), None, False, 'low', k=5)
+
+    def testAutoIndex(self):
+        d = 8
+        n = 50
+        n_test = 10
+        x = np.random.RandomState(0).rand(n, d).astype(np.float32)
+        y = np.random.RandomState(1).rand(n_test, d).astype(np.float32)
+
+        for chunk_size in (50, 20):
+            X = mt.tensor(x, chunk_size=chunk_size)
+
+            faiss_index = build_faiss_index(X, random_state=0, return_index_type='object')
+            d, i = faiss_query(faiss_index, y, 5, nprobe=10)
+            indices = self.executor.execute_tensor(i, concat=True)[0]
+
+            nn = NearestNeighbors()
+            nn.fit(x)
+            expected_indices = nn.kneighbors(y, 5, return_distance=False)
+
+            np.testing.assert_array_equal(indices, expected_indices)
