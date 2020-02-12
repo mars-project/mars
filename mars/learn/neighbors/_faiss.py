@@ -137,7 +137,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
     def tile(cls, op):
         check_chunks_unknown_shape(op.inputs, TilesError)
 
-        in_tensor = astensor(op.input, np.dtype(np.float32))
+        in_tensor = astensor(op.input, np.dtype(np.float32))._inplace_tile()
         if op.faiss_index == 'auto':
             faiss_index, n_sample = _gen_index_string_and_sample_count(
                 in_tensor.shape, op.n_sample, op.accuracy, op.memory_require,
@@ -681,7 +681,7 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
                    for index in op.inputs[1:]]
 
         with device(device_id):
-            y = xp.ascontiguousarray(y)
+            y = xp.ascontiguousarray(y, dtype=np.float32)
 
             if len(indexes) == 1:
                 index = indexes[0]
@@ -718,4 +718,7 @@ def faiss_query(faiss_index, data, n_neighbors, return_distance=True, nprobe=Non
                     metric=faiss_index.op.metric, return_distance=return_distance,
                     return_index_type=faiss_index.op.return_index_type,
                     nprobe=nprobe, gpu=data.op.gpu)
-    return op(data)
+    ret = op(data)
+    if not return_distance:
+        return ret[0]
+    return ret

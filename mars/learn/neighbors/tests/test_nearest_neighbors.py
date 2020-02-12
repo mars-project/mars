@@ -17,6 +17,10 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 try:
+    import faiss
+except ImportError:  # pragma: no cover
+    faiss = None
+try:
     from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
     from sklearn.neighbors import BallTree as SkBallTree
     from sklearn.neighbors import KDTree as SkKDTree
@@ -218,4 +222,42 @@ class Test(unittest.TestCase):
 
         result = [r.fetch() for r in ret]
         np.testing.assert_almost_equal(result[0], expected[0])
+        np.testing.assert_almost_equal(result[1], expected[1])
+
+    @unittest.skipIf(faiss is None, 'faiss not installed')
+    def testFaissNearestNeighborsExecution(self):
+        rs = np.random.RandomState(0)
+        raw_X = rs.rand(10, 5)
+        raw_Y = rs.rand(8, 5)
+
+        # test faiss execution
+        X = mt.tensor(raw_X, chunk_size=7)
+        Y = mt.tensor(raw_Y, chunk_size=(5, 3))
+
+        nn = NearestNeighbors(n_neighbors=3, algorithm='faiss', metric='l2')
+        nn.fit(X)
+
+        ret = nn.kneighbors(Y)
+
+        snn = SkNearestNeighbors(n_neighbors=3, algorithm='auto', metric='l2')
+        snn.fit(raw_X)
+        expected = snn.kneighbors(raw_Y)
+
+        result = [r.fetch() for r in ret]
+        np.testing.assert_almost_equal(result[0], expected[0], decimal=6)
+        np.testing.assert_almost_equal(result[1], expected[1])
+
+        # test return_distance=False
+        ret = nn.kneighbors(Y, return_distance=False)
+
+        result = ret.fetch()
+        np.testing.assert_almost_equal(result, expected[1])
+
+        # test y is x
+        ret = nn.kneighbors()
+
+        expected = snn.kneighbors()
+
+        result = [r.fetch() for r in ret]
+        np.testing.assert_almost_equal(result[0], expected[0], decimal=5)
         np.testing.assert_almost_equal(result[1], expected[1])

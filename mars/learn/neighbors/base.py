@@ -27,6 +27,7 @@ from ..utils import check_array
 from ..utils.validation import check_is_fitted
 from ._ball_tree import BallTree, ball_tree_query, SklearnBallTree
 from ._kd_tree import KDTree, kd_tree_query, SklearnKDTree
+from ._faiss import build_faiss_index, faiss_query, METRIC_TO_FAISS_METRIC_TYPE
 
 
 VALID_METRICS = dict(ball_tree=SklearnBallTree.valid_metrics,
@@ -40,7 +41,8 @@ VALID_METRICS = dict(ball_tree=SklearnBallTree.valid_metrics,
                              'matching', 'minkowski', 'rogerstanimoto',
                              'russellrao', 'seuclidean', 'sokalmichener',
                              'sokalsneath', 'sqeuclidean',
-                             'yule', 'wminkowski']))
+                             'yule', 'wminkowski']),
+                     faiss=list(METRIC_TO_FAISS_METRIC_TYPE),)
 
 
 VALID_METRICS_SPARSE = dict(ball_tree=[],
@@ -68,8 +70,7 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
         self._check_algorithm_metric()
 
     def _check_algorithm_metric(self):
-        if self.algorithm not in ['auto', 'brute',
-                                  'kd_tree', 'ball_tree']:
+        if self.algorithm not in ['auto', 'brute', 'kd_tree', 'ball_tree', 'faiss']:
             raise ValueError("unrecognized algorithm: '%s'" % self.algorithm)
 
         if self.algorithm == 'auto':
@@ -204,6 +205,11 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
                 tree.execute(session=session, **(run_kwargs or dict())))
         elif self._fit_method == 'brute':
             self._tree = None
+        elif self._fit_method == 'faiss':
+            faiss_index = build_faiss_index(X, metric=self.effective_metric_,
+                                            **self.effective_metric_params_)
+            faiss_index.execute(session=session, fetch=False, **(run_kwargs or dict()))
+            self._faiss_index = faiss_index
         else:  # pragma: no cover
             raise ValueError("algorithm = '%s' not recognized"
                              % self.algorithm)
@@ -228,7 +234,7 @@ class KNeighborsMixin:
     """Mixin for k-neighbors searches"""
 
     def kneighbors(self, X=None, n_neighbors=None, return_distance=True,
-                   session=None, run_kwargs=None):
+                   session=None, run_kwargs=None, **kw):
         check_is_fitted(self, ["_fit_method", "_fit_X"], all_or_any=any)
 
         if n_neighbors is None:
@@ -289,6 +295,12 @@ class KNeighborsMixin:
 
             query = ball_tree_query if self._fit_method == 'ball_tree' else kd_tree_query
             result = query(self._tree, X, n_neighbors, return_distance)
+        elif self._fit_method == 'faiss':
+            if X.issparse():
+                raise ValueError(
+                    "%s does not work with sparse matrices. Densify the data, "
+                    "or set algorithm='brute'" % self._fit_method)
+            result = faiss_query(self._faiss_index, X, n_neighbors, return_distance, **kw)
         else:  # pragma: no cover
             raise ValueError("internal: _fit_method not recognized")
 
