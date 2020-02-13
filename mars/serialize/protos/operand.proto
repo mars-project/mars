@@ -406,8 +406,9 @@ message OperandDef {
         KD_TREE_QUERY = 2231;
         BALL_TREE_TRAIN = 2232;
         BALL_TREE_QUERY = 2233;
-        FAISS_TRAIN = 2234;
-        FAISS_QUERY = 2235;
+        FAISS_BUILD_INDEX = 2234;
+        FAISS_TRAIN_SAMPLED_INDEX = 2235;
+        FAISS_QUERY = 2236;
 
         // XGBoost
         XGBOOST_TRAIN = 3001;

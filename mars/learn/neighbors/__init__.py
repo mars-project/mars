@@ -19,7 +19,7 @@ except ImportError:  # pragma: no cover
 
 
 def register_op():
-    from .ball_tree import BallTree, BallTreeQuery
-    from .kd_tree import KDTree, KDTreeQuery
+    from ._ball_tree import BallTree, BallTreeQuery
+    from ._kd_tree import KDTree, KDTreeQuery
 
     del BallTree, BallTreeQuery, KDTree, KDTreeQuery

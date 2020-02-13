@@ -13,42 +13,41 @@
 # limitations under the License.
 
 try:
-    from sklearn.neighbors.ball_tree import BallTree as SkBallTree
+    from sklearn.neighbors import KDTree as SklearnKDTree
 except ImportError:  # pragma: no cover
-    SkBallTree = None
+    SklearnKDTree = None
 
 from ... import opcodes as OperandDef
 from ...utils import require_not_none
 from .tree import TreeBase, TreeQueryBase
 
 
-@require_not_none(SkBallTree)
-class _BallTree(TreeBase):
-    _op_type_ = OperandDef.BALL_TREE_TRAIN
-    _tree_type = SkBallTree
+@require_not_none(SklearnKDTree)
+class _KDTree(TreeBase):
+    _op_type_ = OperandDef.KD_TREE_TRAIN
+    _tree_type = SklearnKDTree
 
 
-@require_not_none(SkBallTree)
-class BallTreeQuery(TreeQueryBase):
-    _op_type_ = OperandDef.BALL_TREE_QUERY
-    _tree_type = SkBallTree
+@require_not_none(SklearnKDTree)
+class KDTreeQuery(TreeQueryBase):
+    _op_type_ = OperandDef.KD_TREE_QUERY
+    _tree_type = SklearnKDTree
 
 
-@require_not_none(SkBallTree)
-def ball_tree_query(tree, data, n_neighbors, return_distance):
-    op = BallTreeQuery(tree=tree, n_neighbors=n_neighbors,
-                       return_distance=return_distance)
+@require_not_none(SklearnKDTree)
+def kd_tree_query(tree, data, n_neighbors, return_distance):
+    op = KDTreeQuery(tree=tree, n_neighbors=n_neighbors,
+                     return_distance=return_distance)
     ret = op(data)
     if not return_distance:
         return ret[0]
     return ret
 
 
-@require_not_none(SkBallTree)
-def BallTree(X, leaf_size, metric=None, **metric_params):
-    metric_func = None
-    if callable(metric):
-        metric_func, metric = metric, None
-    op = _BallTree(leaf_size=leaf_size, metric=metric, metric_func=metric_func,
-                   **metric_params)
+@require_not_none(SklearnKDTree)
+def KDTree(X, leaf_size, metric=None, **metric_params):
+    # kd_tree cannot accept callable metric
+    assert not callable(metric)
+    op = _KDTree(leaf_size=leaf_size, metric=metric,
+                 **metric_params)
     return op(X)
