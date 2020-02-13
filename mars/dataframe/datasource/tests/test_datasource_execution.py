@@ -362,13 +362,13 @@ class Test(TestBase):
     def testReadSQLTableExecution(self):
         import sqlalchemy as sa
 
-        test_df = pd.DataFrame({'a': np.arange(10),
+        test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                                 'b': ['s%d' % i for i in range(10)],
                                 'c': np.random.rand(10)})
 
-        with tempfile.NamedTemporaryFile(suffix='.db') as f:
+        with tempfile.TemporaryDirectory() as d:
             table_name = 'test'
-            uri = 'sqlite:///' + f.name
+            uri = 'sqlite:///' + os.path.join(d, 'test.db')
 
             test_df.to_sql(table_name, uri, index=False)
 

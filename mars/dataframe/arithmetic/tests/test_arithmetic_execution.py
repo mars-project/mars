@@ -458,8 +458,9 @@ class TestBinary(TestBase):
         pd.testing.assert_series_equal(expected, result)
 
         # shuffle
-        s1 = pd.Series(np.arange(10) + 1, index=np.random.permutation(range(10)))
-        s2 = pd.Series(np.arange(10) + 1, index=np.random.permutation(range(10, 0, -1)))
+        data = (np.arange(10) + 1).astype(np.int64, copy=False)
+        s1 = pd.Series(data, index=np.random.permutation(range(10)))
+        s2 = pd.Series(data, index=np.random.permutation(range(10, 0, -1)))
         r = self.func(from_pandas_series(s1, chunk_size=4), from_pandas_series(s2, chunk_size=6))
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = self.func(s1, s2)
