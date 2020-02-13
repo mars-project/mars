@@ -358,3 +358,44 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(pdf, mdf2)
         finally:
             shutil.rmtree(tempdir)
+
+    def testReadSQLTableExecution(self):
+        import sqlalchemy as sa
+
+        test_df = pd.DataFrame({'a': np.arange(10),
+                                'b': ['s%d' % i for i in range(10)],
+                                'c': np.random.rand(10)})
+
+        with tempfile.NamedTemporaryFile(suffix='.db') as f:
+            table_name = 'test'
+            uri = 'sqlite:///' + f.name
+
+            test_df.to_sql(table_name, uri, index=False)
+
+            r = md.read_sql_table('test', uri, chunk_size=4)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            pd.testing.assert_frame_equal(result, test_df)
+
+            engine = sa.create_engine(uri)
+
+            try:
+                # test index_col and columns
+                r = md.read_sql_table('test', engine.connect(), chunk_size=4,
+                                      index_col='a', columns=['b'])
+                result = self.executor.execute_dataframe(r, concat=True)[0]
+                expected = test_df.copy(deep=True)
+                expected.set_index('a', inplace=True)
+                del expected['c']
+                pd.testing.assert_frame_equal(result, expected)
+
+                table = sa.Table(table_name, sa.MetaData(), autoload=True,
+                                 autoload_with=engine)
+                r = md.read_sql_table(table, engine, chunk_size=4,
+                                      index_col=[table.columns['a'], table.columns['b']],
+                                      columns=[table.columns['c']])
+                result = self.executor.execute_dataframe(r, concat=True)[0]
+                expected = test_df.copy(deep=True)
+                expected.set_index(['a', 'b'], inplace=True)
+                pd.testing.assert_frame_equal(result, expected)
+            finally:
+                engine.dispose()

@@ -8,3 +8,4 @@ pytest-cov>=2.5.0
 pytest-timeout>=1.2.0
 pytest-xdist>=1.15.0
 cloudpickle>=1.0.0
+sqlalchemy>=1.2.0

@@ -182,7 +182,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._offset = offset
                 chunk_op._size = min(chunk_bytes, total_bytes - offset)
                 shape = (np.nan, len(df.dtypes))
-                new_chunk = chunk_op.new_chunk(None, shape=shape, index=(index_num, 0), index_value=df.index_value,
+                index_value = parse_index(df.index_value.to_pandas(), path, index_num)
+                new_chunk = chunk_op.new_chunk(None, shape=shape, index=(index_num, 0), index_value=index_value,
                                                columns_value=df.columns_value, dtypes=df.dtypes)
                 out_chunks.append(new_chunk)
                 index_num += 1

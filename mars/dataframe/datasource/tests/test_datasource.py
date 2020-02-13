@@ -31,6 +31,7 @@ from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, \
     series_from_tensor, dataframe_from_1d_tensors
 from mars.dataframe.datasource.from_records import from_records
 from mars.dataframe.datasource.read_csv import read_csv, DataFrameReadCSV
+from mars.dataframe.datasource.read_sql_table import read_sql_table, DataFrameReadSQLTable
 
 
 class Test(TestBase):
@@ -451,8 +452,36 @@ class Test(TestBase):
 
             mdf = mdf.tiles()
             self.assertEqual(len(mdf.chunks), 4)
+            index_keys = set()
             for chunk in mdf.chunks:
+                index_keys.add(chunk.index_value.key)
                 pd.testing.assert_index_equal(df.columns, chunk.columns_value.to_pandas())
                 pd.testing.assert_series_equal(df.dtypes, chunk.dtypes)
+            self.assertGreater(len(index_keys), 1)
         finally:
             shutil.rmtree(tempdir)
+
+    def testReadSQLTable(self):
+        test_df = pd.DataFrame({'a': np.arange(10), 'b': ['s%d' % i for i in range(10)]})
+
+        with tempfile.NamedTemporaryFile(suffix='.db') as f:
+            table_name = 'test'
+            uri = 'sqlite:///' + f.name
+
+            test_df.to_sql(table_name, uri, index=False)
+
+            df = read_sql_table(table_name, uri, chunk_size=4)
+
+            self.assertEqual(df.shape, test_df.shape)
+            pd.testing.assert_index_equal(df.index_value.to_pandas(), test_df.index)
+            pd.testing.assert_series_equal(df.dtypes, test_df.dtypes)
+
+            df = df.tiles()
+            self.assertEqual(df.nsplits, ((4, 4, 2), (2,)))
+            for c in df.chunks:
+                self.assertIsInstance(c.op, DataFrameReadSQLTable)
+                self.assertIsNotNone(c.op.offset)
+
+            with self.assertRaises(TypeError):
+                read_sql_table(table_name, uri, chunk_size=4,
+                               index_col=b'a')

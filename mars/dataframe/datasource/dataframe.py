@@ -59,7 +59,7 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         raw_df = op.data
 
         memory_usage = raw_df.memory_usage(index=False, deep=True)
-        chunk_size = df.extra_params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = df.extra_params.raw_chunk_size or options.chunk_size
         chunk_size = decide_dataframe_chunk_sizes(df.shape, chunk_size, memory_usage)
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
