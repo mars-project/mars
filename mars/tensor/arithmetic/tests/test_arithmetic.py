@@ -261,7 +261,7 @@ class Test(unittest.TestCase):
         t3 = isfinite(x, y)
         self.assertEqual(t3.dtype, y.dtype)
 
-    def testLogWithOutWhere(self):
+    def testLogWithoutWhere(self):
         t1 = ones((3, 4), chunk_size=2)
 
         t2 = log(t1, out=t1)
