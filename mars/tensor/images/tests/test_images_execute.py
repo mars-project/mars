@@ -50,14 +50,14 @@ class Test(TestBase):
 
             t2 = imread(os.path.join(tempdir, 'random_*.png'))
             res = self.executor.execute_tensor(t2, concat=True)[0]
-            np.testing.assert_array_equal(res, raws)
+            np.testing.assert_array_equal(np.sort(res, axis=0), np.sort(raws, axis=0))
 
             t3 = imread(os.path.join(tempdir, 'random_*.png'), chunk_frames=4)
             res = self.executor.execute_tensor(t3, concat=True)[0]
-            np.testing.assert_array_equal(res, raws)
+            np.testing.assert_array_equal(np.sort(res, axis=0), np.sort(raws, axis=0))
 
             t4 = imread(os.path.join(tempdir, 'random_*.png'), chunk_frames=4)
             res = self.executor.execute_tensor(t4, concat=True)[0]
-            np.testing.assert_array_equal(res, raws)
+            np.testing.assert_array_equal(np.sort(res, axis=0), np.sort(raws, axis=0))
         finally:
             shutil.rmtree(tempdir)

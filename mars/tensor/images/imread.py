@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import numpy as np
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 from ... import opcodes as OperandDef
 from ...serialize import Int32Field, AnyField
