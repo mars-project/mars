@@ -1,6 +1,7 @@
 numpy
 requests
 pyarrow
+cloudpickle
 cython
 mock
 pytest
