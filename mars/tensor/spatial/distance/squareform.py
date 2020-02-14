@@ -130,7 +130,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
-        chunk_size = tensor.extra_params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = tensor.extra_params.raw_chunk_size or options.chunk_size
         chunk_size = decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
         n_chunk = np.product([len(cs) for cs in chunk_size])
 

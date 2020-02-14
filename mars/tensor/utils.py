@@ -625,7 +625,7 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
         chunk_keys = itertools.repeat(None)
 
     # compute chunks
-    chunk_size = chunk_size or options.tensor.chunk_size
+    chunk_size = chunk_size or options.chunk_size
     chunk_size = decide_chunk_sizes(shape, chunk_size, dtype.itemsize)
     chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
