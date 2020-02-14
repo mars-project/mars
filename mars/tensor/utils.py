@@ -230,7 +230,8 @@ def infer_dtype(np_func, empty=True, reverse=False, check=True):
             args = [make_arg(t) if is_arg(t) else t for t in tensors]
             if reverse:
                 args = args[::-1]
-            np_kw = dict((k, v) for k, v in six.iteritems(kw) if is_arg(v) and k != 'out')
+            np_kw = dict((k, make_arg(v) if hasattr(v, 'op') else v) for k, v in six.iteritems(kw)
+                         if is_arg(v) and k != 'out')
 
             dtype = None
             if not any(hasattr(arg, tensor_ufunc)
