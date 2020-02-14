@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import time
 import uuid
@@ -33,6 +34,7 @@ class LocalClusterSession(object):
         # dict structure: {tileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tilable id
         self._executed_tileables = dict()
+        self._loop = kwargs.pop('loop', None) or asyncio.get_event_loop()
         self._api = MarsSyncAPI(self._endpoint)
 
         if session_id is None:

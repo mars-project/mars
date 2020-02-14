@@ -570,7 +570,7 @@ class GraphActor(SchedulerActor):
             self._scan_tileable_graph()
             context = await self.get_context()
 
-            def on_tile(raw_tileables, tileds):
+            async def on_tile(raw_tileables, tileds):
                 first = tileds[0]
                 if any(inp in self._tileable_to_fetch for inp in raw_tileables[0].inputs):
                     new_inputs = []
@@ -588,9 +588,9 @@ class GraphActor(SchedulerActor):
                         tiled = self._tileable_key_opid_to_tiled[raw_first.key, raw_first.op.id][-1]
                         return [build_fetch_tileable(tiled)]
                     else:
-                        return [self.tile_fetch_tileable(first)]
+                        return [await self.tile_fetch_tileable(first)]
                 else:
-                    return context.wraps(handler.dispatch)(first.op)
+                    return await context.wraps(handler.dispatch)(first.op)
 
             def on_tile_success(tiled_before, tiled_after):
                 if not isinstance(tiled_before.op, Fetch):
@@ -605,7 +605,7 @@ class GraphActor(SchedulerActor):
         if chunk_graph_builder.prev_tileable_graph is None:
             # first tile
             fetch_tileables = [t for t in tileable_graph if isinstance(t.op, Fetch)]
-            cur_chunk_graph = chunk_graph_builder.build(
+            cur_chunk_graph = await chunk_graph_builder.build(
                 # add fetch tileables to make sure that they won't be fused
                 self._target_tileable_datas + fetch_tileables, tileable_graph)
         else:
@@ -629,7 +629,7 @@ class GraphActor(SchedulerActor):
                         to_run_tileable_graph.add_node(fetch_inp)
                         for o in failed_op.outputs:
                             to_run_tileable_graph.add_edge(fetch_inp, o)
-            cur_chunk_graph = chunk_graph_builder.build(
+            cur_chunk_graph = await chunk_graph_builder.build(
                 # add to_fetch_tileables to make sure that fetch chunk would not be fused
                 self._target_tileable_datas + to_fetch_tileables,
                 tileable_graph=to_run_tileable_graph)

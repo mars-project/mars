@@ -102,7 +102,7 @@ class Test(unittest.TestCase):
             def running_mode(self):
                 return RunningMode.distributed
 
-            def get_chunk_metas(self, chunk_keys):
+            async def get_chunk_metas(self, chunk_keys, filter_fields=None):
                 metas = []
                 for ck in chunk_keys:
                     if ck in chunk_to_workers:

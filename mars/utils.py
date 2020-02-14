@@ -373,18 +373,28 @@ def kernel_mode(func):
     `new_entities` is also called in `Executor` and `OperandTilesHandler`, this decorator
     provides an options context for kernel functions to avoid execution.
     """
-
-    def _wrapped(*args, **kwargs):
-        try:
+    class KernelMode:
+        def __enter__(self):
             enter_eager_count = getattr(_kernel_mode, 'eager_count', 0)
             if enter_eager_count == 0:
                 _kernel_mode.eager = False
             _kernel_mode.eager_count = enter_eager_count + 1
-            return func(*args, **kwargs)
-        finally:
+
+        def __exit__(self, *_):
             _kernel_mode.eager_count -= 1
             if _kernel_mode.eager_count == 0:
                 _kernel_mode.eager = None
+
+    if asyncio.iscoroutinefunction(func):
+        @functools.wraps(func)
+        async def _wrapped(*args, **kwargs):
+            with KernelMode():
+                return await func(*args, **kwargs)
+    else:
+        @functools.wraps(func)
+        def _wrapped(*args, **kwargs):
+            with KernelMode():
+                return func(*args, **kwargs)
 
     return _wrapped
 
@@ -903,6 +913,17 @@ def stack_back(flattened, raw):
         return container
 
     return _stack(result, raw)
+
+
+def wrap_async_method(fun):
+    @functools.wraps(fun)
+    def _wrapped(*args, **kwargs):
+        if kwargs.pop('_async', False):
+            return fun(*args, **kwargs)
+        else:
+            return asyncio.get_event_loop().run_until_complete(fun(*args, **kwargs))
+
+    return _wrapped
 
 
 def recursive_tile(tensor):

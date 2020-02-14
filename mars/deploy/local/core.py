@@ -240,12 +240,12 @@ def _start_web_process(scheduler_endpoint, web_endpoint):
 
 
 class LocalDistributedClusterClient(object):
-    def __init__(self, endpoint, web_endpoint, cluster_process, web_process):
+    def __init__(self, endpoint, web_endpoint, cluster_process, web_process, loop=None):
         self._cluster_process = cluster_process
         self._web_process = web_process
         self._endpoint = endpoint
         self._web_endpoint = web_endpoint
-        self._session = new_session(endpoint).as_default()
+        self._session = new_session(endpoint, loop=loop).as_default()
 
     @property
     def endpoint(self):
@@ -291,6 +291,7 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
                 open_browser=None, **kw):
     open_browser = open_browser if open_browser is not None else options.deploy.open_browser
     endpoint = gen_endpoint(address)
+    loop = kw.pop('loop', None) or asyncio.get_event_loop()
     web_endpoint = None
     if web is True:
         web_endpoint = gen_endpoint('0.0.0.0')
@@ -310,6 +311,6 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
             import webbrowser
             webbrowser.open_new_tab('http://%s' % web_endpoint)
 
-    client = LocalDistributedClusterClient(endpoint, web_endpoint, process, web_process)
+    client = LocalDistributedClusterClient(endpoint, web_endpoint, process, web_process, loop=loop)
     _local_cluster_clients[id(client)] = client
     return client

@@ -83,7 +83,7 @@ class KVStoreSchedulerDiscoverer:
         ait = self._client.eternal_watch(SCHEDULER_PATH).__aiter__()
 
         class _AsyncIterator:
-            async def __aiter__(self):
+            def __aiter__(self):
                 return self
 
             async def __anext__(self):
@@ -97,7 +97,7 @@ class _ClusterInfoWatchActor(FunctionActor):
         self._discoverer = discoverer
         self._cluster_info_ref = cluster_info_ref
 
-    def post_create(self):
+    async def post_create(self):
         self._cluster_info_ref = self.ctx.actor_ref(self._cluster_info_ref)
 
     async def get_schedulers(self):
@@ -105,7 +105,7 @@ class _ClusterInfoWatchActor(FunctionActor):
 
     async def watch(self):
         async for schedulers in self._discoverer.watch():
-            self._cluster_info_ref.set_schedulers(schedulers, _tell=True)
+            await self._cluster_info_ref.set_schedulers(schedulers, _tell=True)
 
 
 class ClusterInfoActor(FunctionActor):
@@ -128,7 +128,7 @@ class ClusterInfoActor(FunctionActor):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
         if self._discoverer.dynamic:
-            watcher = self._watcher = self.ctx.create_actor(
+            watcher = self._watcher = await self.ctx.create_actor(
                 _ClusterInfoWatchActor, self._discoverer, self.ref())
             await watcher.watch(_tell=True)
         self._schedulers = await self._discoverer.get()

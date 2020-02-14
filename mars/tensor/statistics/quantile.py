@@ -293,16 +293,16 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
                               chunks=[chunk])
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         check_chunks_unknown_shape(op.inputs, TilesError)
         if isinstance(op.q, TENSOR_TYPE):
             ctx = get_context()
             # get q's data
             q_chunk_keys = [c.key for c in op.q.chunks]
-            metas = ctx.get_chunk_metas(q_chunk_keys)
+            metas = await ctx.get_chunk_metas(q_chunk_keys)
             if any(meta is None for meta in metas):
                 raise TilesError('q has to be executed if it\' a tensor')
-            q_data = ctx.get_chunk_results(q_chunk_keys)
+            q_data = await ctx.get_chunk_results(q_chunk_keys)
             op._q = q = np.concatenate(q_data)
             if not _quantile_is_valid(q):
                 raise ValueError(op.q_error_msg)

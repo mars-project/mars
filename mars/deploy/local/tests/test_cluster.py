@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import logging
 import os
@@ -26,28 +27,30 @@ import uuid
 
 import numpy as np
 import pandas as pd
+
+from mars import tensor as mt
+from mars import dataframe as md
+from mars.actors import new_client
+from mars.config import options, option_context
+from mars.context import get_context, RunningMode
+from mars.deploy.local.core import new_cluster, LocalDistributedCluster
+from mars.deploy.local.session import LocalClusterSession
+from mars.errors import ExecutionFailed
+from mars.scheduler import SessionManagerActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
+from mars.serialize import Int64Field
+from mars.session import new_session, Session
+from mars.tensor.arithmetic.core import TensorElementWise
+from mars.tensor.arithmetic.abs import TensorAbs
+from mars.tensor.operands import TensorOperand
+from mars.tests.core import mock, require_cudf
+from mars.web.session import Session as WebSession
+from mars.worker.dispatcher import DispatchActor
+
 try:
     import h5py
 except ImportError:
     h5py = None
-
-from mars import tensor as mt
-from mars import dataframe as md
-from mars.tensor.operands import TensorOperand
-from mars.tensor.arithmetic.core import TensorElementWise
-from mars.tensor.arithmetic.abs import TensorAbs
-from mars.serialize import Int64Field
-from mars.session import new_session, Session
-from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
-from mars.deploy.local.session import LocalClusterSession
-from mars.scheduler import SessionManagerActor
-from mars.scheduler.utils import SchedulerClusterInfoActor
-from mars.worker.dispatcher import DispatchActor
-from mars.errors import ExecutionFailed
-from mars.config import options, option_context
-from mars.web.session import Session as WebSession
-from mars.context import get_context, RunningMode
-from mars.tests.core import aio_case, mock, require_cudf
 
 logger = logging.getLogger(__name__)
 _exec_timeout = 120 if 'CI' in os.environ else -1
@@ -78,27 +81,33 @@ class Test(unittest.TestCase):
         super().tearDown()
         options.scheduler.default_cpu_usage = self._old_default_cpu_usage
 
-    @aio_case
-    async def testLocalCluster(self, *_):
-        endpoint = gen_endpoint('0.0.0.0')
-        async with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3,
-                                           shared_memory='20M') as cluster:
-            pool = cluster.pool
+    def testLocalCluster(self, *_):
+        loop = asyncio.get_event_loop()
+        with new_cluster(scheduler_n_process=2, worker_n_process=3,
+                         shared_memory='20M', loop=loop) as cluster:
+            endpoint = cluster.endpoint
+            client = new_client()
 
-            self.assertTrue(await pool.has_actor(pool.actor_ref(
-                SchedulerClusterInfoActor.default_uid())))
-            self.assertTrue(await pool.has_actor(pool.actor_ref(SessionManagerActor.default_uid())))
-            self.assertTrue(await pool.has_actor(pool.actor_ref(DispatchActor.default_uid())))
+            async def _check():
+                self.assertTrue(await client.has_actor(client.actor_ref(
+                    SchedulerClusterInfoActor.default_uid(), address=endpoint)))
+                self.assertTrue(await client.has_actor(client.actor_ref(
+                    SessionManagerActor.default_uid(), address=endpoint)))
+                self.assertTrue(await client.has_actor(client.actor_ref(
+                    DispatchActor.default_uid(), address=endpoint)))
+
+            loop.run_until_complete(_check())
 
             with new_session(endpoint) as session:
-                async_api = session._api._async_api
+                _api = session._api
+                session_manager = client.actor_ref(_api.get_session_manager())
 
                 t = mt.ones((3, 3), chunk_size=2)
                 result = session.run(t, timeout=_exec_timeout)
 
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
-            self.assertNotIn(session._session_id, await async_api.session_manager.get_sessions())
+            self.assertNotIn(session._session_id, loop.run_until_complete(session_manager.get_sessions()))
 
     def testLocalClusterWithWeb(self, *_):
         import psutil

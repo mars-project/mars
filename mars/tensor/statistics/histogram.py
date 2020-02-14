@@ -66,10 +66,10 @@ class HistBinSelector(object):
     def __call__(self):
         return
 
-    def get_result(self):
+    async def get_result(self):
         ctx = get_context()
-        width = ctx.get_chunk_results(
-            [self._op._calc_bin_edges_dependencies[0].chunks[0].key])[0]
+        width = (await ctx.get_chunk_results(
+            [self._op._calc_bin_edges_dependencies[0].chunks[0].key]))[0]
         return width
 
 
@@ -81,7 +81,7 @@ class HistBinSqrtSelector(HistBinSelector):
     programs for its simplicity.
     """
 
-    def get_result(self):
+    async def get_result(self):
         return _ptp(self._raw_range) / np.sqrt(self._x.size)
 
 
@@ -95,7 +95,7 @@ class HistBinSturgesSelector(HistBinSelector):
     depends only on size of the data.
     """
 
-    def get_result(self):
+    async def get_result(self):
         return _ptp(self._raw_range) / (np.log2(self._x.size) + 1.0)
 
 
@@ -110,7 +110,7 @@ class HistBinRiceSelector(HistBinSelector):
     only on size of the data.
     """
 
-    def get_result(self):
+    async def get_result(self):
         return _ptp(self._raw_range) / (2.0 * self._x.size ** (1.0 / 3))
 
 
@@ -156,12 +156,12 @@ class HistBinStoneSelector(HistBinSelector):
         nbins = mt.stack(candidates).argmin() + 1
         return ptp_x / nbins
 
-    def get_result(self):
+    async def get_result(self):
         ptp_x = _ptp(self._raw_range)
         if self._x.size <= 1 or ptp_x == 0:
             return 0.0
         else:
-            return super().get_result()
+            return await super().get_result()
 
 
 class HistBinDoaneSelector(HistBinSelector):
@@ -185,11 +185,11 @@ class HistBinDoaneSelector(HistBinSelector):
                                       mt.log2(1.0 + mt.absolute(g1) / sg1))
         return mt.where(sigma > 0.0, ret, 0.0)
 
-    def get_result(self):
+    async def get_result(self):
         if self._x.size <= 2:
             return 0.0
         else:
-            return super().get_result()
+            return await super().get_result()
 
 
 class HistBinFdSelector(HistBinSelector):
@@ -243,9 +243,9 @@ class HistBinAutoSelector(HistBinSelector):
     def __call__(self):
         return self._bin_fd()
 
-    def get_result(self):
-        fd_bw = super().get_result()
-        sturges_bw = self._bin_sturges.get_result()
+    async def get_result(self):
+        fd_bw = await super().get_result()
+        sturges_bw = await self._bin_sturges.get_result()
         if fd_bw:
             return min(fd_bw, sturges_bw)
         else:
@@ -342,7 +342,7 @@ def _unsigned_subtract(a, b):
         return np.subtract(a, b, casting='unsafe', dtype=dt)
 
 
-def _get_bin_edges(op, a, bins, range, weights):
+async def _get_bin_edges(op, a, bins, range, weights):
     # parse the overloaded bins argument
     n_equal_bins = None
     bin_edges = None
@@ -365,7 +365,7 @@ def _get_bin_edges(op, a, bins, range, weights):
             # Do not call selectors on empty arrays
             selector = _hist_bin_selectors[bin_name](op, a, (first_edge, last_edge), raw_range)
             selector.check()
-            width = selector.get_result()
+            width = await selector.get_result()
             if width:
                 n_equal_bins = int(np.ceil(_unsigned_subtract(last_edge, first_edge) / width))
             else:
@@ -516,7 +516,7 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
         return self.new_tensor(inputs, shape=shape, order=TensorOrder.C_ORDER)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         ctx = get_context()
         range_ = op.range
         if isinstance(op.bins, str):
@@ -525,22 +525,22 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             # check if input min and max are calculated
             min_max_chunk_keys = \
                 [inp.chunks[0].key for inp in (op.input_min, op.input_max)]
-            metas = ctx.get_chunk_metas(min_max_chunk_keys)
+            metas = await ctx.get_chunk_metas(min_max_chunk_keys)
             if any(meta is None for meta in metas):
                 raise TilesError('`input_min` or `input_max` need be executed first')
-            range_ = tuple(ctx.get_chunk_results(min_max_chunk_keys))
+            range_ = tuple(await ctx.get_chunk_results(min_max_chunk_keys))
         if isinstance(op.bins, TENSOR_TYPE):
             # `bins` is a Tensor, needs to be calculated first
             bins_chunk_keys = [c.key for c in op.bins.chunks]
-            metas = ctx.get_chunk_metas(bins_chunk_keys)
+            metas = await ctx.get_chunk_metas(bins_chunk_keys)
             if any(meta is None for meta in metas):
                 raise TilesError('`bins` should be executed first if it\'s a tensor')
-            bin_datas = ctx.get_chunk_results(bins_chunk_keys)
+            bin_datas = await ctx.get_chunk_results(bins_chunk_keys)
             bins = np.concatenate(bin_datas)
         else:
             bins = op.bins
 
-        bin_edges, _ = _get_bin_edges(op, op.input, bins, range_, op.weights)
+        bin_edges, _ = await _get_bin_edges(op, op.input, bins, range_, op.weights)
         bin_edges = bin_edges._inplace_tile()
         return [bin_edges]
 

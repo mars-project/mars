@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import signal
 import subprocess
@@ -20,7 +21,6 @@ import time
 import unittest
 
 import requests
-import gevent
 
 from mars.actors import new_client
 from mars.scheduler import ResourceActor
@@ -37,13 +37,14 @@ class LearnIntegrationTestBase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.n_workers = 2
-        self.start_distributed_env(n_workers=self.n_workers)
+        asyncio.get_event_loop().run_until_complete(
+            self.start_distributed_env(n_workers=self.n_workers))
 
-    def start_distributed_env(self, *args, **kwargs):
+    async def start_distributed_env(self, *args, **kwargs):
         fail_count = 0
         while True:
             try:
-                self._start_distributed_env(*args, **kwargs)
+                await self._start_distributed_env(*args, **kwargs)
                 break
             except ProcessRequirementUnmetError:
                 fail_count += 1
@@ -52,7 +53,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
                 logger.error('Failed to start service, retrying')
                 self.terminate_processes()
 
-    def _start_distributed_env(self, n_workers=2):
+    async def _start_distributed_env(self, n_workers=2):
         scheduler_port = self.scheduler_port = str(get_next_port())
         self.proc_workers = []
         for _ in range(n_workers):
@@ -78,7 +79,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
                                            '--log-format', 'SCH %(asctime)-15s %(message)s'])
         self.proc_scheduler = proc_scheduler
 
-        self.wait_scheduler_worker_start()
+        await self.wait_scheduler_worker_start()
 
         web_port = self.web_port = str(get_next_port())
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
@@ -97,38 +98,32 @@ class LearnIntegrationTestBase(unittest.TestCase):
             try:
                 resp = requests.get(service_ep + '/api', timeout=1)
             except (requests.ConnectionError, requests.Timeout):
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
                 continue
             if resp.status_code >= 400:
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
                 continue
             break
 
-        self.exceptions = gevent.hub.Hub.NOT_ERROR
-        gevent.hub.Hub.NOT_ERROR = (Exception,)
-
-    def wait_scheduler_worker_start(self):
-        old_not_errors = gevent.hub.Hub.NOT_ERROR
-        gevent.hub.Hub.NOT_ERROR = (Exception,)
-
+    async def wait_scheduler_worker_start(self):
         actor_client = new_client()
-        time.sleep(1)
+        await asyncio.sleep(1)
         check_time = time.time()
         while True:
             try:
                 resource_ref = actor_client.actor_ref(
                     ResourceActor.default_uid(), address='127.0.0.1:' + self.scheduler_port)
-                if actor_client.has_actor(resource_ref):
+                if await actor_client.has_actor(resource_ref):
                     break
                 else:
                     raise ProcessRequirementUnmetError('Check meta_timestamp timeout')
             except:  # noqa: E722
                 if time.time() - check_time > 10:
                     raise
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
 
         check_time = time.time()
-        while resource_ref.get_worker_count() < self.n_workers:
+        while await resource_ref.get_worker_count() < self.n_workers:
             if self.proc_scheduler.poll() is not None:
                 raise ProcessRequirementUnmetError(
                     'Scheduler not started. exit code %s' % self.proc_scheduler.poll())
@@ -139,9 +134,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
             if time.time() - check_time > 20:
                 raise ProcessRequirementUnmetError('Check meta_timestamp timeout')
 
-            time.sleep(0.1)
-
-        gevent.hub.Hub.NOT_ERROR = old_not_errors
+            await asyncio.sleep(0.1)
 
     def terminate_processes(self):
         procs = [self.proc_web, self.proc_scheduler] + self.proc_workers
@@ -160,4 +153,3 @@ class LearnIntegrationTestBase(unittest.TestCase):
 
     def tearDown(self):
         self.terminate_processes()
-        gevent.hub.Hub.NOT_ERROR = self.exceptions

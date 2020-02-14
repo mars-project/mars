@@ -251,7 +251,8 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
             for item in pod_items['items']:
                 log_resp = core_api.read_namespaced_pod_log(
                     name=item['metadata']['name'], namespace=namespace)
-                logger.error('Error when creating cluster:\n%s', log_resp)
+                lines = [line for line in log_resp.splitlines() if 'Coverage.py warning' not in line]
+                logger.error('Error when creating cluster:\n%s', '\n'.join(lines))
 
         if namespace is not None:
             try:

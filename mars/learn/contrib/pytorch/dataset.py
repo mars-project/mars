@@ -40,8 +40,8 @@ class MarsDataset(Dataset):
         self._datas = None
         self._offset = 0
 
-    def prefetch(self, indices):
-        self._datas = self._get_data(indices)
+    async def prefetch(self, indices):
+        self._datas = await self._get_data(indices)
         self._offset = 0
 
     @staticmethod

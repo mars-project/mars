@@ -89,18 +89,22 @@ class K8SPodsIPWatcher(object):
         from urllib3.exceptions import ReadTimeoutError
         from kubernetes import watch
 
-        cur_pods = set()
+        cur_pods = None
         this = self
         streamer = None
         w = watch.Watch()
 
         class _AsyncIterator:
-            async def __aiter__(self):
-                nonlocal cur_pods
-                cur_pods = set(await this.get(True))
+            def __aiter__(self):
+                return self
 
             async def __anext__(self):
                 nonlocal cur_pods, streamer
+
+                if cur_pods is None:
+                    cur_pods = set(await this.get(True))
+                    return cur_pods
+
                 while True:
                     if streamer is None:
                         linger = 10 if await this.is_all_ready() else 1
@@ -115,10 +119,10 @@ class K8SPodsIPWatcher(object):
                             raise StopIteration
                     except (ReadTimeoutError, StopIteration):
                         new_pods = set(await this.get(True))
+                        streamer = None
                         if new_pods != cur_pods:
                             cur_pods = new_pods
                             return await this.get(False)
-                        streamer = None
                         continue
                     except:  # noqa: E722
                         logger.exception('Unexpected error when watching on kubernetes')

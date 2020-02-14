@@ -14,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import sys
 import weakref
 
 from .graph import DAG
 from .graph_builder import GraphBuilder, TileableGraphBuilder
 from .config import options
-from .utils import kernel_mode, enter_build_mode, copy_tileables
+from .utils import kernel_mode, enter_build_mode, copy_tileables, wrap_async_method
 
 
 class Tileable(object):
@@ -50,9 +51,10 @@ class Tileable(object):
     def _inplace_tile(self):
         return handler.inplace_tile(self)
 
+    @wrap_async_method
     @kernel_mode
-    def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True,
-                    **build_chunk_graph_kwargs):
+    async def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True,
+                          **build_chunk_graph_kwargs):
         tileable_graph = graph if not tiled else None
         tileable_graph_builder = TileableGraphBuilder(graph=tileable_graph, graph_cls=cls)
         tileable_graph = tileable_graph_builder.build([self])
@@ -61,7 +63,7 @@ class Tileable(object):
         chunk_graph_builder = ChunkGraphBuilder(
             graph=graph, graph_cls=cls, compose=compose,
             **build_chunk_graph_kwargs)
-        return chunk_graph_builder.build([self], tileable_graph=tileable_graph)
+        return await chunk_graph_builder.build([self], tileable_graph=tileable_graph)
 
     def visualize(self, graph_attrs=None, node_attrs=None, **kw):
         from graphviz import Source
@@ -126,8 +128,14 @@ class OperandTilesHandler(object):
         if not to_tile.is_coarse():
             return to_tile
         dispatched = self.dispatch(to_tile.op)
-        self._assign_to([d.data for d in dispatched], to_tile.op.outputs)
-        return to_tile
+        if asyncio.iscoroutine(dispatched):
+            task = asyncio.ensure_future(dispatched)
+            task.add_done_callback(
+                lambda *_: self._assign_to([d.data for d in dispatched], to_tile.op.outputs))
+            return task
+        else:
+            self._assign_to([d.data for d in dispatched], to_tile.op.outputs)
+            return to_tile
 
     @classmethod
     def tiles(cls, to_tile):
@@ -168,7 +176,7 @@ class ChunkGraphBuilder(GraphBuilder):
     def is_compose(self):
         return self._compose
 
-    def _tile(self, tileable_data, tileable_graph):
+    async def _tile(self, tileable_data, tileable_graph):
         cache = _tileable_data_to_tiled
         on_tile = self._on_tile
 
@@ -190,9 +198,13 @@ class ChunkGraphBuilder(GraphBuilder):
                 t._chunks = o.chunks
                 t._nsplits = o.nsplits
         elif on_tile is None:
-            tds[0]._inplace_tile()
+            r = tds[0]._inplace_tile()
+            if asyncio.iscoroutine(r):
+                await r
         else:
             tds = on_tile(tileable_data.op.outputs, tds)
+            if asyncio.iscoroutine(tds):
+                tds = await tds
             if not isinstance(tds, (list, tuple)):
                 tds = [tds]
             assert len(tileable_data.op.outputs) == len(tds)
@@ -218,7 +230,7 @@ class ChunkGraphBuilder(GraphBuilder):
 
     @kernel_mode
     @enter_build_mode
-    def build(self, tileables, tileable_graph=None):
+    async def build(self, tileables, tileable_graph=None):
         tileable_graph = self._get_tileable_data_graph(tileables, tileable_graph)
 
         # do tiles and add nodes or edges to chunk graph
@@ -232,7 +244,7 @@ class ChunkGraphBuilder(GraphBuilder):
             if tileable_data.op in tiled_op:
                 continue
             try:
-                tiled = self._tile(tileable_data, tileable_graph)
+                tiled = await self._tile(tileable_data, tileable_graph)
                 tiled_op.add(tileable_data.op)
                 for t, td in zip(tileable_data.op.outputs, tiled):
                     if self._on_tile_success is not None:
@@ -324,21 +336,21 @@ class IterativeChunkGraphBuilder(ChunkGraphBuilder):
     def done(self):
         return self._done
 
-    def _tile(self, tileable_data, tileable_graph):
+    async def _tile(self, tileable_data, tileable_graph):
         if any(inp.op in self._interrupted_ops for inp in tileable_data.inputs):
             raise TilesError('Tile fail due to failure of inputs')
-        return super()._tile(tileable_data, tileable_graph)
+        return await super()._tile(tileable_data, tileable_graph)
 
     @kernel_mode
     @enter_build_mode
-    def build(self, tileables, tileable_graph=None):
+    async def build(self, tileables, tileable_graph=None):
         tileable_graph = self._get_tileable_data_graph(tileables, tileable_graph)
         self._graph = self._graph_cls()
         self._interrupted_ops.clear()
         self._prev_tileable_graph = tileable_graph
         self._cur_tileable_graph = type(tileable_graph)()
 
-        chunk_graph = super().build(
+        chunk_graph = await super().build(
             tileables, tileable_graph=tileable_graph)
         self._iterative_chunk_graphs.append(chunk_graph)
         if len(self._interrupted_ops) == 0:

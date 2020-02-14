@@ -53,7 +53,7 @@ class Test(SchedulerIntegratedTest):
         a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         c = (a * b * 2 + 1).sum()
-        graph = c.build_graph()
+        graph = await c.build_graph(_async=True)
         targets = [c.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -69,7 +69,7 @@ class Test(SchedulerIntegratedTest):
         a = mt.ones((100, 50), chunk_size=35) * 2 + 1
         b = mt.ones((50, 200), chunk_size=35) * 2 + 1
         c = a.dot(b)
-        graph = c.build_graph()
+        graph = await c.build_graph(_async=True)
         targets = [c.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -83,7 +83,7 @@ class Test(SchedulerIntegratedTest):
         base_arr = np.random.random((100, 100))
         a = mt.array(base_arr)
         sumv = reduce(operator.add, [a[:10, :10] for _ in range(10)])
-        graph = sumv.build_graph()
+        graph = await sumv.build_graph(_async=True)
         targets = [sumv.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -100,7 +100,7 @@ class Test(SchedulerIntegratedTest):
         b = a.reshape(27, 31)
         b.op.extra_params['_reshape_with_shuffle'] = True
         r = b.sum(axis=1)
-        graph = r.build_graph()
+        graph = await r.build_graph(_async=True)
         targets = [r.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -115,7 +115,7 @@ class Test(SchedulerIntegratedTest):
         raw = np.random.RandomState(0).rand(10, 10)
         a = mt.tensor(raw, chunk_size=(5, 4))
         b = a[a.argmin(axis=1), mt.tensor(np.arange(10))]
-        graph = b.build_graph()
+        graph = await b.build_graph(_async=True)
         targets = [b.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -141,7 +141,7 @@ class Test(SchedulerIntegratedTest):
         a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         c = (a * b * 2 + 1).sum()
-        graph = c.build_graph()
+        graph = await c.build_graph(_async=True)
         targets = [c.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -167,7 +167,7 @@ class Test(SchedulerIntegratedTest):
         a = mt.ones((100, 100), chunk_size=30, gpu=True) * 2 * 1 + 1
         b = mt.ones((100, 100), chunk_size=30, gpu=True) * 2 * 1 + 1
         c = (a * b * 2 + 1).sum()
-        graph = c.build_graph()
+        graph = await c.build_graph(_async=True)
         targets = [c.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -200,7 +200,7 @@ class Test(SchedulerIntegratedTest):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph()
+        graph = await df3.build_graph(_async=True)
         targets = [df3.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -222,7 +222,7 @@ class Test(SchedulerIntegratedTest):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph()
+        graph = await df3.build_graph(_async=True)
         targets = [df3.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -244,7 +244,7 @@ class Test(SchedulerIntegratedTest):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph()
+        graph = await df3.build_graph(_async=True)
         targets = [df3.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -260,7 +260,7 @@ class Test(SchedulerIntegratedTest):
         s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
         series1 = from_pandas_series(s1)
 
-        graph = series1.build_graph()
+        graph = await series1.build_graph(_async=True)
         targets = [series1.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -286,7 +286,7 @@ class Test(SchedulerIntegratedTest):
         a.sort()
         c = a[:5]
 
-        graph = c.build_graph()
+        graph = await c.build_graph(_async=True)
         targets = [c.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -311,7 +311,7 @@ class Test(SchedulerIntegratedTest):
         c.sort()
         d = c[:5]
 
-        graph = d.build_graph()
+        graph = await d.build_graph(_async=True)
         targets = [d.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -351,42 +351,44 @@ class Test(SchedulerIntegratedTest):
         actor_client = new_client()
         rs = np.random.RandomState(0)
 
-        cluster_info_ref = actor_client.actor_ref(SchedulerClusterInfoActor.default_uid())
-        context = DistributedContext(scheduler_address=self.scheduler_endpoints[0],
-                                     session_id=session_id, is_distributed=await cluster_info_ref.is_distributed())
+        cluster_info_ref = actor_client.actor_ref(SchedulerClusterInfoActor.default_uid(),
+                                                  address=self.scheduler_endpoints[0])
+        context = DistributedContext(
+            scheduler_address=self.scheduler_endpoints[0], session_id=session_id,
+            is_distributed=await cluster_info_ref.is_distributed())
 
-        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+        session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
         raw1 = rs.rand(10, 10)
         a = mt.tensor(raw1, chunk_size=4)
 
-        graph = a.build_graph()
+        graph = await a.build_graph(_async=True)
         targets = [a.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tileable_graph(json.dumps(graph.to_json()), graph_key,
-                                          target_tileables=targets, names=['test'])
+        await session_ref.submit_tileable_graph(json.dumps(graph.to_json()), graph_key,
+                                                target_tileables=targets, names=['test'])
 
-        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        state = await self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        tileable_key = context.get_tileable_key_by_name('test')
+        tileable_key = await context.get_tileable_key_by_name('test')
         self.assertEqual(a.key, tileable_key)
 
-        nsplits = context.get_tileable_metas([a.key], filter_fields=['nsplits'])[0][0]
+        nsplits = (await context.get_tileable_metas([a.key], filter_fields=['nsplits']))[0][0]
         self.assertEqual(((4, 4, 2), (4, 4, 2)), nsplits)
 
-        r = context.get_tileable_data(a.key)
+        r = await context.get_tileable_data(a.key)
         np.testing.assert_array_equal(raw1, r)
 
         indexes = [slice(3, 9), slice(0, 7)]
-        r = context.get_tileable_data(a.key, indexes)
+        r = await context.get_tileable_data(a.key, indexes)
         np.testing.assert_array_equal(raw1[tuple(indexes)], r)
 
         indexes = [[1, 4, 2, 4, 5], slice(None, None, None)]
-        r = context.get_tileable_data(a.key, indexes)
+        r = await context.get_tileable_data(a.key, indexes)
         np.testing.assert_array_equal(raw1[tuple(indexes)], r)
 
         indexes = ([9, 1, 2, 0], [0, 0, 4, 4])
-        r = context.get_tileable_data(a.key, indexes)
+        r = await context.get_tileable_data(a.key, indexes)
         np.testing.assert_array_equal(raw1[[9, 1, 2, 0], [0, 0, 4, 4]], r)
 
     async def testOperandsWithoutPrepareInputs(self):
@@ -409,7 +411,7 @@ class Test(SchedulerIntegratedTest):
         t = NoPrepareOperand().new_tileable([t1, t2])
         t.op._prepare_inputs = [False, False]
 
-        graph = t.build_graph()
+        graph = await t.build_graph(_async=True)
         targets = [t.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),

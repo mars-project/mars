@@ -63,16 +63,19 @@ class ContextBase(object):
         _context_factory.prev = None
 
     def wraps(self, func):
-        def h(*args, **kwargs):
+        async def h(*args, **kwargs):
             with self:
-                return func(*args, **kwargs)
+                r = func(*args, **kwargs)
+                if asyncio.iscoroutine(r):
+                    return await r
+                return r
         return h
 
     # ---------------
     # Meta relative
     # ---------------
 
-    def get_chunk_metas(self, chunk_keys, filter_fields=None):
+    async def get_chunk_metas(self, chunk_keys, filter_fields=None):
         """
         Get chunk metas according to the given chunk keys.
 
@@ -86,7 +89,7 @@ class ContextBase(object):
     # Cluster relative
     # -----------------
 
-    def get_scheduler_addresses(self):
+    async def get_scheduler_addresses(self):
         """
         Get scheduler addresses
 
@@ -94,7 +97,7 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
-    def get_worker_addresses(self):
+    async def get_worker_addresses(self):
         """
         Get worker addreses
 
@@ -128,7 +131,7 @@ class ContextBase(object):
     # Graph relative
     # ---------------
 
-    def submit_chunk_graph(self, graph, result_keys):
+    async def submit_chunk_graph(self, graph, result_keys):
         """
         Submit fine-grained graph to execute.
 
@@ -138,7 +141,7 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
-    def submit_tileable_graph(self, graph, result_keys):
+    async def submit_tileable_graph(self, graph, result_keys):
         """
         Submit coarse-grained graph to execute.
 
@@ -152,7 +155,7 @@ class ContextBase(object):
     # Result relative
     # ----------------
 
-    def get_chunk_results(self, chunk_keys: List[str]) -> List:
+    async def get_chunk_results(self, chunk_keys: List[str]) -> List:
         """
         Get results when given chunk keys
 
@@ -164,9 +167,6 @@ class ContextBase(object):
     # ------
     # Others
     # ------
-
-    def create_lock(self):
-        raise NotImplementedError
 
     def build_named_tileable(self, named, rtype):
         raise NotImplementedError
@@ -197,7 +197,7 @@ class LocalContext(ContextBase, dict):
     def session_id(self):
         return self._local_session.session_id
 
-    def get_scheduler_addresses(self):
+    async def get_scheduler_addresses(self):
         return
 
     def get_worker_addresses(self):  # pragma: no cover
@@ -242,9 +242,6 @@ class LocalContext(ContextBase, dict):
         # As the context is actually holding the data,
         # so for the local context, we just fetch data from itself
         return [self[chunk_key] for chunk_key in chunk_keys]
-
-    def create_lock(self):
-        return self._local_session.executor._sync_provider.lock()
 
 
 class DistributedContext(ContextBase):
@@ -395,9 +392,6 @@ class DistributedContext(ContextBase):
 
             chunk_results = [(k, v) for k, v in chunk_results.items()]
             return indexes_handler.aggregate_result(context, chunk_results)
-
-    def create_lock(self):
-        return self._actor_ctx.lock()
 
     def build_named_tileable(self, named, rtype):
         from .tensor.fetch import TensorFetch

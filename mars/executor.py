@@ -15,7 +15,6 @@
 import asyncio.locks
 import contextlib
 import datetime
-import functools
 import itertools
 import logging
 import operator
@@ -42,7 +41,7 @@ from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTile
 from .graph_builder import TileableGraphBuilder
 from .context import LocalContext
 from .utils import kernel_mode, enter_build_mode, build_fetch, calc_nsplits,\
-    has_unknown_shape
+    has_unknown_shape, wrap_async_method
 
 try:
     from numpy.core._exceptions import UFuncTypeError
@@ -480,17 +479,6 @@ class GraphExecution(object):
             return [self._chunk_results[key] for key in self._keys]
 
 
-def _wrap_async_executor_method(fun):
-    @functools.wraps(fun)
-    def _wrapped(*args, **kwargs):
-        if kwargs.pop('_async', False):
-            return fun(*args, **kwargs)
-        else:
-            return asyncio.get_event_loop().run_until_complete(fun(*args, **kwargs))
-
-    return _wrapped
-
-
 class Executor(object):
     _op_runners = {}
     _op_size_estimators = {}
@@ -559,7 +547,7 @@ class Executor(object):
                     return runner(results, op)
             raise KeyError('No handler found for op: %s' % op)
 
-    @_wrap_async_executor_method
+    @wrap_async_method
     async def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
                             mock=False, no_intermediate=False, compose=True, retval=True,
                             chunk_result=None):
@@ -602,7 +590,7 @@ class Executor(object):
             chunk_result.clear()
         return res
 
-    @_wrap_async_executor_method
+    @wrap_async_method
     @kernel_mode
     @enter_build_mode
     async def execute_tileable(self, tileable, n_parallel=None, n_thread=None, concat=False,
@@ -624,7 +612,7 @@ class Executor(object):
         tileable_graph = tileable_graph_builder.build([tileable])
         chunk_graph_builder = ChunkGraphBuilder(graph_cls=DirectedGraph, compose=compose,
                                                 on_tile_success=_on_tile_success)
-        chunk_graph = chunk_graph_builder.build([tileable], tileable_graph=tileable_graph)
+        chunk_graph = await chunk_graph_builder.build([tileable], tileable_graph=tileable_graph)
         ret = await self.execute_graph(chunk_graph, result_keys, n_parallel=n_parallel or n_thread,
                                        print_progress=print_progress, mock=mock,
                                        chunk_result=chunk_result, _async=True)
@@ -667,7 +655,7 @@ class Executor(object):
         else:
             yield chunk_result
 
-    @_wrap_async_executor_method
+    @wrap_async_method
     @kernel_mode
     @enter_build_mode
     async def execute_tileables(self, tileables, fetch=True, n_parallel=None, n_thread=None,
@@ -738,7 +726,7 @@ class Executor(object):
             intermediate_result_keys = set()
             while True:
                 # build chunk graph, tile will be done during building
-                chunk_graph = chunk_graph_builder.build(
+                chunk_graph = await chunk_graph_builder.build(
                     tileables, tileable_graph=tileable_graph)
                 tileable_graph = chunk_graph_builder.prev_tileable_graph
                 temp_result_keys = set(result_keys)
@@ -816,7 +804,7 @@ class Executor(object):
             if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
                 raise ValueError('Only support fetch data slices')
 
-    @_wrap_async_executor_method
+    @wrap_async_method
     @kernel_mode
     async def fetch_tileables(self, tileables, **kw):
         from .tensor.indexing import TensorIndex

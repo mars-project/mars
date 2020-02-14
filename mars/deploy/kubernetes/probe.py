@@ -21,7 +21,7 @@ from ...actors import ActorNotExist, new_client
 from .core import ReadinessActor
 
 
-def main():
+async def main():
     """
     Readiness probe for Mars schedulers and workers
     """
@@ -29,11 +29,11 @@ def main():
     try:
         ref = client.actor_ref(ReadinessActor.default_uid(),
                                address='127.0.0.1:%s' % os.environ['MARS_K8S_SERVICE_PORT'])
-        sys.exit(0 if asyncio.run(client.has_actor(ref)) else 1)
+        sys.exit(0 if await client.has_actor(ref) else 1)
     except (ActorNotExist, ConnectionRefusedError) as ex:  # noqa: E722
         sys.stderr.write('Probe error: %s' % type(ex).__name__)
         sys.exit(1)
 
 
 if __name__ == '__main__':   # pragma: no branch
-    main()
+    asyncio.run(main())
