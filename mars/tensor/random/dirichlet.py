@@ -51,7 +51,7 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
-        chunk_size = tensor.extra_params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = tensor.extra_params.raw_chunk_size or options.chunk_size
         nsplits = decide_chunk_sizes(tensor.shape[:-1], chunk_size, tensor.dtype.itemsize)
         nsplits += ((len(op.alpha),),)
 

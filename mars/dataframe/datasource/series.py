@@ -57,7 +57,7 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
         raw_series = op.data
 
         memory_usage = raw_series.memory_usage(index=False, deep=True)
-        chunk_size = series.extra_params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = series.extra_params.raw_chunk_size or options.chunk_size
         chunk_size = decide_series_chunk_size(series.shape, chunk_size, memory_usage)
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 

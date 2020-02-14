@@ -31,11 +31,11 @@ from mars.tests.core import ExecutorForTest
 class Test(unittest.TestCase):
     def setUp(self):
         self.executor = ExecutorForTest('numpy')
-        self.old_chunk = options.tensor.chunk_size
-        options.tensor.chunk_size = 10
+        self.old_chunk = options.chunk_size
+        options.chunk_size = 10
 
     def tearDown(self):
-        options.tensor.chunk_size = self.old_chunk
+        options.chunk_size = self.old_chunk
 
     def testBoolIndexingExecution(self):
         raw = np.random.random((11, 8, 12, 14))
@@ -444,7 +444,7 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(res, expected)
 
     def testChooseExecution(self):
-        options.tensor.chunk_size = 2
+        options.chunk_size = 2
 
         choices = [[0, 1, 2, 3], [10, 11, 12, 13],
                    [20, 21, 22, 23], [30, 31, 32, 33]]

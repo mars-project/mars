@@ -310,7 +310,7 @@ class Test(unittest.TestCase):
 
     def testChoose(self):
         with option_context() as options:
-            options.tensor.chunk_size = 2
+            options.chunk_size = 2
 
             choices = [[0, 1, 2, 3], [10, 11, 12, 13],
                        [20, 21, 22, 23], [30, 31, 32, 33]]

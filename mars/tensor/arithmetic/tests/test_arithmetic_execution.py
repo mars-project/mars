@@ -406,7 +406,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res, expected))
 
         with option_context() as options:
-            options.tensor.chunk_size = 3
+            options.chunk_size = 3
 
             a = tensor(a_data.copy(), chunk_size=3)
             b = clip(a, [3, 4, 1, 1, 1, 4, 4, 4, 4, 4], 8)

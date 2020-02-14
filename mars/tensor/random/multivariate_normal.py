@@ -73,7 +73,7 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
-        chunk_size = tensor.extra_params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = tensor.extra_params.raw_chunk_size or options.chunk_size
         nsplits = decide_chunk_sizes(tensor.shape[:-1], chunk_size, tensor.dtype.itemsize) + ((tensor.shape[-1],),)
 
         mean_chunk = op.mean.chunks[0] if hasattr(op.mean, 'chunks') else op.mean

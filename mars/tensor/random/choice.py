@@ -209,7 +209,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
         check_chunks_unknown_shape(op.inputs, TilesError)
 
         out = op.outputs[0]
-        chunk_size = out.extra_params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = out.extra_params.raw_chunk_size or options.chunk_size
         nsplits = decide_chunk_sizes(out.shape, chunk_size, out.dtype.itemsize)
         inputs = op.inputs
 
