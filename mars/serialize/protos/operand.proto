@@ -394,6 +394,9 @@ message OperandDef {
         // successors exclusive
         SUCCESSORS_EXCLUSIVE = 2002;
 
+        // read images
+        IMREAD = 2110;
+
         // machine learning
 
         // pairwise distances
