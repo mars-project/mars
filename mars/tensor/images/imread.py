@@ -19,7 +19,7 @@ except ImportError:
     Image = None
 
 from ... import opcodes as OperandDef
-from ...serialize import Int32Field, AnyField
+from ...serialize import AnyField
 from ...config import options
 from ...filesystem import open_file, glob, file_size
 from ...utils import ceildiv
@@ -34,30 +34,26 @@ class TensorImread(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.IMREAD
 
     _filepath = AnyField('filepath')
-    _chunk_frames = Int32Field('chunk_frames')
 
-    def __init__(self, filepath=None, chunk_frames=None, **kwargs):
-        super().__init__(_filepath=filepath, _chunk_frames=chunk_frames, **kwargs)
+    def __init__(self, filepath=None, **kwargs):
+        super().__init__(_filepath=filepath, **kwargs)
 
     @property
     def filepath(self):
         return self._filepath
 
-    @property
-    def chunk_frames(self):
-        return self._chunk_frames
-
     @classmethod
     def tile(cls, op):
         out_shape = op.outputs[0].shape
         paths = op.filepath if isinstance(op.filepath, (tuple, list)) else glob(op.filepath)
-        n_chunks = ceildiv(len(paths), op.chunk_frames)
+        chunk_size = op.outputs[0].extra_params.raw_chunk_size
+        n_chunks = ceildiv(len(paths), chunk_size)
         if len(paths) > 1:
             chunks = []
             splits = []
             for i in range(n_chunks):
                 chunk_op = op.copy().reset_key()
-                chunk_op._filepath = paths[i * op.chunk_frames: (i + 1) * op.chunk_frames]
+                chunk_op._filepath = paths[i * chunk_size: (i + 1) * chunk_size]
                 file_nums = len(chunk_op._filepath)
                 shape = (file_nums,) + out_shape[1:]
                 chunk = chunk_op.new_chunk(None, shape=shape, index=(i,) + (0,) * (len(out_shape) - 1))
@@ -74,20 +70,20 @@ class TensorImread(TensorOperand, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         if isinstance(op.filepath, list):
-            datas = []
-            for path in op.filepath:
+            arrays = np.empty(op.outputs[0].shape)
+            for i, path in enumerate(op.filepath):
                 with open_file(path, 'rb') as f:
-                    datas.append(_read_image(f))
-            ctx[op.outputs[0].key] = np.array(datas)
+                    arrays[i] = _read_image(f)
+            ctx[op.outputs[0].key] = np.array(arrays)
         else:
             with open_file(op.filepath, 'rb') as f:
                 ctx[op.outputs[0].key] = np.array(_read_image(f))
 
-    def __call__(self, shape):
-        return self.new_tensor(None, shape)
+    def __call__(self, shape, chunk_size):
+        return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
 
-def imread(path, chunk_frames=None):
+def imread(path, chunk_size=None):
     paths = path if isinstance(path, (tuple, list)) else glob(path)
     with open_file(paths[0], 'rb') as f:
         sample_data = _read_image(f)
@@ -97,7 +93,7 @@ def imread(path, chunk_frames=None):
         shape = (len(paths), ) + img_shape
     else:
         shape = img_shape
-    if chunk_frames is None:
-        chunk_frames = int(options.chunk_store_limit / img_size)
-    op = TensorImread(filepath=path, chunk_frames=chunk_frames)
-    return op(shape=shape)
+    if chunk_size is None:
+        chunk_size = int(options.chunk_store_limit / img_size)
+    op = TensorImread(filepath=path, chunk_size=chunk_size)
+    return op(shape=shape, chunk_size=chunk_size)

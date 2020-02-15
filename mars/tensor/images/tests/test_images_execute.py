@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import shutil
 import unittest
 import tempfile
 
@@ -34,9 +33,7 @@ class Test(TestBase):
         self.executor = ExecutorForTest()
 
     def testImreadExecution(self):
-        tempdir = tempfile.mkdtemp()
-
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
             raws = []
             for i in range(10):
                 array = np.random.randint(0, 256, 2500, dtype=np.uint8).reshape((50, 50))
@@ -52,12 +49,10 @@ class Test(TestBase):
             res = self.executor.execute_tensor(t2, concat=True)[0]
             np.testing.assert_array_equal(np.sort(res, axis=0), np.sort(raws, axis=0))
 
-            t3 = imread(os.path.join(tempdir, 'random_*.png'), chunk_frames=4)
+            t3 = imread(os.path.join(tempdir, 'random_*.png'), chunk_size=4)
             res = self.executor.execute_tensor(t3, concat=True)[0]
             np.testing.assert_array_equal(np.sort(res, axis=0), np.sort(raws, axis=0))
 
-            t4 = imread(os.path.join(tempdir, 'random_*.png'), chunk_frames=4)
+            t4 = imread(os.path.join(tempdir, 'random_*.png'), chunk_size=4)
             res = self.executor.execute_tensor(t4, concat=True)[0]
             np.testing.assert_array_equal(np.sort(res, axis=0), np.sort(raws, axis=0))
-        finally:
-            shutil.rmtree(tempdir)
