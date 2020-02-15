@@ -368,6 +368,7 @@ class Test(TestBase):
 
         with tempfile.TemporaryDirectory() as d:
             table_name = 'test'
+            table_name2 = 'test2'
             uri = 'sqlite:///' + os.path.join(d, 'test.db')
 
             test_df.to_sql(table_name, uri, index=False)
@@ -377,6 +378,7 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(result, test_df)
 
             engine = sa.create_engine(uri)
+            m = sa.MetaData()
 
             try:
                 # test index_col and columns
@@ -388,7 +390,13 @@ class Test(TestBase):
                 del expected['c']
                 pd.testing.assert_frame_equal(result, expected)
 
-                table = sa.Table(table_name, sa.MetaData(), autoload=True,
+                # do not specify chunk_size
+                r = md.read_sql_table('test', engine.connect(),
+                                      index_col='a', columns=['b'])
+                result = self.executor.execute_dataframe(r, concat=True)[0]
+                pd.testing.assert_frame_equal(result, expected)
+
+                table = sa.Table(table_name, m, autoload=True,
                                  autoload_with=engine)
                 r = md.read_sql_table(table, engine, chunk_size=4,
                                       index_col=[table.columns['a'], table.columns['b']],
@@ -397,5 +405,20 @@ class Test(TestBase):
                 expected = test_df.copy(deep=True)
                 expected.set_index(['a', 'b'], inplace=True)
                 pd.testing.assert_frame_equal(result, expected)
+
+                # test primary key
+                sa.Table(table_name2, m,
+                         sa.Column('id', sa.Integer, primary_key=True),
+                         sa.Column('a', sa.Integer),
+                         sa.Column('b', sa.String),
+                         sa.Column('c', sa.Float))
+                m.create_all(engine)
+                test_df = test_df.copy(deep=True)
+                test_df.index.name = 'id'
+                test_df.to_sql(table_name2, uri, if_exists='append')
+
+                r = md.read_sql_table(table_name2, engine, chunk_size=4, index_col='id')
+                result = self.executor.execute_dataframe(r, concat=True)[0]
+                pd.testing.assert_frame_equal(result, test_df)
             finally:
                 engine.dispose()

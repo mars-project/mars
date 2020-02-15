@@ -22,8 +22,9 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import StringField, AnyField, BoolField, \
     ListField, Int64Field, Float64Field, BytesField
+from ...tensor.utils import normalize_chunk_sizes
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
-from ..utils import parse_index, decide_dataframe_chunk_sizes
+from ..utils import parse_index
 
 
 class DataFrameReadSQLTable(DataFrameOperand, DataFrameOperandMixin):
@@ -213,9 +214,10 @@ class DataFrameReadSQLTable(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op):
         df = op.outputs[0]
 
-        memory_usage = op.row_memory_usage * df.shape[0]
         chunk_size = df.extra_params.raw_chunk_size or options.chunk_size
-        row_chunk_sizes = decide_dataframe_chunk_sizes(df.shape, chunk_size, memory_usage)[0]
+        if chunk_size is None:
+            chunk_size = (int(options.chunk_store_limit / op.row_memory_usage), df.shape[1])
+        row_chunk_sizes = normalize_chunk_sizes(df.shape, chunk_size)[0]
         offsets = np.cumsum((0,) + row_chunk_sizes)
 
         out_chunks = []
@@ -259,7 +261,18 @@ class DataFrameReadSQLTable(DataFrameOperand, DataFrameOperandMixin):
                     if icol not in column_names:
                         columns.append(table.columns[icol])
 
-            query = sa.sql.select(columns).limit(out.shape[0])
+            query = sa.sql.select(columns)
+            if len(table.primary_key) > 0:
+                # if table has primary key, sort as the order
+                query = query.order_by(*list(table.primary_key))
+            elif op.index_col:
+                # if no primary key, sort as the index_col
+                query = query.order_by(
+                    *[table.columns[col] for col in op.index_col])
+            else:
+                # at last, we sort by all the columns
+                query = query.order_by(*columns)
+            query = query.limit(out.shape[0])
             if op.offset > 0:
                 query = query.offset(op.offset)
             query = query.select_from(table)
