@@ -29,8 +29,10 @@ from . import reduction
 from . import statistics
 from . import groupby
 from . import ufunc
+from . import datastore
 
-del reduction, statistics, arithmetic, indexing, merge, base, groupby, ufunc
+del reduction, statistics, arithmetic, indexing, merge, base, \
+    groupby, ufunc, datastore
 del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences
