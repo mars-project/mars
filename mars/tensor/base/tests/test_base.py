@@ -23,7 +23,7 @@ from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
-    partition, to_gpu, to_cpu
+    partition, topk, to_gpu, to_cpu
 from mars.operands import OperandStage
 from mars.tiles import get_tiled
 
@@ -797,3 +797,15 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             partition(np.random.rand(10), [-11, 2])
+
+    def testTopk(self):
+        raw = np.random.rand(20)
+        a = tensor(raw, chunk_size=10)
+
+        t = topk(a, 2)
+        t = t.tiles()
+        self.assertEqual(t.op.parallel_kind, 'tree')
+
+        # t = topk(a, 3)
+        # t = t.tiles()
+        # self.assertEqual(t.op.parallel_kind, 'psrs')

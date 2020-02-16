@@ -761,9 +761,109 @@ def copy_tileables(tileables, **kwargs):
     return op.new_tileables(inputs, kws=kws, output_limit=len(kws))
 
 
+def require_not_none(obj):
+    def wrap(func):
+        if obj is not None:
+            def inner(*args, **kwargs):
+                return func(*args, **kwargs)
+            return inner
+        else:
+            return
+    return wrap
+
+
+def require_module(module):
+    def wrap(func):
+        try:
+            importlib.import_module(module)
+
+            def inner(*args, **kwargs):
+                return func(*args, **kwargs)
+            return inner
+        except ImportError:
+            return
+    return wrap
+
+
 def ignore_warning(func):
     def inner(*args, **kwargs):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             return func(*args, **kwargs)
     return inner
+
+
+def flatten(nested_iterable):
+    """
+    Flatten a nested iterable into a list.
+
+    Parameters
+    ----------
+    nested_iterable : list or tuple
+        an iterable which can contain other iterables
+
+    Returns
+    -------
+    flattened : list
+
+    Examples
+    --------
+    >>> flatten([[0, 1], [2, 3]])
+    [0, 1, 2, 3]
+    >>> flatten([[0, 1], [[3], [4, 5]]])
+    [0, 1, 3, 4, 5]
+    """
+
+    flattened = []
+    stack = list(nested_iterable)[::-1]
+    while len(stack) > 0:
+        inp = stack.pop()
+        if isinstance(inp, (tuple, list)):
+            stack.extend(inp[::-1])
+        else:
+            flattened.append(inp)
+    return flattened
+
+
+def stack_back(flattened, raw):
+    """
+    Organize a new iterable from a flattened list according to raw iterable.
+
+    Parameters
+    ----------
+    flattened : list
+        flattened list
+    raw: list
+        raw iterable
+
+    Returns
+    -------
+    ret : list
+
+    Examples
+    --------
+    >>> raw = [[0, 1], [2, [3, 4]]]
+    >>> flattened = flatten(raw)
+    >>> flattened
+    [0, 1, 2, 3, 4]
+    >>> a = [f + 1 for f in flattened]
+    >>> a
+    [1, 2, 3, 4, 5]
+    >>> stack_back(a, raw)
+    [[1, 2], [3, [4, 5]]]
+    """
+    flattened_iter = iter(flattened)
+    result = list()
+
+    def _stack(container, items):
+        for item in items:
+            if not isinstance(item, (list, tuple)):
+                container.append(next(flattened_iter))
+            else:
+                new_container = list()
+                container.append(new_container)
+                _stack(new_container, item)
+
+        return container
+
+    return _stack(result, raw)
