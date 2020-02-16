@@ -79,6 +79,29 @@ class Test(TestBase):
         t = choice(5, 3, replace=False)
         self.assertEqual(t.shape, (3,))
 
+        with self.assertRaises(ValueError):
+            choice(-1)
+
+        # a should be 1-d
+        with self.assertRaises(ValueError):
+            choice(np.random.rand(2, 2))
+
+        # p sum != 1
+        with self.assertRaises(ValueError):
+            choice(np.random.rand(3), p=[0.2, 0.2, 0.2])
+
+        # p should b 1-d
+        with self.assertRaises(ValueError):
+            choice(np.random.rand(3), p=[[0.2, 0.6, 0.2]])
+
+        # replace=False, choice size cannot be greater than a.size
+        with self.assertRaises(ValueError):
+            choice(np.random.rand(10), 11, replace=False)
+
+        # replace=False, choice size cannot be greater than a.size
+        with self.assertRaises(ValueError):
+            choice(np.random.rand(10), (3, 4), replace=False)
+
     def testMultivariateNormal(self):
         mean = [0, 0]
         cov = [[1, 0], [0, 100]]
