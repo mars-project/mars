@@ -18,9 +18,10 @@ import unittest
 
 import numpy as np
 
-from mars.tensor.datasource import tensor as from_ndarray
-from mars.lib.sparse.core import issparse
 from mars import tensor
+from mars.tensor.datasource import tensor as from_ndarray
+from mars.tiles import get_tiled
+from mars.lib.sparse.core import issparse
 from mars.utils import ignore_warning
 from mars.tests.core import ExecutorForTest
 
@@ -117,51 +118,79 @@ class Test(unittest.TestCase):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).random_sample(size=(5, 5))))
 
     def testChoiceExecution(self):
-        arr = tensor.random.choice(5, size=3, chunk_size=1)
-        self.assertEqual(self.executor.execute_tensor(arr, concat=True)[0].shape, (3,))
+        # test 1 chunk, get integer
+        a = tensor.random.RandomState(0).choice(10)
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        self.assertTrue(np.all((res >= 0) & (res < 10)))
+        seed = get_tiled(a).chunks[0].op.seed
+        expected = np.random.RandomState(seed).choice(10)
+        np.testing.assert_array_equal(res, expected)
 
-        arr = tensor.random.choice(5, size=(15,), chunk_size=5).tiles()
-        for chunk in arr.chunks:
-            chunk.op._seed = 0
+        # test 1 chunk, integer
+        a = tensor.random.RandomState(0).choice(10, (4, 3))
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        self.assertTrue(np.all((res >= 0) & (res < 10)))
+        b = tensor.random.RandomState(0).choice(10, (4, 3))
+        res2 = self.executor.execute_tensor(b, concat=True)[0]
+        np.testing.assert_array_equal(res, res2)
+        a_tiled = get_tiled(a)
+        seed = a_tiled.chunks[0].op.seed
+        expected = np.random.RandomState(seed).choice(10, (4, 3))
+        np.testing.assert_array_equal(res, expected)
 
-        for res in self.executor.execute_tensor(arr):
-            self.assertTrue(np.array_equal(res, np.random.RandomState(0).choice(5, size=(5,))))
+        # test 1 chunk, ndarray
+        raw = np.random.RandomState(0).rand(10)
+        a = tensor.random.RandomState(0).choice(raw, (4, 3))
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        seed = get_tiled(a).chunks[0].op.seed
+        expected = np.random.RandomState(seed).choice(raw, (4, 3))
+        np.testing.assert_array_equal(res, expected)
 
-        arr = tensor.random.choice([1, 4, 9], size=3, chunk_size=1)
-        self.assertEqual(self.executor.execute_tensor(arr, concat=True)[0].shape, (3,))
+        # test with replacement, integer
+        a = tensor.random.RandomState(0).choice(20, (7, 4), chunk_size=4)
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        self.assertTrue(np.all((res >= 0) & (res < 20)))
+        b = tensor.random.RandomState(0).choice(20, (7, 4), chunk_size=4)
+        res2 = self.executor.execute_tensor(b, concat=True)[0]
+        np.testing.assert_array_equal(res, res2)
 
-        arr = tensor.random.choice([1, 4, 9], size=(15,), chunk_size=5).tiles()
-        for chunk in arr.chunks:
-            chunk.op._seed = 0
+        # test with replacement, ndarray
+        raw = np.random.RandomState(0).rand(20)
+        t = tensor.array(raw, chunk_size=8)
+        a = tensor.random.RandomState(0).choice(t, (7, 4), chunk_size=4)
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        self.assertTrue(np.all((res >= 0) & (res < 20)))
+        b = tensor.random.RandomState(0).choice(t, (7, 4), chunk_size=4)
+        res2 = self.executor.execute_tensor(b, concat=True)[0]
+        np.testing.assert_array_equal(res, res2)
 
-        for res in self.executor.execute_tensor(arr):
-            self.assertTrue(np.array_equal(res, np.random.RandomState(0).choice([1, 4, 9], size=(5,))))
+        # test without replacement, integer
+        a = tensor.random.RandomState(0).choice(100, (7, 2), chunk_size=2, replace=False)
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        self.assertTrue(np.all((res >= 0) & (res < 100)))
+        self.assertTrue(len(np.unique(res)), a.size)
+        b = tensor.random.RandomState(0).choice(100, (7, 2), chunk_size=2, replace=False)
+        res2 = self.executor.execute_tensor(b, concat=True)[0]
+        np.testing.assert_array_equal(res, res2)
 
-        with self.assertRaises(ValueError):
-            tensor.random.choice([1, 3, 4], size=5, replace=False, chunk_size=2)
+        # test without replacement, ndarray
+        raw = np.random.RandomState(0).rand(100)
+        t = tensor.array(raw, chunk_size=47)
+        a = tensor.random.RandomState(0).choice(t, (7, 2), chunk_size=2, replace=False)
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        self.assertTrue(np.all((res >= 0) & (res < 100)))
+        self.assertTrue(len(np.unique(res)), a.size)
+        b = tensor.random.RandomState(0).choice(t, (7, 2), chunk_size=2, replace=False)
+        res2 = self.executor.execute_tensor(b, concat=True)[0]
+        np.testing.assert_array_equal(res, res2)
 
-        arr = tensor.random.choice([1, 4, 9], size=3, replace=False, chunk_size=1)
-        self.assertEqual(self.executor.execute_tensor(arr, concat=True)[0].shape, (3,))
-
-        arr = tensor.random.choice([1, 4, 9], size=(3,), replace=False, chunk_size=1).tiles()
-        for chunk in arr.chunks:
-            chunk.op._seed = 0
-
-        for res in self.executor.execute_tensor(arr):
-            self.assertTrue(
-                np.array_equal(res, np.random.RandomState(0).choice([1, 4, 9], size=(1,), replace=False)))
-
-        arr = tensor.random.choice([1, 4, 9], size=3, p=[.2, .5, .3], chunk_size=1)
-        self.assertEqual(self.executor.execute_tensor(arr, concat=True)[0].shape, (3,))
-
-        arr = tensor.random.choice([1, 4, 9], size=(15,), chunk_size=5, p=[.2, .5, .3]).tiles()
-        for chunk in arr.chunks:
-            chunk.op._seed = 0
-
-        for res in self.executor.execute_tensor(arr):
-            self.assertTrue(
-                np.array_equal(res, np.random.RandomState(0).choice([1, 4, 9], size=(5,),
-                                                                    p=[.2, .5, .3])))
+        # test p
+        raw = np.random.RandomState(0).rand(5)
+        p = [0.3, 0.2, 0.1, 0.3, 0.1]
+        a = tensor.random.RandomState(0).choice(raw, 3, p=p)
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        expected = np.random.RandomState(get_tiled(a).chunks[0].op.seed).choice(raw, 3, p=p)
+        np.testing.assert_array_equal(res, expected)
 
     def testSparseRandintExecution(self):
         size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
