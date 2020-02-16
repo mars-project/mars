@@ -375,6 +375,9 @@ message OperandDef {
 
         TO_CSV_STAT = 2102;
 
+        // read images
+        IMREAD = 2110;
+
         // machine learning
 
         // XGBoost
