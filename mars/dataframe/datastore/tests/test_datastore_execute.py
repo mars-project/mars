@@ -25,7 +25,7 @@ from mars.tests.core import TestBase, ExecutorForTest
 
 class Test(TestBase):
     def setUp(self):
-        super(TestBase, self).setUp()
+        super(Test, self).setUp()
         self.executor = ExecutorForTest()
 
     def testToCSVExecution(self):
