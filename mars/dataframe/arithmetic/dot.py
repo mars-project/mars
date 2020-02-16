@@ -33,7 +33,8 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
     _rhs = KeyField('rhs')
 
     def __init__(self, object_type=None, lhs=None, rhs=None, **kw):
-        super().__init__(_object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
+        super(DataFrameDot, self).__init__(
+            _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
 
     @property
     def lhs(self):
@@ -44,7 +45,7 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
         return self._rhs
 
     def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
+        super(DataFrameDot, self)._set_inputs(inputs)
         self._lhs = self._inputs[0]
         self._rhs = self._inputs[1]
 
