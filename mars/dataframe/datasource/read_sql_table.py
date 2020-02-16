@@ -104,7 +104,7 @@ class DataFrameReadSQLTable(DataFrameOperand, DataFrameOperandMixin):
         from sqlalchemy import sql
 
         # fetch test DataFrame
-        query = sql.select(columns).limit(test_rows).select_from(table)
+        query = sql.select(columns).limit(test_rows)
         test_df = pd.read_sql(query, engine_or_conn, index_col=self._index_col,
                               coerce_float=self._coerce_float,
                               parse_dates=self._parse_dates)
@@ -275,7 +275,6 @@ class DataFrameReadSQLTable(DataFrameOperand, DataFrameOperandMixin):
             query = query.limit(out.shape[0])
             if op.offset > 0:
                 query = query.offset(op.offset)
-            query = query.select_from(table)
 
             df = pd.read_sql(query, engine, index_col=op.index_col,
                              coerce_float=op.coerce_float,
