@@ -271,6 +271,21 @@ class TensorReductionMixin(TensorOperandMixin):
 
             ctx[out.key] = ret.astype(ret.dtype, order=out.order.value, copy=False)
 
+    @classmethod
+    def execute_one_chunk(cls, ctx, op):
+        cls.execute_agg(ctx, op)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            return cls.execute_map(ctx, op)
+        elif op.stage == OperandStage.combine:
+            return cls.execute_combine(ctx, op)
+        elif op.stage == OperandStage.agg:
+            return cls.execute_agg(ctx, op)
+        else:
+            return cls.execute_one_chunk(ctx, op)
+
 
 class TensorArgReductionMixin(TensorReductionMixin):
     __slots__ = ()
@@ -521,15 +536,6 @@ class TensorReduction(TensorHasInput):
         elif stage == OperandStage.combine and not hasattr(self, 'execute_combine'):
             return OperandStage.agg
         return stage
-
-    @classmethod
-    def execute(cls, ctx, op):
-        if op.stage == OperandStage.map:
-            return cls.execute_map(ctx, op)
-        elif op.stage == OperandStage.combine:
-            return cls.execute_combine(ctx, op)
-        else:
-            return cls.execute_agg(ctx, op)
 
 
 class TensorCumReduction(TensorHasInput):
