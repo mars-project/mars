@@ -126,7 +126,7 @@ class TensorHDF5DataStore(TensorDataStore):
                                   chunks=out_chunks)
 
     @classmethod
-    def execute(cls, ctx, op):
+    async def execute(cls, ctx, op):
         import h5py
 
         to_store = ctx[op.inputs[0].key]
@@ -140,7 +140,7 @@ class TensorHDF5DataStore(TensorDataStore):
         # the correspond exclusive behavior
         if ctx.running_mode == RunningMode.local and len(op.inputs) == 2:
             lock = ctx[op.inputs[1].key]
-            lock.acquire()
+            await lock.acquire()
         try:
             with h5py.File(open_file(op.filename, mode='r+b'), mode='r+') as f:
                 try:

@@ -22,7 +22,7 @@ from enum import Enum
 
 from ... import promise
 from ...config import options
-from ...utils import classproperty, log_unhandled
+from ...utils import classproperty, log_unhandled, wait_with_raise
 from ...serialize import dataserializer
 from .iorunner import IORunnerActor
 
@@ -299,7 +299,7 @@ class BytesStorageMixin:
             finally:
                 if on_close:
                     await on_close(_reader, _writer, not with_exc)
-                await asyncio.wait([_reader.close(), _writer.close(finished=not with_exc)])
+                await wait_with_raise([_reader.close(), _writer.close(finished=not with_exc)])
                 del _reader, _writer, block
 
         try:

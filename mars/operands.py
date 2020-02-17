@@ -595,7 +595,7 @@ class SuccessorsExclusive(VirtualOperand, ObjectOperandMixin):
         return super()._new_chunks(inputs, kws=kws, **kw)
 
     @classmethod
-    def execute(cls, ctx, op):
+    async def execute(cls, ctx, op):
         # only for local
         if ctx.running_mode == RunningMode.local:
             ctx[op.outputs[0].key] = asyncio.locks.Lock()

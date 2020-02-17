@@ -41,7 +41,7 @@ from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTile
 from .graph_builder import TileableGraphBuilder
 from .context import LocalContext
 from .utils import kernel_mode, enter_build_mode, build_fetch, calc_nsplits,\
-    has_unknown_shape, wrap_async_method
+    has_unknown_shape, wrap_async_method, wait_with_raise
 
 try:
     from numpy.core._exceptions import UFuncTypeError
@@ -406,7 +406,7 @@ class GraphExecution(object):
         finally:
             self._semaphore.release()
 
-    async def _fetch_chunks(self, chunks):
+    async def _submit_fetch_chunks(self, chunks):
         """
         Iterate all the successors of given chunks,
         if the successor's predecessors except that in the chunks have all finished,
@@ -457,7 +457,7 @@ class GraphExecution(object):
 
         if self._prefetch:
             # check the operand's outputs if any of its successor's predecessors can be prefetched
-            await self._fetch_chunks(to_submit_op.outputs)
+            await self._submit_fetch_chunks(to_submit_op.outputs)
         # execute the operand and return future
         return asyncio.ensure_future(self._execute_operand(to_submit_op))
 
@@ -471,9 +471,12 @@ class GraphExecution(object):
             future = await self._submit_operand_to_execute()
             if future is not None:
                 executed_futures.append(future)
+            else:
+                # yield to submitted tasks
+                await asyncio.sleep(0)
 
         # wait until all the futures completed
-        await asyncio.wait(executed_futures)
+        done, _ = await wait_with_raise(executed_futures)
 
         if retval:
             return [self._chunk_results[key] for key in self._keys]

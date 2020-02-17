@@ -20,6 +20,7 @@ import os
 from .utils import SchedulerActor
 from .. import kvstore
 from ..config import options
+from ..utils import wait_with_raise
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class KVStoreActor(SchedulerActor):
     async def write_batch(self, items):
         wrap = lambda x: (x,) if not isinstance(x, tuple) else x
         futures = [asyncio.ensure_future(self.write(*wrap(it))) for it in items]
-        await asyncio.wait(futures)
+        await wait_with_raise(futures)
 
     async def delete(self, key, dir=False, recursive=False, silent=False):
         try:

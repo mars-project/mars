@@ -22,7 +22,7 @@ from . import kvstore
 from .actors import FunctionActor
 from .promise import PromiseActor
 from .lib.uhashring import HashRing
-from .utils import to_str
+from .utils import to_str, wait_with_raise
 
 
 SCHEDULER_PATH = '/schedulers'
@@ -154,7 +154,7 @@ class ClusterInfoActor(FunctionActor):
         for observer_ref, fun_name in self._observer_refs:
             # notify the observers to update the new scheduler list
             set_tasks.append(getattr(observer_ref, fun_name)(schedulers, _tell=True))
-        await asyncio.wait(set_tasks)
+        await wait_with_raise(set_tasks)
 
     def get_scheduler(self, key, size=1):
         if len(self._schedulers) == 1 and size == 1:

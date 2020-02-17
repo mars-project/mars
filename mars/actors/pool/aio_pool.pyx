@@ -50,7 +50,8 @@ cdef int UNKNOWN_TO_INDEX = -1
 cpdef int REMOTE_DEFAULT_PARALLEL = 50  # parallel connection at most
 cpdef int REMOTE_MAX_CONNECTION = 200  # most connections
 
-aiomultiprocess.set_context('fork')
+if sys.platform != 'win32':
+    aiomultiprocess.set_context('fork')
 
 
 cdef class MessageContext:

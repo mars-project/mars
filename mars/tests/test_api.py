@@ -23,86 +23,104 @@ from mars.scheduler import GraphActor, ResourceActor, SessionManagerActor,\
     GraphState, ChunkMetaClient, ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.api import MarsAPI
-from mars.tests.core import patch_method, create_actor_pool
+from mars.tests.core import aio_case, patch_method, create_actor_pool
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run under windows')
+@aio_case
 class Test(unittest.TestCase):
-    def setUp(self):
-        endpoint = '127.0.0.1:%d' % get_next_port()
-        self.endpoint = endpoint
-        self.pool = create_actor_pool(n_process=1, backend='gevent', address=endpoint)
-        self.pool.create_actor(SchedulerClusterInfoActor, [endpoint],
-                               uid=SchedulerClusterInfoActor.default_uid())
-        self.pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_uid())
-        self.pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
+    @staticmethod
+    def _create_pool():
+        pool = None
 
-        self.api = MarsAPI(endpoint)
+        class _AsyncContextManager:
+            async def __aenter__(self):
+                nonlocal pool
+                endpoint = '127.0.0.1:%d' % get_next_port()
+                pool = create_actor_pool(n_process=1, address=endpoint)
+                await pool.__aenter__()
 
-    def tearDown(self):
-        self.pool.stop()
+                await pool.create_actor(SchedulerClusterInfoActor, [endpoint],
+                                        uid=SchedulerClusterInfoActor.default_uid())
+                await pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_uid())
+                await pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
 
-    @patch_method(GraphActor.execute_graph)
-    def testApi(self, *_):
-        self.assertEqual(0, self.api.count_workers())
+                api = MarsAPI(endpoint)
+                return pool, api
 
-        session_id = 'mock_session_id'
-        self.api.create_session(session_id)
-        self.assertEqual(1, len(self.api.session_manager.get_sessions()))
-        self.api.delete_session(session_id)
-        self.assertEqual(0, len(self.api.session_manager.get_sessions()))
-        self.api.create_session(session_id)
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                await pool.__aexit__(exc_type, exc_val, exc_tb)
 
-        serialized_graph = 'mock_serialized_graph'
-        graph_key = 'mock_graph_key'
-        targets = 'mock_targets'
-        self.api.submit_graph(session_id, serialized_graph, graph_key, targets)
-        graph_uid = GraphActor.gen_uid(session_id, graph_key)
-        graph_ref = self.api.get_actor_ref(graph_uid)
-        self.assertTrue(self.pool.has_actor(graph_ref))
+        return _AsyncContextManager()
 
-        state = self.api.get_graph_state(session_id, graph_key)
-        self.assertEqual(GraphState('preparing'), state)
-        exc_info = self.api.get_graph_exc_info(session_id, graph_key)
-        self.assertIsNone(exc_info)
+    async def testApi(self, *_):
+        async with self._create_pool() as (pool, api), \
+                patch_method(GraphActor.execute_graph, new=lambda *_, **__: None):
+            self.assertEqual(0, await api.count_workers())
 
-        self.api.stop_graph(session_id, graph_key)
-        state = self.api.get_graph_state(session_id, graph_key)
-        self.assertEqual(GraphState('cancelled'), state)
-        exc_info = self.api.get_graph_exc_info(session_id, graph_key)
-        self.assertIsNone(exc_info)
+            session_manager = await api.get_session_manager()
 
-        self.api.delete_graph(session_id, graph_key)
-        self.assertFalse(self.pool.has_actor(graph_ref))
+            session_id = 'mock_session_id'
+            await api.create_session(session_id)
+            self.assertEqual(1, len(await session_manager.get_sessions()))
+            await api.delete_session(session_id)
+            self.assertEqual(0, len(await session_manager.get_sessions()))
+            await api.create_session(session_id)
+
+            serialized_graph = 'mock_serialized_graph'
+            graph_key = 'mock_graph_key'
+            targets = 'mock_targets'
+            await api.submit_graph(session_id, serialized_graph, graph_key, targets)
+            graph_uid = GraphActor.gen_uid(session_id, graph_key)
+            graph_ref = await api.get_actor_ref(graph_uid)
+            self.assertTrue(await pool.has_actor(graph_ref))
+
+            state = await api.get_graph_state(session_id, graph_key)
+            self.assertEqual(GraphState('preparing'), state)
+            exc_info = await api.get_graph_exc_info(session_id, graph_key)
+            self.assertIsNone(exc_info)
+
+            await api.stop_graph(session_id, graph_key)
+            state = await api.get_graph_state(session_id, graph_key)
+            self.assertEqual(GraphState('cancelled'), state)
+            exc_info = await api.get_graph_exc_info(session_id, graph_key)
+            self.assertIsNone(exc_info)
+
+            await api.delete_graph(session_id, graph_key)
+            self.assertFalse(await pool.has_actor(graph_ref))
 
     @patch_method(GraphActor.get_tileable_metas)
     @patch_method(ChunkMetaClient.batch_get_chunk_shape)
-    def testGetTensorNsplits(self, *_):
+    async def testGetTensorNsplits(self, *_):
         session_id = 'mock_session_id'
         graph_key = 'mock_graph_key'
         tensor_key = 'mock_tensor_key'
         serialized_graph = 'mock_serialized_graph'
 
-        graph_uid = GraphActor.gen_uid(session_id, graph_key)
-        self.pool.create_actor(GraphActor, session_id, serialized_graph, graph_key, uid=graph_uid)
-        self.pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+        async with self._create_pool() as (pool, api), \
+                patch_method(GraphActor.get_tileable_metas), \
+                patch_method(ChunkMetaClient.batch_get_chunk_shape):
 
-        mock_indexes = [
-            [(((3, 4, 5, 6),), OrderedDict(zip([(0, ), (1,), (2,), (3,)],
-                                               ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'])))],
-            [(((3, 2), (4, 2)), OrderedDict(zip([(0, 0), (0, 1), (1, 0), (1, 1)],
-                                                ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'])))]
-        ]
-        mock_shapes = [
-            [(3,), (4,), (5,), (6,)],
-            [(3, 4), (3, 2), (2, 4), (2, 2)]
-        ]
+            graph_uid = GraphActor.gen_uid(session_id, graph_key)
+            await pool.create_actor(GraphActor, session_id, serialized_graph, graph_key, uid=graph_uid)
+            await pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
-        GraphActor.get_tileable_metas.side_effect = mock_indexes
-        ChunkMetaClient.batch_get_chunk_shape.side_effect = mock_shapes
+            mock_indexes = [
+                [(((3, 4, 5, 6),), OrderedDict(zip([(0, ), (1,), (2,), (3,)],
+                                                   ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'])))],
+                [(((3, 2), (4, 2)), OrderedDict(zip([(0, 0), (0, 1), (1, 0), (1, 1)],
+                                                    ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'])))]
+            ]
+            mock_shapes = [
+                [(3,), (4,), (5,), (6,)],
+                [(3, 4), (3, 2), (2, 4), (2, 2)]
+            ]
 
-        nsplits = self.api.get_tileable_nsplits(session_id, graph_key, tensor_key)
-        self.assertEqual(((3, 4, 5, 6),), nsplits)
+            GraphActor.get_tileable_metas.side_effect = mock_indexes
+            ChunkMetaClient.batch_get_chunk_shape.side_effect = mock_shapes
 
-        nsplits = self.api.get_tileable_nsplits(session_id, graph_key, tensor_key)
-        self.assertEqual(((3, 2), (4, 2)), nsplits)
+            nsplits = await api.get_tileable_nsplits(session_id, graph_key, tensor_key)
+            self.assertEqual(((3, 4, 5, 6),), nsplits)
+
+            nsplits = await api.get_tileable_nsplits(session_id, graph_key, tensor_key)
+            self.assertEqual(((3, 2), (4, 2)), nsplits)

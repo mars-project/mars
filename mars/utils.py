@@ -926,6 +926,13 @@ def wrap_async_method(fun):
     return _wrapped
 
 
+async def wait_with_raise(fs, **kwargs):
+    done, pending = await asyncio.wait(fs, **kwargs)
+    for coro in done:
+        coro.result()
+    return done, pending
+
+
 def recursive_tile(tensor):
     q = [tensor]
     while q:

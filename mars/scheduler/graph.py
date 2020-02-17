@@ -43,7 +43,8 @@ from ..tiles import handler, IterativeChunkGraphBuilder, \
     TileableGraphBuilder, get_tiled
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
     build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
-    get_chunk_shuffle_key, enter_build_mode, has_unknown_shape
+    get_chunk_shuffle_key, enter_build_mode, has_unknown_shape, \
+    wait_with_raise
 from ..context import DistributedContext
 
 logger = logging.getLogger(__name__)
@@ -434,7 +435,7 @@ class GraphActor(SchedulerActor):
                 has_stopping = True
                 stop_futures.append(ref.stop_operand(_tell=True))
         if stop_futures:
-            await asyncio.wait(stop_futures)
+            await wait_with_raise(stop_futures)
 
         if not has_stopping:
             self.state = GraphState.CANCELLED
@@ -924,7 +925,7 @@ class GraphActor(SchedulerActor):
                     op_info.pop('executable_dag', None)
                     del op_info['io_meta']
             if append_futures:
-                await asyncio.wait(append_futures)
+                await wait_with_raise(append_futures)
 
             res_applications = [(op_key, op_info) for op_key, op_info in operand_infos.items()
                                 if op_key in to_allocate_op_keys]
@@ -1095,7 +1096,7 @@ class GraphActor(SchedulerActor):
         for chunk in tileable.chunks:
             futures.append(self._get_operand_ref(chunk.op.key).free_data(
                 check=False, _tell=not wait, _wait=False))
-        await asyncio.wait(futures)
+        await wait_with_raise(futures)
 
     async def get_tileable_metas(self, tileable_keys, filter_fields=None):
         """
@@ -1141,13 +1142,13 @@ class GraphActor(SchedulerActor):
         graph.add_node(new_tileable)
         return serialize_graph(graph)
 
-    def tile_fetch_tileable(self, tileable):
+    async def tile_fetch_tileable(self, tileable):
         """
         Find the owner of the input tileable node and ask for tiling
         """
         tileable_key = tileable.key
-        graph_ref = self.ctx.actor_ref(self._session_ref.get_graph_ref_by_tileable_key(tileable_key))
-        fetch_graph = deserialize_graph(graph_ref.build_fetch_graph(tileable_key))
+        graph_ref = self.ctx.actor_ref(await self._session_ref.get_graph_ref_by_tileable_key(tileable_key))
+        fetch_graph = deserialize_graph(await graph_ref.build_fetch_graph(tileable_key))
         return list(fetch_graph)[0]
 
     @log_unhandled
@@ -1332,7 +1333,7 @@ class GraphActor(SchedulerActor):
                 from_states = [from_state]
             futures.append(op_ref.move_failover_state(
                 from_states, state, new_target, removes, _tell=True, _wait=False))
-        await asyncio.wait(futures)
+        await wait_with_raise(futures)
 
         self._dump_failover_info(adds, removes, lost_chunks, new_states)
 

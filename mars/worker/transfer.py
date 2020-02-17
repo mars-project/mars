@@ -27,7 +27,7 @@ from ..config import options
 from ..errors import DependencyMissing, ExecutionInterrupted, WorkerDead
 from ..serialize import dataserializer
 from ..scheduler.chunkmeta import WorkerMeta
-from ..utils import log_unhandled, build_exc_info
+from ..utils import log_unhandled, build_exc_info, wait_with_raise
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .storage import DataStorageDevice
 from .utils import WorkerActor, ExpiringCache
@@ -870,7 +870,7 @@ async def put_remote_chunk(session_id, chunk_key, data, receiver_manager_ref):
             futures.append(receiver_ref.receive_data_part(
                 session_id, [chunk_key], [is_last], next_part, _wait=False))
             if is_last:
-                await asyncio.wait(futures)
+                await wait_with_raise(futures)
                 break
     except:  # noqa: E722
         await receiver_ref.cancel_receive(session_id, [chunk_key])

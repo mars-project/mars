@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import logging
 import os
 import uuid
 
 from .utils import SchedulerActor
-from ..utils import log_unhandled
+from ..utils import log_unhandled, wait_with_raise
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +210,7 @@ class SessionActor(SchedulerActor):
         futures = []
         for ref in self._graph_refs.values():
             futures.append(ref.handle_worker_change(adds, removes, lost_chunks, _wait=False, _tell=True))
-        await asyncio.wait(futures)
+        await wait_with_raise(futures)
 
 
 class SessionManagerActor(SchedulerActor):
@@ -258,10 +257,10 @@ class SessionManagerActor(SchedulerActor):
             ref = self.get_actor_ref(AssignerActor.gen_uid(key))
             futures.append(ref.mark_metrics_expired(_tell=True, _wait=False))
         if futures:
-            await asyncio.wait(futures)
+            await wait_with_raise(futures)
 
         futures = []
         for ref in self._session_refs.values():
             futures.append(getattr(ref, handler)(*args, _wait=False, _tell=True, **kwargs))
         if futures:
-            await asyncio.wait(futures)
+            await wait_with_raise(futures)

@@ -21,8 +21,6 @@ import tempfile
 import time
 import unittest
 
-import gevent
-
 from mars import resource
 from mars.config import options
 from mars.tests.core import EtcdProcessHelper
@@ -116,9 +114,6 @@ class SchedulerIntegratedTest(unittest.TestCase):
     async def _start_processes(self, n_schedulers=2, n_workers=2, etcd=False, modules=None,
                                log_scheduler=True, log_worker=True, env=None,
                                scheduler_args=None, worker_args=None):
-        old_not_errors = gevent.hub.Hub.NOT_ERROR
-        gevent.hub.Hub.NOT_ERROR = (Exception,)
-
         scheduler_ports = [str(get_next_port()) for _ in range(n_schedulers)]
         self.scheduler_endpoints = ['127.0.0.1:' + p for p in scheduler_ports]
 
@@ -203,8 +198,6 @@ class SchedulerIntegratedTest(unittest.TestCase):
                 if time.time() - check_time > 20:
                     raise
                 time.sleep(0.1)
-
-        gevent.hub.Hub.NOT_ERROR = old_not_errors
 
     def check_process_statuses(self):
         for scheduler_proc in self.proc_schedulers:

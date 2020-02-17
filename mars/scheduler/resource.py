@@ -25,7 +25,7 @@ from .kvstore import KVStoreActor
 from .session import SessionManagerActor, SessionActor
 from .utils import SchedulerActor
 from ..config import options
-from ..utils import BlacklistSet
+from ..utils import BlacklistSet, wait_with_raise
 
 
 logger = logging.getLogger(__name__)
@@ -186,7 +186,7 @@ class ResourceActor(SchedulerActor):
         for ep in self.get_schedulers():
             ref = self.ctx.actor_ref(SessionManagerActor.default_uid(), address=ep)
             futures.append(asyncio.ensure_future(ref.broadcast_sessions(handler, *args, **kwargs)))
-        await asyncio.wait(futures)
+        await wait_with_raise(futures)
 
     async def _broadcast_workers(self, handler, *args, **kwargs):
         from ..worker.execution import ExecutionActor

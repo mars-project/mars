@@ -27,7 +27,7 @@ from mars.actors import create_actor_pool as new_actor_pool, Actor, FunctionActo
 from mars.actors.pool.aio_pool import Dispatcher, Connections
 from mars.lib.mmh3 import hash as mmh_hash
 from mars.tests.core import aio_case
-from mars.utils import to_binary
+from mars.utils import to_binary, wait_with_raise
 
 
 DEFAULT_PORT = 12345
@@ -493,8 +493,7 @@ class Test(unittest.TestCase):
                         await asyncio.sleep(0.2)
                         [c.release() for c in conns1]
 
-                    await asyncio.wait([connections1.connect(), _unlocker()],
-                                       return_when=asyncio.ALL_COMPLETED)
+                    await wait_with_raise([connections1.connect(), _unlocker()])
 
                     self.assertEqual(len(connections1.conn), 66)
 
@@ -1148,7 +1147,7 @@ class Test(unittest.TestCase):
                 refx = refs[i]
                 ps.append(ref_send(refx, r))
 
-            await asyncio.wait(ps, return_when=asyncio.ALL_COMPLETED)
+            await wait_with_raise(ps)
 
     async def testRemoteBrokenPipe(self):
         async with create_actor_pool(address=True, n_process=1) as pool1:
