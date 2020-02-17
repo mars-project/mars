@@ -32,7 +32,11 @@ class DataFrame(_Frame):
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
-            df = data
+            if not hasattr(data, 'data'):
+                # DataFrameData
+                df = _Frame(data)
+            else:
+                df = data
         elif isinstance(data, dict) and any(isinstance(v, (Base, Entity)) for v in data.values()):
             # data is a dict and some value is tensor
             columns = list(data.keys()) if columns is None else columns
@@ -56,7 +60,11 @@ class Series(_Series):
                 data = data.rechunk(chunk_size)
             series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)
         elif isinstance(data, SERIES_TYPE):
-            series = data
+            if not hasattr(data, 'data'):
+                # SeriesData
+                series = _Series(data)
+            else:
+                series = data
         else:
             pd_series = pd.Series(data, index=index, dtype=dtype, name=name, copy=copy)
             series = from_pandas_series(pd_series, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
