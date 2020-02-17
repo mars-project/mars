@@ -173,6 +173,12 @@ class Test(unittest.TestCase):
         raw1 = np.random.random((20, 25))
         raw2 = np.random.randint(10, size=(20, 25))
 
+        arr0 = tensor(raw1, chunk_size=25)
+
+        res1 = self.executor.execute_tensor(arr0.var())
+        expected1 = raw1.var()
+        self.assertTrue(np.allclose(res1[0], expected1))
+
         arr1 = tensor(raw1, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr1.var())
@@ -464,6 +470,13 @@ class Test(unittest.TestCase):
 
     def testCountNonzeroExecution(self):
         raw = [[0, 1, 7, 0, 0], [3, 0, 0, 2, 19]]
+
+        arr = tensor(raw, chunk_size=5)
+        t = count_nonzero(arr)
+
+        res = self.executor.execute_tensor(t)[0]
+        expected = np.count_nonzero(raw)
+        np.testing.assert_equal(res, expected)
 
         arr = tensor(raw, chunk_size=2)
         t = count_nonzero(arr)
