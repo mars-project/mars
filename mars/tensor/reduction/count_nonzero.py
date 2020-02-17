@@ -51,6 +51,14 @@ class TensorCountNonzero(TensorReduction, TensorReductionMixin):
     def execute_agg(cls, ctx, op):
         return TensorSum.execute_agg(ctx, op)
 
+    @classmethod
+    def execute_one_chunk(cls, ctx, op):
+        a = ctx[op.inputs[0].key]
+        (inp,), device_id, xp = as_same_device(
+            [a], device=op.device, ret_extra=True)
+        with device(device_id):
+            ctx[op.outputs[0].key] = xp.count_nonzero(inp, axis=op.axis)
+
 
 def count_nonzero(a, axis=None, combine_size=None):
     """
