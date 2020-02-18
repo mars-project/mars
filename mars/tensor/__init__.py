@@ -55,6 +55,7 @@ from .indexing import take, compress, extract, choose, unravel_index, \
     nonzero, flatnonzero, fill_diagonal
 from .rechunk import rechunk
 from .einsum import einsum
+from .images import imread
 # noinspection PyUnresolvedReferences
 from .lib.index_tricks import mgrid, ogrid, ndindex
 from .core import mutable_tensor
