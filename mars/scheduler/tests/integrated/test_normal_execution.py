@@ -381,8 +381,8 @@ class Test(SchedulerIntegratedTest):
         r = context.get_tileable_data(a.key, indexes)
         np.testing.assert_array_equal(raw1[tuple(indexes)], r)
 
-        indexed = a[[9, 1, 2, 0], [0, 0, 4, 4]]
-        r = context.get_tileable_data(a.key, indexed.op.indexes)
+        indexes = ([9, 1, 2, 0], [0, 0, 4, 4])
+        r = context.get_tileable_data(a.key, indexes)
         np.testing.assert_array_equal(raw1[[9, 1, 2, 0], [0, 0, 4, 4]], r)
 
     def testOperandsWithoutPrepareInputs(self):

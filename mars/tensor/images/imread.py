@@ -35,8 +35,8 @@ class TensorImread(TensorOperand, TensorOperandMixin):
 
     _filepath = AnyField('filepath')
 
-    def __init__(self, filepath=None, **kwargs):
-        super().__init__(_filepath=filepath, **kwargs)
+    def __init__(self, filepath=None, dtype=None, **kwargs):
+        super().__init__(_filepath=filepath, _dtype=dtype, **kwargs)
 
     @property
     def filepath(self):
@@ -95,5 +95,5 @@ def imread(path, chunk_size=None):
         shape = img_shape
     if chunk_size is None:
         chunk_size = int(options.chunk_store_limit / img_size)
-    op = TensorImread(filepath=path, chunk_size=chunk_size)
+    op = TensorImread(filepath=path, chunk_size=chunk_size, dtype=sample_data.dtype)
     return op(shape=shape, chunk_size=chunk_size)

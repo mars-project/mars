@@ -22,7 +22,6 @@ except ImportError:  # pragma: no cover
     Dataset = object
 
 from ....context import get_context, DistributedContext
-from ....tensor.indexing.core import process_index
 from ....tensor.fetch import TensorFetch
 from ....utils import require_not_none
 
@@ -47,8 +46,7 @@ class MarsDataset(Dataset):
         self._offset = 0
 
     def _get_data(self, item):
-        indexes = process_index(self.tensors[0].ndim, item)
-        return tuple(self._context.get_tileable_data(t.key, indexes) for t in self.tensors)
+        return tuple(self._context.get_tileable_data(t.key, item) for t in self.tensors)
 
     def __len__(self):
         return self.tensors[0].shape[0]
