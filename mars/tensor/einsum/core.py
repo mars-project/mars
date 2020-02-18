@@ -37,8 +37,8 @@ class TensorEinsum(TensorOperand, TensorOperandMixin):
     _order = StringField('order')
     _casting = StringField('casting')
 
-    def __init__(self, subscripts=None, optimize=None, order=None, casting=None, **kw):
-        super().__init__(_subscripts=subscripts, _optimize=optimize,
+    def __init__(self, subscripts=None, optimize=None, dtype=None, order=None, casting=None, **kw):
+        super().__init__(_subscripts=subscripts, _optimize=optimize, _dtype=dtype,
                          _order=order, _casting=casting, **kw)
 
     @property

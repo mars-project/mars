@@ -314,7 +314,7 @@ class DistributedContext(ContextBase):
         from .utils import merge_chunks
         from .tensor.core import TENSOR_TYPE
         from .tensor.datasource import empty
-        from .tensor.indexing.getitem import TensorIndexTilesHandler, calc_pos
+        from .tensor.indexing.getitem import TensorIndexTilesHandler, calc_pos, process_index
 
         nsplits, chunk_keys, chunk_indexes = self.get_tileable_metas([tileable_key])[0]
         chunk_idx_to_keys = dict(zip(chunk_indexes, chunk_keys))
@@ -327,6 +327,9 @@ class DistributedContext(ContextBase):
 
         chunk_results = dict()
         select_pos = None
+        if indexes is not None:
+            indexes = process_index(len(nsplits), indexes)
+
         if not indexes:
             datas = []
             for endpoint, chunks in chunk_workers.items():
