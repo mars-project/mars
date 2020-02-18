@@ -41,10 +41,12 @@ class Test(TestBase):
 
             t = imread(os.path.join(tempdir, 'random_0.png'))
             self.assertEqual(t.shape, (50, 50, 3))
+            self.assertEqual(t.dtype, np.dtype('uint8'))
 
             tiled = t.tiles()
             self.assertEqual(len(tiled.chunks), 1)
             self.assertEqual(tiled.chunks[0].shape, (50, 50, 3))
+            self.assertEqual(tiled.chunks[0].dtype, np.dtype('uint8'))
 
             t = imread(os.path.join(tempdir, 'random_*.png'), chunk_size=3)
             self.assertEqual(t.shape, (10, 50, 50, 3))
@@ -52,6 +54,7 @@ class Test(TestBase):
             tiled = t.tiles()
             self.assertEqual(len(tiled.chunks), 4)
             self.assertEqual(tiled.nsplits, ((3, 3, 3, 1), (50,), (50,), (3,)))
+            self.assertEqual(tiled.chunks[0].dtype, np.dtype('uint8'))
             self.assertEqual(tiled.chunks[0].index, (0, 0, 0, 0))
             self.assertEqual(tiled.chunks[0].shape, (3, 50, 50, 3))
             self.assertEqual(tiled.chunks[1].index, (1, 0, 0, 0))
