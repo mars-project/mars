@@ -9,7 +9,6 @@ include =
     mars/*
 omit =
     mars/compat.py
-    mars/lib/aiomultiprocess
     mars/lib/asyncio_pool/*
     mars/lib/asyncinit.py/*
     mars/lib/functools32/*

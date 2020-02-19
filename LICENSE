@@ -251,7 +251,6 @@ MIT License
 - numexpr:2.6.4
 - cupy:5.0.0
 - aio_etcd:0.4.6.1
-- aiomultiprocess:0.7.0
 - asyncio_pool:0.4.1
 - asyncinit:0.2.4
 - bootstrap:3.3.7

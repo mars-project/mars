@@ -19,6 +19,9 @@ import asyncio
 import numpy as np
 
 from ..._utils cimport to_str
+from ...utils import aio_run
+
+aio_run = aio_run
 
 
 cpdef bytes new_actor_id():

@@ -1130,15 +1130,12 @@ class Test(unittest.TestCase):
             ref1 = await pool.create_actor(DummyActor, 0)
 
             async def ref_send(ref, rg):
-                p = []
-                for i in range(*rg):
-                    p.append(asyncio.ensure_future(ref.send(('send', ref1, 'add_ret', i))))
+                p = [ref.send(('send', ref1, 'add_ret', i)) for i in range(*rg)]
                 self.assertEqual((await wait_results(p))[0], list(range(*rg)))
 
             n_ref = 20
 
-            ps = [asyncio.ensure_future(pool.create_actor(DummyActor, 0))
-                  for _ in range(n_ref)]
+            ps = [pool.create_actor(DummyActor, 0) for _ in range(n_ref)]
             refs, _ = await wait_results(ps)
 
             ps = []

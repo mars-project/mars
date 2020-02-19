@@ -17,6 +17,7 @@
 from __future__ import absolute_import
 
 import asyncio
+import multiprocessing
 import itertools
 import os
 import pickle
@@ -32,7 +33,7 @@ from concurrent.futures import ThreadPoolExecutor
 from libc.stdint cimport uint32_t, uint64_t
 from libc.string cimport memcpy
 
-from ...lib import asyncio_pool, aiomultiprocess
+from ...lib import asyncio_pool
 from ..cluster cimport ClusterInfo
 from ..core cimport ActorRef, Actor
 from ..distributor cimport Distributor
@@ -43,15 +44,12 @@ from .messages cimport pack_send_message, pack_tell_message, pack_create_actor_m
     pack_has_actor_message, unpack_has_actor_message, pack_error_message, unpack_error_message, \
     unpack_message_type_value, unpack_message_type, unpack_message_id, get_index, MessageType
 from .utils cimport new_actor_id
-from .utils import create_actor_ref, sleep_and_await, await_sequence, done_future
+from .utils import create_actor_ref, sleep_and_await, await_sequence, done_future, aio_run
 
 cdef int REMOTE_FROM_INDEX = -2
 cdef int UNKNOWN_TO_INDEX = -1
 cpdef int REMOTE_DEFAULT_PARALLEL = 50  # parallel connection at most
 cpdef int REMOTE_MAX_CONNECTION = 200  # most connections
-
-if sys.platform != 'win32':
-    aiomultiprocess.set_context('fork')
 
 
 cdef class MessageContext:
@@ -1294,9 +1292,9 @@ async def start_actor_server(ClusterInfo cluster_info, object sender):
     return s
 
 
-async def start_local_pool(int index, ClusterInfo cluster_info,
-                           object pipe=None, Distributor distributor=None,
-                           object parallel=None, bint join=False):
+async def async_start_local_pool(int index, ClusterInfo cluster_info,
+                                 object pipe=None, Distributor distributor=None,
+                                 object parallel=None, bint join=False):
     # new process will pickle the numpy RandomState, we seed the random one
     import numpy as np
     np.random.seed()
@@ -1315,6 +1313,13 @@ async def start_local_pool(int index, ClusterInfo cluster_info,
     else:
         asyncio.ensure_future(comm.run())
         return comm
+
+
+def start_local_pool(int index, ClusterInfo cluster_info,
+                     object pipe=None, Distributor distributor=None,
+                     object parallel=None, bint join=False):
+    return aio_run(async_start_local_pool(
+        index, cluster_info, pipe, distributor, parallel, join))
 
 
 cdef class ActorPool:
@@ -1403,9 +1408,10 @@ cdef class ActorPool:
             parent_pair = self._pool_pipes[idx]
             child_pair = self._comm_pipes[idx]
 
-        p = aiomultiprocess.Process(target=start_local_pool,
-                                    args=(idx, self.cluster_info, child_pair, self.distributor),
-                                    kwargs={'parallel': self._parallel, 'join': True}, daemon=True)
+        context = multiprocessing.get_context('fork')
+        p = context.Process(target=start_local_pool,
+                            args=(idx, self.cluster_info, child_pair, self.distributor),
+                            kwargs={'parallel': self._parallel, 'join': True}, daemon=True)
         p.start()
         return p, child_pair, parent_pair
 
@@ -1420,7 +1426,7 @@ cdef class ActorPool:
 
         if not self._multi_process:
             # only start local pool
-            self._dispatcher = await start_local_pool(
+            self._dispatcher = await async_start_local_pool(
                 0, self.cluster_info, distributor=self.distributor, parallel=self._parallel)
         else:
             self._processes, self._comm_pipes, self._pool_pipes = [list(tp) for tp in zip(
