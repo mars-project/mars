@@ -77,11 +77,12 @@ _nvml_driver_info = namedtuple('_nvml_driver_info', 'driver_version cuda_version
 _nvml_device_status = namedtuple(
     '_nvml_device_status', 'gpu_util mem_util temperature fb_total_mem fb_used_mem fb_free_mem')
 
-
 _init_pid = None
 _gpu_count = None
 _driver_info = None
 _device_infos = dict()
+
+_no_device_warned = False
 
 
 class NVError(Exception):
@@ -145,7 +146,7 @@ def _cu_get_processor_cores(major, minor):
 
 
 def _init_cp():
-    global _cuda_lib
+    global _cuda_lib, _no_device_warned
     if _init_pid == os.getpid():
         return
 
@@ -158,14 +159,16 @@ def _init_cp():
     except NVDeviceAPIError as ex:
         if ex.errno == CU_NO_CUDA_CAPABLE_DEVICE_DETECTED:
             _cuda_lib = None
-            logger.warning('No CUDA device detected')
+            if not _no_device_warned:
+                logger.warning('No CUDA device detected')
+                _no_device_warned = True
         else:
             logger.exception('Failed to initialize libcuda.')
         return
 
 
 def _init_nvml():
-    global _nvml_lib
+    global _nvml_lib, _no_device_warned
     if _init_pid == os.getpid():
         return
 
@@ -177,8 +180,10 @@ def _init_nvml():
         _nvml_check_error(_nvml_lib.nvmlInit_v2())
     except NVMLAPIError as ex:
         if ex.errno == NVML_DRIVER_NOT_LOADED:
-            logger.warning('Failed to load libnvidia-ml: %s, no CUDA device will be enabled', ex.message)
             _nvml_lib = None
+            if not _no_device_warned:
+                logger.warning('Failed to load libnvidia-ml: %s, no CUDA device will be enabled', ex.message)
+                _no_device_warned = True
         else:
             logger.exception('Failed to initialize libnvidia-ml.')
         return
