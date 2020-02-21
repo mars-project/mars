@@ -32,9 +32,13 @@ CU_DEVICE_ATTRIBUTE_PCI_BUS_ID = 33
 CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID = 34
 CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE = 36
 
+CU_NO_CUDA_CAPABLE_DEVICE_DETECTED = 100
+
 # nvml constants
 NVML_SUCCESS = 0
 NVML_TEMPERATURE_GPU = 0
+
+NVML_DRIVER_NOT_LOADED = 9
 
 
 class _CUuuid_t(Structure):
@@ -74,14 +78,36 @@ _nvml_driver_info = namedtuple('_nvml_driver_info', 'driver_version cuda_version
 _nvml_device_status = namedtuple(
     '_nvml_device_status', 'gpu_util mem_util temperature fb_total_mem fb_used_mem fb_free_mem')
 
-
 _init_pid = None
 _gpu_count = None
 _driver_info = None
 _device_infos = dict()
 
+_no_device_warned = False
+
 
 class NVError(Exception):
+    def __init__(self, msg, *args, **kwargs):
+        self._errno = kwargs.pop('errno', None)
+        super(NVError, self).__init__(msg or 'Unknown error', *args)
+
+    def __str__(self):
+        return '(%s) %s' % (self._errno, super(NVError, self).__str__())
+
+    @property
+    def errno(self):
+        return self._errno
+
+    @property
+    def message(self):
+        return super(NVError, self).__str__()
+
+
+class NVDeviceAPIError(NVError):
+    pass
+
+
+class NVMLAPIError(NVError):
     pass
 
 
@@ -89,7 +115,7 @@ def _cu_check_error(result):
     if result != CUDA_SUCCESS:
         _error_str = c_char_p()
         _cuda_lib.cuGetErrorString(result, byref(_error_str))
-        raise NVError('Device API Error %d: %s' % (result, _error_str.value.decode()))
+        raise NVDeviceAPIError(_error_str.value.decode(), errno=result)
 
 
 _nvmlErrorString = None
@@ -103,10 +129,7 @@ def _nvml_check_error(result):
 
     if result != NVML_SUCCESS:
         _error_str = _nvmlErrorString(result)
-        if _error_str:
-            raise NVError('NVML API Error %d: %s' % (result, _error_str.decode()))
-        else:
-            raise NVError('Unknown NVML API Error %d' % result)
+        raise NVMLAPIError(_error_str.decode(), errno=result)
 
 
 _cu_process_var_to_cores = {
@@ -124,7 +147,7 @@ def _cu_get_processor_cores(major, minor):
 
 
 def _init_cp():
-    global _cuda_lib
+    global _cuda_lib, _no_device_warned
     if _init_pid == os.getpid():
         return
 
@@ -134,13 +157,19 @@ def _init_cp():
         return
     try:
         _cu_check_error(_cuda_lib.cuInit(0))
-    except NVError:
-        logger.exception('Failed to initialize libcuda.')
+    except NVDeviceAPIError as ex:
+        if ex.errno == CU_NO_CUDA_CAPABLE_DEVICE_DETECTED:
+            _cuda_lib = None
+            if not _no_device_warned:
+                logger.warning('No CUDA device detected')
+                _no_device_warned = True
+        else:
+            logger.exception('Failed to initialize libcuda.')
         return
 
 
 def _init_nvml():
-    global _nvml_lib
+    global _nvml_lib, _no_device_warned
     if _init_pid == os.getpid():
         return
 
@@ -150,8 +179,14 @@ def _init_nvml():
         return
     try:
         _nvml_check_error(_nvml_lib.nvmlInit_v2())
-    except NVError:
-        logger.exception('Failed to initialize libnvidia-ml.')
+    except NVMLAPIError as ex:
+        if ex.errno == NVML_DRIVER_NOT_LOADED:
+            _nvml_lib = None
+            if not _no_device_warned:
+                logger.warning('Failed to load libnvidia-ml: %s, no CUDA device will be enabled', ex.message)
+                _no_device_warned = True
+        else:
+            logger.exception('Failed to initialize libnvidia-ml.')
         return
 
 
