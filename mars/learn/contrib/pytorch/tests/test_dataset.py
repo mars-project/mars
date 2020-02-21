@@ -12,46 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
-import sys
+import mars.tensor as mt
+from mars.utils import lazy_import
+from mars.learn.contrib.pytorch import MarsDataset, MarsRandomSampler
 
-
-def get_model():
-    import torch.nn as nn
-    return nn.Sequential(
-        nn.Linear(32, 64),
-        nn.ReLU(),
-        nn.Linear(64, 64),
-        nn.ReLU(),
-        nn.Linear(64, 10),
-        nn.Softmax(),
-    )
+torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
-def main():
-    import torch.nn as nn
-    import torch.distributed as dist
-    import torch.optim as optim
-    import torch.utils.data
-    from mars.learn.contrib.pytorch import MarsDataset, MarsDistributedSampler
-    from mars.learn.contrib.pytorch.dataset import enter_mars_context
+@unittest.skipIf(not torch_installed, 'pytorch not installed')
+class Test(unittest.TestCase):
+    def testLocalDataset(self):
+        import torch
 
-    dist.init_process_group(backend='gloo')
-    torch.manual_seed(42)
+        data = mt.random.rand(1000, 32, dtype='f4')
+        labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
+        data.execute(fetch=False)
+        labels.execute(fetch=False)
 
-    with enter_mars_context():
-        train_dataset = MarsDataset('data', 'labels')
-        train_sampler = MarsDistributedSampler(train_dataset)
+        train_dataset = MarsDataset(data, labels)
+        train_sampler = MarsRandomSampler(train_dataset)
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                    batch_size=32,
-                                                   shuffle=False,
                                                    sampler=train_sampler)
 
-        model = nn.parallel.DistributedDataParallel(get_model())
-        optimizer = optim.SGD(model.parameters(),
-                              lr=0.01, momentum=0.5)
-        criterion = nn.BCELoss()
+        model = torch.nn.Sequential(
+            torch.nn.Linear(32, 64),
+            torch.nn.ReLU(),
+            torch.nn.Linear(64, 64),
+            torch.nn.ReLU(),
+            torch.nn.Linear(64, 10),
+            torch.nn.Softmax(),
+        )
 
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
+        criterion = torch.nn.BCELoss()
         for _ in range(2):
             # 2 epochs
             for _, (batch_data, batch_labels) in enumerate(train_loader):
@@ -60,9 +56,3 @@ def main():
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-
-
-if __name__ == "__main__":
-    assert len(sys.argv) == 2
-    assert sys.argv[1] == 'multiple'
-    main()
