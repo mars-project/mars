@@ -308,13 +308,12 @@ class DistributedContext(ContextBase):
                                                 compression_types=compression_types)
 
     # Fetch tileable data by tileable keys and indexes.
-    def get_tileable_data(self, tileable_key: str, indexes: List=None,
-                          compression_types: List[str]=None):
+    def get_tileable_data(self, tileable_key: str, indexes: List = None,
+                          compression_types: List[str] = None):
         from .serialize import dataserializer
         from .utils import merge_chunks
-        from .tensor.core import TENSOR_TYPE
         from .tensor.datasource import empty
-        from .tensor.indexing.getitem import TensorIndexTilesHandler, calc_pos
+        from .tensor.indexing.index_lib import NDArrayIndexesHandler
 
         nsplits, chunk_keys, chunk_indexes = self.get_tileable_metas([tileable_key])[0]
         chunk_idx_to_keys = dict(zip(chunk_indexes, chunk_keys))
@@ -326,9 +325,7 @@ class DistributedContext(ContextBase):
         [chunk_workers[e].append(chunk_key) for chunk_key, e in chunk_keys_to_worker.items()]
 
         chunk_results = dict()
-        select_pos = None
-
-        if not indexes:
+        if indexes is None or len(indexes) == 0:
             datas = []
             for endpoint, chunks in chunk_workers.items():
                 datas.append(self.get_chunks_data(endpoint, chunks, compression_types=compression_types))
@@ -336,27 +333,25 @@ class DistributedContext(ContextBase):
             for (endpoint, chunks), d in zip(chunk_workers.items(), datas):
                 d = [dataserializer.loads(db) for db in d]
                 chunk_results.update(dict(zip([chunk_keys_to_idx[k] for k in chunks], d)))
+
+            chunk_results = [(k, v) for k, v in chunk_results.items()]
+            if len(chunk_results) == 1:
+                return chunk_results[0][1]
+            else:
+                return merge_chunks(chunk_results)
         else:
-            # TODO: make a common util to handle indexes
-            if any(isinstance(ind, TENSOR_TYPE) for ind in indexes):
-                raise TypeError("Doesn't support indexing by tensors")
             # Reuse the getitem logic to get each chunk's indexes
             tileable_shape = tuple(sum(s) for s in nsplits)
             empty_tileable = empty(tileable_shape, chunk_size=nsplits)._inplace_tile()
             indexed = empty_tileable[tuple(indexes)]
-            index_handler = TensorIndexTilesHandler(indexed.op)
-            index_handler._extract_indexes_info()
-            index_handler._preprocess_fancy_indexes()
-            index_handler._process_fancy_indexes()
-            index_handler._process_in_tensor()
-
-            # Select by order
-            if len(index_handler._fancy_index_infos) != 0:
-                index_shape = index_handler._fancy_index_info.chunk_unified_fancy_indexes[0].shape
-                select_pos = calc_pos(index_shape, index_handler._fancy_index_info.chunk_index_to_pos)
+            indexes_handler = NDArrayIndexesHandler()
+            try:
+                context = indexes_handler.handle(indexed.op, return_context=True)
+            except TypeError:
+                raise TypeError("Doesn't support indexing by tensors")
 
             result_chunks = dict()
-            for c in index_handler._out_chunks:
+            for c in context.processed_chunks:
                 result_chunks[chunk_idx_to_keys[c.inputs[0].index]] = [c.index, c.op.indexes]
 
             chunk_datas = dict()
@@ -378,14 +373,8 @@ class DistributedContext(ContextBase):
                 d = [dataserializer.loads(db) for db in d]
                 chunk_results.update(dict(zip(idx, d)))
 
-        chunk_results = [(k, v) for k, v in chunk_results.items()]
-        if len(chunk_results) == 1:
-            ret = chunk_results[0][1]
-        else:
-            ret = merge_chunks(chunk_results)
-        if select_pos is not None:
-            ret = ret[select_pos]
-        return ret
+            chunk_results = [(k, v) for k, v in chunk_results.items()]
+            return indexes_handler.aggregate_result(context, chunk_results)
 
     def create_lock(self):
         return self._actor_ctx.lock()
