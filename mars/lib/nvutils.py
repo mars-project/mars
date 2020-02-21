@@ -87,12 +87,12 @@ _no_device_warned = False
 
 
 class NVError(Exception):
-    def __init__(self, msg, *args, errno=None):
-        self._errno = errno
-        super().__init__(msg or 'Unknown error', *args)
+    def __init__(self, msg, *args, **kwargs):
+        self._errno = kwargs.pop('errno', None)
+        super(NVError, self).__init__(msg or 'Unknown error', *args)
 
     def __str__(self):
-        return '(%s) %s' % (self._errno, super().__str__())
+        return '(%s) %s' % (self._errno, super(NVError, self).__str__())
 
     @property
     def errno(self):
@@ -100,7 +100,7 @@ class NVError(Exception):
 
     @property
     def message(self):
-        return super().__str__()
+        return super(NVError, self).__str__()
 
 
 class NVDeviceAPIError(NVError):
