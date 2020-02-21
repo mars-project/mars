@@ -827,9 +827,6 @@ class Executor(object):
         for tileable in tileables:
             if tileable.key not in self.stored_tileables and \
                     isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
-                indexes = tileable.op.indexes
-                if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
-                    raise ValueError('Only support fetch data slices')
                 key = tileable.inputs[0].key
                 to_release_tileables.append(tileable)
             else:

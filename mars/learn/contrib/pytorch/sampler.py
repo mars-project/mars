@@ -26,7 +26,7 @@ from ....utils import require_not_none
 
 
 @require_not_none(torch)
-class MarsSampler(Sampler):
+class MarsDistributedSampler(Sampler):
     def __init__(self, dataset, num_replicas=None, rank=None, shuffle=True):
         import torch.distributed as dist
 
@@ -76,3 +76,46 @@ class MarsSampler(Sampler):
 
     def set_epoch(self, epoch):
         self.epoch = epoch
+
+
+class MarsRandomSampler(Sampler):
+    def __init__(self, data_source, replacement=False, num_samples=None):
+        super().__init__(data_source)
+
+        self.data_source = data_source
+        self.replacement = replacement
+        self._num_samples = num_samples
+
+        if not isinstance(self.replacement, bool):  # pragma: no cover
+            raise ValueError("replacement should be a boolean value, but got "
+                             "replacement={}".format(self.replacement))
+
+        if self._num_samples is not None and not replacement:  # pragma: no cover
+            raise ValueError("With replacement=False, num_samples should not be specified, "
+                             "since a random permute will be performed.")
+
+        if not isinstance(self.num_samples, int) or self.num_samples <= 0:  # pragma: no cover
+            raise ValueError("num_samples should be a positive integer "
+                             "value, but got num_samples={}".format(self.num_samples))
+
+    @property
+    def num_samples(self):
+        # dataset size might change at runtime
+        if self._num_samples is None:
+            return len(self.data_source)
+        else:  # pragma: no cover
+            return self._num_samples
+
+    def __iter__(self):
+        n = len(self.data_source)
+        if self.replacement:  # pragma: no cover
+            indices = torch.randint(high=n, size=(self.num_samples,), dtype=torch.int64).tolist()
+            self.data_source.prefetch(indices)
+            return iter(indices)
+        else:
+            indices = torch.randperm(n).tolist()
+            self.data_source.prefetch(indices)
+            return iter(indices)
+
+    def __len__(self):
+        return self.num_samples
