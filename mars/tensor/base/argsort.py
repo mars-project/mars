@@ -121,7 +121,7 @@ def argsort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None, order=No
     a, axis, kind, parallel_kind, psrs_kinds, order = _validate_sort_arguments(
         a, axis, kind, parallel_kind, psrs_kinds, order)
 
-    op = TensorSort(axis=axis ,kind=kind, parallel_kind=parallel_kind,
+    op = TensorSort(axis=axis, kind=kind, parallel_kind=parallel_kind,
                     order=order, psrs_kinds=psrs_kinds,
                     return_value=False, return_indices=True,
                     dtype=a.dtype, gpu=a.op.gpu)
