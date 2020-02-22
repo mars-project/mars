@@ -57,6 +57,9 @@ jobs:
       run: |
         source ./.github/workflows/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
+        if [[ "$PYTHON" =~ "2.7" ]]; then
+          pip install enum34\<1.1.8
+        fi
         if [[ "$PYTHON" =~ "3.8" ]]; then
           conda install -n test --quiet --yes python=$PYTHON numpy pyarrow
           # remove three lines below once gevent 1.5 is released

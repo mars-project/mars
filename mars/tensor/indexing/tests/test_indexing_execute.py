@@ -51,9 +51,11 @@ class Test(unittest.TestCase):
 
         index2 = tensor(raw[:, :, 0, 0], chunk_size=3) < .5
         arr3 = arr[index2]
-        res = self.executor.execute_tensor(arr3)
+        res = self.executor.execute_tensor(arr3, concat=True)[0]
 
-        self.assertEqual(sum(it.size for it in res), raw[raw[:, :, 0, 0] < .5].size)
+        expected = raw[raw[:, :, 0, 0] < .5]
+        self.assertEqual(sum(it.size for it in res), expected.size)
+        self.assertEqual(res.shape, expected.shape)
 
         raw = np.asfortranarray(np.random.random((11, 8, 12, 14)))
         arr = tensor(raw, chunk_size=3)
@@ -74,34 +76,34 @@ class Test(unittest.TestCase):
         index = [8, 10, 3, 1, 9, 10]
         arr2 = arr[index]
 
-        res = self.executor.execute_tensor(arr2, concat=True)
-        np.testing.assert_array_equal(res[0], raw[index])
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[index])
 
         index = np.random.permutation(8)
         arr3 = arr[:2, ..., index]
 
-        res = self.executor.execute_tensor(arr3, concat=True)
-        np.testing.assert_array_equal(res[0], raw[:2, ..., index])
+        res = self.executor.execute_tensor(arr3, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[:2, ..., index])
 
         index = [1, 3, 9, 10]
         arr4 = arr[..., index, :5]
 
-        res = self.executor.execute_tensor(arr4, concat=True)
-        np.testing.assert_array_equal(res[0], raw[..., index, :5])
+        res = self.executor.execute_tensor(arr4, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[..., index, :5])
 
         index1 = [8, 10, 3, 1, 9, 10]
         index2 = [1, 3, 9, 10, 2, 7]
         arr5 = arr[index1, :, index2]
 
-        res = self.executor.execute_tensor(arr5, concat=True)
-        np.testing.assert_array_equal(res[0], raw[index1, :, index2])
+        res = self.executor.execute_tensor(arr5, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[index1, :, index2])
 
         index1 = [1, 3, 5, 7, 9, 10]
         index2 = [1, 9, 9, 10, 2, 7]
         arr6 = arr[index1, :, index2]
 
-        res = self.executor.execute_tensor(arr6, concat=True)
-        np.testing.assert_array_equal(res[0], raw[index1, :, index2])
+        res = self.executor.execute_tensor(arr6, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[index1, :, index2])
         # fancy index is ordered, no concat required
         self.assertGreater(len(get_tiled(arr6).nsplits[0]), 1)
 
@@ -109,15 +111,15 @@ class Test(unittest.TestCase):
         index2 = [[1, 3, 9], [10, 2, 7]]
         arr7 = arr[index1, :, index2]
 
-        res = self.executor.execute_tensor(arr7, concat=True)
-        np.testing.assert_array_equal(res[0], raw[index1, :, index2])
+        res = self.executor.execute_tensor(arr7, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[index1, :, index2])
 
         index1 = [[1, 3], [3, 7], [7, 7]]
         index2 = [1, 9]
         arr8 = arr[0, index1, :, index2]
 
-        res = self.executor.execute_tensor(arr8, concat=True)
-        np.testing.assert_array_equal(res[0], raw[0, index1, :, index2])
+        res = self.executor.execute_tensor(arr8, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[0, index1, :, index2])
 
     def testFancyIndexingTensorExecution(self):
         # test fancy index of type tensor
@@ -129,22 +131,22 @@ class Test(unittest.TestCase):
         index = tensor(raw_index, chunk_size=4)
         arr2 = arr[index]
 
-        res = self.executor.execute_tensor(arr2, concat=True)
-        np.testing.assert_array_equal(res[0], raw[raw_index])
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[raw_index])
 
         raw_index = np.random.permutation(8)
         index = tensor(raw_index, chunk_size=3)
         arr3 = arr[:2, ..., index]
 
-        res = self.executor.execute_tensor(arr3, concat=True)
-        np.testing.assert_array_equal(res[0], raw[:2, ..., raw_index])
+        res = self.executor.execute_tensor(arr3, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[:2, ..., raw_index])
 
         raw_index = [1, 3, 9, 10]
         index = tensor(raw_index)
         arr4 = arr[..., index, :5]
 
-        res = self.executor.execute_tensor(arr4, concat=True)
-        np.testing.assert_array_equal(res[0], raw[..., raw_index, :5])
+        res = self.executor.execute_tensor(arr4, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[..., raw_index, :5])
 
         raw_index1 = [8, 10, 3, 1, 9, 10]
         raw_index2 = [1, 3, 9, 10, 2, 7]
@@ -152,8 +154,8 @@ class Test(unittest.TestCase):
         index2 = tensor(raw_index2, chunk_size=3)
         arr5 = arr[index1, :, index2]
 
-        res = self.executor.execute_tensor(arr5, concat=True)
-        np.testing.assert_array_equal(res[0], raw[raw_index1, :, raw_index2])
+        res = self.executor.execute_tensor(arr5, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[raw_index1, :, raw_index2])
 
         raw_index1 = [1, 3, 5, 7, 9, 10]
         raw_index2 = [1, 9, 9, 10, 2, 7]
@@ -161,8 +163,8 @@ class Test(unittest.TestCase):
         index2 = tensor(raw_index2, chunk_size=4)
         arr6 = arr[index1, :, index2]
 
-        res = self.executor.execute_tensor(arr6, concat=True)
-        np.testing.assert_array_equal(res[0], raw[raw_index1, :, raw_index2])
+        res = self.executor.execute_tensor(arr6, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[raw_index1, :, raw_index2])
 
         raw_index1 = [[8, 10, 3], [1, 9, 10]]
         raw_index2 = [[1, 3, 9], [10, 2, 7]]
@@ -170,8 +172,8 @@ class Test(unittest.TestCase):
         index2 = tensor(raw_index2, chunk_size=2)
         arr7 = arr[index1, :, index2]
 
-        res = self.executor.execute_tensor(arr7, concat=True)
-        np.testing.assert_array_equal(res[0], raw[raw_index1, :, raw_index2])
+        res = self.executor.execute_tensor(arr7, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[raw_index1, :, raw_index2])
 
         raw_index1 = [[1, 3], [3, 7], [7, 7]]
         raw_index2 = [1, 9]
@@ -179,16 +181,16 @@ class Test(unittest.TestCase):
         index2 = tensor(raw_index2)
         arr8 = arr[0, index1, :, index2]
 
-        res = self.executor.execute_tensor(arr8, concat=True)
-        np.testing.assert_array_equal(res[0], raw[0, raw_index1, :, raw_index2])
+        res = self.executor.execute_tensor(arr8, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[0, raw_index1, :, raw_index2])
 
         raw_a = np.random.rand(30, 30)
         a = tensor(raw_a, chunk_size=(13, 17))
         b = a.argmax(axis=0)
         c = a[b, arange(30)]
-        res = self.executor.execute_tensor(c, concat=True)
+        res = self.executor.execute_tensor(c, concat=True)[0]
 
-        np.testing.assert_array_equal(res[0], raw_a[raw_a.argmax(axis=0), np.arange(30)])
+        np.testing.assert_array_equal(res, raw_a[raw_a.argmax(axis=0), np.arange(30)])
 
         # test one chunk
         arr = tensor(raw, chunk_size=20)
@@ -228,13 +230,13 @@ class Test(unittest.TestCase):
         arr = tensor(raw, chunk_size=3)
 
         arr2 = arr[2:9:2, 3:7, -1:-9:-2, 12:-11:-4]
-        res = self.executor.execute_tensor(arr2, concat=True)
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
 
-        np.testing.assert_array_equal(res[0], raw[2:9:2, 3:7, -1:-9:-2, 12:-11:-4])
+        np.testing.assert_array_equal(res, raw[2:9:2, 3:7, -1:-9:-2, 12:-11:-4])
 
         arr3 = arr[-4, 2:]
-        res = self.executor.execute_tensor(arr3, concat=True)
-        np.testing.assert_equal(res[0], raw[-4, 2:])
+        res = self.executor.execute_tensor(arr3, concat=True)[0]
+        np.testing.assert_equal(res, raw[-4, 2:])
 
         raw = sps.random(12, 14, density=.1)
         arr = tensor(raw, chunk_size=3)
@@ -265,26 +267,28 @@ class Test(unittest.TestCase):
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testMixedIndexingExecution(self):
-        raw = np.random.random((11, 8, 12, 13))
+        raw = np.random.RandomState(0).rand(11, 8, 12, 13)
         arr = tensor(raw, chunk_size=3)
 
         raw_cond = raw[0, :, 0, 0] < .5
         cond = tensor(raw[0, :, 0, 0], chunk_size=3) < .5
         arr2 = arr[10::-2, cond, None, ..., :5]
         size_res = self.executor.execute_tensor(arr2, mock=True)
-        res = self.executor.execute_tensor(arr2, concat=True)
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
 
         new_shape = list(arr2.shape)
         new_shape[1] = cond.shape[0]
         self.assertEqual(sum(s[0] for s in size_res), int(np.prod(new_shape) * arr2.dtype.itemsize))
-        np.testing.assert_array_equal(res[0], raw[10::-2, raw_cond, None, ..., :5])
+        np.testing.assert_array_equal(res, raw[10::-2, raw_cond, None, ..., :5])
 
         b_raw = np.random.random(8)
-        cond = tensor(b_raw, chunk_size=2) < .5
-        arr3 = arr[-2::-3, cond, ...]
-        res = self.executor.execute_tensor(arr3, concat=True)
+        raw_cond = b_raw < .5
+        conds = [raw_cond, tensor(b_raw, chunk_size=2) < .5]
+        for cond in conds:
+            arr3 = arr[-2::-3, cond, ...]
+            res = self.executor.execute_tensor(arr3, concat=True)[0]
 
-        np.testing.assert_array_equal(res[0], raw[-2::-3, b_raw < .5, ...])
+            np.testing.assert_array_equal(res, raw[-2::-3, raw_cond, ...])
 
     def testSetItemExecution(self):
         raw = data = np.random.randint(0, 10, size=(11, 8, 12, 13))
@@ -308,10 +312,10 @@ class Test(unittest.TestCase):
 
         replace = np.random.randint(10, 20, size=shape[:-1] + (1,)).astype('f4')
         arr2[idx] = tensor(replace, chunk_size=4)
-        res = self.executor.execute_tensor(arr2, concat=True)
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
 
         raw[idx] = replace
-        np.testing.assert_array_equal(res[0], raw)
+        np.testing.assert_array_equal(res, raw)
 
         raw = np.asfortranarray(np.random.randint(0, 10, size=(11, 8, 12, 13)))
         arr = tensor(raw.copy('A'), chunk_size=3)
@@ -327,7 +331,8 @@ class Test(unittest.TestCase):
         self.assertEqual(res.flags['F_CONTIGUOUS'], raw.flags['F_CONTIGUOUS'])
 
     def testSetItemStructuredExecution(self):
-        rec_type = np.dtype([('a', np.int32), ('b', np.double), ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])
+        rec_type = np.dtype([('a', np.int32), ('b', np.double),
+                             ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])
 
         raw = np.zeros((4, 5), dtype=rec_type)
         arr = tensor(raw.copy(), chunk_size=3)
@@ -344,10 +349,10 @@ class Test(unittest.TestCase):
         raw[2:4] = np.arange(10).reshape(2, 5)
         raw[0] = np.arange(5)
 
-        res = self.executor.execute_tensor(arr, concat=True)
+        res = self.executor.execute_tensor(arr, concat=True)[0]
         self.assertEqual(arr.dtype, raw.dtype)
         self.assertEqual(arr.shape, raw.shape)
-        np.testing.assert_array_equal(res[0], raw)
+        np.testing.assert_array_equal(res, raw)
 
     def testTakeExecution(self):
         data = np.random.rand(10, 20, 30)
