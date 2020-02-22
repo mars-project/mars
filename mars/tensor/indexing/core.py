@@ -96,7 +96,6 @@ def preprocess_index(index):
                 raise IndexError(_INDEX_ERROR_MSG)
             if ind.dtype.kind == 'b':
                 # bool indexing
-                ind = astensor(ind)
                 has_bool_index = True
             else:
                 # fancy indexing
