@@ -74,8 +74,10 @@ class BaseApplication(object):
                 setattr(conf_obj, conf_parts[-1], json.loads(val))
             except:  # noqa: E722
                 setattr(conf_obj, conf_parts[-1], val)
-
-        return aio_run(self._main(new_argv))
+        try:
+            return aio_run(self._main(new_argv))
+        except KeyboardInterrupt:
+            pass
 
     async def _main(self, argv=None):
         parser = argparse.ArgumentParser(description=self.service_description)
@@ -138,10 +140,7 @@ class BaseApplication(object):
             self.service_logger.info('%s started at %s.', self.service_description, self.endpoint)
 
         self.create_scheduler_discoverer()
-        try:
-            await self.main_loop()
-        except KeyboardInterrupt:
-            pass
+        await self.main_loop()
 
     def config_logging(self):
         import logging.config
@@ -210,7 +209,6 @@ class BaseApplication(object):
         return create_actor_pool(*args, **kwargs)
 
     async def main_loop(self):
-        import psutil
         try:
             async with self.pool:
                 try:
@@ -220,16 +218,10 @@ class BaseApplication(object):
                         await self.pool.join(1)
                         stopped = []
                         for idx, proc in enumerate(self.pool.processes):
-                            try:
-                                p = psutil.Process(proc.pid)
-                                if p.status() == psutil.STATUS_ZOMBIE:
-                                    stopped.append(idx)
-                            except psutil.NoSuchProcess:
+                            if not proc.is_alive():
                                 stopped.append(idx)
                         if stopped:
                             await self.handle_process_down(stopped)
-                except KeyboardInterrupt:
-                    pass
                 finally:
                     await self.stop()
         finally:

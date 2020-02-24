@@ -561,17 +561,16 @@ class ChunkMetaClient(object):
             list_tuple[1].append(meta)
 
         # dispatch query
-        futures = []
+        coros = []
         for addr, (k, m) in update_dict.items():
-            futures.append(
+            coros.append(
                 self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr)
-                    .batch_set_chunk_meta(session_id, k, m, _tell=_tell, _wait=False)
+                    .batch_set_chunk_meta(session_id, k, m, _tell=_tell)
             )
-        if futures:
-            if _wait:
-                await wait_results(futures)
-            else:
-                return asyncio.ensure_future(wait_results(futures))
+        if _wait:
+            return await wait_results(coros)
+        else:
+            return asyncio.ensure_future(wait_results(coros))
 
     async def delete_meta(self, session_id, chunk_key, _tell=False, _wait=True):
         query_key = (session_id, chunk_key)

@@ -18,7 +18,7 @@ from collections import defaultdict
 import psutil
 
 from .utils import WorkerActor
-from ..utils import kill_process_tree
+from ..utils import kill_process_tree, wait_results
 
 logger = logging.getLogger(__name__)
 
@@ -108,24 +108,30 @@ class WorkerDaemonActor(WorkerActor):
         :param proc_indices: indices of processes in Mars Worker
         """
         # invoke registered callbacks for processes
+        coros = []
         for cb in self._proc_callbacks:
             uid, addr, func = cb
             ref = self.ctx.actor_ref(uid, address=addr)
-            await getattr(ref, func)(proc_indices, _tell=True)
+            coros.append(getattr(ref, func)(proc_indices, _tell=True))
+        await wait_results(coros)
 
         # recreate actors given previous records
         refs = set()
+        coros = []
         for proc_idx in proc_indices:
             for actor_args in self._proc_actors[proc_idx].values():
                 ref_key, args, kw, is_child = actor_args
                 refs.add(ref_key)
                 if not is_child:
-                    await self.ctx.create_actor(*args, **kw)
+                    coros.append(self.ctx.create_actor(*args, **kw))
+        await wait_results(coros)
 
         # invoke registered callbacks for actors
+        coros = []
         for cb in self._actor_callbacks:
             uid, addr, func = cb
             ref = self.ctx.actor_ref(uid, address=addr)
             clean_refs = [self.ctx.actor_ref(u, address=None) for u, _ in refs] \
                 + [self.ctx.actor_ref(u, address=a) for u, a in refs]
-            await getattr(ref, func)(clean_refs, _tell=True)
+            coros.append(getattr(ref, func)(clean_refs, _tell=True))
+        await wait_results(coros)

@@ -158,8 +158,10 @@ class StatusReporterActor(WorkerActor):
                 meta_dict['vineyard'] = {'instance_id': client.instance_id}
 
             await self._resource_ref.set_worker_meta(self._endpoint, meta_dict)
+        except (TypeError, SyntaxError) as ex:
+            logger.error('Failed to save worker status: %s. repr(meta_dict)=%r', str(ex), meta_dict)
         except Exception as ex:
-            logger.error('Failed to save status: %s. repr(meta_dict)=%r', str(ex), meta_dict)
+            logger.error('Failed to save worker status: %s', str(ex))
         finally:
             self.ref().collect_status(_tell=True, _wait=False, _delay=1)
 

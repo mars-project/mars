@@ -290,7 +290,7 @@ class ExecutionActor(WorkerActor):
         from .dispatcher import DispatchActor
 
         if remote_addr in self._peer_blacklist:
-            raise DependencyMissing((session_id, graph_key))
+            raise DependencyMissing(affected_keys=[(session_id, graph_key)])
 
         remote_disp_ref = self.promise_ref(uid=DispatchActor.default_uid(),
                                            address=remote_addr)
@@ -329,12 +329,12 @@ class ExecutionActor(WorkerActor):
             except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
                     WorkerDead, promise.PromiseTimeout):
                 self._resource_ref.detach_dead_workers([remote_addr], _tell=True, _wait=False)
-                raise DependencyMissing((session_id, chunk_key))
+                raise DependencyMissing(affected_keys=[(session_id, chunk_key)])
 
         @log_unhandled
         async def _fetch_step(sender_uid):
             if remote_addr in self._peer_blacklist:
-                raise DependencyMissing((session_id, chunk_key))
+                raise DependencyMissing(affected_keys=[(session_id, chunk_key)])
 
             if graph_record.stop_requested:
                 await remote_disp_ref.register_free_slot(sender_uid, 'sender', _tell=True)
@@ -660,7 +660,10 @@ class ExecutionActor(WorkerActor):
                 chunk_meta.workers = tuple(w for w in chunk_meta.workers if w != self.address)
 
             if chunk_meta is None or not chunk_meta.workers:
-                raise DependencyMissing('Dependency %r not met on sending.' % (input_key,))
+                raise DependencyMissing(
+                    'Dependency not met when preparing remote keys.',
+                    affected_keys=[(session_id, input_key)],
+                )
             worker_results = list(chunk_meta.workers)
             random.shuffle(worker_results)
 

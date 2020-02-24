@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 import multiprocessing
 import os
 import signal
@@ -34,7 +35,7 @@ from mars.scheduler import ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.serialize import dataserializer
 from mars.tests.core import aio_case, patch_method, create_actor_pool
-from mars.utils import get_next_port, build_exc_info, wait_results, aio_run
+from mars.utils import get_next_port, build_exc_info, aio_run, wait_results
 from mars.worker import SenderActor, ReceiverManagerActor, ReceiverWorkerActor, \
     DispatchActor, QuotaActor, MemQuotaActor, StorageManagerActor, IORunnerActor, \
     StatusActor, SharedHolderActor, InProcHolderActor
@@ -43,6 +44,8 @@ from mars.worker.storage.sharedstore import PlasmaKeyMapActor
 from mars.worker.tests.base import WorkerCase, StorageClientActor
 from mars.worker.transfer import ReceiveStatus, ReceiverDataMeta
 from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
+
+logger = logging.getLogger(__name__)
 
 
 class MockReceiverWorkerActor(WorkerActor):
@@ -265,8 +268,10 @@ class Test(WorkerCase):
                     return sp, rp
 
                 async def __aexit__(self, exc_type, exc_val, exc_tb):
-                    await rp.__aexit__(exc_type, exc_val, exc_tb)
-                    await sp.__aexit__(exc_type, exc_val, exc_tb)
+                    await wait_results([
+                        rp.__aexit__(exc_type, exc_val, exc_tb),
+                        sp.__aexit__(exc_type, exc_val, exc_tb),
+                    ])
 
             return _AsyncContextManager()
 
@@ -277,12 +282,12 @@ class Test(WorkerCase):
             storage_client = test_actor.storage_client
             sender_ref_p = test_actor.promise_ref(sender_ref)
 
-            # SCENARIO 1: send when data missing
+            logger.warning('SCENARIO 1: send when data missing')
             with self.assertRaises(DependencyMissing):
                 await self.waitp(sender_ref_p.send_data(
                     session_id, ['non_exist'], [recv_pool_addr], _promise=True))
 
-            # SCENARIO 2: send data to non-exist endpoint which causes error
+            logger.warning('SCENARIO 2: send data to non-exist endpoint which causes error')
             await self.waitp(await storage_client.put_objects(
                 session_id, [chunk_key1], [mock_data], [DataStorageDevice.SHARED_MEMORY]))
             with self.assertRaises((BrokenPipeError, ConnectionRefusedError)):
@@ -294,7 +299,7 @@ class Test(WorkerCase):
                 mock_recv_ref2 = await rp2.create_actor(
                     MockReceiverWorkerActor, uid=ReceiverWorkerActor.default_uid())
 
-                # SCENARIO 3: send data to multiple targets
+                logger.warning('SCENARIO 3: send data to multiple targets')
                 await self.waitp(await storage_client.put_objects(
                     session_id, [chunk_key2], [mock_data], [DataStorageDevice.SHARED_MEMORY]))
                 await self.waitp(sender_ref_p.send_data(
@@ -305,7 +310,7 @@ class Test(WorkerCase):
                     session_id, [chunk_key2], [recv_pool_addr, recv_pool_addr2], _promise=True))
                 assert_array_equal(mock_data, await mock_recv_ref2.get_result_data(session_id, chunk_key2))
 
-                # SCENARIO 4: send multiple data at one time
+                logger.warning('SCENARIO 4: send multiple data at one time')
                 await self.waitp(await storage_client.put_objects(
                     session_id, [chunk_key3, chunk_key4], [mock_data] * 2,
                     [DataStorageDevice.SHARED_MEMORY]))
@@ -314,17 +319,17 @@ class Test(WorkerCase):
                 assert_array_equal(mock_data, await mock_recv_ref2.get_result_data(session_id, chunk_key3))
                 assert_array_equal(mock_data, await mock_recv_ref2.get_result_data(session_id, chunk_key4))
 
-                # SCENARIO 5: send chunks already under transfer
+                logger.warning('SCENARIO 5: send chunks already under transfer')
                 await self.waitp(await storage_client.put_objects(
                     session_id, [chunk_key5], [mock_data], [DataStorageDevice.SHARED_MEMORY]))
-                mock_recv_ref2.set_receive_delay_key(session_id, chunk_key5, 1)
+                await mock_recv_ref2.set_receive_delay_key(session_id, chunk_key5, 1)
                 sender_ref_p.send_data(
                     session_id, [chunk_key2, chunk_key5], [recv_pool_addr2], _promise=True)
                 await self.waitp(sender_ref_p.send_data(
                     session_id, [chunk_key5], [recv_pool_addr2], _promise=True))
                 assert_array_equal(mock_data, await mock_recv_ref2.get_result_data(session_id, chunk_key5))
 
-                # SCENARIO 6: send chunks already under transfer
+                logger.warning('SCENARIO 6: send chunks already under transfer')
                 await self.waitp(await storage_client.put_objects(
                     session_id, [chunk_key6], [mock_data], [DataStorageDevice.SHARED_MEMORY]))
                 await mock_recv_ref2.set_receive_error_key(session_id, chunk_key6)
@@ -356,7 +361,7 @@ class Test(WorkerCase):
             storage_client = test_actor.storage_client
             receiver_manager_ref = test_actor.promise_ref(ReceiverManagerActor.default_uid())
 
-            # SCENARIO 1: test transferring existing keys
+            logger.warning('SCENARIO 1: test transferring existing keys')
             await self.waitp(
                 (await storage_client.create_writer(session_id, chunk_key1,
                                                     serialized_arrow_data.total_bytes,
@@ -378,7 +383,7 @@ class Test(WorkerCase):
             self.assertEqual(await receiver_manager_ref.filter_receiving_keys(
                 session_id, [chunk_key1, chunk_key2, 'non_exist']), [chunk_key2])
 
-            # SCENARIO 2: test transferring new keys and wait on listeners
+            logger.warning('SCENARIO 2: test transferring new keys and wait on listeners')
             result = await self.waitp(receiver_manager_ref.create_data_writers(
                 session_id, [chunk_key2, chunk_key3], [data_size] * 2, test_actor, _promise=True))
             self.assertEqual(result[0].uid, mock_receiver_ref.uid)
@@ -398,7 +403,7 @@ class Test(WorkerCase):
                 session_id, [chunk_key3], [True], serialized_mock_data)
             await self.get_result(5)
 
-            # SCENARIO 3: test listening on multiple transfers
+            logger.warning('SCENARIO 3: test listening on multiple transfers')
             receiver_manager_ref.create_data_writers(
                 session_id, [chunk_key4, chunk_key5], [data_size] * 2, test_actor, _promise=True) \
                 .then(lambda *s: test_actor.set_result(s))
@@ -415,7 +420,7 @@ class Test(WorkerCase):
                 session_id, [chunk_key5], [True], serialized_mock_data)
             await self.get_result(5)
 
-            # SCENARIO 4: test listening on transfer with errors
+            logger.warning('SCENARIO 4: test listening on transfer with errors')
             await self.waitp(receiver_manager_ref.create_data_writers(
                 session_id, [chunk_key6], [data_size], test_actor, _promise=True))
             receiver_manager_ref.add_keys_callback(session_id, [chunk_key6], _promise=True) \
@@ -425,7 +430,7 @@ class Test(WorkerCase):
             with self.assertRaises(ExecutionInterrupted):
                 await self.get_result(5)
 
-            # SCENARIO 5: test creating writers without promise
+            logger.warning('SCENARIO 5: test creating writers without promise')
             ref, statuses = await receiver_manager_ref.create_data_writers(
                 session_id, [chunk_key7], [data_size], test_actor, use_promise=False)
             self.assertIsNone(statuses[0])
@@ -459,7 +464,7 @@ class Test(WorkerCase):
                 await pool.create_actor(ReceiverWorkerActor, uid=str(uuid.uuid4())))
             receiver_manager_ref = test_actor.promise_ref(ReceiverManagerActor.default_uid())
 
-            # SCENARIO 1: create two writers and write with chunks
+            logger.warning('SCENARIO 1: create two writers and write with chunks')
             await self.waitp(receiver_ref.create_data_writers(
                 session_id, [chunk_key1, chunk_key2], [data_size] * 2, test_actor, _promise=True))
             await receiver_ref.receive_data_part(
@@ -478,7 +483,7 @@ class Test(WorkerCase):
             assert_array_equal(await storage_client.get_object(
                 session_id, chunk_key2, [DataStorageDevice.SHARED_MEMORY], _promise=False), mock_data)
 
-            # SCENARIO 2: one of the writers failed to create,
+            logger.warning('SCENARIO 2: one of the writers failed to create')
             # will test both existing and non-existing keys
             old_create_writer = StorageClient.create_writer
 
@@ -509,7 +514,7 @@ class Test(WorkerCase):
                     session_id, [chunk_key2, chunk_key3], [data_size] * 2, test_actor,
                     ensure_cached=False, _promise=True))
 
-            # SCENARIO 3: transfer timeout
+            logger.warning('SCENARIO 3: transfer timeout')
             await receiver_manager_ref.register_pending_keys(session_id, [chunk_key6])
             await self.waitp(receiver_ref.create_data_writers(
                 session_id, [chunk_key6], [data_size], test_actor, timeout=1, _promise=True))
@@ -517,7 +522,7 @@ class Test(WorkerCase):
                 await self.waitp(receiver_manager_ref.add_keys_callback(
                     session_id, [chunk_key6], _promise=True))
 
-            # SCENARIO 4: cancelled transfer (both before and during transfer)
+            logger.warning('SCENARIO 4: cancelled transfer (both before and during transfer)')
             await receiver_manager_ref.register_pending_keys(session_id, [chunk_key7])
             await self.waitp(receiver_ref.create_data_writers(
                 session_id, [chunk_key7], [data_size], test_actor, timeout=1, _promise=True))
@@ -529,7 +534,7 @@ class Test(WorkerCase):
                 await self.waitp(receiver_manager_ref.add_keys_callback(
                     session_id, [chunk_key7], _promise=True))
 
-            # SCENARIO 5: sender halt and receiver is notified (reusing previous unsuccessful key)
+            logger.warning('SCENARIO 5: sender halt and receiver is notified (reusing previous unsuccessful key)')
             await receiver_manager_ref.register_pending_keys(session_id, [chunk_key7])
             mock_ref = pool.actor_ref(test_actor.uid, address='MOCK_ADDR')
             await self.waitp(receiver_ref.create_data_writers(
@@ -577,8 +582,12 @@ class Test(WorkerCase):
                 proc.terminate()
             raise
 
+        logger.warning('Child transfer worker started')
+
         async with start_transfer_test_pool(
                 address=local_pool_addr, plasma_size=self.plasma_storage_size) as pool:
+            logger.warning('Local transfer pool started')
+
             sender_refs, receiver_refs = [], []
             for _ in range(2):
                 sender_refs.append(await pool.create_actor(SenderActor, uid=str(uuid.uuid4())))
@@ -622,14 +631,13 @@ class Test(WorkerCase):
 
                 msg_queue.put(1)
             finally:
-                await wait_results(pool.destroy_actor(ref) for ref in sender_refs + receiver_refs)
-
+                logger.warning('All tests done, cleaning up')
                 os.unlink(remote_plasma_socket)
                 os.kill(proc.pid, signal.SIGINT)
 
                 t = time.time()
                 while proc.is_alive() and time.time() < t + 2:
-                    time.sleep(1)
+                    await asyncio.sleep(1)
                 if proc.is_alive():
                     proc.terminate()
 

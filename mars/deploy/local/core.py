@@ -190,7 +190,11 @@ def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
     kw = kw.copy()
     kw['n_process'] = n_process
     kw['shared_memory'] = shared_memory or '20%'
-    process = multiprocessing.Process(target=_start_cluster, args=(endpoint, event), kwargs=kw)
+
+    start_method = kw.pop('start_method', None)
+    mp_context = multiprocessing.get_context(start_method) \
+        if start_method is not None else multiprocessing
+    process = mp_context.Process(target=_start_cluster, args=(endpoint, event), kwargs=kw)
     process.start()
 
     while True:
@@ -219,10 +223,14 @@ def _start_web(scheduler_address, ui_port, event):
     aio_run(_start())
 
 
-def _start_web_process(scheduler_endpoint, web_endpoint):
+def _start_web_process(scheduler_endpoint, web_endpoint, **kw):
     web_event = multiprocessing.Event()
     ui_port = int(web_endpoint.rsplit(':', 1)[1])
-    web_process = multiprocessing.Process(
+
+    start_method = kw.pop('start_method', None)
+    mp_context = multiprocessing.get_context(start_method) \
+        if start_method is not None else multiprocessing
+    web_process = mp_context.Process(
         target=_start_web, args=(scheduler_endpoint, ui_port, web_event), daemon=True)
     web_process.start()
 
@@ -305,7 +313,7 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
 
     web_process = None
     if web_endpoint:
-        web_process = _start_web_process(endpoint, web_endpoint)
+        web_process = _start_web_process(endpoint, web_endpoint, start_method=kw.get('start_method'))
         print('Web endpoint started at http://%s' % web_endpoint, file=sys.stderr)
         if open_browser:
             import webbrowser

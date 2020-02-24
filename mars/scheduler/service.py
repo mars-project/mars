@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import logging
 
@@ -78,4 +79,4 @@ class SchedulerService(object):
                              json.dumps(await self._resource_ref.get_workers_meta()))
 
     async def stop(self, pool):
-        await pool.destroy_actor(self._resource_ref)
+        asyncio.ensure_future(pool.destroy_actor(self._resource_ref))

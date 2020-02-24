@@ -301,27 +301,25 @@ class WorkerService:
         await self._daemon_ref.handle_process_down(proc_indices, _tell=True)
 
     async def stop(self):
-        try:
-            for actor in (self._cpu_calc_actors + self._sender_actors + self._inproc_holder_actors
-                          + self._inproc_io_runner_actors + self._cuda_calc_actors
-                          + self._cuda_holder_actors + self._receiver_actors + self._spill_actors
-                          + self._process_helper_actors):
-                if actor and actor.ctx:
-                    asyncio.ensure_future(actor.destroy())
+        self._plasma_store.__exit__(None, None, None)
+        for actor in (self._cpu_calc_actors + self._sender_actors + self._inproc_holder_actors
+                      + self._inproc_io_runner_actors + self._cuda_calc_actors
+                      + self._cuda_holder_actors + self._receiver_actors + self._spill_actors
+                      + self._process_helper_actors):
+            if actor and actor.ctx:
+                asyncio.ensure_future(actor.destroy())
 
-            if self._result_sender_ref:
-                asyncio.ensure_future(self._result_sender_ref.destroy())
-            if self._status_ref:
-                asyncio.ensure_future(self._status_ref.destroy())
-            if self._shared_holder_ref:
-                asyncio.ensure_future(self._shared_holder_ref.destroy())
-            if self._storage_manager_ref:
-                asyncio.ensure_future(self._storage_manager_ref.destroy())
-            if self._events_ref:
-                asyncio.ensure_future(self._events_ref.destroy())
-            if self._dispatch_ref:
-                asyncio.ensure_future(self._dispatch_ref.destroy())
-            if self._execution_ref:
-                asyncio.ensure_future(self._execution_ref.destroy())
-        finally:
-            self._plasma_store.__exit__(None, None, None)
+        if self._result_sender_ref:
+            asyncio.ensure_future(self._result_sender_ref.destroy())
+        if self._status_ref:
+            asyncio.ensure_future(self._status_ref.destroy())
+        if self._shared_holder_ref:
+            asyncio.ensure_future(self._shared_holder_ref.destroy())
+        if self._storage_manager_ref:
+            asyncio.ensure_future(self._storage_manager_ref.destroy())
+        if self._events_ref:
+            asyncio.ensure_future(self._events_ref.destroy())
+        if self._dispatch_ref:
+            asyncio.ensure_future(self._dispatch_ref.destroy())
+        if self._execution_ref:
+            asyncio.ensure_future(self._execution_ref.destroy())

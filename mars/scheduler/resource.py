@@ -85,7 +85,7 @@ class ResourceActor(SchedulerActor):
         asyncio.ensure_future(self.ref().detect_dead_workers(_tell=True))
 
     async def pre_destroy(self):
-        await self._heartbeat_ref.destroy()
+        asyncio.ensure_future(self._heartbeat_ref.destroy())
         await super().pre_destroy()
 
     def heartbeat(self):

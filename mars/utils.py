@@ -749,8 +749,11 @@ def kill_process_tree(pid, include_parent=True):
     for p in children:
         try:
             if 'plasma' in p.name():
-                plasma_sock_dir = next((conn.laddr for conn in p.connections('unix')
-                                        if 'plasma' in conn.laddr), None)
+                try:
+                    plasma_sock_dir = next((conn.laddr for conn in p.connections('unix')
+                                            if 'plasma' in conn.laddr), None)
+                except psutil.AccessDenied:
+                    pass
             p.kill()
         except psutil.NoSuchProcess:  # pragma: no cover
             pass
@@ -942,36 +945,38 @@ async def wait_results(fs, **kwargs):
 def aio_run(main, *_, debug=False):
     try:
         return asyncio.run(main, debug=debug)
-    except AttributeError:  # pragma: no cover
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    except AttributeError:
+        pass
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(main)
+    finally:
         try:
-            return loop.run_until_complete(main)
+            from asyncio.tasks import Task
+            to_cancel = Task.all_tasks(loop)
+
+            for task in to_cancel:
+                task.cancel()
+
+            loop.run_until_complete(
+                asyncio.gather(*to_cancel, loop=loop, return_exceptions=True))
+
+            for task in to_cancel:
+                if task.cancelled():
+                    continue
+                if task.exception() is not None:
+                    loop.call_exception_handler({
+                        'message': 'unhandled exception during asyncio.run() shutdown',
+                        'exception': task.exception(),
+                        'task': task,
+                    })
+
+            loop.run_until_complete(loop.shutdown_asyncgens())
         finally:
-            try:
-                from asyncio.tasks import Task
-                to_cancel = Task.all_tasks(loop)
-
-                for task in to_cancel:
-                    task.cancel()
-
-                loop.run_until_complete(
-                    asyncio.gather(*to_cancel, loop=loop, return_exceptions=True))
-
-                for task in to_cancel:
-                    if task.cancelled():
-                        continue
-                    if task.exception() is not None:
-                        loop.call_exception_handler({
-                            'message': 'unhandled exception during asyncio.run() shutdown',
-                            'exception': task.exception(),
-                            'task': task,
-                        })
-
-                loop.run_until_complete(loop.shutdown_asyncgens())
-            finally:
-                asyncio.set_event_loop(None)
-                loop.close()
+            asyncio.set_event_loop(None)
+            loop.close()
 
 
 async def recursive_tile(tensor):

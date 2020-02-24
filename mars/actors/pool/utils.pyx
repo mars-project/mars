@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import asyncio
 
 import numpy as np
@@ -22,6 +23,15 @@ from ..._utils cimport to_str
 from ...utils import aio_run
 
 aio_run = aio_run
+
+cdef bint _LESS_PY37 = sys.version_info[0:2] < (3, 7)
+
+
+cdef object get_future_loop(object future):
+    if _LESS_PY37:
+        return future._loop
+    else:
+        return future.get_loop()
 
 
 cpdef bytes new_actor_id():

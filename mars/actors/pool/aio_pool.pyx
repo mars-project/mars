@@ -14,15 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-
 import asyncio
 import multiprocessing
 import itertools
 import os
 import pickle
 import random
-import signal
 import socket
 import struct
 import sys
@@ -43,7 +40,7 @@ from .messages cimport pack_send_message, pack_tell_message, pack_create_actor_m
     unpack_create_actor_message, unpack_destroy_actor_message, unpack_result_message, \
     pack_has_actor_message, unpack_has_actor_message, pack_error_message, unpack_error_message, \
     unpack_message_type_value, unpack_message_type, unpack_message_id, get_index, MessageType
-from .utils cimport new_actor_id
+from .utils cimport new_actor_id, get_future_loop
 from .utils import create_actor_ref, sleep_and_await, await_sequence, done_future, aio_run
 
 cdef int REMOTE_FROM_INDEX = -2
@@ -273,9 +270,9 @@ cdef class AsyncHandler:
             result = await ar
             if callback is not None:
                 callback(result)
-            ar.get_loop().call_soon_threadsafe(future.set_result, result)
+            get_future_loop(ar).call_soon_threadsafe(future.set_result, result)
         except:  # noqa: E722
-            ar.get_loop().call_soon_threadsafe(future.set_exception, ar.exception())
+            get_future_loop(ar).call_soon_threadsafe(future.set_exception, ar.exception())
         finally:
             del self.async_results[unique_id]
 
@@ -295,11 +292,11 @@ cdef class AsyncHandler:
     cpdef void got(self, bytes unique_id, object result):
         # receive event handling
         cdef object ar = self.async_results[unique_id]
-        ar.get_loop().call_soon_threadsafe(ar.set_result, result)
+        get_future_loop(ar).call_soon_threadsafe(ar.set_result, result)
 
     cpdef void err(self, bytes unique_id, object t, object ex, object tb):
         cdef object ar = self.async_results[unique_id]
-        ar.get_loop().call_soon_threadsafe(ar.set_exception, ex.with_traceback(tb))
+        get_future_loop(ar).call_soon_threadsafe(ar.set_exception, ex.with_traceback(tb))
 
 
 cdef int PIPE_BUF_SIZE = 65536
@@ -431,7 +428,10 @@ cdef class AsyncIOPair:
     async def close(self):
         if self.writer is not None:
             self.writer.close()
-            await self.writer.wait_closed()
+            try:
+                await self.writer.wait_closed()
+            except AttributeError:
+                pass
         if self.socket is not None:
             self.socket.close()
 
@@ -1417,7 +1417,7 @@ cdef class ActorPool:
 
     async def restart_process(self, int idx):
         if self._processes[idx].is_alive():
-            os.kill(self._processes[idx].pid, signal.SIGKILL)
+            self._processes[idx].terminate()
         self._processes[idx], self._comm_pipes[idx], self._pool_pipes[idx] = self._start_process(idx, False)
 
     async def run(self):
@@ -1443,7 +1443,7 @@ cdef class ActorPool:
 
             async def stop_func():
                 for process in self._processes:
-                    os.kill(process.pid, signal.SIGKILL)
+                    process.terminate()
                 try:
                     await asyncio.wait([close_pipe(p) for p in (self._comm_pipes + self._pool_pipes)],
                                        return_when=asyncio.ALL_COMPLETED)

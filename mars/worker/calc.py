@@ -293,7 +293,7 @@ class BaseCalcActor(WorkerActor):
                 continue
             store_keys.append(k)
             store_metas.append(WorkerMeta(attr.size, attr.shape, (self.address,)))
-        meta_future = self.get_meta_client().batch_set_chunk_meta(
+        meta_future = await self.get_meta_client().batch_set_chunk_meta(
             session_id, store_keys, store_metas, _wait=False)
 
         def _delete_keys(*_):
@@ -303,9 +303,12 @@ class BaseCalcActor(WorkerActor):
                     session_id, keys_to_store, [self._calc_intermediate_device], _tell=True))
             self._release_local_quotas(session_id, keys_to_store)
 
+        async def wait_meta_future():
+            await meta_future
+
         return (await storage_client.copy_to(session_id, keys_to_store, self._calc_dest_devices)) \
             .then(_delete_keys) \
-            .then(lambda *_: meta_future) \
+            .then(lambda *_: wait_meta_future()) \
             .then(lambda *_: self.tell_promise(callback),
                   lambda *exc: self.tell_promise(callback, *exc, _accept=False))
 

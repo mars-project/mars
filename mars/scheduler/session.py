@@ -171,7 +171,7 @@ class SessionActor(SchedulerActor):
         return graph_key_hex, tensor_key, tensor_id, tensor_meta
 
     async def graph_state(self, graph_key):
-        return await self._graph_refs[graph_key].get_state()
+        return await self._graph_meta_refs[graph_key].get_state()
 
     async def fetch_result(self, graph_key, tileable_key, check=False):
         # TODO just for test, should move to web handler

@@ -32,10 +32,13 @@ import pandas as pd
 
 from mars.context import LocalContext
 from mars.executor import Executor, GraphExecution
-from mars.serialize import serializes, deserializes, \
-    ProtobufSerializeProvider, JsonSerializeProvider
+from mars.serialize import serializes, deserializes, JsonSerializeProvider
 from mars.utils import lazy_import, to_async_context_manager
 
+try:
+    from mars.serialize import ProtobufSerializeProvider
+except ImportError:
+    ProtobufSerializeProvider = None
 try:
     import pytest
 except ImportError:
@@ -100,10 +103,11 @@ def parameterized(**params):
 
 class TestBase(unittest.TestCase):
     def setUp(self):
-        self.pb_serialize = lambda *args, **kw: \
-            serializes(ProtobufSerializeProvider(), *args, **kw)
-        self.pb_deserialize = lambda *args, **kw: \
-            deserializes(ProtobufSerializeProvider(), *args, **kw)
+        if ProtobufSerializeProvider:
+            self.pb_serialize = lambda *args, **kw: \
+                serializes(ProtobufSerializeProvider(), *args, **kw)
+            self.pb_deserialize = lambda *args, **kw: \
+                deserializes(ProtobufSerializeProvider(), *args, **kw)
         self.json_serialize = lambda *args, **kw: \
             serializes(JsonSerializeProvider(), *args, **kw)
         self.json_deserialize = lambda *args, **kw: \

@@ -104,8 +104,10 @@ class SenderActor(WorkerActor):
 
         data_sizes = await self.storage_client.get_data_sizes(session_id, chunk_keys)
         if any(s is None for s in data_sizes):
-            raise DependencyMissing('Dependencies %r not met when sending.'
-                                    % [k for k, s in zip(chunk_keys, data_sizes) if s is None])
+            raise DependencyMissing(
+                'Dependencies not met when send data.',
+                affected_keys=[(session_id, k) for k, s in zip(chunk_keys, data_sizes) if s is None]
+            )
         compression = compression or dataserializer.CompressType(options.worker.transfer_compression)
 
         wait_refs = []

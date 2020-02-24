@@ -16,3 +16,4 @@
 
 
 cpdef bytes new_actor_id()
+cdef object get_future_loop(object future)

@@ -213,7 +213,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
     async def wait_for_termination(self, actor_client, session_ref, graph_key):
         check_time = time.time()
         dump_time = time.time()
-        check_timeout = int(os.environ.get('CHECK_TIMEOUT', 120))
+        check_timeout = int(os.environ.get('CHECK_TIMEOUT', 180))
         while True:
             await asyncio.sleep(0.1)
             self.check_process_statuses()
@@ -227,5 +227,9 @@ class SchedulerIntegratedTest(unittest.TestCase):
                     await graph_ref.dump_unfinished_terminals()
                 except KeyError:
                     pass
-            if await session_ref.graph_state(graph_key) in GraphState.TERMINATED_STATES:
-                return await session_ref.graph_state(graph_key)
+            try:
+                graph_state = await asyncio.wait_for(session_ref.graph_state(graph_key), 1)
+                if graph_state in GraphState.TERMINATED_STATES:
+                    return graph_state
+            except asyncio.TimeoutError:
+                pass

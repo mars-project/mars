@@ -238,6 +238,8 @@ class Test(unittest.TestCase):
             actor_client = new_client()
             storage_manager_ref = actor_client.actor_ref(StorageManagerActor.default_uid(),
                                                          address='127.0.0.1:' + str(self.worker_port))
+            if await storage_manager_ref.dump_keys():
+                await asyncio.sleep(5)
             self.assertFalse(bool(await storage_manager_ref.dump_keys()))
 
         aio_run(check_all_chunks_freed())

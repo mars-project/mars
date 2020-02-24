@@ -79,16 +79,16 @@ class Test(unittest.TestCase):
             time.sleep(0.5)
 
             mem_stats = resource.virtual_memory()
-            self.assertGreaterEqual(mem_stats.available, 0)
-            self.assertGreaterEqual(mem_stats.total, 0)
-            self.assertGreaterEqual(mem_stats.percent, 0)
-            self.assertGreaterEqual(mem_stats.used, 0)
-            self.assertGreaterEqual(mem_stats.free, 0)
+            self.assertIsNotNone(mem_stats.available, 0)
+            self.assertIsNotNone(mem_stats.total, 0)
+            self.assertIsNotNone(mem_stats.percent, 0)
+            self.assertIsNotNone(mem_stats.used, 0)
+            self.assertIsNotNone(mem_stats.free, 0)
 
             cpu_usage = resource.cpu_percent()
-            self.assertGreaterEqual(cpu_usage, 0)
+            self.assertIsNotNone(cpu_usage, 0)
             cpu_usage = resource.cpu_percent()
-            self.assertGreaterEqual(cpu_usage, 0)
+            self.assertIsNotNone(cpu_usage, 0)
         finally:
             del os.environ['MARS_USE_PROCESS_STAT']
             del os.environ['MARS_CPU_TOTAL']

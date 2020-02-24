@@ -355,7 +355,10 @@ class AssignEvaluationActor(SchedulerActor):
 
             input_metas = await self._get_chunks_meta(session_id, input_data_keys)
             if any(m is None for m in input_metas.values()):
-                raise DependencyMissing('Dependency missing for operand %s' % op_key)
+                raise DependencyMissing(
+                    'Dependency missing for operand %s' % op_key,
+                    affected_keys=[(session_id, k) for k, m in input_metas.items() if m is None]
+                ) from None
 
             input_sizes = dict((k, meta.chunk_size) for k, meta in input_metas.items())
 

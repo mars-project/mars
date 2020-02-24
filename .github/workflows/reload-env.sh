@@ -1,5 +1,6 @@
 #!/bin/bash
 
+export CI=1
 export UNAME="$(uname | awk '{print tolower($0)}')"
 
 if [[ "$GITHUB_REF" =~ ^"refs/tags/" ]]; then

@@ -109,6 +109,7 @@ class WorkerCase(unittest.TestCase):
         self._test_pool = None
         self._test_actor = None
         self._test_actor_ref = None
+
         self._result_store = None
         self._result_event = None
 
@@ -145,9 +146,9 @@ class WorkerCase(unittest.TestCase):
     async def get_result(self, timeout=None):
         try:
             await asyncio.wait_for(self._result_event.wait(), timeout=timeout)
+            self._result_event.clear()
         except asyncio.TimeoutError:
             raise TimeoutError from None
-        self._result_event.clear()
         r, accept = self._result_store
         if accept:
             return r
@@ -184,4 +185,3 @@ class WorkerCase(unittest.TestCase):
                 await pool.__aexit__(exc_type, exc_val, exc_tb)
 
         return _AsyncContextManager()
-

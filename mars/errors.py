@@ -36,7 +36,12 @@ class WorkerDead(MarsError):
 
 
 class DependencyMissing(MarsError):
-    pass
+    def __init__(self, msg=None, **kwargs):
+        self._affected_keys = kwargs.pop('affected_keys', [])
+        if self._affected_keys:
+            msg = (msg or '') + ' affected_keys=%r' % self._affected_keys
+            msg = msg.strip()
+        super().__init__(msg)
 
 
 class StorageFull(MarsError):

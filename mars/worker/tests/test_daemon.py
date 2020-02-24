@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 import os
 
 from mars.tests.core import aio_case, create_actor_pool
@@ -23,12 +24,17 @@ from mars.distributor import MarsDistributor
 from mars.worker.utils import WorkerActor
 from mars.worker.tests.base import WorkerCase
 
+logger = logging.getLogger(__name__)
+
 
 class DaemonSleeperActor(WorkerActor):
     async def post_create(self):
         await super().post_create()
         self._daemon_ref = self.promise_ref(WorkerDaemonActor.default_uid())
         await self._daemon_ref.register_process(self.ref(), os.getpid(), _tell=True)
+
+    def is_alive(self):
+        return True
 
     async def test_sleep(self, t, callback):
         await asyncio.sleep(t)
@@ -58,6 +64,9 @@ class DaemonTestActor(WorkerActor):
         else:
             return val
 
+    def reset_result(self):
+        self._result = None
+
     def handle_process_down_for_actors(self, halt_refs):
         self.reject_promise_refs(halt_refs, *build_exc_info(WorkerProcessStopped))
 
@@ -68,11 +77,13 @@ class Test(WorkerCase):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
         async with create_actor_pool(n_process=2, distributor=MarsDistributor(2, 'w:0:'),
                                      address=mock_scheduler_addr) as pool:
+            candidate_pid = pool.processes[1].pid
+
             daemon_ref = await pool.create_actor(
                 WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
             await pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
-            sleeper_ref = await daemon_ref.create_actor(
-                DaemonSleeperActor, uid='w:1:DaemonSleeperActor')
+            sleeper_ref = pool.actor_ref(await daemon_ref.create_actor(
+                DaemonSleeperActor, uid='w:1:DaemonSleeperActor'))
             await daemon_ref.create_actor(ProcessHelperActor, uid='w:1:ProcHelper')
             test_actor = await pool.create_actor(DaemonTestActor)
             await daemon_ref.register_actor_callback(
@@ -83,6 +94,7 @@ class Test(WorkerCase):
 
             await asyncio.sleep(0.5)
 
+            logger.warning('Killing process hosting sleeper_ref')
             await daemon_ref.kill_actor_process(sleeper_ref)
             # repeated kill shall not produce errors
             await daemon_ref.kill_actor_process(sleeper_ref)
@@ -91,10 +103,13 @@ class Test(WorkerCase):
             await pool.restart_process(1)
             await daemon_ref.handle_process_down([1])
             await asyncio.sleep(1)
+            self.assertNotEqual(pool.processes[1].pid, candidate_pid)
             self.assertTrue(await pool.has_actor(sleeper_ref))
+            self.assertTrue(await sleeper_ref.is_alive())
             with self.assertRaises(WorkerProcessStopped):
                 await test_actor.get_result()
 
-            await test_actor.run_test_sleep(sleeper_ref, 1)
-            await asyncio.sleep(1.1)
+            await test_actor.reset_result()
+            await test_actor.run_test_sleep(sleeper_ref, 1, _tell=True)
+            await asyncio.sleep(1.5)
             await test_actor.get_result()

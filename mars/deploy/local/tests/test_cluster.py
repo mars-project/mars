@@ -901,7 +901,7 @@ class Test(unittest.TestCase):
                 ctx[op.outputs[0].key] = ctx[op.inputs[0].key] * op._multiplier
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+                         shared_memory='20M', web=True, start_method='fork') as cluster:
             session = cluster.session
 
             raw = np.random.rand(10, 20)
