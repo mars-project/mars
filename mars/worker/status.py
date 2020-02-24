@@ -152,6 +152,11 @@ class StatusReporterActor(WorkerActor):
             meta_dict['progress'] = self._status_ref.get_progress()
             meta_dict['details'] = gather_node_info()
 
+            if options.vineyard.socket:  # pragma: no cover
+                import vineyard
+                client = vineyard.connect(options.vineyard.socket)
+                meta_dict['vineyard'] = {'instance_id': client.instance_id}
+
             self._resource_ref.set_worker_meta(self._endpoint, meta_dict)
         except Exception as ex:
             logger.error('Failed to save status: %s. repr(meta_dict)=%r', str(ex), meta_dict)

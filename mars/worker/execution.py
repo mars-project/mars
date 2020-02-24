@@ -227,7 +227,8 @@ class ExecutionActor(WorkerActor):
         if self._status_ref:
             self.estimate_graph_finish_time(session_id, graph_key)
 
-        if graph_record.preferred_data_device == DataStorageDevice.SHARED_MEMORY:
+        if graph_record.preferred_data_device == DataStorageDevice.SHARED_MEMORY or \
+                graph_record.preferred_data_device == DataStorageDevice.VINEYARD:  # pragma: no cover
             memory_estimations = self._estimate_calc_memory(session_id, graph_key)
         else:
             memory_estimations = dict()
@@ -386,7 +387,8 @@ class ExecutionActor(WorkerActor):
                 data_size = calc_data_size(c)
                 input_size += data_size
                 data_locations = self.storage_client.get_data_locations(session_id, [c.key])[0]
-                if (0, DataStorageDevice.SHARED_MEMORY) in data_locations:
+                if (0, DataStorageDevice.VINEYARD) in data_locations or \
+                        (0, DataStorageDevice.SHARED_MEMORY) in data_locations:  # pragma: no cover
                     continue
                 elif (0, DataStorageDevice.DISK) in data_locations:
                     disk_size += data_size
@@ -448,8 +450,13 @@ class ExecutionActor(WorkerActor):
         all_callbacks.extend(callback)
 
         calc_device = calc_device or 'cpu'
-        preferred_data_device = DataStorageDevice.SHARED_MEMORY if calc_device == 'cpu' \
-            else DataStorageDevice.CUDA
+        if calc_device == 'cpu':  # pragma: no cover
+            if options.vineyard.socket:
+                preferred_data_device = DataStorageDevice.VINEYARD
+            else:
+                preferred_data_device = DataStorageDevice.SHARED_MEMORY
+        else:
+            preferred_data_device = DataStorageDevice.CUDA
 
         # todo change this when handling multiple devices
         if preferred_data_device == DataStorageDevice.CUDA:

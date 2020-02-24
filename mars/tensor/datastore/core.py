@@ -30,7 +30,7 @@ class TensorDataStore(TensorHasInput, TensorOperandMixin):
         chunk_op = op.copy().reset_key()
         out_chunk_shape = (0,) * in_chunk.ndim
         return chunk_op.new_chunk([in_chunk], out_chunk_shape,
-                                  index=in_chunk.index, order=op.outputs[0].oreder)
+                                  index=in_chunk.index, order=op.outputs[0].order)
 
     @classmethod
     def _process_out_chunks(cls, op, out_chunks):

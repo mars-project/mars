@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from io import BytesIO
+import pickle  # nosec
 
+import numpy as np
 import pyarrow
 
 from ..serialize.dataserializer import CompressType, get_compressobj, get_decompressobj, \
@@ -241,6 +243,67 @@ class ArrowBufferIO(WorkerBufferIO):
         if self._writer is not None:
             self._writer.close()
         self._writer = self._mv = self._buf = None
+
+        super().close()
+
+
+class ArrowComponentsIO(WorkerBufferIO):  # pragma: no cover
+    """
+    File-like object mocking object stored in shared memory as file with header
+    """
+    def __init__(self, components, mode='r', compress_in=None, compress_out=None, block_size=8192):
+        super().__init__(
+            mode=mode, compress_in=compress_in, compress_out=compress_out, block_size=block_size)
+
+        self._components = components
+        self._buffers = [self._components_meta()] + self._components['data']
+        self._mv = memoryview(self._buffers[0])
+        if 'r' in mode:
+            self._nbytes = 0
+            for buf in self._buffers:
+                self._nbytes += len(buf)
+            self._offset_in_buf = 0
+            self._index_of_buf = 0
+            self._writer = None
+        else:
+            raise NotImplementedError('No support for write mode in ArrowComponentsIO')
+
+    def _components_meta(self):
+        meta_block = pickle.dumps({
+            'num_tensors': self._components['num_tensors'],
+            'num_sparse_tensors': self._components['num_sparse_tensors'],
+            'num_ndarrays': self._components['num_ndarrays'],
+            'num_buffers': self._components['num_buffers'],
+            'buffer_sizes': [len(buf) for buf in self._components['data']],
+        }, protocol=pickle.HIGHEST_PROTOCOL)
+        return np.int32(len(meta_block)).tobytes() + meta_block
+
+    def _read_header(self):
+        return file_header(SERIAL_VERSION, self._nbytes, self._compress_type_in)
+
+    def _read_block(self, size):
+        if self._index_of_buf >= len(self._buffers):
+            return b''
+        right = min(len(self._mv), self._offset_in_buf + size)
+        ret = self._mv[self._offset_in_buf:right]
+        self._offset_in_buf = right
+        if self._offset_in_buf >= len(self._mv):
+            self._offset_in_buf = 0
+            self._index_of_buf += 1
+            if self._index_of_buf < len(self._buffers):
+                self._mv = memoryview(self._buffers[self._index_of_buf])
+        return ret
+
+    def _write_header(self, header):
+        pass
+
+    def _write_block(self, d):
+        raise NotImplementedError('No support for _write_block in ArrowComponentsIO')
+
+    def close(self):
+        if self._writer is not None:
+            self._writer.close()
+        self._writer = self._mv = self._buffers = None
 
         super().close()
 

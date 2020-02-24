@@ -17,6 +17,7 @@ import time
 from collections import defaultdict
 
 from .. import promise
+from ..config import options
 from ..executor import Executor
 from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size, \
     get_chunk_shuffle_key
@@ -307,11 +308,16 @@ class BaseCalcActor(WorkerActor):
 class CpuCalcActor(BaseCalcActor):
     _slot_name = 'cpu'
     _calc_event_type = ProcedureEventType.CPU_CALC
+    if options.vineyard.socket:
+        shared_memory_device = DataStorageDevice.VINEYARD  # pragma: no cover
+    else:
+        shared_memory_device = DataStorageDevice.SHARED_MEMORY
+
     # PROC_MEMORY must come first to avoid loading to shared storage
     # which will easily cause errors
-    _calc_source_devices = (DataStorageDevice.PROC_MEMORY, DataStorageDevice.SHARED_MEMORY)
+    _calc_source_devices = (DataStorageDevice.PROC_MEMORY, shared_memory_device)
     _calc_intermediate_device = DataStorageDevice.PROC_MEMORY
-    _calc_dest_devices = (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK)
+    _calc_dest_devices = (shared_memory_device, DataStorageDevice.DISK)
 
 
 class CudaCalcActor(BaseCalcActor):

@@ -19,11 +19,9 @@ import zlib
 from collections import namedtuple
 from enum import Enum
 from io import BytesIO
+import pickle  # nosec
 
-try:
-    import numpy as np
-except ImportError:  # pragma: no cover
-    np = None
+import numpy as np
 try:
     import scipy.sparse as sps
 except ImportError:  # pragma: no cover
@@ -35,6 +33,12 @@ try:
     import pyarrow
 except ImportError:  # pragma: no cover
     pyarrow = None
+
+
+try:
+    import vineyard
+except ImportError:  # pragma: no cover
+    vineyard = None
 
 
 BUFFER_SIZE = 256 * 1024
@@ -216,7 +220,18 @@ def loads(buf, raw=False):
     if raw:
         return data
     else:
-        return pyarrow.deserialize(memoryview(data), mars_serialize_context())
+        try:
+            return pyarrow.deserialize(memoryview(data), mars_serialize_context())
+        except pyarrow.lib.ArrowInvalid:  # pragma: no cover
+            # reconstruct value from buffers of arrow components
+            data_view = memoryview(data)
+            meta_block_size = np.frombuffer(data_view[0:4], dtype='int32').item()
+            meta = pickle.loads(data_view[4:4+meta_block_size])  # nosec
+            buffer_sizes = meta.pop('buffer_sizes')
+            bounds = np.cumsum([4 + meta_block_size] + buffer_sizes)
+            meta['data'] = [pyarrow.py_buffer(data_view[bounds[idx]:bounds[idx+1]])
+                            for idx in range(len(buffer_sizes))]
+            return pyarrow.deserialize_components(meta, mars_serialize_context())
 
 
 def dump(obj, file, compress=CompressType.NONE, raw=False):
@@ -316,8 +331,6 @@ def _apply_pyarrow_serialization_patch(serialization_context):
     the patch for pyarrow less than version 1.0.
     """
     from distutils.version import LooseVersion
-    import numpy as np
-    import pyarrow
 
     try:
         # This function is available after numpy-0.16.0.
@@ -396,5 +409,7 @@ def mars_serialize_context():
                           custom_serializer=_serialize_sparse_csr_list,
                           custom_deserializer=_deserialize_sparse_csr_list)
         _apply_pyarrow_serialization_patch(ctx)
+        if vineyard is not None:  # pragma: no cover
+            vineyard.register_vineyard_serialize_context(ctx)
         _serialize_context = ctx
     return _serialize_context

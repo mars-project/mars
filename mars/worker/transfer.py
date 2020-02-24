@@ -175,7 +175,10 @@ class SenderActor(WorkerActor):
             self.tell_promise(callback, *exc, _accept=False)
 
         try:
-            source_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
+            if options.vineyard.socket:
+                source_devices = [DataStorageDevice.VINEYARD, DataStorageDevice.DISK]  # pragma: no cover
+            else:
+                source_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
             _create_local_readers().then(_create_remote_writers) \
                 .then(lambda *_: self._compress_and_send(
                     session_id, addrs_to_chunks, receiver_refs, keys_to_readers,
@@ -534,7 +537,10 @@ class ReceiverWorkerActor(WorkerActor):
         """
         promises = []
         failed = False
-        device_order = [DataStorageDevice.SHARED_MEMORY]
+        if options.vineyard.socket:
+            device_order = [DataStorageDevice.VINEYARD]  # pragma: no cover
+        else:
+            device_order = [DataStorageDevice.SHARED_MEMORY]
         source_address = sender_ref.address if sender_ref is not None else None
         if not ensure_cached:
             device_order += [DataStorageDevice.DISK]
@@ -797,7 +803,10 @@ class ResultSenderActor(WorkerActor):
         if compression_type is None:
             compression_type = dataserializer.CompressType(options.worker.transfer_compression)
         if index_obj is None:
-            target_devs = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
+            if options.vineyard.socket:
+                target_devs = [DataStorageDevice.VINEYARD, DataStorageDevice.DISK]  # pragma: no cover
+            else:
+                target_devs = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
             ev = self._result_copy_ref.start_copy(session_id, chunk_key, target_devs)
             if ev:
                 ev.wait(options.worker.prepare_data_timeout)
@@ -811,8 +820,12 @@ class ResultSenderActor(WorkerActor):
                 return pool.submit(reader.read).result()
         else:
             try:
+                if options.vineyard.socket:
+                    memory_device = DataStorageDevice.VINEYARD  # pragma: no cover
+                else:
+                    memory_device = DataStorageDevice.SHARED_MEMORY
                 value = self.storage_client.get_object(
-                    session_id, chunk_key, [DataStorageDevice.SHARED_MEMORY], _promise=False)
+                    session_id, chunk_key, [memory_device], _promise=False)
             except IOError:
                 reader = self.storage_client.create_reader(
                     session_id, chunk_key, [DataStorageDevice.DISK], packed=False, _promise=False)

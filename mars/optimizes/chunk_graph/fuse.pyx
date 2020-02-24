@@ -71,6 +71,9 @@ class Fusion(object):
             if isinstance(v.op, VirtualOperand):
                 # cannot fuse virtual operand
                 continue
+            if v.op.expect_worker is not None:
+                # don't fuse operand that has explicit worker assignment
+                continue
             selected = [v]
             # add successors
             cur_node = self._graph.successors(v)[0]
