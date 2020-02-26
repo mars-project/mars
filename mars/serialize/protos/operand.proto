@@ -243,6 +243,8 @@ message OperandDef {
         NANCUMSUM = 326;
         NANCUMPROD = 327;
         COUNT = 343;
+        CUMMAX = 344;
+        CUMMIN = 345;
 
         // tensor operand
         RESHAPE = 401;

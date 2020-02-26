@@ -41,7 +41,7 @@ reduction_functions = dict(
 @parameterized(**reduction_functions)
 class Test(TestBase):
     @property
-    def op_num(self):
+    def op_name(self):
         return getattr(OperandDef, self.func_name.upper())
 
     def testSeriesReductionSerialize(self):
@@ -60,7 +60,7 @@ class Test(TestBase):
         self.assertEqual(tuple(pb.index), chunk.index)
         self.assertEqual(pb.key, chunk.key)
         self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_num)
+        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_name)
 
         chunk2 = self._pb_deserial(serials)[chunk.data]
 
@@ -128,7 +128,7 @@ class Test(TestBase):
         self.assertEqual(tuple(pb.index), chunk.index)
         self.assertEqual(pb.key, chunk.key)
         self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_num)
+        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_name)
 
         chunk2 = self._pb_deserial(serials)[chunk.data]
 

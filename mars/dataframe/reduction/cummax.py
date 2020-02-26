@@ -1,0 +1,31 @@
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from ... import opcodes as OperandDef
+from .core import DataFrameCumReductionOperand, DataFrameCumReductionMixin, ObjectType
+
+
+class DataFrameCummax(DataFrameCumReductionOperand, DataFrameCumReductionMixin):
+    _op_type_ = OperandDef.CUMMAX
+    _func_name = 'cummax'
+
+
+def cummax_series(df, axis=None, skipna=True):
+    op = DataFrameCummax(axis=axis, skipna=skipna, object_type=ObjectType.series)
+    return op(df)
+
+
+def cummax_dataframe(df, axis=None, skipna=True):
+    op = DataFrameCummax(axis=axis, skipna=skipna, object_type=ObjectType.dataframe)
+    return op(df)

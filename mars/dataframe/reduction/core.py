@@ -73,6 +73,31 @@ class DataFrameReductionOperand(DataFrameOperand):
         return self._combine_size
 
 
+class DataFrameCumReductionOperand(DataFrameOperand):
+    _axis = AnyField('axis')
+    _skipna = BoolField('skipna')
+
+    _is_summary = BoolField('is_summary')
+    _dtype = DataTypeField('dtype')
+
+    def __init__(self, axis=None, skipna=None, dtype=None, gpu=None, sparse=None,
+                 object_type=None, stage=None, **kw):
+        super().__init__(_axis=axis, _skipna=skipna, _dtype=dtype, _gpu=gpu,
+                         _sparse=sparse, _object_type=object_type, _stage=stage, **kw)
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def skipna(self):
+        return self._skipna
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+
 class DataFrameReductionMixin(DataFrameOperandMixin):
     @classmethod
     def _tile_one_chunk(cls, op):
@@ -171,7 +196,6 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                     dtypes = c.dtypes
                 reduced_shape = (1, len(dtypes))
                 index_value = parse_index(pd.RangeIndex(1), new_chunk_op)
-                dtypes = c.dtypes
             else:
                 reduced_shape = (c.shape[0], 1)
                 index_value = c.index_value
@@ -195,14 +219,14 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
 
     @classmethod
     def _tile_series(cls, op):
-        df = op.outputs[0]
+        series = op.outputs[0]
         combine_size = op.combine_size or options.combine_size
 
         chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op._stage = OperandStage.map
-            chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=df.dtype)
+            chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=series.dtype)
 
         while len(chunks) > combine_size:
             new_chunks = []
@@ -231,9 +255,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
 
         new_op = op.copy().reset_key()
         nsplits = tuple((s,) for s in chunk.shape)
-        return new_op.new_tileables(op.inputs, df.shape,
+        return new_op.new_tileables(op.inputs, series.shape,
                                     nsplits=tuple(tuple(ns) for ns in nsplits),
-                                    chunks=[chunk], dtype=df.dtype)
+                                    chunks=[chunk], dtype=series.dtype)
 
     @classmethod
     def tile(cls, op):
@@ -393,6 +417,201 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             raise NotImplementedError('Not support specified level now')
 
         return self.new_scalar([series], dtype=series.dtype)
+
+    def __call__(self, a):
+        if isinstance(a, DATAFRAME_TYPE):
+            return self._call_dataframe(a)
+        else:
+            return self._call_series(a)
+
+
+class DataFrameCumReductionMixin(DataFrameOperandMixin):
+    @classmethod
+    def _tile_one_chunk(cls, op):
+        df = op.outputs[0]
+        params = df.params
+
+        chk = op.inputs[0].chunks[0]
+        chunk_params = {k: v for k, v in chk.params.items()
+                        if k in df.params}
+        chunk_params['shape'] = df.shape
+        chunk_params['index'] = chk.index
+        new_chunk_op = op.copy().reset_key()
+        chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, kws=[chunk_params])
+
+        new_op = op.copy()
+        nsplits = tuple((s,) for s in chunk.shape)
+        params['chunks'] = [chunk]
+        params['nsplits'] = nsplits
+        return new_op.new_tileables(op.inputs, kws=[params])
+
+    @classmethod
+    def _build_combine(cls, op, input_chunks, summary_chunks, idx):
+        c = input_chunks[idx]
+        to_concat_chunks = [c]
+        for j in range(idx):
+            to_concat_chunks.append(summary_chunks[j])
+
+        new_chunk_op = op.copy().reset_key()
+        new_chunk_op._stage = OperandStage.combine
+        if new_chunk_op.object_type == ObjectType.dataframe:
+            return new_chunk_op.new_chunk(to_concat_chunks, shape=c.shape, dtypes=c.dtypes, index=c.index)
+        else:
+            return new_chunk_op.new_chunk(to_concat_chunks, shape=c.shape, dtype=c.dtype, index=c.index)
+
+    @classmethod
+    def _tile_dataframe(cls, op):
+        in_df = op.inputs[0]
+        df = op.outputs[0]
+
+        n_rows, n_cols = in_df.chunk_shape
+
+        # map to get individual results and summaries
+        src_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
+        summary_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
+        for c in in_df.chunks:
+            new_chunk_op = op.copy().reset_key()
+            new_chunk_op._stage = OperandStage.map
+            new_chunk_op._is_summary = True
+            if op.axis == 1:
+                summary_shape = (c.shape[0], 1)
+            else:
+                summary_shape = (1, c.shape[1])
+            src_chunks[c.index] = c
+            summary_chunks[c.index] = new_chunk_op.new_chunk([c], shape=summary_shape, dtypes=df.dtypes)
+
+        # combine summaries into results
+        output_chunk_array = np.empty(in_df.chunk_shape, dtype=np.object)
+        if op.axis == 1:
+            for row in range(n_rows):
+                row_src = src_chunks[row, :]
+                row_summaries = summary_chunks[row, :]
+                for col in range(n_cols):
+                    output_chunk_array[row, col] = cls._build_combine(op, row_src, row_summaries, col)
+        else:
+            for col in range(n_cols):
+                col_src = src_chunks[:, col]
+                col_summaries = summary_chunks[:, col]
+                for row in range(n_rows):
+                    output_chunk_array[row, col] = cls._build_combine(op, col_src, col_summaries, row)
+
+        output_chunks = list(output_chunk_array.reshape((n_rows * n_cols,)))
+        new_op = op.copy().reset_key()
+        return new_op.new_tileables(op.inputs, shape=in_df.shape, nsplits=in_df.nsplits,
+                                    chunks=output_chunks, dtypes=df.dtypes)
+
+    @classmethod
+    def _tile_series(cls, op):
+        in_series = op.inputs[0]
+        series = op.outputs[0]
+
+        # map to get individual results and summaries
+        summary_chunks = np.empty(in_series.chunk_shape, dtype=np.object)
+        for c in in_series.chunks:
+            new_chunk_op = op.copy().reset_key()
+            new_chunk_op._stage = OperandStage.map
+            new_chunk_op._is_summary = True
+            summary_chunks[c.index] = new_chunk_op.new_chunk([c], shape=(1,), dtype=series.dtype)
+
+        # combine summaries into results
+        output_chunks = [
+            cls._build_combine(op, in_series.chunks, summary_chunks, i) for i in range(len(in_series.chunks))
+        ]
+        new_op = op.copy().reset_key()
+        return new_op.new_tileables(op.inputs, shape=in_series.shape, nsplits=in_series.nsplits,
+                                    chunks=output_chunks, dtype=series.dtype)
+
+    @classmethod
+    def tile(cls, op):
+        in_df = op.inputs[0]
+        if len(in_df.chunks) == 1:
+            return cls._tile_one_chunk(op)
+        if isinstance(in_df, DATAFRAME_TYPE):
+            return cls._tile_dataframe(op)
+        else:
+            return cls._tile_series(op)
+
+    @classmethod
+    def _execute_map(cls, ctx, op):
+        in_data = ctx[op.inputs[0].key]
+        kwargs = dict()
+        if op.axis is not None:
+            kwargs['axis'] = op.axis
+        if op.skipna is not None:
+            kwargs['skipna'] = op.skipna
+        partial = getattr(in_data, getattr(cls, '_func_name'))(**kwargs)
+        if op.skipna:
+            partial = partial.fillna(method='ffill', axis=op.axis)
+        if op.object_type == ObjectType.series:
+            ctx[op.outputs[0].key] = partial.iloc[-1:]
+        else:
+            if op.axis == 1:
+                ctx[op.outputs[0].key] = partial.iloc[:, -1:]
+            else:
+                ctx[op.outputs[0].key] = partial.iloc[-1:, :]
+
+    @classmethod
+    def _execute_combine(cls, ctx, op):
+        kwargs = dict()
+        if op.axis is not None:
+            kwargs['axis'] = op.axis
+        if op.skipna is not None:
+            kwargs['skipna'] = op.skipna
+
+        if len(op.inputs) > 1:
+            ref_datas = [ctx[inp.key] for inp in op.inputs[1:]]
+            concat_df = getattr(pd.concat(ref_datas, axis=op.axis), getattr(cls, '_func_name'))(**kwargs)
+            if op.skipna:
+                concat_df = concat_df.fillna(method='ffill', axis=op.axis)
+
+            in_data = ctx[op.inputs[0].key]
+            if op.object_type == ObjectType.series:
+                concat_df = pd.concat([concat_df.iloc[-1:], in_data], axis=op.axis)
+            else:
+                if op.axis == 1:
+                    concat_df = pd.concat([concat_df.iloc[:, -1:], in_data], axis=op.axis)
+                else:
+                    concat_df = pd.concat([concat_df.iloc[-1:, :], in_data], axis=op.axis)
+
+            result = getattr(concat_df, getattr(cls, '_func_name'))(**kwargs)
+            if op.object_type == ObjectType.series:
+                ctx[op.outputs[0].key] = result.iloc[1:]
+            else:
+                if op.axis == 1:
+                    ctx[op.outputs[0].key] = result.iloc[:, 1:]
+                else:
+                    ctx[op.outputs[0].key] = result.iloc[1:, :]
+        else:
+            ctx[op.outputs[0].key] = getattr(ctx[op.inputs[0].key], getattr(cls, '_func_name'))(**kwargs)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.stage == OperandStage.map:
+            return cls._execute_map(ctx, op)
+        else:
+            return cls._execute_combine(ctx, op)
+
+    def _call_dataframe(self, df):
+        axis = getattr(self, 'axis', None) or 0
+        if axis == 'index':
+            axis = 0
+        if axis == 'columns':
+            axis = 1
+        self._axis = axis
+
+        empty_df = build_empty_df(df.dtypes)
+        reduced_df = getattr(empty_df, getattr(self, '_func_name'))(axis=axis)
+        return self.new_dataframe([df], shape=df.shape, dtype=reduced_df.dtypes,
+                                  index_value=df.index_value, columns_value=df.columns_value)
+
+    def _call_series(self, series):
+        axis = getattr(self, 'axis', None) or 0
+        if axis == 'index':
+            axis = 0
+        self._axis = axis
+
+        return self.new_series([series], shape=series.shape, dtype=series.dtype,
+                               name=series.name, index_value=series.index_value)
 
     def __call__(self, a):
         if isinstance(a, DATAFRAME_TYPE):
