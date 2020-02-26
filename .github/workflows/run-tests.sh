@@ -2,15 +2,15 @@
 set -e
 PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning"
 if [ -n "$WITH_HADOOP" ]; then
-  pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datasource/tests/test_hdfs.py
+  pytest $PYTEST_CONFIG mars/dataframe/datasource/tests/test_hdfs.py
   coverage report
 fi
 if [ -n "$WITH_KUBERNETES" ]; then
-  pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/deploy/kubernetes
+  pytest $PYTEST_CONFIG --forked mars/deploy/kubernetes
   coverage report
 fi
 if [ -n "$WITH_CYTHON" ]; then
-  pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/actors mars/deploy/local mars/serialize \
+  pytest $PYTEST_CONFIG --forked mars/actors mars/deploy/local mars/serialize \
     mars/optimizes mars/scheduler mars/tests mars/web
   coverage report
 fi
@@ -21,9 +21,9 @@ if [ -z "$NO_COMMON_TESTS" ]; then
     coverage report
   else
     mkdir -p build
-    pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/tensor mars/dataframe mars/web mars/learn
+    pytest $PYTEST_CONFIG mars/tensor mars/dataframe mars/web mars/learn
     mv .coverage build/.coverage.tensor.file
-    pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --ignore mars/tensor --ignore mars/dataframe \
+    pytest $PYTEST_CONFIG --forked --ignore mars/tensor --ignore mars/dataframe \
       --ignore mars/learn mars
     mv .coverage build/.coverage.main.file
     coverage combine build/ && coverage report --fail-under=85

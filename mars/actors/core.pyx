@@ -33,15 +33,14 @@ cdef class ActorRef:
 
     ctx = property(lambda self: self._ctx, _set_ctx)
 
-    cpdef object send(self, object message, bint wait=True, object callback=None):
-        return self._ctx.send(self, message, wait=wait, callback=callback)
+    async def send(self, object message, object callback=None):
+        return await self._ctx.send(self, message, callback=callback)
 
-    cpdef object tell(self, object message, object delay=None, bint wait=True,
-                      object callback=None):
-        return self._ctx.tell(self, message, delay=delay, wait=wait, callback=callback)
+    async def tell(self, object message, object delay=None, object callback=None):
+        return await self._ctx.tell(self, message, delay=delay, callback=callback)
 
-    cpdef object destroy(self, bint wait=True, object callback=None):
-        return self._ctx.destroy_actor(self, wait=wait, callback=callback)
+    async def destroy(self, object callback=None):
+        return await self._ctx.destroy_actor(self, callback=callback)
 
     def __getstate__(self):
         return self.address, self.uid
@@ -57,12 +56,11 @@ cdef class ActorRef:
             return object.__getattribute__(self, item)
 
         def _mt_call(*args, **kwargs):
-            wait = kwargs.pop('_wait', True)
             if kwargs.pop('_tell', False):
                 delay = kwargs.pop('_delay', None)
-                return self.tell((item,) + args + (kwargs,), delay=delay, wait=wait)
+                return self.tell((item,) + args + (kwargs,), delay=delay)
             else:
-                return self.send((item,) + args + (kwargs,), wait=wait)
+                return self.send((item,) + args + (kwargs,))
 
         return _mt_call
 
@@ -95,13 +93,13 @@ cdef class Actor:
     def ctx(self, ctx):
         self._ctx = ctx
 
-    cpdef post_create(self):
+    async def post_create(self):
         pass
 
-    cpdef on_receive(self, message):
+    async def on_receive(self, message):
         raise NotImplementedError
 
-    cpdef pre_destroy(self):
+    async def pre_destroy(self):
         pass
 
 
@@ -109,9 +107,9 @@ cdef dict _actor_implementation = dict()
 
 
 cdef class _FunctionActor(Actor):
-    cpdef on_receive(self, message):
+    async def on_receive(self, message):
         method, args, kwargs = message[0], message[1:-1], message[-1]
-        return getattr(self, method)(*args, **kwargs)
+        return await getattr(self, method)(*args, **kwargs)
 
 
 class FunctionActor(_FunctionActor):
@@ -123,15 +121,10 @@ class FunctionActor(_FunctionActor):
 
 
 
-cpdef object create_actor_pool(str address=None, int n_process=0, object distributor=None,
-                               object parallel=None, str backend='gevent', str advertise_address=None):
+async def create_actor_pool(str address=None, int n_process=0, object distributor=None,
+                            object parallel=None, str advertise_address=None):
     cdef bint standalone
     cdef ClusterInfo cluster_info
-
-    if backend != 'gevent':
-        raise ValueError('Only gevent-based actor pool is supported for now')
-
-    from .pool.gevent_pool import ActorPool
 
     standalone = address is None
     if n_process <= 0:
@@ -142,18 +135,15 @@ cpdef object create_actor_pool(str address=None, int n_process=0, object distrib
 
     cluster_info = ClusterInfo(standalone, n_process, address=address,
                                advertise_address=advertise_address)
-    pool = ActorPool(cluster_info, distributor=distributor, parallel=parallel)
-    pool.run()
 
+    from .pool.aio_pool import ActorPool
+    pool = ActorPool(cluster_info, distributor=distributor, parallel=parallel)
+    await pool.run()
     return pool
 
 
-cpdef object new_client(object parallel=None, str backend='gevent'):
-    if backend != 'gevent':
-        raise ValueError('Only gevent-based actor pool is supported for now')
-
-    from .pool.gevent_pool import ActorClient
-
+cpdef object new_client(object parallel=None):
+    from .pool.aio_pool import ActorClient
     return ActorClient(parallel=parallel)
 
 
