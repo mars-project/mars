@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import multiprocessing
 
 from .cluster cimport ClusterInfo
@@ -33,14 +34,14 @@ cdef class ActorRef:
 
     ctx = property(lambda self: self._ctx, _set_ctx)
 
-    async def send(self, object message, object callback=None):
-        return await self._ctx.send(self, message, callback=callback)
+    cpdef send(self, object message, object callback=None):
+        return self._ctx.send(self, message, callback=callback)
 
-    async def tell(self, object message, object delay=None, object callback=None):
-        return await self._ctx.tell(self, message, delay=delay, callback=callback)
+    cpdef tell(self, object message, object delay=None, object callback=None):
+        return self._ctx.tell(self, message, delay=delay, callback=callback)
 
-    async def destroy(self, object callback=None):
-        return await self._ctx.destroy_actor(self, callback=callback)
+    cpdef destroy(self, object callback=None):
+        return self._ctx.destroy_actor(self, callback=callback)
 
     def __getstate__(self):
         return self.address, self.uid
@@ -106,19 +107,19 @@ cdef class Actor:
 cdef dict _actor_implementation = dict()
 
 
-cdef class _FunctionActor(Actor):
-    async def on_receive(self, message):
-        method, args, kwargs = message[0], message[1:-1], message[-1]
-        return await getattr(self, method)(*args, **kwargs)
-
-
-class FunctionActor(_FunctionActor):
+class FunctionActor(Actor):
     def __new__(cls, *args, **kwargs):
         try:
             return _actor_implementation[id(cls)](*args, **kwargs)
         except KeyError:
             return super().__new__(cls, *args, **kwargs)
 
+    async def on_receive(self, message):
+        method, args, kwargs = message[0], message[1:-1], message[-1]
+        ret = getattr(self, method)(*args, **kwargs)
+        if asyncio.iscoroutine(ret):
+            return await ret
+        return ret
 
 
 async def create_actor_pool(str address=None, int n_process=0, object distributor=None,

@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+
 import numpy as np
 
 from ..._utils cimport to_str
@@ -21,6 +23,25 @@ from ..._utils cimport to_str
 
 cpdef bytes new_actor_id():
     return np.random.bytes(32)
+
+
+async def sleep_and_await(func, *args, **kwargs):
+    delay = kwargs.pop('_delay', 0)
+    await asyncio.sleep(delay)
+    return await func(*args, **kwargs)
+
+
+async def await_sequence(*awaitables):
+    cdef object val = None
+    for a in awaitables:
+        val = await a
+    return val
+
+
+def done_future():
+    f = asyncio.Future()
+    f.set_result(None)
+    return f
 
 
 def create_actor_ref(*args, **kwargs):

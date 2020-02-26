@@ -20,6 +20,10 @@ cdef class ActorRef:
     cdef public object uid
     cdef public object _ctx
 
+    cpdef send(self, object message, object callback=*)
+    cpdef tell(self, object message, object delay=*, object callback=*)
+    cpdef destroy(self, object callback=*)
+
 
 cdef class Actor:
     cdef str _address
@@ -27,10 +31,6 @@ cdef class Actor:
     cdef object _ctx
 
     cpdef ActorRef ref(self)
-
-
-cdef class _FunctionActor(Actor):
-    pass
 
 
 cpdef object new_client(object parallel=*)
