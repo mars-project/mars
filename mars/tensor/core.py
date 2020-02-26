@@ -15,6 +15,7 @@
 # limitations under the License.
 
 
+import asyncio
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
@@ -706,8 +707,9 @@ class MutableTensor(Entity):
         return session.seal(self)
 
     @log_unhandled
-    def _do_write(self, tensor_index, value):
-        ''' Notes [buffer management of mutable tensor]:
+    async def _do_write(self, tensor_index, value):
+        """
+        Notes [buffer management of mutable tensor]:
         Write operations on a mutable tensor are buffered at client. Every chunk has a
         corresponding buffer in the form of
 
@@ -724,7 +726,7 @@ class MutableTensor(Entity):
         1. `append` on (small) list is fast
         2. We try to flush the (affected) buffer to worker at the end of every write, the buffer
            size is guaranteed to less than 2 * chunk_size.
-        '''
+        """
         from .indexing.core import process_index, calc_shape
         from .indexing.getitem import TensorIndex
         from .utils import setitem_as_records
@@ -734,6 +736,8 @@ class MutableTensor(Entity):
 
         index_tensor_op = TensorIndex(dtype=self.dtype, sparse=False, indexes=tensor_index)
         index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape))._inplace_tile()
+        if asyncio.iscoroutine(index_tensor):  # pragma: no branch
+            index_tensor = await index_tensor
         output_chunks = index_tensor.chunks
 
         is_scalar = np.isscalar(value) or isinstance(value, tuple) and self.dtype.fields

@@ -105,19 +105,23 @@ class AioThreadPool:
     def submit(self, fn, *args, **kwargs):
         loop = asyncio.new_event_loop()
         ctrl_event = threading.Event()
+        result_future = asyncio.Future()
 
         def _thread_fun():
             asyncio.set_event_loop(loop)
             ctrl_event.wait()
             loop.run_forever()
+            return result_future.result()
 
         async def _wrapped_fun():
+            nonlocal result_future
             try:
                 r = fn(*args, **kwargs)
                 if asyncio.iscoroutine(r):
-                    return await r
-                else:
-                    return r
+                    r = await r
+                result_future.set_result(r)
+            except:  # noqa: E722
+                result_future.set_exception(sys.exc_info()[1])
             finally:
                 loop.stop()
 
@@ -304,7 +308,7 @@ cdef int PIPE_BUF_SIZE = 65536
 
 
 cdef class AsyncIOPair:
-    cdef object socket, pipe_fds
+    cdef object socket, pipe_fds, _socket_fileno
     cdef object reader, writer
     cdef object init_lock, read_lock, write_lock
     cdef int chunk_size
@@ -315,6 +319,7 @@ cdef class AsyncIOPair:
 
         if reader_writer is None:
             self.reader, self.writer = None, None
+            self._socket_fileno = None
         else:
             self.reader, self.writer = reader_writer
 
@@ -329,10 +334,12 @@ cdef class AsyncIOPair:
 
     @property
     def socket_fileno(self):
-        return self.writer.transport.get_extra_info('socket').fileno()
+        if self._socket_fileno is None:
+            self._socket_fileno = self.writer.transport.get_extra_info('socket').fileno()
+        return self._socket_fileno
 
     def reset_reader_writer(self):
-        self.reader, self.writer = None, None
+        self.reader, self.writer, self._socket_fileno = None, None, None
         self.init_lock = asyncio.locks.Lock()
         self.read_lock = asyncio.locks.Lock()
         self.write_lock = asyncio.locks.Lock()
@@ -410,15 +417,18 @@ cdef class AsyncIOPair:
             await self._build_reader_writer()
 
         async with self.write_lock:
-            for b in binary:
-                size += len(b)
-            size_bytes = (<char *>&size)[:sizeof(uint64_t)]
-            self.writer.write(size_bytes)
+            try:
+                for b in binary:
+                    size += len(b)
+                size_bytes = (<char *>&size)[:sizeof(uint64_t)]
+                self.writer.write(size_bytes)
 
-            for b in binary:
-                self.writer.write(b)
+                for b in binary:
+                    self.writer.write(b)
 
-            await self.writer.drain()
+                await self.writer.drain()
+            except ConnectionResetError:
+                raise BrokenPipeError('The remote server is closed')
 
     async def close(self):
         if self.writer is not None:
@@ -490,7 +500,7 @@ class Connections(object):
 
             maxlen = max(REMOTE_MAX_CONNECTION // Connections.addrs, 1)
 
-            if len(self.conn) < maxlen:
+            if len(self.conn_locks) < maxlen:
                 # create a new connection
                 lock = asyncio.locks.Semaphore()
                 await lock.acquire()
@@ -512,7 +522,8 @@ class Connections(object):
             await lock.acquire()
 
             # wait for conn finished
-            await asyncio.wait(ps, return_when=asyncio.ALL_COMPLETED)
+            if ps:
+                await asyncio.wait(ps, return_when=asyncio.ALL_COMPLETED)
             self.conn_locks = OrderedDict(itertools.islice(self.conn_locks.items(), maxlen))
 
             return self._connect(conn, lock)

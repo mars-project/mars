@@ -18,7 +18,7 @@ from functools import partial
 
 from mars import promise
 from mars.tests.core import aio_case, patch_method, create_actor_pool
-from mars.utils import get_next_port
+from mars.utils import get_next_port, wait_results
 from mars.promise import PromiseActor
 from mars.worker import DispatchActor
 from mars.worker.tests.base import WorkerCase
@@ -54,8 +54,8 @@ class Test(WorkerCase):
         async with create_actor_pool(n_process=1, address=mock_scheduler_addr) as pool:
             dispatch_ref = await pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
             # actors of g1
-            [await pool.create_actor(TaskActor, 'g1', call_records) for _ in range(group_size)]
-            [await pool.create_actor(TaskActor, 'g2', call_records) for _ in range(group_size)]
+            await wait_results(pool.create_actor(TaskActor, 'g1', call_records) for _ in range(group_size))
+            await wait_results(pool.create_actor(TaskActor, 'g2', call_records) for _ in range(group_size))
 
             self.assertEqual(len(await dispatch_ref.get_slots('g1')), group_size)
             self.assertEqual(len(await dispatch_ref.get_slots('g2')), group_size)

@@ -23,10 +23,11 @@ import pandas as pd
 import mars.dataframe as md
 from mars.core import ExecutableTuple
 from mars.config import option_context
-from mars.tests.core import TestBase
+from mars.tests.core import aio_case, TestBase
 from mars.optimizes.tileable_graph.core import tileable_optimized
 
 
+@aio_case
 class Test(TestBase):
     def testGroupByPruneReadCSV(self):
         tempdir = tempfile.mkdtemp()

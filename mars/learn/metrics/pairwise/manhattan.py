@@ -75,7 +75,7 @@ class ManhattanDistances(PairwiseDistances):
                                order=TensorOrder.C_ORDER)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         x, y = op.x, op.y
 
         if len(x.chunks) == 1 and len(y.chunks) == 1:
@@ -87,12 +87,12 @@ class ManhattanDistances(PairwiseDistances):
         elif op.sum_over_features:
             # if x, y are not sparse and `sum_over_features` is True
             # just use cdist
-            return [recursive_tile(cdist(x, y, 'cityblock'))]
+            return [await recursive_tile(cdist(x, y, 'cityblock'))]
         else:
             d = x[:, np.newaxis, :] - y[np.newaxis, :, :]
             d = mt_abs(d)
             d = d.reshape((-1, x.shape[1]))
-            return [recursive_tile(d)]
+            return [await recursive_tile(d)]
 
     @classmethod
     def execute(cls, ctx, op):

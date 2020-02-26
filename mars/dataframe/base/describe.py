@@ -81,16 +81,16 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
                                       columns_value=parse_index(test_df.columns, store_data=True))
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         inp = op.input
 
         if len(inp.chunks) == 1:
             return cls._tile_one_chunk(op)
 
         if isinstance(inp, SERIES_TYPE):
-            return cls._tile_series(op)
+            return await cls._tile_series(op)
         else:
-            return cls._tile_dataframe(op)
+            return await cls._tile_dataframe(op)
 
     @classmethod
     def _tile_one_chunk(cls, op):
@@ -108,7 +108,7 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
-    def _tile_series(cls, op):
+    async def _tile_series(cls, op):
         series = Series(op.input)
         out = op.outputs[0]
         index = out.index_value.to_pandas()
@@ -123,10 +123,10 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
 
         t = mt.concatenate(values).rechunk(len(names))
         ret = Series(t, index=index, name=series.name)
-        return [recursive_tile(ret)]
+        return [await recursive_tile(ret)]
 
     @classmethod
-    def _tile_dataframe(cls, op):
+    async def _tile_dataframe(cls, op):
         df = DataFrame(op.input)
         out = op.outputs[0]
         index = out.index_value.to_pandas()
@@ -146,7 +146,7 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
 
         t = mt.concatenate(values).rechunk((len(index), len(columns)))
         ret = DataFrame(t, index=index, columns=columns)
-        return [recursive_tile(ret)]
+        return [await recursive_tile(ret)]
 
     @classmethod
     def execute(cls, ctx, op):

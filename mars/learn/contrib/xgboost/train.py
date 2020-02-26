@@ -83,23 +83,23 @@ class XGBTrain(LearnMergeDictOperand):
         return self.new_tileable(inputs)
 
     @staticmethod
-    def _get_dmatrix_chunks_workers(ctx, dmatrix):
+    async def _get_dmatrix_chunks_workers(ctx, dmatrix):
         # dmatrix_chunk.inputs is concat, and concat's input is the coallocated chunks
-        metas = ctx.get_chunk_metas([c.inputs[0].inputs[0].key for c in dmatrix.chunks])
+        metas = await ctx.get_chunk_metas([c.inputs[0].inputs[0].key for c in dmatrix.chunks])
         return [m.workers[0] for m in metas]
 
     @staticmethod
-    def _get_dmatrix_worker_to_chunk(dmatrix, workers, ctx):
+    async def _get_dmatrix_worker_to_chunk(dmatrix, workers, ctx):
         worker_to_chunk = dict()
         expect_workers = set(workers)
-        workers = XGBTrain._get_dmatrix_chunks_workers(ctx, dmatrix)
+        workers = await XGBTrain._get_dmatrix_chunks_workers(ctx, dmatrix)
         for w, c in zip(workers, dmatrix.chunks):
             if w in expect_workers:
                 worker_to_chunk[w] = c
         return worker_to_chunk
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         ctx = get_context()
         if ctx.running_mode != RunningMode.distributed:
             assert all(len(inp.chunks) == 1 for inp in op.inputs)
@@ -112,13 +112,13 @@ class XGBTrain(LearnMergeDictOperand):
         else:
             inp = op.inputs[0]
             in_chunks = inp.chunks
-            workers = cls._get_dmatrix_chunks_workers(ctx, inp)
+            workers = await cls._get_dmatrix_chunks_workers(ctx, inp)
             tracker_chunk = StartTracker(n_workers=len(in_chunks)).new_chunk(in_chunks, shape=())
             out_chunks = []
             worker_to_evals = defaultdict(list)
             if op.evals is not None:
                 for dm, ev in op.evals:
-                    worker_to_chunk = cls._get_dmatrix_worker_to_chunk(dm, workers, ctx)
+                    worker_to_chunk = await cls._get_dmatrix_worker_to_chunk(dm, workers, ctx)
                     for worker, chunk in worker_to_chunk.items():
                         worker_to_evals[worker].append((chunk, ev))
             for in_chunk, worker in zip(in_chunks, workers):

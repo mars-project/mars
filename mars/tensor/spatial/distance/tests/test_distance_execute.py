@@ -237,4 +237,4 @@ class Test(unittest.TestCase):
             _ = self._executor.execute_tensor(vec, concat=True)[0]
         # force checks=False
         vec = distance.squareform(mat, checks=False, chunk_size=100)
-        _ = self._executor.execute_tensor(vec, concat=True)[0]
+        _ = self._executor.execute_tensor(vec, concat=True)[0]  # noqa: F841

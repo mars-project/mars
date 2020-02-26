@@ -31,22 +31,18 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
 
-        graph = expr.build_graph(compose=compose)
-        serialized_graph = serialize_graph(graph)
-        chunked_graph = expr.build_graph(compose=compose, tiled=True)
-
         addr = '127.0.0.1:%d' % get_next_port()
         pool_ctx = create_actor_pool(n_process=1, address=addr)
 
         this = self
-
-        async def _empty_patch(*_, **__):
-            pass
-
-        patch_ctx = patch_method(ResourceActor._broadcast_sessions, _empty_patch)
+        patch_ctx = patch_method(ResourceActor._broadcast_sessions, new_async=True)
 
         class _AsyncContextManager:
             async def __aenter__(self):
+                graph = await expr.build_graph(compose=compose, _async=True)
+                serialized_graph = serialize_graph(graph)
+                chunked_graph = await expr.build_graph(compose=compose, tiled=True, _async=True)
+
                 patch_ctx.__enter__()
                 pool = await pool_ctx.__aenter__()
                 await pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
@@ -198,7 +194,8 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
 
         addr = '127.0.0.1:%d' % get_next_port()
-        async with create_actor_pool(n_process=1, address=addr) as pool:
+        async with create_actor_pool(n_process=1, address=addr) as pool, \
+                patch_method(ResourceActor._broadcast_sessions, new_async=True):
             await pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
                                     uid=SchedulerClusterInfoActor.default_uid())
             resource_ref = await pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
@@ -220,7 +217,8 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
 
         addr = '127.0.0.1:%d' % get_next_port()
-        async with create_actor_pool(n_process=1, address=addr) as pool:
+        async with create_actor_pool(n_process=1, address=addr) as pool, \
+                patch_method(ResourceActor._broadcast_sessions, new_async=True):
             await pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
                                     uid=SchedulerClusterInfoActor.default_uid())
             resource_ref = await pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
@@ -233,7 +231,7 @@ class Test(unittest.TestCase):
             # error occurred in create_operand_actors
             graph_key = str(uuid.uuid4())
             expr = mt.random.random((8, 2), chunk_size=2) + 1
-            graph = expr.build_graph(compose=False)
+            graph = await expr.build_graph(compose=False, _async=True)
             serialized_graph = serialize_graph(graph)
 
             graph_ref = await pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,

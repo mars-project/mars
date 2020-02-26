@@ -77,7 +77,7 @@ class Test(TestBase):
 
             # test root not exist
             with self.assertRaises(ValueError):
-                _ = FSMap(root + '/path2', fs, check=True)
+                _ = FSMap(root + '/path2', fs, check=True)  # noqa: F841
 
             # create root
             fs_map = FSMap(root + '/path2', fs, create=True)

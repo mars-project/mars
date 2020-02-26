@@ -118,14 +118,17 @@ class GraphApiHandler(MarsApiRequestHandler):
         wait_timeout = int(self.get_argument('wait_timeout', None))
 
         try:
-            await self.web_api.wait_graph_finish(session_id, graph_key, wait_timeout)
+            try:
+                await self.web_api.wait_graph_finish(session_id, graph_key, wait_timeout)
+            except TimeoutError:
+                pass
             state = await self.web_api.get_graph_state(session_id, graph_key)
         except GraphNotExists:
             raise web.HTTPError(404, 'Graph not exists')
 
         resp = dict(state=state.value)
         if state == GraphState.FAILED:
-            exc_info = self.web_api.get_graph_exc_info(session_id, graph_key)
+            exc_info = await self.web_api.get_graph_exc_info(session_id, graph_key)
             if exc_info is not None:
                 resp['exc_info'] = base64.b64encode(pickle.dumps(exc_info)).decode('ascii')
                 resp['exc_info_text'] = ''.join(traceback.format_exception(*exc_info))

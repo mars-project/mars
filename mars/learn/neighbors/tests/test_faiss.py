@@ -25,10 +25,11 @@ from mars.learn.neighbors._faiss import build_faiss_index, _load_index, \
     faiss_query, _gen_index_string_and_sample_count
 from mars.learn.neighbors import NearestNeighbors
 from mars.tiles import get_tiled
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import aio_case, ExecutorForTest
 
 
 @unittest.skipIf(faiss is None, 'faiss not installed')
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self) -> None:
         self.executor = ExecutorForTest('numpy')

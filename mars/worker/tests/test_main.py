@@ -36,7 +36,7 @@ class WorkerProcessTestActor(PromiseActor):
         super().__init__()
         self._replied = False
 
-    def run_test(self, worker, calc_device=None):
+    async def run_test(self, worker, calc_device=None):
         import mars.tensor as mt
         from mars.worker import ExecutionActor
 
@@ -47,7 +47,7 @@ class WorkerProcessTestActor(PromiseActor):
         b = mt.random.rand(50, 200, chunk_size=30, gpu=gpu)
         result = a.dot(b)
 
-        graph = result.build_graph(tiled=True)
+        graph = await result.build_graph(tiled=True, _async=True)
         result = get_tiled(result)
 
         executor_ref = self.promise_ref(ExecutionActor.default_uid(), address=worker)

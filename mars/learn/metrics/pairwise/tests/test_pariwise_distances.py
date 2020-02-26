@@ -26,10 +26,11 @@ except ImportError:
 
 from mars import tensor as mt
 from mars.learn.metrics import pairwise_distances
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import aio_case, ExecutorForTest
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self) -> None:
         self.executor = ExecutorForTest('numpy')
@@ -79,4 +80,4 @@ class Test(unittest.TestCase):
                      pairwise_distances, x, y, metric='jaccard')
 
         with self.assertRaises(ValueError):
-            _ = pairwise_distances(x, y, metric='unknown')
+            _ = pairwise_distances(x, y, metric='unknown')  # noqa: F841

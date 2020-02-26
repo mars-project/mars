@@ -400,7 +400,7 @@ class Test(TestBase):
             with self.assertRaises(ValueError):
                 q[0] = 1.1
                 r = quantile(a, q, axis=None)
-                _ = executor.execute_tensors(r)[0]
+                _ = executor.execute_tensors(r)[0]  # noqa: F841
 
     def testPercentileExecution(self):
         raw = np.random.rand(20, 10)

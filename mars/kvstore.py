@@ -31,7 +31,7 @@ class _EternalWatchIter(object):
         self.key = key
         self.recursive = recursive
 
-    async def __aiter__(self):
+    def __aiter__(self):
         return self
 
     async def __anext__(self):

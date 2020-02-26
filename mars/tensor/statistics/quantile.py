@@ -312,7 +312,7 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
         if len(op.a.chunks) == 1 and (op.out is None or len(op.out.chunks) == 1):
             return cls._tile_one_chunk(op, q)
         else:
-            return [recursive_tile(cls._tile(op, q))]
+            return [await recursive_tile(cls._tile(op, q))]
 
     @classmethod
     def execute(cls, ctx, op):

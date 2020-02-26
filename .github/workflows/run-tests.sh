@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning"
+PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning --ignore=mars/lib/asyncio_pool"
 if [ -n "$WITH_HADOOP" ]; then
   pytest $PYTEST_CONFIG mars/dataframe/datasource/tests/test_hdfs.py
   coverage report

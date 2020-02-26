@@ -103,7 +103,7 @@ class ExecutionTestActor(WorkerActor):
 
         import mars.tensor as mt
         arr = mt.ones((4,), chunk_size=4) + 1
-        graph = arr.build_graph(compose=False, tiled=True)
+        graph = await arr.build_graph(compose=False, tiled=True, _async=True)
 
         arr = get_tiled(arr)
         self._array_key = arr.chunks[0].key
@@ -185,7 +185,7 @@ class Test(WorkerCase):
             arr = mt.ones((10, 8), chunk_size=10)
             arr_add = mt.ones((10, 8), chunk_size=10)
             arr2 = arr + arr_add
-            graph = arr2.build_graph(compose=False, tiled=True)
+            graph = await arr2.build_graph(compose=False, tiled=True, _async=True)
 
             arr = get_tiled(arr)
             arr2 = get_tiled(arr2)
@@ -262,7 +262,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = await result_tensor.build_graph(compose=False, tiled=True, _async=True)
 
             arr_add = get_tiled(arr_add)
             result_tensor = get_tiled(result_tensor)
@@ -316,7 +316,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = await result_tensor.build_graph(compose=False, tiled=True, _async=True)
 
             arr_add = get_tiled(arr_add)
             result_tensor = get_tiled(result_tensor)
@@ -379,7 +379,7 @@ class Test(WorkerCase):
 
             import mars.tensor as mt
             arr = mt.ones((10, 8), chunk_size=10)
-            graph = arr.build_graph(compose=False, tiled=True)
+            graph = await arr.build_graph(compose=False, tiled=True, _async=True)
 
             arr = get_tiled(arr)
 
@@ -474,7 +474,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = await result_tensor.build_graph(compose=False, tiled=True, _async=True)
 
             arr_add = get_tiled(arr_add)
             result_tensor = get_tiled(result_tensor)
@@ -546,7 +546,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = await result_tensor.build_graph(compose=False, tiled=True, _async=True)
             result_tensor = get_tiled(result_tensor)
             result_key = result_tensor.chunks[0].key
 
@@ -585,7 +585,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = await result_tensor.build_graph(compose=False, tiled=True, _async=True)
 
             result_tensor = get_tiled(result_tensor)
 

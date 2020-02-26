@@ -19,6 +19,7 @@ import time
 import unittest
 
 from mars.executor import Executor
+from mars.tests.core import aio_case
 from mars.tensor.datasource import ones, TensorOnes
 
 
@@ -68,6 +69,7 @@ class MockStorage(object):
         self._data2.update(other._data2)
 
 
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self):
         self.executor = Executor('numpy', storage=MockStorage(), prefetch=True)

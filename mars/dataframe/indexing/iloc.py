@@ -25,6 +25,7 @@ from ...serialize import AnyField, KeyField, ListField
 from ...tensor import asarray
 from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape
+from ...utils import recursive_tile
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, DATAFRAME_TYPE
 from ..utils import indexing_index_value
@@ -277,13 +278,15 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
                                   index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
 
         # See Note [Fancy Index of Numpy and Pandas]
-        tensor0 = empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],))[op.indexes[0]].tiles()
-        tensor1 = empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],))[op.indexes[1]].tiles()
+        tensor0 = empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],))[op.indexes[0]]
+        await recursive_tile(tensor0)
+        tensor1 = empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],))[op.indexes[1]]
+        await recursive_tile(tensor1)
 
         chunk_mapping = {c0.inputs[0].index + c1.inputs[0].index: (c0, c1)
                          for c0, c1 in itertools.product(tensor0.chunks, tensor1.chunks)}
@@ -402,12 +405,13 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
                                index_value=series.index_value, name=series.name)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         in_series = op.inputs[0]
         out = op.outputs[0]
 
         # Reuse the logic of fancy indexing in tensor module.
-        tensor = empty(in_series.shape, chunk_size=in_series.nsplits)[op.indexes[0]].tiles()
+        tensor = empty(in_series.shape, chunk_size=in_series.nsplits)[op.indexes[0]]
+        await recursive_tile(tensor)
 
         chunk_mapping = dict((c.inputs[0].index, c) for c in tensor.chunks)
 

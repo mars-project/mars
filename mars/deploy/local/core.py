@@ -28,7 +28,7 @@ from ...config import options
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
 from ...session import new_session
-from ...utils import get_next_port, kill_process_tree
+from ...utils import get_next_port, kill_process_tree, aio_run
 from ...worker.service import WorkerService
 from .distributor import gen_distributor
 
@@ -181,7 +181,7 @@ def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
         finally:
             await cluster.stop_service()
 
-    asyncio.run(_start())
+    aio_run(_start())
 
 
 def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
@@ -216,7 +216,7 @@ def _start_web(scheduler_address, ui_port, event):
         finally:
             await web.stop()
 
-    asyncio.run(_start())
+    aio_run(_start())
 
 
 def _start_web_process(scheduler_endpoint, web_endpoint):

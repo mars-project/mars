@@ -13,12 +13,14 @@ from mars.learn.tests.integrated.base import LearnIntegrationTestBase
 from mars.learn.contrib.pytorch import MarsDataset, MarsDistributedSampler
 from mars.context import DistributedContext
 from mars.session import new_session
+from mars.tests.core import aio_case
 from mars.utils import lazy_import
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
 @unittest.skipIf(not torch_installed, 'pytorch not installed')
+@aio_case
 class Test(LearnIntegrationTestBase):
     def testDistributedDataset(self):
         service_ep = 'http://127.0.0.1:' + self.web_port

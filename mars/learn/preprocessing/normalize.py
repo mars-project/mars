@@ -194,7 +194,7 @@ class TensorNormalize(TensorOperand, TensorOperandMixin):
                                   output_limit=len(outs))
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         x = op.input
         norm = op.norm
         axis = op.axis
@@ -220,9 +220,9 @@ class TensorNormalize(TensorOperand, TensorOperandMixin):
             else:
                 x = x / norms[mt.newaxis, :]
 
-            ret = [recursive_tile(x)]
+            ret = [await recursive_tile(x)]
             if op.return_norm:
-                ret.append(recursive_tile(norms))
+                ret.append(await recursive_tile(norms))
 
             new_op = op.copy()
             kws = [out.params for out in op.outputs]

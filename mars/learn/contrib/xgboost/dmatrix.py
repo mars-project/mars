@@ -179,7 +179,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         return new_op.new_tileables(op.inputs, kws=params)
 
     @classmethod
-    def _tile_single_output(cls, op):
+    async def _tile_single_output(cls, op):
         from ....context import get_context, RunningMode
 
         data, label, weight = op.data, op.label, op.weight
@@ -207,7 +207,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         else:
             # for distributed, we should concat the chunks
             # which allocated on the same worker into one
-            data_chunk_metas = ctx.get_chunk_metas([c.key for c in data.chunks])
+            data_chunk_metas = await ctx.get_chunk_metas([c.key for c in data.chunks])
             data_chunk_workers = [m.workers[0] for m in data_chunk_metas]
             worker_to_chunks = dict()
             for i, worker in enumerate(data_chunk_workers):
@@ -251,11 +251,11 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         if op.multi_output:
             return cls._tile_multi_output(op)
         else:
-            return cls._tile_single_output(op)
+            return await cls._tile_single_output(op)
 
     @staticmethod
     def get_xgb_dmatrix(tup):

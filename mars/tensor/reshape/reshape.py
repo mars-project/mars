@@ -229,7 +229,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                                   chunks=shuffle_outputs, nsplits=out_nsplits)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         in_tensor = op.input
         tensor = op.outputs[0]
 
@@ -239,7 +239,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             if getattr(op, '_reshape_with_shuffle', True):
                 result.op.extra_params['_reshape_with_shuffle'] = True
             result = result.transpose()
-            return [recursive_tile(result)]
+            return [await recursive_tile(result)]
 
         check_chunks_unknown_shape(op.inputs, TilesError)
         if len(in_tensor.chunks) == 1:
@@ -276,7 +276,8 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 return cls._tile_as_shuffle(op)
 
             # shape incompatible, we will first do flatten, then reshape to the new shape
-            return [in_tensor.reshape(-1, order=tensor.op.order)._inplace_tile().reshape(
+            _reshape_tensor = await in_tensor.reshape(-1, order=tensor.op.order)._inplace_tile()
+            return [await _reshape_tensor.reshape(
                 tensor.shape, order=tensor.op.order)._inplace_tile()]
 
     @classmethod

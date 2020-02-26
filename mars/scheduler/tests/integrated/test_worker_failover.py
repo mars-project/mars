@@ -54,7 +54,7 @@ class Test(SchedulerIntegratedTest):
         a = mt.array(np_a, chunk_size=30) * 2 + 1
         b = mt.array(np_b, chunk_size=30) * 2 + 1
         c = a.dot(b) * 2 + 1
-        graph = c.build_graph()
+        graph = await c.build_graph(_async=True)
         targets = [c.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(
@@ -88,7 +88,7 @@ class Test(SchedulerIntegratedTest):
         a = mt.ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
         b.op.extra_params['_reshape_with_shuffle'] = True
-        graph = b.build_graph()
+        graph = await b.build_graph(_async=True)
         targets = [b.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -123,7 +123,7 @@ class Test(SchedulerIntegratedTest):
         b = a.reshape(27, 31)
         b.op.extra_params['_reshape_with_shuffle'] = True
         r = mt.inner(b + 1, b + 1)
-        graph = r.build_graph()
+        graph = await r.build_graph(_async=True)
         targets = [r.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
@@ -160,7 +160,7 @@ class Test(SchedulerIntegratedTest):
         b = a.reshape(27, 31)
         b.op.extra_params['_reshape_with_shuffle'] = True
         r = mt.inner(b + 1, b + 1)
-        graph = r.build_graph()
+        graph = await r.build_graph(_async=True)
         targets = [r.key]
         graph_key = uuid.uuid1()
         await session_ref.submit_tileable_graph(json.dumps(graph.to_json()),

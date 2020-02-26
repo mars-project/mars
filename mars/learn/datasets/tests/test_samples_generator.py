@@ -27,9 +27,11 @@ except ImportError:  # pragma: no cover
 from mars.learn.datasets.samples_generator import make_low_rank_matrix, \
     make_classification, make_blobs
 from mars.tensor.linalg import svd
+from mars.tests.core import aio_case
 from mars import tensor as mt
 
 
+@aio_case
 class Test(unittest.TestCase):
     @unittest.skipIf(sklearn is None, 'sklearn not installed')
     def testMakeClassification(self):

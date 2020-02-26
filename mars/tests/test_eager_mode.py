@@ -21,10 +21,11 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.tiles import get_tiled
+from mars.dataframe.datasource.dataframe import from_pandas
 from mars.config import option_context
 from mars.tensor.operands import TensorOperand, TensorOperandMixin
-from mars.dataframe.datasource.dataframe import from_pandas
+from mars.tiles import get_tiled
+from mars.tests.core import aio_case
 
 
 class TileFailOp(TensorOperand, TensorOperandMixin):
@@ -33,6 +34,7 @@ class TileFailOp(TensorOperand, TensorOperandMixin):
         raise ValueError
 
 
+@aio_case
 class Test(unittest.TestCase):
     def testBaseExecute(self):
         with option_context({'eager_mode': True}):

@@ -62,8 +62,6 @@ class FakeExecutionActor(promise.PromiseActor):
             self._finish_callbacks[graph_key].append(callback)
 
 
-@patch_method(ResourceActor._broadcast_sessions)
-@patch_method(ResourceActor._broadcast_workers)
 @aio_case
 class Test(unittest.TestCase):
     def _prepare_test_graph(self, session_id, graph_key, mock_workers):
@@ -73,14 +71,24 @@ class Test(unittest.TestCase):
         s = a1 + a2
         v1, v2 = mt.split(s, 2)
 
-        graph = DAG()
-        v1.build_graph(graph=graph, compose=False)
-        v2.build_graph(graph=graph, compose=False)
-
         pool = create_actor_pool(n_process=1, address=addr)
+        patches = [
+            patch_method(ResourceActor.allocate_resource, new_async=True),
+            patch_method(ResourceActor.detach_dead_workers, new_async=True),
+            patch_method(ResourceActor.detect_dead_workers, new_async=True),
+            patch_method(ResourceActor._broadcast_sessions, new_async=True),
+            patch_method(ResourceActor._broadcast_workers, new_async=True),
+        ]
 
         class _AsyncContextManager:
             async def __aenter__(self):
+                for p in patches:
+                    p.__enter__()
+
+                graph = DAG()
+                await v1.build_graph(graph=graph, compose=False, _async=True)
+                await v2.build_graph(graph=graph, compose=False, _async=True)
+
                 await pool.__aenter__()
                 await pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
                                         uid=SchedulerClusterInfoActor.default_uid())
@@ -100,6 +108,8 @@ class Test(unittest.TestCase):
 
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 await pool.__aexit__(exc_type, exc_val, exc_tb)
+                for p in patches:
+                    p.__exit__(exc_type, exc_val, exc_tb)
 
         return _AsyncContextManager()
 
@@ -131,9 +141,6 @@ class Test(unittest.TestCase):
             [c.key for c in graph if isinstance(c.op, TensorIndex)],
         )
 
-    @patch_method(ResourceActor.allocate_resource, new=lambda *_, **__: True)
-    @patch_method(ResourceActor.detach_dead_workers)
-    @patch_method(ResourceActor.detect_dead_workers)
     async def testReadyState(self, *_):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
@@ -142,7 +149,8 @@ class Test(unittest.TestCase):
         def _mock_get_workers_meta(*_, **__):
             return dict((w, dict(hardware=dict(cpu_total=1, memory=1024 ** 3))) for w in mock_workers)
 
-        async with patch_method(ResourceActor.get_workers_meta, new=_mock_get_workers_meta), \
+        async with \
+                patch_method(ResourceActor.get_workers_meta, new=_mock_get_workers_meta), \
                 self._prepare_test_graph(session_id, graph_key, mock_workers) as (pool, graph_ref):
             input_op_keys, mid_op_key, output_op_keys = await self._filter_graph_level_op_keys(graph_ref)
             meta_client = ChunkMetaClient(pool, pool.actor_ref(SchedulerClusterInfoActor.default_uid()))

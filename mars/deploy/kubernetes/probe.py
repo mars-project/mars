@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import os
 import sys
 
 from ...actors import ActorNotExist, new_client
+from ...utils import aio_run
 from .core import ReadinessActor
 
 
@@ -36,4 +36,4 @@ async def main():
 
 
 if __name__ == '__main__':   # pragma: no branch
-    asyncio.run(main())
+    aio_run(main())

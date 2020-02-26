@@ -21,6 +21,7 @@ from ...config import options
 from ...errors import StorageFull, StorageDataExists
 from ...lib.asyncinit import asyncinit
 from ...serialize import dataserializer
+from ...utils import wait_results
 from ..dataio import ArrowBufferIO
 from .core import StorageHandler, BytesStorageMixin, ObjectStorageMixin, \
     SpillableStorageMixin, BytesStorageIO, DataStorageDevice, wrap_promised, \
@@ -140,9 +141,9 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
     @wrap_promised
     async def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
         if serialize:
-            return [await self._shared_store.get_buffer(session_id, k) for k in data_keys]
+            return (await wait_results(self._shared_store.get_buffer(session_id, k) for k in data_keys))[0]
         else:
-            return [await self._shared_store.get(session_id, k) for k in data_keys]
+            return (await wait_results(self._shared_store.get(session_id, k) for k in data_keys))[0]
 
     @wrap_promised
     async def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
@@ -233,7 +234,7 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                 .then(functools.partial(_copy_data, k))
 
         async def _fallback(*_):
-            return promise.all_([await _load_single_key(k) for k in data_keys]) \
+            return promise.all_((await wait_results(_load_single_key(k) for k in data_keys))[0]) \
                 .then(lambda *_: _finalize_load(), _finalize_load)
 
         return await self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)

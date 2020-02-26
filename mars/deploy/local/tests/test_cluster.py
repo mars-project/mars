@@ -43,7 +43,7 @@ from mars.session import new_session, Session
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.tensor.arithmetic.abs import TensorAbs
 from mars.tensor.operands import TensorOperand
-from mars.tests.core import mock, require_cudf
+from mars.tests.core import aio_case, mock, require_cudf
 from mars.web.session import Session as WebSession
 from mars.worker.dispatcher import DispatchActor
 
@@ -71,6 +71,7 @@ class SerializeMustFailOperand(TensorOperand, TensorElementWise):
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self):
         super().setUp()
@@ -879,13 +880,13 @@ class Test(unittest.TestCase):
             _multiplier = Int64Field('multiplier')
 
             @classmethod
-            def tile(cls, op):
+            async def tile(cls, op):
                 context = get_context()
 
                 self.assertEqual(context.running_mode, RunningMode.local_cluster)
 
                 inp_chunk = op.inputs[0].chunks[0]
-                inp_size = context.get_chunk_metas([inp_chunk.key])[0].chunk_size
+                inp_size = (await context.get_chunk_metas([inp_chunk.key]))[0].chunk_size
                 chunk_op = op.copy().reset_key()
                 chunk_op._multiplier = inp_size
                 chunk = chunk_op.new_chunk([inp_chunk], shape=inp_chunk.shape)

@@ -19,10 +19,12 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.learn.utils import shuffle
 from mars.learn.utils.shuffle import LearnShuffle
+from mars.tests.core import aio_case
 from mars.tiles import get_tiled
 from mars.tests.core import TestBase, ExecutorForTest
 
 
+@aio_case
 class Test(TestBase):
     def setUp(self):
         self.executor = ExecutorForTest('numpy')

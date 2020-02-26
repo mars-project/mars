@@ -161,7 +161,7 @@ class TensorFFTShiftMixin(TensorOperandMixin):
         return axes
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         from ..merge import concatenate
 
         axes = op.axes
@@ -178,7 +178,7 @@ class TensorFFTShiftMixin(TensorOperandMixin):
             slc2 = [slice(None)] * axis + [slice(slice_on, None)]
             x = concatenate([x[slc2], x[slc1]], axis=axis)
 
-        recursive_tile(x)
+        await recursive_tile(x)
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,
                                   chunks=x.chunks, nsplits=x.nsplits)

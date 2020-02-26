@@ -81,13 +81,13 @@ class RunPyTorch(LearnMergeDictOperand):
         return self.new_tileable(None)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         ctx = get_context()
 
         if ctx.running_mode != RunningMode.distributed:
             workers = ['127.0.0.1'] * op.world_size
         else:
-            workers = pick_workers(ctx.get_worker_addresses(), op.world_size)
+            workers = pick_workers(await ctx.get_worker_addresses(), op.world_size)
 
         out_chunks = []
         for i in range(op.world_size):

@@ -120,7 +120,7 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
         return lhs, rhs
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         from ..datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 
         lhs, rhs = op.lhs, op.rhs
@@ -159,7 +159,7 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
                 ret._columns_value = rhs.columns_value
                 ret._dtypes = rhs.dtypes
 
-        return [recursive_tile(ret)]
+        return [await recursive_tile(ret)]
 
 
 def dot(df_or_seris, other):

@@ -21,10 +21,11 @@ import numpy as np
 
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session, LocalSession, Session
-from mars.tests.core import mock
+from mars.tests.core import aio_case, mock
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
+@aio_case
 class Test(unittest.TestCase):
 
     def tearDown(self):
@@ -67,7 +68,7 @@ class Test(unittest.TestCase):
                 mut = session.create_mutable_tensor("test", (4, 5), dtype=np.double, chunk_size=3)
 
                 # write [1:4, 2], and buffer is not full.
-                chunk_records = mut._do_write((slice(1, 4, None), 2), 8)
+                chunk_records = session._loop.run_until_complete(mut._do_write((slice(1, 4, None), 2), 8))
                 self.assertEqual(chunk_records, [])
                 chunk_records = mut._do_flush()
                 chunk_records_map = dict((k, v) for k, _, v in chunk_records)
@@ -81,7 +82,8 @@ class Test(unittest.TestCase):
                 self.assertRecordsEqual(result, expected)
 
                 # write [2:4], and buffer is not full.
-                chunk_records = mut._do_write(slice(2, 4, None), np.arange(10).reshape((2, 5)))
+                chunk_records = session._loop.run_until_complete(mut._do_write(
+                    slice(2, 4, None), np.arange(10).reshape((2, 5))))
                 self.assertEqual(chunk_records, [])
                 chunk_records = mut._do_flush()
                 chunk_records_map = dict((k, v) for k, _, v in chunk_records)
@@ -103,7 +105,7 @@ class Test(unittest.TestCase):
                 self.assertRecordsEqual(result, expected)
 
                 # write [1], and buffer is not full.
-                chunk_records = mut._do_write(1, np.arange(5))
+                chunk_records = session._loop.run_until_complete(mut._do_write(1, np.arange(5)))
                 self.assertEqual(chunk_records, [])
                 chunk_records = mut._do_flush()
                 chunk_records_map = dict((k, v) for k, _, v in chunk_records)
@@ -117,7 +119,8 @@ class Test(unittest.TestCase):
                 self.assertRecordsEqual(result, expected)
 
                 # write [2, [0, 2, 4]] (fancy index), and buffer is not full.
-                chunk_records = mut._do_write((2, [0, 2, 4]), np.array([11, 22, 33]))
+                chunk_records = session._loop.run_until_complete(mut._do_write(
+                    (2, [0, 2, 4]), np.array([11, 22, 33])))
                 self.assertEqual(chunk_records, [])
                 chunk_records = mut._do_flush()
                 chunk_records_map = dict((k, v) for k, _, v in chunk_records)
@@ -131,7 +134,7 @@ class Test(unittest.TestCase):
                 self.assertRecordsEqual(result, expected)
 
                 # write [:], and the first buffer is full.
-                chunk_records = mut._do_write(slice(None, None, None), 999)
+                chunk_records = session._loop.run_until_complete(mut._do_write(slice(None, None, None), 999))
                 chunk_records_map = dict((k, v) for k, _, v in chunk_records)
 
                 result = chunk_records_map[mut.cix[(0, 0)].key]

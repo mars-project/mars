@@ -33,12 +33,14 @@ except ImportError:  # pragma: no cover
     SkNearestNeighbors = None
 
 import mars.tensor as mt
+from mars.tests.core import aio_case
 from mars.lib.sparse import SparseNDArray
 from mars.tiles import get_tiled
 from mars.learn.neighbors import NearestNeighbors
 
 
 @unittest.skipIf(SkNearestNeighbors is None, 'scikit-learn not installed')
+@aio_case
 class Test(unittest.TestCase):
     def testNearestNeighbors(self):
         rs = np.random.RandomState(0)
@@ -73,7 +75,7 @@ class Test(unittest.TestCase):
             _ = NearestNeighbors(metric='wminkowski', p=0)
 
         with self.assertRaises(ValueError):
-            _ = NearestNeighbors(algorithm='auto', metric='minkowski', p=0)
+            _ = NearestNeighbors(algorithm='auto', metric='minkowski', p=0)  # noqa: F841
 
         nn = NearestNeighbors(algorithm='auto', metric='minkowski', p=1)
         nn.fit(X)

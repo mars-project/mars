@@ -17,6 +17,7 @@ import logging
 from collections import defaultdict
 
 from ...errors import WorkerDead
+from ...utils import wait_results
 from ..utils import SchedulerActor
 from .core import OperandState, rewrite_worker_errors
 
@@ -250,7 +251,7 @@ class BaseOperandActor(SchedulerActor):
                 for graph_ref in self._graph_refs:
                     futures.append(graph_ref.remove_finished_terminal(
                         self._op_key, _tell=True, _wait=False))
-            await asyncio.wait(futures)
+            await wait_results(futures)
 
         # actual start the new state
         await self.start_operand(state)
@@ -269,7 +270,7 @@ class BaseOperandActor(SchedulerActor):
         else:
             succ_reqs = [asyncio.ensure_future(graph_ref.check_operand_can_be_freed(self._succ_keys))
                          for graph_ref in self._graph_refs]
-            can_be_freed_states = [await req for req in succ_reqs]
+            can_be_freed_states, _ = await wait_results(succ_reqs)
             if None in can_be_freed_states:
                 can_be_freed = None
             else:

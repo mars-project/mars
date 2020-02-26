@@ -123,13 +123,11 @@ class FakeExecutionActor(SchedulerActor):
         self._cancels.add(graph_key)
 
 
-@patch_method(ResourceActor._broadcast_sessions)
-@patch_method(ResourceActor._broadcast_workers)
 @aio_case
 class Test(unittest.TestCase):
     @staticmethod
     async def _run_operand_case(session_id, graph_key, tensor, execution_creator):
-        graph = tensor.build_graph(compose=False)
+        graph = await tensor.build_graph(compose=False, _async=True)
         mock_addrs = ['localhost:12345', 'localhost:23456']
         addr_execution_refs = dict()
 
@@ -137,7 +135,9 @@ class Test(unittest.TestCase):
             return addr_execution_refs[address]
 
         async with create_actor_pool(n_process=1) as pool, \
-                patch_method(OperandActor._get_raw_execution_ref, new=_build_mock_ref):
+                patch_method(OperandActor._get_raw_execution_ref, new=_build_mock_ref), \
+                patch_method(ResourceActor._broadcast_sessions, new_async=True), \
+                patch_method(ResourceActor._broadcast_workers, new_async=True):
             await pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
                                     uid=SchedulerClusterInfoActor.default_uid())
             resource_ref = await pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
@@ -239,7 +239,7 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
 
-        graph = arr2.build_graph(compose=False)
+        graph = await arr2.build_graph(compose=False, _async=True)
 
         mock_addrs = ['localhost:%d' % (idx + 12345) for idx in range(20)]
         addr_execution_refs = dict()
@@ -248,7 +248,9 @@ class Test(unittest.TestCase):
             return addr_execution_refs[address]
 
         async with create_actor_pool(n_process=1) as pool, \
-                patch_method(OperandActor._get_execution_ref, new=_build_mock_ref):
+                patch_method(OperandActor._get_execution_ref, new=_build_mock_ref), \
+                patch_method(ResourceActor._broadcast_sessions, new_async=True), \
+                patch_method(ResourceActor._broadcast_workers, new_async=True):
             await pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
                                     uid=SchedulerClusterInfoActor.default_uid())
             resource_ref = await pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())

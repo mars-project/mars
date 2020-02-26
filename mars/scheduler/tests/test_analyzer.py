@@ -17,8 +17,10 @@ import unittest
 import mars.tensor as mt
 from mars.scheduler.analyzer import GraphAnalyzer
 from mars.graph import DAG
+from mars.tests.core import aio_case
 
 
+@aio_case
 class Test(unittest.TestCase):
     def testDepths(self):
         from mars.tensor.arithmetic import TensorAdd

@@ -16,14 +16,15 @@ import unittest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.session import new_session
-from mars.tiles import get_tiled
+from mars.context import ContextBase, ChunkMeta, RunningMode, LocalContext
+from mars.graph import DAG
 from mars.learn.operands import OutputType
 from mars.learn.contrib.xgboost import train, MarsDMatrix
 from mars.learn.contrib.xgboost.dmatrix import ToDMatrix
 from mars.learn.contrib.xgboost.train import XGBTrain
-from mars.context import ContextBase, ChunkMeta, RunningMode, LocalContext
-from mars.graph import DAG
+from mars.session import new_session
+from mars.tests.core import aio_case
+from mars.tiles import get_tiled
 
 try:
     import xgboost
@@ -33,6 +34,7 @@ except ImportError:
 
 
 @unittest.skipIf(xgboost is None, 'XGBoost not installed')
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self):
         n_rows = 1000

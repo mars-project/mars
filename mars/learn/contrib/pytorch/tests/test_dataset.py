@@ -15,13 +15,15 @@
 import unittest
 
 import mars.tensor as mt
-from mars.utils import lazy_import
 from mars.learn.contrib.pytorch import MarsDataset, MarsRandomSampler
+from mars.tests.core import aio_case
+from mars.utils import lazy_import
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
 @unittest.skipIf(not torch_installed, 'pytorch not installed')
+@aio_case
 class Test(unittest.TestCase):
     def testLocalDataset(self):
         import torch

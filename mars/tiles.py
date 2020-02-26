@@ -129,10 +129,13 @@ class OperandTilesHandler(object):
             return to_tile
         dispatched = self.dispatch(to_tile.op)
         if asyncio.iscoroutine(dispatched):
-            task = asyncio.ensure_future(dispatched)
-            task.add_done_callback(
-                lambda *_: self._assign_to([d.data for d in dispatched], to_tile.op.outputs))
-            return task
+            @kernel_mode
+            async def tile_and_assign():
+                _dispatched = await dispatched
+                self._assign_to([d.data for d in _dispatched], to_tile.op.outputs)
+                return to_tile
+
+            return tile_and_assign()
         else:
             self._assign_to([d.data for d in dispatched], to_tile.op.outputs)
             return to_tile

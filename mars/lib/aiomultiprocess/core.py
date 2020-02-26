@@ -88,13 +88,13 @@ class Process:
         daemon: bool = None,
         initializer: Optional[Callable] = None,
         initargs: Sequence[Any] = (),
-        process_target: Optional[Callable] = None,
+        process_target: Optional[Callable] = None
     ) -> None:
         # if target is not None and not asyncio.iscoroutinefunction(target):
         #     raise ValueError(f"target must be coroutine function")
 
         if initializer is not None and asyncio.iscoroutinefunction(initializer):
-            raise ValueError(f"initializer must be synchronous function")
+            raise ValueError("initializer must be synchronous function")
 
         self.unit = Unit(
             target=target or not_implemented,
@@ -130,12 +130,12 @@ class Process:
             if unit.initializer:
                 unit.initializer(*unit.initargs)
 
-            result: R = loop.run_until_complete(unit.target(*unit.args, **unit.kwargs))
+            result = loop.run_until_complete(unit.target(*unit.args, **unit.kwargs))  # type: R
 
             return result
 
         except BaseException:
-            log.exception(f"aio process {os.getpid()} failed")
+            log.exception("aio process % failed" % os.getpid())
             raise
 
     def start(self) -> None:
@@ -209,7 +209,7 @@ class Worker(Process):
     def run_async(unit: Unit) -> R:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
-            result: R = Process.run_async(unit)
+            result = Process.run_async(unit)  # type: R
             unit.namespace.result = result
             return result
 

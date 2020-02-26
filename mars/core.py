@@ -434,6 +434,13 @@ class TileableData(EntityData, Tileable):
             session = Session.default_or_local()
         return session.fetch(self, **kw)
 
+    async def fetch_async(self, session=None, **kw):
+        from .session import Session
+
+        if session is None:
+            session = Session.default_or_local()
+        return await session.fetch_async(self, **kw)
+
     def _set_execute_session(self, session):
         _cleaner.register(self, session)
 

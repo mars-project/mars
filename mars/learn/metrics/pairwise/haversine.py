@@ -74,7 +74,7 @@ class HaversineDistances(PairwiseDistances):
                                order=TensorOrder.C_ORDER)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         x, y = op.x, op.y
         y_is_x = y is x
 
@@ -85,7 +85,7 @@ class HaversineDistances(PairwiseDistances):
         ret, = cls._tile_chunks(op, x, y)
         if y_is_x:
             fill_diagonal(ret, 0)
-        return [recursive_tile(ret)]
+        return [await recursive_tile(ret)]
 
     @classmethod
     def execute(cls, ctx, op):

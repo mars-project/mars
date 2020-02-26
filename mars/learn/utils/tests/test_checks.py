@@ -19,12 +19,13 @@ import pandas as pd
 import scipy.sparse as sps
 
 from mars.config import option_context
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import aio_case, ExecutorForTest
 from mars.learn.utils.checks import check_non_negative_then_return_value, assert_all_finite
 from mars import tensor as mt
 from mars import dataframe as md
 
 
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self) -> None:
         self.executor = ExecutorForTest('numpy')
@@ -74,7 +75,7 @@ class Test(unittest.TestCase):
 
         r = check_non_negative_then_return_value(c, c, 'sth')
         with self.assertRaises(ValueError):
-            _ = self.executor.execute_tileable(r, concat=True)[0]
+            _ = self.executor.execute_tileable(r, concat=True)[0]  # noqa: F841
 
     def testAssertAllFinite(self):
         raw = np.array([2.3, np.inf], dtype=np.float64)

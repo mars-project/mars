@@ -51,7 +51,7 @@ class CosineDistances(PairwiseDistances):
                                order=TensorOrder.C_ORDER)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         x, y = op.x, op.y
         if x is y:
             S = cosine_similarity(x)
@@ -61,7 +61,7 @@ class CosineDistances(PairwiseDistances):
         S = mt.clip(S, 0, 2)
         if x is y:
             mt.fill_diagonal(S, 0.0)
-        return [recursive_tile(S)]
+        return [await recursive_tile(S)]
 
 
 def cosine_similarity(X, Y=None, dense_output=True):

@@ -17,7 +17,7 @@ import os
 import uuid
 
 from .utils import SchedulerActor
-from ..utils import log_unhandled, wait_with_raise
+from ..utils import log_unhandled, wait_results
 
 logger = logging.getLogger(__name__)
 
@@ -116,21 +116,21 @@ class SessionActor(SchedulerActor):
 
     @log_unhandled
     async def get_mutable_tensor(self, name):
-        tensor_ref = await self._mut_tensor_refs.get(name)
+        tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or await tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
         return await tensor_ref.tensor_meta()
 
     @log_unhandled
     async def write_mutable_tensor(self, name, index, value):
-        tensor_ref = await self._mut_tensor_refs.get(name)
+        tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or await tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
         return await tensor_ref.write(index, value)
 
     @log_unhandled
     async def append_chunk_records(self, name, chunk_records):
-        tensor_ref = await self._mut_tensor_refs.get(name)
+        tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or await tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
         return await tensor_ref.append_chunk_records(chunk_records)
@@ -140,7 +140,7 @@ class SessionActor(SchedulerActor):
         from .graph import GraphActor, GraphMetaActor
         from .utils import GraphState
 
-        tensor_ref = await self._mut_tensor_refs.get(name)
+        tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or await tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
 
@@ -210,7 +210,7 @@ class SessionActor(SchedulerActor):
         futures = []
         for ref in self._graph_refs.values():
             futures.append(ref.handle_worker_change(adds, removes, lost_chunks, _wait=False, _tell=True))
-        await wait_with_raise(futures)
+        await wait_results(futures)
 
 
 class SessionManagerActor(SchedulerActor):
@@ -257,10 +257,10 @@ class SessionManagerActor(SchedulerActor):
             ref = self.get_actor_ref(AssignerActor.gen_uid(key))
             futures.append(ref.mark_metrics_expired(_tell=True, _wait=False))
         if futures:
-            await wait_with_raise(futures)
+            await wait_results(futures)
 
         futures = []
         for ref in self._session_refs.values():
             futures.append(getattr(ref, handler)(*args, _wait=False, _tell=True, **kwargs))
         if futures:
-            await wait_with_raise(futures)
+            await wait_results(futures)

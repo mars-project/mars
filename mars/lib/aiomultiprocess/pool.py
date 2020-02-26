@@ -6,11 +6,11 @@ import logging
 import os
 import queue
 import traceback
-from typing import Any, Awaitable, Callable, Dict, Optional, Sequence, Tuple
+from typing import Any, Awaitable, Callable, Dict, Optional, Sequence
 
 from .core import Process, get_context
 from .scheduler import RoundRobin, Scheduler
-from .types import PoolTask, ProxyException, Queue, QueueID, R, T, TaskID, TracebackStr
+from .types import ProxyException, Queue, QueueID, R, T, TaskID, TracebackStr
 
 MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
 CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
@@ -29,7 +29,7 @@ class PoolWorker(Process):
         concurrency: int = CHILD_CONCURRENCY,
         *_,
         initializer: Optional[Callable] = None,
-        initargs: Sequence[Any] = (),
+        initargs: Sequence[Any] = ()
     ) -> None:
         super().__init__(target=self.run, initializer=initializer, initargs=initargs)
         self.concurrency = max(1, concurrency)
@@ -39,7 +39,7 @@ class PoolWorker(Process):
 
     async def run(self) -> None:
         """Pick up work, execute work, return results, rinse, repeat."""
-        pending: Dict[asyncio.Future, TaskID] = {}
+        pending = {}  # type: Dict[asyncio.Future, TaskID]
         completed = 0
         running = True
         while running or pending:
@@ -50,7 +50,7 @@ class PoolWorker(Process):
             # pick up new work as long as we're "running" and we have open slots
             while running and len(pending) < self.concurrency:
                 try:
-                    task: PoolTask = self.tx.get_nowait()
+                    task = self.tx.get_nowait()  # type: "PoolTask"
                 except queue.Empty:
                     break
 
@@ -111,12 +111,12 @@ class Pool:
         self.maxtasksperchild = max(0, maxtasksperchild)
         self.childconcurrency = max(1, childconcurrency)
 
-        self.processes: Dict[Process, QueueID] = {}
-        self.queues: Dict[QueueID, Tuple[Queue, Queue]] = {}
+        self.processes = {}  # type: Dict[Process, QueueID]
+        self.queues = {}  # type: Dict[QueueID, tuple[Queue, Queue]]
 
         self.running = True
         self.last_id = 0
-        self._results: Dict[TaskID, Tuple[Any, Optional[TracebackStr]]] = {}
+        self._results = {} # type: Dict[TaskID, tuple[Any, Optional[TracebackStr]]]
 
         self.init()
         self._loop = asyncio.ensure_future(self.loop())
@@ -206,7 +206,7 @@ class Pool:
     async def results(self, tids: Sequence[TaskID]) -> Sequence[R]:
         """Wait for all tasks to complete, and return results, preserving order."""
         pending = set(tids)
-        ready: Dict[TaskID, R] = {}
+        ready = {}  # type: Dict[TaskID, R]
 
         while pending:
             for tid in pending.copy():
@@ -229,13 +229,13 @@ class Pool:
     ) -> R:
         """Run a single coroutine on the pool."""
         if not self.running:
-            raise RuntimeError(f"pool is closed")
+            raise RuntimeError("pool is closed")
 
         args = args or ()
         kwds = kwds or {}
 
         tid = self.queue_work(func, args, kwds)
-        results: Sequence[R] = await self.results([tid])
+        results = await self.results([tid])  # type: Sequence[R]
         return results[0]
 
     async def map(
@@ -246,7 +246,7 @@ class Pool:
     ) -> Sequence[R]:
         """Run a coroutine once for each item in the iterable."""
         if not self.running:
-            raise RuntimeError(f"pool is closed")
+            raise RuntimeError("pool is closed")
 
         tids = [self.queue_work(func, (item,), {}) for item in iterable]
         return await self.results(tids)
@@ -259,7 +259,7 @@ class Pool:
     ) -> Sequence[R]:
         """Run a coroutine once for each sequence of items in the iterable."""
         if not self.running:
-            raise RuntimeError(f"pool is closed")
+            raise RuntimeError("pool is closed")
 
         tids = [self.queue_work(func, args, {}) for args in iterable]
         return await self.results(tids)
@@ -282,6 +282,6 @@ class Pool:
     async def join(self) -> None:
         """Wait for the pool to finish gracefully."""
         if self.running:
-            raise RuntimeError(f"pool is still open")
+            raise RuntimeError("pool is still open")
 
         await self._loop

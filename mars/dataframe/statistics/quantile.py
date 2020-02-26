@@ -186,7 +186,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             return self._call_series(a, inputs)
 
     @classmethod
-    def _tile_dataframe(cls, op):
+    async def _tile_dataframe(cls, op):
         from ...tensor.merge.stack import TensorStack
 
         df = op.outputs[0]
@@ -238,10 +238,10 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                 r = dataframe_from_tensor(tr, index=op.q,
                                           columns=op.input.index_value.to_pandas())
 
-        return [recursive_tile(r)]
+        return [await recursive_tile(r)]
 
     @classmethod
-    def _tile_series(cls, op):
+    async def _tile_series(cls, op):
         a = tensor_from_series(op.input)
         t = tensor_quantile(a, op.q, interpolation=op.interpolation,
                             handle_non_numeric=not op.numeric_only)
@@ -249,14 +249,14 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             r = t
         else:
             r = series_from_tensor(t, index=op.q, name=op.outputs[0].name)
-        return [recursive_tile(r)]
+        return [await recursive_tile(r)]
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         if isinstance(op.input, DATAFRAME_TYPE):
-            return cls._tile_dataframe(op)
+            return await cls._tile_dataframe(op)
         else:
-            return cls._tile_series(op)
+            return await cls._tile_series(op)
 
 
 def quantile_series(series, q=0.5, interpolation='linear'):

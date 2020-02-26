@@ -50,6 +50,7 @@ class Test(SchedulerIntegratedTest):
 
         session_ref = actor_client.actor_ref(await self.session_manager_ref.create_session(session_id))
 
+        logger.warning('Test Case 0')
         a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         c = (a * b * 2 + 1).sum()
@@ -66,6 +67,7 @@ class Test(SchedulerIntegratedTest):
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
         assert_allclose(loads(result), expected.sum())
 
+        logger.warning('Test Case 1')
         a = mt.ones((100, 50), chunk_size=35) * 2 + 1
         b = mt.ones((50, 200), chunk_size=35) * 2 + 1
         c = a.dot(b)
@@ -80,6 +82,7 @@ class Test(SchedulerIntegratedTest):
         result = await session_ref.fetch_result(graph_key, c.key)
         assert_allclose(loads(result), np.ones((100, 200)) * 450)
 
+        logger.warning('Test Case 2')
         base_arr = np.random.random((100, 100))
         a = mt.array(base_arr)
         sumv = reduce(operator.add, [a[:10, :10] for _ in range(10)])
@@ -96,6 +99,7 @@ class Test(SchedulerIntegratedTest):
         result = await session_ref.fetch_result(graph_key, sumv.key)
         assert_allclose(loads(result), expected)
 
+        logger.warning('Test Case 3')
         a = mt.ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
         b.op.extra_params['_reshape_with_shuffle'] = True
@@ -112,6 +116,7 @@ class Test(SchedulerIntegratedTest):
         result = await session_ref.fetch_result(graph_key, r.key)
         assert_allclose(loads(result), np.ones((27, 31)).sum(axis=1))
 
+        logger.warning('Test Case 4')
         raw = np.random.RandomState(0).rand(10, 10)
         a = mt.tensor(raw, chunk_size=(5, 4))
         b = a[a.argmin(axis=1), mt.tensor(np.arange(10))]

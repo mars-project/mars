@@ -109,6 +109,14 @@ class LocalSession(object):
             kw['n_parallel'] = cpu_count()
         return self._executor.fetch_tileables(tileables, **kw)
 
+    async def fetch_async(self, *tileables, **kw):
+        if self._executor is None:
+            raise RuntimeError('Session has closed')
+        kw['_async'] = True
+        if 'n_parallel' not in kw:
+            kw['n_parallel'] = cpu_count()
+        return await self._executor.fetch_tileables(tileables, **kw)
+
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
         from .tensor.core import MutableTensor, MutableTensorData
         if name in self._mut_tensor:
@@ -212,6 +220,29 @@ class Session(object):
             ret_list = True
 
         result = self._sess.fetch(*tileables, **kw)
+
+        ret = []
+        for r, t in zip(result, tileables):
+            if hasattr(t, 'isscalar') and t.isscalar() and hasattr(r, 'item'):
+                ret.append(r.item())
+            else:
+                ret.append(r)
+        if ret_list:
+            return ret
+        return ret[0]
+
+    async def fetch_async(self, *tileables, **kw):
+        ret_list = False
+        if len(tileables) == 1 and isinstance(tileables[0], (tuple, list)):
+            ret_list = True
+            tileables = tileables[0]
+        elif len(tileables) > 1:
+            ret_list = True
+
+        try:
+            result = await self._sess.fetch_async(*tileables, **kw)
+        except AttributeError:
+            result = self._sess.fetch(*tileables, **kw)
 
         ret = []
         for r, t in zip(result, tileables):

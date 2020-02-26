@@ -20,10 +20,12 @@ import itertools
 import numpy as np
 
 from mars.executor import Executor
-from mars.utils import ignore_warning
 from mars.tensor.datasource import tensor
+from mars.tests.core import aio_case
+from mars.utils import ignore_warning
 
 
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self):
         self.executor = Executor()

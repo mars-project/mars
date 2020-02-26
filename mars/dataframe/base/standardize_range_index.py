@@ -38,11 +38,11 @@ class ChunkStandardizeRangeIndex(DataFrameOperand, DataFrameOperandMixin):
         return self._axis
 
     @classmethod
-    def execute(cls, ctx, op):
+    async def execute(cls, ctx, op):
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[-1].key].copy()
         input_keys = [c.key for c in op.inputs[:-1]]
-        metas = ctx.get_chunk_metas(input_keys)
+        metas = await ctx.get_chunk_metas(input_keys)
         index_start = sum([m.chunk_shape[op.axis] for m in metas])
         if op.axis == 0:
             in_data.index = xdf.RangeIndex(index_start, index_start + len(in_data))

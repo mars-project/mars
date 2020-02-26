@@ -37,11 +37,12 @@ from mars.config import options
 from mars.scheduler import ResourceActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps
-from mars.tests.core import mock
-from mars.utils import get_next_port
+from mars.tests.core import aio_case, mock
+from mars.utils import get_next_port, aio_run
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
+@aio_case
 class Test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -108,7 +109,7 @@ class Test(unittest.TestCase):
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
 
-        asyncio.run(self.wait_scheduler_worker_start())
+        aio_run(self.wait_scheduler_worker_start())
 
         web_port = self.web_port = str(get_next_port())
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
@@ -239,7 +240,7 @@ class Test(unittest.TestCase):
                                                          address='127.0.0.1:' + str(self.worker_port))
             self.assertFalse(bool(await storage_manager_ref.dump_keys()))
 
-        asyncio.run(check_all_chunks_freed())
+        aio_run(check_all_chunks_freed())
 
     def testWebApiException(self):
         def normalize_tbs(tb_lines):

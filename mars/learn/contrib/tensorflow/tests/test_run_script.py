@@ -16,6 +16,7 @@ import unittest
 import os
 
 from mars.learn.contrib.tensorflow import run_tensorflow_script
+from mars.tests.core import aio_case
 
 try:
     import tensorflow
@@ -24,6 +25,7 @@ except ImportError:
 
 
 @unittest.skipIf(tensorflow is None, 'tensorflow not installed')
+@aio_case
 class Test(unittest.TestCase):
     def testLocalRunTensorFlowScript(self):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tf_distributed_sample.py')

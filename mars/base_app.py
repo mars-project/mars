@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import argparse
-import asyncio
 import logging
 import os
 import sys
@@ -22,7 +21,7 @@ from .actors import create_actor_pool
 from .config import options
 from .errors import StartArgumentError
 from .lib.tblib import pickling_support
-from .utils import get_next_port, to_str
+from .utils import get_next_port, to_str, aio_run
 
 pickling_support.install()
 logger = logging.getLogger(__name__)
@@ -76,7 +75,7 @@ class BaseApplication(object):
             except:  # noqa: E722
                 setattr(conf_obj, conf_parts[-1], val)
 
-        return asyncio.run(self._main(new_argv))
+        return aio_run(self._main(new_argv))
 
     async def _main(self, argv=None):
         parser = argparse.ArgumentParser(description=self.service_description)

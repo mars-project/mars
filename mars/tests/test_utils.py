@@ -30,11 +30,13 @@ try:
 except ImportError:  # pragma: no cover
     pd = None
 
+import mars.tensor as mt
 from mars import utils
 from mars.tensor.fetch import TensorFetch
-import mars.tensor as mt
+from mars.tests.core import aio_case
 
 
+@aio_case
 class Test(unittest.TestCase):
     def testStringConversion(self):
         s = None
@@ -284,7 +286,7 @@ class Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ = a.cix[1]
         with self.assertRaises(ValueError):
-            _ = a.cix[1, :]
+            _ = a.cix[1, :]  # noqa: F841
 
         chunk_key = a.cix[0, 0, 0].key
         expected = a.chunks[0].key

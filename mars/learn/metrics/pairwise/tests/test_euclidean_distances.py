@@ -25,12 +25,13 @@ except ImportError:  # pragma: no cover
 
 from mars import tensor as mt
 from mars.lib.sparse import SparseNDArray
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import aio_case, ExecutorForTest
 from mars.learn.metrics import euclidean_distances
 from mars.learn.utils import check_array
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self) -> None:
         self.executor = ExecutorForTest('numpy')

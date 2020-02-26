@@ -343,10 +343,13 @@ def require_cudf(func):
     return func
 
 
+_aio_pid = os.getpid()
+
+
 def aio_case(obj):
     if isinstance(obj, type):
         for name, val in obj.__dict__.items():
-            if callable(val) and name.startswith('test'):
+            if callable(val) and (name.startswith('test') or name == 'setUp'):
                 setattr(obj, name, aio_case(val))
         return obj
     elif callable(obj):
@@ -358,9 +361,23 @@ def aio_case(obj):
 
         @functools.wraps(obj)
         def func_wrapper(*args, **kwargs):
+            global _aio_pid
+            try:
+                if _aio_pid != os.getpid():
+                    _aio_pid = os.getpid()
+                    raise RuntimeError('no current event loop')
+                else:
+                    loop = asyncio.get_event_loop()
+            except RuntimeError as ex:
+                if 'no current event loop' in str(ex):
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                else:
+                    raise
+
             ret = obj(*args, **kwargs)
             if asyncio.iscoroutine(ret):
-                asyncio.run(ret)
+                loop.run_until_complete(ret)
 
         if patchings:
             for patching in patchings:

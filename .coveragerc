@@ -9,11 +9,11 @@ include =
     mars/*
 omit =
     mars/compat.py
+    mars/lib/aiomultiprocess
+    mars/lib/asyncio_pool/*
+    mars/lib/asyncinit.py/*
     mars/lib/functools32/*
     mars/lib/futures/*
-    mars/lib/enum.py
-    mars/lib/six.py
-    mars/lib/gipc.pyx
     mars/lib/nvutils.py
     mars/lib/tblib/*
     mars/lib/uhashring/*

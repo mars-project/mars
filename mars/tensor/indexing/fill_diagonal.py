@@ -67,7 +67,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
         return self.new_tensor(inputs, shape=a.shape, order=a.order)
 
     @staticmethod
-    def _process_val(val, a, wrap):
+    async def _process_val(val, a, wrap):
         """
         given the `val`, `a`, `wrap` which are the arguments in `fill_diagonal`,
         do some preprocess on `val` includes:
@@ -101,10 +101,10 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
             val = val[:size]
 
         if is_val_tensor and val.ndim > 0:
-            val = recursive_tile(val)
+            val = await recursive_tile(val)
             val = val.rechunk({0: val.size})
 
-        return recursive_tile(val) if is_val_tensor else val
+        return await recursive_tile(val) if is_val_tensor else val
 
     @staticmethod
     def _gen_val(val, diag_idx, cum_sizes):
@@ -228,7 +228,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
                 for i in range(n_block)]
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         # input tensor must have no unknown chunk shape
         check_chunks_unknown_shape(op.inputs, TilesError)
 
@@ -236,7 +236,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
         is_in_tensor_tall = cls._is_tall(in_tensor)
 
         if op.val.ndim > 0:
-            val = cls._process_val(op.val, in_tensor, op.wrap)
+            val = await cls._process_val(op.val, in_tensor, op.wrap)
         else:
             val = op.val
 
@@ -256,7 +256,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
                         sub_val = val
                     fill_diagonal(sub_tensor, sub_val, wrap=False)
                 out_tensor = concatenate(sub_tensors)
-                return [recursive_tile(out_tensor)]
+                return [await recursive_tile(out_tensor)]
             else:
                 return cls._tile_2d(op, val)
         else:

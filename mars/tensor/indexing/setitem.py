@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from numbers import Integral
 
 import numpy as np
@@ -84,9 +85,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         from ..base import broadcast_to
-
         tensor = op.outputs[0]
         value = op.value
         indexed = op.indexed
@@ -94,6 +94,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 
         if is_value_tensor and value.ndim > 0:
             check_chunks_unknown_shape([indexed, value], TilesError)
+        if asyncio.iscoroutine(index_tensor):
+            index_tensor = await index_tensor
 
             value = recursive_tile(
                 broadcast_to(value, indexed.shape).astype(op.input.dtype))

@@ -19,6 +19,7 @@ import numpy as np
 
 import mars.tensor as mt
 from mars.session import new_session
+from mars.tests.core import aio_case
 
 try:
     import scipy as sp
@@ -33,6 +34,7 @@ except ImportError:
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self):
         self.iris = mt.tensor(datasets.load_iris().data)

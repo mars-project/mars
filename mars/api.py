@@ -96,7 +96,7 @@ class MarsAPI:
         Check if the session with given session_id exists.
         """
         session_manager = await self.get_session_manager()
-        return session_manager.has_session(session_id)
+        return await session_manager.has_session(session_id)
 
     async def submit_graph(self, session_id, serialized_graph, graph_key, target,
                            names=None, compose=True, wait=True):
@@ -183,8 +183,11 @@ class MarsAPI:
         nsplits, chunk_keys, chunk_indexes = (await graph_ref.get_tileable_metas([tileable_key]))[0]
         chunk_index_to_key = dict((index, key) for index, key in zip(chunk_indexes, chunk_keys))
         if not index_obj:
-            chunk_results = dict([(idx, await self.fetch_chunk_data(session_id, k, wait=False)) for
-                                  idx, k in zip(chunk_indexes, chunk_keys)])
+            data_futures = [asyncio.ensure_future(self.fetch_chunk_data(session_id, k, wait=False))
+                            for k in chunk_keys]
+            await asyncio.wait(data_futures)
+            chunk_results = dict([(idx, f.result()) for
+                                  idx, f in zip(chunk_indexes, data_futures)])
         else:
             chunk_results = dict()
             indexes = dict()
@@ -202,7 +205,8 @@ class MarsAPI:
                 chunk_results[chunk_index] = await self.fetch_chunk_data(
                     session_id, chunk_key, slice_obj, wait=False)
 
-        chunk_results = [(idx, dataserializer.loads(await f)) for
+        await asyncio.wait(chunk_results.values())
+        chunk_results = [(idx, dataserializer.loads(f.result())) for
                          idx, f in chunk_results.items()]
         if len(chunk_results) == 1:
             ret = chunk_results[0][1]
@@ -245,6 +249,10 @@ class MarsSyncAPI:
     def __init__(self, scheduler_ip, loop=None):
         self._async_api = MarsAPI(scheduler_ip)
         self._loop = loop or asyncio.get_event_loop()
+
+    @property
+    def async_api(self):
+        return self._async_api
 
     get_session_manager = _wrap_async_api(MarsAPI.get_session_manager)
     get_schedulers = _wrap_async_api(MarsAPI.get_schedulers)

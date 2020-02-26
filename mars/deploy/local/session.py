@@ -25,7 +25,7 @@ from ...config import options
 from ...errors import ExecutionFailed
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
-from ...utils import build_tileable_graph, sort_dataframe_result
+from ...utils import build_tileable_graph, sort_dataframe_result, wait_results
 
 
 class LocalClusterSession(object):
@@ -35,7 +35,7 @@ class LocalClusterSession(object):
         # dict value is a tuple object which records graph key and tilable id
         self._executed_tileables = dict()
         self._loop = kwargs.pop('loop', None) or asyncio.get_event_loop()
-        self._api = MarsSyncAPI(self._endpoint)
+        self._api = MarsSyncAPI(self._endpoint, loop=self._loop)
 
         if session_id is None:
             # create session on the cluster side
@@ -95,7 +95,7 @@ class LocalClusterSession(object):
         return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys, chunk_eps)
 
     def write_mutable_tensor(self, tensor, index, value):
-        chunk_records_to_send = tensor._do_write(index, value)
+        chunk_records_to_send = self._loop.run_until_complete(tensor._do_write(index, value))
         self._api.send_chunk_records(self._session_id, tensor.name, chunk_records_to_send)
 
     def seal(self, tensor):
@@ -133,7 +133,10 @@ class LocalClusterSession(object):
         check_interval = options.check_interval
         while timeout <= 0 or time_elapsed < timeout:
             timeout_val = min(check_interval, timeout - time_elapsed) if timeout > 0 else check_interval
-            self._api.wait_graph_finish(self._session_id, graph_key, timeout=timeout_val)
+            try:
+                self._api.wait_graph_finish(self._session_id, graph_key, timeout=timeout_val)
+            except TimeoutError:
+                pass
             graph_state = self._api.get_graph_state(self._session_id, graph_key)
             if graph_state == GraphState.SUCCEEDED:
                 break
@@ -160,10 +163,15 @@ class LocalClusterSession(object):
             return self.fetch(*tileables)
 
     def fetch(self, *tileables):
+        return self._loop.run_until_complete(self.fetch_async(*tileables))
+
+    async def fetch_async(self, *tileables):
         from ...tensor.indexing import TensorIndex
         from ...dataframe.indexing.iloc import DataFrameIlocGetItem
 
         tileable_results = []
+        async_api = self._api.async_api
+        result_coros = []
         for tileable in tileables:
             # TODO: support DataFrame getitem
             if tileable.key not in self._executed_tileables and \
@@ -180,8 +188,10 @@ class LocalClusterSession(object):
 
             graph_key = self._get_tileable_graph_key(key)
             compressions = dataserializer.get_supported_compressions()
-            result = self._api.fetch_data(self._session_id, graph_key, key, index_obj=indexes,
-                                          compressions=compressions)
+            result_coros.append(async_api.fetch_data(
+                self._session_id, graph_key, key, index_obj=indexes, compressions=compressions))
+
+        for tileable, result in zip(tileables, (await wait_results(result_coros))[0]):
             result_data = dataserializer.loads(result)
             tileable_results.append(sort_dataframe_result(tileable, result_data))
         return tileable_results

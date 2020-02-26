@@ -63,7 +63,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
         return self.new_tensor([x], shape)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         x = op.input
         axis = op.axis
         ord = op.ord
@@ -96,7 +96,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
             return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=out_chunks, nsplits=nsplits)
 
         r = cls._norm(x.astype(op.outputs[0].dtype), ord, axis, keepdims)
-        recursive_tile(r)
+        await recursive_tile(r)
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=r.chunks, nsplits=r.nsplits)
 

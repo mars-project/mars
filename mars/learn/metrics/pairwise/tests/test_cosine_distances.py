@@ -23,12 +23,13 @@ try:
 except ImportError:
     sklearn = None
 
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import aio_case, ExecutorForTest
 from mars import tensor as mt
 from mars.learn.metrics.pairwise import cosine_distances
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self) -> None:
         self.executor = ExecutorForTest('numpy')

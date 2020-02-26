@@ -21,10 +21,12 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.tiles import get_tiled
 from mars.session import new_session, Session
+from mars.tests.core import aio_case
+from mars.tiles import get_tiled
 
 
+@aio_case
 class Test(unittest.TestCase):
     def testSessionExecute(self):
         a = mt.random.rand(10, 20)

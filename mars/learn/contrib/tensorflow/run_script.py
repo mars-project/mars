@@ -93,7 +93,7 @@ class RunTensorFlow(LearnMergeDictOperand):
         return self.new_tileable(None)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         ctx = get_context()
 
         port = op.port or 2221
@@ -117,7 +117,7 @@ class RunTensorFlow(LearnMergeDictOperand):
                                        'task': {'type': tp, 'index': idx}}
                 out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
         else:
-            worker_addresses = ctx.get_worker_addresses()
+            worker_addresses = await ctx.get_worker_addresses()
             picked_workers = pick_workers(worker_addresses, op.n_roles)
             worker_to_port_iter = defaultdict(lambda: itertools.count(port))
 

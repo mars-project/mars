@@ -41,7 +41,7 @@ from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTile
 from .graph_builder import TileableGraphBuilder
 from .context import LocalContext
 from .utils import kernel_mode, enter_build_mode, build_fetch, calc_nsplits,\
-    has_unknown_shape, wrap_async_method, wait_with_raise
+    has_unknown_shape, wrap_async_method, wait_results, aio_run
 
 try:
     from numpy.core._exceptions import UFuncTypeError
@@ -96,7 +96,7 @@ class WrappedThreadPoolExecutor:
         def _wrapped_fn():
             r = fn(*args, **kwargs)
             if asyncio.iscoroutine(r):
-                r = asyncio.run(r)
+                r = aio_run(r)
             return r
 
         return asyncio.get_event_loop().run_in_executor(self._pool, _wrapped_fn)
@@ -476,7 +476,7 @@ class GraphExecution(object):
                 await asyncio.sleep(0)
 
         # wait until all the futures completed
-        done, _ = await wait_with_raise(executed_futures)
+        await wait_results(executed_futures)
 
         if retval:
             return [self._chunk_results[key] for key in self._keys]

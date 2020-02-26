@@ -113,7 +113,7 @@ class EuclideanDistances(PairwiseDistances):
                                order=TensorOrder.C_ORDER)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         X, Y = op.x, op.y
 
         if X.dtype == np.float32:
@@ -142,7 +142,7 @@ class EuclideanDistances(PairwiseDistances):
             mt.fill_diagonal(distances, 0)
 
         distances = distances if op.squared else mt.sqrt(distances)
-        return [recursive_tile(distances)]
+        return [await recursive_tile(distances)]
 
 
 def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,

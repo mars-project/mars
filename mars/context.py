@@ -20,6 +20,8 @@ from collections import namedtuple, defaultdict
 from enum import Enum
 from typing import List
 
+from .utils import wait_results
+
 
 _context_factory = threading.local()
 
@@ -203,7 +205,7 @@ class LocalContext(ContextBase, dict):
     def get_worker_addresses(self):  # pragma: no cover
         return
 
-    def get_worker_metas(self):  # pragma: no cover
+    async def get_worker_metas(self):  # pragma: no cover
         return
 
     def get_local_address(self):
@@ -212,7 +214,7 @@ class LocalContext(ContextBase, dict):
     def get_ncores(self):
         return self._ncores
 
-    def get_chunk_metas(self, chunk_keys, filter_fields=None):
+    async def get_chunk_metas(self, chunk_keys, filter_fields=None):
         if filter_fields is not None:  # pragma: no cover
             raise NotImplementedError("Local context doesn't support filter fields now")
         metas = []
@@ -238,7 +240,7 @@ class LocalContext(ContextBase, dict):
 
         return metas
 
-    def get_chunk_results(self, chunk_keys: List[str]) -> List:
+    async def get_chunk_results(self, chunk_keys: List[str]) -> List:
         # As the context is actually holding the data,
         # so for the local context, we just fetch data from itself
         return [self[chunk_key] for chunk_key in chunk_keys]
@@ -342,11 +344,10 @@ class DistributedContext(ContextBase):
 
         chunk_results = dict()
         if indexes is None or len(indexes) == 0:
-            datas = []
+            futures = []
             for endpoint, chunks in chunk_workers.items():
-                datas.append(asyncio.ensure_future(
-                    self.get_chunks_data(endpoint, chunks, compression_types=compression_types)))
-            datas = [await d for d in datas]
+                futures.append(self.get_chunks_data(endpoint, chunks, compression_types=compression_types))
+            datas, _ = await wait_results(futures)
             for (endpoint, chunks), d in zip(chunk_workers.items(), datas):
                 d = [dataserializer.loads(db) for db in d]
                 chunk_results.update(dict(zip([chunk_keys_to_idx[k] for k in chunks], d)))
@@ -360,6 +361,8 @@ class DistributedContext(ContextBase):
             # Reuse the getitem logic to get each chunk's indexes
             tileable_shape = tuple(sum(s) for s in nsplits)
             empty_tileable = empty(tileable_shape, chunk_size=nsplits)._inplace_tile()
+            if asyncio.iscoroutine(empty_tileable):
+                empty_tileable = await empty_tileable
             indexed = empty_tileable[tuple(indexes)]
             indexes_handler = NDArrayIndexesHandler()
             try:
@@ -385,7 +388,8 @@ class DistributedContext(ContextBase):
                     datas = asyncio.ensure_future(self.get_chunks_data(
                         endpoint, to_fetch_keys, indexes=to_fetch_indexes, compression_types=compression_types))
                     chunk_datas[tuple(to_fetch_idx)] = datas
-            chunk_datas = dict([(k, await v) for k, v in chunk_datas.items()])
+            await asyncio.wait(chunk_datas.values())
+            chunk_datas = dict([(k, v.result()) for k, v in chunk_datas.items()])
             for idx, d in chunk_datas.items():
                 d = [dataserializer.loads(db) for db in d]
                 chunk_results.update(dict(zip(idx, d)))

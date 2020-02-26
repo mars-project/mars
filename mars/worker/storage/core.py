@@ -22,7 +22,7 @@ from enum import Enum
 
 from ... import promise
 from ...config import options
-from ...utils import classproperty, log_unhandled, wait_with_raise
+from ...utils import classproperty, log_unhandled, wait_results
 from ...serialize import dataserializer
 from .iorunner import IORunnerActor
 
@@ -299,7 +299,7 @@ class BytesStorageMixin:
             finally:
                 if on_close:
                     await on_close(_reader, _writer, not with_exc)
-                await wait_with_raise([_reader.close(), _writer.close(finished=not with_exc)])
+                await wait_results([_reader.close(), _writer.close(finished=not with_exc)])
                 del _reader, _writer, block
 
         try:
@@ -374,9 +374,10 @@ class ObjectStorageMixin:
         if batch_get:
             return (await key_loader(data_keys)).then(_batch_put_objects)
         else:
+            key_promises, _ = await wait_results(key_loader(k) for k in data_keys)
             return promise.all_([
-                (await key_loader(k)).then(functools.partial(_record_data, k), _handle_err)
-                for k in data_keys]).then(_put_objects, _handle_err)
+                p.then(functools.partial(_record_data, k), _handle_err)
+                for k, p in zip(data_keys, key_promises)]).then(_put_objects, _handle_err)
 
     def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
         raise NotImplementedError

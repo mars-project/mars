@@ -1146,10 +1146,10 @@ class TestBinary(TestBase):
         series = from_pandas_series(data)
 
         with self.assertRaises(ValueError):
-            _ = series + np.random.rand(5, 3)
+            _ = series + np.random.rand(5, 3)  # noqa: F841
 
         with self.assertRaises(ValueError):
-            _ = series + np.random.rand(5)
+            _ = series + np.random.rand(5)  # noqa: F841
 
 
 class TestUnary(TestBase):

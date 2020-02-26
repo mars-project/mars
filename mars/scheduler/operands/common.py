@@ -20,7 +20,7 @@ import time
 from ...config import options
 from ...errors import ExecutionInterrupted, DependencyMissing, WorkerDead
 from ...operands import Operand
-from ...utils import log_unhandled, insert_reversed_tuple
+from ...utils import log_unhandled, insert_reversed_tuple, wait_results
 from ..utils import GraphState, array_to_bytes
 from .base import BaseOperandActor
 from .core import OperandState, register_operand_class, rewrite_worker_errors
@@ -199,8 +199,7 @@ class OperandActor(BaseOperandActor):
             for succ_key in self._succ_keys:
                 futures.append(self._get_operand_actor(succ_key).propose_descendant_workers(
                     self._op_key, self._worker_scores, depth=depth - 1, _tell=True, _wait=False))
-            if futures:
-                await asyncio.wait(futures)
+            await wait_results(futures)
         # pick the worker with largest likelihood
         max_score = 0
         max_worker = None
@@ -427,7 +426,7 @@ class OperandActor(BaseOperandActor):
             elif issubclass(exc_type, DependencyMissing):
                 logger.warning('Operand %s moved to UNSCHEDULED because of DependencyMissing.',
                                self._op_key)
-                self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
+                await self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             else:
                 logger.exception('Attempt %d: Unexpected error %s occurred in executing operand %s in %s',
                                  self.retries + 1, exc_type.__name__, self._op_key, self.worker, exc_info=exc)
@@ -480,7 +479,7 @@ class OperandActor(BaseOperandActor):
         if pred_futures:
             await asyncio.wait(pred_futures)
 
-        if use_aggressive_assign and not any([await f for f in succ_futures]):
+        if use_aggressive_assign and not any((await wait_results(succ_futures))[0]):
             await self._assigner_ref.allocate_top_resources(1, _tell=True)
 
     @log_unhandled
@@ -496,7 +495,7 @@ class OperandActor(BaseOperandActor):
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(
                 OperandState.FATAL, _tell=True, _wait=False))
-        await asyncio.wait(futures)
+        await wait_results(futures)
 
     @log_unhandled
     async def _on_cancelling(self):
@@ -529,7 +528,7 @@ class OperandActor(BaseOperandActor):
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(
                 OperandState.CANCELLING, _tell=True, _wait=False))
-        await asyncio.wait(futures)
+        await wait_results(futures)
 
     async def _on_unscheduled(self):
         self.worker = None

@@ -97,7 +97,7 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
         return new_op.new_tensors(op.inputs, kws=kws)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         if len(op.input.chunks) == 1:
             return cls._tile_one_chunk(op)
 
@@ -121,7 +121,7 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                                 chunk_size=(in_tensor.nsplits[0], max(in_tensor.nsplits[1])),
                                 order=in_tensor.order.value)
             in_tensor = hstack([in_tensor, zero_tensor])
-            recursive_tile(in_tensor)
+            await recursive_tile(in_tensor)
         elif in_tensor.shape[0] < in_tensor.shape[1]:
             zero_tensor = zeros((in_tensor.shape[1] - in_tensor.shape[0], in_tensor.shape[1]),
                                 dtype=in_tensor.dtype, sparse=in_tensor.issparse(),
@@ -129,7 +129,7 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                                 chunk_size=(max(in_tensor.nsplits[0]), in_tensor.nsplits[1]),
                                 order=in_tensor.order.value)
             in_tensor = vstack([in_tensor, zero_tensor])
-            recursive_tile(in_tensor)
+            await recursive_tile(in_tensor)
 
         check_chunks_unknown_shape([in_tensor], TilesError)
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
@@ -268,12 +268,12 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
 
         p, l, u = new_op.new_tensors(op.inputs, kws=kws)
         if raw_in_tensor.shape[0] > raw_in_tensor.shape[1]:
-            l = l[:, :raw_in_tensor.shape[1]]._inplace_tile()
-            u = u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]]._inplace_tile()
+            l = await l[:, :raw_in_tensor.shape[1]]._inplace_tile()
+            u = await u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]]._inplace_tile()
         else:
-            p = p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
-            l = l[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
-            u = u[:raw_in_tensor.shape[0], :]._inplace_tile()
+            p = await p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
+            l = await l[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
+            u = await u[:raw_in_tensor.shape[0], :]._inplace_tile()
         kws = [
             {'chunks': p.chunks, 'nsplits': p.nsplits, 'dtype': P.dtype,
              'shape': p.shape, 'order': p.order},

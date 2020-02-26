@@ -17,9 +17,9 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
 from ...core import ExecutableTuple
-from ...utils import recursive_tile
+from ...serialize import KeyField
+from ...utils import wait_results, recursive_tile
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..core import TensorOrder
@@ -44,17 +44,17 @@ class TensorNonzero(TensorHasInput, TensorOperandMixin):
         return ExecutableTuple(self.new_tensors([a], kws=kws, output_limit=len(kws)))
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         from ..datasource import arange
 
         in_tensor = astensor(op.input)
 
         flattened = in_tensor.astype(bool).flatten()
-        recursive_tile(flattened)
+        await recursive_tile(flattened)
         indices = arange(flattened.size, dtype=np.intp, chunk_size=flattened.nsplits)
         indices = indices[flattened]
         dim_indices = unravel_index(indices, in_tensor.shape)
-        [recursive_tile(ind) for ind in dim_indices]
+        await wait_results(recursive_tile(ind) for ind in dim_indices)
 
         kws = [{'nsplits': ind.nsplits, 'chunks': ind.chunks, 'shape': o.shape}
                for ind, o in zip(dim_indices, op.outputs)]

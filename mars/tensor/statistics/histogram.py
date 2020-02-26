@@ -50,7 +50,7 @@ class HistBinSelector(object):
         self._range = range
         self._raw_range = raw_range
 
-    def check(self):
+    async def check(self):
         if len(self._op._calc_bin_edges_dependencies) == 0:
             # not checked before
             width = self()
@@ -59,7 +59,7 @@ class HistBinSelector(object):
             err = TilesError('bin edges calculation requires '
                              'some dependencies executed first')
             self._op._calc_bin_edges_dependencies = [width]
-            recursive_tile(width)
+            await recursive_tile(width)
             err.partial_tiled_chunks = [c.data for c in width.chunks]
             raise err
 
@@ -364,7 +364,7 @@ async def _get_bin_edges(op, a, bins, range, weights):
         else:
             # Do not call selectors on empty arrays
             selector = _hist_bin_selectors[bin_name](op, a, (first_edge, last_edge), raw_range)
-            selector.check()
+            await selector.check()
             width = await selector.get_result()
             if width:
                 n_equal_bins = int(np.ceil(_unsigned_subtract(last_edge, first_edge) / width))
@@ -830,7 +830,7 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
         return mt.ExecutableTuple([hist, bins])
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         bins = op.bins.rechunk(op.bins.shape)
         shape = (bins.size - 1,)
         out = op.outputs[0]
@@ -861,7 +861,7 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
         if op.density:
             db = mt.array(mt.diff(bins), float)
             hist = n / db / n.sum()
-            recursive_tile(hist)
+            await recursive_tile(hist)
             return [hist]
         else:
             return [n]

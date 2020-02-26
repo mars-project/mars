@@ -27,7 +27,7 @@ from ..config import options
 from ..errors import DependencyMissing, ExecutionInterrupted, WorkerDead
 from ..serialize import dataserializer
 from ..scheduler.chunkmeta import WorkerMeta
-from ..utils import log_unhandled, build_exc_info, wait_with_raise
+from ..utils import log_unhandled, build_exc_info, wait_results
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .storage import DataStorageDevice
 from .utils import WorkerActor, ExpiringCache
@@ -804,7 +804,7 @@ class ResultSenderActor(WorkerActor):
             for chunk_key in chunk_keys:
                 futures.append(asyncio.ensure_future(self.fetch_data(
                     session_id, chunk_key, compression_type=compression_type)))
-        return [await f for f in futures]
+        return (await wait_results(futures))[0]
 
     async def fetch_data(self, session_id, chunk_key, index_obj=None, compression_type=None):
         if compression_type is None:
@@ -870,12 +870,12 @@ async def put_remote_chunk(session_id, chunk_key, data, receiver_manager_ref):
             futures.append(receiver_ref.receive_data_part(
                 session_id, [chunk_key], [is_last], next_part, _wait=False))
             if is_last:
-                await wait_with_raise(futures)
+                await wait_results(futures)
                 break
     except:  # noqa: E722
         await receiver_ref.cancel_receive(session_id, [chunk_key])
         raise
     finally:
         if reader:
-            await reader.close()
+            reader.close()
         del reader

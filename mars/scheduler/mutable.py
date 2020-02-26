@@ -94,7 +94,7 @@ class MutableTensorActor(SchedulerActor):
 
     @log_unhandled
     async def write(self, index, value):
-        chunk_records_to_send = self._tensor._do_write(index, value)
+        chunk_records_to_send = await self._tensor._do_write(index, value)
         await self._send_chunk_records(chunk_records_to_send)
 
     @log_unhandled

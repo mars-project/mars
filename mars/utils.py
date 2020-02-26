@@ -34,13 +34,14 @@ import time
 import warnings
 import weakref
 import zlib
+from collections.abc import Iterable
 from typing import List
 
 import numpy as np
 import pandas as pd
 
-from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, register_tokenizer,\
-    insert_reversed_tuple, ceildiv
+from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, \
+    register_tokenizer, insert_reversed_tuple, ceildiv
 from .config import options
 from .lib.tblib import Traceback
 
@@ -926,14 +927,54 @@ def wrap_async_method(fun):
     return _wrapped
 
 
-async def wait_with_raise(fs, **kwargs):
-    done, pending = await asyncio.wait(fs, **kwargs)
-    for coro in done:
-        coro.result()
-    return done, pending
+async def wait_results(fs, **kwargs):
+    if isinstance(fs, Iterable):
+        fs = list(fs)
+    if not fs:
+        return [], set()
+    # convert to tasks as asyncio.wait will only return tasks
+    tasks = [asyncio.ensure_future(f) if asyncio.iscoroutine(f) else f for f in fs]
+    done, pending = await asyncio.wait(tasks, **kwargs)
+    return [f.result() if f in done else None for f in tasks], pending
 
 
-def recursive_tile(tensor):
+# compatibility function providing asyncio.run() for Python<3.7
+def aio_run(main, *_, debug=False):
+    try:
+        return asyncio.run(main, debug=debug)
+    except AttributeError:  # pragma: no cover
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(main)
+        finally:
+            try:
+                from asyncio.tasks import Task
+                to_cancel = Task.all_tasks(loop)
+
+                for task in to_cancel:
+                    task.cancel()
+
+                loop.run_until_complete(
+                    asyncio.gather(*to_cancel, loop=loop, return_exceptions=True))
+
+                for task in to_cancel:
+                    if task.cancelled():
+                        continue
+                    if task.exception() is not None:
+                        loop.call_exception_handler({
+                            'message': 'unhandled exception during asyncio.run() shutdown',
+                            'exception': task.exception(),
+                            'task': task,
+                        })
+
+                loop.run_until_complete(loop.shutdown_asyncgens())
+            finally:
+                asyncio.set_event_loop(None)
+                loop.close()
+
+
+async def recursive_tile(tensor):
     q = [tensor]
     while q:
         t = q[-1]
@@ -941,7 +982,9 @@ def recursive_tile(tensor):
         if cs:
             q.extend(cs)
             continue
-        t._inplace_tile()
+        r = t._inplace_tile()
+        if asyncio.iscoroutine(r):
+            await r
         q.pop()
 
     return tensor

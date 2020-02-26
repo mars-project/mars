@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import os
 import signal
@@ -214,7 +215,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
         dump_time = time.time()
         check_timeout = int(os.environ.get('CHECK_TIMEOUT', 120))
         while True:
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
             self.check_process_statuses()
             if time.time() - check_time > check_timeout:
                 raise SystemError('Check graph status timeout')

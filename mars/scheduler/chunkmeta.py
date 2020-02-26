@@ -22,7 +22,7 @@ from .kvstore import KVStoreActor
 from .utils import SchedulerActor
 from ..actors.errors import ActorNotExist
 from ..config import options
-from ..utils import BlacklistSet
+from ..utils import BlacklistSet, wait_results
 
 logger = logging.getLogger(__name__)
 
@@ -257,7 +257,7 @@ class ChunkMetaActor(SchedulerActor):
                     self.ctx.actor_ref(self.default_uid(), address=dest)
                         .batch_cache_chunk_meta(session_id, [chunk_key], [meta], _wait=False, _tell=True)
                 )
-            await asyncio.wait(futures)
+            await wait_results(futures)
 
     async def batch_set_chunk_meta(self, session_id, keys, metas):
         """
@@ -286,8 +286,7 @@ class ChunkMetaActor(SchedulerActor):
                 self.ctx.actor_ref(self.default_uid(), address=dest)
                     .batch_cache_chunk_meta(session_id, chunk_keys, metas, _wait=False, _tell=True)
             )
-        if futures:
-            await asyncio.wait(futures)
+        await wait_results(futures)
 
     def batch_cache_chunk_meta(self, session_id, chunk_keys, metas):
         """
@@ -570,9 +569,9 @@ class ChunkMetaClient(object):
             )
         if futures:
             if _wait:
-                await asyncio.wait(futures)
+                await wait_results(futures)
             else:
-                return asyncio.ensure_future(asyncio.wait(futures))
+                return asyncio.ensure_future(wait_results(futures))
 
     async def delete_meta(self, session_id, chunk_key, _tell=False, _wait=True):
         query_key = (session_id, chunk_key)
@@ -600,4 +599,4 @@ class ChunkMetaClient(object):
                     .batch_delete_meta(session_id, list(keys), _wait=False, _tell=_tell)
             )
         if futures and _wait:
-            await asyncio.wait(futures)
+            await wait_results(futures)

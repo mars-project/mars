@@ -134,7 +134,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         return self.new_tileable([X])
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         check_chunks_unknown_shape(op.inputs, TilesError)
 
         in_tensor = astensor(op.input, np.dtype(np.float32))._inplace_tile()
@@ -152,7 +152,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         if in_tensor.chunk_shape[1] != 1:
             # make sure axis 1 has 1 chunk
             in_tensor = in_tensor.rechunk({1: in_tensor.shape[1]})._inplace_tile()
-        return cls._tile_chunks(op, in_tensor, faiss_index, n_sample)
+        return await cls._tile_chunks(op, in_tensor, faiss_index, n_sample)
 
     @classmethod
     def _tile_one_chunk(cls, op, faiss_index, n_sample):
@@ -169,7 +169,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod
-    def _tile_chunks(cls, op, in_tensor, faiss_index, n_sample):
+    async def _tile_chunks(cls, op, in_tensor, faiss_index, n_sample):
         """
         If the distribution on each chunk is the same,
         refer to:
@@ -193,7 +193,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             rs = RandomState(op.seed)
             sampled_index = rs.choice(in_tensor.shape[0], size=n_sample,
                                       replace=False, chunk_size=n_sample)
-            sample_tensor = recursive_tile(in_tensor[sampled_index])
+            sample_tensor = await recursive_tile(in_tensor[sampled_index])
             assert len(sample_tensor.chunks) == 1
             sample_chunk = sample_tensor.chunks[0]
             train_op = FaissTrainSampledIndex(faiss_index=faiss_index, metric=op.metric,

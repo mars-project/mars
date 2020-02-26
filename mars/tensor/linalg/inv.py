@@ -37,7 +37,7 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
         return self.new_tensor([a], a.shape, order=TensorOrder.C_ORDER)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         """
         Use LU decomposition to compute inverse of matrix.
         Given a square matrix A:
@@ -59,7 +59,7 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
         b_eye._inplace_tile()
 
         p, l, u = lu(in_tensor)
-        p._inplace_tile()
+        await p._inplace_tile()
 
         # transposed p equals to inverse of p
         p_transpose = TensorTranspose(

@@ -24,6 +24,7 @@ import requests
 
 from mars.actors import new_client
 from mars.scheduler import ResourceActor
+from mars.tests.core import aio_case
 from mars.utils import get_next_port
 
 logger = logging.getLogger()
@@ -33,6 +34,7 @@ class ProcessRequirementUnmetError(RuntimeError):
     pass
 
 
+@aio_case
 class LearnIntegrationTestBase(unittest.TestCase):
     def setUp(self):
         super().setUp()
@@ -54,8 +56,9 @@ class LearnIntegrationTestBase(unittest.TestCase):
                 self.terminate_processes()
 
     async def _start_distributed_env(self, n_workers=2):
-        scheduler_port = self.scheduler_port = str(get_next_port())
+        self.proc_scheduler = self.proc_web = None
         self.proc_workers = []
+        scheduler_port = self.scheduler_port = str(get_next_port())
         for _ in range(n_workers):
             worker_port = str(get_next_port())
             proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
@@ -139,7 +142,8 @@ class LearnIntegrationTestBase(unittest.TestCase):
     def terminate_processes(self):
         procs = [self.proc_web, self.proc_scheduler] + self.proc_workers
         for p in procs:
-            p.send_signal(signal.SIGINT)
+            if p:
+                p.send_signal(signal.SIGINT)
 
         check_time = time.time()
         while any(p.poll() is None for p in procs):

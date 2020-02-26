@@ -19,6 +19,7 @@ import numpy as np
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.tests.core import aio_case
 from mars.tensor.core import Tensor
 
 try:
@@ -35,6 +36,7 @@ except ImportError:
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
+@aio_case
 class Test(unittest.TestCase):
     def test_ordering(self):
         # Check that ordering is enforced correctly by validation utilities.

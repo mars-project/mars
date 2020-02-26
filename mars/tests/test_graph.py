@@ -17,8 +17,10 @@
 import unittest
 
 from mars.graph import DAG, GraphContainsCycleError
+from mars.tests.core import aio_case
 
 
+@aio_case
 class Test(unittest.TestCase):
     def testDAG(self):
         r"""

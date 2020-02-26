@@ -24,7 +24,7 @@ from ...config import options
 from ...serialize import dataserializer
 from ...errors import SpillNotConfigured, StorageDataExists
 from ...lib.asyncinit import asyncinit
-from ...utils import mod_hash
+from ...utils import mod_hash, wait_results
 from ..dataio import FileBufferIO
 from ..events import EventsActor, EventCategory, EventLevel, ProcedureEventType
 from ..status import StatusActor
@@ -225,10 +225,10 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
                           lambda *exc: self.pass_on_exc(reader.close, exc))
 
         async def _fallback(*_):
-            return promise.all_([
-                (await src_handler.create_bytes_reader(session_id, k, _promise=True))
-                .then(functools.partial(_copy_data, k))
-                for k in data_keys])
+            key_promises, _ = await wait_results(src_handler.create_bytes_reader(session_id, k, _promise=True)
+                                                 for k in data_keys)
+            return promise.all_([p.then(functools.partial(_copy_data, k))
+                                 for k, p in zip(data_keys, key_promises)])
 
         return await self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
@@ -254,7 +254,7 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
         async def _load_all_data(objs):
             data_dict.update(zip(data_keys, objs))
             objs[:] = []
-            return promise.all_([await _load_single_data(k) for k in data_keys]) \
+            return promise.all_((await wait_results(_load_single_data(k) for k in data_keys))[0]) \
                 .catch(lambda *exc: self.pass_on_exc(data_dict.clear, exc))
 
         async def _fallback(*_):

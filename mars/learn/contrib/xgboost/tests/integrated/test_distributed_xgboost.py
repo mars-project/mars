@@ -17,8 +17,9 @@ import unittest
 
 from mars.learn.tests.integrated.base import LearnIntegrationTestBase
 import mars.tensor as mt
-from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
+from mars.session import new_session
+from mars.tests.core import aio_case
 
 try:
     import xgboost
@@ -27,6 +28,7 @@ except ImportError:
 
 
 @unittest.skipIf(xgboost is None, 'xgboost not installed')
+@aio_case
 class Test(LearnIntegrationTestBase):
     def setUp(self):
         n_rows = 1000

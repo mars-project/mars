@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import numpy as np
 
 from ... import opcodes as OperandDef
@@ -101,7 +102,7 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         return ExecutableTuple(self.new_tensors(inputs, kws=kws, output_limit=nparts))
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         in_tensor = op.input
         splits = op.outputs
         axis = op.axis
@@ -116,6 +117,8 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         for i, split in enumerate(splits):
             slc = slice(0 if i == 0 else acc_shapes[i - 1], acc_shapes[i])
             new_s = in_tensor[(slice(None),) * axis + (slc,)]._inplace_tile()
+            if asyncio.iscoroutine(new_s):
+                new_s = await new_s
             out_kws[i]['chunks'] = new_s.chunks
             out_kws[i]['nsplits'] = new_s.nsplits
             out_kws[i]['shape'] = split.shape

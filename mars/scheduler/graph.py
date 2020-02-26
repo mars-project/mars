@@ -44,7 +44,7 @@ from ..tiles import handler, IterativeChunkGraphBuilder, \
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
     build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
     get_chunk_shuffle_key, enter_build_mode, has_unknown_shape, \
-    wait_with_raise
+    wait_results
 from ..context import DistributedContext
 
 logger = logging.getLogger(__name__)
@@ -212,7 +212,10 @@ class GraphWaitActor(SchedulerActor):
         self._graph_event = graph_event
 
     async def wait(self, timeout=None):
-        await asyncio.wait_for(self._graph_event.wait(), timeout)
+        try:
+            await asyncio.wait_for(self._graph_event.wait(), timeout)
+        except asyncio.TimeoutError:
+            raise TimeoutError
 
 
 class GraphActor(SchedulerActor):
@@ -435,7 +438,7 @@ class GraphActor(SchedulerActor):
                 has_stopping = True
                 stop_futures.append(ref.stop_operand(_tell=True))
         if stop_futures:
-            await wait_with_raise(stop_futures)
+            await wait_results(stop_futures)
 
         if not has_stopping:
             self.state = GraphState.CANCELLED
@@ -925,7 +928,7 @@ class GraphActor(SchedulerActor):
                     op_info.pop('executable_dag', None)
                     del op_info['io_meta']
             if append_futures:
-                await wait_with_raise(append_futures)
+                await wait_results(append_futures)
 
             res_applications = [(op_key, op_info) for op_key, op_info in operand_infos.items()
                                 if op_key in to_allocate_op_keys]
@@ -965,7 +968,7 @@ class GraphActor(SchedulerActor):
                     # if failed before, clear intermediate data
                     to_free_tileable_keys = \
                         self._all_terminated_tileable_keys - set(self._target_tileable_keys)
-                    [await self.free_tileable_data(k) for k in to_free_tileable_keys]
+                    await wait_results(self.free_tileable_data(k) for k in to_free_tileable_keys)
                 self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
                 await self._graph_meta_ref.set_graph_end(_tell=True)
             else:
@@ -1096,7 +1099,7 @@ class GraphActor(SchedulerActor):
         for chunk in tileable.chunks:
             futures.append(self._get_operand_ref(chunk.op.key).free_data(
                 check=False, _tell=not wait, _wait=False))
-        await wait_with_raise(futures)
+        await wait_results(futures)
 
     async def get_tileable_metas(self, tileable_keys, filter_fields=None):
         """
@@ -1333,7 +1336,7 @@ class GraphActor(SchedulerActor):
                 from_states = [from_state]
             futures.append(op_ref.move_failover_state(
                 from_states, state, new_target, removes, _tell=True, _wait=False))
-        await wait_with_raise(futures)
+        await wait_results(futures)
 
         self._dump_failover_info(adds, removes, lost_chunks, new_states)
 

@@ -18,6 +18,7 @@ import os
 from mars.learn.tests.integrated.base import LearnIntegrationTestBase
 from mars.learn.contrib.tensorflow import run_tensorflow_script
 from mars.session import new_session
+from mars.tests.core import aio_case
 
 try:
     import tensorflow
@@ -26,6 +27,7 @@ except ImportError:
 
 
 @unittest.skipIf(tensorflow is None, 'tensorflow not installed')
+@aio_case
 class Test(LearnIntegrationTestBase):
     def testDistributedRunTensorFlowScript(self):
         service_ep = 'http://127.0.0.1:' + self.web_port

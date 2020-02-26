@@ -34,7 +34,7 @@ from mars.scheduler import ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.serialize import dataserializer
 from mars.tests.core import aio_case, patch_method, create_actor_pool
-from mars.utils import get_next_port, build_exc_info
+from mars.utils import get_next_port, build_exc_info, wait_results, aio_run
 from mars.worker import SenderActor, ReceiverManagerActor, ReceiverWorkerActor, \
     DispatchActor, QuotaActor, MemQuotaActor, StorageManagerActor, IORunnerActor, \
     StatusActor, SharedHolderActor, InProcHolderActor
@@ -218,7 +218,7 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
                             raise SystemError('Transfer finish timed out.')
                         await asyncio.sleep(0.1)
 
-    asyncio.run(_run_transfer_worker())
+    aio_run(_run_transfer_worker())
 
 
 @aio_case
@@ -622,7 +622,7 @@ class Test(WorkerCase):
 
                 msg_queue.put(1)
             finally:
-                [await pool.destroy_actor(ref) for ref in sender_refs + receiver_refs]
+                await wait_results(pool.destroy_actor(ref) for ref in sender_refs + receiver_refs)
 
                 os.unlink(remote_plasma_socket)
                 os.kill(proc.pid, signal.SIGINT)

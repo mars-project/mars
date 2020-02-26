@@ -55,7 +55,7 @@ class Test(unittest.TestCase):
 
     async def testApi(self, *_):
         async with self._create_pool() as (pool, api), \
-                patch_method(GraphActor.execute_graph, new=lambda *_, **__: None):
+                patch_method(GraphActor.execute_graph, new_async=True):
             self.assertEqual(0, await api.count_workers())
 
             session_manager = await api.get_session_manager()
@@ -89,8 +89,6 @@ class Test(unittest.TestCase):
             await api.delete_graph(session_id, graph_key)
             self.assertFalse(await pool.has_actor(graph_ref))
 
-    @patch_method(GraphActor.get_tileable_metas)
-    @patch_method(ChunkMetaClient.batch_get_chunk_shape)
     async def testGetTensorNsplits(self, *_):
         session_id = 'mock_session_id'
         graph_key = 'mock_graph_key'

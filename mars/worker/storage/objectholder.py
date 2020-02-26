@@ -20,8 +20,8 @@ from collections import OrderedDict
 
 from ... import promise
 from ...config import options
-from ...utils import parse_readable_size, log_unhandled, readable_size, tokenize
 from ...errors import SpillNotConfigured, SpillSizeExceeded, NoDataToSpill, PinDataKeyFailed
+from ...utils import parse_readable_size, log_unhandled, readable_size, tokenize, wait_results
 from ..utils import WorkerActor
 from .core import DataStorageDevice
 from .manager import StorageManagerActor
@@ -152,7 +152,7 @@ class ObjectHolderActor(WorkerActor):
                     await self.tell_promise(callback)
                 self.update_cache_status()
 
-            promise.all_([await _spill_key(k) for k in free_keys]).then(_finalize_spill) \
+            promise.all_((await wait_results(_spill_key(k) for k in free_keys))[0]).then(_finalize_spill) \
                 .catch(lambda *exc: self.tell_promise(callback, *exc, _accept=False))
         else:
             logger.debug('No need to spill in %s. request=%d ref_key=%s',

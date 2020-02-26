@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import logging
 from collections import defaultdict
 
-from ...operands import ShuffleProxy
 from ...errors import WorkerDead
+from ...operands import ShuffleProxy
+from ...utils import wait_results
 from .base import BaseOperandActor
 from .core import register_operand_class, rewrite_worker_errors, OperandState
 
@@ -99,7 +99,7 @@ class ShuffleProxyActor(BaseOperandActor):
                 target_worker=self._reducer_workers.get(succ_key),
                 _tell=True, _wait=False))
 
-        await asyncio.wait(futures)
+        await wait_results(futures)
         await self.ref().start_operand(OperandState.FINISHED, _tell=True)
 
     async def add_finished_successor(self, op_key, worker):
@@ -144,7 +144,7 @@ class ShuffleProxyActor(BaseOperandActor):
                           if k in self._mapper_op_to_chunk]
         futures.append(self.chunk_meta.batch_delete_meta(
             self._session_id, inp_chunk_keys, _tell=True, _wait=False))
-        await asyncio.wait(futures)
+        await wait_results(futures)
 
         await self.ref().start_operand(OperandState.FREED, _tell=True)
 

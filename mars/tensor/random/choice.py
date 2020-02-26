@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from numbers import Integral
 
 import numpy as np
@@ -103,7 +104,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
                                   nsplits=tuple((s,) for s in out.shape))
 
     @classmethod
-    def _tile_sample_with_replacement(cls, op, a, nsplits):
+    async def _tile_sample_with_replacement(cls, op, a, nsplits):
         out_shape = tuple(sum(ns) for ns in nsplits)
         out_size = np.prod(out_shape).item()
         most_chunk_size = np.prod([max(ns) for ns in nsplits]).item()
@@ -131,10 +132,10 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
                 ret = ret.reshape(out_shape)
             ret = ret.rechunk(nsplits)
 
-        return [recursive_tile(ret)]
+        return [await recursive_tile(ret)]
 
     @classmethod
-    def _tile_sample_without_replacement(cls, op, a, nsplits):
+    async def _tile_sample_without_replacement(cls, op, a, nsplits):
         from ..base import searchsorted
         from ..merge.stack import TensorStack
         from ..indexing.getitem import TensorIndex
@@ -189,7 +190,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             state = RandomState.from_numpy(op.state)
             indices = state.randint(a_size, size=(m,))
             cum_offsets = np.cumsum(a.nsplits[0])
-            ind = recursive_tile(searchsorted(cum_offsets, indices, side='right'))
+            ind = await recursive_tile(searchsorted(cum_offsets, indices, side='right'))
             ind_chunk = ind.chunks[0]
 
             # do fancy index to find result
@@ -201,11 +202,15 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
                                    nsplits=((m,),), chunks=[out_chunk])
         if len(out_shape) > 0:
             ret = ret.reshape(out_shape)._inplace_tile()
+            if asyncio.iscoroutine(ret):
+                ret = await ret
         ret = ret.rechunk(nsplits)._inplace_tile()
-        return [recursive_tile(ret)]
+        if asyncio.iscoroutine(ret):
+            ret = await ret
+        return [await recursive_tile(ret)]
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         check_chunks_unknown_shape(op.inputs, TilesError)
 
         out = op.outputs[0]
@@ -232,9 +237,9 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             return cls._tile_one_chunk(op, a, p)
 
         if op.replace:
-            return cls._tile_sample_with_replacement(op, a, nsplits)
+            return await cls._tile_sample_with_replacement(op, a, nsplits)
         else:
-            return cls._tile_sample_without_replacement(op, a, nsplits)
+            return await cls._tile_sample_without_replacement(op, a, nsplits)
 
     @classmethod
     def execute(cls, ctx, op):

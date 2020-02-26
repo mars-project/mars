@@ -15,6 +15,7 @@
 import unittest
 
 import mars.tensor as mt
+from mars.tests.core import aio_case
 
 import numpy as np
 try:
@@ -29,6 +30,7 @@ except ImportError:
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self):
         # Make an X that looks somewhat like a small tf-idf matrix.

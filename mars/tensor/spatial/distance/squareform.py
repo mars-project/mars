@@ -128,7 +128,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
                                raw_chunk_size=chunk_size)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         tensor = op.outputs[0]
         chunk_size = tensor.extra_params.raw_chunk_size or options.chunk_size
         chunk_size = decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
@@ -137,7 +137,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         if len(op.input.chunks) == 1 and n_chunk == 1:
             return cls._tile_one_chunk(op)
         else:
-            return cls._tile_chunks(op, chunk_size)
+            return await cls._tile_chunks(op, chunk_size)
 
     @classmethod
     def _tile_one_chunk(cls, op):
@@ -153,19 +153,19 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
                                   nsplits=tuple((s,) for s in out.shape))
 
     @classmethod
-    def _gen_checks_input(cls, op):
+    async def _gen_checks_input(cls, op):
         if op.input.ndim != 2 or not op.checks:
             return
 
         x = op.input
-        return recursive_tile(equal(x, x.T).all()).chunks[0]
+        return (await recursive_tile(equal(x, x.T).all())).chunks[0]
 
     @classmethod
-    def _tile_chunks(cls, op, chunk_size):
+    async def _tile_chunks(cls, op, chunk_size):
         check_chunks_unknown_shape(op.inputs, TilesError)
         out = op.outputs[0]
 
-        checks_input = cls._gen_checks_input(op)
+        checks_input = await cls._gen_checks_input(op)
 
         map_chunks = []
         cum_sizes = [[0] + np.cumsum(ns).tolist()

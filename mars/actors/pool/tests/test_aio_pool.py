@@ -27,7 +27,7 @@ from mars.actors import create_actor_pool as new_actor_pool, Actor, FunctionActo
 from mars.actors.pool.aio_pool import Dispatcher, Connections
 from mars.lib.mmh3 import hash as mmh_hash
 from mars.tests.core import aio_case
-from mars.utils import to_binary, wait_with_raise
+from mars.utils import to_binary, wait_results
 
 
 DEFAULT_PORT = 12345
@@ -468,13 +468,13 @@ class Test(unittest.TestCase):
             Connections.addrs = 0
 
             connections1 = await Connections.create(addr)
-            conns1 = [await connections1.connect() for _ in range(100)]
+            conns1, _ = await wait_results(connections1.connect() for _ in range(100))
 
             async with create_actor_pool(address='127.0.0.1:12346', n_process=2) as pool2:
                 addr2 = pool2.cluster_info.address
 
                 connections2 = await Connections.create(addr2)
-                conns2 = [await connections2.connect() for _ in range(100)]
+                conns2, _ = await wait_results(connections2.connect() for _ in range(100))
 
                 self.assertEqual(len(connections2.conn), 100)
                 [conn.release() for conn in conns2]
@@ -493,7 +493,7 @@ class Test(unittest.TestCase):
                         await asyncio.sleep(0.2)
                         [c.release() for c in conns1]
 
-                    await wait_with_raise([connections1.connect(), _unlocker()])
+                    await wait_results([connections1.connect(), _unlocker()])
 
                     self.assertEqual(len(connections1.conn), 66)
 
@@ -1133,13 +1133,13 @@ class Test(unittest.TestCase):
                 p = []
                 for i in range(*rg):
                     p.append(asyncio.ensure_future(ref.send(('send', ref1, 'add_ret', i))))
-                self.assertEqual([await f for f in p], list(range(*rg)))
+                self.assertEqual((await wait_results(p))[0], list(range(*rg)))
 
             n_ref = 20
 
             ps = [asyncio.ensure_future(pool.create_actor(DummyActor, 0))
                   for _ in range(n_ref)]
-            refs = [await p for p in ps]
+            refs, _ = await wait_results(ps)
 
             ps = []
             for i in range(n_ref):
@@ -1147,7 +1147,7 @@ class Test(unittest.TestCase):
                 refx = refs[i]
                 ps.append(ref_send(refx, r))
 
-            await wait_with_raise(ps)
+            await wait_results(ps)
 
     async def testRemoteBrokenPipe(self):
         async with create_actor_pool(address=True, n_process=1) as pool1:

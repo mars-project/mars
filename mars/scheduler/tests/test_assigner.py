@@ -20,7 +20,7 @@ from mars.scheduler import ResourceActor, AssignerActor, ChunkMetaClient, \
     ChunkMetaActor, OperandActor
 from mars.actors import FunctionActor, create_actor_pool
 from mars.scheduler.utils import SchedulerClusterInfoActor
-from mars.tests.core import aio_case
+from mars.tests.core import aio_case, patch_method
 from mars.utils import get_next_port
 
 
@@ -36,7 +36,9 @@ class MockOperandActor(FunctionActor):
 class Test(unittest.TestCase):
     async def testAssignerActor(self):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
-        async with create_actor_pool(n_process=1, address=mock_scheduler_addr) as pool:
+        async with create_actor_pool(n_process=1, address=mock_scheduler_addr) as pool, \
+                patch_method(ResourceActor._broadcast_sessions, new_async=True), \
+                patch_method(ResourceActor._broadcast_workers, new_async=True):
             cluster_info_ref = await pool.create_actor(
                 SchedulerClusterInfoActor, [pool.cluster_info.address],
                 uid=SchedulerClusterInfoActor.default_uid())

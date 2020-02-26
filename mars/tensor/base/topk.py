@@ -22,7 +22,7 @@ from ...core import ExecutableTuple
 from ...serialize import ValueType, KeyField, Int64Field, Int32Field, \
     BoolField, StringField, ListField
 from ...operands import OperandStage
-from ...utils import ceildiv, flatten, recursive_tile
+from ...utils import ceildiv, flatten, recursive_tile, wait_results
 from ..operands import TensorOperand, TensorOperandMixin, TensorOrder
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
@@ -167,7 +167,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
         return new_op.new_tensors(op.inputs, kws=kws)
 
     @classmethod
-    def _tile_via_psrs(cls, op):
+    async def _tile_via_psrs(cls, op):
         from .sort import TensorSort
 
         return_value = op.return_value
@@ -189,7 +189,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
         else:
             ret = [r[base_slcs + (slice(op.k),)] for r in ret]
 
-        ret = [recursive_tile(r) for r in ret]
+        ret, _ = await wait_results(recursive_tile(r) for r in ret)
         new_op = op.copy()
         kws = [o.params for o in op.outputs]
         if return_value:
@@ -307,7 +307,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
         return new_op.new_tensors(op.inputs, kws=kws)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         a = op.input
         combine_size = options.combine_size
         k = op.k
@@ -339,7 +339,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
         else:
             assert parallel_kind == 'psrs'
             op._parallel_kind = 'psrs'
-            return cls._tile_via_psrs(op)
+            return await cls._tile_via_psrs(op)
 
     @classmethod
     def execute(cls, ctx, op):
