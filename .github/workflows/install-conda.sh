@@ -15,12 +15,14 @@ elif [[ $UNAME == "mingw"* ]] || [[ $UNAME == "msys"* ]]; then
   CONDA_OS="Windows"
   FILE_EXT="exe"
   # VS2015 needed by Python 3.5
-  if [[ "$PYTHON" == "3.5" ]]; then
-    npm install --global --silent --vs2015 windows-build-tools
+  if [[ "$PYTHON" == "3.5" ]] || [[ "$PYTHON" == "3.6" ]]; then
+    vcbindir="/c/Program Files (x86)/Microsoft Visual Studio 14.0/VC/BIN/x86_amd64"
+    if [[ ! -d $vcbindir ]]; then
+      npm install --global --silent --vs2015 windows-build-tools
+    fi
     # Remove SDK of Windows Driver Framework to avoid confusion
     rm -rf "/c/Program Files (x86)/Windows Kits/10/include/wdf"
     # Locate and copy resource compiler into VC dir
-    vcbindir="/c/Program Files (x86)/Microsoft Visual Studio 14.0/VC/BIN/x86_amd64"
     for subdir in $(ls -r "/c/Program Files (x86)/Windows Kits/10/bin"); do
       bindir="/c/Program Files (x86)/Windows Kits/10/bin/$subdir/x64"
       if [ -f "$bindir/rc.exe" ] && [ -f "$bindir/rcdll.dll" ]; then
