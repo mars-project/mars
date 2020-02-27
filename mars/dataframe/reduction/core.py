@@ -470,9 +470,12 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         new_chunk_op = op.copy().reset_key()
         new_chunk_op._stage = OperandStage.combine
         if new_chunk_op.object_type == ObjectType.dataframe:
-            return new_chunk_op.new_chunk(to_concat_chunks, shape=c.shape, dtypes=c.dtypes, index=c.index)
+            return new_chunk_op.new_chunk(to_concat_chunks, shape=c.shape, dtypes=c.dtypes,
+                                          index=c.index, index_value=c.index_value,
+                                          columns_value=c.columns_value)
         else:
-            return new_chunk_op.new_chunk(to_concat_chunks, shape=c.shape, dtype=c.dtype, index=c.index)
+            return new_chunk_op.new_chunk(to_concat_chunks, shape=c.shape, dtype=c.dtype, index=c.index,
+                                          index_value=c.index_value)
 
     @classmethod
     def _tile_dataframe(cls, op):
@@ -512,7 +515,8 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         output_chunks = list(output_chunk_array.reshape((n_rows * n_cols,)))
         new_op = op.copy().reset_key()
         return new_op.new_tileables(op.inputs, shape=in_df.shape, nsplits=in_df.nsplits,
-                                    chunks=output_chunks, dtypes=df.dtypes)
+                                    chunks=output_chunks, dtypes=df.dtypes,
+                                    index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def _tile_series(cls, op):
@@ -532,7 +536,8 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         ]
         new_op = op.copy().reset_key()
         return new_op.new_tileables(op.inputs, shape=in_series.shape, nsplits=in_series.nsplits,
-                                    chunks=output_chunks, dtype=series.dtype)
+                                    chunks=output_chunks, dtype=series.dtype,
+                                    index_value=series.index_value)
 
     @classmethod
     def tile(cls, op):
@@ -609,7 +614,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
 
         empty_df = build_empty_df(df.dtypes)
         reduced_df = getattr(empty_df, getattr(self, '_func_name'))(axis=axis)
-        return self.new_dataframe([df], shape=df.shape, dtype=reduced_df.dtypes,
+        return self.new_dataframe([df], shape=df.shape, dtypes=reduced_df.dtypes,
                                   index_value=df.index_value, columns_value=df.columns_value)
 
     def _call_series(self, series):
