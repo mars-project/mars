@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from .core import DataFrameCumReductionOperand, DataFrameCumReductionMixin, ObjectType
+from ...config import options
+from .core import DataFrameCumReductionOperand, DataFrameCumReductionMixin
 
 
 class DataFrameCummax(DataFrameCumReductionOperand, DataFrameCumReductionMixin):
@@ -21,11 +22,8 @@ class DataFrameCummax(DataFrameCumReductionOperand, DataFrameCumReductionMixin):
     _func_name = 'cummax'
 
 
-def cummax_series(df, axis=None, skipna=True):
-    op = DataFrameCummax(axis=axis, skipna=skipna, object_type=ObjectType.series)
-    return op(df)
-
-
-def cummax_dataframe(df, axis=None, skipna=True):
-    op = DataFrameCummax(axis=axis, skipna=skipna, object_type=ObjectType.dataframe)
+def cummax(df, axis=None, skipna=True):
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+    op = DataFrameCummax(axis=axis, skipna=skipna, object_type=df.op.object_type,
+                         use_inf_as_na=use_inf_as_na)
     return op(df)

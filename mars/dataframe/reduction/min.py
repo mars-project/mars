@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
+from ...config import options
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
 
 
@@ -22,12 +23,15 @@ class DataFrameMin(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def min_series(df, axis=None, skipna=None, level=None, combine_size=None):
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameMin(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
-                      object_type=ObjectType.scalar)
+                      object_type=ObjectType.scalar, use_inf_as_na=use_inf_as_na)
     return op(df)
 
 
 def min_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None):
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameMin(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
-                      combine_size=combine_size, object_type=ObjectType.series)
+                      combine_size=combine_size, object_type=ObjectType.series,
+                      use_inf_as_na=use_inf_as_na)
     return op(df)

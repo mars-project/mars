@@ -34,15 +34,18 @@ class DataFrameReductionOperand(DataFrameOperand):
     _level = AnyField('level')
     _numeric_only = BoolField('numeric_only')
     _min_count = Int32Field('min_count')
+    _use_inf_as_na = BoolField('use_inf_as_na')
 
     _dtype = DataTypeField('dtype')
     _combine_size = Int32Field('combine_size')
 
     def __init__(self, axis=None, skipna=None, level=None, numeric_only=None, min_count=None,
-                 stage=None, dtype=None, combine_size=None, gpu=None, sparse=None, object_type=None, **kw):
+                 stage=None, dtype=None, combine_size=None, gpu=None, sparse=None, object_type=None,
+                 use_inf_as_na=None, **kw):
         super().__init__(_axis=axis, _skipna=skipna, _level=level, _numeric_only=numeric_only,
                          _min_count=min_count, _stage=stage, _dtype=dtype, _combine_size=combine_size,
-                         _gpu=gpu, _sparse=sparse, _object_type=object_type, **kw)
+                         _gpu=gpu, _sparse=sparse, _object_type=object_type, _use_inf_as_na=use_inf_as_na,
+                         **kw)
 
     @property
     def axis(self):
@@ -72,18 +75,22 @@ class DataFrameReductionOperand(DataFrameOperand):
     def combine_size(self):
         return self._combine_size
 
+    @property
+    def use_inf_as_na(self):
+        return self._use_inf_as_na
+
 
 class DataFrameCumReductionOperand(DataFrameOperand):
     _axis = AnyField('axis')
     _skipna = BoolField('skipna')
+    _use_inf_as_na = BoolField('use_inf_as_na')
 
-    _is_summary = BoolField('is_summary')
     _dtype = DataTypeField('dtype')
 
     def __init__(self, axis=None, skipna=None, dtype=None, gpu=None, sparse=None,
-                 object_type=None, stage=None, **kw):
-        super().__init__(_axis=axis, _skipna=skipna, _dtype=dtype, _gpu=gpu,
-                         _sparse=sparse, _object_type=object_type, _stage=stage, **kw)
+                 object_type=None, use_inf_as_na=None, stage=None, **kw):
+        super().__init__(_axis=axis, _skipna=skipna, _dtype=dtype, _gpu=gpu, _sparse=sparse,
+                         _object_type=object_type, _stage=stage, _use_inf_as_na=use_inf_as_na, **kw)
 
     @property
     def axis(self):
@@ -96,6 +103,10 @@ class DataFrameCumReductionOperand(DataFrameOperand):
     @property
     def dtype(self):
         return self._dtype
+
+    @property
+    def use_inf_as_na(self):
+        return self._use_inf_as_na
 
 
 class DataFrameReductionMixin(DataFrameOperandMixin):
@@ -373,16 +384,20 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        if op.stage == OperandStage.combine:
-            cls._execute_combine(ctx, op)
-        elif op.stage == OperandStage.agg:
-            cls._execute_agg(ctx, op)
-        elif op.stage == OperandStage.map:
-            cls._execute_map(ctx, op)
-        else:
-            in_data = ctx[op.inputs[0].key]
-            min_count = getattr(op, 'min_count', None)
-            ctx[op.outputs[0].key] = cls._execute_reduction(in_data, op, min_count)
+        try:
+            pd.set_option('mode.use_inf_as_na', op.use_inf_as_na)
+            if op.stage == OperandStage.combine:
+                cls._execute_combine(ctx, op)
+            elif op.stage == OperandStage.agg:
+                cls._execute_agg(ctx, op)
+            elif op.stage == OperandStage.map:
+                cls._execute_map(ctx, op)
+            else:
+                in_data = ctx[op.inputs[0].key]
+                min_count = getattr(op, 'min_count', None)
+                ctx[op.outputs[0].key] = cls._execute_reduction(in_data, op, min_count)
+        finally:
+            pd.reset_option('mode.use_inf_as_na')
 
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None)
@@ -472,7 +487,6 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         for c in in_df.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op._stage = OperandStage.map
-            new_chunk_op._is_summary = True
             if op.axis == 1:
                 summary_shape = (c.shape[0], 1)
             else:
@@ -510,7 +524,6 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         for c in in_series.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op._stage = OperandStage.map
-            new_chunk_op._is_summary = True
             summary_chunks[c.index] = new_chunk_op.new_chunk([c], shape=(1,), dtype=series.dtype)
 
         # combine summaries into results
@@ -577,10 +590,14 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        if op.stage == OperandStage.map:
-            return cls._execute_map(ctx, op)
-        else:
-            return cls._execute_combine(ctx, op)
+        try:
+            pd.set_option('mode.use_inf_as_na', op.use_inf_as_na)
+            if op.stage == OperandStage.map:
+                return cls._execute_map(ctx, op)
+            else:
+                return cls._execute_combine(ctx, op)
+        finally:
+            pd.reset_option('mode.use_inf_as_na')
 
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None) or 0
