@@ -20,6 +20,11 @@ from .count import DataFrameCount
 from .mean import DataFrameMean
 from .var import DataFrameVar
 
+from .cummax import DataFrameCummax
+from .cummin import DataFrameCummin
+from .cumprod import DataFrameCumprod
+from .cumsum import DataFrameCumsum
+
 
 def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE
@@ -31,13 +36,19 @@ def _install():
     from .mean import mean_series, mean_dataframe
     from .var import var_series, var_dataframe
     from .std import std_series, std_dataframe
+    from .cummax import cummax
+    from .cummin import cummin
+    from .cumprod import cumprod
+    from .cumsum import cumsum
 
-    func_names = ['sum', 'prod', 'max', 'min', 'count',
-                  'mean', 'var', 'std']
+    func_names = ['sum', 'prod', 'max', 'min', 'count', 'mean', 'var',
+                  'std', 'cummax', 'cummin', 'cumprod', 'cumsum']
     series_funcs = [sum_series, prod_series, max_series, min_series,
-                    count_series, mean_series, var_series, std_series]
+                    count_series, mean_series, var_series, std_series,
+                    cummax, cummin, cumprod, cumsum]
     df_funcs = [sum_dataframe, prod_dataframe, max_dataframe, min_dataframe,
-                count_dataframe, mean_dataframe, var_dataframe, std_dataframe]
+                count_dataframe, mean_dataframe, var_dataframe, std_dataframe,
+                cummax, cummin, cumprod, cumsum]
     for func_name, series_func, df_func in zip(func_names, series_funcs, df_funcs):
         for t in DATAFRAME_TYPE:
             setattr(t, func_name, df_func)

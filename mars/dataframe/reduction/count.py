@@ -15,6 +15,7 @@
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...config import options
 from ...utils import lazy_import
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
 
@@ -46,11 +47,14 @@ class DataFrameCount(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def count_series(series, level=None, combine_size=None):
-    op = DataFrameCount(level=level, combine_size=combine_size, object_type=ObjectType.scalar)
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+    op = DataFrameCount(level=level, combine_size=combine_size, object_type=ObjectType.scalar,
+                        use_inf_as_na=use_inf_as_na)
     return op(series)
 
 
 def count_dataframe(df, axis=0, level=None, numeric_only=False, combine_size=None):
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameCount(axis=axis, level=level, numeric_only=numeric_only, combine_size=combine_size,
-                        object_type=ObjectType.series)
+                        object_type=ObjectType.series, use_inf_as_na=use_inf_as_na)
     return op(df)

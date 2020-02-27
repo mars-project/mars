@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
+from ...config import options
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
 
 
@@ -22,12 +23,14 @@ class DataFrameProd(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def prod_series(df, axis=None, skipna=None, level=None, min_count=0, combine_size=None):
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameProd(axis=axis, skipna=skipna, level=level, min_count=min_count, combine_size=combine_size,
-                       object_type=ObjectType.scalar)
+                       object_type=ObjectType.scalar, use_inf_as_na=use_inf_as_na)
     return op(df)
 
 
 def prod_dataframe(df, axis=None, skipna=None, level=None, min_count=0, numeric_only=None, combine_size=None):
-    op = DataFrameProd(axis=axis, skipna=skipna, level=level, min_count=min_count,
-                       numeric_only=numeric_only, combine_size=combine_size, object_type=ObjectType.series)
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+    op = DataFrameProd(axis=axis, skipna=skipna, level=level, min_count=min_count, numeric_only=numeric_only,
+                       combine_size=combine_size, object_type=ObjectType.series, use_inf_as_na=use_inf_as_na)
     return op(df)
