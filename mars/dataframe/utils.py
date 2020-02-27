@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
+from ..core import Entity
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..utils import tokenize, sbytes
@@ -500,6 +501,13 @@ def indexing_index_value(index_value, indexes, store_data=False):
     else:
         if isinstance(indexes, Integral):
             return parse_index(pd_index[[indexes]], store_data=store_data)
+        elif isinstance(indexes, Entity):
+            if isinstance(pd_index, pd.RangeIndex):
+                return parse_index(
+                    pd.RangeIndex(-1), indexes, index_value, store_data=False)
+            else:
+                return parse_index(
+                    type(pd_index)([]), indexes, index_value, store_data=False)
         if isinstance(indexes, tuple):
             return parse_index(pd_index[list(indexes)], store_data=store_data)
         else:

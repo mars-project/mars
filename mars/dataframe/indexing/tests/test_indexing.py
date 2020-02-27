@@ -16,10 +16,10 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
-from mars.tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE
+from mars.tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE, Tensor
 from mars.tests.core import TestBase
 from mars.dataframe.core import SERIES_CHUNK_TYPE, Series, DataFrame, DATAFRAME_CHUNK_TYPE
-from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem
+from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, IndexingError
 
 
 class Test(TestBase):
@@ -45,6 +45,27 @@ class Test(TestBase):
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
         df2 = md.DataFrame(df1, chunk_size=2)
 
+        with self.assertRaises(IndexingError):
+            _ = df2.iloc[1, 1, 1]
+
+        # index cannot be tuple
+        with self.assertRaises(IndexingError):
+            _ = df2.iloc[(1,),]
+
+        # index wrong type
+        with self.assertRaises(TypeError):
+            _ = df2.iloc['a1':]
+
+        with self.assertRaises(NotImplementedError):
+            _ = df2.iloc[0, md.Series(['a2', 'a3'])]
+
+        # fancy index should be 1-d
+        with self.assertRaises(ValueError):
+            _ = df2.iloc[[[0, 1], [1, 2]]]
+
+        with self.assertRaises(ValueError):
+            _ = df2.iloc[1, ...]
+
         # plain index
         df3 = df2.iloc[1]
         df3 = df3.tiles()
@@ -69,7 +90,14 @@ class Test(TestBase):
         self.assertEqual(df4.shape, (3, 1))
         self.assertEqual(df4.chunk_shape, (2, 1))
         self.assertEqual(df4.chunks[0].shape, (2, 1))
+        pd.testing.assert_index_equal(df4.chunks[0].columns_value.to_pandas(), df1.columns[2:3])
+        pd.testing.assert_series_equal(df4.chunks[0].dtypes, df1.dtypes[2:3])
+        self.assertIsInstance(df4.chunks[0].index_value.to_pandas(), type(df1.index))
         self.assertEqual(df4.chunks[1].shape, (1, 1))
+        pd.testing.assert_index_equal(df4.chunks[1].columns_value.to_pandas(), df1.columns[2:3])
+        pd.testing.assert_series_equal(df4.chunks[1].dtypes, df1.dtypes[2:3])
+        self.assertNotEqual(df4.chunks[0].index_value.key, df4.chunks[1].index_value.key)
+        self.assertIsInstance(df4.chunks[1].index_value.to_pandas(), type(df1.index))
         self.assertEqual(df4.chunks[0].op.indexes, (slice(None, None, None), slice(None, None, None)))
         self.assertEqual(df4.chunks[1].op.indexes, (slice(None, None, None), slice(None, None, None)))
         self.assertEqual(df4.chunks[0].inputs[0].index, (0, 1))
@@ -85,7 +113,13 @@ class Test(TestBase):
         self.assertEqual(df5.shape, (1, 3))
         self.assertEqual(df5.chunk_shape, (1, 2))
         self.assertEqual(df5.chunks[0].shape, (1, 2))
+        pd.testing.assert_index_equal(df5.chunks[0].columns_value.to_pandas(), df1.columns[:2])
+        pd.testing.assert_series_equal(df5.chunks[0].dtypes, df1.dtypes[:2])
+        self.assertIsInstance(df5.chunks[0].index_value.to_pandas(), type(df1.index))
         self.assertEqual(df5.chunks[1].shape, (1, 1))
+        pd.testing.assert_index_equal(df5.chunks[1].columns_value.to_pandas(), df1.columns[2:])
+        pd.testing.assert_series_equal(df5.chunks[1].dtypes, df1.dtypes[2:])
+        self.assertIsInstance(df5.chunks[1].index_value.to_pandas(), type(df1.index))
         np.testing.assert_array_equal(df5.chunks[0].op.indexes[0], [0])
         np.testing.assert_array_equal(df5.chunks[0].op.indexes[1], [0, 1])
         np.testing.assert_array_equal(df5.chunks[1].op.indexes[0], [0])
@@ -126,7 +160,7 @@ class Test(TestBase):
         # plain index
         df7 = df2.iloc[1, 2]
         df7 = df7.tiles()
-        self.assertIsInstance(df7, Series)
+        self.assertIsInstance(df7, Tensor)  # scalar
         self.assertIsInstance(df7.op, DataFrameIlocGetItem)
         self.assertEqual(df7.shape, ())
         self.assertEqual(df7.chunk_shape, ())
@@ -147,9 +181,9 @@ class Test(TestBase):
         self.assertEqual(len(series.chunks), 2)
         self.assertEqual(series.chunks[0].shape, (2,))
         self.assertEqual(series.chunks[0].index, (0,))
-        self.assertEqual(series.chunks[0].op.indexes, slice(1, 3, 1))
+        self.assertEqual(series.chunks[0].op.indexes, (slice(1, 3, 1),))
         self.assertEqual(series.chunks[1].shape, (2,))
-        self.assertEqual(series.chunks[1].op.indexes, slice(0, 2, 1))
+        self.assertEqual(series.chunks[1].op.indexes, (slice(0, 2, 1),))
         self.assertEqual(series.chunks[1].index, (1,))
 
         # fancy index
@@ -287,9 +321,9 @@ class Test(TestBase):
         self.assertEqual(series.shape, (10,))
         self.assertEqual(len(series.chunks), 4)
 
-        self.assertEqual(series.chunks[0].op.indexes, slice(None, None, None))
+        self.assertEqual(series.chunks[0].op.indexes, [slice(None, None, None),])
         self.assertEqual(series.chunks[0].op.value, 2)
-        self.assertEqual(series.chunks[1].op.indexes, slice(0, 1, 1))
+        self.assertEqual(series.chunks[1].op.indexes, [slice(0, 1, 1),])
         self.assertEqual(series.chunks[1].op.value, 2)
 
         # fancy index
@@ -301,13 +335,13 @@ class Test(TestBase):
 
         self.assertEqual(len(series.chunks), 4)
         self.assertEqual(series.chunks[0].index, (0,))
-        self.assertEqual(series.chunks[0].op.indexes, [2])
+        self.assertEqual(series.chunks[0].op.indexes[0].tolist(), [2])
         self.assertEqual(series.chunks[0].op.value, 3)
         self.assertEqual(series.chunks[1].index, (1,))
-        self.assertEqual(series.chunks[1].op.indexes, [1])
+        self.assertEqual(series.chunks[1].op.indexes[0].tolist(), [1])
         self.assertEqual(series.chunks[1].op.value, 3)
         self.assertEqual(series.chunks[3].index, (3,))
-        self.assertEqual(series.chunks[3].op.indexes, [0])
+        self.assertEqual(series.chunks[3].op.indexes[0].tolist(), [0])
         self.assertEqual(series.chunks[3].op.value, 3)
 
     def testDataFrameGetitem(self):

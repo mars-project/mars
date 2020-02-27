@@ -50,29 +50,65 @@ class Test(TestBase):
         pd.testing.assert_series_equal(
             expected, self.executor.execute_dataframe(df3, concat=True)[0])
 
-        # slice index
-        expected = df1.iloc[:, 2:4]
-        df4 = df2.iloc[:, 2:4]
-        pd.testing.assert_frame_equal(
+        # plain index on axis 1
+        expected = df1.iloc[:2, 1]
+        df4 = df2.iloc[:2, 1]
+        pd.testing.assert_series_equal(
             expected, self.executor.execute_dataframe(df4, concat=True)[0])
 
-        # plain fancy index
-        expected = df1.iloc[[0], [0, 1, 2]]
-        df5 = df2.iloc[[0], [0, 1, 2]]
+        # slice index
+        expected = df1.iloc[:, 2:4]
+        df5 = df2.iloc[:, 2:4]
         pd.testing.assert_frame_equal(
             expected, self.executor.execute_dataframe(df5, concat=True)[0])
 
-        # fancy index
-        expected = df1.iloc[[1, 2], [0, 1, 2]]
-        df6 = df2.iloc[[1, 2], [0, 1, 2]]
+        # plain fancy index
+        expected = df1.iloc[[0], [0, 1, 2]]
+        df6 = df2.iloc[[0], [0, 1, 2]]
         pd.testing.assert_frame_equal(
             expected, self.executor.execute_dataframe(df6, concat=True)[0])
 
+        # plain fancy index with shuffled order
+        expected = df1.iloc[[0], [1, 2, 0]]
+        df7 = df2.iloc[[0], [1, 2, 0]]
+        pd.testing.assert_frame_equal(
+            expected, self.executor.execute_dataframe(df7, concat=True)[0])
+
+        # fancy index
+        expected = df1.iloc[[1, 2], [0, 1, 2]]
+        df8 = df2.iloc[[1, 2], [0, 1, 2]]
+        pd.testing.assert_frame_equal(
+            expected, self.executor.execute_dataframe(df8, concat=True)[0])
+
+        # fancy index with shuffled order
+        expected = df1.iloc[[2, 1], [1, 2, 0]]
+        df9 = df2.iloc[[2, 1], [1, 2, 0]]
+        pd.testing.assert_frame_equal(
+            expected, self.executor.execute_dataframe(df9, concat=True)[0])
+
+        # one fancy index
+        expected = df1.iloc[[2, 1]]
+        df10 = df2.iloc[[2, 1]]
+        pd.testing.assert_frame_equal(
+            expected, self.executor.execute_dataframe(df10, concat=True)[0])
+
         # plain index
         expected = df1.iloc[1, 2]
-        df7 = df2.iloc[1, 2]
+        df11 = df2.iloc[1, 2]
         self.assertEqual(
-            expected, self.executor.execute_dataframe(df7, concat=True)[0])
+            expected, self.executor.execute_dataframe(df11, concat=True)[0])
+
+        # bool index array
+        expected = df1.iloc[[True, False, True], [2, 1]]
+        df12 = df2.iloc[[True, False, True], [2, 1]]
+        pd.testing.assert_frame_equal(
+            expected, self.executor.execute_dataframe(df12, concat=True)[0])
+
+        # bool index
+        expected = df1.iloc[[True, False, True], [2, 1]]
+        df13 = df2.iloc[md.Series([True, False, True], chunk_size=1), [2, 1]]
+        pd.testing.assert_frame_equal(
+            expected, self.executor.execute_dataframe(df13, concat=True)[0])
 
         # test Series
         data = pd.Series(np.arange(10))
@@ -88,9 +124,24 @@ class Test(TestBase):
         pd.testing.assert_series_equal(
             self.executor.execute_dataframe(series, concat=True)[0], data.iloc[[2, 3, 4, 9]])
 
+        series = md.Series(data, chunk_size=3).iloc[[4, 3, 9, 2]]
+        pd.testing.assert_series_equal(
+            self.executor.execute_dataframe(series, concat=True)[0], data.iloc[[4, 3, 9, 2]])
+
         series = md.Series(data).iloc[5:]
         pd.testing.assert_series_equal(
             self.executor.execute_dataframe(series, concat=True)[0], data.iloc[5:])
+
+        # bool index array
+        selection = np.random.RandomState(0).randint(2, size=10, dtype=bool)
+        series = md.Series(data).iloc[selection]
+        pd.testing.assert_series_equal(
+            self.executor.execute_dataframe(series, concat=True)[0], data.iloc[selection])
+
+        # bool index
+        series = md.Series(data).iloc[md.Series(selection, chunk_size=4)]
+        pd.testing.assert_series_equal(
+            self.executor.execute_dataframe(series, concat=True)[0], data.iloc[selection])
 
     def testILocSetItem(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
