@@ -296,6 +296,9 @@ default_options.register_option('verbose', False, validator=is_bool)
 default_options.register_option('kv_store', ':inproc:', validator=is_string)
 default_options.register_option('check_interval', 20, validator=is_integer)
 
+# dataframe-related options
+default_options.register_option('dataframe.mode.use_inf_as_na', False, validator=is_bool)
+
 # the number of combined chunks in tree reduction or tree add
 default_options.register_option('combine_size', 4, validator=is_integer, serialize=True)
 
