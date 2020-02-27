@@ -233,3 +233,42 @@ class Test(TestBase):
         expected4.set_index('a2', inplace=True)
         result4.set_index('a2', inplace=True)
         pd.testing.assert_frame_equal(sort_dataframe_inplace(expected4, 0), sort_dataframe_inplace(result4, 0))
+
+    def testMergeOneChunk(self):
+        df1 = pd.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+                            'value': [1, 2, 3, 5]}, index=['a1', 'a2', 'a3', 'a4'])
+        df2 = pd.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+                            'value': [5, 6, 7, 8]}, index=['a1', 'a2', 'a3', 'a4'])
+
+        # all have one chunk
+        mdf1 = from_pandas(df1)
+        mdf2 = from_pandas(df2)
+
+        expected = df1.merge(df2, left_on='lkey', right_on='rkey')
+        jdf = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
+        result = self.executor.execute_dataframe(jdf, concat=True)[0]
+
+        pd.testing.assert_frame_equal(expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
+                                      result.sort_values(by=result.columns[1]).reset_index(drop=True))
+
+        # left have one chunk
+        mdf1 = from_pandas(df1)
+        mdf2 = from_pandas(df2, chunk_size=2)
+
+        expected = df1.merge(df2, left_on='lkey', right_on='rkey')
+        jdf = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
+        result = self.executor.execute_dataframe(jdf, concat=True)[0]
+
+        pd.testing.assert_frame_equal(expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
+                                      result.sort_values(by=result.columns[1]).reset_index(drop=True))
+
+        # right have one chunk
+        mdf1 = from_pandas(df1, chunk_size=3)
+        mdf2 = from_pandas(df2)
+
+        expected = df1.merge(df2, left_on='lkey', right_on='rkey')
+        jdf = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
+        result = self.executor.execute_dataframe(jdf, concat=True)[0]
+
+        pd.testing.assert_frame_equal(expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
+                                      result.sort_values(by=result.columns[1]).reset_index(drop=True))
