@@ -209,6 +209,51 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         return reduce_chunks
 
     @classmethod
+    def _tile_one_chunk(cls, op, left, right):
+        df = op.outputs[0]
+        if len(left.chunks) == 1 and len(right.chunks) == 1:
+            merge_op = op.copy().reset_key()
+            out_chunk = merge_op.new_chunk([left.chunks[0], right.chunks[0]],
+                                           shape=df.shape,
+                                           index=left.chunks[0].index,
+                                           index_value=df.index_value,
+                                           columns_value=df.columns_value)
+            out_chunks = [out_chunk]
+            nsplits = ((np.nan,), (df.shape[1],))
+        elif len(left.chunks) == 1:
+            out_chunks = []
+            left_chunk = left.chunks[0]
+            for c in right.chunks:
+                merge_op = op.copy().reset_key()
+                out_chunk = merge_op.new_chunk([left_chunk, c],
+                                               shape=(np.nan, df.shape[1]),
+                                               index=c.index,
+                                               index_value=infer_index_value(left_chunk.index_value,
+                                                                             c.index_value),
+                                               columns_value=df.columns_value)
+                out_chunks.append(out_chunk)
+            nsplits = ((np.nan,) * len(right.chunks), (df.shape[1],))
+        else:
+            out_chunks = []
+            right_chunk = right.chunks[0]
+            for c in left.chunks:
+                merge_op = op.copy().reset_key()
+                out_chunk = merge_op.new_chunk([c, right_chunk],
+                                               shape=(np.nan, df.shape[1]),
+                                               index=c.index,
+                                               index_value=infer_index_value(right_chunk.index_value,
+                                                                             c.index_value),
+                                               columns_value=df.columns_value)
+                out_chunks.append(out_chunk)
+            nsplits = ((np.nan,) * len(left.chunks), (df.shape[1],))
+
+        new_op = op.copy()
+        return new_op.new_dataframes(op.inputs, df.shape,
+                                     nsplits=nsplits,
+                                     chunks=out_chunks, dtypes=df.dtypes,
+                                     index_value=df.index_value, columns_value=df.columns_value)
+
+    @classmethod
     def tile(cls, op):
         df = op.outputs[0]
         left = build_concated_rows_frame(op.inputs[0])
@@ -221,6 +266,9 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         if right.chunk_shape[1] > 1:
             check_chunks_unknown_shape([right], TilesError)
             right = right.rechunk({1: right.shape[1]})._inplace_tile()
+
+        if len(left.chunks) == 1 or len(right.chunks) == 1:
+            return cls._tile_one_chunk(op, left, right)
 
         left_row_chunk_size = left.chunk_shape[0]
         right_row_chunk_size = right.chunk_shape[0]
@@ -241,7 +289,8 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
             merge_op = op.copy().reset_key()
             out_chunk = merge_op.new_chunk([left_chunk, right_chunk], shape=(np.nan, df.shape[1]),
                                            index=left_chunk.index,
-                                           index_value=infer_index_value(left_chunk.index_value, right_chunk.index_value),
+                                           index_value=infer_index_value(left_chunk.index_value,
+                                                                         right_chunk.index_value),
                                            columns_value=df.columns_value)
             out_chunks.append(out_chunk)
 
