@@ -17,6 +17,7 @@ import pandas as pd
 
 from mars.operands import OperandStage
 from mars.executor import Executor
+from mars.tiles import get_tiled
 from mars.tests.core import TestBase
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.merge import DataFrameMergeAlign, DataFrameShuffleMerge
@@ -156,3 +157,44 @@ class Test(TestBase):
                     self.assertEqual(rchunk.op.index_shuffle_size, 3)
                     self.assertEqual(rchunk.op.shuffle_on, None)
                 pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), df.columns_value.to_pandas())
+
+    def testMergeOneChunk(self):
+        df1 = pd.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+                            'value': [1, 2, 3, 5]})
+        df2 = pd.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+                            'value': [5, 6, 7, 8]})
+
+        # all have one chunk
+        mdf1 = from_pandas(df1)
+        mdf2 = from_pandas(df2)
+        df = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
+        tiled = df.tiles()
+
+        self.assertEqual(tiled.chunk_shape, (1, 1))
+        self.assertEqual(tiled.chunks[0].inputs[0].key, get_tiled(mdf1).chunks[0].key)
+        self.assertEqual(tiled.chunks[0].inputs[1].key, get_tiled(mdf2).chunks[0].key)
+
+        # left has one chunk
+        mdf1 = from_pandas(df1)
+        mdf2 = from_pandas(df2, chunk_size=2)
+        df = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
+        tiled = df.tiles()
+
+        self.assertEqual(tiled.chunk_shape, (2, 1))
+        self.assertEqual(tiled.chunks[0].inputs[0].key, get_tiled(mdf1).chunks[0].key)
+        self.assertEqual(tiled.chunks[0].inputs[1].key, get_tiled(mdf2).chunks[0].key)
+        self.assertEqual(tiled.chunks[1].inputs[0].key, get_tiled(mdf1).chunks[0].key)
+        self.assertEqual(tiled.chunks[1].inputs[1].key, get_tiled(mdf2).chunks[1].key)
+
+        # right has one chunk
+        mdf1 = from_pandas(df1, chunk_size=2)
+        mdf2 = from_pandas(df2)
+        df = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
+        tiled = df.tiles()
+
+        self.assertEqual(tiled.chunk_shape, (2, 1))
+        self.assertEqual(tiled.chunks[0].inputs[0].key, get_tiled(mdf1).chunks[0].key)
+        self.assertEqual(tiled.chunks[0].inputs[1].key, get_tiled(mdf2).chunks[0].key)
+        self.assertEqual(tiled.chunks[1].inputs[0].key, get_tiled(mdf1).chunks[1].key)
+        self.assertEqual(tiled.chunks[1].inputs[1].key, get_tiled(mdf2).chunks[0].key)
+
