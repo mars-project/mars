@@ -531,6 +531,16 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         else:
             return cls._tile_series(op)
 
+    @staticmethod
+    def _get_last_slice(op, df, start):
+        if op.object_type == ObjectType.series:
+            return df.iloc[start:]
+        else:
+            if op.axis == 1:
+                return df.iloc[:, start:]
+            else:
+                return df.iloc[start:, :]
+
     @classmethod
     def _execute_map(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]
@@ -541,14 +551,8 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
             kwargs['skipna'] = op.skipna
         partial = getattr(in_data, getattr(cls, '_func_name'))(**kwargs)
         if op.skipna:
-            partial = partial.fillna(method='ffill', axis=op.axis)
-        if op.object_type == ObjectType.series:
-            ctx[op.outputs[0].key] = partial.iloc[-1:]
-        else:
-            if op.axis == 1:
-                ctx[op.outputs[0].key] = partial.iloc[:, -1:]
-            else:
-                ctx[op.outputs[0].key] = partial.iloc[-1:, :]
+            partial.fillna(method='ffill', axis=op.axis, inplace=True)
+        ctx[op.outputs[0].key] = cls._get_last_slice(op, partial, -1)
 
     @classmethod
     def _execute_combine(cls, ctx, op):
@@ -562,25 +566,12 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
             ref_datas = [ctx[inp.key] for inp in op.inputs[1:]]
             concat_df = getattr(pd.concat(ref_datas, axis=op.axis), getattr(cls, '_func_name'))(**kwargs)
             if op.skipna:
-                concat_df = concat_df.fillna(method='ffill', axis=op.axis)
+                concat_df.fillna(method='ffill', axis=op.axis, inplace=True)
 
             in_data = ctx[op.inputs[0].key]
-            if op.object_type == ObjectType.series:
-                concat_df = pd.concat([concat_df.iloc[-1:], in_data], axis=op.axis)
-            else:
-                if op.axis == 1:
-                    concat_df = pd.concat([concat_df.iloc[:, -1:], in_data], axis=op.axis)
-                else:
-                    concat_df = pd.concat([concat_df.iloc[-1:, :], in_data], axis=op.axis)
-
+            concat_df = pd.concat([cls._get_last_slice(op, concat_df, -1), in_data], axis=op.axis)
             result = getattr(concat_df, getattr(cls, '_func_name'))(**kwargs)
-            if op.object_type == ObjectType.series:
-                ctx[op.outputs[0].key] = result.iloc[1:]
-            else:
-                if op.axis == 1:
-                    ctx[op.outputs[0].key] = result.iloc[:, 1:]
-                else:
-                    ctx[op.outputs[0].key] = result.iloc[1:, :]
+            ctx[op.outputs[0].key] = cls._get_last_slice(op, result, 1)
         else:
             ctx[op.outputs[0].key] = getattr(ctx[op.inputs[0].key], getattr(cls, '_func_name'))(**kwargs)
 
