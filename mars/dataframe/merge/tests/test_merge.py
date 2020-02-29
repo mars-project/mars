@@ -19,6 +19,8 @@ from mars.operands import OperandStage
 from mars.executor import Executor
 from mars.tiles import get_tiled
 from mars.tests.core import TestBase
+from mars.dataframe.core import IndexValue
+from mars.dataframe.base.standardize_range_index import ChunkStandardizeRangeIndex
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.merge import DataFrameMergeAlign, DataFrameShuffleMerge
 
@@ -198,3 +200,33 @@ class Test(TestBase):
         self.assertEqual(tiled.chunks[1].inputs[0].key, get_tiled(mdf1).chunks[1].key)
         self.assertEqual(tiled.chunks[1].inputs[1].key, get_tiled(mdf2).chunks[0].key)
 
+    def testAppend(self):
+        df1 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+        df2 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+
+        mdf1 = from_pandas(df1, chunk_size=3)
+        mdf2 = from_pandas(df2, chunk_size=3)
+        adf = mdf1.append(mdf2)
+
+        self.assertEqual(adf.shape, (20, 4))
+        self.assertIsInstance(adf.index_value.value, IndexValue.Int64Index)
+
+        tiled = adf.tiles()
+        self.assertEqual(tiled.nsplits, ((3, 3, 3, 1, 3, 3, 3, 1), (3, 1)))
+        self.assertEqual(tiled.chunk_shape, (8, 2))
+        for i, c in enumerate(tiled.chunks):
+            index = (i // 2, i % 2)
+            self.assertEqual(c.index, index)
+
+        mdf1 = from_pandas(df1, chunk_size=3)
+        mdf2 = from_pandas(df2, chunk_size=3)
+        adf = mdf1.append(mdf2, ignore_index=True)
+
+        self.assertEqual(adf.shape, (20, 4))
+        self.assertIsInstance(adf.index_value.value, IndexValue.RangeIndex)
+        pd.testing.assert_index_equal(adf.index_value.to_pandas(), pd.RangeIndex(20))
+
+        tiled = adf.tiles()
+        self.assertEqual(tiled.nsplits, ((3, 3, 3, 1, 3, 3, 3, 1), (3, 1)))
+        self.assertEqual(tiled.chunk_shape, (8, 2))
+        self.assertIsInstance(tiled.chunks[0].op, ChunkStandardizeRangeIndex)

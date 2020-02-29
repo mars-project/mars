@@ -16,7 +16,9 @@ import numpy as np
 import pandas as pd
 
 from mars.tests.core import TestBase, ExecutorForTest
+from mars.session import new_session
 from mars.dataframe.datasource.dataframe import from_pandas
+from mars.dataframe.datasource.series import from_pandas as series_from_pandas
 from mars.dataframe.utils import sort_dataframe_inplace
 
 
@@ -272,3 +274,85 @@ class Test(TestBase):
 
         pd.testing.assert_frame_equal(expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
                                       result.sort_values(by=result.columns[1]).reset_index(drop=True))
+
+    def testAppendExecution(self):
+        executor = ExecutorForTest(storage=new_session().context)
+
+        df1 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+        df2 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+
+        mdf1 = from_pandas(df1, chunk_size=3)
+        mdf2 = from_pandas(df2, chunk_size=3)
+
+        adf = mdf1.append(mdf2)
+        expected = df1.append(df2)
+        result = self.executor.execute_dataframe(adf, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        adf = mdf1.append(mdf2, ignore_index=True)
+        expected = df1.append(df2, ignore_index=True)
+        result = executor.execute_dataframe(adf, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        mdf1 = from_pandas(df1, chunk_size=3)
+        mdf2 = from_pandas(df2, chunk_size=2)
+
+        adf = mdf1.append(mdf2)
+        expected = df1.append(df2)
+        result = self.executor.execute_dataframe(adf, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        adf = mdf1.append(mdf2, ignore_index=True)
+        expected = df1.append(df2, ignore_index=True)
+        result = executor.execute_dataframe(adf, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        df3 = pd.DataFrame(np.random.rand(8, 4), columns=list('ABCD'))
+        mdf3 = from_pandas(df3, chunk_size=3)
+        expected = df1.append([df2, df3])
+        adf = mdf1.append([mdf2, mdf3])
+        result = self.executor.execute_dataframe(adf, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        adf = mdf1.append(dict(A=1, B=2, C=3, D=4), ignore_index=True)
+        expected = df1.append(dict(A=1, B=2, C=3, D=4), ignore_index=True)
+        result = executor.execute_dataframe(adf, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test for series
+        series1 = pd.Series(np.random.rand(10,))
+        series2 = pd.Series(np.random.rand(10,))
+
+        mseries1 = series_from_pandas(series1, chunk_size=3)
+        mseries2 = series_from_pandas(series2, chunk_size=3)
+
+        aseries = mseries1.append(mseries2)
+        expected = series1.append(series2)
+        result = self.executor.execute_dataframe(aseries, concat=True)[0]
+        pd.testing.assert_series_equal(expected, result)
+
+        aseries = mseries1.append(mseries2, ignore_index=True)
+        expected = series1.append(series2, ignore_index=True)
+        result = executor.execute_dataframe(aseries, concat=True)[0]
+        pd.testing.assert_series_equal(expected, result)
+
+        mseries1 = series_from_pandas(series1, chunk_size=3)
+        mseries2 = series_from_pandas(series2, chunk_size=2)
+
+        aseries = mseries1.append(mseries2)
+        expected = series1.append(series2)
+        result = self.executor.execute_dataframe(aseries, concat=True)[0]
+        pd.testing.assert_series_equal(expected, result)
+
+        aseries = mseries1.append(mseries2, ignore_index=True)
+        expected = series1.append(series2, ignore_index=True)
+        result = executor.execute_dataframe(aseries, concat=True)[0]
+        pd.testing.assert_series_equal(expected, result)
+
+        series3 = pd.Series(np.random.rand(4,))
+        mseries3 = series_from_pandas(series3, chunk_size=2)
+        expected = series1.append([series2, series3])
+        aseries = mseries1.append([mseries2, mseries3])
+        result = self.executor.execute_dataframe(aseries, concat=True)[0]
+        pd.testing.assert_series_equal(expected, result)
+
