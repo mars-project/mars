@@ -306,11 +306,15 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         left, right = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
 
         def execute_merge(x, y):
+            if not op.gpu:
+                kwargs = dict(copy=op.copy, validate=op.validate, indicator=op.indicator)
+            else:  # pragma: no cover
+                # cudf doesn't support 'validate' and 'copy'
+                kwargs = dict(indicator=op.indicator)
             return x.merge(y, how=op.how, on=op.on,
                            left_on=op.left_on, right_on=op.right_on,
                            left_index=op.left_index, right_index=op.right_index,
-                           sort=op.sort, suffixes=op.suffixes,
-                           copy=op.copy, indicator=op.indicator, validate=op.validate)
+                           sort=op.sort, suffixes=op.suffixes, **kwargs)
 
         # workaround for: https://github.com/pandas-dev/pandas/issues/27943
         try:
