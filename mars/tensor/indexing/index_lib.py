@@ -14,6 +14,7 @@
 
 import itertools
 from abc import ABCMeta, abstractmethod
+from collections import namedtuple
 from operator import itemgetter
 from numbers import Integral
 
@@ -65,16 +66,23 @@ class FancyIndexInfo(IndexInfo):
         self.split_info = None
 
 
+ChunkIndexAxisInfo = namedtuple(
+    'chunk_index_axis_info',
+    ['output_axis_index', 'processed_index', 'output_shape'])
+
+
 class ChunkIndexInfo(object):
     def __init__(self):
         self.indexes = []
         self.output_chunk_index = []
         self.output_chunk_shape = []
 
-    def set(self, output_axis_index, processed_index, output_shape):
+    def set(self, info):
+        output_axis_index = info.output_axis_index
         if output_axis_index is not None:
             self.output_chunk_index.append(output_axis_index)
-        self.indexes.append(processed_index)
+        self.indexes.append(info.processed_index)
+        output_shape = info.output_shape
         if output_shape is not None:
             if not isinstance(output_shape, tuple):
                 self.output_chunk_shape.append(output_shape)
@@ -82,7 +90,7 @@ class ChunkIndexInfo(object):
                 self.output_chunk_shape.extend(output_shape)
 
 
-class IndexHandlerContext(object):
+class IndexHandlerContext(six.with_metaclass(ABCMeta)):
     def __init__(self, op):
         self.parsed_infos = []
         self.input_axis = 0
@@ -121,9 +129,29 @@ class IndexHandlerContext(object):
         for chunk in tileable.chunks:
             self.chunk_index_to_info[chunk.index] = ChunkIndexInfo()
 
-    @classmethod
-    def concat_chunks(cls, chunks, axis):
+    @abstractmethod
+    def concat_chunks(self, chunks, axis):
+        pass
+
+    @abstractmethod
+    def create_chunk(self, chunk_index, chunk_index_info):
+        pass
+
+    def create_tileable(self):
+        out = self.op.outputs[0]
+        params = out.params
+        params['chunks'] = self.out_chunks
+        params['nsplits'] = self.out_nsplits
+        new_op = out.op.copy()
+        return new_op.new_tileable(out.inputs, kws=[params])
+
+
+class TensorIndexHandlerContext(IndexHandlerContext):
+    def concat_chunks(self, chunks, axis):
         from ..merge import TensorConcatenate
+
+        assert isinstance(axis, int), \
+            'axis to concat could only be int for tensor'
 
         shape = list(chunks[0].shape)
         shape[axis] = sum(c.shape[axis] for c in chunks)
@@ -147,23 +175,16 @@ class IndexHandlerContext(object):
                                   index=tuple(chunk_index_info.output_chunk_index),
                                   order=self.op.outputs[0].order)
 
-    def create_tileable(self):
-        out = self.op.outputs[0]
-        params = out.params
-        params['chunks'] = self.out_chunks
-        params['nsplits'] = self.out_nsplits
-        new_op = out.op.copy()
-        return new_op.new_tileable(out.inputs, kws=[params])
+
+_type_to_instance = {}
 
 
 class IndexHandler(six.with_metaclass(ABCMeta)):
-    _instance = None
-
     @classmethod
     def get_instance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
+        if cls not in _type_to_instance:
+            _type_to_instance[cls] = cls()
+        return _type_to_instance[cls]
 
     @abstractmethod
     def accept(cls, raw_index):
@@ -183,6 +204,15 @@ class IndexHandler(six.with_metaclass(ABCMeta)):
     def postprocess(self, index_info, context):
         pass
 
+    @classmethod
+    def set_chunk_index_info(cls, context, index_info, chunk_index,
+                             chunk_index_info, output_axis_index,
+                             index, output_shape):
+        _ = context, index_info, chunk_index
+        chunk_index_info.set(ChunkIndexAxisInfo(output_axis_index=output_axis_index,
+                                                processed_index=index,
+                                                output_shape=output_shape))
+
 
 class NewaxisIndexHandler(IndexHandler):
     def accept(self, raw_index):
@@ -201,7 +231,9 @@ class NewaxisIndexHandler(IndexHandler):
     def process(self, index_info, context):
         for chunk_index_info in context.chunk_index_to_info.values():
             # index on axis and index object
-            chunk_index_info.set(0, None, 1)
+            chunk_index_info.set(ChunkIndexAxisInfo(output_axis_index=0,
+                                                    processed_index=None,
+                                                    output_shape=1))
 
 
 class SliceIndexHandler(IndexHandler):
@@ -250,8 +282,9 @@ class SliceIndexHandler(IndexHandler):
                 output_shape = calc_sliced_size(size, slc)
                 if other_index not in other_index_to_iter:
                     other_index_to_iter[other_index] = iter(output_axis_index_range)
-                chunk_index_info.set(next(other_index_to_iter[other_index]),
-                                     slc, output_shape)
+                output_axis_index = next(other_index_to_iter[other_index])
+                self.set_chunk_index_info(context, index_info, chunk_index, chunk_index_info,
+                                          output_axis_index, slc, output_shape)
 
 
 class IntegralIndexHandler(IndexHandler):
@@ -288,7 +321,9 @@ class IntegralIndexHandler(IndexHandler):
                 del context.chunk_index_to_info[chunk_index]
             else:
                 slc = effected_i_to_slice[i]
-                chunk_index_info.set(None, slc, None)
+                chunk_index_info.set(ChunkIndexAxisInfo(output_axis_index=None,
+                                                        processed_index=slc,
+                                                        output_shape=None))
 
 
 class _BoolIndexHandler(IndexHandler):
@@ -299,6 +334,7 @@ class _BoolIndexHandler(IndexHandler):
                          raw_index,
                          self)
         context.input_axis += raw_index.ndim
+        context.output_axis += 1
         context.append(info)
         return info
 
@@ -331,8 +367,10 @@ class NDArrayBoolIndexHandler(_BoolIndexHandler):
             if other_index not in other_index_to_iter:
                 other_index_to_iter[other_index] = itertools.count()
             index = index_info.raw_index[slcs]
-            chunk_index_info.set(next(other_index_to_iter[other_index]),
-                                 index, index.sum())
+            output_axis_index = next(other_index_to_iter[other_index])
+            self.set_chunk_index_info(context, index_info, chunk_index,
+                                      chunk_index_info, output_axis_index,
+                                      index, index.sum())
 
 
 class TensorBoolIndexHandler(_BoolIndexHandler):
@@ -358,9 +396,11 @@ class TensorBoolIndexHandler(_BoolIndexHandler):
             other_index = chunk_index[:input_axis] + chunk_index[input_axis + index.ndim:]
             if other_index not in other_index_to_iter:
                 other_index_to_iter[other_index] = itertools.count()
-            chunk_index_info.set(next(other_index_to_iter[other_index]),
-                                 index.cix[tuple(effected_chunk_index)],
-                                 np.nan)
+            output_axis_index = next(other_index_to_iter[other_index])
+            self.set_chunk_index_info(context, index_info, chunk_index,
+                                      chunk_index_info, output_axis_index,
+                                      index.cix[tuple(effected_chunk_index)],
+                                      np.nan)
 
 
 class _FancyIndexHandler(IndexHandler):
@@ -464,8 +504,10 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
                 output_axis_index = None
                 output_axis_shape = None
 
-            chunk_index_info.set(
-                output_axis_index, fancy_index_array, output_axis_shape)
+            chunk_index_info.set(ChunkIndexAxisInfo(output_axis_index=output_axis_index,
+                                                    processed_index=fancy_index_array,
+                                                    output_shape=output_axis_shape))
+
 
     @classmethod
     def need_postprocess(cls, context):
@@ -492,14 +534,16 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
 
         # current chunks and nsplits
         chunks, nsplits = context.out_chunks, context.out_nsplits
+
         index_to_chunks = {c.index: c for c in chunks}
         fancy_index_shape = fancy_indexes[0].shape_unified_index.shape
+        reorder_index = calc_pos(fancy_index_shape, fancy_indexes[0].split_info[1])
 
         to_concat_axis = index_info.output_axis
         new_out_chunks = []
         for chunk_index in itertools.product(
                 *(range(len(ns)) for ax, ns in enumerate(nsplits)
-                if ax != to_concat_axis)):
+                  if ax != to_concat_axis)):
             # concat chunks on output axis of first fancy index
             to_concat_chunks = []
             for i in range(len(nsplits[to_concat_axis])):
@@ -508,16 +552,15 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
                 to_concat_chunks.append(index_to_chunks[tuple(to_concat_index)])
             concat_chunk = context.concat_chunks(to_concat_chunks, to_concat_axis)
 
-            reorder_index = calc_pos(fancy_index_shape, fancy_indexes[0].split_info[1])
             reorder_chunk_op = context.op.copy().reset_key()
             reorder_chunk_op._indexes = (slice(None),) * to_concat_axis + (reorder_index,)
             reorder_shape = concat_chunk.shape[:to_concat_axis] + fancy_index_shape + \
                 concat_chunk.shape[to_concat_axis + 1:]
-            reorder_index = concat_chunk.index[:to_concat_axis] + (0,) * len(fancy_index_shape) + \
-                concat_chunk.index[to_concat_axis + 1:]
+            chunk_reorder_index = concat_chunk.index[:to_concat_axis] + \
+                (0,) * len(fancy_index_shape) + concat_chunk.index[to_concat_axis + 1:]
             reorder_chunk = reorder_chunk_op.new_chunk([concat_chunk],
                                                        shape=reorder_shape,
-                                                       index=reorder_index,
+                                                       index=chunk_reorder_index,
                                                        order=TensorOrder.C_ORDER)
             new_out_chunks.append(reorder_chunk)
 
@@ -638,7 +681,9 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
             else:
                 output_axis_index = output_axis_shape = None
 
-            chunk_index_info.set(output_axis_index, fancy_index_chunk, output_axis_shape)
+            chunk_index_info.set(ChunkIndexAxisInfo(output_axis_index=output_axis_index,
+                                                    processed_index=fancy_index_chunk,
+                                                    output_shape=output_axis_shape))
 
     def postprocess(self, index_info, context):
         from .getitem import FancyIndexingConcat
@@ -710,7 +755,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
             fancy_indexes[0].nsplits + nsplits[to_concat_axis + 1:]
 
 
-class IndexesHandler(object):
+class IndexesHandler(six.with_metaclass(ABCMeta)):
     def __init__(self):
         self.available_index_handlers = []
 
@@ -718,10 +763,14 @@ class IndexesHandler(object):
         self.available_index_handlers.extend(
             h.get_instance() for h in handlers)
 
+    @abstractmethod
+    def create_context(self, op):
+        pass
+
     def handle(self, op, return_context=False):
         indexes = op.indexes
         # create context
-        context = IndexHandlerContext(op)
+        context = self.create_context(op)
 
         # parse index infos
         index_infos = []
@@ -782,6 +831,9 @@ class NDArrayIndexesHandler(IndexesHandler):
                       NDArrayBoolIndexHandler,
                       NDArrayFancyIndexHandler)
 
+    def create_context(self, op):
+        return TensorIndexHandlerContext(op)
+
     @classmethod
     def aggregate_result(cls, context, chunk_index_result):
         if len(chunk_index_result) == 1:
@@ -819,3 +871,6 @@ class TensorIndexesHandler(IndexesHandler):
                       TensorBoolIndexHandler,
                       NDArrayFancyIndexHandler,
                       TensorFancyIndexHandler)
+
+    def create_context(self, op):
+        return TensorIndexHandlerContext(op)
