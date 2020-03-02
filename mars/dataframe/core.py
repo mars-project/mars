@@ -445,6 +445,10 @@ class SeriesChunkData(ChunkData):
         return getattr(self, '_shape', None)
 
     @property
+    def ndim(self):
+        return len(self.shape)
+
+    @property
     def dtype(self):
         return self._dtype
 
@@ -544,7 +548,9 @@ class Series(TileableEntity):
         return self._data.from_tensor(in_tensor, index=index, name=name)
 
     def __mars_tensor__(self, dtype=None, order='K'):
-        return self._data.to_tensor().astype(dtype=dtype, order=order, copy=False)
+        tensor = self._data.to_tensor()
+        dtype = dtype if dtype is not None else tensor.dtype
+        return tensor.astype(dtype=dtype, order=order, copy=False)
 
 
 class DataFrameChunkData(ChunkData):
