@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
+
 import numpy as np
 import pandas as pd
 
-from mars.tests.core import TestBase
-from mars.tiles import get_tiled
+from mars.operands import OperandStage
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index
+from mars.tests.core import TestBase
+from mars.tiles import get_tiled
 
 
 class Test(TestBase):
@@ -209,3 +212,103 @@ class Test(TestBase):
         pd.testing.assert_index_equal(s2.chunks[0].index_value.to_pandas(), pd.RangeIndex(2))
         self.assertEqual(s2.chunks[1].shape, (2, 2))
         pd.testing.assert_index_equal(s2.chunks[1].index_value.to_pandas(), pd.RangeIndex(2, 4))
+
+    def testFillNA(self):
+        df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
+        for _ in range(20):
+            df_raw.iloc[random.randint(0, 19), random.randint(0, 9)] = random.randint(0, 99)
+        value_df_raw = pd.DataFrame(np.random.randint(0, 100, (10, 7)).astype(np.float32),
+                                    columns=list('ABCDEFG'))
+        series_raw = pd.Series(np.nan, index=range(20))
+        for _ in range(3):
+            series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
+        value_series_raw = pd.Series(np.random.randint(0, 100, (10,)).astype(np.float32),
+                                     index=list('ABCDEFGHIJ'))
+
+        df = from_pandas_df(df_raw)
+        series = from_pandas_series(series_raw)
+
+        # when nothing supplied, raise
+        with self.assertRaises(ValueError):
+            df.fillna()
+        # when both values and methods supplied, raises
+        with self.assertRaises(ValueError):
+            df.fillna(value=1, method='ffill')
+        # when call on series, cannot supply DataFrames
+        with self.assertRaises(ValueError):
+            series.fillna(value=df)
+        with self.assertRaises(ValueError):
+            series.fillna(value=df_raw)
+        with self.assertRaises(NotImplementedError):
+            series.fillna(value=series_raw, downcast='infer')
+
+        df2 = df.fillna(value_series_raw).tiles()
+        self.assertEqual(len(df2.chunks), 1)
+        self.assertEqual(df2.chunks[0].shape, df2.shape)
+        self.assertIsNone(df2.chunks[0].op.stage)
+
+        series2 = series.fillna(value_series_raw).tiles()
+        self.assertEqual(len(series2.chunks), 1)
+        self.assertEqual(series2.chunks[0].shape, series2.shape)
+        self.assertIsNone(series2.chunks[0].op.stage)
+
+        df = from_pandas_df(df_raw, chunk_size=5)
+        df2 = df.fillna(value_series_raw).tiles()
+        self.assertEqual(len(df2.chunks), 8)
+        self.assertEqual(df2.chunks[0].shape, (5, 5))
+        self.assertIsNone(df2.chunks[0].op.stage)
+
+        series = from_pandas_series(series_raw, chunk_size=5)
+        series2 = series.fillna(value_series_raw).tiles()
+        self.assertEqual(len(series2.chunks), 4)
+        self.assertEqual(series2.chunks[0].shape, (5,))
+        self.assertIsNone(series2.chunks[0].op.stage)
+
+        df2 = df.ffill(axis='columns').tiles()
+        self.assertEqual(len(df2.chunks), 8)
+        self.assertEqual(df2.chunks[0].shape, (5, 5))
+        self.assertEqual(df2.chunks[0].op.axis, 1)
+        self.assertEqual(df2.chunks[0].op.stage, OperandStage.combine)
+        self.assertEqual(df2.chunks[0].op.method, 'ffill')
+        self.assertIsNone(df2.chunks[0].op.limit)
+
+        series2 = series.bfill().tiles()
+        self.assertEqual(len(series2.chunks), 4)
+        self.assertEqual(series2.chunks[0].shape, (5,))
+        self.assertEqual(series2.chunks[0].op.stage, OperandStage.combine)
+        self.assertEqual(series2.chunks[0].op.method, 'bfill')
+        self.assertIsNone(series2.chunks[0].op.limit)
+
+        df2 = df.ffill(limit=7, axis='index').tiles()
+        self.assertEqual(len(df2.chunks), 8)
+        self.assertEqual(df2.chunks[0].shape, (5, 5))
+        self.assertEqual(df2.chunks[0].op.axis, 0)
+        self.assertEqual(df2.chunks[0].op.stage, OperandStage.combine)
+        self.assertEqual(df2.chunks[0].op.method, 'ffill')
+        self.assertIsNotNone(df2.chunks[0].op.prev_chunk_sizes)
+        self.assertEqual(df2.chunks[0].op.limit, 7)
+
+        series2 = series.bfill(limit=7).tiles()
+        self.assertEqual(len(series2.chunks), 4)
+        self.assertEqual(series2.chunks[0].shape, (5,))
+        self.assertEqual(series2.chunks[0].op.stage, OperandStage.combine)
+        self.assertEqual(series2.chunks[0].op.method, 'bfill')
+        self.assertIsNotNone(series2.chunks[0].op.prev_chunk_sizes)
+        self.assertEqual(series2.chunks[0].op.limit, 7)
+
+        value_df = from_pandas_df(value_df_raw, chunk_size=7)
+        value_series = from_pandas_series(value_series_raw, chunk_size=7)
+
+        df2 = df.fillna(value_df).tiles()
+        self.assertEqual(df2.shape, df.shape)
+        self.assertIsNone(df2.chunks[0].op.stage)
+
+        df2 = df.fillna(value_series).tiles()
+        self.assertEqual(df2.shape, df.shape)
+        self.assertIsNone(df2.chunks[0].op.stage)
+
+        value_series_raw.index = list(range(10))
+        value_series = from_pandas_series(value_series_raw)
+        series2 = series.fillna(value_series).tiles()
+        self.assertEqual(series2.shape, series.shape)
+        self.assertIsNone(series2.chunks[0].op.stage)

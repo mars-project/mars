@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
+
 import numpy as np
 import pandas as pd
 
@@ -93,7 +95,7 @@ class Test(TestBase):
         res = self.executor.execute_dataframe(series2, concat=True)[0]
         pd.testing.assert_series_equal(data, res)
 
-    def testResetIndex(self):
+    def testResetIndexExecution(self):
         data = pd.DataFrame([('bird',    389.0),
                              ('bird',     24.0),
                              ('mammal',   80.5),
@@ -319,35 +321,27 @@ class Test(TestBase):
         with self.assertRaises(ValueError):
             df.describe(percentiles=[1.1])
 
-    def testFillNA(self):
-        nan = np.nan
-        df_raw = pd.DataFrame([[nan,   nan,  nan,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [42.0,  nan,  nan,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,  45.0, 60.0,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan,  nan, 16.0,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan, 30.0,  nan,  nan,  nan, 31.0, nan,  nan, nan],
-                               [62.0,  nan,  nan,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan,  nan, 98.0,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan,  nan,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan, 85.0,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,  51.0,  nan,  nan,  nan,  nan,  nan, nan, 18.0, nan],
-                               [nan,  65.0,  nan, 55.0,  nan, 57.0,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan,  nan, 21.0,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan, 29.0,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,   nan,  nan, 25.0,  nan,  nan,  nan, nan,  nan, nan],
-                               [nan,  17.0,  nan,  nan,  nan, 63.0,  nan, nan,  nan, nan]],
-                              columns=list('ABCDEFGHIJ'))
+    def testDataFrameFillNAExecution(self):
+        df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
+        for _ in range(20):
+            df_raw.iloc[random.randint(0, 19), random.randint(0, 9)] = random.randint(0, 99)
+
+        value_df_raw = pd.DataFrame(np.random.randint(0, 100, (10, 7)).astype(np.float32),
+                                    columns=list('ABCDEFG'))
 
         # test DataFrame single chunk with numeric fill
         df = from_pandas_df(df_raw)
         r = df.fillna(1)
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = df_raw.fillna(1)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test DataFrame single chunk with value as single chunk
+        df = from_pandas_df(df_raw)
+        value_df = from_pandas_df(value_df_raw)
+        r = df.fillna(value_df)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.fillna(value_df_raw)
         pd.testing.assert_frame_equal(result, expected)
 
         # test chunked with numeric fill
@@ -371,18 +365,18 @@ class Test(TestBase):
         expected = df_raw.fillna(method='pad')
         pd.testing.assert_frame_equal(result, expected)
 
-        # test forward fill in axis=1 without limit
-        df = from_pandas_df(df_raw, chunk_size=3)
-        r = df.ffill(axis=1)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df_raw.ffill(axis=1)
-        pd.testing.assert_frame_equal(result, expected)
-
         # test backward fill in axis=0 without limit
         df = from_pandas_df(df_raw, chunk_size=3)
         r = df.fillna(method='backfill')
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = df_raw.fillna(method='backfill')
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test forward fill in axis=1 without limit
+        df = from_pandas_df(df_raw, chunk_size=3)
+        r = df.ffill(axis=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.ffill(axis=1)
         pd.testing.assert_frame_equal(result, expected)
 
         # test backward fill in axis=1 without limit
@@ -392,9 +386,118 @@ class Test(TestBase):
         expected = df_raw.bfill(axis=1)
         pd.testing.assert_frame_equal(result, expected)
 
-        # # test forward fill in axis=0 with limit
-        # df = from_pandas_df(df_raw, chunk_size=3)
-        # r = df.ffill(limit=7)
-        # result = self.executor.execute_dataframe(r, concat=True)[0]
-        # expected = df_raw.ffill(limit=7)
-        # pd.testing.assert_frame_equal(result, expected)
+        # test forward fill in axis=0 with limit
+        df = from_pandas_df(df_raw, chunk_size=3)
+        r = df.ffill(limit=7)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.ffill(limit=7)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test backward fill in axis=0 with limit
+        df = from_pandas_df(df_raw, chunk_size=3)
+        r = df.bfill(limit=5)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.bfill(limit=5)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test forward fill in axis=1 with limit
+        df = from_pandas_df(df_raw, chunk_size=3)
+        r = df.ffill(axis=1, limit=7)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.ffill(axis=1, limit=7)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test backward fill in axis=1 with limit
+        df = from_pandas_df(df_raw, chunk_size=3)
+        r = df.bfill(axis=1, limit=5)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.bfill(axis=1, limit=5)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test fill with dataframe
+        df = from_pandas_df(df_raw, chunk_size=3)
+        value_df = from_pandas_df(value_df_raw, chunk_size=4)
+        r = df.fillna(value_df)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.fillna(value_df_raw)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test fill with series
+        value_series_raw = pd.Series(np.random.randint(0, 100, (10,)).astype(np.float32),
+                                     index=list('ABCDEFGHIJ'))
+        df = from_pandas_df(df_raw, chunk_size=3)
+        value_series = from_pandas_series(value_series_raw, chunk_size=4)
+        r = df.fillna(value_series)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.fillna(value_series_raw)
+        pd.testing.assert_frame_equal(result, expected)
+
+    def testSeriesFillNAExecution(self):
+        series_raw = pd.Series(np.nan, index=range(20))
+        for _ in range(3):
+            series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
+        value_series_raw = pd.Series(np.random.randint(0, 100, (10,)).astype(np.float32))
+
+        series = from_pandas_series(series_raw)
+        r = series.fillna(1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series_raw.fillna(1)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test DataFrame single chunk with value as single chunk
+        series = from_pandas_series(series_raw)
+        value_series = from_pandas_series(value_series_raw)
+        r = series.fillna(value_series)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series_raw.fillna(value_series_raw)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test chunked with numeric fill
+        series = from_pandas_series(series_raw, chunk_size=3)
+        r = series.fillna(1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series_raw.fillna(1)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test inplace tile
+        series = from_pandas_series(series_raw, chunk_size=3)
+        series.fillna(1, inplace=True)
+        result = self.executor.execute_dataframe(series, concat=True)[0]
+        expected = series_raw.fillna(1)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test forward fill in axis=0 without limit
+        series = from_pandas_series(series_raw, chunk_size=3)
+        r = series.fillna(method='pad')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series_raw.fillna(method='pad')
+        pd.testing.assert_series_equal(result, expected)
+
+        # test backward fill in axis=0 without limit
+        series = from_pandas_series(series_raw, chunk_size=3)
+        r = series.fillna(method='backfill')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series_raw.fillna(method='backfill')
+        pd.testing.assert_series_equal(result, expected)
+
+        # test forward fill in axis=0 with limit
+        series = from_pandas_series(series_raw, chunk_size=3)
+        r = series.ffill(limit=7)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series_raw.ffill(limit=7)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test backward fill in axis=0 with limit
+        series = from_pandas_series(series_raw, chunk_size=3)
+        r = series.bfill(limit=5)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series_raw.bfill(limit=5)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test fill with series
+        series = from_pandas_series(series_raw, chunk_size=3)
+        value_df = from_pandas_series(value_series_raw, chunk_size=4)
+        r = series.fillna(value_df)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series_raw.fillna(value_series_raw)
+        pd.testing.assert_series_equal(result, expected)

@@ -115,7 +115,7 @@ class Test(unittest.TestCase):
             a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
             b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
             c = (a * b * 2 + 1).sum()
-            r = cluster.session.run(c, timeout=120)
+            r = cluster.session.run(c, timeout=600)
 
             expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
             assert_array_equal(r, expected.sum())
