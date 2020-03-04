@@ -48,6 +48,23 @@ class Test(TestBase):
         for key, group in r:
             pd.testing.assert_frame_equal(group, expected.get_group(key))
 
+        series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
+        ms1 = md.Series(series1, chunk_size=3)
+        grouped = ms1.groupby(lambda x: x % 3)
+        r = self.executor.execute_dataframe(grouped, concat=True)[0]
+        expected = series1.groupby(lambda x: x % 3)
+        for key, group in r:
+            pd.testing.assert_series_equal(group, expected.get_group(key))
+
+        series2 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            index=['i' + str(i) for i in range(9)])
+        ms2 = md.Series(series2, chunk_size=3)
+        grouped = ms2.groupby(lambda x: int(x[1:]) % 3)
+        r = self.executor.execute_dataframe(grouped, concat=True)[0]
+        expected = series2.groupby(lambda x: int(x[1:]) % 3)
+        for key, group in r:
+            pd.testing.assert_series_equal(group, expected.get_group(key))
+
     def testGroupByAgg(self):
         rs = np.random.RandomState(0)
         df1 = pd.DataFrame({'a': rs.choice([2, 3, 4], size=(100,)),

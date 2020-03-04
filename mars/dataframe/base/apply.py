@@ -1,0 +1,322 @@
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import inspect
+
+import cloudpickle
+import numpy as np
+import pandas as pd
+
+from ... import opcodes
+from ...config import options
+from ...serialize import StringField, AnyField, BoolField, BytesField, TupleField, \
+    DictField
+from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..utils import build_empty_df, build_empty_series, parse_index
+
+
+class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = opcodes.DATAFRAME_APPLY
+
+    _func = BytesField('func', on_serialize=cloudpickle.dumps,
+                       on_deserialize=cloudpickle.loads)
+    _axis = AnyField('axis')
+    _raw = BoolField('raw')
+    _result_type = StringField('result_type')
+    _elementwise = BoolField('elementwise')
+    _args = TupleField('args')
+    _kwds = DictField('kwds')
+
+    def __init__(self, func=None, axis=None, raw=None, result_type=None, args=None,
+                 kwds=None, object_type=None, elementwise=None, **kw):
+        super().__init__(_func=func, _axis=axis, _raw=raw, _result_type=result_type,
+                         _args=args, _kwds=kwds, _object_type=object_type,
+                         _elementwise=elementwise, **kw)
+
+    @property
+    def func(self):
+        return self._func
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def raw(self):
+        return self._raw
+
+    @property
+    def result_type(self):
+        return self._result_type
+
+    @property
+    def elementwise(self):
+        return self._elementwise
+
+    @property
+    def args(self):
+        return getattr(self, '_args', None) or ()
+
+    @property
+    def kwds(self):
+        return getattr(self, '_kwds', None) or dict()
+
+    @classmethod
+    def execute(cls, ctx, op):
+        in_df = op.inputs[0]
+        df = op.outputs[0]
+
+        input_data = ctx[in_df.key]
+        ctx[df.key] = input_data.apply(op.func, axis=op.axis, raw=op.raw, result_type=op.result_type,
+                                       args=op.args, **op.kwds)
+
+    @classmethod
+    def tile(cls, op):
+        in_df = op.inputs[0]
+        out_df = op.outputs[0]
+        axis = op.axis
+        elementwise = op.elementwise
+
+        if not elementwise:
+            chunk_size = (
+                in_df.shape[axis],
+                max(1, options.chunk_store_limit // in_df.shape[axis]),
+            )
+            if axis == 1:
+                chunk_size = chunk_size[::-1]
+            in_df = in_df.rechunk(chunk_size).tiles()
+
+        chunks = []
+        if op.object_type == ObjectType.dataframe:
+            for c in in_df.chunks:
+                if elementwise:
+                    new_shape = c.shape
+                else:
+                    new_shape = [np.nan, np.nan]
+                    new_shape[1 - axis] = c.shape[1 - axis]
+
+                new_dtypes = out_df.dtypes[c.dtypes.keys()]
+
+                new_op = op.copy().reset_key()
+                chunks.append(new_op.new_chunk([c], shape=tuple(new_shape), index=c.index, dtypes=new_dtypes,
+                                               index_value=c.index_value, columns_value=c.columns_value))
+        else:
+            for c in in_df.chunks:
+                new_shape = c.shape
+                new_op = op.copy().reset_key()
+                chunks.append(new_op.new_chunk([c], shape=new_shape, index=c.index, dtype=out_df.dtype,
+                                               index_value=c.index_value))
+
+        if elementwise or op.object_type == ObjectType.series:
+            new_shape = in_df.shape
+        else:
+            new_shape = [np.nan, np.nan]
+            new_shape[1 - axis] = in_df.shape[1 - axis]
+
+        new_op = op.copy().reset_key()
+        if op.object_type == ObjectType.dataframe:
+            return new_op.new_tileables(
+                op.inputs, chunks=chunks, nsplits=in_df.nsplits, shape=tuple(new_shape),
+                dtypes=out_df.dtypes, index_value=out_df.index_value,
+                columns_value=out_df.columns_value)
+        else:
+            return new_op.new_tileables(
+                op.inputs, chunks=chunks, nsplits=in_df.nsplits, shape=tuple(new_shape),
+                dtype=out_df.dtype, index_value=out_df.index_value)
+
+    def _infer_df_func_returns(self, in_dtypes, dtypes, index):
+        if isinstance(self._func, np.ufunc):
+            object_type, new_dtypes, index_value, new_elementwise = \
+                ObjectType.dataframe, None, 'inherit', True
+        else:
+            object_type, new_dtypes, index_value, new_elementwise = None, None, None, False
+
+        try:
+            empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(0, 10))
+            with np.errstate(all='ignore'):
+                infer_df = empty_df.apply(self._func, axis=self._axis, raw=self._raw,
+                                          result_type=self._result_type, args=self.args, **self.kwds)
+            if index_value is None:
+                if infer_df.index is empty_df.index:
+                    index_value = 'inherit'
+                else:
+                    index_value = parse_index(infer_df.index)
+
+            if isinstance(infer_df, pd.DataFrame):
+                object_type = object_type or ObjectType.dataframe
+                new_dtypes = new_dtypes or infer_df.dtypes
+            else:
+                object_type = object_type or ObjectType.series
+                new_dtypes = new_dtypes or infer_df.dtype
+            new_elementwise = False if new_elementwise is None else new_elementwise
+        except:  # noqa: E722
+            pass
+
+        self._object_type = object_type if self._object_type is None else self._object_type
+        dtypes = new_dtypes if dtypes is None else dtypes
+        index_value = index_value if index is None else parse_index(index)
+        self._elementwise = new_elementwise if self._elementwise is None else self._elementwise
+        return dtypes, index_value
+
+    def __call__(self, df, dtypes=None, index=None):
+        axis = getattr(self, 'axis', None) or 0
+        if axis == 'index':
+            axis = 0
+        elif axis == 'columns':
+            axis = 1
+        self._axis = axis
+
+        dtypes, index_value = self._infer_df_func_returns(df.dtypes, dtypes, index)
+        for arg, desc in zip((self._object_type, dtypes, index_value),
+                             ('object_type', 'dtypes', 'index')):
+            if arg is None:
+                raise TypeError('Cannot determine %s by calculating with enumerate data, '
+                                'please specify it as arguments' % desc)
+
+        if index_value == 'inherit':
+            index_value = df.index_value
+
+        if self._elementwise:
+            shape = df.shape
+        elif self._object_type == ObjectType.dataframe:
+            shape = [np.nan, np.nan]
+            shape[1 - self.axis] = df.shape[1 - self.axis]
+            shape = tuple(shape)
+        else:
+            shape = (df.shape[1 - self.axis],)
+
+        if self._object_type == ObjectType.dataframe:
+            if axis == 0:
+                return self.new_dataframe([df], shape=shape, dtypes=dtypes, index_value=index_value,
+                                          columns_value=df.columns_value)
+            else:
+                return self.new_dataframe([df], shape=shape, dtypes=dtypes, index_value=df.index_value,
+                                          columns_value=index_value)
+        else:
+            return self.new_series([df], shape=shape, dtype=dtypes, index_value=index_value)
+
+
+class SeriesApply(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = opcodes.DATAFRAME_APPLY
+
+    _func = BytesField('func', on_serialize=cloudpickle.dumps,
+                       on_deserialize=cloudpickle.loads)
+    _convert_dtype = BoolField('convert_dtype')
+    _args = TupleField('args')
+    _kwds = DictField('kwds')
+
+    @property
+    def func(self):
+        return self._func
+
+    @property
+    def convert_dtype(self):
+        return self._convert_dtype
+
+    @property
+    def args(self):
+        return getattr(self, '_args', None) or ()
+
+    @property
+    def kwds(self):
+        return getattr(self, '_kwds', None) or dict()
+
+    def __init__(self, func=None, convert_dtype=None, args=None, kwds=None,
+                 object_type=None, **kw):
+        super().__init__(_func=func, _convert_dtype=convert_dtype, _args=args,
+                         _kwds=kwds, _object_type=object_type, **kw)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        in_series = op.inputs[0]
+        series = op.outputs[0]
+
+        input_data = ctx[in_series.key]
+        ctx[series.key] = input_data.apply(op.func, convert_dtype=op.convert_dtype,
+                                           args=op.args, **op.kwds)
+
+    @classmethod
+    def tile(cls, op):
+        in_series = op.inputs[0]
+        out_series = op.outputs[0]
+
+        chunks = []
+        for c in in_series.chunks:
+            new_op = op.copy().reset_key()
+            chunks.append(new_op.new_chunk([c], shape=c.shape, index=c.index, dtype=out_series.dtype,
+                                           index_value=c.index_value))
+        new_op = op.copy().reset_key()
+        return new_op.new_tileables(
+            op.inputs, chunks=chunks, nsplits=in_series.nsplits, shape=out_series.shape,
+            dtype=out_series.dtype, index_value=out_series.index_value)
+
+    def _infer_series_func_returns(self, in_dtype):
+        try:
+            empty_series = build_empty_series(in_dtype, index=pd.RangeIndex(0, 10))
+            with np.errstate(all='ignore'):
+                infer_series = empty_series.apply(self._func, args=self.args, **self.kwds)
+            new_dtype = infer_series.dtype
+        except:  # noqa: E722
+            new_dtype = np.dtype('object')
+        return new_dtype
+
+    def __call__(self, series):
+        if self._convert_dtype:
+            dtype = self._infer_series_func_returns(series.dtype)
+        else:
+            dtype = np.dtype('object')
+        return self.new_series([series], dtype=dtype, shape=series.shape,
+                               index_value=series.index_value)
+
+
+def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None,
+             object_type=None, index=None, elementwise=None, **kwds):
+    # todo fulfill this when df.aggregate is implemented
+    if isinstance(func, (list, dict)):
+        raise NotImplementedError('Currently does support func as lists or dicts')
+
+    if isinstance(object_type, str):
+        object_type = getattr(ObjectType, object_type.lower())
+
+    # calling member function
+    if isinstance(func, str):
+        func = getattr(df, func)
+        sig = inspect.getfullargspec(func)
+        if "axis" in sig.args:
+            kwds["axis"] = axis
+        return func(*args, **kwds)
+
+    op = DataFrameApply(func=func, axis=axis, raw=raw, result_type=result_type, args=args, kwds=kwds,
+                        object_type=object_type, elementwise=elementwise)
+    return op(df, dtypes=dtypes, index=index)
+
+
+def series_apply(series, func, convert_dtype=True, args=(), **kwds):
+    # todo fulfill this when df.aggregate is implemented
+    if isinstance(func, (list, dict)):
+        raise NotImplementedError('Currently does support func as lists or dicts')
+
+    # calling member function
+    if isinstance(func, str):
+        func_body = getattr(series, func, None)
+        if func_body is not None:
+            return func_body(*args, **kwds)
+        func = getattr(np, func, None)
+        if func is None:
+            raise AttributeError("'%r' is not a valid function for '%s' object" %
+                                 (func, type(series).__name__))
+
+    op = SeriesApply(func=func, convert_dtype=convert_dtype, args=args, kwds=kwds,
+                     object_type=ObjectType.series)
+    return op(series)

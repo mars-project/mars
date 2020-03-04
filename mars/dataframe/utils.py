@@ -40,6 +40,9 @@ def hash_index(index, size):
 def hash_dataframe_on(df, on, size):
     if on is None:
         hashed_label = pd.util.hash_pandas_object(df.index, categorize=False)
+    elif callable(on):
+        # todo optimization can be added, if ``on`` is a numpy ufunc or sth can be vectorized
+        hashed_label = pd.util.hash_pandas_object(df.index.map(on), categorize=False)
     else:
         hashed_label = pd.util.hash_pandas_object(df[on], index=False, categorize=False)
     idx_to_grouped = df.index.groupby(hashed_label % size)

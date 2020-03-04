@@ -18,7 +18,7 @@ import pandas as pd
 import mars.dataframe as md
 from mars.operands import OperandStage
 from mars.tests.core import TestBase
-from mars.dataframe.core import DataFrameGroupBy, DataFrame
+from mars.dataframe.core import DataFrameGroupBy, SeriesGroupBy, DataFrame
 from mars.dataframe.groupby.core import DataFrameGroupByOperand, DataFrameShuffleProxy
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
 
@@ -35,6 +35,18 @@ class Test(TestBase):
 
         grouped = grouped.tiles()
         self.assertEqual(len(grouped.chunks), 5)
+        for chunk in grouped.chunks:
+            self.assertIsInstance(chunk.op, DataFrameGroupByOperand)
+
+        series = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
+        ms = md.Series(series, chunk_size=3)
+        grouped = ms.groupby('c2')
+
+        self.assertIsInstance(grouped, SeriesGroupBy)
+        self.assertIsInstance(grouped.op, DataFrameGroupByOperand)
+
+        grouped = grouped.tiles()
+        self.assertEqual(len(grouped.chunks), 3)
         for chunk in grouped.chunks:
             self.assertIsInstance(chunk.op, DataFrameGroupByOperand)
 

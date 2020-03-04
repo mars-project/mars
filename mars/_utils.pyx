@@ -186,6 +186,12 @@ cdef list tokenize_pandas_dataframe(ob):
     return iterative_tokenize(l)
 
 
+cdef list tokenize_pandas_categorical(ob):
+    l = ob.to_list()
+    l.append(ob.shape)
+    return iterative_tokenize(l)
+
+
 @lru_cache(500)
 def tokenize_function(ob):
     if isinstance(ob, partial):
@@ -224,6 +230,7 @@ tokenize_handler.register(Enum, lambda ob: iterative_tokenize((type(ob), ob.name
 tokenize_handler.register(pd.Index, tokenize_pandas_index)
 tokenize_handler.register(pd.Series, tokenize_pandas_series)
 tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)
+tokenize_handler.register(pd.Categorical, tokenize_pandas_categorical)
 
 cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)

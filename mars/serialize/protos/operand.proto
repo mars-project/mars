@@ -329,9 +329,9 @@ message OperandDef {
 
         // DataFrame
         MAP = 710;
-        APPLY = 711;
         DESCRIBE = 712;
         FILL_NA = 713;
+        TRANSFORM = 714;
 
         FUSE = 801;
 
@@ -346,6 +346,11 @@ message OperandDef {
         TABLE_COO = 1003;
         // store tensor as coo format
         STORE_COO = 1004;
+
+        // apply
+        DATAFRAME_APPLY = 1101;
+        SERIES_APPLY = 1102;
+        GROUPBY_APPLY = 1103;
 
         // shuffle
         SHUFFLE_PROXY = 2001;
