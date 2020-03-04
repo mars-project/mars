@@ -469,13 +469,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
 
         new_chunk_op = op.copy().reset_key()
         new_chunk_op._stage = OperandStage.combine
-        if new_chunk_op.object_type == ObjectType.dataframe:
-            return new_chunk_op.new_chunk(to_concat_chunks, shape=c.shape, dtypes=c.dtypes,
-                                          index=c.index, index_value=c.index_value,
-                                          columns_value=c.columns_value)
-        else:
-            return new_chunk_op.new_chunk(to_concat_chunks, shape=c.shape, dtype=c.dtype, index=c.index,
-                                          index_value=c.index_value)
+        return new_chunk_op.new_chunk(to_concat_chunks, **c.params)
 
     @classmethod
     def _tile_dataframe(cls, op):
