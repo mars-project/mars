@@ -136,3 +136,15 @@ class Test(TestBase):
         r11 = mdf2.groupby('c2').std()
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0],
                                       df2.groupby('c2').std())
+
+        # test as_index=False
+        r12 = mdf2.groupby('c2', as_index=False).agg('mean')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r12, concat=True)[0],
+                                      df2.groupby('c2', as_index=False).agg('mean'))
+        self.assertFalse(r12.op.as_index)
+
+        # test as_index=False takes no effect
+        r13 = mdf2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r13, concat=True)[0],
+                                      df2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
+        self.assertTrue(r13.op.as_index)

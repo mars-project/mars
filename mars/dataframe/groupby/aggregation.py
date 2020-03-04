@@ -428,6 +428,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             # do some optimization if the raw func is a str or list whose length is 1
             func = next(iter(func.values()))[0]
             result = grouped.agg(func)
+            if result.empty and not df.empty:
+                # fix for py35, due to buffer read-only
+                grouped = cls._get_grouped(op, df, copy=True)
+                result = grouped.agg(func)
         else:
             # agg the funcs that can be done
             try:
@@ -438,9 +442,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 grouped = cls._get_grouped(op, df, copy=True)
                 result = grouped.agg(func)
         result.columns = processed_cols
-        if len(result) == 0:
-            # empty data, set index manually
-            result.index = out.index_value.to_pandas()
 
         if len(op.output_column_to_func) > 0:
             # process the functions that require operating on the grouped data
@@ -452,6 +453,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
             # sort columns as origin
             result = result[columns]
+
+        if len(result) == 0:
+            # empty data, set index manually
+            result.index = out.index_value.to_pandas()
 
         if op.stage == OperandStage.agg:
             if not op.as_index:
