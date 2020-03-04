@@ -241,6 +241,8 @@ class Test(TestBase):
             series.fillna(value=df_raw)
         with self.assertRaises(NotImplementedError):
             series.fillna(value=series_raw, downcast='infer')
+        with self.assertRaises(NotImplementedError):
+            series.ffill(limit=1)
 
         df2 = df.fillna(value_series_raw).tiles()
         self.assertEqual(len(df2.chunks), 1)
@@ -278,23 +280,6 @@ class Test(TestBase):
         self.assertEqual(series2.chunks[0].op.stage, OperandStage.combine)
         self.assertEqual(series2.chunks[0].op.method, 'bfill')
         self.assertIsNone(series2.chunks[0].op.limit)
-
-        df2 = df.ffill(limit=7, axis='index').tiles()
-        self.assertEqual(len(df2.chunks), 8)
-        self.assertEqual(df2.chunks[0].shape, (5, 5))
-        self.assertEqual(df2.chunks[0].op.axis, 0)
-        self.assertEqual(df2.chunks[0].op.stage, OperandStage.combine)
-        self.assertEqual(df2.chunks[0].op.method, 'ffill')
-        self.assertIsNotNone(df2.chunks[0].op.prev_chunk_sizes)
-        self.assertEqual(df2.chunks[0].op.limit, 7)
-
-        series2 = series.bfill(limit=7).tiles()
-        self.assertEqual(len(series2.chunks), 4)
-        self.assertEqual(series2.chunks[0].shape, (5,))
-        self.assertEqual(series2.chunks[0].op.stage, OperandStage.combine)
-        self.assertEqual(series2.chunks[0].op.method, 'bfill')
-        self.assertIsNotNone(series2.chunks[0].op.prev_chunk_sizes)
-        self.assertEqual(series2.chunks[0].op.limit, 7)
 
         value_df = from_pandas_df(value_df_raw, chunk_size=7)
         value_series = from_pandas_series(value_series_raw, chunk_size=7)

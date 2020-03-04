@@ -386,34 +386,6 @@ class Test(TestBase):
         expected = df_raw.bfill(axis=1)
         pd.testing.assert_frame_equal(result, expected)
 
-        # test forward fill in axis=0 with limit
-        df = from_pandas_df(df_raw, chunk_size=3)
-        r = df.ffill(limit=7)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df_raw.ffill(limit=7)
-        pd.testing.assert_frame_equal(result, expected)
-
-        # test backward fill in axis=0 with limit
-        df = from_pandas_df(df_raw, chunk_size=3)
-        r = df.bfill(limit=5)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df_raw.bfill(limit=5)
-        pd.testing.assert_frame_equal(result, expected)
-
-        # test forward fill in axis=1 with limit
-        df = from_pandas_df(df_raw, chunk_size=3)
-        r = df.ffill(axis=1, limit=7)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df_raw.ffill(axis=1, limit=7)
-        pd.testing.assert_frame_equal(result, expected)
-
-        # test backward fill in axis=1 with limit
-        df = from_pandas_df(df_raw, chunk_size=3)
-        r = df.bfill(axis=1, limit=5)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df_raw.bfill(axis=1, limit=5)
-        pd.testing.assert_frame_equal(result, expected)
-
         # test fill with dataframe
         df = from_pandas_df(df_raw, chunk_size=3)
         value_df = from_pandas_df(value_df_raw, chunk_size=4)
@@ -478,20 +450,6 @@ class Test(TestBase):
         r = series.fillna(method='backfill')
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = series_raw.fillna(method='backfill')
-        pd.testing.assert_series_equal(result, expected)
-
-        # test forward fill in axis=0 with limit
-        series = from_pandas_series(series_raw, chunk_size=3)
-        r = series.ffill(limit=7)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = series_raw.ffill(limit=7)
-        pd.testing.assert_series_equal(result, expected)
-
-        # test backward fill in axis=0 with limit
-        series = from_pandas_series(series_raw, chunk_size=3)
-        r = series.bfill(limit=5)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = series_raw.bfill(limit=5)
         pd.testing.assert_series_equal(result, expected)
 
         # test fill with series

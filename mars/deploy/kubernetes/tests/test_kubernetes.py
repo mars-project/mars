@@ -102,7 +102,7 @@ class Test(unittest.TestCase):
                                   worker_spill_paths=[temp_spill_dir],
                                   extra_volumes=[extra_vol_config],
                                   pre_stop_command=['rm', '/tmp/stopping.tmp'],
-                                  timeout=120, log_when_fail=True)
+                                  timeout=600, log_when_fail=True)
             self.assertIsNotNone(cluster.endpoint)
 
             pod_items = kube_api.list_namespaced_pod(cluster.namespace).to_dict()

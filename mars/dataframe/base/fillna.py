@@ -21,14 +21,14 @@ from ... import opcodes
 from ...config import options
 from ...core import Base, Entity
 from ...operands import OperandStage
-from ...serialize import StringField, AnyField, BoolField, Int64Field, NDArrayField
+from ...serialize import StringField, AnyField, BoolField, Int64Field
 from ..align import align_dataframe_dataframe, align_dataframe_series, align_series_series
 from ..core import DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 
 
 class FillNA(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = opcodes.FILL_NAN
+    _op_type_ = opcodes.FILL_NA
 
     _value = AnyField('value', on_serialize=lambda x: x.data if isinstance(x, Entity) else x)
     _method = StringField('method')
@@ -38,15 +38,13 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
     _use_inf_as_na = BoolField('use_inf_as_na')
 
     _output_limit = Int64Field('output_limit')
-    _prev_chunk_sizes = NDArrayField('prev_chunk_sizes')
 
     def __init__(self, value=None, method=None, axis=None, limit=None, downcast=None,
                  use_inf_as_na=None, sparse=None, stage=None, gpu=None, object_type=None,
-                 output_limit=None, prev_chunk_sizes=None, **kw):
+                 output_limit=None, **kw):
         super().__init__(_value=value, _method=method, _axis=axis, _limit=limit, _downcast=downcast,
                          _use_inf_as_na=use_inf_as_na, _sparse=sparse, _stage=stage, _gpu=gpu,
-                         _object_type=object_type, _output_limit=output_limit,
-                         _prev_chunk_sizes=prev_chunk_sizes, **kw)
+                         _object_type=object_type, _output_limit=output_limit, **kw)
 
     @property
     def value(self):
@@ -69,17 +67,13 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         return self._downcast
 
     @property
-    def prev_chunk_sizes(self):
-        return self._prev_chunk_sizes
-
-    @property
     def use_inf_as_na(self):
         return self._use_inf_as_na
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         if self._method is None and len(inputs) > 1:
-            self._value = inputs[1]
+            self._value = self._inputs[1]
 
     @property
     def output_limit(self):
@@ -112,34 +106,8 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         method = op.method
 
         filled = input_data.fillna(method=method, axis=axis, limit=limit, downcast=op.downcast)
-        last_slice = ctx[op.outputs[0].key] = cls._get_first_slice(op, filled, 1)
+        ctx[op.outputs[0].key] = cls._get_first_slice(op, filled, 1)
         del filled
-
-        # generate remaining limits
-        if limit is not None:
-            if op.axis == 1:
-                idx = input_data.dtypes.index
-            else:
-                idx = input_data.index
-            if method == 'ffill':
-                idx_series = pd.Series(np.arange(1, 1 + len(idx)), index=idx)
-            else:
-                idx_series = pd.Series(np.arange(len(idx), 0, -1), index=idx)
-
-            if op.object_type == ObjectType.dataframe:
-                max_valid = (~input_data.isna()).mul(idx_series, axis=axis).max(axis=axis)
-                remain_limits = limit - (len(idx) - max_valid)
-                last_slice_series = last_slice.iloc[0, :] if axis == 0 else last_slice.iloc[:, 0]
-                remain_limits[last_slice_series.isna() | (remain_limits <= 0)] = 0
-                ctx[op.outputs[1].key] = remain_limits
-            else:
-                if np.isnan(last_slice.iloc[-1]):
-                    remain_limits = 0
-                else:
-                    max_valid = (~input_data.isna()).mul(idx_series).max()
-                    remain_limits = max(0, limit - (len(input_data) - max_valid))
-                ctx[op.outputs[1].key] = pd.Series([remain_limits], name=last_slice.name,
-                                                   index=last_slice.index)
 
     @classmethod
     def _execute_combine(cls, ctx, op):
@@ -151,10 +119,8 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         if limit is not None:
             n_summaries = (len(op.inputs) - 1) // 2
             summaries = [ctx[inp.key] for inp in op.inputs[1:1 + n_summaries]]
-            limits = [ctx[inp.key] for inp in op.inputs[1 + n_summaries:]]
         else:
             summaries = [ctx[inp.key] for inp in op.inputs[1:]]
-            limits = []
 
         if not summaries:
             ctx[op.outputs[0].key] = input_data.fillna(method=method, axis=axis, limit=limit,
@@ -169,51 +135,9 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         else:
             concat_df = pd.concat([valid_summary, input_data], axis=axis)
 
-        if not limits:
-            concat_df.fillna(method=method, axis=axis, inplace=True, limit=limit,
-                             downcast=op.downcast)
-            ctx[op.outputs[0].key] = cls._get_first_slice(op, concat_df, -1)
-        else:
-            prev_chunk_sizes = op.prev_chunk_sizes
-            if method == 'ffill':
-                valid_limit = limits[0].copy()
-                add_range = range(1, len(limits))
-            else:
-                valid_limit = limits[-1].copy()
-                add_range = range(len(limits) - 2, -1, -1)
-
-            for idx in add_range:
-                valid_limit -= prev_chunk_sizes[idx - 1] if method == 'ffill' else prev_chunk_sizes[idx]
-                if op.object_type == ObjectType.dataframe:
-                    valid_limit[(valid_limit < 0) | (limits[idx] > 0)] = 0
-                    valid_limit += limits[idx]
-                else:
-                    if limits[idx].iloc[0] > 0 or valid_limit.iloc[0] < 0:
-                        valid_limit.iloc[0] = 0
-                    valid_limit += limits[idx].iloc[0]
-
-            def _update_series(s):
-                if op.object_type == ObjectType.dataframe:
-                    local_limit = valid_limit[s.name]
-                else:
-                    local_limit = valid_limit.iloc[0]
-                s = s.copy()
-                if method == 'bfill':
-                    s_sel = s.iloc[:-1]
-                    s_aug = s.iloc[:-1 - local_limit]
-                else:
-                    s_sel = s.iloc[1:]
-                    s_aug = s.iloc[1 + local_limit:]
-                if not np.isnan(local_limit) and local_limit > 0:
-                    s.fillna(method=method, limit=local_limit, inplace=True)
-                if limit > local_limit:
-                    s_aug.fillna(method=method, limit=limit - local_limit, inplace=True)
-                return s_sel
-
-            if op.object_type == ObjectType.dataframe:
-                ctx[op.outputs[0].key] = concat_df.apply(_update_series, axis=axis)
-            else:
-                ctx[op.outputs[0].key] = _update_series(concat_df)
+        concat_df.fillna(method=method, axis=axis, inplace=True, limit=limit,
+                         downcast=op.downcast)
+        ctx[op.outputs[0].key] = cls._get_first_slice(op, concat_df, -1)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -242,86 +166,42 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         new_chunks = []
         for c in in_df.chunks:
             inputs = [c] if in_value_df is None else [c, in_value_df.chunks[0]]
-
-            kw = dict(shape=c.shape, index=c.index, index_value=c.index_value)
-            if op.object_type == ObjectType.dataframe:
-                kw.update(dict(columns_value=c.columns_value, dtypes=c.dtypes))
-            else:
-                kw.update(dict(dtype=c.dtype))
+            kw = c.params
             new_op = op.copy().reset_key()
             new_chunks.append(new_op.new_chunk(inputs, **kw))
 
-        kw = dict(shape=df.shape, index_value=df.index_value, nsplits=df.nsplits,
-                  chunks=new_chunks)
-        if op.object_type == ObjectType.dataframe:
-            kw.update(dict(columns_value=df.columns_value, dtypes=df.dtypes))
-        else:
-            kw.update(dict(dtype=df.dtype))
+        kw = df.params.copy()
+        kw.update(dict(chunks=new_chunks))
         new_op = op.copy().reset_key()
         return new_op.new_tileables(op.inputs, **kw)
 
     @classmethod
-    def _build_combine(cls, op, input_chunks, summary_chunks, limit_chunks, idx, is_forward=True):
-        axis = op.axis
-        limit = op.limit
+    def _build_combine(cls, op, input_chunks, summary_chunks, idx, is_forward=True):
         c = input_chunks[idx]
 
         summaries_to_concat = []
-        limits_to_concat = []
 
-        if limit is None:
-            idx_range = list(range(idx) if is_forward else range(idx + 1, len(summary_chunks)))
-            prev_chunk_sizes = None
-            for i in idx_range:
-                summaries_to_concat.append(summary_chunks[i])
-        else:
-            pos, delta = (idx - 1, -1) if is_forward else (idx + 1, 1)
-            acc = 0
-            prev_chunk_sizes_list = []
-            cur_axis_len = input_chunks[idx].shape[axis]
-            while 0 <= pos < len(summary_chunks) and acc <= limit + cur_axis_len:
-                axis_len = input_chunks[pos].shape[axis]
-                prev_chunk_sizes_list.append(axis_len)
-                summaries_to_concat.append(summary_chunks[pos])
-                limits_to_concat.append(limit_chunks[pos])
-                acc += axis_len
-                pos += delta
-
-            if is_forward:
-                summaries_to_concat = summaries_to_concat[::-1]
-                limits_to_concat = limits_to_concat[::-1]
-                prev_chunk_sizes_list = prev_chunk_sizes_list[::-1]
-            prev_chunk_sizes = np.array(prev_chunk_sizes_list)
+        idx_range = list(range(idx) if is_forward else range(idx + 1, len(summary_chunks)))
+        for i in idx_range:
+            summaries_to_concat.append(summary_chunks[i])
 
         new_chunk_op = op.copy().reset_key()
         new_chunk_op._stage = OperandStage.combine
-        new_chunk_op._prev_chunk_sizes = prev_chunk_sizes
 
-        chunks_to_concat = [c] + summaries_to_concat + limits_to_concat
-        if new_chunk_op.object_type == ObjectType.dataframe:
-            return new_chunk_op.new_chunk(chunks_to_concat, shape=c.shape,
-                                          dtypes=c.dtypes, index=c.index, index_value=c.index_value,
-                                          columns_value=c.columns_value)
-        else:
-            return new_chunk_op.new_chunk(chunks_to_concat, shape=c.shape, dtype=c.dtype, index=c.index,
-                                          index_value=c.index_value)
+        chunks_to_concat = [c] + summaries_to_concat
+        return new_chunk_op.new_chunk(chunks_to_concat, **c.params)
 
     @classmethod
     def _tile_directional_dataframe(cls, op):
         in_df = op.inputs[0]
         df = op.outputs[0]
         is_forward = op.method == 'ffill'
-        limit = op.limit
 
         n_rows, n_cols = in_df.chunk_shape
 
         # map to get individual results and summaries
         src_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
         summary_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
-        if op.limit is not None:
-            limit_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
-        else:
-            limit_chunks = []
         for c in in_df.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op._stage = OperandStage.map
@@ -330,13 +210,8 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             else:
                 summary_shape = (1, c.shape[1])
             src_chunks[c.index] = c
-            kws = [dict(shape=summary_shape, dtypes=df.dtypes)]
-            if op.limit is not None:
-                new_chunk_op._output_limit = 2
-                kws.append(dict(shape=(1, c.shape[1]), dtype=np.dtype('int64')))
-                summary_chunks[c.index], limit_chunks[c.index] = new_chunk_op.new_chunks([c], kws=kws)
-            else:
-                summary_chunks[c.index], = new_chunk_op.new_chunks([c], kws=kws)
+            summary_chunks[c.index] = new_chunk_op.new_chunk(
+                [c], shape=summary_shape, dtypes=df.dtypes)
 
         # combine summaries into results
         output_chunk_array = np.empty(in_df.chunk_shape, dtype=np.object)
@@ -344,24 +219,16 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             for row in range(n_rows):
                 row_src = src_chunks[row, :]
                 row_summaries = summary_chunks[row, :]
-                if limit:
-                    row_limits = limit_chunks[row, :]
-                else:
-                    row_limits = []
                 for col in range(n_cols):
                     output_chunk_array[row, col] = cls._build_combine(
-                        op, row_src, row_summaries, row_limits, col, is_forward)
+                        op, row_src, row_summaries, col, is_forward)
         else:
             for col in range(n_cols):
                 col_src = src_chunks[:, col]
                 col_summaries = summary_chunks[:, col]
-                if limit:
-                    col_limits = limit_chunks[:, col]
-                else:
-                    col_limits = []
                 for row in range(n_rows):
                     output_chunk_array[row, col] = cls._build_combine(
-                        op, col_src, col_summaries, col_limits, row, is_forward)
+                        op, col_src, col_summaries, row, is_forward)
 
         output_chunks = list(output_chunk_array.reshape((n_rows * n_cols,)))
         new_op = op.copy().reset_key()
@@ -377,24 +244,14 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
 
         # map to get individual results and summaries
         summary_chunks = np.empty(in_series.chunk_shape, dtype=np.object)
-        if op.limit is not None:
-            limit_chunks = np.empty(in_series.chunk_shape, dtype=np.object)
-        else:
-            limit_chunks = []
         for c in in_series.chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op._stage = OperandStage.map
-            kws = [dict(shape=(1,), dtype=series.dtype)]
-            if op.limit is not None:
-                new_chunk_op._output_limit = 2
-                kws.append(dict(shape=(1,), dtype=np.dtype('int64')))
-                summary_chunks[c.index], limit_chunks[c.index] = new_chunk_op.new_chunks([c], kws=kws)
-            else:
-                summary_chunks[c.index], = new_chunk_op.new_chunks([c], kws=kws)
+            summary_chunks[c.index] = new_chunk_op.new_chunk([c], shape=(1,), dtype=series.dtype)
 
         # combine summaries into results
         output_chunks = [
-            cls._build_combine(op, in_series.chunks, summary_chunks, limit_chunks, i, forward)
+            cls._build_combine(op, in_series.chunks, summary_chunks, i, forward)
             for i in range(len(in_series.chunks))
         ]
         new_op = op.copy().reset_key()
@@ -434,10 +291,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for out_idx, df_chunk in zip(out_chunk_indexes, left_chunks):
             series_chunk = right_chunks[out_idx[1]]
-            kw = {
-                'shape': (np.nan, df_chunk.shape[1]),
-                'columns_value': df_chunk.columns_value,
-            }
+            kw = dict(shape=(np.nan, df_chunk.shape[1]), columns_value=df_chunk.columns_value)
             out_chunk = op.copy().reset_key().new_chunk([df_chunk, series_chunk], index=out_idx, **kw)
             out_chunks.append(out_chunk)
 
@@ -522,6 +376,8 @@ def fillna(df, value=None, method=None, axis=None, inplace=False, limit=None, do
 
     if downcast is not None:
         raise NotImplementedError('Currently argument "downcast" is not implemented yet')
+    if limit is not None:
+        raise NotImplementedError('Currently argument "limit" is not implemented yet')
 
     if isinstance(value, (Base, Entity)):
         value, value_df = None, value
