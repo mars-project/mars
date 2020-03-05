@@ -321,6 +321,7 @@ message OperandDef {
         MAP = 710;
         APPLY = 711;
         DESCRIBE = 712;
+        FILL_NA = 713;
 
         FUSE = 801;
 

@@ -17,6 +17,7 @@ from .to_cpu import to_cpu
 from .rechunk import rechunk
 from .reset_index import df_reset_index, series_reset_index
 from .describe import describe
+from .fillna import fillna, ffill, bfill
 
 
 def _install():
@@ -28,12 +29,18 @@ def _install():
         setattr(t, 'rechunk', rechunk)
         setattr(t, 'reset_index', df_reset_index)
         setattr(t, 'describe', describe)
+        setattr(t, 'fillna', fillna)
+        setattr(t, 'ffill', ffill)
+        setattr(t, 'bfill', bfill)
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
         setattr(t, 'to_cpu', to_cpu)
         setattr(t, 'rechunk', rechunk)
         setattr(t, 'reset_index', series_reset_index)
         setattr(t, 'describe', describe)
+        setattr(t, 'fillna', fillna)
+        setattr(t, 'ffill', ffill)
+        setattr(t, 'bfill', bfill)
 
 
 _install()
