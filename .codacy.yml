@@ -1,0 +1,13 @@
+---
+engines:
+  pylint:
+    enabled: true
+exclude_paths:
+  - '.github'
+  - 'bin'
+  - 'docs'
+  - 'mars/lib'
+  - 'mars/web/static'
+  - 'misc'
+  - '*.min.js'
+  - '**/tests/**'
