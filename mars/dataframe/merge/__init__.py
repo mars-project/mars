@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .concat import DataFrameConcat
+from .concat import DataFrameConcat, concat
 from .merge import join, merge, DataFrameShuffleMerge, DataFrameMergeAlign
 from .append import DataFrameAppend, append
 
