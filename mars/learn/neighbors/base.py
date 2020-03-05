@@ -261,6 +261,11 @@ class KNeighborsMixin:
             # returned, which is removed later
             n_neighbors += 1
 
+        for x in (X, self._fit_X):
+            if np.isnan(x.size):
+                # has unknown size, execute first
+                x.execute(fetch=False, session=session, **(run_kwargs or dict()))
+
         train_size = self._fit_X.shape[0]
         if n_neighbors > train_size:
             raise ValueError(

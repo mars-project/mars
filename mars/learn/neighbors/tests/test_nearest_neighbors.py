@@ -224,6 +224,27 @@ class Test(unittest.TestCase):
         np.testing.assert_almost_equal(result[0], expected[0])
         np.testing.assert_almost_equal(result[1], expected[1])
 
+        # test input with unknown shape
+        X = mt.tensor(raw_X, chunk_size=7)
+        X = X[X[:, 0] > 0.1]
+        Y = mt.tensor(raw_Y, chunk_size=(5, 3))
+        Y = Y[Y[:, 0] > 0.1]
+
+        nn = NearestNeighbors(n_neighbors=3)
+        nn.fit(X)
+
+        ret = nn.kneighbors(Y)
+
+        x2 = raw_X[raw_X[:, 0] > 0.1]
+        y2 = raw_Y[raw_Y[:, 0] > 0.1]
+        snn = SkNearestNeighbors(n_neighbors=3)
+        snn.fit(x2)
+        expected = snn.kneighbors(y2)
+
+        result = ret.fetch()
+        np.testing.assert_almost_equal(result[0], expected[0])
+        np.testing.assert_almost_equal(result[1], expected[1])
+
     @unittest.skipIf(faiss is None, 'faiss not installed')
     def testFaissNearestNeighborsExecution(self):
         rs = np.random.RandomState(0)
