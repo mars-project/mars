@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import threading
+
 try:
     import numexpr as ne
     NUMEXPR_INSTALLED = True
@@ -33,6 +36,13 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
     _op_type_ = None  # no opcode, cannot be serialized
     _dtype = DataTypeField('dtype')
 
+    if sys.platform == 'win32':
+        # since we found thread-safe problem for ne.evaluate
+        # thus add a lock for windows
+        _lock = threading.Lock()
+    else:
+        _lock = None
+
     # use for numexpr-fused operand
     def __init__(self, dtype=None, **kw):
         super().__init__(_dtype=dtype, **kw)
@@ -48,7 +58,13 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
         for c, i in zip(op.inputs, inputs):
             exec('V_' + c.key + ' = i')
         expr = _evaluate(chunk)
-        res = ne.evaluate(expr)
+        if cls._lock is not None:
+            cls._lock.acquire()
+        try:
+            res = ne.evaluate(expr)
+        finally:
+            if cls._lock is not None:
+                cls._lock.release()
         res = _maybe_keepdims(chunk, res)
         if chunk.ndim == 0 and res.ndim == 1 and res.size == 0:
             res = res.dtype.type(0)
