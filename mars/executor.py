@@ -758,6 +758,9 @@ class Executor(object):
                                    n_parallel=n_parallel or n_thread,
                                    print_progress=print_progress, mock=mock,
                                    chunk_result=chunk_result)
+                # update shape of tileable and its chunks whatever it's successful or not
+                self._update_tileable_and_chunk_shape(
+                    tileable_graph, chunk_result, chunk_graph_builder.interrupted_ops)
                 if chunk_graph_builder.done:
                     if len(intermediate_result_keys) > 0:
                         # failed before
@@ -768,9 +771,6 @@ class Executor(object):
                     delattr(chunk_graph_builder, '_prev_tileable_graph')
                     break
                 else:
-                    # update shape of tileable and its chunks
-                    self._update_tileable_and_chunk_shape(
-                        tileable_graph, chunk_result, chunk_graph_builder.interrupted_ops)
                     executed_keys.update(temp_result_keys)
                     intermediate_result_keys.update(temp_result_keys)
                     # add the node that failed

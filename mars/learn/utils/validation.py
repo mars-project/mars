@@ -51,8 +51,9 @@ def _num_samples(x):
             raise TypeError("Singleton array %r cannot be considered"
                             " a valid collection." % x)
         # Check that shape is returning an integer or default to len
-        # Dask dataframes may not return numeric shape[0] value
         if isinstance(x.shape[0], numbers.Integral):
+            return x.shape[0]
+        elif np.isnan(x.shape[0]):
             return x.shape[0]
         else:
             return len(x)
