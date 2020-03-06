@@ -403,7 +403,7 @@ def concat_index_value(index_values, store_data=False):
     return parse_index(result, store_data=store_data)
 
 
-def build_concated_rows_frame(df):
+def build_concatenated_rows_frame(df):
     from .operands import ObjectType
     from .merge.concat import DataFrameConcat
 

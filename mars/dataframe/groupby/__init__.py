@@ -17,6 +17,7 @@ def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
     from .core import groupby
     from .aggregation import agg
+    from .apply import groupby_apply, groupby_transform
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'groupby', groupby)
@@ -34,6 +35,9 @@ def _install():
         setattr(cls, 'mean', lambda groupby, **kw: agg(groupby, 'mean', **kw))
         setattr(cls, 'var', lambda groupby, **kw: agg(groupby, 'var', **kw))
         setattr(cls, 'std', lambda groupby, **kw: agg(groupby, 'std', **kw))
+
+        setattr(cls, 'apply', groupby_apply)
+        setattr(cls, 'transform', groupby_transform)
 
 
 _install()

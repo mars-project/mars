@@ -16,11 +16,13 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
-from mars.operands import OperandStage
-from mars.tests.core import TestBase
+from mars import opcodes
 from mars.dataframe.core import DataFrameGroupBy, SeriesGroupBy, DataFrame
 from mars.dataframe.groupby.core import DataFrameGroupByOperand, DataFrameShuffleProxy
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
+from mars.dataframe.operands import ObjectType
+from mars.operands import OperandStage
+from mars.tests.core import TestBase
 
 
 class Test(TestBase):
@@ -40,7 +42,7 @@ class Test(TestBase):
 
         series = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
         ms = md.Series(series, chunk_size=3)
-        grouped = ms.groupby('c2')
+        grouped = ms.groupby(lambda x: x + 1)
 
         self.assertIsInstance(grouped, SeriesGroupBy)
         self.assertIsInstance(grouped.op, DataFrameGroupByOperand)
@@ -49,6 +51,9 @@ class Test(TestBase):
         self.assertEqual(len(grouped.chunks), 3)
         for chunk in grouped.chunks:
             self.assertIsInstance(chunk.op, DataFrameGroupByOperand)
+
+        with self.assertRaises(TypeError):
+            ms.groupby(lambda x: x + 1, as_index=False)
 
     def testGroupByAgg(self):
         df = pd.DataFrame({'a': np.random.choice([2, 3, 4], size=(20,)),
@@ -90,3 +95,75 @@ class Test(TestBase):
         # test unknown method
         with self.assertRaises(ValueError):
             mdf.groupby('c2').sum(method='not_exist')
+
+    def testGroupByApplyTransform(self):
+        df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')})
+
+        def apply_df(df):
+            return df.sort_index()
+
+        def apply_series(s):
+            return s.sort_index()
+
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        applied = mdf.groupby('b').apply(apply_df).tiles()
+        pd.testing.assert_series_equal(applied.dtypes, df1.dtypes)
+        self.assertEqual(applied.shape, (np.nan, 3))
+        self.assertEqual(applied.op._op_type_, opcodes.GROUPBY_APPLY_TRANSFORM)
+        self.assertEqual(applied.op.object_type, ObjectType.dataframe)
+        self.assertEqual(len(applied.chunks), 3)
+        self.assertEqual(applied.chunks[0].shape, (np.nan, 3))
+        pd.testing.assert_series_equal(applied.chunks[0].dtypes, df1.dtypes)
+
+        applied = mdf.groupby('b').apply(lambda df: df.a).tiles()
+        self.assertEqual(applied.dtype, df1.a.dtype)
+        self.assertEqual(applied.shape, (np.nan,))
+        self.assertEqual(applied.op._op_type_, opcodes.GROUPBY_APPLY_TRANSFORM)
+        self.assertEqual(applied.op.object_type, ObjectType.series)
+        self.assertEqual(len(applied.chunks), 3)
+        self.assertEqual(applied.chunks[0].shape, (np.nan,))
+        self.assertEqual(applied.chunks[0].dtype, df1.a.dtype)
+
+        applied = mdf.groupby('b').apply(lambda df: df.a.sum()).tiles()
+        self.assertEqual(applied.dtype, df1.a.dtype)
+        self.assertEqual(applied.shape, (np.nan,))
+        self.assertEqual(applied.op._op_type_, opcodes.GROUPBY_APPLY_TRANSFORM)
+        self.assertEqual(applied.op.object_type, ObjectType.series)
+        self.assertEqual(len(applied.chunks), 3)
+        self.assertEqual(applied.chunks[0].shape, (np.nan,))
+        self.assertEqual(applied.chunks[0].dtype, df1.a.dtype)
+
+        applied = mdf.groupby('b').transform(apply_df).tiles()
+        pd.testing.assert_series_equal(applied.dtypes, df1.dtypes)
+        self.assertEqual(applied.shape, (9, 3))
+        self.assertEqual(applied.op._op_type_, opcodes.GROUPBY_APPLY_TRANSFORM)
+        self.assertTrue(applied.op.is_transform)
+        self.assertEqual(applied.op.object_type, ObjectType.dataframe)
+        self.assertEqual(len(applied.chunks), 3)
+        self.assertEqual(applied.chunks[0].shape, (np.nan, 3))
+        pd.testing.assert_series_equal(applied.chunks[0].dtypes, df1.dtypes)
+
+        series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
+
+        ms1 = md.Series(series1, chunk_size=3)
+        applied = ms1.groupby(lambda x: x % 3).apply(apply_series).tiles()
+        self.assertEqual(applied.dtype, series1.dtype)
+        self.assertEqual(applied.shape, (np.nan,))
+        self.assertEqual(applied.op._op_type_, opcodes.GROUPBY_APPLY_TRANSFORM)
+        self.assertEqual(applied.op.object_type, ObjectType.series)
+        self.assertEqual(len(applied.chunks), 3)
+        self.assertEqual(applied.chunks[0].shape, (np.nan,))
+        self.assertEqual(applied.chunks[0].dtype, series1.dtype)
+
+        applied = ms1.groupby(lambda x: x % 3).transform(lambda x: x + 1).tiles()
+        self.assertEqual(applied.dtype, series1.dtype)
+        self.assertEqual(applied.shape, series1.shape)
+        self.assertEqual(applied.op._op_type_, opcodes.GROUPBY_APPLY_TRANSFORM)
+        self.assertTrue(applied.op.is_transform)
+        self.assertEqual(applied.op.object_type, ObjectType.series)
+        self.assertEqual(len(applied.chunks), 3)
+        self.assertEqual(applied.chunks[0].shape, (np.nan,))
+        self.assertEqual(applied.chunks[0].dtype, series1.dtype)

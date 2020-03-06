@@ -22,7 +22,7 @@ from ... import opcodes as OperandDef
 from ...operands import OperandStage
 from ...serialize import BytesField, BoolField, Int32Field, AnyField
 from ...utils import get_shuffle_input_keys_idxes
-from ..utils import build_concated_rows_frame, hash_dataframe_on
+from ..utils import build_concatenated_rows_frame, hash_dataframe_on
 from ..operands import DataFrameOperandMixin, \
     DataFrameMapReduceOperand, DataFrameShuffleProxy, ObjectType
 
@@ -86,7 +86,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def tile(cls, op):
         is_dataframe_obj = op.is_dataframe_obj
         if is_dataframe_obj:
-            in_df = build_concated_rows_frame(op.inputs[0])
+            in_df = build_concatenated_rows_frame(op.inputs[0])
             out_object_type = ObjectType.dataframe
         else:
             in_df = op.inputs[0]
@@ -150,7 +150,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute_reduce(cls, ctx, op):
-        is_dataframe_obj = op.is_dataframe_obj
+        is_dataframe_obj = op.inputs[0].op.object_type == ObjectType.dataframe
         chunk = op.outputs[0]
         input_keys, input_idxes = get_shuffle_input_keys_idxes(op.inputs[0])
         input_idx_to_df = {idx: ctx[inp_key, ','.join(str(ix) for ix in chunk.index)]
@@ -183,6 +183,9 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
 
 def groupby(df, by, as_index=True, sort=True):
+    if not as_index and df.op.object_type == ObjectType.series:
+        raise TypeError('as_index=False only valid with DataFrame')
+
     by_func = None
     if isinstance(by, str):
         by = [by]

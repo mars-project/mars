@@ -470,6 +470,12 @@ class Test(TestBase):
             options.chunk_store_limit = 20
 
             df = from_pandas_df(df_raw, chunk_size=5)
+
+            r = df.apply('ffill')
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply('ffill')
+            pd.testing.assert_frame_equal(result, expected)
+
             r = df.apply(np.sqrt)
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = df_raw.apply(np.sqrt)
@@ -521,26 +527,23 @@ class Test(TestBase):
         idxes = [chr(ord('A') + i) for i in range(20)]
         s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
 
-        old_chunk_store_limit = options.chunk_store_limit
-        try:
-            options.chunk_store_limit = 20
+        series = from_pandas_series(s_raw, chunk_size=5)
+        r = series.apply('add', args=(1,))
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.apply('add', args=(1,))
+        pd.testing.assert_series_equal(result, expected)
 
-            series = from_pandas_series(s_raw, chunk_size=5)
-            r = series.apply(np.sqrt)
-            result = self.executor.execute_dataframe(r, concat=True)[0]
-            expected = s_raw.apply(np.sqrt)
-            pd.testing.assert_series_equal(result, expected)
+        r = series.apply(np.sqrt)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.apply(np.sqrt)
+        pd.testing.assert_series_equal(result, expected)
 
-            series = from_pandas_series(s_raw, chunk_size=5)
-            r = series.apply('sqrt')
-            result = self.executor.execute_dataframe(r, concat=True)[0]
-            expected = s_raw.apply('sqrt')
-            pd.testing.assert_series_equal(result, expected)
+        r = series.apply('sqrt')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.apply('sqrt')
+        pd.testing.assert_series_equal(result, expected)
 
-            series = from_pandas_series(s_raw, chunk_size=5)
-            r = series.apply(lambda x: [x, x + 1], convert_dtype=False)
-            result = self.executor.execute_dataframe(r, concat=True)[0]
-            expected = s_raw.apply(lambda x: [x, x + 1], convert_dtype=False)
-            pd.testing.assert_series_equal(result, expected)
-        finally:
-            options.chunk_store_limit = old_chunk_store_limit
+        r = series.apply(lambda x: [x, x + 1], convert_dtype=False)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.apply(lambda x: [x, x + 1], convert_dtype=False)
+        pd.testing.assert_series_equal(result, expected)

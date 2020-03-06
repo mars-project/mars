@@ -165,3 +165,66 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r13, concat=True)[0],
                                       df2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
         self.assertTrue(r13.op.as_index)
+
+    def testGroupByApplyTransform(self):
+        df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')})
+
+        def apply_df(df):
+            df = df.sort_index()
+            df.a += df.b
+            if len(df.index) > 0:
+                df = df.iloc[:-1, :]
+            return df
+
+        def apply_series(s, truncate=True):
+            s = s.sort_index()
+            if truncate and len(s.index) > 0:
+                s = s.iloc[:-1]
+            return s
+
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        applied = mdf.groupby('b').apply(apply_df)
+        result = self.executor.execute_dataframe(applied, concat=True)[0]
+        expected = df1.groupby('b').apply(apply_df)
+        pd.testing.assert_frame_equal(result.sort_index(), expected.sort_index())
+
+        applied = mdf.groupby('b').apply(lambda df: df.a)
+        result = self.executor.execute_dataframe(applied, concat=True)[0]
+        expected = df1.groupby('b').apply(lambda df: df.a)
+        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())
+
+        applied = mdf.groupby('b').apply(lambda df: df.a.sum())
+        result = self.executor.execute_dataframe(applied, concat=True)[0]
+        expected = df1.groupby('b').apply(lambda df: df.a.sum())
+        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())
+
+        applied = mdf.groupby('b').transform(apply_series, truncate=False)
+        result = self.executor.execute_dataframe(applied, concat=True)[0]
+        expected = df1.groupby('b').transform(apply_series, truncate=False)
+        pd.testing.assert_frame_equal(result.sort_index(), expected.sort_index())
+
+        series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
+
+        ms1 = md.Series(series1, chunk_size=3)
+        applied = ms1.groupby(lambda x: x % 3).apply(apply_series)
+        result = self.executor.execute_dataframe(applied, concat=True)[0]
+        expected = series1.groupby(lambda x: x % 3).apply(apply_series)
+        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())
+
+        sindex2 = pd.MultiIndex.from_arrays([list(range(9)), list('ABCDEFGHI')])
+        series2 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3], index=sindex2)
+
+        ms2 = md.Series(series2, chunk_size=3)
+        applied = ms2.groupby(lambda x: x[0] % 3).apply(apply_series)
+        result = self.executor.execute_dataframe(applied, concat=True)[0]
+        expected = series2.groupby(lambda x: x[0] % 3).apply(apply_series)
+        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())
+
+        ms1 = md.Series(series1, chunk_size=3)
+        applied = ms1.groupby(lambda x: x % 3).transform(lambda x: x + 1)
+        result = self.executor.execute_dataframe(applied, concat=True)[0]
+        expected = series1.groupby(lambda x: x % 3).transform(lambda x: x + 1)
+        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())

@@ -20,8 +20,8 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
-from ...serialize import StringField, AnyField, BoolField, BytesField, TupleField, \
-    DictField
+from ...serialize import StringField, AnyField, BoolField, BytesField, \
+    TupleField, DictField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index
 
@@ -113,27 +113,15 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
                                                index_value=c.index_value, columns_value=c.columns_value))
         else:
             for c in in_df.chunks:
-                new_shape = c.shape
+                shape_len = c.shape[1 - axis]
                 new_op = op.copy().reset_key()
-                chunks.append(new_op.new_chunk([c], shape=new_shape, index=c.index, dtype=out_df.dtype,
+                chunks.append(new_op.new_chunk([c], shape=(shape_len,), index=c.index, dtype=out_df.dtype,
                                                index_value=c.index_value))
 
-        if elementwise or op.object_type == ObjectType.series:
-            new_shape = in_df.shape
-        else:
-            new_shape = [np.nan, np.nan]
-            new_shape[1 - axis] = in_df.shape[1 - axis]
-
         new_op = op.copy().reset_key()
-        if op.object_type == ObjectType.dataframe:
-            return new_op.new_tileables(
-                op.inputs, chunks=chunks, nsplits=in_df.nsplits, shape=tuple(new_shape),
-                dtypes=out_df.dtypes, index_value=out_df.index_value,
-                columns_value=out_df.columns_value)
-        else:
-            return new_op.new_tileables(
-                op.inputs, chunks=chunks, nsplits=in_df.nsplits, shape=tuple(new_shape),
-                dtype=out_df.dtype, index_value=out_df.index_value)
+        kw = out_df.params.copy()
+        kw.update(dict(chunks=chunks, nsplits=in_df.nsplits))
+        return new_op.new_tileables(op.inputs, **kw)
 
     def _infer_df_func_returns(self, in_dtypes, dtypes, index):
         if isinstance(self._func, np.ufunc):
@@ -143,7 +131,7 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
             object_type, new_dtypes, index_value, new_elementwise = None, None, None, False
 
         try:
-            empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(0, 10))
+            empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(2))
             with np.errstate(all='ignore'):
                 infer_df = empty_df.apply(self._func, axis=self._axis, raw=self._raw,
                                           result_type=self._result_type, args=self.args, **self.kwds)
@@ -151,7 +139,7 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
                 if infer_df.index is empty_df.index:
                     index_value = 'inherit'
                 else:
-                    index_value = parse_index(infer_df.index)
+                    index_value = parse_index(pd.RangeIndex(-1))
 
             if isinstance(infer_df, pd.DataFrame):
                 object_type = object_type or ObjectType.dataframe
@@ -160,7 +148,7 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
                 object_type = object_type or ObjectType.series
                 new_dtypes = new_dtypes or infer_df.dtype
             new_elementwise = False if new_elementwise is None else new_elementwise
-        except:  # noqa: E722
+        except:  # noqa: E722  # nosec
             pass
 
         self._object_type = object_type if self._object_type is None else self._object_type
@@ -208,7 +196,7 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
 
 
 class SeriesApply(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = opcodes.DATAFRAME_APPLY
+    _op_type_ = opcodes.SERIES_APPLY
 
     _func = BytesField('func', on_serialize=cloudpickle.dumps,
                        on_deserialize=cloudpickle.loads)
@@ -254,20 +242,22 @@ class SeriesApply(DataFrameOperand, DataFrameOperandMixin):
         chunks = []
         for c in in_series.chunks:
             new_op = op.copy().reset_key()
-            chunks.append(new_op.new_chunk([c], shape=c.shape, index=c.index, dtype=out_series.dtype,
-                                           index_value=c.index_value))
+            kw = c.params.copy()
+            kw['dtype'] = out_series.dtype
+            chunks.append(new_op.new_chunk([c], **kw))
+
         new_op = op.copy().reset_key()
-        return new_op.new_tileables(
-            op.inputs, chunks=chunks, nsplits=in_series.nsplits, shape=out_series.shape,
-            dtype=out_series.dtype, index_value=out_series.index_value)
+        kw = out_series.params.copy()
+        kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
+        return new_op.new_tileables(op.inputs, **kw)
 
     def _infer_series_func_returns(self, in_dtype):
         try:
-            empty_series = build_empty_series(in_dtype, index=pd.RangeIndex(0, 10))
+            empty_series = build_empty_series(in_dtype, index=pd.RangeIndex(2))
             with np.errstate(all='ignore'):
                 infer_series = empty_series.apply(self._func, args=self.args, **self.kwds)
             new_dtype = infer_series.dtype
-        except:  # noqa: E722
+        except:  # noqa: E722  # nosec
             new_dtype = np.dtype('object')
         return new_dtype
 
@@ -303,7 +293,7 @@ def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None
 
 
 def series_apply(series, func, convert_dtype=True, args=(), **kwds):
-    # todo fulfill this when df.aggregate is implemented
+    # todo fulfill this when series.aggregate is implemented
     if isinstance(func, (list, dict)):
         raise NotImplementedError('Currently does support func as lists or dicts')
 

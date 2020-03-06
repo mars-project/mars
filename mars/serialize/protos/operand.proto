@@ -350,7 +350,6 @@ message OperandDef {
         // apply
         DATAFRAME_APPLY = 1101;
         SERIES_APPLY = 1102;
-        GROUPBY_APPLY = 1103;
 
         // shuffle
         SHUFFLE_PROXY = 2001;
@@ -378,6 +377,7 @@ message OperandDef {
         GROUPBY = 2030;
         GROUPBY_AGG = 2033;
         GROUPBY_CONCAT = 2034;
+        GROUPBY_APPLY_TRANSFORM = 2035;
 
         // parallel sorting by regular sampling
         PSRS_SORT_REGULAR_SMAPLE = 2040;
