@@ -20,6 +20,7 @@ from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
 from .datasource.read_csv import read_csv
 from .datasource.read_sql_table import read_sql_table
+from .merge import concat
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 
 from . import arithmetic

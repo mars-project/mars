@@ -22,7 +22,7 @@ from mars.tests.core import TestBase
 from mars.dataframe.core import IndexValue
 from mars.dataframe.base.standardize_range_index import ChunkStandardizeRangeIndex
 from mars.dataframe.datasource.dataframe import from_pandas
-from mars.dataframe.merge import DataFrameMergeAlign, DataFrameShuffleMerge
+from mars.dataframe.merge import DataFrameMergeAlign, DataFrameShuffleMerge, concat
 
 
 class Test(TestBase):
@@ -230,3 +230,42 @@ class Test(TestBase):
         self.assertEqual(tiled.nsplits, ((3, 3, 3, 1, 3, 3, 3, 1), (3, 1)))
         self.assertEqual(tiled.chunk_shape, (8, 2))
         self.assertIsInstance(tiled.chunks[0].op, ChunkStandardizeRangeIndex)
+
+    def testConcat(self):
+        df1 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+        df2 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+
+        mdf1 = from_pandas(df1, chunk_size=4)
+        mdf2 = from_pandas(df2, chunk_size=4)
+        r = concat([mdf1, mdf2], axis='index')
+
+        self.assertEqual(r.shape, (20, 4))
+        pd.testing.assert_series_equal(r.dtypes, df1.dtypes)
+
+        tiled = r.tiles()
+        self.assertEqual(tiled.nsplits, ((4, 4, 2, 4, 4, 2), (4,)))
+        for i, c in enumerate(tiled.chunks):
+            self.assertEqual(c.index, (i, 0))
+
+        mdf1 = from_pandas(df1, chunk_size=3)
+        mdf2 = from_pandas(df2, chunk_size=4)
+        r = concat([mdf1, mdf2], axis='columns')
+
+        self.assertEqual(r.shape, (10, 8))
+        pd.testing.assert_series_equal(r.dtypes, df1.dtypes)
+
+        tiled = r.tiles()
+        self.assertEqual(tiled.nsplits, ((3, 3, 3, 1), (3, 1, 4)))
+        for i, c in enumerate(tiled.chunks):
+            index = (i // 3, i % 3)
+            self.assertEqual(c.index, index)
+
+        df1 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+        df2 = pd.DataFrame(np.random.rand(10, 3), columns=list('ABC'))
+        mdf1 = from_pandas(df1, chunk_size=3)
+        mdf2 = from_pandas(df2, chunk_size=3)
+        r = concat([mdf1, mdf2], join='inner')
+
+        self.assertEqual(r.shape, (20, 3))
+        tiled = r.tiles()
+        self.assertEqual(tiled.nsplits, ((3, 3, 3, 1, 3, 3, 3, 1), (3, )))

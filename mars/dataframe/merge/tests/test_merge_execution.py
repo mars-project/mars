@@ -19,6 +19,7 @@ from mars.tests.core import TestBase, ExecutorForTest
 from mars.session import new_session
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as series_from_pandas
+from mars.dataframe.merge import concat
 from mars.dataframe.utils import sort_dataframe_inplace
 
 
@@ -356,3 +357,82 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(aseries, concat=True)[0]
         pd.testing.assert_series_equal(expected, result)
 
+    def testConcat(self):
+        executor = ExecutorForTest(storage=new_session().context)
+
+        df1 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+        df2 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+
+        mdf1 = from_pandas(df1, chunk_size=3)
+        mdf2 = from_pandas(df2, chunk_size=3)
+
+        r = concat([mdf1, mdf2])
+        expected = pd.concat([df1, df2])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test different chunk size and ignore_index=True
+        mdf1 = from_pandas(df1, chunk_size=2)
+        mdf2 = from_pandas(df2, chunk_size=3)
+
+        r = concat([mdf1, mdf2], ignore_index=True)
+        expected = pd.concat([df1, df2], ignore_index=True)
+        result = executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test axis=1
+        mdf1 = from_pandas(df1, chunk_size=2)
+        mdf2 = from_pandas(df2, chunk_size=3)
+
+        r = concat([mdf1, mdf2], axis=1)
+        expected = pd.concat([df1, df2], axis=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test multiply dataframes
+        r = concat([mdf1, mdf2, mdf1])
+        expected = pd.concat([df1, df2, df1])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        df1 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'))
+        df2 = pd.DataFrame(np.random.rand(10, 3), columns=list('ABC'))
+
+        mdf1 = from_pandas(df1, chunk_size=3)
+        mdf2 = from_pandas(df2, chunk_size=3)
+
+        # test join=inner
+        r = concat([mdf1, mdf2], join='inner')
+        expected = pd.concat([df1, df2], join='inner')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test for series
+        series1 = pd.Series(np.random.rand(10,))
+        series2 = pd.Series(np.random.rand(10,))
+
+        mseries1 = series_from_pandas(series1, chunk_size=3)
+        mseries2 = series_from_pandas(series2, chunk_size=3)
+
+        r = concat([mseries1, mseries2])
+        expected = pd.concat([series1, series2])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_series_equal(result, expected)
+
+        # test different series and ignore_index
+        mseries1 = series_from_pandas(series1, chunk_size=4)
+        mseries2 = series_from_pandas(series2, chunk_size=3)
+
+        r = concat([mseries1, mseries2], ignore_index=True)
+        expected = pd.concat([series1, series2], ignore_index=True)
+        result = executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_series_equal(result, expected)
+
+        # test axis=1
+        mseries1 = series_from_pandas(series1, chunk_size=3)
+        mseries2 = series_from_pandas(series2, chunk_size=3)
+
+        r = concat([mseries1, mseries2], axis=1)
+        expected = pd.concat([series1, series2], axis=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(result, expected)
