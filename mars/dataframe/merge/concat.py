@@ -19,7 +19,6 @@ from ...serialize import ListField, StringField, BoolField, AnyField
 from ... import opcodes as OperandDef
 from ...utils import lazy_import
 from ..utils import parse_index, build_empty_df, standardize_range_index
-from ..indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, SERIES_TYPE
 
 cudf = lazy_import('cudf', globals=globals())
@@ -85,6 +84,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_dataframe(cls, op):
+        from ..indexing.iloc import DataFrameIlocGetItem
+
         out_df = op.outputs[0]
         inputs = op.inputs
 
@@ -122,6 +123,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_series(cls, op):
+        from ..indexing.iloc import SeriesIlocGetItem
+
         out = op.outputs[0]
         inputs = op.inputs
         out_chunks = []
