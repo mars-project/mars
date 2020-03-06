@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import itertools
-from collections import Iterable, OrderedDict, namedtuple
+from collections import OrderedDict, namedtuple
+from collections.abc import Iterable
 from functools import partial
 
+import cloudpickle
 import numpy as np
 import pandas as pd
-import cloudpickle
 
 from ... import opcodes as OperandDef
 from ...config import options
