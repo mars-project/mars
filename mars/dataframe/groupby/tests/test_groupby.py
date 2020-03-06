@@ -48,7 +48,7 @@ class Test(TestBase):
         self.assertEqual(r.op.method, 'tree')
         r = r.tiles()
         self.assertEqual(len(r.chunks), 1)
-        self.assertEqual(r.chunks[0].op.stage, OperandStage.combine)
+        self.assertEqual(r.chunks[0].op.stage, OperandStage.agg)
         self.assertEqual(len(r.chunks[0].inputs), 1)
         self.assertEqual(len(r.chunks[0].inputs[0].inputs), 2)
 
@@ -65,7 +65,7 @@ class Test(TestBase):
         self.assertEqual(len(r.chunks), 5)
         for chunk in r.chunks:
             self.assertIsInstance(chunk.op, DataFrameGroupByAgg)
-            self.assertEqual(chunk.op.stage, OperandStage.combine)
+            self.assertEqual(chunk.op.stage, OperandStage.agg)
             self.assertIsInstance(chunk.inputs[0].op, DataFrameGroupByOperand)
             self.assertEqual(chunk.inputs[0].op.stage, OperandStage.reduce)
             self.assertIsInstance(chunk.inputs[0].inputs[0].op, DataFrameShuffleProxy)
@@ -76,5 +76,5 @@ class Test(TestBase):
             self.assertEqual(agg_chunk.op.stage, OperandStage.map)
 
         # test unknown method
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(ValueError):
             mdf.groupby('c2').sum(method='not_exist')
