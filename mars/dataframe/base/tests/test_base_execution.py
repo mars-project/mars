@@ -520,6 +520,16 @@ class Test(TestBase):
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = df_raw.apply(lambda x: list(range(10)), axis=1, result_type='broadcast')
             pd.testing.assert_frame_equal(result, expected)
+
+            r = df.transform(lambda x: list(range(len(x))))
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform(lambda x: list(range(len(x))))
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.transform(lambda x: list(range(len(x))), axis=1)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform(lambda x: list(range(len(x))), axis=1)
+            pd.testing.assert_frame_equal(result, expected)
         finally:
             options.chunk_store_limit = old_chunk_store_limit
 
@@ -546,4 +556,9 @@ class Test(TestBase):
         r = series.apply(lambda x: [x, x + 1], convert_dtype=False)
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = s_raw.apply(lambda x: [x, x + 1], convert_dtype=False)
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.transform(lambda x: x + 1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.transform(lambda x: x + 1)
         pd.testing.assert_series_equal(result, expected)

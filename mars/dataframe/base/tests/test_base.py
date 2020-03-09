@@ -301,7 +301,7 @@ class Test(TestBase):
         self.assertEqual(series2.shape, series.shape)
         self.assertIsNone(series2.chunks[0].op.stage)
 
-    def testDataFrameApply(self):
+    def testDataFrameApplyTransform(self):
         cols = [chr(ord('A') + i) for i in range(10)]
         df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
 
@@ -317,15 +317,24 @@ class Test(TestBase):
             r = df.apply(np.sqrt).tiles()
             self.assertTrue(all(v == np.dtype('float64') for v in r.dtypes))
             self.assertEqual(r.shape, df.shape)
-            self.assertEqual(r.op._op_type_, opcodes.DATAFRAME_APPLY)
+            self.assertEqual(r.op._op_type_, opcodes.DATAFRAME_APPLY_TRANSFORM)
             self.assertEqual(r.op.object_type, ObjectType.dataframe)
             self.assertTrue(r.op.elementwise)
 
-            r = df.apply(lambda x: pd.Series([1, 2]), object_type='dataframe').tiles()
+            r = df.apply(lambda x: pd.Series([1, 2])).tiles()
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (np.nan, df.shape[1]))
             self.assertEqual(r.op.object_type, ObjectType.dataframe)
             self.assertEqual(r.chunks[0].shape, (np.nan, 1))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+            self.assertFalse(r.op.elementwise)
+
+            r = df.transform(lambda x: x + 1).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, df.shape)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (df.shape[0], 1))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
             self.assertFalse(r.op.elementwise)
@@ -386,7 +395,7 @@ class Test(TestBase):
         finally:
             options.chunk_store_limit = old_chunk_store_limit
 
-    def testSeriesApply(self):
+    def testSeriesApplyTransform(self):
         idxes = [chr(ord('A') + i) for i in range(20)]
         s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
 
@@ -398,7 +407,7 @@ class Test(TestBase):
         r = series.apply(np.sqrt).tiles()
         self.assertTrue(np.dtype('float64'), r.dtype)
         self.assertEqual(r.shape, series.shape)
-        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY)
+        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY_TRANSFORM)
         self.assertEqual(r.op.object_type, ObjectType.series)
         self.assertEqual(r.chunks[0].shape, (5,))
         self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
@@ -406,7 +415,15 @@ class Test(TestBase):
         r = series.apply('sqrt').tiles()
         self.assertTrue(np.dtype('float64'), r.dtype)
         self.assertEqual(r.shape, series.shape)
-        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY)
+        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY_TRANSFORM)
+        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.chunks[0].shape, (5,))
+        self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
+
+        r = series.transform(lambda x: x + 1).tiles()
+        self.assertTrue(np.dtype('float64'), r.dtype)
+        self.assertEqual(r.shape, series.shape)
+        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY_TRANSFORM)
         self.assertEqual(r.op.object_type, ObjectType.series)
         self.assertEqual(r.chunks[0].shape, (5,))
         self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
@@ -414,7 +431,7 @@ class Test(TestBase):
         r = series.apply(lambda x: [x, x + 1], convert_dtype=False).tiles()
         self.assertTrue(np.dtype('object'), r.dtype)
         self.assertEqual(r.shape, series.shape)
-        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY)
+        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY_TRANSFORM)
         self.assertEqual(r.op.object_type, ObjectType.series)
         self.assertEqual(r.chunks[0].shape, (5,))
         self.assertEqual(r.chunks[0].inputs[0].shape, (5,))

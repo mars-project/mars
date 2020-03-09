@@ -348,8 +348,8 @@ message OperandDef {
         STORE_COO = 1004;
 
         // apply
-        DATAFRAME_APPLY = 1101;
-        SERIES_APPLY = 1102;
+        DATAFRAME_APPLY_TRANSFORM = 1101;
+        SERIES_APPLY_TRANSFORM = 1102;
 
         // shuffle
         SHUFFLE_PROXY = 2001;
