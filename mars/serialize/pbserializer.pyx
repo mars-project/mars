@@ -61,7 +61,7 @@ cdef class ProtobufSerializeProvider(Provider):
 
     cdef inline void _set_slice(self, slice value, obj, tp=None):
         if value.start is not None:
-            if isinstance(value.start, int):
+            if isinstance(value.start, (int, np.integer)):
                 obj.slice.start_val = value.start
             elif isinstance(value.start, str):
                 obj.slice.start_label = value.start
@@ -69,7 +69,7 @@ cdef class ProtobufSerializeProvider(Provider):
                 # dump if not integer or string
                 obj.slice.start_obj = pickle.dumps(value.start)
         if value.stop is not None:
-            if isinstance(value.stop, int):
+            if isinstance(value.stop, (int, np.integer)):
                 obj.slice.stop_val = value.stop
             elif isinstance(value.stop, str):
                 obj.slice.stop_label = value.stop
@@ -88,11 +88,15 @@ cdef class ProtobufSerializeProvider(Provider):
         start_key = obj.slice.WhichOneof('start')
         if start_key is not None:
             start = getattr(obj.slice, start_key)
+            if start_key == 'start_obj':
+                start = pickle.loads(start)
         else:
             start = None
         stop_key = obj.slice.WhichOneof('stop')
         if stop_key is not None:
             stop = getattr(obj.slice, stop_key)
+            if stop_key == 'stop_obj':
+                stop = pickle.loads(stop)
         else:
             stop = None
         step = obj.slice.step_val if obj.slice.WhichOneof('step') else None

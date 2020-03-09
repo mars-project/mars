@@ -450,7 +450,7 @@ class DataFrameIndexHandler:
 
 class NDArrayBoolIndexHandler(DataFrameIndexHandler, NDArrayBoolIndexHandlerBase):
     @classproperty
-    def kind(self):
+    def kind(self):  # pylint: disable=no-self-use
         return 'iloc'
 
 
@@ -483,7 +483,7 @@ class TensorBoolIndexHandler(TensorBoolIndexHandlerBase):
 
 class _FancyIndexHandler(DataFrameIndexHandler, IndexHandler):
     @classproperty
-    def kind(self):
+    def kind(self):  # pylint: disable=no-self-use
         return 'iloc'
 
     def parse(self,
@@ -649,7 +649,7 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
 
 class _LabelFancyIndexHandler(DataFrameIndexHandler, IndexHandler):
     @classproperty
-    def kind(self):
+    def kind(self):  # pylint: disable=no-self-use
         return 'loc'
 
     def parse(self,
