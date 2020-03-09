@@ -15,16 +15,19 @@
 
 def _install():
     from .iloc import iloc
+    from .loc import loc
     from .set_index import set_index
     from .getitem import dataframe_getitem, series_getitem
     from ..operands import DATAFRAME_TYPE, SERIES_TYPE
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'iloc', property(iloc))
+        setattr(cls, 'loc', property(loc))
         setattr(cls, 'set_index', set_index)
         setattr(cls, '__getitem__', dataframe_getitem)
     for cls in SERIES_TYPE:
         setattr(cls, 'iloc', property(iloc))
+        setattr(cls, 'loc', property(loc))
         setattr(cls, '__getitem__', series_getitem)
 
 

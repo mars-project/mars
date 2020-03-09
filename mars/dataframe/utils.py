@@ -497,7 +497,7 @@ def filter_index_value(index_value, min_max, store_data=False):
 def indexing_index_value(index_value, indexes, store_data=False):
     pd_index = index_value.to_pandas()
     if pd_index.empty:
-        return index_value
+        return parse_index(pd_index, indexes, store_data=store_data)
     else:
         if isinstance(indexes, Integral):
             return parse_index(pd_index[[indexes]], store_data=store_data)

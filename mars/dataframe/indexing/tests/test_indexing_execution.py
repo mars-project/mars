@@ -202,6 +202,83 @@ class Test(TestBase):
         pd.testing.assert_series_equal(
             self.executor.execute_dataframe(series, concat=True)[0], data)
 
+    def testLocGetItem(self):
+        rs = np.random.RandomState(0)
+        # index and columns are labels
+        raw1 = pd.DataFrame(rs.randint(10, size=(5, 4)),
+                            index=['a1', 'a2', 'a3', 'a4', 'a5'],
+                            columns=['a', 'b', 'c', 'd'])
+        # columns are labels
+        raw2 = raw1.copy()
+        raw2.reset_index(inplace=True, drop=True)
+        # columns are non unique and monotonic
+        raw3 = raw1.copy()
+        raw3.columns = ['a', 'b', 'b', 'd']
+        # columns are non unique and non monotonic
+        raw4 = raw1.copy()
+        raw4.columns = ['b', 'a', 'b', 'd']
+
+        # df1 = md.DataFrame(raw1, chunk_size=2)
+        df2 = md.DataFrame(raw2, chunk_size=2)
+        df3 = md.DataFrame(raw3, chunk_size=2)
+        df4 = md.DataFrame(raw4, chunk_size=2)
+
+        df = df2.loc[3, 'b']
+        result = self.executor.execute_tensor(df, concat=True)[0]
+        expected = raw2.loc[3, 'b']
+        self.assertEqual(result, expected)
+
+        df = df2.loc[1:4, 'b':'d']
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw2.loc[1:4, 'b': 'd']
+        pd.testing.assert_frame_equal(result, expected)
+
+        df = df2.loc[:4, 'b':]
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw2.loc[:4, 'b':]
+        pd.testing.assert_frame_equal(result, expected)
+
+        df = df2.loc[:, 'b']
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw2.loc[:, 'b']
+        pd.testing.assert_series_equal(result, expected)
+
+        # 'b' is non-unique
+        df = df3.loc[:, 'b']
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw3.loc[:, 'b']
+        pd.testing.assert_frame_equal(result, expected)
+
+        # 'b' is non-unique, and non-monotonic
+        df = df4.loc[:, 'b']
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw4.loc[:, 'b']
+        pd.testing.assert_frame_equal(result, expected)
+
+        # label-based fancy index
+        df = df2.loc[[3, 0, 1], ['c', 'a', 'd']]
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw2.loc[[3, 0, 1], ['c', 'a', 'd']]
+        pd.testing.assert_frame_equal(result, expected)
+
+        # label-based fancy index, asc sorted
+        df = df2.loc[[0, 1, 3], ['a', 'c', 'd']]
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw2.loc[[0, 1, 3], ['a', 'c', 'd']]
+        pd.testing.assert_frame_equal(result, expected)
+
+        # label-based fancy index in which non-unique exists
+        selection = rs.randint(2, size=(5,), dtype=bool)
+        df = df3.loc[selection, ['b', 'a', 'd']]
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw3.loc[selection, ['b', 'a', 'd']]
+        pd.testing.assert_frame_equal(result, expected)
+
+        df = df3.loc[md.Series(selection), ['b', 'a', 'd']]
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw3.loc[selection, ['b', 'a', 'd']]
+        pd.testing.assert_frame_equal(result, expected)
+
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
         df = md.DataFrame(data, chunk_size=2)
@@ -229,6 +306,18 @@ class Test(TestBase):
         df4 = df[['c3', 'c1', 'c2', 'c1']]
         pd.testing.assert_frame_equal(
             self.executor.execute_dataframe(df4, concat=True)[0], data[['c3', 'c1', 'c2', 'c1']])
+
+        df5 = df[np.array(['c1', 'c2', 'c3'])]
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df5, concat=True)[0], data[['c1', 'c2', 'c3']])
+
+        df6 = df[['c3', 'c2', 'c1']]
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df6, concat=True)[0], data[['c3', 'c2', 'c1']])
+
+        df7 = df[1:7:2]
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df7, concat=True)[0], data[1:7:2])
 
         series3 = df['c1'][0]
         self.assertEqual(

@@ -67,7 +67,7 @@ def process_iloc_indexes(inp, indexes):
                             'with these indexers [{}] '
                             'of {}'.format(type(pd_index), val, type(val)))
             new_indexes.append(index)
-        elif isinstance(index, (list, np.ndarray, Base, Entity)):
+        elif isinstance(index, (list, np.ndarray, pd.Series, Base, Entity)):
             if not isinstance(index, (Base, Entity)):
                 index = np.asarray(index)
             else:
@@ -87,6 +87,10 @@ def process_iloc_indexes(inp, indexes):
                                  '(expected 1, got {})'.format(index.ndim))
             new_indexes.append(index)
         elif isinstance(index, Integral):
+            shape = inp.shape[ax]
+            if not np.isnan(shape):
+                if index < -shape or index >= shape:
+                    raise IndexError('single positional indexer is out-of-bounds')
             new_indexes.append(index)
         else:
             raise ValueError(_ILOC_ERROR_MSG)
@@ -309,7 +313,8 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
 
 
 class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = OperandDef.SERIES_ILOC_GETITEM
+    _op_module_ = 'series'
+    _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
     _input = KeyField('input')
     _indexes = ListField('indexes')
@@ -363,7 +368,8 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
 
 class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = OperandDef.SERIES_ILOC_SETIMEM
+    _op_module_ = 'series'
+    _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
 
     _indexes = ListField('indexes')
     _value = AnyField('value')
