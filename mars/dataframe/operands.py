@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import operator
+from collections import OrderedDict
+from functools import reduce
 
 import numpy as np
 import pandas as pd
@@ -170,14 +172,35 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
     @classmethod
     def create_tileable_from_chunks(cls, chunks, inputs=None, **kw):
-        chunk_idx_to_shape = {c.index: c.shape for c in chunks}
-        nsplits = calc_nsplits(chunk_idx_to_shape)
+        ndim = chunks[0].ndim
+        index_min, index_max = [None] * ndim, [None] * ndim
+        for c in chunks:
+            for ax, i in enumerate(c.index):
+                if index_min[ax] is None:
+                    index_min[ax] = i
+                else:
+                    index_min[ax] = min(i, index_min[ax])
+                if index_max[ax] is None:
+                    index_max[ax] = i
+                else:
+                    index_max[ax] = max(i, index_max[ax])
+
+        # gen {chunk index -> shape}
+        chunk_index_to_shape = OrderedDict()
+        chunk_index_to_chunk = dict()
+        for c in chunks:
+            new_index = []
+            for ax, i in enumerate(c.index):
+                new_index.append(i - index_min[ax])
+            chunk_index_to_shape[tuple(new_index)] = c.shape
+            chunk_index_to_chunk[tuple(new_index)] = c
+
+        nsplits = calc_nsplits(chunk_index_to_shape)
         shape = tuple(sum(ns) for ns in nsplits)
-        chunk_shape = tuple(max(c.index[i] for c in chunks) + 1
-                            for i in range(chunks[0].ndim))
+        chunk_shape = tuple(len(ns) for ns in nsplits)
         op = chunks[0].op.copy().reset_key()
         if isinstance(chunks[0], DATAFRAME_CHUNK_TYPE):
-            params = cls._calc_dataframe_params(chunks, chunk_shape)
+            params = cls._calc_dataframe_params(chunk_index_to_chunk, chunk_shape)
             params.update(kw)
             return op.new_dataframe(inputs, shape=shape, chunks=chunks,
                                     nsplits=nsplits, **params)
@@ -189,12 +212,11 @@ class DataFrameOperandMixin(TileableOperandMixin):
                                  nsplits=nsplits, **params)
 
     @classmethod
-    def _calc_dataframe_params(cls, chunks, chunk_shape):
-        chunk_idx_to_chunks = {c.index: c for c in chunks}
-        dtypes = pd.concat([chunk_idx_to_chunks[0, i].dtypes
+    def _calc_dataframe_params(cls, chunk_index_to_chunks, chunk_shape):
+        dtypes = pd.concat([chunk_index_to_chunks[0, i].dtypes
                             for i in range(chunk_shape[1])])
-        columns_value = parse_index(dtypes.index)
-        pd_indxes = [chunk_idx_to_chunks[i, 0].index_value.to_pandas()
+        columns_value = parse_index(dtypes.index, store_data=True)
+        pd_indxes = [chunk_index_to_chunks[i, 0].index_value.to_pandas()
                      for i in range(chunk_shape[0])]
         pd_index = reduce(lambda x, y: x.append(y), pd_indxes)
         index_value = parse_index(pd_index)

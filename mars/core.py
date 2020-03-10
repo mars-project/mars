@@ -619,6 +619,13 @@ class ExecutableTuple(tuple):
             session = Session.default_or_local()
         return session.run(*self, **kw)
 
+    def fetch(self, session=None, **kw):
+        from .session import Session
+
+        if session is None:
+            session = Session.default_or_local()
+        return session.fetch(*self, **kw)
+
 
 class _TileableSession(object):
     def __init__(self, tensor, session):

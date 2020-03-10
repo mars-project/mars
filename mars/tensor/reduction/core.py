@@ -228,14 +228,17 @@ class TensorReductionMixin(TensorOperandMixin):
             setattr(new_op, '_axis', axis)
             shape = list(cls._reduced_shape(c.shape, axis))
             nsplits = list(cls._reduced_nsplits(in_tensor.nsplits, axis))
+            chunk_index = list(c.index)
             if not op.keepdims and axis:
                 for ax in axis:
                     shape[ax] = None
                     nsplits[ax] = None
+                    chunk_index[ax] = None
             shape = tuple(s for s in shape if s is not None)
             nsplits = tuple(ns for ns in nsplits if ns is not None)
+            chunk_index = tuple(i for i in chunk_index if i is not None)
 
-            chunks = new_op.new_chunks([c], shape=shape, index=c.index, order=out_tensor.order)
+            chunks = new_op.new_chunks([c], shape=shape, index=chunk_index, order=out_tensor.order)
             return op.copy().new_tensors(op.inputs, op.outputs[0].shape, order=out_tensor.order,
                                          chunks=chunks, nsplits=nsplits)
 

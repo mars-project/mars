@@ -18,15 +18,81 @@ from numbers import Integral
 import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
+from pandas.core.indexing import IndexingError
 
 from ...compat import six
-from ...tensor.core import TENSOR_TYPE
+from ...core import Entity, Base
+from ...serialize import AnyField, KeyField, ListField
+from ...tensor import asarray
 from ...tensor.datasource.empty import empty
-from ...tensor.indexing.core import calc_shape, process_index
-from ...serialize import AnyField, TupleField
+from ...tensor.indexing.core import calc_shape
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, DATAFRAME_TYPE
 from ..utils import indexing_index_value
+from .index_lib import DataFrameIlocIndexesHandler
+
+
+_ILOC_ERROR_MSG = 'Location based indexing can only have [integer, ' \
+                  'integer slice (START point is INCLUDED, END point is EXCLUDED), ' \
+                  'listlike of integers, boolean array] types'
+
+
+def process_iloc_indexes(inp, indexes):
+    ndim = inp.ndim
+
+    if not isinstance(indexes, tuple):
+        indexes = (indexes,)
+    if len(indexes) < ndim:
+        indexes += (slice(None),) * (ndim - len(indexes))
+    if len(indexes) > ndim:
+        raise IndexingError('Too many indexers')
+
+    new_indexes = []
+    # check each index
+    for ax, index in enumerate(indexes):
+        if isinstance(index, tuple):
+            # a tuple should already have been caught by this point
+            # so don't treat a tuple as a valid indexer
+            raise IndexingError("Too many indexers")
+        elif isinstance(index, slice):
+            pd_index = (inp.index_value if ax == 0 else inp.columns_value).to_pandas()
+            for val in [index.start, index.stop, index.step]:
+                if val is not None:
+                    try:
+                        pd_index[val]  # check on the pandas
+                    except IndexError:
+                        pass
+                    except TypeError:
+                        raise TypeError(
+                            'cannot do slice indexing on {} '
+                            'with these indexers [{}] '
+                            'of {}'.format(type(pd_index), val, type(val)))
+            new_indexes.append(index)
+        elif isinstance(index, (list, np.ndarray, Base, Entity)):
+            if not isinstance(index, (Base, Entity)):
+                index = np.asarray(index)
+            else:
+                index = asarray(index)
+                if ax == 1:
+                    # do not support tensor index on axis 1
+                    # because if so, the dtypes and columns_value would be unknown
+                    try:
+                        index = index.fetch()
+                    except (RuntimeError, ValueError):
+                        raise NotImplementedError('indexer on axis columns cannot be '
+                                                  'non-executed tensor')
+            if index.dtype != np.bool_:
+                index = index.astype(np.int64)
+            if index.ndim != 1:
+                raise ValueError('Buffer has wrong number of dimensions '
+                                 '(expected 1, got {})'.format(index.ndim))
+            new_indexes.append(index)
+        elif isinstance(index, Integral):
+            new_indexes.append(index)
+        else:
+            raise ValueError(_ILOC_ERROR_MSG)
+
+    return new_indexes
 
 
 class DataFrameIloc(object):
@@ -35,9 +101,9 @@ class DataFrameIloc(object):
 
     def __getitem__(self, indexes):
         if isinstance(self._obj, DATAFRAME_TYPE):
-            op = DataFrameIlocGetItem(indexes=process_index(self._obj.ndim, indexes))
+            op = DataFrameIlocGetItem(indexes=process_iloc_indexes(self._obj, indexes))
         else:
-            op = SeriesIlocGetItem(indexes=process_index(self._obj.ndim, indexes))
+            op = SeriesIlocGetItem(indexes=process_iloc_indexes(self._obj, indexes))
         return op(self._obj)
 
     def __setitem__(self, indexes, value):
@@ -45,9 +111,9 @@ class DataFrameIloc(object):
             raise NotImplementedError('Only scalar value is supported to set by iloc')
 
         if isinstance(self._obj, DATAFRAME_TYPE):
-            op = DataFrameIlocSetItem(indexes=process_index(self._obj.ndim, indexes), value=value)
+            op = DataFrameIlocSetItem(indexes=process_iloc_indexes(self._obj, indexes), value=value)
         else:
-            op = SeriesIlocSetItem(indexes=process_index(self._obj.ndim, indexes), value=value)
+            op = SeriesIlocSetItem(indexes=process_iloc_indexes(self._obj, indexes), value=value)
 
         ret = op(self._obj)
         self._obj.data = ret.data
@@ -56,7 +122,8 @@ class DataFrameIloc(object):
 class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
-    _indexes = TupleField('indexes')
+    _input = KeyField('input')
+    _indexes = ListField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
         super(DataFrameIlocGetItem, self).__init__(_indexes=indexes,
@@ -64,8 +131,24 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
                                                    _object_type=object_type, **kw)
 
     @property
+    def input(self):
+        return self._input
+
+    @property
     def indexes(self):
         return self._indexes
+
+    def _set_inputs(self, inputs):
+        super(DataFrameIlocGetItem, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+        self._input = next(inputs_iter)
+        indexes = []
+        for index in self._indexes:
+            if isinstance(index, (Entity, Base)):
+                indexes.append(next(inputs_iter))
+            else:
+                indexes.append(index)
+        self._indexes = tuple(indexes)
 
     def __call__(self, df):
         # Note [Fancy Index of Numpy and Pandas]
@@ -81,28 +164,31 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         # 2  1.0  1.0
         #
         # Thus, we processing the index along two axis of DataFrame separately.
-
-        if isinstance(self.indexes[0], TENSOR_TYPE) or isinstance(self.indexes[1], TENSOR_TYPE):
-            raise NotImplementedError('The index value cannot be unexecuted mars tensor')
-
         shape0 = tuple(calc_shape((df.shape[0],), (self.indexes[0],)))
         shape1 = tuple(calc_shape((df.shape[1],), (self.indexes[1],)))
+
+        inputs = [df] + [index for index in self._indexes if isinstance(index, (Base, Entity))]
 
         # NB: pandas only compresses the result to series when index on one of axis is integral
         if isinstance(self.indexes[1], Integral):
             shape = shape0
             dtype = df.dtypes.iloc[self.indexes[1]]
             index_value = indexing_index_value(df.index_value, self.indexes[0])
-            self._object_type = ObjectType.series
-            return self.new_series([df], shape=shape, dtype=dtype, index_value=index_value)
+            if isinstance(self.indexes[0], Integral):
+                # scalar
+                self._object_type = ObjectType.scalar
+                return self.new_scalar(inputs, dtype=dtype)
+            else:
+                self._object_type = ObjectType.series
+                return self.new_series(inputs, shape=shape, dtype=dtype, index_value=index_value)
         elif isinstance(self.indexes[0], Integral):
             shape = shape1
             dtype = find_common_type(df.dtypes.iloc[self.indexes[1]].values)
             index_value = indexing_index_value(df.columns_value, self.indexes[1])
             self._object_type = ObjectType.series
-            return self.new_series([df], shape=shape, dtype=dtype, index_value=index_value)
+            return self.new_series(inputs, shape=shape, dtype=dtype, index_value=index_value)
         else:
-            return self.new_dataframe([df], shape=shape0 + shape1, dtypes=df.dtypes.iloc[self.indexes[1]],
+            return self.new_dataframe(inputs, shape=shape0 + shape1, dtypes=df.dtypes.iloc[self.indexes[1]],
                                       index_value=indexing_index_value(df.index_value, self.indexes[0]),
                                       columns_value=indexing_index_value(df.columns_value, self.indexes[1],
                                                                          store_data=True))
@@ -145,75 +231,31 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        in_df = op.inputs[0]
-        out_val = op.outputs[0]
-
-        # See Note [Fancy Index of Numpy and Pandas]
-        tensor0 = empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],))[op.indexes[0]].tiles()
-        tensor1 = empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],))[op.indexes[1]].tiles()
-
-        integral_index_on_index = isinstance(op.indexes[0], Integral)
-        integral_index_on_column = isinstance(op.indexes[1], Integral)
-
-        out_chunks = []
-        for index_chunk, column_chunk in itertools.product(tensor0.chunks, tensor1.chunks):
-            in_chunk = in_df.cix[index_chunk.inputs[0].index + column_chunk.inputs[0].index]
-
-            chunk_op = op.copy().reset_key()
-            chunk_op._indexes = (index_chunk.op.indexes[0], column_chunk.op.indexes[0])
-
-            if integral_index_on_column:
-                shape = index_chunk.shape
-                index = index_chunk.index
-                index_value = indexing_index_value(in_chunk.index_value, index_chunk.op.indexes[0])
-                out_chunk = chunk_op.new_chunk([in_chunk], shape=shape, index=index,
-                                               dtype=out_val.dtype, index_value=index_value)
-            elif integral_index_on_index:
-                shape = column_chunk.shape
-                index = column_chunk.index
-                index_value = indexing_index_value(in_chunk.columns_value, column_chunk.op.indexes[0])
-                out_chunk = chunk_op.new_chunk([in_chunk], shape=shape, index=index,
-                                               dtype=out_val.dtype, index_value=index_value)
-            else:
-                index_value = indexing_index_value(in_chunk.index_value, index_chunk.op.indexes[0])
-                columns_value = indexing_index_value(in_chunk.columns_value, column_chunk.op.indexes[0], store_data=True)
-                dtypes = in_chunk.dtypes.iloc[column_chunk.op.indexes[0]]
-                out_chunk = chunk_op.new_chunk([in_chunk],
-                                               shape=index_chunk.shape + column_chunk.shape,
-                                               index=index_chunk.index + column_chunk.index,
-                                               dtypes=dtypes, index_value=index_value, columns_value=columns_value)
-            out_chunks.append(out_chunk)
-
-        new_op = op.copy()
-        if integral_index_on_column or integral_index_on_index:
-            if integral_index_on_column:
-                nsplits = tensor0.nsplits
-            else:
-                nsplits = tensor1.nsplits
-            return new_op.new_seriess(op.inputs, out_val.shape, dtype=out_val.dtype,
-                                      index_value=out_val.index_value, chunks=out_chunks, nsplits=nsplits)
-        else:
-            nsplits = tensor0.nsplits + tensor1.nsplits
-            return new_op.new_dataframes(op.inputs, out_val.shape, dtypes=out_val.dtypes,
-                                        index_value=out_val.index_value,
-                                        columns_value=out_val.columns_value, chunks=out_chunks, nsplits=nsplits)
+        handler = DataFrameIlocIndexesHandler()
+        return [handler.handle(op)]
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
+
+        df = ctx[op.input.key]
+        if len(op.inputs) > 1:
+            indexes = tuple(ctx[index.key] if hasattr(index, 'key') else index
+                            for index in op.indexes)
+        else:
+            indexes = tuple(op.indexes)
         if six.PY2:
             # for python 2, indexes requires to be writeable
             # thus copy them first if have to
-            indexes = []
-            for ind in op.indexes:
+            new_indexes = []
+            for ind in indexes:
                 if hasattr(ind, 'flags') and not ind.flags.writeable:
-                    indexes.append(ind.copy())
+                    new_indexes.append(ind.copy())
                 else:
-                    indexes.append(ind)
-            indexes = tuple(indexes)
-        else:
-            indexes = op.indexes
-        r = ctx[op.inputs[0].key].iloc[indexes]
+                    new_indexes.append(ind)
+            indexes = tuple(new_indexes)
+
+        r = df.iloc[indexes]
         if isinstance(r, pd.Series) and r.dtype != chunk.dtype:
             r = r.astype(chunk.dtype)
         ctx[chunk.key] = r
@@ -222,10 +264,11 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
 
-    _indexes = TupleField('indexes')
+    _indexes = ListField('indexes')
     _value = AnyField('value')
 
-    def __init__(self, indexes=None, value=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
+    def __init__(self, indexes=None, value=None, gpu=False, sparse=False,
+                 object_type=ObjectType.dataframe, **kw):
         super(DataFrameIlocSetItem, self).__init__(_indexes=indexes, _value=value,
                                                    _gpu=gpu, _sparse=sparse,
                                                    _object_type=object_type, **kw)
@@ -239,8 +282,6 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         return self._value
 
     def __call__(self, df):
-        if isinstance(self.indexes[0], TENSOR_TYPE) or isinstance(self.indexes[1], TENSOR_TYPE):
-            raise NotImplementedError('The index value cannot be unexecuted mars tensor')
         return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
                                   index_value=df.index_value, columns_value=df.columns_value)
 
@@ -279,64 +320,69 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         r = ctx[op.inputs[0].key].copy(deep=True)
-        r.iloc[op.indexes] = op.value
+        r.iloc[tuple(op.indexes)] = op.value
         ctx[chunk.key] = r
 
 
 class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.SERIES_ILOC_GETITEM
 
-    _indexes = AnyField('indexes')
+    _input = KeyField('input')
+    _indexes = ListField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.series, **kw):
         super(SeriesIlocGetItem, self).__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse,
                                                 _object_type=object_type, **kw)
 
     @property
+    def input(self):
+        return self._input
+
+    @property
     def indexes(self):
         return self._indexes
 
+    def _set_inputs(self, inputs):
+        super(SeriesIlocGetItem, self)._set_inputs(inputs)
+
+        inputs_iter = iter(self._inputs)
+        self._input = next(inputs_iter)
+
+        indexes = []
+        for index in self._indexes:
+            if isinstance(index, (Entity, Base)):
+                indexes.append(next(inputs_iter))
+            else:
+                indexes.append(index)
+        self._indexes = tuple(indexes)
+
     @classmethod
     def tile(cls, op):
-        in_series = op.inputs[0]
-        out = op.outputs[0]
-
-        # Reuse the logic of fancy indexing in tensor module.
-        tensor = empty(in_series.shape, chunk_size=(in_series.nsplits[0],))[op.indexes].tiles()
-
-        out_chunks = []
-        for index_chunk in tensor.chunks:
-            in_chunk = in_series.cix[index_chunk.inputs[0].index or (0,)]
-
-            chunk_op = op.copy().reset_key()
-            chunk_op._indexes = index_chunk.op.indexes[0]
-            index_value = indexing_index_value(in_chunk.index_value, index_chunk.op.indexes)
-            out_chunk = chunk_op.new_chunk([in_chunk], shape=index_chunk.shape, index=index_chunk.index,
-                                           dtype=out.dtype, index_value=index_value)
-            out_chunks.append(out_chunk)
-
-        new_op = op.copy()
-
-        return new_op.new_seriess(op.inputs, out.shape, dtype=out.dtype,
-                                  index_value=out.index_value, chunks=out_chunks, nsplits=tensor.nsplits)
+        handler = DataFrameIlocIndexesHandler()
+        return [handler.handle(op)]
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        ctx[chunk.key] = ctx[op.inputs[0].key].iloc[op.indexes]
+        series = ctx[op.input.key]
+        if len(op.inputs) > 1:
+            indexes = tuple(ctx[index.key] if hasattr(index, 'key') else index
+                            for index in op.indexes)
+        else:
+            indexes = tuple(op.indexes)
+        ctx[chunk.key] = series.iloc[indexes]
 
     def __call__(self, series):
-        if isinstance(self.indexes, TENSOR_TYPE):
-            raise NotImplementedError('The index value cannot be mars tensor')
         shape = tuple(calc_shape(series.shape, self.indexes))
-        index_value = indexing_index_value(series.index_value, self.indexes)
-        return self.new_series([series], shape=shape, dtype=series.dtype, index_value=index_value)
+        index_value = indexing_index_value(series.index_value, self.indexes[0])
+        inputs = [series] + [index for index in self._indexes if isinstance(index, (Base, Entity))]
+        return self.new_series(inputs, shape=shape, dtype=series.dtype, index_value=index_value)
 
 
 class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.SERIES_ILOC_SETIMEM
 
-    _indexes = AnyField('indexes')
+    _indexes = ListField('indexes')
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False, **kw):
@@ -352,8 +398,6 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         return self._value
 
     def __call__(self, series):
-        if isinstance(self.indexes, TENSOR_TYPE):
-            raise NotImplementedError('The index value cannot be mars tensor')
         return self.new_series([series], shape=series.shape, dtype=series.dtype,
                                index_value=series.index_value, name=series.name)
 
@@ -363,7 +407,7 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         # Reuse the logic of fancy indexing in tensor module.
-        tensor = empty(in_series.shape, chunk_size=in_series.nsplits)[op.indexes].tiles()
+        tensor = empty(in_series.shape, chunk_size=in_series.nsplits)[op.indexes[0]].tiles()
 
         chunk_mapping = dict((c.inputs[0].index, c) for c in tensor.chunks)
 
@@ -374,7 +418,7 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
             else:
                 chunk_op = op.copy().reset_key()
                 index_chunk = chunk_mapping[chunk.index]
-                chunk_op._indexes = index_chunk.op.indexes[0]
+                chunk_op._indexes = index_chunk.op.indexes
                 chunk_op._value = op.value
                 out_chunk = chunk_op.new_chunk([chunk], shape=chunk.shape, index=chunk.index, dtype=chunk.dtype,
                                                index_value=chunk.index_value, name=chunk.name)
@@ -389,7 +433,7 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         r = ctx[op.inputs[0].key].copy(deep=True)
-        r.iloc[op.indexes] = op.value
+        r.iloc[tuple(op.indexes)] = op.value
         ctx[chunk.key] = r
 
 
