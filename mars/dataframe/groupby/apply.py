@@ -23,8 +23,6 @@ from ..utils import build_empty_df, build_empty_series, parse_index
 
 
 class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = opcodes.GROUPBY_APPLY_TRANSFORM
-
     # todo these three args belowshall be redesigned when we extend
     #  the functionality of groupby func
     _by = AnyField('by')
@@ -193,13 +191,21 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
             return self.new_series([groupby], shape=new_shape, dtype=dtypes, index_value=index_value)
 
 
+class GroupByApply(GroupByApplyTransform):
+    _op_type_ = opcodes.GROUPBY_APPLY
+
+
+class GroupByTransform(GroupByApplyTransform):
+    _op_type_ = opcodes.GROUPBY_TRANSFORM
+
+
 def groupby_apply(groupby, func, *args, dtypes=None, index=None, object_type=None, **kwargs):
     # todo this can be done with sort_index implemented
     if not groupby.op.as_index:
         raise NotImplementedError('apply when set_index == False is not supported')
-    op = GroupByApplyTransform(func=func, by=groupby.op.by, by_func=groupby.op.by_func,
-                               as_index=groupby.op.as_index, is_transform=False,
-                               args=args, kwds=kwargs, object_type=object_type)
+    op = GroupByApply(func=func, by=groupby.op.by, by_func=groupby.op.by_func,
+                      as_index=groupby.op.as_index, is_transform=False,
+                      args=args, kwds=kwargs, object_type=object_type)
     return op(groupby, dtypes=dtypes, index=index)
 
 
@@ -207,7 +213,7 @@ def groupby_transform(groupby, func, *args, dtypes=None, index=None, object_type
     # todo this can be done with sort_index implemented
     if not groupby.op.as_index:
         raise NotImplementedError('transform when set_index == False is not supported')
-    op = GroupByApplyTransform(func=func, by=groupby.op.by, by_func=groupby.op.by_func,
-                               as_index=groupby.op.as_index, is_transform=True, args=args,
-                               kwds=kwargs, object_type=object_type)
+    op = GroupByTransform(func=func, by=groupby.op.by, by_func=groupby.op.by_func,
+                          as_index=groupby.op.as_index, is_transform=True, args=args,
+                          kwds=kwargs, object_type=object_type)
     return op(groupby, dtypes=dtypes, index=index)

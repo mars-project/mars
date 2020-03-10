@@ -348,8 +348,10 @@ message OperandDef {
         STORE_COO = 1004;
 
         // apply
-        DATAFRAME_APPLY_TRANSFORM = 1101;
-        SERIES_APPLY_TRANSFORM = 1102;
+        DATAFRAME_APPLY = 1101;
+        DATAFRAME_TRANSFORM = 1102;
+        SERIES_APPLY = 1103;
+        SERIES_TRANSFORM = 1104;
 
         // shuffle
         SHUFFLE_PROXY = 2001;
@@ -377,7 +379,8 @@ message OperandDef {
         GROUPBY = 2030;
         GROUPBY_AGG = 2033;
         GROUPBY_CONCAT = 2034;
-        GROUPBY_APPLY_TRANSFORM = 2035;
+        GROUPBY_APPLY = 2035;
+        GROUPBY_TRANSFORM = 2036;
 
         // parallel sorting by regular sampling
         PSRS_SORT_REGULAR_SMAPLE = 2040;

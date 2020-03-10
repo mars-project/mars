@@ -27,8 +27,6 @@ from ..utils import build_empty_df, build_empty_series, parse_index
 
 
 class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = opcodes.DATAFRAME_APPLY_TRANSFORM
-
     _func = BytesField('func', on_serialize=cloudpickle.dumps,
                        on_deserialize=cloudpickle.loads)
     _axis = AnyField('axis')
@@ -216,9 +214,15 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
             return self.new_series([df], shape=shape, dtype=dtypes, index_value=index_value)
 
 
-class SeriesApplyTransform(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = opcodes.SERIES_APPLY_TRANSFORM
+class DataFrameApply(DataFrameApplyTransform):
+    _op_type_ = opcodes.DATAFRAME_APPLY
 
+
+class DataFrameTransform(DataFrameApplyTransform):
+    _op_type_ = opcodes.DATAFRAME_TRANSFORM
+
+
+class SeriesApplyTransform(DataFrameOperand, DataFrameOperandMixin):
     _func = BytesField('func', on_serialize=cloudpickle.dumps,
                        on_deserialize=cloudpickle.loads)
     _convert_dtype = BoolField('convert_dtype')
@@ -300,6 +304,14 @@ class SeriesApplyTransform(DataFrameOperand, DataFrameOperandMixin):
                                index_value=series.index_value)
 
 
+class SeriesApply(SeriesApplyTransform):
+    _op_type_ = opcodes.SERIES_APPLY
+
+
+class SeriesTransform(SeriesApplyTransform):
+    _op_type_ = opcodes.SERIES_TRANSFORM
+
+
 def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None,
              object_type=None, index=None, elementwise=None, **kwds):
     # todo fulfill this when df.aggregate is implemented
@@ -317,15 +329,15 @@ def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None
             kwds["axis"] = axis
         return func(*args, **kwds)
 
-    op = DataFrameApplyTransform(func=func, axis=axis, raw=raw, result_type=result_type,
-                                 args=args, kwds=kwds, object_type=object_type,
-                                 elementwise=elementwise, is_transform=False)
+    op = DataFrameApply(func=func, axis=axis, raw=raw, result_type=result_type,
+                        args=args, kwds=kwds, object_type=object_type,
+                        elementwise=elementwise, is_transform=False)
     return op(df, dtypes=dtypes, index=index)
 
 
 def df_transform(df, func, axis=0, *args, dtypes=None, index=None, **kwargs):
     # todo fulfill support on df.agg later
-    op = DataFrameApplyTransform(func=func, axis=axis, is_transform=True, args=args, kwds=kwargs)
+    op = DataFrameTransform(func=func, axis=axis, is_transform=True, args=args, kwds=kwargs)
     return op(df, dtypes=dtypes, index=index)
 
 
@@ -344,13 +356,13 @@ def series_apply(series, func, convert_dtype=True, args=(), **kwds):
             raise AttributeError("'%r' is not a valid function for '%s' object" %
                                  (func, type(series).__name__))
 
-    op = SeriesApplyTransform(func=func, convert_dtype=convert_dtype, args=args, kwds=kwds,
-                              object_type=ObjectType.series, is_transform=False)
+    op = SeriesApply(func=func, convert_dtype=convert_dtype, args=args, kwds=kwds,
+                     object_type=ObjectType.series, is_transform=False)
     return op(series)
 
 
 def series_transform(series, func, axis=0, *args, **kwargs):
     # todo fulfill support on df.agg later
-    op = SeriesApplyTransform(func=func, convert_dtype=True, axis=axis, args=args, kwds=kwargs,
-                              object_type=ObjectType.series, is_transform=True)
+    op = SeriesTransform(func=func, convert_dtype=True, axis=axis, args=args, kwds=kwargs,
+                         object_type=ObjectType.series, is_transform=True)
     return op(series)
