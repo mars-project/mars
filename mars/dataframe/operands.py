@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
-    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, GROUPBY_TYPE
+    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
 from ..core import FuseChunkData, FuseChunk
 from ..operands import Operand, TileableOperandMixin, MapReduceOperand, Fuse
 from ..operands import ShuffleProxy, FuseChunkMixin
@@ -36,7 +36,8 @@ class ObjectType(Enum):
     series = 2
     index = 3
     scalar = 4
-    groupby = 5
+    dataframe_groupby = 5
+    series_groupby = 6
 
 
 class DataFrameOperandMixin(TileableOperandMixin):
@@ -55,7 +56,8 @@ class DataFrameOperandMixin(TileableOperandMixin):
         ObjectType.series: SERIES_TYPE,
         ObjectType.index: INDEX_TYPE,
         ObjectType.scalar: TENSOR_TYPE,
-        ObjectType.groupby: GROUPBY_TYPE
+        ObjectType.dataframe_groupby: DATAFRAME_GROUPBY_TYPE,
+        ObjectType.series_groupby: SERIES_GROUPBY_TYPE,
     }
 
     @classmethod
@@ -143,7 +145,6 @@ class DataFrameOperandMixin(TileableOperandMixin):
     @classmethod
     def concat_tileable_chunks(cls, tileable):
         from .merge.concat import DataFrameConcat, GroupByConcat
-        from .operands import ObjectType, DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
 
         df = tileable
         assert not df.is_coarse()
@@ -164,9 +165,16 @@ class DataFrameOperandMixin(TileableOperandMixin):
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
-        elif isinstance(df, GROUPBY_TYPE):
-            chunk = GroupByConcat(by=df.op.by, object_type=ObjectType.dataframe).new_chunk(df.chunks)
-            return GroupByConcat(by=df.op.by, object_type=ObjectType.dataframe).new_dataframe([df], chunks=[chunk])
+        elif isinstance(df, DATAFRAME_GROUPBY_TYPE):
+            chunk = GroupByConcat(by=df.op.by, by_func=df.op.by_func,
+                                  object_type=ObjectType.dataframe).new_chunk(df.chunks)
+            return GroupByConcat(by=df.op.by, by_func=df.op.by_func,
+                                 object_type=ObjectType.dataframe).new_dataframe([df], chunks=[chunk])
+        elif isinstance(df, SERIES_GROUPBY_TYPE):
+            chunk = GroupByConcat(by=df.op.by, by_func=df.op.by_func,
+                                  object_type=ObjectType.series).new_chunk(df.chunks)
+            return GroupByConcat(by=df.op.by, by_func=df.op.by_func,
+                                 object_type=ObjectType.series).new_dataframe([df], chunks=[chunk])
         else:
             raise NotImplementedError
 

@@ -23,7 +23,7 @@ from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
     DataFrameMapReduceOperand, DataFrameShuffleProxy
-from ..utils import build_concated_rows_frame, build_empty_df, parse_index, hash_dataframe_on, \
+from ..utils import build_concatenated_rows_frame, build_empty_df, parse_index, hash_dataframe_on, \
     infer_index_value
 
 import logging
@@ -256,8 +256,8 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
     @classmethod
     def tile(cls, op):
         df = op.outputs[0]
-        left = build_concated_rows_frame(op.inputs[0])
-        right = build_concated_rows_frame(op.inputs[1])
+        left = build_concatenated_rows_frame(op.inputs[0])
+        right = build_concatenated_rows_frame(op.inputs[1])
 
         # left and right now are guaranteed only chunked along index axis, not column axis.
         if left.chunk_shape[1] > 1:

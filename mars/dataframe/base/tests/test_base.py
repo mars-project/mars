@@ -17,10 +17,13 @@ import random
 import numpy as np
 import pandas as pd
 
-from mars.operands import OperandStage
+from mars import opcodes
+from mars.config import options
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index
+from mars.dataframe.operands import ObjectType
+from mars.operands import OperandStage
 from mars.tests.core import TestBase
 from mars.tiles import get_tiled
 
@@ -297,3 +300,139 @@ class Test(TestBase):
         series2 = series.fillna(value_series).tiles()
         self.assertEqual(series2.shape, series.shape)
         self.assertIsNone(series2.chunks[0].op.stage)
+
+    def testDataFrameApplyTransform(self):
+        cols = [chr(ord('A') + i) for i in range(10)]
+        df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
+
+        old_chunk_store_limit = options.chunk_store_limit
+        try:
+            options.chunk_store_limit = 20
+
+            df = from_pandas_df(df_raw, chunk_size=5)
+
+            r = df.apply('ffill')
+            self.assertEqual(r.op._op_type_, opcodes.FILL_NA)
+
+            r = df.apply(np.sqrt).tiles()
+            self.assertTrue(all(v == np.dtype('float64') for v in r.dtypes))
+            self.assertEqual(r.shape, df.shape)
+            self.assertEqual(r.op._op_type_, opcodes.DATAFRAME_APPLY)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertTrue(r.op.elementwise)
+
+            r = df.apply(lambda x: pd.Series([1, 2])).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (np.nan, df.shape[1]))
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (np.nan, 1))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+            self.assertFalse(r.op.elementwise)
+
+            r = df.transform(lambda x: x + 1).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, df.shape)
+            self.assertEqual(r.op._op_type_, opcodes.DATAFRAME_TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (df.shape[0], 1))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+            self.assertFalse(r.op.elementwise)
+
+            r = df.apply(np.sum, axis='index').tiles()
+            self.assertTrue(np.dtype('int64'), r.dtype)
+            self.assertEqual(r.shape, (df.shape[1],))
+            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.chunks[0].shape, (20 // df.shape[0],))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+            self.assertFalse(r.op.elementwise)
+
+            r = df.apply(np.sum, axis='columns').tiles()
+            self.assertTrue(np.dtype('int64'), r.dtype)
+            self.assertEqual(r.shape, (df.shape[0],))
+            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.chunks[0].shape, (20 // df.shape[1],))
+            self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+            self.assertFalse(r.op.elementwise)
+
+            r = df.apply(lambda x: pd.Series([1, 2], index=['foo', 'bar']), axis=1).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (df.shape[0], np.nan))
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (20 // df.shape[1], np.nan))
+            self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+            self.assertFalse(r.op.elementwise)
+
+            r = df.apply(lambda x: [1, 2], axis=1, result_type='expand').tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (df.shape[0], np.nan))
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (20 // df.shape[1], np.nan))
+            self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+            self.assertFalse(r.op.elementwise)
+
+            r = df.apply(lambda x: list(range(10)), axis=1, result_type='reduce').tiles()
+            self.assertTrue(np.dtype('object'), r.dtype)
+            self.assertEqual(r.shape, (df.shape[0],))
+            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.chunks[0].shape, (20 // df.shape[1],))
+            self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+            self.assertFalse(r.op.elementwise)
+
+            r = df.apply(lambda x: list(range(10)), axis=1, result_type='broadcast').tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (df.shape[0], np.nan))
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (20 // df.shape[1], np.nan))
+            self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+            self.assertFalse(r.op.elementwise)
+        finally:
+            options.chunk_store_limit = old_chunk_store_limit
+
+    def testSeriesApplyTransform(self):
+        idxes = [chr(ord('A') + i) for i in range(20)]
+        s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
+
+        series = from_pandas_series(s_raw, chunk_size=5)
+
+        r = series.apply('add', args=(1,)).tiles()
+        self.assertEqual(r.op._op_type_, opcodes.ADD)
+
+        r = series.apply(np.sqrt).tiles()
+        self.assertTrue(np.dtype('float64'), r.dtype)
+        self.assertEqual(r.shape, series.shape)
+        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY)
+        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.chunks[0].shape, (5,))
+        self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
+
+        r = series.apply('sqrt').tiles()
+        self.assertTrue(np.dtype('float64'), r.dtype)
+        self.assertEqual(r.shape, series.shape)
+        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY)
+        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.chunks[0].shape, (5,))
+        self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
+
+        r = series.transform(lambda x: x + 1).tiles()
+        self.assertTrue(np.dtype('float64'), r.dtype)
+        self.assertEqual(r.shape, series.shape)
+        self.assertEqual(r.op._op_type_, opcodes.SERIES_TRANSFORM)
+        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.chunks[0].shape, (5,))
+        self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
+
+        r = series.apply(lambda x: [x, x + 1], convert_dtype=False).tiles()
+        self.assertTrue(np.dtype('object'), r.dtype)
+        self.assertEqual(r.shape, series.shape)
+        self.assertEqual(r.op._op_type_, opcodes.SERIES_APPLY)
+        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.chunks[0].shape, (5,))
+        self.assertEqual(r.chunks[0].inputs[0].shape, (5,))

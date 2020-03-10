@@ -17,6 +17,7 @@ import random
 import numpy as np
 import pandas as pd
 
+from mars.config import options
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -458,4 +459,106 @@ class Test(TestBase):
         r = series.fillna(value_df)
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = series_raw.fillna(value_series_raw)
+        pd.testing.assert_series_equal(result, expected)
+
+    def testDataFrameApplyExecute(self):
+        cols = [chr(ord('A') + i) for i in range(10)]
+        df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
+
+        old_chunk_store_limit = options.chunk_store_limit
+        try:
+            options.chunk_store_limit = 20
+
+            df = from_pandas_df(df_raw, chunk_size=5)
+
+            r = df.apply('ffill')
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply('ffill')
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.apply(np.sqrt)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(np.sqrt)
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.apply(lambda x: pd.Series([1, 2]))
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(lambda x: pd.Series([1, 2]))
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.apply(np.sum, axis='index')
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(np.sum, axis='index')
+            pd.testing.assert_series_equal(result, expected)
+
+            r = df.apply(np.sum, axis='columns')
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(np.sum, axis='columns')
+            pd.testing.assert_series_equal(result, expected)
+
+            r = df.apply(lambda x: [1, 2], axis=1)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(lambda x: [1, 2], axis=1)
+            pd.testing.assert_series_equal(result, expected)
+
+            r = df.apply(lambda x: pd.Series([1, 2], index=['foo', 'bar']), axis=1)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(lambda x: pd.Series([1, 2], index=['foo', 'bar']), axis=1)
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.apply(lambda x: [1, 2], axis=1, result_type='expand')
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(lambda x: [1, 2], axis=1, result_type='expand')
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.apply(lambda x: list(range(10)), axis=1, result_type='reduce')
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(lambda x: list(range(10)), axis=1, result_type='reduce')
+            pd.testing.assert_series_equal(result, expected)
+
+            r = df.apply(lambda x: list(range(10)), axis=1, result_type='broadcast')
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(lambda x: list(range(10)), axis=1, result_type='broadcast')
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.transform(lambda x: list(range(len(x))))
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform(lambda x: list(range(len(x))))
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.transform(lambda x: list(range(len(x))), axis=1)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform(lambda x: list(range(len(x))), axis=1)
+            pd.testing.assert_frame_equal(result, expected)
+        finally:
+            options.chunk_store_limit = old_chunk_store_limit
+
+    def testSeriesApplyExecute(self):
+        idxes = [chr(ord('A') + i) for i in range(20)]
+        s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
+
+        series = from_pandas_series(s_raw, chunk_size=5)
+        r = series.apply('add', args=(1,))
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.apply('add', args=(1,))
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.apply(np.sqrt)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.apply(np.sqrt)
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.apply('sqrt')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.apply('sqrt')
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.apply(lambda x: [x, x + 1], convert_dtype=False)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.apply(lambda x: [x, x + 1], convert_dtype=False)
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.transform(lambda x: x + 1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.transform(lambda x: x + 1)
         pd.testing.assert_series_equal(result, expected)

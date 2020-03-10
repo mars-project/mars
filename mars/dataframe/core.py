@@ -761,12 +761,44 @@ class DataFrameGroupBy(TileableEntity):
         return super().__hash__()
 
 
+class SeriesGroupByData(TileableData):
+    __slots__ = ()
+
+    _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [SeriesChunk(it) for it in x] if x is not None else x)
+
+    def __init__(self, op=None, chunks=None, **kw):
+        super().__init__(_op=op, _chunks=chunks, **kw)
+
+    def _equal(self, o):
+        # FIXME We need to implemented a true `==` operator for DataFrameGroupby
+        if build_mode().is_build_mode:
+            return self is o
+        else:
+            return self == o
+
+
+class SeriesGroupBy(TileableEntity):
+    __slots__ = ()
+    _allow_data_type_ = (SeriesGroupByData,)
+
+    def __eq__(self, other):
+        return self._equal(other)
+
+    def __hash__(self):
+        # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
+        return super().__hash__()
+
+
 INDEX_TYPE = (Index, IndexData)
 INDEX_CHUNK_TYPE = (IndexChunk, IndexChunkData)
 SERIES_TYPE = (Series, SeriesData)
 SERIES_CHUNK_TYPE = (SeriesChunk, SeriesChunkData)
 DATAFRAME_TYPE = (DataFrame, DataFrameData)
 DATAFRAME_CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)
-GROUPBY_TYPE = (DataFrameGroupBy, DataFrameGroupByData)
+DATAFRAME_GROUPBY_TYPE = (DataFrameGroupBy, DataFrameGroupByData)
+SERIES_GROUPBY_TYPE = (SeriesGroupBy, SeriesGroupByData)
+GROUPBY_TYPE = DATAFRAME_GROUPBY_TYPE + SERIES_GROUPBY_TYPE
 TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE + GROUPBY_TYPE
 CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE

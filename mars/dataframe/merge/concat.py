@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cloudpickle
 import pandas as pd
 import numpy as np
 
-from ...serialize import ListField, StringField, BoolField, AnyField
+from ...serialize import ListField, StringField, BoolField, BytesField, AnyField
 from ... import opcodes as OperandDef
 from ...utils import lazy_import
 from ..utils import parse_index, build_empty_df, standardize_range_index
@@ -333,20 +334,27 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_CONCAT
     _by = AnyField('by')
+    _by_func = BytesField('by_func', on_serialize=cloudpickle.dumps,
+                          on_deserialize=cloudpickle.loads)
 
-    def __init__(self, by=None, object_type=None, **kw):
-        super().__init__(_by=by, _object_type=object_type, **kw)
+    def __init__(self, by=None, by_func=None, object_type=None, **kw):
+        super().__init__(_by=by, _by_func=by_func, _object_type=object_type, **kw)
 
     @property
     def by(self):
         return self._by
+
+    @property
+    def by_func(self):
+        return self._by_func
 
     @classmethod
     def execute(cls, ctx, op):
         inputs = [ctx[input.key] for input in op.inputs]
         input_data = [group[1] for inp in inputs if len(inp) > 1 for group in inp]
         obj = pd.concat(input_data)
-        ctx[op.outputs[0].key] = obj.groupby(by=op.by)
+        by = op.by if op.by is not None else op.by_func
+        ctx[op.outputs[0].key] = obj.groupby(by=by)
 
 
 def concat(objs, axis=0, join='outer', ignore_index=False, keys=None, levels=None, names=None,

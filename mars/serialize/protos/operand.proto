@@ -329,9 +329,9 @@ message OperandDef {
 
         // DataFrame
         MAP = 710;
-        APPLY = 711;
         DESCRIBE = 712;
         FILL_NA = 713;
+        TRANSFORM = 714;
 
         FUSE = 801;
 
@@ -346,6 +346,12 @@ message OperandDef {
         TABLE_COO = 1003;
         // store tensor as coo format
         STORE_COO = 1004;
+
+        // apply
+        DATAFRAME_APPLY = 1101;
+        DATAFRAME_TRANSFORM = 1102;
+        SERIES_APPLY = 1103;
+        SERIES_TRANSFORM = 1104;
 
         // shuffle
         SHUFFLE_PROXY = 2001;
@@ -373,6 +379,8 @@ message OperandDef {
         GROUPBY = 2030;
         GROUPBY_AGG = 2033;
         GROUPBY_CONCAT = 2034;
+        GROUPBY_APPLY = 2035;
+        GROUPBY_TRANSFORM = 2036;
 
         // parallel sorting by regular sampling
         PSRS_SORT_REGULAR_SMAPLE = 2040;

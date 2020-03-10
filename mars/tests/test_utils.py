@@ -128,7 +128,7 @@ class Test(unittest.TestCase):
         if pd is not None:
             df = pd.DataFrame([[utils.to_binary('测试'), utils.to_text('数据')]],
                               index=['a'], columns=['中文', 'data'])
-            v = [df, df.index, df.columns, df['data']]
+            v = [df, df.index, df.columns, df['data'], pd.Categorical(list('ABCD'))]
             self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
 
         non_tokenizable_cls = type('non_tokenizable_cls', (object,), {})
