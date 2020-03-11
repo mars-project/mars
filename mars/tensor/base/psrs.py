@@ -29,27 +29,26 @@ from ..operands import TensorOperand, TensorMapReduceOperand, \
 from ..array_utils import as_same_device, device, cp
 
 
-class PSRSOperandMixin(TensorOperandMixin):
+class PSRSOperandMixin:
     @classmethod
-    def preprocess(cls, op):
-        in_tensor = op.inputs[0]
-        axis_shape = in_tensor.shape[op.axis]
-        axis_chunk_shape = in_tensor.chunk_shape[op.axis]
+    def preprocess(cls, op, in_data=None):
+        in_data = in_data or op.inputs[0]
+        axis_shape = in_data.shape[op.axis]
+        axis_chunk_shape = in_data.chunk_shape[op.axis]
 
         # rechunk to ensure all chunks on axis have rough same size
         axis_chunk_shape = min(axis_chunk_shape, int(np.sqrt(axis_shape)))
-        if np.isnan(axis_shape) or any(np.isnan(s) for s in in_tensor.nsplits[op.axis]):
+        if np.isnan(axis_shape) or any(np.isnan(s) for s in in_data.nsplits[op.axis]):
             raise TilesError('fail to tile because either the shape of '
-                             'input tensor on axis {} has unknown shape or chunk shape'.format(op.axis))
+                             'input data on axis {} has unknown shape or chunk shape'.format(op.axis))
         chunk_size = int(axis_shape / axis_chunk_shape)
         chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]
         if axis_shape % chunk_size > 0:
             chunk_sizes[-1] += axis_shape % chunk_size
-        in_tensor = in_tensor.rechunk(
-            {op.axis: tuple(chunk_sizes)})._inplace_tile()
-        axis_chunk_shape = in_tensor.chunk_shape[op.axis]
+        in_data = in_data.rechunk({op.axis: tuple(chunk_sizes)})._inplace_tile()
+        axis_chunk_shape = in_data.chunk_shape[op.axis]
 
-        left_chunk_shape = in_tensor.chunk_shape[:op.axis] + in_tensor.chunk_shape[op.axis + 1:]
+        left_chunk_shape = in_data.chunk_shape[:op.axis] + in_data.chunk_shape[op.axis + 1:]
         if len(left_chunk_shape) > 0:
             out_idxes = itertools.product(*(range(s) for s in left_chunk_shape))
         else:
@@ -57,14 +56,38 @@ class PSRSOperandMixin(TensorOperandMixin):
         # if the size except axis has more than 1, the sorted values on each one may be different
         # another shuffle would be required to make sure each axis except to sort
         # has elements with identical size
-        extra_shape = [s for i, s in enumerate(in_tensor.shape) if i != op.axis]
-        if op.need_align is None:
+        extra_shape = [s for i, s in enumerate(in_data.shape) if i != op.axis]
+        if getattr(op, 'need_align', None) is None:
             need_align = bool(np.prod(extra_shape, dtype=int) != 1)
         else:
             need_align = op.need_align
 
-        return in_tensor, axis_chunk_shape, out_idxes, need_align
+        return in_data, axis_chunk_shape, out_idxes, need_align
 
+    @classmethod
+    def local_sort_and_regular_sample(cls, op, in_data, axis_chunk_shape, axis_offsets, out_idx):
+        raise NotImplementedError
+
+    @classmethod
+    def concat_and_pivot(cls, op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks):
+        raise NotImplementedError
+
+    @classmethod
+    def partition_local_data(cls, op, axis_chunk_shape, sorted_chunks,
+                             indices_chunks, concat_pivot_chunk):
+        raise NotImplementedError
+
+    @classmethod
+    def partition_merge_data(cls, op, need_align, return_value, partition_chunks, proxy_chunk):
+        raise NotImplementedError
+
+    @classmethod
+    def align_partitions_data(cls, op, out_idx, in_data,
+                              partition_sort_chunks, partition_indices_chunks, sort_info_chunks):
+        raise NotImplementedError
+
+
+class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
     @classmethod
     def local_sort_and_regular_sample(cls, op, in_tensor, axis_chunk_shape, axis_offsets, out_idx):
         # stage 1: local sort and regular samples collected

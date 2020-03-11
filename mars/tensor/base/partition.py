@@ -27,10 +27,10 @@ from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..utils import validate_axis, validate_order
-from .psrs import PSRSOperandMixin
+from .psrs import TensorPSRSOperandMixin
 
 
-class ParallelPartitionMixin(PSRSOperandMixin):
+class ParallelPartitionMixinTensor(TensorPSRSOperandMixin):
     @classmethod
     def calc_paritions_info(cls, op, kth, size, sort_info_chunks):
         # stage5, collect sort infos and calculate partition info for each partitions
@@ -97,7 +97,7 @@ class ParallelPartitionMixin(PSRSOperandMixin):
         return partitioned_chunks, partitioned_indices_chunks
 
 
-class TensorPartition(TensorOperand, ParallelPartitionMixin):
+class TensorPartition(TensorOperand, ParallelPartitionMixinTensor):
     _op_type_ = OperandDef.PARTITION
 
     _input = KeyField('input')
@@ -358,7 +358,7 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
                 ctx[op.outputs[0].key] = xp.partition(a, kth, axis=op.axis, **kw)
 
 
-class CalcPartitionsInfo(TensorOperand, PSRSOperandMixin):
+class CalcPartitionsInfo(TensorOperand, TensorPSRSOperandMixin):
     _op_type_ = OperandDef.CALC_PARTITIONS_INFO
 
     _kth = AnyField('kth')
@@ -422,7 +422,7 @@ class CalcPartitionsInfo(TensorOperand, PSRSOperandMixin):
                 ctx[out.key] = partition_info
 
 
-class PartitionMerged(TensorOperand, PSRSOperandMixin):
+class PartitionMerged(TensorOperand, TensorPSRSOperandMixin):
     _op_type_ = OperandDef.PARTITION_MERGED
 
     _return_value = BoolField('return_value')

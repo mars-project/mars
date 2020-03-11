@@ -18,6 +18,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...utils import lazy_import
+from ...serialize import Int32Field
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 
 
@@ -27,8 +28,14 @@ cudf = lazy_import('cudf', globals=globals())
 class ChunkStandardizeRangeIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.STANDARDIZE_RANGE_INDEX
 
-    def __init__(self, prepare_inputs=None, object_type=None, **kwargs):
-        super().__init__(__prepare_inputs=prepare_inputs, _object_type=object_type, **kwargs)
+    _axis = Int32Field('axis')
+
+    def __init__(self, prepare_inputs=None, axis=None, object_type=None, **kwargs):
+        super().__init__(__prepare_inputs=prepare_inputs, _axis=axis, _object_type=object_type, **kwargs)
+
+    @property
+    def axis(self):
+        return self._axis
 
     @classmethod
     def execute(cls, ctx, op):
@@ -36,6 +43,9 @@ class ChunkStandardizeRangeIndex(DataFrameOperand, DataFrameOperandMixin):
         in_data = ctx[op.inputs[-1].key].copy()
         input_keys = [c.key for c in op.inputs[:-1]]
         metas = ctx.get_chunk_metas(input_keys)
-        index_start = sum([m.chunk_shape[0] for m in metas])
-        in_data.index = xdf.RangeIndex(index_start, index_start + len(in_data))
+        index_start = sum([m.chunk_shape[op.axis] for m in metas])
+        if op.axis == 0:
+            in_data.index = xdf.RangeIndex(index_start, index_start + len(in_data))
+        else:
+            in_data.columns = xdf.RangeIndex(index_start, index_start + len(in_data))
         ctx[op.outputs[0].key] = in_data
