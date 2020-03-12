@@ -302,30 +302,20 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
                             for index in op.indexes)
         else:
             indexes = tuple(op.indexes)
+
         if op.stage != OperandStage.map:
             r = df.loc[indexes]
         else:
             # for map stage, and when some index is fancy index
             # ignore keys that do not exist
-            try:
-                r = df.loc[indexes]
-            except KeyError:
-                new_indexes = []
-                access_by_label = False
-                for ax, index in enumerate(indexes):
-                    pd_index = [df.index, df.columns][ax]
-                    if isinstance(index, np.ndarray) and index.dtype != np.bool_:
-                        access_by_label = True
-                        # filter index exist
-                        new_indexes.append(
-                            np.array([ind for ind in index if ind in pd_index]))
-                    else:
-                        new_indexes.append(index)
-
-                if not access_by_label:
-                    raise
+            new_indexes = []
+            for ax, index in enumerate(indexes):
+                if ax == 0 and isinstance(index, np.ndarray) and index.dtype != np.bool_:
+                    new_indexes.append(df.index.intersection(index))
                 else:
-                    r = df.loc[tuple(new_indexes)]
+                    new_indexes.append(index)
+            r = df.loc[tuple(new_indexes)]
+
         if isinstance(r, pd.Series) and r.dtype != chunk.dtype:
             r = r.astype(chunk.dtype)
         ctx[chunk.key] = r
