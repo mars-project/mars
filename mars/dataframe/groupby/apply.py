@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cloudpickle
 import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...serialize import AnyField, BoolField, BytesField, TupleField, DictField
+from ...serialize import AnyField, BoolField, TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index
 
@@ -26,20 +25,17 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
     # todo these three args belowshall be redesigned when we extend
     #  the functionality of groupby func
     _by = AnyField('by')
-    _by_func = BytesField('by_func', on_serialize=cloudpickle.dumps,
-                          on_deserialize=cloudpickle.loads)
     _as_index = BoolField('as_index')
 
     _is_transform = BoolField('is_transform')
 
-    _func = BytesField('func', on_serialize=cloudpickle.dumps,
-                       on_deserialize=cloudpickle.loads)
+    _func = FunctionField('func')
     _args = TupleField('args')
     _kwds = DictField('kwds')
 
-    def __init__(self, func=None, by=None, by_func=None, as_index=None, is_transform=None,
+    def __init__(self, func=None, by=None, as_index=None, is_transform=None,
                  args=None, kwds=None, object_type=None, **kw):
-        super().__init__(_func=func, _by=by, _by_func=by_func, _as_index=as_index,
+        super().__init__(_func=func, _by=by, _as_index=as_index,
                          _is_transform=is_transform, _args=args, _kwds=kwds,
                          _object_type=object_type, **kw)
 
@@ -50,10 +46,6 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
     @property
     def by(self):
         return self._by
-
-    @property
-    def by_func(self):
-        return self._by_func
 
     @property
     def as_index(self):
@@ -81,7 +73,7 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
                 ctx[op.outputs[0].key] = build_empty_series(op.outputs[0].dtype)
             return
 
-        by = op.by or op.by_func
+        by = op.by
         concatenated = pd.concat([df for _, df in in_data])
         grouped = concatenated.groupby(by, as_index=op.as_index)
 
@@ -203,7 +195,7 @@ def groupby_apply(groupby, func, *args, dtypes=None, index=None, object_type=Non
     # todo this can be done with sort_index implemented
     if not groupby.op.as_index:
         raise NotImplementedError('apply when set_index == False is not supported')
-    op = GroupByApply(func=func, by=groupby.op.by, by_func=groupby.op.by_func,
+    op = GroupByApply(func=func, by=groupby.op.by,
                       as_index=groupby.op.as_index, is_transform=False,
                       args=args, kwds=kwargs, object_type=object_type)
     return op(groupby, dtypes=dtypes, index=index)
@@ -213,7 +205,7 @@ def groupby_transform(groupby, func, *args, dtypes=None, index=None, object_type
     # todo this can be done with sort_index implemented
     if not groupby.op.as_index:
         raise NotImplementedError('transform when set_index == False is not supported')
-    op = GroupByTransform(func=func, by=groupby.op.by, by_func=groupby.op.by_func,
+    op = GroupByTransform(func=func, by=groupby.op.by,
                           as_index=groupby.op.as_index, is_transform=True, args=args,
                           kwds=kwargs, object_type=object_type)
     return op(groupby, dtypes=dtypes, index=index)

@@ -14,21 +14,19 @@
 
 import inspect
 
-import cloudpickle
 import numpy as np
 import pandas as pd
 
 from ... import opcodes
 from ...config import options
-from ...serialize import StringField, AnyField, BoolField, BytesField, \
-    TupleField, DictField
+from ...serialize import StringField, AnyField, BoolField, \
+    TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index
 
 
 class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
-    _func = BytesField('func', on_serialize=cloudpickle.dumps,
-                       on_deserialize=cloudpickle.loads)
+    _func = FunctionField('func')
     _axis = AnyField('axis')
     _raw = BoolField('raw')
     _result_type = StringField('result_type')
@@ -223,8 +221,7 @@ class DataFrameTransform(DataFrameApplyTransform):
 
 
 class SeriesApplyTransform(DataFrameOperand, DataFrameOperandMixin):
-    _func = BytesField('func', on_serialize=cloudpickle.dumps,
-                       on_deserialize=cloudpickle.loads)
+    _func = FunctionField('func')
     _convert_dtype = BoolField('convert_dtype')
     _args = TupleField('args')
     _kwds = DictField('kwds')

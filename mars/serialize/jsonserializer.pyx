@@ -21,6 +21,7 @@ import weakref
 from collections import OrderedDict
 from io import BytesIO
 
+import cloudpickle
 import numpy as np
 cimport numpy as np
 import pandas as pd
@@ -303,6 +304,22 @@ cdef class JsonSerializeProvider(Provider):
         v = obj['value']
         return complex(*v)
 
+    cdef inline dict _serialize_function(self, value):
+        return {
+            'type': 'function',
+            'value': self._to_str(base64.b64encode(cloudpickle.dumps(value)))
+        }
+
+    cdef inline _deserialize_function(self, obj, list callbacks):
+        cdef bytes v
+
+        value = obj['value']
+        v = base64.b64decode(value)
+
+        if v is not None:
+            return cloudpickle.loads(v)
+        return None
+
     cdef inline object _serialize_typed_value(self, value, tp, bint weak_ref=False):
         if type(tp) not in (List, Tuple, Dict) and weak_ref:
             # not iterable, and is weak ref
@@ -339,6 +356,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_datetime64(value)
         elif tp == ValueType.timedelta64:
             return self._serialize_timedelta64(value)
+        elif tp == ValueType.function:
+            return self._serialize_function(value)
         elif isinstance(tp, List):
             if not isinstance(value, list):
                 value = list(value)
@@ -398,6 +417,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_timedelta64(value)
         elif isinstance(value, np.number):
             return self._serialize_untyped_value(value.item())
+        elif callable(value):
+            return self._serialize_function(value)
         else:
             raise TypeError('Unknown type to serialize: {0}'.format(type(value)))
 
@@ -514,6 +535,8 @@ cdef class JsonSerializeProvider(Provider):
             return ref(self._deserialize_datetime64(obj, callbacks))
         elif tp is ValueType.timedelta64:
             return ref(self._deserialize_timedelta64(obj, callbacks))
+        elif tp is ValueType.function:
+            return ref(self._deserialize_function(obj, callbacks))
         elif tp is ValueType.list:
             return self._deserialize_list(obj, callbacks, weak_ref)
         elif tp is ValueType.tuple:

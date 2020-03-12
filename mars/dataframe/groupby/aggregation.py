@@ -17,18 +17,20 @@ from collections import OrderedDict, namedtuple
 from collections.abc import Iterable
 from functools import partial
 
-import cloudpickle
 import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...config import options
 from ...operands import OperandStage
-from ...serialize import ValueType, BoolField, AnyField, StringField, BytesField, ListField
+from ...serialize import ValueType, BoolField, AnyField, StringField, \
+    ListField, DictField
 from ..merge import DataFrameConcat
-from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin, \
+    DataFrameShuffleProxy, ObjectType
 from ..core import GROUPBY_TYPE
-from ..utils import build_empty_df, parse_index, build_concatenated_rows_frame, tokenize
+from ..utils import build_empty_df, parse_index, \
+    build_concatenated_rows_frame, tokenize
 from .core import DataFrameGroupByOperand
 
 
@@ -54,9 +56,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     # store the intermediate aggregated columns for the result
     _agg_columns = ListField('agg_columns', ValueType.string)
     # store output columns -> function to apply on DataFrameGroupBy
-    _output_column_to_func = BytesField('output_column_to_funcs',
-                                        on_serialize=cloudpickle.dumps,
-                                        on_deserialize=cloudpickle.loads)
+    _output_column_to_func = DictField('output_column_to_func')
 
     def __init__(self, func=None, by=None, as_index=None, sort=None, method=None,
                  raw_func=None, agg_columns=None, output_column_to_func=None, stage=None, **kw):

@@ -46,9 +46,6 @@ def ball_tree_query(tree, data, n_neighbors, return_distance):
 
 @require_not_none(SklearnBallTree)
 def BallTree(X, leaf_size, metric=None, **metric_params):
-    metric_func = None
-    if callable(metric):
-        metric_func, metric = metric, None
-    op = _BallTree(leaf_size=leaf_size, metric=metric, metric_func=metric_func,
+    op = _BallTree(leaf_size=leaf_size, metric=metric,
                    **metric_params)
     return op(X)

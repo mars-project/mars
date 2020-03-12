@@ -21,7 +21,7 @@ from .core import HasKey, ValueType, Serializable, SerializableMetaclass, Attrib
     UInt8Field, UInt16Field, UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, \
     StringField, BytesField, UnicodeField, KeyField, NDArrayField, DataTypeField, \
     SliceField, IndexField, SeriesField, DataFrameField, ListField, TupleField, DictField, \
-    ReferenceField, OneOfField
+    FunctionField, ReferenceField, OneOfField
 from .jsonserializer import JsonSerializeProvider
 try:
     from .pbserializer import ProtobufSerializeProvider

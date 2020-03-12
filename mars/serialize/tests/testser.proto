@@ -26,6 +26,7 @@ message Node1Def {
     repeated Node1Def i = 17;
     AnyReference j = 20;
     repeated AnyReference k = 21;
+    Value l = 22;
 }
 
 
