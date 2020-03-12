@@ -89,15 +89,15 @@ class PSRSOperandMixin:
 
 class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
     @classmethod
-    def local_sort_and_regular_sample(cls, op, in_tensor, axis_chunk_shape, axis_offsets, out_idx):
+    def local_sort_and_regular_sample(cls, op, in_data, axis_chunk_shape, axis_offsets, out_idx):
         # stage 1: local sort and regular samples collected
         sorted_chunks, indices_chunks, sampled_chunks = [], [], []
-        sampled_dtype = np.dtype([(o, in_tensor.dtype[o]) for o in op.order]) \
-            if op.order is not None else in_tensor.dtype
+        sampled_dtype = np.dtype([(o, in_data.dtype[o]) for o in op.order]) \
+            if op.order is not None else in_data.dtype
         for i in range(axis_chunk_shape):
             idx = list(out_idx)
             idx.insert(op.axis, i)
-            in_chunk = in_tensor.cix[tuple(idx)]
+            in_chunk = in_data.cix[tuple(idx)]
             kind = None if op.psrs_kinds is None else op.psrs_kinds[0]
             chunk_op = PSRSSortRegularSample(axis=op.axis, order=op.order, kind=kind,
                                              return_indices=op.return_indices,

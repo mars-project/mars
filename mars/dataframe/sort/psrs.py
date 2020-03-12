@@ -30,11 +30,11 @@ cudf = lazy_import('cudf', globals=globals())
 
 class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
     @classmethod
-    def local_sort_and_regular_sample(cls, op, in_tensor, axis_chunk_shape, axis_offsets, out_idx):
+    def local_sort_and_regular_sample(cls, op, in_data, axis_chunk_shape, axis_offsets, out_idx):
         # stage 1: local sort and regular samples collected
         sorted_chunks, indices_chunks, sampled_chunks = [], [], []
         for i in range(axis_chunk_shape):
-            in_chunk = in_tensor.chunks[i]
+            in_chunk = in_data.chunks[i]
             kind = None if op.psrs_kinds is None else op.psrs_kinds[0]
             chunk_op = DataFramePSRSSortRegularSample(
                 axis=op.axis, by=op.by, ascending=op.ascending,

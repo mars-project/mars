@@ -145,7 +145,11 @@ class Test(unittest.TestCase):
         mdf = DataFrame(df, chunk_size=3)
         result = executor.execute_dataframe(
             mdf.sort_values(['a0', 'a1'], ignore_index=True), concat=True)[0]
-        expected = df.sort_values(['a0', 'a1'], ignore_index=True)
+        try:  # for python3.5
+            expected = df.sort_values(['a0', 'a1'], ignore_index=True)
+        except TypeError:
+            expected = df.sort_values(['a0', 'a1'])
+            expected.index = pd.RangeIndex(len(expected))
 
         pd.testing.assert_frame_equal(result, expected)
 

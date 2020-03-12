@@ -18,7 +18,7 @@ import pandas as pd
 from ...serialize import Int32Field, StringField, ListField, BoolField, ValueType
 from ... import opcodes as OperandDef
 from ...tensor.base.sort import _validate_sort_psrs_kinds
-from ..utils import parse_index, standardize_range_index, validate_axis, build_concated_rows_frame
+from ..utils import parse_index, standardize_range_index, validate_axis, build_concatenated_rows_frame
 from ..operands import DataFrameOperand, DataFrameShuffleProxy, ObjectType
 from .psrs import DataFramePSRSOperandMixin, sort_dataframe
 
@@ -85,7 +85,7 @@ class DataFrameSortValues(DataFrameOperand, DataFramePSRSOperandMixin):
     @classmethod
     def _tile_psrs(cls, op, in_data):
         out = op.outputs[0]
-        in_df, axis_chunk_shape, out_idxes, _ = cls.preprocess(op, in_data=in_data)
+        in_df, axis_chunk_shape, _, _ = cls.preprocess(op, in_data=in_data)
 
         # stage 1: local sort and regular samples collected
         sorted_chunks, _, sampled_chunks = cls.local_sort_and_regular_sample(
@@ -125,7 +125,7 @@ class DataFrameSortValues(DataFrameOperand, DataFramePSRSOperandMixin):
         df = op.inputs[0]
 
         if op.axis == 0:
-            df = build_concated_rows_frame(df)
+            df = build_concatenated_rows_frame(df)
         else:
             df = df.rechunk({0: (df.shape[0],)})._inplace_tile()
 
@@ -173,6 +173,76 @@ class DataFrameSortValues(DataFrameOperand, DataFramePSRSOperandMixin):
 
 def sort_values(df, by, axis=0, ascending=True, inplace=False, kind='quicksort',
                 na_position='last', ignore_index=False, parallel_kind='PSRS', psrs_kinds=None):
+    """
+    Sort by the values along either axis.
+    :param df: input data.
+    :param by: Name or list of names to sort by.
+    :param axis: Axis to be sorted.
+    :param ascending: Sort ascending vs. descending. Specify list for multiple sort orders.
+    If this is a list of bools, must match the length of the by.
+    :param inplace: If True, perform operation in-place.
+    :param kind: Choice of sorting algorithm. See also ndarray.np.sort for more information.
+    mergesort is the only stable algorithm. For DataFrames, this option is only applied
+    when sorting on a single column or label.
+    :param na_position: Puts NaNs at the beginning if first; last puts NaNs at the end.
+    :param ignore_index: If True, the resulting axis will be labeled 0, 1, …, n - 1.
+    :param parallel_kind: {'PSRS'}, optional. Parallel sorting algorithm, for the details, refer to:
+    http://csweb.cs.wfu.edu/bigiron/LittleFE-PSRS/build/html/PSRSalgorithm.html
+    :param psrs_kinds: Sorting algorithms during PSRS algorithm.
+    :return: sorted dataframe.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> raw = pd.DataFrame({
+    ...     'col1': ['A', 'A', 'B', np.nan, 'D', 'C'],
+    ...     'col2': [2, 1, 9, 8, 7, 4],
+    ...     'col3': [0, 1, 9, 4, 2, 3],
+    ... })
+    >>> df = md.DataFrame(raw)
+    >>> df.execute()
+        col1 col2 col3
+    0   A    2    0
+    1   A    1    1
+    2   B    9    9
+    3   NaN  8    4
+    4   D    7    2
+    5   C    4    3
+
+    Sort by col1
+
+    >>> df.sort_values(by=['col1']).execute()
+        col1 col2 col3
+    0   A    2    0
+    1   A    1    1
+    2   B    9    9
+    5   C    4    3
+    4   D    7    2
+    3   NaN  8    4
+
+    Sort by multiple columns
+
+    >>> df.sort_values(by=['col1', 'col2']).execute()
+        col1 col2 col3
+    1   A    1    1
+    0   A    2    0
+    2   B    9    9
+    5   C    4    3
+    4   D    7    2
+    3   NaN  8    4
+
+    Sort Descending
+
+    >>> df.sort_values(by='col1', ascending=False).execute()
+        col1 col2 col3
+    4   D    7    2
+    5   C    4    3
+    2   B    9    9
+    0   A    2    0
+    1   A    1    1
+    3   NaN  8    4
+
+    """
     if na_position not in ['last', 'first']:  # pragma: no cover
         raise TypeError('invalid na_position: {}'.format(na_position))
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
