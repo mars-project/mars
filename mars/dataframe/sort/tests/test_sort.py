@@ -19,7 +19,7 @@ import pandas as pd
 
 from mars.operands import OperandStage
 from mars.dataframe.initializer import DataFrame
-from mars.dataframe.sort.sort_values import sort_values, DataFrameSortValues
+from mars.dataframe.sort.sort_values import dataframe_sort_values, DataFrameSortValues
 
 
 class Test(unittest.TestCase):
@@ -32,7 +32,7 @@ class Test(unittest.TestCase):
                             'f': [pd.Timedelta('{} days'.format(i)) for i in range(10)]
                             },)
         df = DataFrame(raw)
-        sorted_df = sort_values(df, by='c')
+        sorted_df = dataframe_sort_values(df, by='c')
 
         self.assertEqual(sorted_df.shape, raw.shape)
         self.assertIsInstance(sorted_df.op, DataFrameSortValues)
@@ -43,7 +43,7 @@ class Test(unittest.TestCase):
         self.assertIsInstance(tiled.chunks[0].op, DataFrameSortValues)
 
         df = DataFrame(raw, chunk_size=6)
-        sorted_df = sort_values(df, by='c')
+        sorted_df = dataframe_sort_values(df, by='c')
 
         self.assertEqual(sorted_df.shape, raw.shape)
         self.assertIsInstance(sorted_df.op, DataFrameSortValues)
@@ -55,7 +55,7 @@ class Test(unittest.TestCase):
 
         # test ignore index
         df = DataFrame(raw, chunk_size=3)
-        sorted_df = sort_values(df, by=['a', 'c'])
+        sorted_df = dataframe_sort_values(df, by=['a', 'c'])
 
         self.assertEqual(sorted_df.shape, raw.shape)
         self.assertIsInstance(sorted_df.op, DataFrameSortValues)

@@ -393,6 +393,7 @@ message OperandDef {
 
         // dataframe sort
         SORT_VALUES = 2050;
+        SORT_INDEX = 2051;
 
         // store
         READ_CSV = 2100;

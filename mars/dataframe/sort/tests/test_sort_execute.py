@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from mars.tests.core import ExecutorForTest
-from mars.dataframe import DataFrame
+from mars.dataframe import DataFrame, Series
 from mars.session import new_session
 
 
@@ -139,3 +139,42 @@ class Test(unittest.TestCase):
         df.sort_values('a0', inplace=True)
 
         pd.testing.assert_frame_equal(result, df)
+
+        # test Sereis.sort_values
+        raw = pd.Series(np.random.rand(10))
+        series = Series(raw)
+        result = self.executor.execute_dataframe(series.sort_values(), concat=True)[0]
+        expected = raw.sort_values()
+
+        pd.testing.assert_series_equal(result, expected)
+
+        series = Series(raw, chunk_size=3)
+        result = self.executor.execute_dataframe(series.sort_values(), concat=True)[0]
+        expected = raw.sort_values()
+
+        pd.testing.assert_series_equal(result, expected)
+
+        series = Series(raw, chunk_size=2)
+        result = self.executor.execute_dataframe(series.sort_values(ascending=False), concat=True)[0]
+        expected = raw.sort_values(ascending=False)
+
+        pd.testing.assert_series_equal(result, expected)
+
+    def testSortIndexExecution(self):
+        raw = pd.DataFrame(np.random.rand(100, 10), index=np.random.rand(100))
+
+        mdf = DataFrame(raw)
+        result = self.executor.execute_dataframe(mdf.sort_index(), concat=True)[0]
+        expected = raw.sort_index()
+        pd.testing.assert_frame_equal(result, expected)
+
+        mdf = DataFrame(raw, chunk_size=30)
+        result = self.executor.execute_dataframe(mdf.sort_index(), concat=True)[0]
+        expected = raw.sort_index()
+        pd.testing.assert_frame_equal(result, expected)
+
+        mdf = DataFrame(raw, chunk_size=20)
+        result = self.executor.execute_dataframe(mdf.sort_index(ascending=False), concat=True)[0]
+        expected = raw.sort_index(ascending=False)
+        pd.testing.assert_frame_equal(result, expected)
+
