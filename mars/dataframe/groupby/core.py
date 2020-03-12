@@ -14,13 +14,12 @@
 
 import itertools
 
-import cloudpickle
 import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...operands import OperandStage
-from ...serialize import BytesField, BoolField, Int32Field, AnyField
+from ...serialize import BoolField, Int32Field, AnyField
 from ...utils import get_shuffle_input_keys_idxes
 from ..utils import build_concatenated_rows_frame, hash_dataframe_on
 from ..operands import DataFrameOperandMixin, \
@@ -31,16 +30,14 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY
 
     _by = AnyField('by')
-    _by_func = BytesField('by_func', on_serialize=cloudpickle.dumps,
-                          on_deserialize=cloudpickle.loads)
     _as_index = BoolField('as_index')
     _sort = BoolField('sort')
 
     _shuffle_size = Int32Field('shuffle_size')
 
-    def __init__(self, by=None, by_func=None, as_index=None, sort=None, shuffle_size=None,
+    def __init__(self, by=None, as_index=None, sort=None, shuffle_size=None,
                  stage=None, shuffle_key=None, object_type=None, **kw):
-        super().__init__(_by=by, _by_func=by_func, _as_index=as_index, _sort=sort,
+        super().__init__(_by=by, _as_index=as_index, _sort=sort,
                          _shuffle_size=shuffle_size, _stage=stage, _shuffle_key=shuffle_key,
                          _object_type=object_type, **kw)
         if stage in (OperandStage.map, OperandStage.reduce):
@@ -58,10 +55,6 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     @property
     def by(self):
         return self._by
-
-    @property
-    def by_func(self):
-        return self._by_func
 
     @property
     def as_index(self):
@@ -96,7 +89,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         map_chunks = []
         chunk_shape = (in_df.chunk_shape[0], 1)
         for chunk in in_df.chunks:
-            map_op = DataFrameGroupByOperand(stage=OperandStage.map, by=op.by, by_func=op.by_func,
+            map_op = DataFrameGroupByOperand(stage=OperandStage.map, by=op.by,
                                              shuffle_size=chunk_shape[0], object_type=op.object_type)
             map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan, np.nan), index=chunk.index))
 
@@ -128,7 +121,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def execute_map(cls, ctx, op):
         is_dataframe_obj = op.is_dataframe_obj
-        by = op.by if op.by is not None else op.by_func
+        by = op.by
         chunk = op.outputs[0]
         df = ctx[op.inputs[0].key]
 
@@ -178,7 +171,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             cls.execute_reduce(ctx, op)
         else:
             df = ctx[op.inputs[0].key]
-            by = op.by if op.by is not None else op.by_func
+            by = op.by
             ctx[op.outputs[0].key] = list(df.groupby(by))
 
 
@@ -186,11 +179,8 @@ def groupby(df, by, as_index=True, sort=True):
     if not as_index and df.op.object_type == ObjectType.series:
         raise TypeError('as_index=False only valid with DataFrame')
 
-    by_func = None
     if isinstance(by, str):
         by = [by]
-    elif callable(by):
-        by, by_func = None, by
-    op = DataFrameGroupByOperand(by=by, by_func=by_func, as_index=as_index, sort=sort,
+    op = DataFrameGroupByOperand(by=by, as_index=as_index, sort=sort,
                                  object_type=df.op.object_type)
     return op(df)

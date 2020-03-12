@@ -23,10 +23,8 @@ from io import BytesIO
 import numpy as np
 cimport numpy as np
 cimport cython
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import cloudpickle
+import pandas as pd
 
 from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, OneOfField, \
@@ -172,6 +170,13 @@ cdef class ProtobufSerializeProvider(Provider):
 
     cdef inline object _get_complex(self, obj):
         return complex(obj.c.real, obj.c.imag)
+
+    cdef inline void _set_function(self, value, obj, tp=None):
+        obj.function = cloudpickle.dumps(value)
+
+    cdef inline object _get_function(self, obj):
+        x = obj.function
+        return cloudpickle.loads(x) if x is not None and len(x) > 0 else None
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
@@ -367,6 +372,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_datetime64(value, obj, tp)
         elif tp is ValueType.timedelta64:
             self._set_timedelta64(value, obj, tp)
+        elif tp is ValueType.function:
+            self._set_function(value, obj, tp)
         elif tp in {ValueType.complex64, ValueType.complex128}:
             self._set_complex(value, obj, tp)
         elif isinstance(tp, Identity):
@@ -433,6 +440,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_timedelta64(value, obj)
         elif isinstance(value, np.number):
             self._set_untyped_value(value.item(), obj)
+        elif callable(value):
+            self._set_function(value, obj)
         else:
             raise TypeError('Unknown type to serialize: {0}'.format(type(value)))
 
@@ -626,6 +635,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_datetime64(obj))
         elif tp is ValueType.timedelta64:
             return ref(self._get_timedelta64(obj))
+        elif tp is ValueType.function:
+            return ref(self._get_function(obj))
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             return ref(getattr(obj, value_field))
@@ -696,6 +707,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_datetime64(obj))
         elif field == 'timedelta64':
             return ref(self._get_timedelta64(obj))
+        elif field == 'function':
+            return ref(self._get_function(obj))
         else:
             raise TypeError('Unknown type to deserialize')
 

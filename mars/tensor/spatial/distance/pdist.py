@@ -14,13 +14,11 @@
 
 from typing import List, Tuple
 
-import cloudpickle
 import numpy as np
 
 from .... import opcodes as OperandDef
 from ....operands import OperandStage
-from ....serialize import ValueType, KeyField, StringField, \
-    BytesField, Float16Field, Int32Field, TupleField
+from ....serialize import ValueType, KeyField, AnyField, Float16Field, Int32Field, TupleField
 from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes, \
     require_module
@@ -35,9 +33,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PDIST
 
     _input = KeyField('input')
-    _metric = StringField('metric')
-    _metric_func = BytesField('metric_func', on_serialize=cloudpickle.dumps,
-                              on_deserialize=cloudpickle.loads)
+    _metric = AnyField('metric')
     _p = Float16Field('p')
     _w = KeyField('w')
     _v = KeyField('V')
@@ -51,10 +47,10 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
     _out_sizes = TupleField('out_sizes', ValueType.int32)
     _n = Int32Field('n')
 
-    def __init__(self, metric=None, metric_func=None, p=None, w=None, v=None, vi=None,
+    def __init__(self, metric=None, p=None, w=None, v=None, vi=None,
                  a=None, a_offset=None, b=None, b_offset=None, out_sizes=None, n=None,
                  aggregate_size=None, stage=None, shuffle_key=None, dtype=None, **kw):
-        super().__init__(_metric=metric, _metric_func=metric_func, _p=p, _w=w, _v=v, _vi=vi,
+        super().__init__(_metric=metric, _p=p, _w=w, _v=v, _vi=vi,
                          _a=a, _a_offset=a_offset, _b=b, _b_offset=b_offset, _out_sizes=out_sizes,
                          _n=n, _dtype=dtype, _aggregate_size=aggregate_size, _stage=stage,
                          _shuffle_key=shuffle_key, **kw)
@@ -84,10 +80,6 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
     @property
     def metric(self):
         return self._metric
-
-    @property
-    def metric_func(self):
-        return self._metric_func
 
     @property
     def p(self):
@@ -186,7 +178,6 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
                     'out_sizes': tuple(out_sizes),
                     'n': n,
                     'metric': op.metric,
-                    'metric_func': op.metric_func,
                     'p': op.p,
                     'w': w.chunks[0] if w is not None else None,
                     'v': v.chunks[0] if v is not None else None,
@@ -282,7 +273,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
                 kw['V'] = next(inputs_iter)
             if op.vi is not None:
                 kw['VI'] = next(inputs_iter)
-            metric = op.metric if op.metric is not None else op.metric_func
+            metric = op.metric
 
             if b is None:
                 # one input, pdist on same chunk
@@ -341,8 +332,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
             if op.vi is not None:
                 kw['VI'] = next(inputs_iter)
 
-        metric = op.metric if op.metric is not None else op.metric_func
-        ctx[op.outputs[0].key] = pdist(x, metric=metric, **kw)
+        ctx[op.outputs[0].key] = pdist(x, metric=op.metric, **kw)
 
     @classmethod
     def _execute_reduce(cls, ctx, op):
@@ -641,11 +631,7 @@ def pdist(X, metric='euclidean', **kwargs):
         if out.dtype != np.double:
             raise ValueError("Output tensor must be double type.")
 
-    if callable(metric):
-        metric, metric_func = None, metric
-    elif isinstance(metric, str):
-        metric_func = None
-    else:
+    if not callable(metric) and not isinstance(metric, str):
         raise TypeError('2nd argument metric must be a string identifier '
                         'or a function.')
 
@@ -665,7 +651,7 @@ def pdist(X, metric='euclidean', **kwargs):
         raise TypeError('`pdist` got an unexpected keyword argument \'{}\''.format(
             next(n for n in kwargs)))
 
-    op = TensorPdist(metric=metric, metric_func=metric_func,
+    op = TensorPdist(metric=metric,
                      p=p, w=w, v=v, vi=vi, aggregate_size=aggregate_size,
                      dtype=np.dtype(float))
     shape = (m * (m - 1) // 2,)

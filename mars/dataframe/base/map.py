@@ -15,12 +15,11 @@
 import inspect
 from collections.abc import MutableMapping
 
-import cloudpickle
 import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, AnyField, BytesField, StringField
+from ...serialize import KeyField, AnyField, StringField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..core import SERIES_TYPE
@@ -32,13 +31,10 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
 
     _input = KeyField('input')
     _arg = AnyField('arg')
-    _arg_func = BytesField('arg_func', on_serialize=cloudpickle.dumps,
-                           on_deserialize=cloudpickle.loads)
     _na_action = StringField('na_action')
 
-    def __init__(self, arg=None, arg_func=None, na_action=None,
-                 object_type=None, **kw):
-        super().__init__(_arg=arg, _arg_func=arg_func, _na_action=na_action,
+    def __init__(self, arg=None, na_action=None, object_type=None, **kw):
+        super().__init__(_arg=arg, _na_action=na_action,
                          _object_type=object_type, **kw)
         if self._object_type is None:
             self._object_type = ObjectType.series
@@ -50,10 +46,6 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
     @property
     def arg(self):
         return self._arg
-
-    @property
-    def arg_func(self):
-        return self._arg_func
 
     @property
     def na_action(self):
@@ -68,9 +60,9 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, series, dtype):
         if dtype is None:
             inferred_dtype = None
-            if self._arg_func is not None:
+            if callable(self._arg):
                 # arg is a function, try to inspect the signature
-                sig = inspect.signature(self._arg_func)
+                sig = inspect.signature(self._arg)
                 return_type = sig.return_annotation
                 if return_type is not inspect._empty:
                     inferred_dtype = np.dtype(return_type)
@@ -138,10 +130,8 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
         if len(op.inputs) == 2:
             arg = ctx[op.inputs[1].key]
-        elif op.arg is not None:
-            arg = op.arg
         else:
-            arg = op.arg_func
+            arg = op.arg
 
         ret = series.map(arg, na_action=op.na_action)
         if ret.dtype != out.dtype:
@@ -150,10 +140,5 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
 
 
 def map_(series, arg, na_action=None, dtype=None):
-    if callable(arg):
-        arg_func, arg = arg, None
-    else:
-        arg_func = None
-
-    op = DataFrameMap(arg=arg, arg_func=arg_func, na_action=na_action)
+    op = DataFrameMap(arg=arg, na_action=na_action)
     return op(series, dtype=dtype)

@@ -15,11 +15,10 @@
 import itertools
 from typing import Tuple
 
-import cloudpickle
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import KeyField, StringField, BytesField, Float16Field
+from ....serialize import KeyField, AnyField, Float16Field
 from ....utils import check_chunks_unknown_shape, require_module
 from ....tiles import TilesError
 from ...operands import TensorOperand, TensorOperandMixin
@@ -33,17 +32,15 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
 
     _xa = KeyField('XA')
     _xb = KeyField('XB')
-    _metric = StringField('metric')
-    _metric_func = BytesField('metric_func', on_serialize=cloudpickle.dumps,
-                              on_deserialize=cloudpickle.loads)
+    _metric = AnyField('metric')
     _p = Float16Field('p')
     _w = KeyField('w')
     _v = KeyField('V')
     _vi = KeyField('VI')
 
-    def __init__(self, metric=None, metric_func=None, p=None, w=None,
+    def __init__(self, metric=None, p=None, w=None,
                  v=None, vi=None, dtype=None, **kw):
-        super().__init__(_metric=metric, _metric_func=metric_func, _p=p,
+        super().__init__(_metric=metric, _p=p,
                          _w=w, _v=v, _vi=vi, _dtype=dtype, **kw)
 
     def _set_inputs(self, inputs):
@@ -69,10 +66,6 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
     @property
     def metric(self):
         return self._metric
-
-    @property
-    def metric_func(self):
-        return self._metric_func
 
     @property
     def p(self):
@@ -195,8 +188,7 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
             if op.vi is not None:
                 kw['VI'] = next(inputs_iter)
 
-        metric = op.metric if op.metric is not None else op.metric_func
-        ctx[op.outputs[0].key] = cdist(xa, xb, metric=metric, **kw)
+        ctx[op.outputs[0].key] = cdist(xa, xb, metric=op.metric, **kw)
 
 
 @require_module('scipy.spatial.distance')
@@ -517,11 +509,7 @@ def cdist(XA, XB, metric='euclidean', **kwargs):
         if out.dtype != np.double:
             raise ValueError("Output tensor must be double type.")
 
-    if callable(metric):
-        metric, metric_func = None, metric
-    elif isinstance(metric, str):
-        metric_func = None
-    else:
+    if not isinstance(metric, str) and not callable(metric):
         raise TypeError('3rd argument metric must be a string identifier '
                         'or a function.')
 
@@ -540,7 +528,7 @@ def cdist(XA, XB, metric='euclidean', **kwargs):
         raise TypeError('`cdist` got an unexpected keyword argument \'{}\''.format(
             next(n for n in kwargs)))
 
-    op = TensorCdist(metric=metric, metric_func=metric_func,
+    op = TensorCdist(metric=metric,
                      p=p, w=w, v=v, vi=vi, dtype=np.dtype(float))
     shape = (XA.shape[0], XB.shape[0])
     ret = op(XA, XB, shape)

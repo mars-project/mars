@@ -17,7 +17,7 @@ import pickle
 import cloudpickle
 import numpy as np
 
-from ...serialize import KeyField, Int32Field, DictField, StringField, BytesField, BoolField
+from ...serialize import KeyField, Int32Field, DictField, AnyField, BytesField, BoolField
 from ...tiles import TilesError
 from ...tensor.core import TensorOrder
 from ...utils import check_chunks_unknown_shape, tokenize
@@ -27,16 +27,14 @@ from ..operands import LearnOperand, LearnOperandMixin, OutputType
 class TreeBase(LearnOperand, LearnOperandMixin):
     _input = KeyField('input')
     _leaf_size = Int32Field('leaf_size')
-    _metric = StringField('metric')
-    _metric_func = BytesField('metric_func', on_serialize=cloudpickle.dumps,
-                              on_deserialize=cloudpickle.loads)
+    _metric = AnyField('metric')
 
     _metric_params = DictField('metric_params')
 
-    def __init__(self, leaf_size=None, metric=None, metric_func=None,
+    def __init__(self, leaf_size=None, metric=None,
                  metric_params=None, output_types=None, **kw):
         super().__init__(_leaf_size=leaf_size, _metric=metric,
-                         _metric_func=metric_func, _metric_params=metric_params,
+                         _metric_params=metric_params,
                          _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
@@ -52,10 +50,6 @@ class TreeBase(LearnOperand, LearnOperandMixin):
     @property
     def metric(self):
         return self._metric
-
-    @property
-    def metric_func(self):
-        return self._metric_func
 
     @property
     def metric_params(self):
@@ -96,9 +90,8 @@ class TreeBase(LearnOperand, LearnOperandMixin):
                                       'nearest neighbors on GPU')
 
         a = ctx[op.input.key]
-        metric = op.metric or op.metric_func
         tree = cls._tree_type(
-            a, op.leaf_size, metric=metric,
+            a, op.leaf_size, metric=op.metric,
             **(op.metric_params or dict()))
         ctx[op.outputs[0].key] = cloudpickle.dumps(tree)
 

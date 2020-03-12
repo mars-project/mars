@@ -54,6 +54,7 @@ message Value {
         bytes series = 16;  // pandas Series
         bytes dataframe = 17;  // pandas DataFrame
         TypedValue typed = 18;
+        bytes function = 20;  // callable
     }
 
 }
