@@ -218,7 +218,7 @@ class Test(TestBase):
         raw4 = raw1.copy()
         raw4.columns = ['b', 'a', 'b', 'd']
 
-        # df1 = md.DataFrame(raw1, chunk_size=2)
+        df1 = md.DataFrame(raw1, chunk_size=2)
         df2 = md.DataFrame(raw2, chunk_size=2)
         df3 = md.DataFrame(raw3, chunk_size=2)
         df4 = md.DataFrame(raw4, chunk_size=2)
@@ -226,6 +226,11 @@ class Test(TestBase):
         df = df2.loc[3, 'b']
         result = self.executor.execute_tensor(df, concat=True)[0]
         expected = raw2.loc[3, 'b']
+        self.assertEqual(result, expected)
+
+        df = df1.loc['a3', 'b']
+        result = self.executor.execute_tensor(df, concat=True)[0]
+        expected = raw1.loc['a3', 'b']
         self.assertEqual(result, expected)
 
         df = df2.loc[1:4, 'b':'d']
@@ -236,6 +241,12 @@ class Test(TestBase):
         df = df2.loc[:4, 'b':]
         result = self.executor.execute_dataframe(df, concat=True)[0]
         expected = raw2.loc[:4, 'b':]
+        pd.testing.assert_frame_equal(result, expected)
+
+        # slice on axis index whose index_value does not have value
+        df = df1.loc['a2':'a4', 'b':]
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw1.loc['a2':'a4', 'b':]
         pd.testing.assert_frame_equal(result, expected)
 
         df = df2.loc[:, 'b']
@@ -254,6 +265,12 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(df, concat=True)[0]
         expected = raw4.loc[:, 'b']
         pd.testing.assert_frame_equal(result, expected)
+
+        # label on axis 0
+        df = df1.loc['a2', :]
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw1.loc['a2', :]
+        pd.testing.assert_series_equal(result, expected)
 
         # label-based fancy index
         df = df2.loc[[3, 0, 1], ['c', 'a', 'd']]
@@ -277,6 +294,13 @@ class Test(TestBase):
         df = df3.loc[md.Series(selection), ['b', 'a', 'd']]
         result = self.executor.execute_dataframe(df, concat=True)[0]
         expected = raw3.loc[selection, ['b', 'a', 'd']]
+        pd.testing.assert_frame_equal(result, expected)
+
+        # label-based fancy index on index
+        # whose index_value does not have value
+        df = df1.loc[['a3', 'a1'], ['b', 'a', 'd']]
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw1.loc[['a3', 'a1'], ['b', 'a', 'd']]
         pd.testing.assert_frame_equal(result, expected)
 
     def testDataFrameGetitem(self):

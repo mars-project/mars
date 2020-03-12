@@ -367,7 +367,7 @@ class Test(TestBase):
         self.assertEqual(df2.dtype, raw['z'].dtype)
 
         df2 = df2.tiles()
-        self.assertEqual(len(df2.chunks), 2)
+        self.assertEqual(len(df2.chunks), 1)
         self.assertIsInstance(df2.chunks[0], TENSOR_CHUNK_TYPE)
 
         # test return series for index axis
@@ -393,7 +393,7 @@ class Test(TestBase):
         self.assertEqual(df2.name, 'a2')
 
         df2 = df2.tiles()
-        self.assertEqual(len(df2.chunks), 4)
+        self.assertEqual(len(df2.chunks), 2)
         for c in df2.chunks:
             self.assertIsInstance(c, SERIES_CHUNK_TYPE)
             self.assertIsInstance(c.index_value.to_pandas(), type(raw.columns))

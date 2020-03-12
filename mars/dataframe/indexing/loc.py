@@ -21,6 +21,7 @@ from pandas.core.indexing import IndexingError
 
 from ... import opcodes as OperandDef
 from ...core import Base, Entity
+from ...operands import OperandStage
 from ...serialize import KeyField, ListField
 from ...tensor.datasource import asarray
 from ...tensor.utils import calc_sliced_size, filter_inputs
@@ -301,7 +302,30 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
                             for index in op.indexes)
         else:
             indexes = tuple(op.indexes)
-        r = df.loc[indexes]
+        if op.stage != OperandStage.map:
+            r = df.loc[indexes]
+        else:
+            # for map stage, and when some index is fancy index
+            # ignore keys that do not exist
+            try:
+                r = df.loc[indexes]
+            except KeyError:
+                new_indexes = []
+                access_by_label = False
+                for ax, index in enumerate(indexes):
+                    pd_index = [df.index, df.columns][ax]
+                    if isinstance(index, np.ndarray) and index.dtype != np.bool_:
+                        access_by_label = True
+                        # filter index exist
+                        new_indexes.append(
+                            np.array([ind for ind in index if ind in pd_index]))
+                    else:
+                        new_indexes.append(index)
+
+                if not access_by_label:
+                    raise
+                else:
+                    r = df.loc[tuple(new_indexes)]
         if isinstance(r, pd.Series) and r.dtype != chunk.dtype:
             r = r.astype(chunk.dtype)
         ctx[chunk.key] = r
