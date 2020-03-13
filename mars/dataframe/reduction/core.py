@@ -21,7 +21,7 @@ from ...config import options
 from ...operands import OperandStage
 from ...utils import lazy_import
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
-from ..utils import parse_index, build_empty_df
+from ..utils import parse_index, build_empty_df, validate_axis
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType, DATAFRAME_TYPE
 from ..merge import DataFrameConcat
 
@@ -400,19 +400,13 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             pd.reset_option('mode.use_inf_as_na')
 
     def _call_dataframe(self, df):
-        axis = getattr(self, 'axis', None)
+        axis = getattr(self, 'axis', None) or 0
         level = getattr(self, 'level', None)
         numeric_only = getattr(self, 'numeric_only', None)
-        if axis == 'index':
-            axis = 0
-        if axis == 'columns':
-            axis = 1
-        self._axis = axis
+        self._axis = axis = validate_axis(axis, df)
         # TODO: enable specify level if we support groupby
         if level is not None:
             raise NotImplementedError('Not support specify level now')
-        if axis is None:
-            self._axis = 0
 
         empty_df = build_empty_df(df.dtypes)
         reduced_df = getattr(empty_df, getattr(self, '_func_name'))(axis=axis, level=level,
@@ -600,11 +594,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
 
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None) or 0
-        if axis == 'index':
-            axis = 0
-        if axis == 'columns':
-            axis = 1
-        self._axis = axis
+        self._axis = axis = validate_axis(axis, df)
 
         empty_df = build_empty_df(df.dtypes)
         reduced_df = getattr(empty_df, getattr(self, '_func_name'))(axis=axis)

@@ -197,6 +197,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         d[key].append(val)
 
     @classmethod
+    def _append_func(cls, func_dict, callable_func_dict, col, func, src_cols):
+        if callable(func):
+            callable_func_dict[col] = partial(func, columns=list(src_cols))
+            func = None
+        cls._safe_append(func_dict, col, func)
+
+    @classmethod
     def _gen_stages_columns_and_funcs(cls, func):
         intermediate_cols = []
         intermediate_cols_set = set()
@@ -208,82 +215,52 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         agg_func = OrderedDict()
         agg_output_column_to_func = dict()
 
+        def _add_column_to_functions(col, fun_name, mappers, combiners, aggregator):
+            final_col = tokenize(col, fun_name)
+            agg_cols.append(final_col)
+            mapper_to_cols = OrderedDict([(mapper, tokenize(col, mapper)) for mapper in mappers])
+            for mapper, combiner in zip(mappers, combiners):
+                mapper_col = mapper_to_cols[mapper]
+                if mapper_col not in intermediate_cols_set:
+                    intermediate_cols.append(mapper_col)
+                    intermediate_cols_set.add(mapper_col)
+
+                    cls._append_func(map_func, map_output_column_to_func,
+                                     col, mapper, (mapper_col,))
+                    cls._append_func(combine_func, combine_output_column_to_func,
+                                     mapper_col, combiner, mapper_to_cols.values())
+
+            cls._append_func(agg_func, agg_output_column_to_func,
+                             final_col, aggregator, mapper_to_cols.values())
+
         for col, functions in func.items():
             for f in functions:
-                new_col = tokenize(col, f)
-                agg_cols.append(new_col)
                 if f in {'sum', 'prod', 'min', 'max'}:
-                    if new_col not in intermediate_cols_set:
-                        intermediate_cols.append(new_col)
-                        intermediate_cols_set.add(new_col)
-
-                        # function identical for all stages
-                        cls._safe_append(map_func, col, f)
-                        cls._safe_append(combine_func, new_col, f)
-
-                    cls._safe_append(agg_func, new_col, f)
+                    _add_column_to_functions(col, f, [f], [f], f)
                 elif f == 'count':
-                    if new_col not in intermediate_cols_set:
-                        intermediate_cols.append(new_col)
-                        intermediate_cols_set.add(new_col)
+                    _add_column_to_functions(col, f, [f], ['sum'], 'sum')
+                elif f == 'mean':
+                    def _mean(df, columns):
+                        return df[columns[0]].sum() / df[columns[1]].sum()
 
-                        # do count for map
-                        cls._safe_append(map_func, col, f)
-                        # do sum for combine and agg
-                        cls._safe_append(combine_func, new_col, 'sum')
-                    cls._safe_append(agg_func, new_col, 'sum')
-                elif f in {'mean', 'var', 'std'}:
-                    # handle special funcs that have intermediate results
-                    sum_col = tokenize(col, 'sum')
-                    if sum_col not in intermediate_cols_set:
-                        intermediate_cols.append(sum_col)
-                        intermediate_cols_set.add(sum_col)
+                    _add_column_to_functions(col, f, ['sum', 'count'], ['sum', 'sum'], _mean)
+                elif f in {'var', 'std'}:
+                    def _reduce_var(df, columns):
+                        cnt = df[columns[1]]
+                        reduced_cnt = cnt.sum()
+                        data = df[columns[0]]
+                        var_square = df[columns[2]] * (cnt - 1)
+                        avg = data.sum() / reduced_cnt
+                        avg_diff = data / cnt - avg
+                        var_square = var_square.sum() + (cnt * avg_diff ** 2).sum()
+                        return var_square / (reduced_cnt - 1)
 
-                        cls._safe_append(map_func, col, 'sum')
-                        cls._safe_append(combine_func, sum_col, 'sum')
-                    count_col = tokenize(col, 'count')
-                    if count_col not in intermediate_cols_set:
-                        intermediate_cols.append(count_col)
-                        intermediate_cols_set.add(count_col)
+                    def _reduce_std(df, columns):
+                        return np.sqrt(_reduce_var(df, columns))
 
-                        cls._safe_append(map_func, col, 'count')
-                        cls._safe_append(combine_func, count_col, 'sum')
-                    if f == 'mean':
-                        def _mean(df, columns):
-                            return df[columns[0]].sum() / df[columns[1]].sum()
-
-                        cls._safe_append(agg_func, new_col, None)
-                        agg_output_column_to_func[new_col] = \
-                            partial(_mean, columns=[sum_col, count_col])
-                    else:  # var, std
-                        # calculate var for map
-                        var_col = tokenize(col, 'var')
-
-                        def _reduce_var(df, columns):
-                            cnt = df[columns[1]]
-                            reduced_cnt = cnt.sum()
-                            data = df[columns[0]]
-                            var_square = df[columns[2]] * (cnt - 1)
-                            avg = data.sum() / reduced_cnt
-                            avg_diff = data / cnt - avg
-                            var_square = (var_square.sum() + (cnt * avg_diff ** 2).sum())
-                            return var_square / (reduced_cnt - 1)
-
-                        def _reduce_std(df, columns):
-                            return np.sqrt(_reduce_var(df, columns))
-
-                        if var_col not in intermediate_cols_set:
-                            intermediate_cols.append(var_col)
-                            intermediate_cols_set.add(var_col)
-
-                            cls._safe_append(map_func, col, 'var')
-                            cls._safe_append(combine_func, var_col, None)
-                            combine_output_column_to_func[var_col] = \
-                                partial(_reduce_var, columns=[sum_col, count_col, var_col])
-                        cls._safe_append(agg_func, new_col, None)
-                        fun = _reduce_var if f == 'var' else _reduce_std
-                        agg_output_column_to_func[new_col] = \
-                            partial(fun, columns=[sum_col, count_col, var_col])
+                    _add_column_to_functions(col, f, ['sum', 'count', 'var'],
+                                             ['sum', 'sum', _reduce_var],
+                                             _reduce_var if f == 'var' else _reduce_std)
                 else:  # pragma: no cover
                     raise NotImplementedError
 
