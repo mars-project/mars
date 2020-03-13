@@ -19,16 +19,8 @@ def _install():
     from ..core import DATAFRAME_TYPE
     from .sort_values import sort_values
 
-    def handle_inplace(sort_func):
-        def inner(*args, **kwargs):
-            if not kwargs.get('inplace'):
-                return sort_func(*args, **kwargs)
-            else:
-                args[0].data = sort_func(*args, **kwargs).data
-        return inner
-
     for cls in DATAFRAME_TYPE:
-        setattr(cls, 'sort_values', handle_inplace(sort_values))
+        setattr(cls, 'sort_values', sort_values)
 
 
 _install()

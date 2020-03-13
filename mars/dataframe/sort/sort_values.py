@@ -124,10 +124,7 @@ class DataFrameSortValues(DataFrameOperand, DataFramePSRSOperandMixin):
     def tile(cls, op):
         df = op.inputs[0]
 
-        if op.axis == 0:
-            df = build_concatenated_rows_frame(df)
-        else:
-            df = df.rechunk({0: (df.shape[0],)})._inplace_tile()
+        df = build_concatenated_rows_frame(df)
 
         if df.chunk_shape[op.axis] == 1:
             out_chunks = []
@@ -153,22 +150,14 @@ class DataFrameSortValues(DataFrameOperand, DataFramePSRSOperandMixin):
         ctx[op.outputs[0].key] = sort_dataframe(in_data, op)
 
     def __call__(self, df):
-        if self.axis == 0:
-            if self.ignore_index:
-                index_value = parse_index(pd.RangeIndex(df.shape[0]))
-            else:
-                index_value = df.index_value
-            return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
-                                      index_value=index_value,
-                                      columns_value=df.columns_value)
+        assert self.axis == 0
+        if self.ignore_index:
+            index_value = parse_index(pd.RangeIndex(df.shape[0]))
         else:
-            if self.ignore_index:
-                columns_value = parse_index(pd.RangeIndex(df.shape[1]), store_data=True)
-            else:
-                columns_value = df.columns_value
-            return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
-                                      index_value=df.columns_value,
-                                      columns_value=columns_value)
+            index_value = df.index_value
+        return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
+                                  index_value=index_value,
+                                  columns_value=df.columns_value)
 
 
 def sort_values(df, by, axis=0, ascending=True, inplace=False, kind='quicksort',
@@ -245,10 +234,16 @@ def sort_values(df, by, axis=0, ascending=True, inplace=False, kind='quicksort',
     """
     if na_position not in ['last', 'first']:  # pragma: no cover
         raise TypeError('invalid na_position: {}'.format(na_position))
-    psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     axis = validate_axis(axis, df)
+    if axis != 0:
+        raise NotImplementedError('Only support sort on axis 0')
+    psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     by = by if isinstance(by, (list, tuple)) else [by]
     op = DataFrameSortValues(by=by, axis=axis, ascending=ascending, inplace=inplace, kind=kind,
                              na_position=na_position, ignore_index=ignore_index, parallel_kind=parallel_kind,
                              psrs_kinds=psrs_kinds)
-    return op(df)
+    sorted_df = op(df)
+    if inplace:
+        df.data = sorted_df.data
+    else:
+        return sorted_df

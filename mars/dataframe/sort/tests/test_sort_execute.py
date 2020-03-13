@@ -98,27 +98,6 @@ class Test(unittest.TestCase):
 
         pd.testing.assert_frame_equal(result, expected)
 
-        # test axis 1
-        df = pd.DataFrame(np.random.rand(10, 100), index=['a' + str(i) for i in range(10)])
-
-        mdf = DataFrame(df)
-        result = self.executor.execute_dataframe(mdf.sort_values('a0', axis=1), concat=True)[0]
-        expected = df.sort_values('a0', axis=1)
-
-        pd.testing.assert_frame_equal(result, expected)
-
-        mdf = DataFrame(df, chunk_size=10)
-        result = self.executor.execute_dataframe(mdf.sort_values('a0', axis=1), concat=True)[0]
-        expected = df.sort_values('a0', axis=1)
-
-        pd.testing.assert_frame_equal(result, expected)
-
-        mdf = DataFrame(df, chunk_size=10)
-        result = self.executor.execute_dataframe(mdf.sort_values(['a2', 'a3'], axis=1), concat=True)[0]
-        expected = df.sort_values(['a2', 'a3'], axis=1)
-
-        pd.testing.assert_frame_equal(result, expected)
-
         # test nan
         df = pd.DataFrame({
             'col1': ['A', 'A', 'B', 'B', 'D', 'C'],
@@ -160,4 +139,3 @@ class Test(unittest.TestCase):
         df.sort_values('a0', inplace=True)
 
         pd.testing.assert_frame_equal(result, df)
-

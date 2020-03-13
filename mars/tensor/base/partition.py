@@ -30,7 +30,7 @@ from ..utils import validate_axis, validate_order
 from .psrs import TensorPSRSOperandMixin
 
 
-class ParallelPartitionMixinTensor(TensorPSRSOperandMixin):
+class ParallelPartitionMixin(TensorPSRSOperandMixin):
     @classmethod
     def calc_paritions_info(cls, op, kth, size, sort_info_chunks):
         # stage5, collect sort infos and calculate partition info for each partitions
@@ -97,7 +97,7 @@ class ParallelPartitionMixinTensor(TensorPSRSOperandMixin):
         return partitioned_chunks, partitioned_indices_chunks
 
 
-class TensorPartition(TensorOperand, ParallelPartitionMixinTensor):
+class TensorPartition(TensorOperand, ParallelPartitionMixin):
     _op_type_ = OperandDef.PARTITION
 
     _input = KeyField('input')

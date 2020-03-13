@@ -203,10 +203,7 @@ class DataFramePSRSSortRegularSample(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = res = sort_dataframe(a, op)
         # do regular sample
         slc = (slice(None),) * op.axis + (slice(0, n * w, w),)
-        if op.axis == 0:
-            ctx[op.outputs[-1].key] = res[op.by].iloc[slc]
-        else:
-            ctx[op.outputs[-1].key] = res.loc[op.by].iloc[slc]
+        ctx[op.outputs[-1].key] = res[op.by].iloc[slc]
 
 
 class DataFramePSRSConcatPivot(DataFrameOperand, DataFrameOperandMixin):
@@ -315,8 +312,6 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def _execute_map(cls, ctx, op):
         a, pivots = [ctx[c.key] for c in op.inputs]
         out = op.outputs[0]
-        if op.axis == 1:
-            a, pivots = a.transpose(), pivots.transpose()
 
         if isinstance(a, pd.DataFrame):
             # use numpy.searchsorted to find split positions.
@@ -330,10 +325,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
             poses = (None,) + tuple(poses) + (None,)
             for i in range(op.n_partition):
                 values = a.iloc[poses[i]: poses[i + 1]]
-                if op.axis == 0:
-                    ctx[(out.key, str(i))] = values
-                else:
-                    ctx[(out.key, str(i))] = values.transpose()
+                ctx[(out.key, str(i))] = values
         else:  # pragma: no cover
             # for cudf, find split positions in loops.
             if op.ascending:
@@ -342,20 +334,14 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
                     selected = a
                     for label in op.by:
                         selected = selected.loc[a[label] <= pivots.iloc[i][label]]
-                    if op.axis == 0:
-                        ctx[(out.key, str(i))] = selected
-                    else:
-                        ctx[(out.key, str(i))] = selected.transpose()
+                    ctx[(out.key, str(i))] = selected
             else:
                 pivots.append(a.iloc[-1][op.by])
                 for i in range(op.n_partition):
                     selected = a
                     for label in op.by:
                         selected = selected.loc[a[label] >= pivots.iloc[i][label]]
-                    if op.axis == 0:
-                        ctx[(out.key, str(i))] = selected
-                    else:
-                        ctx[(out.key, str(i))] = selected.transpose()
+                    ctx[(out.key, str(i))] = selected
 
     @classmethod
     def _execute_reduce(cls, ctx, op):
