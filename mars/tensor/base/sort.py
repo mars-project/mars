@@ -21,10 +21,10 @@ from ..operands import TensorOperand, TensorShuffleProxy, TensorOrder
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..utils import validate_axis, validate_order
-from .psrs import PSRSOperandMixin
+from .psrs import TensorPSRSOperandMixin
 
 
-class TensorSort(TensorOperand, PSRSOperandMixin):
+class TensorSort(TensorOperand, TensorPSRSOperandMixin):
     _op_type_ = OperandDef.SORT
 
     _axis = Int32Field('axis')
