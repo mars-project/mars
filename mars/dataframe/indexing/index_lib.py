@@ -16,19 +16,25 @@ import itertools
 from collections import namedtuple
 
 import numpy as np
+import pandas as pd
+from pandas.core.dtypes.cast import find_common_type
 
+from ...operands import OperandStage
 from ...tiles import TilesError
+from ...tensor.core import TENSOR_TYPE
 from ...tensor.indexing.index_lib import IndexHandlerContext, IndexHandler, \
     IndexInfo, IndexType, ChunkIndexInfo as ChunkIndexInfoBase, \
     SliceIndexHandler as SliceIndexHandlerBase, \
     NDArrayBoolIndexHandler as NDArrayBoolIndexHandlerBase, \
     TensorBoolIndexHandler as TensorBoolIndexHandlerBase, \
     IntegralIndexHandler, IndexesHandler
-from ...tensor.utils import split_indexes_into_chunks, calc_pos, filter_inputs
-from ...utils import check_chunks_unknown_shape
+from ...tensor.utils import split_indexes_into_chunks, calc_pos, \
+    filter_inputs, slice_split, calc_sliced_size, to_numpy
+from ...utils import check_chunks_unknown_shape, classproperty
 from ..core import SERIES_CHUNK_TYPE
 from ..operands import ObjectType
 from ..utils import parse_index
+from .utils import convert_labels_into_positions
 
 
 ChunkIndexAxisInfo = namedtuple(
@@ -63,6 +69,16 @@ class FancyIndexInfo(IndexInfo):
         self.split_info = None
 
 
+class LabelFancyIndexInfo(IndexInfo):
+    def __init__(self, index_type, input_axis, output_axis, raw_index, handler):
+        super(LabelFancyIndexInfo, self).__init__(
+            index_type, input_axis, output_axis, raw_index, handler)
+
+        # store chunk_index -> labels
+        self.chunk_index_to_labels = None
+        self.is_label_asc_sorted = None
+
+
 class DataFrameIndexHandlerContext(IndexHandlerContext):
     def set_tileable(self, tileable):
         for chunk in tileable.chunks:
@@ -76,7 +92,7 @@ class DataFrameIndexHandlerContext(IndexHandlerContext):
         # concat chunks
         chunk = dataframe_op_type.concat_tileable_chunks(concat_tileable).chunks[0]
         if chunk.ndim > 1 and \
-                (isinstance(axis, tuple) and len(axis) == 1) or isinstance(axis, int):
+                ((isinstance(axis, tuple) and len(axis) == 1) or isinstance(axis, int)):
             # adjust index and axis
             axis = axis[0] if isinstance(axis, tuple) else axis
             chunk.op._axis = axis
@@ -88,6 +104,7 @@ class DataFrameIndexHandlerContext(IndexHandlerContext):
     def create_chunk(self, chunk_index, chunk_index_info):
         chunk_op = self.op.copy().reset_key()
         chunk_op._indexes = indexes = chunk_index_info.indexes
+        chunk_op._stage = OperandStage.map
 
         chunk_input = self.tileable.cix[chunk_index]
         chunk_inputs = filter_inputs([chunk_input] + indexes)
@@ -105,6 +122,7 @@ class DataFrameIndexHandlerContext(IndexHandlerContext):
             chunk_op._object_type = ObjectType.series
             kw['index_value'] = index_values[0]
             kw['dtype'] = self.op.outputs[0].dtype
+            kw['name'] = getattr(self.op.outputs[0], 'name', None)
         else:
             # dataframe
             chunk_op._object_type = ObjectType.dataframe
@@ -145,7 +163,227 @@ class SliceIndexHandler(SliceIndexHandlerBase):
         chunk_index_info.set(ChunkIndexAxisInfo(**kw))
 
 
+class LabelSliceIndexHandler(IndexHandler):
+    @classmethod
+    def accept(cls, raw_index):
+        return isinstance(raw_index, slice)
+
+    def parse(self, raw_index, context):
+        info = IndexInfo(IndexType.label_slice,
+                         context.input_axis,
+                         context.output_axis,
+                         raw_index,
+                         self)
+        context.input_axis += 1
+        context.output_axis += 1
+        context.append(info)
+        return info
+
+    @staticmethod
+    def _slice_all(slc):
+        return slc.start is None and slc.stop is None and \
+               (slc.step is None or slc.step == 1)
+
+    def preprocess(self, index_info, context):
+        tileable = context.tileable
+        input_axis = index_info.input_axis
+        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+
+        # check if chunks have unknown shape
+        check = False
+        if index_value.has_value():
+            # index_value has value,
+            check = True
+        elif self._slice_all(index_info.raw_index):
+            # if slice on all data
+            check = True
+
+        if check:
+            if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
+                raise TilesError('Input tileable {} has chunks with unknown shape '
+                                 'on axis {}'.format(tileable, input_axis))
+
+    @classmethod
+    def set_chunk_index_info(cls, context, index_info, chunk_index,
+                             chunk_index_info, output_axis_index,
+                             index, output_shape):
+        tileable = context.tileable
+        chunk_input = tileable.cix[chunk_index]
+        slc = index
+
+        kw = {
+            'output_axis_index': output_axis_index,
+            'processed_index': slc,
+            'output_shape': output_shape,
+            'dtypes': None
+        }
+        if index_info.input_axis == 0:
+            index = chunk_input.index_value.to_pandas()
+            start, stop = index.slice_locs(slc.start, slc.stop, slc.step, kind='loc')
+            pos_slc = slice(start, stop, slc.step)
+            kw['index_value'] = parse_index(index[pos_slc], chunk_input, slc,
+                                            store_data=False)
+        else:
+            assert index_info.input_axis == 1
+            dtypes = chunk_input.dtypes
+            # do not store index value if output axis is 0
+            store_data = True if index_info.output_axis == 1 else False
+            columns = dtypes.loc[slc].index
+            kw['index_value'] = parse_index(columns, store_data=store_data)
+            kw['dtypes'] = chunk_input.dtypes[slc]
+
+        chunk_index_info.set(ChunkIndexAxisInfo(**kw))
+
+    def _process_has_value_index(self, tileable, index_info, index_value, input_axis, context):
+        pd_index = index_value.to_pandas()
+        if self._slice_all(index_info.raw_index):
+            slc = slice(None)
+        else:
+            # turn label-based slice into position-based slice
+            start, end = pd_index.slice_locs(index_info.raw_index.start,
+                                             index_info.raw_index.stop,
+                                             index_info.raw_index.step,
+                                             kind='loc')
+            slc = slice(start, end, index_info.raw_index.step)
+
+        cum_nsplit = [0] + np.cumsum(tileable.nsplits[index_info.input_axis]).tolist()
+        # split position-based slice into chunk slices
+        effected_i_to_slc = slice_split(slc, tileable.nsplits[index_info.input_axis])
+        is_reversed = (slc.step or 0) < 0
+        output_axis_index_range = range(len(effected_i_to_slc)) if not is_reversed else \
+            range(len(effected_i_to_slc) - 1, -1, -1)
+        other_index_to_iter = dict()
+
+        index_to_info = context.chunk_index_to_info.copy()
+        for chunk_index, chunk_index_info in index_to_info.items():
+            i = chunk_index[input_axis]
+            other_index = chunk_index[:input_axis] + chunk_index[input_axis + 1:]
+            size = tileable.nsplits[input_axis][i]
+            if i not in effected_i_to_slc:
+                # delete it, the input chunk could be ignored
+                del context.chunk_index_to_info[chunk_index]
+            else:
+                chunk_slc = effected_i_to_slc[i]
+                output_shape = calc_sliced_size(size, chunk_slc)
+                if other_index not in other_index_to_iter:
+                    other_index_to_iter[other_index] = iter(output_axis_index_range)
+                output_axis_index = next(other_index_to_iter[other_index])
+
+                # turn position-based slice back into label-based slice
+                start = chunk_slc.start
+                if start is not None:
+                    abs_start = cum_nsplit[i] + start
+                    label_start = pd_index[abs_start]
+                else:
+                    label_start = None
+                stop = chunk_slc.stop
+                if stop is not None:
+                    abs_stop = cum_nsplit[i] + stop - 1  # label slice include the stop
+                    label_stop = pd_index[abs_stop] if abs_stop < len(pd_index) else None
+                else:
+                    label_stop = None
+
+                label_slc = slice(label_start, label_stop, chunk_slc.step)
+                self.set_chunk_index_info(context, index_info, chunk_index, chunk_index_info,
+                                          output_axis_index, label_slc, output_shape)
+
+    def process(self, index_info, context):
+        tileable = context.tileable
+        input_axis = index_info.input_axis
+        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+
+        if index_value.has_value() or self._slice_all(index_info.raw_index):
+            self._process_has_value_index(tileable, index_info,
+                                          index_value, input_axis, context)
+        else:
+            other_index_to_iter = dict()
+            # slice on all chunks on the specified axis
+            for chunk_index, chunk_index_info in context.chunk_index_to_info.items():
+                other_index = chunk_index[:1] if input_axis == 1 else chunk_index[1:]
+                if other_index not in other_index_to_iter:
+                    other_index_to_iter[other_index] = itertools.count()
+                output_axis_index = next(other_index_to_iter[other_index])
+                self.set_chunk_index_info(context, index_info, chunk_index,
+                                          chunk_index_info, output_axis_index,
+                                          index_info.raw_index, np.nan)
+
+
+class LabelIndexHandler(IndexHandler):
+    @classmethod
+    def accept(cls, raw_index):
+        # accept type other than slice, ndarray and tensor
+        return not isinstance(raw_index, (slice, np.ndarray, TENSOR_TYPE))
+
+    def parse(self, raw_index, context):
+        tileable = context.tileable
+        input_axis = context.input_axis
+        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+
+        if index_value.has_value():
+            pd_index = index_value.to_pandas()
+            loc = pd_index.get_loc(raw_index)
+            if isinstance(loc, slice):
+                # if is slice, means index not unique, but monotonic
+                # just call LabelSliceIndexHandler
+                new_raw_index = slice(raw_index, raw_index)
+                return LabelSliceIndexHandler.get_instance().parse(new_raw_index, context)
+            elif isinstance(loc, np.ndarray):
+                # bool indexing, non unique, and not monotonic
+                return NDArrayBoolIndexHandler.get_instance().parse(loc, context)
+        else:
+            return LabelNDArrayFancyIndexHandler.get_instance().parse(raw_index, context)
+
+        info = IndexInfo(IndexType.label,
+                         context.input_axis,
+                         context.output_axis,
+                         raw_index,
+                         self)
+        context.input_axis += 1
+        context.append(info)
+        return info
+
+    def preprocess(self, index_info, context):
+        # if index has value on input axis,
+        # label will be converted to position,
+        # thus chunks cannot have unknown shape on this axis
+        tileable = context.tileable
+        input_axis = index_info.input_axis
+        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        if index_value.has_value():
+            if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
+                raise TilesError('Input tileable {} has chunks with unknown shape '
+                                 'on axis {}'.format(tileable, input_axis))
+
+    def process(self, index_info, context):
+        tileable = context.tileable
+        input_axis = index_info.input_axis
+        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+
+        if index_value.has_value():
+            pd_index = index_value.to_pandas()
+            loc = pd_index.get_loc(index_info.raw_index)
+
+            # other situations have been delegated to different handlers
+            assert isinstance(loc, int)
+
+            effected_i_to_slc = slice_split(loc, tileable.nsplits[index_info.input_axis])
+
+            index_to_info = context.chunk_index_to_info.copy()
+            for chunk_index, chunk_index_info in index_to_info.items():
+                i = chunk_index[input_axis]
+                if i not in effected_i_to_slc:
+                    # delete it, the input chunk could be ignored
+                    del context.chunk_index_to_info[chunk_index]
+                else:
+                    chunk_index_info.set(ChunkIndexAxisInfo(output_axis_index=None,
+                                                            processed_index=index_info.raw_index,
+                                                            output_shape=None,
+                                                            index_value=None,
+                                                            dtypes=None))
+
+
 class DataFrameIndexHandler:
+
     @classmethod
     def set_chunk_index_info(cls, context, index_info, chunk_index,
                              chunk_index_info, output_axis_index,
@@ -158,9 +396,9 @@ class DataFrameIndexHandler:
             index_value = parse_index(chunk_input.index_value.to_pandas(),
                                       chunk_input, index, store_data=False)
         else:
-            columns = chunk_input.columns_value.to_pandas()
-            index_value = parse_index(columns[index], store_data=True)
-            dtypes = chunk_input.dtypes[index]
+            dtypes = getattr(chunk_input.dtypes, cls.kind)[index]
+            columns = dtypes.index
+            index_value = parse_index(columns, store_data=True)
 
         info = ChunkIndexAxisInfo(output_axis_index=output_axis_index,
                                   processed_index=index,
@@ -171,7 +409,9 @@ class DataFrameIndexHandler:
 
 
 class NDArrayBoolIndexHandler(DataFrameIndexHandler, NDArrayBoolIndexHandlerBase):
-    pass
+    @classproperty
+    def kind(self):  # pylint: disable=no-self-use
+        return 'iloc'
 
 
 class TensorBoolIndexHandler(TensorBoolIndexHandlerBase):
@@ -197,6 +437,10 @@ class TensorBoolIndexHandler(TensorBoolIndexHandlerBase):
 
 
 class _FancyIndexHandler(DataFrameIndexHandler, IndexHandler):
+    @classproperty
+    def kind(self):  # pylint: disable=no-self-use
+        return 'iloc'
+
     def parse(self, raw_index, context):
         info = FancyIndexInfo(IndexType.fancy_index,
                               context.input_axis,
@@ -344,14 +588,172 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
         return reorder_chunk_op.new_chunk([concat_chunk], kws=[params])
 
 
+class _LabelFancyIndexHandler(DataFrameIndexHandler, IndexHandler):
+    @classproperty
+    def kind(self):  # pylint: disable=no-self-use
+        return 'loc'
+
+
+class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
+    @classmethod
+    def accept(cls, raw_index):
+        return isinstance(raw_index, np.ndarray) and \
+               raw_index.dtype != np.bool_
+
+    def parse(self, raw_index, context):
+        info = LabelFancyIndexInfo(IndexType.label_fancy_index,
+                                   context.input_axis,
+                                   context.output_axis,
+                                   raw_index,
+                                   self)
+        context.input_axis += 1
+        if not np.isscalar(raw_index):
+            context.output_axis += 1
+        context.append(info)
+        return info
+
+    def preprocess(self, index_info, context):
+        tileable = context.tileable
+        check_chunks_unknown_shape([tileable], TilesError)
+
+        input_axis = index_info.input_axis
+        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        cum_nsplit = [0] + np.cumsum(tileable.nsplits[input_axis]).tolist()
+        if index_value.has_value():
+            # turn label-based fancy index into position-based
+            pd_index = index_value.to_pandas()
+            positions = convert_labels_into_positions(pd_index, index_info.raw_index)
+            split_info = split_indexes_into_chunks([tileable.nsplits[input_axis]],
+                                                   [positions])
+            chunk_index_to_pos = split_info[0]
+            is_asc_sorted = split_info[-1]
+
+            # convert back to labels for chunk_index
+            chunk_index_to_labels = dict()
+            for chunk_index, pos in chunk_index_to_pos.items():
+                # chunk_index and pos are all list with 1 element
+                abs_pos = pos[0] + cum_nsplit[chunk_index[0]]
+                chunk_labels = to_numpy(pd_index[abs_pos])
+                chunk_index_to_labels[chunk_index[0]] = chunk_labels
+
+            index_info.is_label_asc_sorted = is_asc_sorted
+            index_info.chunk_index_to_labels = chunk_index_to_labels
+        else:
+            index = index_info.raw_index
+            if np.isscalar(index):
+                # delegation from label index handler
+                index = np.atleast_1d(index)
+            # does not know the right positions, need postprocess always
+            index_info.is_label_asc_sorted = False
+            # do df.loc on each chunk
+            index_info.chunk_index_to_labels = \
+                {i: index for i in range(tileable.chunk_shape[input_axis])}
+
+    def process(self, index_info, context):
+        input_axis = index_info.input_axis
+        chunk_index_to_labels = index_info.chunk_index_to_labels
+
+        other_index_to_iter = dict()
+        chunk_index_to_info = context.chunk_index_to_info.copy()
+        for chunk_index, chunk_index_info in chunk_index_to_info.items():
+            i = chunk_index[input_axis]
+            chunk_labels = chunk_index_to_labels[i]
+
+            if chunk_labels.size == 0:
+                # not effected
+                del context.chunk_index_to_info[chunk_index]
+                continue
+
+            other_index = chunk_index[:1] if input_axis == 1 else chunk_index[1:]
+            if other_index not in other_index_to_iter:
+                other_index_to_iter[other_index] = itertools.count()
+            output_axis_index = next(other_index_to_iter[other_index])
+            output_axis_shape = chunk_labels.size
+            self.set_chunk_index_info(context, index_info, chunk_index,
+                                      chunk_index_info, output_axis_index,
+                                      chunk_labels, output_axis_shape)
+
+    @classmethod
+    def need_postprocess(cls, index_info, context):
+        tileable = context.tileable
+
+        if tileable.chunk_shape[index_info.input_axis] == 1:
+            # if tileable only has 1 chunk on this axis
+            # do not need postprocess
+            return False
+        # if ascending sorted, no need to postprocess
+        return not index_info.is_label_asc_sorted
+
+    def postprocess(self, index_info, context):
+        if not self.need_postprocess(index_info, context):
+            # do not need postprocess
+            return
+
+        chunks, nsplits = context.out_chunks, context.out_nsplits
+        index_to_chunks = {c.index: c for c in chunks}
+
+        axis = index_info.output_axis
+        new_out_chunks = []
+        for chunk_index in itertools.product(*(range(len(ns)) for ax, ns in enumerate(nsplits)
+                                               if ax != axis)):
+            to_concat_chunks = []
+            for i in range(len(nsplits[axis])):
+                if axis == 0:
+                    to_concat_index = (i,) + chunk_index
+                else:
+                    to_concat_index = chunk_index + (i,)
+                to_concat_chunks.append(index_to_chunks[to_concat_index])
+            concat_chunk = context.concat_chunks(to_concat_chunks, axis)
+            chunk_op = context.op.copy().reset_key()
+            indexes = [slice(None)] * len(nsplits)
+            indexes[axis] = index_info.raw_index
+            params = concat_chunk.params
+            if np.isscalar(index_info.raw_index):
+                assert axis == 0
+                if 'columns_value' in params:
+                    params['index_value'] = params.pop('columns_value')
+                    params['dtype'] = find_common_type(params['dtypes'].tolist())
+                    del params['dtypes']
+                    if getattr(context.op.outputs[0], 'name', None) is not None:
+                        params['name'] = context.op.outputs[0].name
+                if context.op.outputs[0].ndim == 0:
+                    del params['index_value']
+            elif axis == 0:
+                params['index_value'] = parse_index(pd.Index(index_info.raw_index), store_data=False)
+            else:
+                params['dtypes'] = dtypes = concat_chunk.dtypes.loc[index_info.raw_index]
+                params['columns_value'] = parse_index(dtypes.index, store_data=True)
+            chunk_op._indexes = indexes
+            out_chunk = chunk_op.new_chunk([concat_chunk], kws=[params])
+            new_out_chunks.append(out_chunk)
+
+        new_nsplits = list(nsplits)
+        new_nsplits[axis] = (len(index_info.raw_index),)
+        context.out_chunks = new_out_chunks
+        context.out_nsplits = new_nsplits
+
+
 class DataFrameIlocIndexesHandler(IndexesHandler):
     def __init__(self):
         super(DataFrameIlocIndexesHandler, self).__init__()
         self.register(IntegralIndexHandler,
-                      NDArrayFancyIndexHandler,
                       SliceIndexHandler,
                       NDArrayBoolIndexHandler,
-                      TensorBoolIndexHandler)
+                      TensorBoolIndexHandler,
+                      NDArrayFancyIndexHandler)
+
+    def create_context(self, op):
+        return DataFrameIndexHandlerContext(op)
+
+
+class DataFrameLocIndexesHandler(IndexesHandler):
+    def __init__(self):
+        super(DataFrameLocIndexesHandler, self).__init__()
+        self.register(LabelIndexHandler,
+                      LabelSliceIndexHandler,
+                      NDArrayBoolIndexHandler,
+                      TensorBoolIndexHandler,
+                      LabelNDArrayFancyIndexHandler)
 
     def create_context(self, op):
         return DataFrameIndexHandlerContext(op)
