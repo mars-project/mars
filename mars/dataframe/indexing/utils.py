@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import pandas as pd
 
 
 def calc_columns_index(column_name, df):
@@ -25,3 +26,23 @@ def calc_columns_index(column_name, df):
     column_nsplits = df.nsplits[1]
     column_loc = df.columns_value.to_pandas().get_loc(column_name)
     return np.searchsorted(np.cumsum(column_nsplits), column_loc + 1)
+
+
+def convert_labels_into_positions(pandas_index, labels):
+    """
+    Convert labels into positions
+
+    :param pandas_index: pandas Index
+    :param labels: labels
+    :return: positions
+    """
+    result = []
+    for label in labels:
+        loc = pandas_index.get_loc(label)
+        if isinstance(loc, (int, np.integer)):
+            result.append(loc)
+        else:
+            # slice or boolean array
+            result.extend(
+                pd.RangeIndex(len(pandas_index))[loc].tolist())
+    return np.asarray(result)

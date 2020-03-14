@@ -93,19 +93,38 @@ cdef class JsonSerializeProvider(Provider):
             return val.encode('utf-8')
         return val
 
+    cdef inline dict _serialize_start_stop(self, pos):
+        if isinstance(pos, int):
+            return {'type': 'int',
+                    'value': pos}
+        elif isinstance(pos, str):
+            return {'type': 'str',
+                    'value': pos}
+        else:
+            return {'type': 'object',
+                    'value': self._to_str(base64.b64encode(pickle.dumps(pos)))}
+
     cdef inline dict _serialize_slice(self, slice value):
         return {
             'type': _get_name(ValueType.slice),
             'value': {
-                'start': value.start,
-                'stop': value.stop,
+                'start': self._serialize_start_stop(value.start),
+                'stop': self._serialize_start_stop(value.stop),
                 'step': value.step
             }
         }
 
+    cdef inline object _deserialize_start_stop(self, value):
+        if value['type'] in ('int', 'str'):
+            return value['value']
+        else:
+            return pickle.loads(base64.b64decode(value['value']))
+
     cdef inline slice _deserialize_slice(self, object obj, list callbacks):
         value = obj['value']
-        return slice(value['start'], value['stop'], value['step'])
+        return slice(self._deserialize_start_stop(value['start']),
+                     self._deserialize_start_stop(value['stop']),
+                     value['step'])
 
     cdef inline dict _serialize_arr(self, np.ndarray value):
         return {
