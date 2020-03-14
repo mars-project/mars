@@ -382,6 +382,9 @@ message OperandDef {
         GROUPBY_APPLY = 2035;
         GROUPBY_TRANSFORM = 2036;
 
+        // rolling
+        ROLLING_AGG = 2060;
+
         // parallel sorting by regular sampling
         PSRS_SORT_REGULAR_SMAPLE = 2040;
         PSRS_CONCAT_PIVOT = 2041;

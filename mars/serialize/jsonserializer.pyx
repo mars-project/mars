@@ -432,8 +432,12 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_dict(value, tp=None, weak_ref=weak_ref)
         elif isinstance(value, np.datetime64):
             return self._serialize_datetime64(value)
+        elif isinstance(value, pd.Timestamp):
+            return self._serialize_datetime64(value.to_datetime64())
         elif isinstance(value, np.timedelta64):
             return self._serialize_timedelta64(value)
+        elif isinstance(value, pd.Timedelta):
+            return self._serialize_timedelta64(value.to_timedelta64())
         elif isinstance(value, np.number):
             return self._serialize_untyped_value(value.item())
         elif callable(value):
