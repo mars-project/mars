@@ -163,6 +163,9 @@ class Test(unittest.TestCase):
                 np.testing.assert_almost_equal(result[0], expected[0])
                 np.testing.assert_almost_equal(result[1], expected[1])
 
+                if nn._tree is not None:
+                    self.assertIsInstance(nn._tree.fetch(), type(snn._tree))
+
                 # test return_distance=False
                 ret = nn.kneighbors(Y, return_distance=False)
 
@@ -242,8 +245,29 @@ class Test(unittest.TestCase):
         expected = snn.kneighbors(y2)
 
         result = ret.fetch()
+        self.assertEqual(nn._fit_method, snn._fit_method)
         np.testing.assert_almost_equal(result[0], expected[0])
         np.testing.assert_almost_equal(result[1], expected[1])
+
+        # test serialization
+        graph = ret[0].build_graph()
+        self.assertEqual(len(graph.from_pb(graph.to_pb())), len(graph))
+        self.assertEqual(len(graph.from_json(graph.to_json())), len(graph))
+
+        # test fit a sklearn tree
+        nn = NearestNeighbors(n_neighbors=3)
+        nn.fit(snn._tree)
+
+        ret = nn.kneighbors(Y)
+        result = ret.fetch()
+        self.assertEqual(nn._fit_method, snn._fit_method)
+        np.testing.assert_almost_equal(result[0], expected[0])
+        np.testing.assert_almost_equal(result[1], expected[1])
+
+        # test serialization
+        graph = ret[0].build_graph()
+        self.assertEqual(len(graph.from_pb(graph.to_pb())), len(graph))
+        self.assertEqual(len(graph.from_json(graph.to_json())), len(graph))
 
     @unittest.skipIf(faiss is None, 'faiss not installed')
     def testFaissNearestNeighborsExecution(self):
