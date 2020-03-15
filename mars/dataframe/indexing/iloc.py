@@ -432,3 +432,11 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
 
 def iloc(a):
     return DataFrameIloc(a)
+
+
+def head(a, n=5):
+    return DataFrameIloc(a)[0:n]
+
+
+def tail(a, n=5):
+    return DataFrameIloc(a)[-n:]
