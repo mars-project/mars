@@ -96,6 +96,8 @@ class OperandActor(BaseOperandActor):
         self._succ_keys.update(op_info['io_meta']['successors'])
         if self._state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
             self._state = op_info['state']
+        if self._state not in OperandState.TERMINATED_STATES:
+            self.start_operand()
 
     def start_operand(self, state=None, **kwargs):
         target_worker = kwargs.get('target_worker')
@@ -532,7 +534,7 @@ class OperandActor(BaseOperandActor):
     def _add_finished_terminal(self, final_state=None, exc=None):
         futures = []
         for graph_ref in self._graph_refs:
-            if graph_ref.reload_state() == GraphState.RUNNING:
+            if graph_ref.reload_state() in (GraphState.RUNNING, GraphState.CANCELLING):
                 futures.append(graph_ref.add_finished_terminal(
                     self._op_key, final_state=final_state, exc=exc, _tell=True, _wait=False
                 ))

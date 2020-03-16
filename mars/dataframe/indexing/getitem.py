@@ -278,7 +278,8 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 out_chunk = op.copy().reset_key().new_chunk([df_chunk, mask_chunk],
                                                             shape=(np.nan, df_chunk.shape[1]), index=idx,
                                                             index_value=df_chunk.index_value,
-                                                            columns_value=df_chunk.columns_value)
+                                                            columns_value=df_chunk.columns_value,
+                                                            dtypes=df_chunk.dtypes)
                 out_chunks.append(out_chunk)
 
         else:

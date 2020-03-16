@@ -803,12 +803,18 @@ class Test(unittest.TestCase):
                 file_path = os.path.join(d, 'test.csv')
                 df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
                 df.to_csv(file_path)
-                mdf = md.read_csv(file_path, index_col=0, chunk_bytes=10)
-                r1 = mdf.iloc[:3].execute()
+
+                mdf1 = md.read_csv(file_path, index_col=0, chunk_bytes=10)
+                r1 = mdf1.iloc[:3].execute()
                 pd.testing.assert_frame_equal(df[:3], r1)
 
-                r2 = mdf.iloc[4:].execute()
-                pd.testing.assert_frame_equal(r2, df[4:])
+                mdf2 = md.read_csv(file_path, index_col=0, chunk_bytes=10)
+                r2 = mdf2.iloc[:3].execute()
+                pd.testing.assert_frame_equal(df[:3], r2)
+
+                f = mdf1[mdf1.a > mdf2.a]
+                r3 = f.iloc[:3].execute()
+                pd.testing.assert_frame_equal(r3, df[df.a > df.a])
 
     def testDataFrameShuffle(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
