@@ -346,22 +346,21 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_op._agg_columns = stage_infos.agg_cols
             if op.object_type == ObjectType.dataframe:
                 agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
-                                             index_value=out_df.index_value,
+                                             index_value=out_df.index_value, dtypes=out_df.dtypes,
                                              columns_value=out_df.columns_value)
             else:
-                agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
-                                             index_value=out_df.index_value)
+                agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index, dtype=out_df.dtype,
+                                             index_value=out_df.index_value, name=out_df.name)
             agg_chunks.append(agg_chunk)
 
         new_op = op.copy()
         if op.object_type == ObjectType.dataframe:
-            return new_op.new_dataframes([in_df], shape=out_df.shape, index_value=out_df.index_value,
-                                         columns_value=out_df.columns_value, chunks=agg_chunks,
-                                         nsplits=((np.nan,) * len(agg_chunks), (out_df.shape[1],)))
+            nsplits = ((np.nan,) * len(agg_chunks), (out_df.shape[1],))
         else:
-            return new_op.new_seriess([in_df], dtype=out_df.dtype, shape=out_df.shape,
-                                      index_value=out_df.index_value,
-                                      chunks=agg_chunks, nsplits=((np.nan,) * len(agg_chunks),))
+            nsplits = ((np.nan,) * len(agg_chunks),)
+        kw = out_df.params.copy()
+        kw.update(dict(chunks=agg_chunks, nsplits=nsplits))
+        return new_op.new_tileables([in_df], **kw)
 
     @classmethod
     def _tile_with_tree(cls, op):
@@ -409,16 +408,15 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         new_op = op.copy()
         if op.object_type == ObjectType.dataframe:
             nsplits = ((out_df.shape[0],), (out_df.shape[1],))
-            return new_op.new_tileables(op.inputs, chunks=[chunk], nsplits=nsplits, dtypes=out_df.dtypes,
-                                        shape=out_df.shape, index_value=out_df.index_value,
-                                        columns_value=out_df.columns_value)
         else:
             nsplits = ((out_df.shape[0],),)
-            return new_op.new_tileables(op.inputs, chunks=[chunk], nsplits=nsplits, dtype=out_df.dtype,
-                                        shape=out_df.shape, index_value=out_df.index_value)
+
+        kw = out_df.params.copy()
+        kw.update(dict(chunks=[chunk], nsplits=nsplits))
+        return new_op.new_tileables(op.inputs, **kw)
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameGroupByAgg"):
         if op.method == 'shuffle':
             return cls._tile_with_shuffle(op)
         elif op.method == 'tree':

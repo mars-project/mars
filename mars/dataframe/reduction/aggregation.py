@@ -1,3 +1,17 @@
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from collections import namedtuple, OrderedDict
 from collections.abc import Iterable
 from typing import Union, List, Dict
@@ -10,10 +24,12 @@ from ... import opcodes
 from ...config import options
 from ...operands import OperandStage
 from ...serialize import BytesField, AnyField, DictField
-from ...utils import tokenize, ceildiv
+from ...utils import tokenize, ceildiv, lazy_import
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index, validate_axis
+
+cudf = lazy_import('cudf', globals=globals())
 
 _stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_groups', 'combine_sources',
                                          'agg_sources', 'agg_columns', 'agg_funcs', 'key_to_funcs',
@@ -384,37 +400,33 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             kw = out_df.params.copy()
             if op.object_type == ObjectType.dataframe:
                 if axis == 0:
-                    kw['index'] = (0, idx)
                     src_col_chunk = in_df.cix[0, output_index_to_input[idx]]
                     if axis_stage_infos[idx].valid_columns is None:
-                        kw['columns_value'] = src_col_chunk.columns_value
+                        columns_value = src_col_chunk.columns_value
                         shape_len = src_col_chunk.shape[1]
                     else:
-                        kw['columns_value'] = parse_index(
-                            pd.Index(axis_stage_infos[idx].valid_columns), store_data=True)
+                        columns_value = parse_index(pd.Index(axis_stage_infos[idx].valid_columns), store_data=True)
                         shape_len = len(axis_stage_infos[idx].valid_columns)
-                    kw['shape'] = (out_df.shape[0], shape_len)
+                    kw.update(dict(shape=(out_df.shape[0], shape_len), columns_value=columns_value,
+                                   index=(0, idx), dtypes=out_df.dtypes[columns_value.to_pandas()]))
                 else:
-                    kw['index'] = (idx, 0)
                     src_col_chunk = in_df.cix[output_index_to_input[idx], 0]
-                    kw['index_value'] = src_col_chunk.index_value
-                    kw['shape'] = (src_col_chunk.shape[0], out_df.shape[1])
+                    kw.update(dict(index=(idx, 0), index_value=src_col_chunk.index_value,
+                                   shape=(src_col_chunk.shape[0], out_df.shape[1]),
+                                   dtypes=out_df.dtypes))
             else:
                 src_col_chunk = in_df.chunks[output_index_to_input[idx] if output_index_to_input else 0]
-                kw['index'] = (0,)
                 if op.object_type == ObjectType.series:
-                    kw['name'] = out_df.name
                     if in_df.op.object_type == ObjectType.series:
-                        kw['index_value'] = out_df.index_value
-                        kw['shape'] = out_df.shape
+                        index_value, shape = out_df.index_value, out_df.shape
                     elif axis == 0:
-                        kw['index_value'] = src_col_chunk.index_value
-                        kw['shape'] = (src_col_chunk.shape[0],)
+                        index_value, shape = src_col_chunk.index_value, (src_col_chunk.shape[0],)
                     else:
-                        kw['index_value'] = src_col_chunk.columns_value
-                        kw['shape'] = (src_col_chunk.shape[1],)
+                        index_value, shape = src_col_chunk.columns_value, (src_col_chunk.shape[1],)
+                    kw.update(dict(name=out_df.name, dtype=out_df.dtype, index=(0,),
+                                   index_value=index_value, shape=shape))
                 else:
-                    kw['shape'] = ()
+                    kw.update(dict(index=(0,), shape=(), dtype=out_df.dtype))
             agg_chunks.append(chunk_op.new_chunk([chk], **kw))
 
         new_op = op.copy()
@@ -442,15 +454,16 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             return cls._tile_tree(op)
 
     @staticmethod
-    def _wrap_df(value, columns=None, transform=False):
+    def _wrap_df(xdf, value, columns=None, transform=False):
         if isinstance(value, np.generic):
-            value = pd.DataFrame([value], columns=columns)
+            value = xdf.DataFrame([value], columns=columns)
         else:
-            value = pd.DataFrame(value, columns=columns)
+            value = xdf.DataFrame(value, columns=columns)
         return value.T if transform else value
 
     @classmethod
     def _execute_map(cls, ctx, op: "DataFrameAggregate"):
+        xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
         axis = op.axis
         axis_index = op.outputs[0].index[axis]
@@ -462,7 +475,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 src_df = in_data
             else:
                 src_df = in_data[cols]
-            ret_map_dfs[map_func_str] = cls._wrap_df(src_df.agg(map_func_str, axis=axis),
+            ret_map_dfs[map_func_str] = cls._wrap_df(xdf, src_df.agg(map_func_str, axis=axis),
                                                      columns=[axis_index], transform=axis == 0)
 
         ret_combine_dfs = OrderedDict()
@@ -475,6 +488,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _execute_combine(cls, ctx, op: "DataFrameAggregate"):
+        xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
         in_data_dict = dict(zip(op.combine_groups.keys(), in_data))
         axis = op.axis
@@ -485,16 +499,17 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             if fun_strs[-1] in op.key_to_funcs:
                 func = op.key_to_funcs[fun_strs[-1]]
                 sources = [in_data_dict[fs] for fs in op.combine_sources[fun_strs]]
-                result = cls._wrap_df(func(*sources, axis=axis), columns=[axis_index],
+                result = cls._wrap_df(xdf, func(*sources, axis=axis), columns=[axis_index],
                                       transform=axis == 0)
             else:
-                result = cls._wrap_df(df.agg(fun_strs[-1], axis=axis), columns=[axis_index],
+                result = cls._wrap_df(xdf, df.agg(fun_strs[-1], axis=axis), columns=[axis_index],
                                       transform=axis == 0)
             combines.append(result)
         ctx[op.outputs[0].key] = tuple(combines)
 
     @classmethod
     def _execute_agg(cls, ctx, op: "DataFrameAggregate"):
+        xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
         in_data_dict = dict(zip(op.combine_groups.keys(), in_data))
         axis = op.axis
@@ -515,22 +530,26 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 agg_series = func_inputs[0].agg(func_str, axis=axis)
 
             agg_series.name = func_name
-            aggs.append(cls._wrap_df(agg_series, transform=axis == 0))
+            aggs.append(cls._wrap_df(xdf, agg_series, transform=axis == 0))
 
-        concat_df = pd.concat(aggs, axis=axis)
+        concat_df = xdf.concat(aggs, axis=axis)
         if op.object_type == ObjectType.series:
             if concat_df.shape[0] == 1:
                 concat_df = concat_df.iloc[0, :]
             else:
                 concat_df = concat_df.iloc[:, 0]
             concat_df.name = op.outputs[0].name
+
+            concat_df = concat_df.astype(op.outputs[0].dtype, copy=False)
         elif op.object_type == ObjectType.scalar:
-            concat_df = concat_df.iloc[0, 0]
+            concat_df = concat_df.iloc[0, 0].astype(op.outputs[0].dtype)
         else:
             if axis == 0:
                 concat_df = concat_df.reindex(op.outputs[0].index_value.to_pandas())
             else:
                 concat_df = concat_df[op.outputs[0].columns_value.to_pandas()]
+
+            concat_df = concat_df.astype(op.outputs[0].dtypes, copy=False)
         ctx[op.outputs[0].key] = concat_df
 
     @classmethod

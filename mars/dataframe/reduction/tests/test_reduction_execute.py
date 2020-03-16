@@ -326,16 +326,17 @@ class TestAggregate(TestBase):
         self.executor = ExecutorForTest()
 
     def testDataFrameAggregate(self):
+        all_aggs = ['sum', 'prod', 'min', 'max', 'count', 'mean', 'var', 'std']
         data = pd.DataFrame(np.random.rand(20, 20))
 
         df = from_pandas_df(data)
-        result = df.agg(['sum', 'min', 'max', 'mean', 'var', 'std'])
+        result = df.agg(all_aggs)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(result, concat=True)[0],
-                                      data.agg(['sum', 'min', 'max', 'mean', 'var', 'std']))
+                                      data.agg(all_aggs))
 
         df = from_pandas_df(data, chunk_size=3)
 
-        for func in ['sum', 'min', 'max', 'mean', 'var', 'std']:
+        for func in all_aggs:
             result = df.agg(func)
             pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
                                            data.agg(func))
@@ -344,36 +345,41 @@ class TestAggregate(TestBase):
             pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
                                            data.agg(func, axis=1))
 
-        result = df.agg(['sum', 'min', 'max', 'mean', 'var', 'std'])
+        result = df.agg(['sum'])
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(result, concat=True)[0],
-                                      data.agg(['sum', 'min', 'max', 'mean', 'var', 'std']))
+                                      data.agg(['sum']))
 
-        result = df.agg(['sum', 'min', 'max', 'mean', 'var', 'std'], axis=1)
+        result = df.agg(all_aggs)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(result, concat=True)[0],
-                                      data.agg(['sum', 'min', 'max', 'mean', 'var', 'std'], axis=1))
+                                      data.agg(all_aggs))
+
+        result = df.agg(all_aggs, axis=1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(result, concat=True)[0],
+                                      data.agg(all_aggs, axis=1))
 
         result = df.agg({0: ['sum', 'min', 'var'], 9: ['mean', 'var', 'std']})
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(result, concat=True)[0],
                                       data.agg({0: ['sum', 'min', 'var'], 9: ['mean', 'var', 'std']}))
 
     def testSeriesAggregate(self):
+        all_aggs = ['sum', 'prod', 'min', 'max', 'count', 'mean', 'var', 'std']
         data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
 
         series = from_pandas_series(data)
-        result = series.agg(['sum', 'min', 'max', 'mean', 'var', 'std'])
+        result = series.agg(all_aggs)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
-                                       data.agg(['sum', 'min', 'max', 'mean', 'var', 'std']))
+                                       data.agg(all_aggs))
 
         series = from_pandas_series(data, chunk_size=3)
 
-        for func in ['sum', 'min', 'max', 'mean', 'var', 'std']:
+        for func in all_aggs:
             result = series.agg(func)
             self.assertAlmostEqual(self.executor.execute_dataframe(result, concat=True)[0],
                                    data.agg(func))
 
-        result = series.agg(['sum', 'min', 'max', 'mean', 'var', 'std'])
+        result = series.agg(all_aggs)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
-                                       data.agg(['sum', 'min', 'max', 'mean', 'var', 'std']))
+                                       data.agg(all_aggs))
 
 
 if __name__ == '__main__':  # pragma: no cover
