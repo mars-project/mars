@@ -57,7 +57,29 @@ class Test(unittest.TestCase):
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
 
-    def wait_scheduler_worker_start(self):
+    def _start_service(self):
+        worker_port = self.worker_port = str(get_next_port())
+        scheduler_port = self.scheduler_port = str(get_next_port())
+        proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
+                                        '-a', '127.0.0.1',
+                                        '-p', worker_port,
+                                        '--cpu-procs', '2',
+                                        '--cache-mem', '10m',
+                                        '--schedulers', '127.0.0.1:' + scheduler_port,
+                                        '--log-level', 'debug',
+                                        '--log-format', 'WOR %(asctime)-15s %(message)s',
+                                        '--ignore-avail-mem'])
+        proc_scheduler = subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
+                                           '--nproc', '1',
+                                           '-H', '127.0.0.1',
+                                           '-p', scheduler_port,
+                                           '-Dscheduler.default_cpu_usage=0',
+                                           '--log-level', 'debug',
+                                           '--log-format', 'SCH %(asctime)-15s %(message)s'])
+
+        self.proc_worker = proc_worker
+        self.proc_scheduler = proc_scheduler
+
         old_not_errors = gevent.hub.Hub.NOT_ERROR
         gevent.hub.Hub.NOT_ERROR = (Exception,)
 
@@ -83,41 +105,16 @@ class Test(unittest.TestCase):
                 raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
             if self.proc_worker.poll() is not None:
                 raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
-            if time.time() - check_time > 20:
+            if time.time() - check_time > 30:
                 raise SystemError('Check meta_timestamp timeout')
 
             time.sleep(0.1)
 
         gevent.hub.Hub.NOT_ERROR = old_not_errors
 
-    def setUp(self):
-        worker_port = self.worker_port = str(get_next_port())
-        scheduler_port = self.scheduler_port = str(get_next_port())
-        proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
-                                        '-a', '127.0.0.1',
-                                        '-p', worker_port,
-                                        '--cpu-procs', '2',
-                                        '--cache-mem', '10m',
-                                        '--schedulers', '127.0.0.1:' + scheduler_port,
-                                        '--log-level', 'debug',
-                                        '--log-format', 'WOR %(asctime)-15s %(message)s',
-                                        '--ignore-avail-mem'])
-        proc_scheduler = subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
-                                           '--nproc', '1',
-                                           '-H', '127.0.0.1',
-                                           '-p', scheduler_port,
-                                           '-Dscheduler.default_cpu_usage=0',
-                                           '--log-level', 'debug',
-                                           '--log-format', 'SCH %(asctime)-15s %(message)s'])
-
-        self.proc_worker = proc_worker
-        self.proc_scheduler = proc_scheduler
-
-        self.wait_scheduler_worker_start()
-
         web_port = self.web_port = str(get_next_port())
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
-                                    '-H', '127.0.0.1',
+                                     '-H', '127.0.0.1',
                                      '--log-level', 'debug',
                                      '--log-format', 'WEB %(asctime)-15s %(message)s',
                                      '-p', web_port,
@@ -142,8 +139,9 @@ class Test(unittest.TestCase):
         self.exceptions = gevent.hub.Hub.NOT_ERROR
         gevent.hub.Hub.NOT_ERROR = (Exception,)
 
-    def tearDown(self):
-        procs = (self.proc_web, self.proc_worker, self.proc_scheduler)
+    def _stop_service(self):
+        procs = [p for p in (self.proc_web, self.proc_worker, self.proc_scheduler)
+                 if p is not None]
         for p in procs:
             p.send_signal(signal.SIGINT)
 
@@ -158,6 +156,20 @@ class Test(unittest.TestCase):
                 p.kill()
 
         gevent.hub.Hub.NOT_ERROR = self.exceptions
+
+    def setUp(self):
+        self.proc_scheduler = self.proc_worker = self.proc_web = None
+        for attempt in range(3):
+            try:
+                self._start_service()
+                break
+            except:  # noqa: E722
+                self._stop_service()
+                if attempt == 2:
+                    raise
+
+    def tearDown(self):
+        self._stop_service()
 
     def testWebApi(self):
         service_ep = 'http://127.0.0.1:' + self.web_port

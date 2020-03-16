@@ -93,7 +93,7 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
         count = concat_count.sum(axis=op.axis)
         r = cls._execute_reduction(data, op, reduction_func='sum')
         avg = cls._keep_dim(r / count, op)
-        avg_diff = data / concat_count - avg
+        avg_diff = (data / concat_count).subtract(avg, axis=op.axis)
 
         kwargs = dict(axis=op.axis, skipna=op.skipna)
         reduced_var_square = var_square.sum(**kwargs) + (concat_count * avg_diff ** 2).sum(**kwargs)

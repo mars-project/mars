@@ -20,6 +20,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import AnyField, Int32Field, BoolField
+from ...tensor.core import TENSOR_TYPE
+from ...tensor.datasource import tensor as astensor
 from ...utils import tokenize, check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..align import align_dataframe_series
@@ -363,16 +365,23 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = df[mask]
 
 
+_list_like_types = (list, np.ndarray, SERIES_TYPE, pd.Series, TENSOR_TYPE)
+
+
 def dataframe_getitem(df, item):
     columns = df.columns_value.to_pandas()
-    if isinstance(item, list):
+
+    if isinstance(item, (np.ndarray, pd.Series)) and item.dtype != np.bool_:
+        item = item.tolist()
+
+    if isinstance(item, slice):
+        return df.iloc[item]
+    elif isinstance(item, list):
         for col_name in item:
             if col_name not in columns:
                 raise KeyError('%s not in columns' % col_name)
         op = DataFrameIndex(col_names=item, object_type=ObjectType.dataframe)
-    elif isinstance(item, SERIES_TYPE) and item.dtype == np.bool:
-        op = DataFrameIndex(mask=item, object_type=ObjectType.dataframe)
-    elif isinstance(item, pd.Series) and item.dtype == np.bool:
+    elif isinstance(item, _list_like_types) and astensor(item).dtype == np.bool:
         op = DataFrameIndex(mask=item, object_type=ObjectType.dataframe)
     else:
         if item not in columns:

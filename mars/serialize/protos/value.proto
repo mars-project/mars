@@ -9,8 +9,16 @@ message Value {
 
     message Slice {
         bool is_null = 4;
-        oneof start { int64 start_val = 1; }
-        oneof stop { int64 stop_val = 2; }
+        oneof start {
+            int64 start_val = 1;
+            string start_label = 5;
+            bytes start_obj = 6;
+        }
+        oneof stop {
+            int64 stop_val = 2;
+            string stop_label = 7;
+            bytes stop_obj = 8;
+        }
         oneof step { int64 step_val = 3; }
     }
 

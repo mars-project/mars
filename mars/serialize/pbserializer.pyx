@@ -63,9 +63,21 @@ cdef class ProtobufSerializeProvider(Provider):
 
     cdef inline void _set_slice(self, slice value, obj, tp=None):
         if value.start is not None:
-            obj.slice.start_val = value.start
+            if isinstance(value.start, (int, np.integer)):
+                obj.slice.start_val = value.start
+            elif isinstance(value.start, str):
+                obj.slice.start_label = value.start
+            else:
+                # dump if not integer or string
+                obj.slice.start_obj = pickle.dumps(value.start)
         if value.stop is not None:
-            obj.slice.stop_val = value.stop
+            if isinstance(value.stop, (int, np.integer)):
+                obj.slice.stop_val = value.stop
+            elif isinstance(value.stop, str):
+                obj.slice.stop_label = value.stop
+            else:
+                # dump if not integer or string
+                obj.slice.stop_obj = pickle.dumps(value.stop)
         if value.step is not None:
             obj.slice.step_val = value.step
         if all(it is None for it in (value.start, value.stop, value.step)):
@@ -75,8 +87,20 @@ cdef class ProtobufSerializeProvider(Provider):
         if obj.slice.is_null:
             return slice(None)
 
-        start = obj.slice.start_val if obj.slice.WhichOneof('start') else None
-        stop = obj.slice.stop_val if obj.slice.WhichOneof('stop') else None
+        start_key = obj.slice.WhichOneof('start')
+        if start_key is not None:
+            start = getattr(obj.slice, start_key)
+            if start_key == 'start_obj':
+                start = pickle.loads(start)
+        else:
+            start = None
+        stop_key = obj.slice.WhichOneof('stop')
+        if stop_key is not None:
+            stop = getattr(obj.slice, stop_key)
+            if stop_key == 'stop_obj':
+                stop = pickle.loads(stop)
+        else:
+            stop = None
         step = obj.slice.step_val if obj.slice.WhichOneof('step') else None
         return slice(start, stop, step)
 
