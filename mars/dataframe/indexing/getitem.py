@@ -394,5 +394,7 @@ def series_getitem(series, labels, combine_size=None):
     if isinstance(labels, list) or np.isscalar(labels):
         op = SeriesIndex(labels=labels, combine_size=combine_size)
         return op(series)
+    elif isinstance(labels, _list_like_types) and astensor(labels).dtype == np.bool:
+        return series.loc[labels]
     else:
         raise NotImplementedError('type %s is not support for getitem' % type(labels))

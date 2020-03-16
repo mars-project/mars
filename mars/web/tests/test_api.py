@@ -26,7 +26,6 @@ import time
 import traceback
 import uuid
 
-import gevent
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -80,9 +79,6 @@ class Test(unittest.TestCase):
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
 
-        old_not_errors = gevent.hub.Hub.NOT_ERROR
-        gevent.hub.Hub.NOT_ERROR = (Exception,)
-
         actor_client = new_client()
         time.sleep(1)
         check_time = time.time()
@@ -110,8 +106,6 @@ class Test(unittest.TestCase):
 
             time.sleep(0.1)
 
-        gevent.hub.Hub.NOT_ERROR = old_not_errors
-
         web_port = self.web_port = str(get_next_port())
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
                                      '-H', '127.0.0.1',
@@ -136,9 +130,6 @@ class Test(unittest.TestCase):
                 continue
             break
 
-        self.exceptions = gevent.hub.Hub.NOT_ERROR
-        gevent.hub.Hub.NOT_ERROR = (Exception,)
-
     def _stop_service(self):
         procs = [p for p in (self.proc_web, self.proc_worker, self.proc_scheduler)
                  if p is not None]
@@ -154,8 +145,6 @@ class Test(unittest.TestCase):
         for p in procs:
             if p.poll() is None:
                 p.kill()
-
-        gevent.hub.Hub.NOT_ERROR = self.exceptions
 
     def setUp(self):
         self.proc_scheduler = self.proc_worker = self.proc_web = None
