@@ -351,10 +351,10 @@ class Test(TestBase):
             df.to_csv(file_path, index=False)
 
             pdf = pd.read_csv(file_path)
-            mdf = sess.run(md.read_csv(file_path))
+            mdf = sess.run(md.read_csv(file_path, sort_range_index=True))
             pd.testing.assert_frame_equal(pdf, mdf)
 
-            mdf2 = sess.run(md.read_csv(file_path, chunk_bytes=10))
+            mdf2 = sess.run(md.read_csv(file_path, sort_range_index=True, chunk_bytes=10))
             pd.testing.assert_frame_equal(pdf, mdf2)
         finally:
             shutil.rmtree(tempdir)
