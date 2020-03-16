@@ -25,7 +25,7 @@ from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy
     is_eager_mode, build_mode
 from ..core import ChunkData, Chunk, TileableEntity, TileableData, HasShapeTileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
-    SeriesField, BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, \
+    SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField
 
 
@@ -126,7 +126,7 @@ class IndexValue(Serializable):
         _data = NDArrayField('data')
         _freq = AnyField('freq')
         _start = AnyField('start')
-        _periods = Int64Field('periods')
+        _periods = AnyField('periods')
         _end = AnyField('end')
         _closed = AnyField('closed')
         _tz = AnyField('tz')
@@ -140,7 +140,7 @@ class IndexValue(Serializable):
         _unit = AnyField('unit')
         _freq = AnyField('freq')
         _start = AnyField('start')
-        _periods = Int64Field('periods')
+        _periods = AnyField('periods')
         _end = AnyField('end')
         _closed = AnyField('closed')
 
@@ -149,7 +149,7 @@ class IndexValue(Serializable):
         _data = NDArrayField('data')
         _freq = AnyField('freq')
         _start = AnyField('start')
-        _periods = Int64Field('periods')
+        _periods = AnyField('periods')
         _end = AnyField('end')
         _year = AnyField('year')
         _month = AnyField('month')
