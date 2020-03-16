@@ -27,7 +27,9 @@ from mars import tensor as mt
 from mars.actors.core import new_client
 from mars.compat import reduce
 from mars.scheduler.graph import GraphState
+from mars.scheduler.resource import ResourceActor
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
+from mars.scheduler.tests.integrated.no_prepare_op import NoPrepareOperand
 from mars.utils import build_tileable_graph
 from mars.serialize.dataserializer import loads
 from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf
@@ -338,3 +340,33 @@ class Test(SchedulerIntegratedTest):
         expected = np.histogram(np.sort(raw), bins='scott')
         assert_allclose(loads(res[0]), expected[0])
         assert_allclose(loads(res[1]), expected[1])
+
+    def testOperandsWithoutPrepareInputs(self):
+        self.start_processes(etcd=False, modules=['mars.scheduler.tests.integrated.no_prepare_op'])
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+
+        actor_address = self.cluster_info.get_scheduler(ResourceActor.default_uid())
+        resource_ref = actor_client.actor_ref(ResourceActor.default_uid(), address=actor_address)
+        worker_endpoints = resource_ref.get_worker_endpoints()
+
+        t1 = mt.random.rand(10)
+        t1.op._expect_worker = worker_endpoints[0]
+        t2 = mt.random.rand(10)
+        t2.op._expect_worker = worker_endpoints[1]
+
+        t = NoPrepareOperand().new_tileable([t1, t2])
+        t.op._prepare_inputs = [False, False]
+
+        graph = t.build_graph()
+        targets = [t.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
