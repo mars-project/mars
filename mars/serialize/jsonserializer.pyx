@@ -303,12 +303,18 @@ cdef class JsonSerializeProvider(Provider):
         return None
 
     cdef inline dict _serialize_datetime64(self, value):
+        if isinstance(value, pd.Timestamp):
+            # convert to np.datetime64
+            value = value.to_datetime64()
         return self._serialize_datetime64_timedelta64(value, ValueType.datetime64)
 
     cdef inline _deserialize_datetime64(self, obj, list callbacks):
         return self._deserialize_datetime64_timedelta64(obj, callbacks)
 
     cdef inline dict _serialize_timedelta64(self, value):
+        if isinstance(value, pd.Timedelta):
+            # convert to np.timedelta64
+            value = value.to_timedelta64()
         return self._serialize_datetime64_timedelta64(value, ValueType.timedelta64)
 
     cdef inline _deserialize_timedelta64(self, obj, list callbacks):
@@ -415,14 +421,10 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_tuple(value, tp=None, weak_ref=weak_ref)
         elif isinstance(value, dict):
             return self._serialize_dict(value, tp=None, weak_ref=weak_ref)
-        elif isinstance(value, np.datetime64):
+        elif isinstance(value, (np.datetime64, pd.Timestamp)):
             return self._serialize_datetime64(value)
-        elif isinstance(value, pd.Timestamp):
-            return self._serialize_datetime64(value.to_datetime64())
-        elif isinstance(value, np.timedelta64):
+        elif isinstance(value, (np.timedelta64, pd.Timedelta)):
             return self._serialize_timedelta64(value)
-        elif isinstance(value, pd.Timedelta):
-            return self._serialize_timedelta64(value.to_timedelta64())
         elif isinstance(value, np.number):
             return self._serialize_untyped_value(value.item())
         else:

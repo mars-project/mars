@@ -71,7 +71,8 @@ class Test(TestBase):
 
     def testDataFrameGraphSerialize(self):
         df = from_pandas_df(pd.DataFrame(np.random.rand(10, 10),
-                                         columns=[np.random.bytes(10) for _ in range(10)]))
+                                         columns=pd.timedelta_range(start='1 day', periods=10),
+                                         index=pd.date_range('2020-1-1', periods=10)))
         graph = df.build_graph(tiled=False)
 
         pb = graph.to_pb()

@@ -77,7 +77,7 @@ message IndexValue {
         Value data = 2;
         Value freq = 3;
         Value start = 4;
-        int64 periods = 5;
+        Value periods = 5;
         Value end = 6;
         Value closed = 7;
         Value tz = 8;
@@ -103,7 +103,7 @@ message IndexValue {
         Value unit = 3;
         Value freq = 4;
         Value start = 5;
-        int64 periods = 6;
+        Value periods = 6;
         Value end = 7;
         Value closed = 8;
         // public fields
@@ -124,7 +124,7 @@ message IndexValue {
         Value data = 2;
         Value freq = 3;
         Value start = 4;
-        int64 periods = 5;
+        Value periods = 5;
         Value end = 6;
         Value year = 7;
         Value month = 8;
