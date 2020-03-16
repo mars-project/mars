@@ -436,3 +436,87 @@ class Test(TestBase):
         self.assertEqual(r.op.object_type, ObjectType.series)
         self.assertEqual(r.chunks[0].shape, (5,))
         self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
+
+    def testStringMethod(self):
+        s = pd.Series(['a', 'b', 'c'], name='s')
+        series = from_pandas_series(s, chunk_size=2)
+
+        with self.assertRaises(AttributeError):
+            _ = series.str.non_exist
+
+        r = series.str.contains('c')
+        self.assertEqual(r.dtype, np.bool_)
+        self.assertEqual(r.name, s.name)
+        pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
+        self.assertEqual(r.shape, s.shape)
+
+        r = r.tiles()
+        for i, c in enumerate(r.chunks):
+            self.assertEqual(c.index, (i,))
+            self.assertEqual(c.dtype, np.bool_)
+            self.assertEqual(c.name, s.name)
+            pd.testing.assert_index_equal(c.index_value.to_pandas(),
+                                          s.index[i * 2: (i + 1) * 2])
+            self.assertEqual(c.shape, (2,) if i == 0 else (1,))
+
+        r = series.str.split(',', expand=True, n=1)
+        self.assertEqual(r.op.object_type, ObjectType.dataframe)
+        self.assertEqual(r.shape, (3, 2))
+        pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
+        pd.testing.assert_index_equal(r.columns_value.to_pandas(), pd.RangeIndex(2))
+
+        r = r.tiles()
+        for i, c in enumerate(r.chunks):
+            self.assertEqual(c.index, (i, 0))
+            pd.testing.assert_index_equal(c.index_value.to_pandas(),
+                                          s.index[i * 2: (i + 1) * 2])
+            pd.testing.assert_index_equal(c.columns_value.to_pandas(), pd.RangeIndex(2))
+            self.assertEqual(c.shape, (2, 2) if i == 0 else (1, 2))
+
+        with self.assertRaises(TypeError):
+            _ = series.str.cat([['1', '2']])
+
+        with self.assertRaises(ValueError):
+            _ = series.str.cat(['1', '2'])
+
+        with self.assertRaises(ValueError):
+            _ = series.str.cat(',')
+
+        with self.assertRaises(TypeError):
+            _ = series.str.cat({'1', '2', '3'})
+
+        r = series.str.cat(sep=',')
+        self.assertEqual(r.op.object_type, ObjectType.scalar)
+        self.assertEqual(r.dtype, s.dtype)
+
+        r = r.tiles()
+        self.assertEqual(len(r.chunks), 1)
+        self.assertEqual(r.chunks[0].op.object_type, ObjectType.scalar)
+        self.assertEqual(r.chunks[0].dtype, s.dtype)
+
+        r = series.str.extract(r'[ab](\d)', expand=False)
+        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.dtype, s.dtype)
+
+        r = r.tiles()
+        for i, c in enumerate(r.chunks):
+            self.assertEqual(c.index, (i,))
+            self.assertEqual(c.dtype, s.dtype)
+            self.assertEqual(c.name, s.name)
+            pd.testing.assert_index_equal(c.index_value.to_pandas(),
+                                          s.index[i * 2: (i + 1) * 2])
+            self.assertEqual(c.shape, (2,) if i == 0 else (1,))
+
+        r = series.str.extract(r'[ab](\d)', expand=True)
+        self.assertEqual(r.op.object_type, ObjectType.dataframe)
+        self.assertEqual(r.shape, (3, 1))
+        pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
+        pd.testing.assert_index_equal(r.columns_value.to_pandas(), pd.RangeIndex(1))
+
+        r = r.tiles()
+        for i, c in enumerate(r.chunks):
+            self.assertEqual(c.index, (i, 0))
+            pd.testing.assert_index_equal(c.index_value.to_pandas(),
+                                          s.index[i * 2: (i + 1) * 2])
+            pd.testing.assert_index_equal(c.columns_value.to_pandas(), pd.RangeIndex(1))
+            self.assertEqual(c.shape, (2, 1) if i == 0 else (1, 1))
