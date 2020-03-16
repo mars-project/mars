@@ -48,7 +48,7 @@ class Test(TestBase):
         for key, group in r:
             pd.testing.assert_frame_equal(group, expected.get_group(key))
 
-    def testGroupByAgg(self):
+    def testDataFrameGroupByAgg(self):
         df1 = pd.DataFrame({'a': np.random.choice([2, 3, 4], size=(100,)),
                             'b': np.random.choice([2, 3, 4], size=(100,))})
         mdf = md.DataFrame(df1, chunk_size=3)

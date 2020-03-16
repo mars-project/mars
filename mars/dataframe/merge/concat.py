@@ -18,7 +18,7 @@ import numpy as np
 from ...serialize import ListField, StringField, BoolField, AnyField
 from ... import opcodes as OperandDef
 from ...utils import lazy_import
-from ..utils import parse_index, build_empty_df, standardize_range_index
+from ..utils import parse_index, build_empty_df, standardize_range_index, validate_axis
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, SERIES_TYPE
 
 cudf = lazy_import('cudf', globals=globals())
@@ -384,10 +384,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False, keys=None, levels=Non
            names=None, verify_integrity=False, sort=False, copy=True):
     if not isinstance(objs, (list, tuple)):  # pragma: no cover
         raise TypeError('first argument must be an iterable of dataframe or series objects')
-    if axis == 'index':
-        axis = 0
-    if axis == 'columns':
-        axis = 1
+    axis = validate_axis(axis)
     if isinstance(objs, dict):  # pragma: no cover
         keys = objs.keys()
         objs = objs.values()

@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import operator
 import unittest
+from functools import reduce
 
 import pandas as pd
 import numpy as np
@@ -28,6 +30,7 @@ from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, 
 from mars.dataframe.merge import DataFrameConcat
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+from mars.dataframe.operands import ObjectType
 
 
 reduction_functions = dict(
@@ -365,6 +368,134 @@ class TestCumReduction(TestBase):
         self.assertIsInstance(reduction_df.chunks[-1].inputs[-1].op, self.op)
         self.assertEqual(reduction_df.chunks[-1].inputs[-1].op.stage, OperandStage.map)
         self.assertEqual(len(reduction_df.chunks[-1].inputs), 7)
+
+
+class TestAggregate(TestBase):
+    def testDataFrameAggregate(self):
+        data = pd.DataFrame(np.random.rand(20, 19))
+        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std']
+
+        df = from_pandas_df(data)
+        result = df.agg(agg_funcs).tiles()
+        self.assertEqual(len(result.chunks), 1)
+        self.assertEqual(result.shape, (6, data.shape[1]))
+        self.assertListEqual(list(result.columns_value.to_pandas()), list(range(19)))
+        self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
+        self.assertEqual(result.op.object_type, ObjectType.dataframe)
+        self.assertListEqual(result.op.func, agg_funcs)
+
+        df = from_pandas_df(data, chunk_size=(3, 4))
+
+        result = df.agg('sum').tiles()
+        self.assertEqual(len(result.chunks), 5)
+        self.assertEqual(result.shape, (data.shape[1],))
+        self.assertListEqual(list(result.index_value.to_pandas()), list(range(data.shape[1])))
+        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertListEqual(result.op.func, ['sum'])
+        agg_chunk = result.chunks[0]
+        self.assertEqual(agg_chunk.shape, (3,))
+        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(3)))
+        self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
+
+        result = df.agg('sum', axis=1).tiles()
+        self.assertEqual(len(result.chunks), 7)
+        self.assertEqual(result.shape, (data.shape[0],))
+        self.assertListEqual(list(result.index_value.to_pandas()), list(range(data.shape[0])))
+        self.assertEqual(result.op.object_type, ObjectType.series)
+        agg_chunk = result.chunks[0]
+        self.assertEqual(agg_chunk.shape, (4,))
+        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(4)))
+        self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
+
+        result = df.agg('var', axis=1).tiles()
+        self.assertEqual(len(result.chunks), 7)
+        self.assertEqual(result.shape, (data.shape[0],))
+        self.assertListEqual(list(result.index_value.to_pandas()), list(range(data.shape[0])))
+        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertListEqual(result.op.func, ['var'])
+        agg_chunk = result.chunks[0]
+        self.assertEqual(agg_chunk.shape, (4,))
+        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(4)))
+        self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
+
+        result = df.agg(['sum', 'min', 'max', 'mean', 'var', 'std']).tiles()
+        self.assertEqual(len(result.chunks), 5)
+        self.assertEqual(result.shape, (len(agg_funcs), data.shape[1]))
+        self.assertListEqual(list(result.columns_value.to_pandas()), list(range(data.shape[1])))
+        self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
+        self.assertEqual(result.op.object_type, ObjectType.dataframe)
+        self.assertListEqual(result.op.func, agg_funcs)
+        agg_chunk = result.chunks[0]
+        self.assertEqual(agg_chunk.shape, (len(agg_funcs), 4))
+        self.assertListEqual(list(agg_chunk.columns_value.to_pandas()), list(range(4)))
+        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), agg_funcs)
+        self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
+
+        result = df.agg(['sum', 'min', 'max', 'mean', 'var', 'std'], axis=1).tiles()
+        self.assertEqual(len(result.chunks), 7)
+        self.assertEqual(result.shape, (data.shape[0], len(agg_funcs)))
+        self.assertListEqual(list(result.columns_value.to_pandas()), agg_funcs)
+        self.assertListEqual(list(result.index_value.to_pandas()), list(range(data.shape[0])))
+        self.assertEqual(result.op.object_type, ObjectType.dataframe)
+        self.assertListEqual(result.op.func, agg_funcs)
+        agg_chunk = result.chunks[0]
+        self.assertEqual(agg_chunk.shape, (3, len(agg_funcs)))
+        self.assertListEqual(list(agg_chunk.columns_value.to_pandas()), agg_funcs)
+        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(3)))
+        self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
+
+        dict_fun = {0: 'sum', 2: ['var', 'max'], 9: ['mean', 'var', 'std']}
+        all_cols = set(reduce(operator.add, [[v] if isinstance(v, str) else v for v in dict_fun.values()]))
+        result = df.agg(dict_fun).tiles()
+        self.assertEqual(len(result.chunks), 2)
+        self.assertEqual(result.shape, (len(all_cols), len(dict_fun)))
+        self.assertSetEqual(set(result.columns_value.to_pandas()), set(dict_fun.keys()))
+        self.assertSetEqual(set(result.index_value.to_pandas()), all_cols)
+        self.assertEqual(result.op.object_type, ObjectType.dataframe)
+        self.assertListEqual(result.op.func[0], [dict_fun[0]])
+        self.assertListEqual(result.op.func[2], dict_fun[2])
+        agg_chunk = result.chunks[0]
+        self.assertEqual(agg_chunk.shape, (len(all_cols), 2))
+        self.assertListEqual(list(agg_chunk.columns_value.to_pandas()), [0, 2])
+        self.assertSetEqual(set(agg_chunk.index_value.to_pandas()), all_cols)
+        self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
+
+        with self.assertRaises(NotImplementedError):
+            df.agg({0: ['sum', 'min', 'var'], 9: ['mean', 'var', 'std']}, axis=1)
+
+    def testSeriesAggregate(self):
+        data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
+        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std']
+
+        series = from_pandas_series(data)
+
+        result = series.agg(agg_funcs).tiles()
+        self.assertEqual(len(result.chunks), 1)
+        self.assertEqual(result.shape, (6,))
+        self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
+        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertListEqual(result.op.func, agg_funcs)
+
+        series = from_pandas_series(data, chunk_size=3)
+
+        result = series.agg('sum').tiles()
+        self.assertEqual(len(result.chunks), 1)
+        self.assertEqual(result.shape, ())
+        self.assertEqual(result.op.object_type, ObjectType.scalar)
+        agg_chunk = result.chunks[0]
+        self.assertEqual(agg_chunk.shape, ())
+        self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
+
+        result = series.agg(['sum', 'min', 'max', 'mean', 'var', 'std']).tiles()
+        self.assertEqual(len(result.chunks), 1)
+        self.assertEqual(result.shape, (len(agg_funcs),))
+        self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
+        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertListEqual(result.op.func, agg_funcs)
+        agg_chunk = result.chunks[0]
+        self.assertEqual(agg_chunk.shape, (len(agg_funcs),))
+        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), agg_funcs)
+        self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
 
 
 if __name__ == '__main__':  # pragma: no cover

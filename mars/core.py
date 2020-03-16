@@ -608,7 +608,7 @@ class ChunksIndexer(object):
             else:
                 return [self._tileable._chunks[idx] for idx in flat_index]
 
-        raise ValueError('Cannot get tensor chunk by {0}'.format(item))
+        raise ValueError('Cannot get {0} chunk by {1}'.format(type(self._tileable).__name__, item))
 
 
 class ExecutableTuple(tuple):
