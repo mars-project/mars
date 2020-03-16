@@ -17,6 +17,7 @@
 import builtins
 import itertools
 from operator import attrgetter
+from typing import List
 from weakref import WeakKeyDictionary, WeakSet, ref
 
 import numpy as np
@@ -376,7 +377,7 @@ class TileableData(EntityData, Tileable):
             return tuple(map(len, self._nsplits))
 
     @property
-    def chunks(self):
+    def chunks(self) -> List["Chunk"]:
         return getattr(self, '_chunks', None)
 
     @property
@@ -388,7 +389,7 @@ class TileableData(EntityData, Tileable):
         self._nsplits = new_nsplits
 
     @property
-    def params(self):
+    def params(self) -> dict:
         # params return the properties which useful to rebuild a new tileable object
         return dict()
 
@@ -599,7 +600,7 @@ class ChunksIndexer(object):
             else:
                 return [self._tileable._chunks[idx] for idx in flat_index]
 
-        raise ValueError('Cannot get tensor chunk by {0}'.format(item))
+        raise ValueError('Cannot get {0} chunk by {1}'.format(type(self._tileable).__name__, item))
 
 
 class ExecutableTuple(tuple):

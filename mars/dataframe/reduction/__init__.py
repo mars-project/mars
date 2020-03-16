@@ -28,6 +28,7 @@ from .cumsum import DataFrameCumsum
 
 def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE
+    from .aggregation import aggregate
     from .sum import sum_series, sum_dataframe
     from .prod import prod_series, prod_dataframe
     from .max import max_series, max_dataframe
@@ -42,13 +43,14 @@ def _install():
     from .cumsum import cumsum
 
     func_names = ['sum', 'prod', 'max', 'min', 'count', 'mean', 'var',
-                  'std', 'cummax', 'cummin', 'cumprod', 'cumsum']
+                  'std', 'cummax', 'cummin', 'cumprod', 'cumsum',
+                  'agg', 'aggregate']
     series_funcs = [sum_series, prod_series, max_series, min_series,
                     count_series, mean_series, var_series, std_series,
-                    cummax, cummin, cumprod, cumsum]
+                    cummax, cummin, cumprod, cumsum, aggregate, aggregate]
     df_funcs = [sum_dataframe, prod_dataframe, max_dataframe, min_dataframe,
                 count_dataframe, mean_dataframe, var_dataframe, std_dataframe,
-                cummax, cummin, cumprod, cumsum]
+                cummax, cummin, cumprod, cumsum, aggregate, aggregate]
     for func_name, series_func, df_func in zip(func_names, series_funcs, df_funcs):
         for t in DATAFRAME_TYPE:
             setattr(t, func_name, df_func)

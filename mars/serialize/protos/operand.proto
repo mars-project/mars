@@ -331,7 +331,7 @@ message OperandDef {
         MAP = 710;
         DESCRIBE = 712;
         FILL_NA = 713;
-        TRANSFORM = 714;
+        AGGREGATE = 714;
 
         FUSE = 801;
 

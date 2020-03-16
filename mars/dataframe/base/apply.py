@@ -22,7 +22,7 @@ from ...config import options
 from ...serialize import StringField, AnyField, BoolField, \
     TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
-from ..utils import build_empty_df, build_empty_series, parse_index
+from ..utils import build_empty_df, build_empty_series, parse_index, validate_axis
 
 
 class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
@@ -176,11 +176,7 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, df, dtypes=None, index=None):
         axis = getattr(self, 'axis', None) or 0
-        if axis == 'index':
-            axis = 0
-        elif axis == 'columns':
-            axis = 1
-        self._axis = axis
+        self._axis = axis = validate_axis(axis, df)
 
         dtypes, index_value = self._infer_df_func_returns(df.dtypes, dtypes, index)
         for arg, desc in zip((self._object_type, dtypes, index_value),

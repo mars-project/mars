@@ -65,7 +65,7 @@ class Test(TestBase):
         for key, group in r:
             pd.testing.assert_series_equal(group, expected.get_group(key))
 
-    def testGroupByAgg(self):
+    def testDataFrameGroupByAgg(self):
         rs = np.random.RandomState(0)
         df1 = pd.DataFrame({'a': rs.choice([2, 3, 4], size=(100,)),
                             'b': rs.choice([2, 3, 4], size=(100,))})
@@ -165,6 +165,75 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r13, concat=True)[0],
                                       df2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
         self.assertTrue(r13.op.as_index)
+
+    def testSeriesGroupByAgg(self):
+        rs = np.random.RandomState(0)
+        series1 = pd.Series(rs.rand(10))
+        ms1 = md.Series(series1, chunk_size=3)
+
+        for method in ['tree', 'shuffle']:
+            r1 = ms1.groupby(lambda x: x % 2).agg('sum', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                           series1.groupby(lambda x: x % 2).agg('sum'))
+            r2 = ms1.groupby(lambda x: x % 2).agg('min', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r2, concat=True)[0],
+                                           series1.groupby(lambda x: x % 2).agg('min'))
+
+            r1 = ms1.groupby(lambda x: x % 2).agg('prod', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                           series1.groupby(lambda x: x % 2).agg('prod'))
+            r2 = ms1.groupby(lambda x: x % 2).agg('max', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r2, concat=True)[0],
+                                           series1.groupby(lambda x: x % 2).agg('max'))
+            r3 = ms1.groupby(lambda x: x % 2).agg('count', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r3, concat=True)[0],
+                                           series1.groupby(lambda x: x % 2).agg('count'))
+            r4 = ms1.groupby(lambda x: x % 2).agg('mean', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r4, concat=True)[0],
+                                           series1.groupby(lambda x: x % 2).agg('mean'))
+            r5 = ms1.groupby(lambda x: x % 2).agg('var', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r5, concat=True)[0],
+                                           series1.groupby(lambda x: x % 2).agg('var'))
+            r6 = ms1.groupby(lambda x: x % 2).agg('std', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r6, concat=True)[0],
+                                           series1.groupby(lambda x: x % 2).agg('std'))
+
+            agg = ['std', 'mean', 'var', 'max', 'count']
+            r3 = ms1.groupby(lambda x: x % 2).agg(agg, method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
+                                          series1.groupby(lambda x: x % 2).agg(agg))
+
+        r4 = ms1.groupby(lambda x: x % 2).sum()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r4, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).sum())
+
+        r5 = ms1.groupby(lambda x: x % 2).prod()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r5, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).prod())
+
+        r6 = ms1.groupby(lambda x: x % 2).min()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r6, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).min())
+
+        r7 = ms1.groupby(lambda x: x % 2).max()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r7, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).max())
+
+        r8 = ms1.groupby(lambda x: x % 2).count()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r8, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).count())
+
+        r9 = ms1.groupby(lambda x: x % 2).mean()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r9, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).mean())
+
+        r10 = ms1.groupby(lambda x: x % 2).var()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r10, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).var())
+
+        r11 = ms1.groupby(lambda x: x % 2).std()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r11, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).std())
 
     def testGroupByApplyTransform(self):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],

@@ -16,14 +16,15 @@
 import weakref
 from copy import deepcopy
 from enum import Enum
+from typing import TypeVar, Union, List
 
 import numpy as np
 
 from . import opcodes as OperandDef
 from .serialize import SerializableMetaclass, ValueType, ProviderType, \
     IdentityField, ListField, DictField, Int32Field, BoolField, StringField
-from .core import Entity, AttributeAsDictKey, ExecutableTuple, FuseChunkData, FuseChunk, \
-    ObjectChunkData, ObjectChunk, ObjectData, Object
+from .core import Entity, Chunk, Tileable, AttributeAsDictKey, ExecutableTuple, \
+    FuseChunkData, FuseChunk, ObjectChunkData, ObjectChunk, ObjectData, Object
 from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode
 from .tiles import NotSupportTile
 from .context import RunningMode, get_context
@@ -32,6 +33,7 @@ from .context import RunningMode, get_context
 operand_type_to_oprand_cls = {}
 OP_TYPE_KEY = '_op_type_'
 OP_MODULE_KEY = '_op_module_'
+T = TypeVar('T')
 
 
 class OperandMetaclass(SerializableMetaclass):
@@ -113,7 +115,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         return super().cls(provider)
 
     @property
-    def inputs(self):
+    def inputs(self) -> List[Union[Chunk, Tileable]]:
         return getattr(self, '_inputs', None)
 
     @inputs.setter
@@ -121,7 +123,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         self._set_inputs(vals)
 
     @property
-    def outputs(self):
+    def outputs(self) -> List[Union[Chunk, Tileable]]:
         outputs = getattr(self, '_outputs', None)
         if outputs:
             return [ref() for ref in outputs]
@@ -162,7 +164,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         return val
 
     @property
-    def stage(self):
+    def stage(self) -> Union[None, "OperandStage"]:
         return getattr(self, '_stage', None)
 
     @property
@@ -174,15 +176,15 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         self._extra_params = extra_params
 
     @property
-    def sparse(self):
+    def sparse(self) -> bool:
         return getattr(self, '_sparse', False)
 
-    def is_sparse(self):
+    def is_sparse(self) -> bool:
         return getattr(self, '_sparse', False) or False
 
     issparse = is_sparse
 
-    def is_gpu(self):
+    def is_gpu(self) -> bool:
         return getattr(self, '_gpu', False) or False
 
     @classmethod
@@ -209,7 +211,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         if len(self._outputs) > self.output_limit:
             raise ValueError("Outputs' size exceeds limitation")
 
-    def copy(self):
+    def copy(self: T) -> T:
         new_op = super().copy()
         new_op.outputs = []
         new_op.extra_params = deepcopy(self.extra_params)
