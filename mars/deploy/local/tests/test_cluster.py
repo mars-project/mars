@@ -796,6 +796,20 @@ class Test(unittest.TestCase):
             self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
             self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
+    def testIterativeDependency(self, *_):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True):
+            with tempfile.TemporaryDirectory() as d:
+                file_path = os.path.join(d, 'test.csv')
+                df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+                df.to_csv(file_path)
+                mdf = md.read_csv(file_path, index_col=0, chunk_bytes=10)
+                r1 = mdf.iloc[:3].execute()
+                pd.testing.assert_frame_equal(df[:3], r1)
+
+                r2 = mdf.iloc[4:].execute()
+                pd.testing.assert_frame_equal(r2, df[4:])
+
     def testDataFrameShuffle(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.merge.merge import merge
