@@ -33,9 +33,10 @@ from . import sort
 from . import groupby
 from . import ufunc
 from . import datastore
+from . import window
 
 del reduction, statistics, arithmetic, indexing, merge, base, \
-    groupby, ufunc, datastore, sort
+    groupby, ufunc, datastore, sort, window
 del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences
