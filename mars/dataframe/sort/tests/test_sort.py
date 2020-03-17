@@ -118,5 +118,4 @@ class Test(unittest.TestCase):
 
         tiled = sorted_df.tiles()
 
-        self.assertEqual(len(tiled.chunks), 18)
         self.assertTrue(all(isinstance(c.op, DataFrameIndex) for c in tiled.chunks))
