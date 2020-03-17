@@ -245,6 +245,7 @@ message OperandDef {
         COUNT = 343;
         CUMMAX = 344;
         CUMMIN = 345;
+        CUMCOUNT = 346;
 
         // tensor operand
         RESHAPE = 401;

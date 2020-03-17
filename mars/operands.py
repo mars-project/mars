@@ -90,7 +90,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     def __new__(cls, *args, **kwargs):
         if '_op_id' in kwargs and kwargs['_op_id']:
             op_id = kwargs['_op_id']
-            module, tp = op_id.split('.', 1)
+            module, tp = op_id.rsplit('.', 1)
             cls = operand_type_to_oprand_cls[module, int(tp)]
         return object.__new__(cls)
 
@@ -358,6 +358,10 @@ class TileableOperandMixin(object):
             raise TypeError('cannot new chunk with more than 1 outputs')
 
         return self.new_tileables(inputs, kws=kws, **kw)[0]
+
+    @classmethod
+    def tile(cls, op):
+        raise NotImplementedError
 
     @classmethod
     def execute(cls, ctx, op):
