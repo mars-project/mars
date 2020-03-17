@@ -109,7 +109,11 @@ class SeriesDatetimeMethodBaseHandler:
     @classmethod
     def execute(cls, ctx, op):
         inp = ctx[op.input.key]
-        out = getattr(inp.dt, op.method)
+        try:
+            out = getattr(inp.dt, op.method)
+        except ValueError:
+            # fail due to buffer read-only
+            out = getattr(inp.copy().dt, op.method)
         if not op.is_property:
             out = out(*op.method_args, **op.method_kwargs)
         ctx[op.outputs[0].key] = out
