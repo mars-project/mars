@@ -188,7 +188,11 @@ class Test(unittest.TestCase):
 
         mdf = DataFrame(raw, chunk_size=10)
         result = executor.execute_dataframe(mdf.sort_index(ignore_index=True), concat=True)[0]
-        expected = raw.sort_index(ignore_index=True)
+        try:  # for python3.5
+            expected = raw.sort_index(ignore_index=True)
+        except TypeError:
+            expected = raw.sort_index()
+            expected.index = pd.RangeIndex(len(expected))
         pd.testing.assert_frame_equal(result, expected)
 
         # test axis=1
@@ -211,7 +215,11 @@ class Test(unittest.TestCase):
 
         mdf = DataFrame(raw, chunk_size=4)
         result = self.executor.execute_dataframe(mdf.sort_index(axis=1, ignore_index=True), concat=True)[0]
-        expected = raw.sort_index(axis=1, ignore_index=True)
+        try:  # for python3.5
+            expected = raw.sort_index(axis=1, ignore_index=True)
+        except TypeError:
+            expected = raw.sort_index(axis=1, ignore_index=True)
+            expected.index = pd.RangeIndex(len(expected))
         pd.testing.assert_frame_equal(result, expected)
 
         # test series
