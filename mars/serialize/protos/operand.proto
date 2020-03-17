@@ -322,6 +322,9 @@ message OperandDef {
         APPLY = 711;
         DESCRIBE = 712;
         FILL_NA = 713;
+        AGGREGATE = 714;
+        STRING_METHOD = 715;
+        DATETIME_METHOD = 716;
 
         FUSE = 801;
 

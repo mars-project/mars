@@ -16,10 +16,8 @@
 
 import numpy as np
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
+import pandas as pd
+from pandas.util import cache_readonly
 
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
     is_eager_mode, build_mode
@@ -470,7 +468,7 @@ class SeriesChunk(Chunk):
 
 
 class SeriesData(HasShapeTileableData):
-    __slots__ = ()
+    __slots__ = '_cache',
 
     # optional field
     _dtype = DataTypeField('dtype')
@@ -531,6 +529,18 @@ class SeriesData(HasShapeTileableData):
     def index_value(self):
         return self._index_value
 
+    @cache_readonly
+    def str(self):
+        from .base.accessor import StringAccessor
+
+        return StringAccessor(self)
+
+    @cache_readonly
+    def dt(self):
+        from .base.accessor import DatetimeAccessor
+
+        return DatetimeAccessor(self)
+
     def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_series
         return from_series(self, dtype=dtype)
@@ -542,7 +552,7 @@ class SeriesData(HasShapeTileableData):
 
 
 class Series(TileableEntity):
-    __slots__ = ()
+    __slots__ = '_cache',
     _allow_data_type_ = (SeriesData,)
 
     def to_tensor(self, dtype=None):
@@ -550,6 +560,10 @@ class Series(TileableEntity):
 
     def from_tensor(self, in_tensor, index=None, name=None):
         return self._data.from_tensor(in_tensor, index=index, name=name)
+
+    @cache_readonly
+    def str(self):
+        return self._data.str
 
     def __mars_tensor__(self, dtype=None, order='K'):
         tensor = self._data.to_tensor()
