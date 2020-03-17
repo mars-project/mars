@@ -20,6 +20,7 @@ import pandas as pd
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+from mars.session import new_session
 from mars.tests.core import TestBase, require_cudf, ExecutorForTest
 from mars.utils import lazy_import
 
@@ -162,15 +163,28 @@ class Test(TestBase):
         pd.testing.assert_series_equal(result, expected)
 
         # Test Unknown shape
+        sess = new_session()
         data1 = pd.DataFrame(np.random.rand(10, 3), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9])
         df1 = from_pandas_df(data1, chunk_size=5)
         data2 = pd.DataFrame(np.random.rand(10, 3), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
         df2 = from_pandas_df(data2, chunk_size=6)
         df = (df1 + df2).reset_index()
-        result = self.executor.execute_dataframe(df, concat=True)[0]
+        result = sess.run(df)
+        pd.testing.assert_index_equal(result.index, pd.RangeIndex(12))
         # Inconsistent with Pandas when input dataframe's shape is unknown.
         result = result.sort_values(by=result.columns[0])
+        expected = (data1 + data2).reset_index()
+        np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
 
+        data1 = pd.Series(np.random.rand(10,), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9])
+        series1 = from_pandas_series(data1, chunk_size=3)
+        data2 = pd.Series(np.random.rand(10,), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
+        series2 = from_pandas_series(data2, chunk_size=3)
+        df = (series1 + series2).reset_index()
+        result = sess.run(df)
+        pd.testing.assert_index_equal(result.index, pd.RangeIndex(12))
+        # Inconsistent with Pandas when input dataframe's shape is unknown.
+        result = result.sort_values(by=result.columns[0])
         expected = (data1 + data2).reset_index()
         np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
 

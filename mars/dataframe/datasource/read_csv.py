@@ -25,7 +25,8 @@ from ...config import options
 from ...utils import parse_readable_size, lazy_import
 from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, AnyField
 from ...filesystem import open_file, file_size, glob
-from ..utils import parse_index, build_empty_df
+from ..core import IndexValue
+from ..utils import parse_index, build_empty_df, standardize_range_index
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 
 
@@ -189,6 +190,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 index_num += 1
                 offset += chunk_bytes
 
+        if len(out_chunks) > 1 and isinstance(df.index_value._index_value, IndexValue.RangeIndex):
+            out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
         return new_op.new_dataframes(None, df.shape, dtypes=df.dtypes,

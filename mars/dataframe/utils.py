@@ -626,3 +626,18 @@ def validate_axis(axis, tileable):
         raise ValueError('No axis named {} for '
                          'object type {}'.format(axis, type(tileable)))
     return axis
+
+
+def standardize_range_index(chunks):
+    from .base.standardize_range_index import ChunkStandardizeRangeIndex
+
+    row_chunks = dict((k, next(v)) for k, v in itertools.groupby(chunks, key=lambda x: x.index[0]))
+    row_chunks = [row_chunks[i] for i in range(len(row_chunks))]
+
+    out_chunks = []
+    for c in chunks:
+        inputs = row_chunks[:c.index[0]] + [c]
+        op = ChunkStandardizeRangeIndex(prepare_inputs=[False] * len(inputs), object_type=c.op.object_type)
+        out_chunks.append(op.new_chunk(inputs, **c.params.copy()))
+
+    return out_chunks

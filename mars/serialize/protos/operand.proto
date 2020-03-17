@@ -386,6 +386,9 @@ message OperandDef {
 
         TO_CSV_STAT = 2102;
 
+        // standardize range index
+        STANDARDIZE_RANGE_INDEX = 2107;
+
         // read images
         IMREAD = 2110;
 
