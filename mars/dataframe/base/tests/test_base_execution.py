@@ -532,16 +532,6 @@ class Test(TestBase):
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = df_raw.apply(lambda x: list(range(10)), axis=1, result_type='broadcast')
             pd.testing.assert_frame_equal(result, expected)
-
-            r = df.transform(lambda x: list(range(len(x))))
-            result = self.executor.execute_dataframe(r, concat=True)[0]
-            expected = df_raw.transform(lambda x: list(range(len(x))))
-            pd.testing.assert_frame_equal(result, expected)
-
-            r = df.transform(lambda x: list(range(len(x))), axis=1)
-            result = self.executor.execute_dataframe(r, concat=True)[0]
-            expected = df_raw.transform(lambda x: list(range(len(x))), axis=1)
-            pd.testing.assert_frame_equal(result, expected)
         finally:
             options.chunk_store_limit = old_chunk_store_limit
 
@@ -550,6 +540,7 @@ class Test(TestBase):
         s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
 
         series = from_pandas_series(s_raw, chunk_size=5)
+
         r = series.apply('add', args=(1,))
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = s_raw.apply('add', args=(1,))
@@ -570,10 +561,42 @@ class Test(TestBase):
         expected = s_raw.apply(lambda x: [x, x + 1], convert_dtype=False)
         pd.testing.assert_series_equal(result, expected)
 
-        r = series.transform(lambda x: x + 1)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = s_raw.transform(lambda x: x + 1)
-        pd.testing.assert_series_equal(result, expected)
+    def testTransformExecute(self):
+        cols = [chr(ord('A') + i) for i in range(10)]
+        df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
+
+        idx_vals = [chr(ord('A') + i) for i in range(20)]
+        s_raw = pd.Series([i ** 2 for i in range(20)], index=idx_vals)
+
+        old_chunk_store_limit = options.chunk_store_limit
+        try:
+            options.chunk_store_limit = 20
+
+            df = from_pandas_df(df_raw, chunk_size=5)
+
+            r = df.transform(lambda x: list(range(len(x))))
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform(lambda x: list(range(len(x))))
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.transform(['cumsum', 'cummax', lambda x: x + 1])
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform(['cumsum', 'cummax', lambda x: x + 1])
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.transform(lambda x: list(range(len(x))), axis=1)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform(lambda x: list(range(len(x))), axis=1)
+            pd.testing.assert_frame_equal(result, expected)
+
+            series = from_pandas_series(s_raw, chunk_size=5)
+
+            r = series.transform(lambda x: x + 1)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = s_raw.transform(lambda x: x + 1)
+            pd.testing.assert_series_equal(result, expected)
+        finally:
+            options.chunk_store_limit = old_chunk_store_limit
 
     def testStringMethodExecution(self):
         s = pd.Series(['s1,s2', 'ef,', 'dd', np.nan])

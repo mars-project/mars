@@ -315,7 +315,7 @@ class Test(TestBase):
         self.assertEqual(series2.shape, series.shape)
         self.assertIsNone(series2.chunks[0].op.stage)
 
-    def testDataFrameApplyTransform(self):
+    def testDataFrameApply(self):
         cols = [chr(ord('A') + i) for i in range(10)]
         df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
 
@@ -340,16 +340,6 @@ class Test(TestBase):
             self.assertEqual(r.shape, (np.nan, df.shape[1]))
             self.assertEqual(r.op.object_type, ObjectType.dataframe)
             self.assertEqual(r.chunks[0].shape, (np.nan, 1))
-            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
-            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
-            self.assertFalse(r.op.elementwise)
-
-            r = df.transform(lambda x: x + 1).tiles()
-            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
-            self.assertEqual(r.shape, df.shape)
-            self.assertEqual(r.op._op_type_, opcodes.DATAFRAME_TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
-            self.assertEqual(r.chunks[0].shape, (df.shape[0], 1))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
             self.assertFalse(r.op.elementwise)
@@ -410,7 +400,7 @@ class Test(TestBase):
         finally:
             options.chunk_store_limit = old_chunk_store_limit
 
-    def testSeriesApplyTransform(self):
+    def testSeriesApply(self):
         idxes = [chr(ord('A') + i) for i in range(20)]
         s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
 
@@ -435,14 +425,6 @@ class Test(TestBase):
         self.assertEqual(r.chunks[0].shape, (5,))
         self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
 
-        r = series.transform(lambda x: x + 1).tiles()
-        self.assertTrue(np.dtype('float64'), r.dtype)
-        self.assertEqual(r.shape, series.shape)
-        self.assertEqual(r.op._op_type_, opcodes.SERIES_TRANSFORM)
-        self.assertEqual(r.op.object_type, ObjectType.series)
-        self.assertEqual(r.chunks[0].shape, (5,))
-        self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
-
         r = series.apply(lambda x: [x, x + 1], convert_dtype=False).tiles()
         self.assertTrue(np.dtype('object'), r.dtype)
         self.assertEqual(r.shape, series.shape)
@@ -450,6 +432,38 @@ class Test(TestBase):
         self.assertEqual(r.op.object_type, ObjectType.series)
         self.assertEqual(r.chunks[0].shape, (5,))
         self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
+
+    def testTransform(self):
+        cols = [chr(ord('A') + i) for i in range(10)]
+        df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
+        df = from_pandas_df(df_raw, chunk_size=5)
+
+        idxes = [chr(ord('A') + i) for i in range(20)]
+        s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
+        series = from_pandas_series(s_raw, chunk_size=5)
+
+        old_chunk_store_limit = options.chunk_store_limit
+        try:
+            options.chunk_store_limit = 20
+
+            r = df.transform(lambda x: x + 1).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, df.shape)
+            self.assertEqual(r.op._op_type_, opcodes.DATAFRAME_TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (df.shape[0], 1))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
+            r = series.transform(lambda x: x + 1).tiles()
+            self.assertTrue(np.dtype('float64'), r.dtype)
+            self.assertEqual(r.shape, series.shape)
+            self.assertEqual(r.op._op_type_, opcodes.SERIES_TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.chunks[0].shape, (5,))
+            self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
+        finally:
+            options.chunk_store_limit = old_chunk_store_limit
 
     def testStringMethod(self):
         s = pd.Series(['a', 'b', 'c'], name='s')

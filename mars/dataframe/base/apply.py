@@ -25,7 +25,9 @@ from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index, validate_axis
 
 
-class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
+class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = opcodes.DATAFRAME_APPLY
+
     _func = FunctionField('func')
     _axis = AnyField('axis')
     _raw = BoolField('raw')
@@ -34,13 +36,11 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
     _args = TupleField('args')
     _kwds = DictField('kwds')
 
-    _is_transform = BoolField('is_transform')
-
     def __init__(self, func=None, axis=None, raw=None, result_type=None, args=None,
-                 kwds=None, object_type=None, elementwise=None, is_transform=None, **kw):
+                 kwds=None, object_type=None, elementwise=None, **kw):
         super().__init__(_func=func, _axis=axis, _raw=raw, _result_type=result_type,
                          _args=args, _kwds=kwds, _object_type=object_type,
-                         _elementwise=elementwise, _is_transform=is_transform, **kw)
+                         _elementwise=elementwise, **kw)
 
     @property
     def func(self):
@@ -70,21 +70,14 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
     def kwds(self):
         return getattr(self, '_kwds', None) or dict()
 
-    @property
-    def is_transform(self):
-        return self._is_transform
-
     @classmethod
     def execute(cls, ctx, op):
         in_df = op.inputs[0]
         df = op.outputs[0]
 
         input_data = ctx[in_df.key]
-        if op.is_transform:
-            ctx[df.key] = input_data.transform(op.func, axis=op.axis, *op.args, **op.kwds)
-        else:
-            ctx[df.key] = input_data.apply(op.func, axis=op.axis, raw=op.raw, result_type=op.result_type,
-                                           args=op.args, **op.kwds)
+        ctx[df.key] = input_data.apply(op.func, axis=op.axis, raw=op.raw, result_type=op.result_type,
+                                       args=op.args, **op.kwds)
 
     @classmethod
     def tile(cls, op):
@@ -92,7 +85,6 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
         axis = op.axis
         elementwise = op.elementwise
-        is_transform = op.is_transform
 
         if not elementwise:
             chunk_size = (
@@ -106,7 +98,7 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
         chunks = []
         if op.object_type == ObjectType.dataframe:
             for c in in_df.chunks:
-                if elementwise or is_transform:
+                if elementwise:
                     new_shape = c.shape
                     new_index_value, new_columns_value = c.index_value, c.columns_value
                 else:
@@ -147,11 +139,8 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
         try:
             empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(2))
             with np.errstate(all='ignore'):
-                if self.is_transform:
-                    infer_df = empty_df.transform(self._func, axis=self._axis, *self.args, **self.kwds)
-                else:
-                    infer_df = empty_df.apply(self._func, axis=self._axis, raw=self._raw,
-                                              result_type=self._result_type, args=self.args, **self.kwds)
+                infer_df = empty_df.apply(self._func, axis=self._axis, raw=self._raw,
+                                          result_type=self._result_type, args=self.args, **self.kwds)
             if index_value is None:
                 if infer_df.index is empty_df.index:
                     index_value = 'inherit'
@@ -188,7 +177,7 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
         if index_value == 'inherit':
             index_value = df.index_value
 
-        if self._elementwise or self._is_transform:
+        if self._elementwise:
             shape = df.shape
         elif self._object_type == ObjectType.dataframe:
             shape = [np.nan, np.nan]
@@ -208,21 +197,11 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
             return self.new_series([df], shape=shape, dtype=dtypes, index_value=index_value)
 
 
-class DataFrameApply(DataFrameApplyTransform):
-    _op_type_ = opcodes.DATAFRAME_APPLY
-
-
-class DataFrameTransform(DataFrameApplyTransform):
-    _op_type_ = opcodes.DATAFRAME_TRANSFORM
-
-
-class SeriesApplyTransform(DataFrameOperand, DataFrameOperandMixin):
+class SeriesApply(DataFrameOperand, DataFrameOperandMixin):
     _func = FunctionField('func')
     _convert_dtype = BoolField('convert_dtype')
     _args = TupleField('args')
     _kwds = DictField('kwds')
-
-    _is_transform = BoolField('is_transform')
 
     @property
     def func(self):
@@ -240,14 +219,9 @@ class SeriesApplyTransform(DataFrameOperand, DataFrameOperandMixin):
     def kwds(self):
         return getattr(self, '_kwds', None) or dict()
 
-    @property
-    def is_transform(self):
-        return self._is_transform
-
-    def __init__(self, func=None, convert_dtype=None, args=None, kwds=None, object_type=None,
-                 is_transform=None, **kw):
+    def __init__(self, func=None, convert_dtype=None, args=None, kwds=None, object_type=None, **kw):
         super().__init__(_func=func, _convert_dtype=convert_dtype, _args=args, _kwds=kwds,
-                         _object_type=object_type, _is_transform=is_transform, **kw)
+                         _object_type=object_type, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -255,11 +229,7 @@ class SeriesApplyTransform(DataFrameOperand, DataFrameOperandMixin):
         series = op.outputs[0]
 
         input_data = ctx[in_series.key]
-        if op.is_transform:
-            ctx[series.key] = input_data.transform(op.func, *op.args, **op.kwds)
-        else:
-            ctx[series.key] = input_data.apply(op.func, convert_dtype=op.convert_dtype,
-                                               args=op.args, **op.kwds)
+        ctx[series.key] = input_data.apply(op.func, convert_dtype=op.convert_dtype, args=op.args, **op.kwds)
 
     @classmethod
     def tile(cls, op):
@@ -297,19 +267,10 @@ class SeriesApplyTransform(DataFrameOperand, DataFrameOperandMixin):
                                index_value=series.index_value)
 
 
-class SeriesApply(SeriesApplyTransform):
-    _op_type_ = opcodes.SERIES_APPLY
-
-
-class SeriesTransform(SeriesApplyTransform):
-    _op_type_ = opcodes.SERIES_TRANSFORM
-
-
 def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None,
              object_type=None, index=None, elementwise=None, **kwds):
-    # todo fulfill this when df.aggregate is implemented
     if isinstance(func, (list, dict)):
-        raise NotImplementedError('Currently does support func as lists or dicts')
+        return df.aggregate(func)
 
     if isinstance(object_type, str):
         object_type = getattr(ObjectType, object_type.lower())
@@ -322,22 +283,14 @@ def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None
             kwds["axis"] = axis
         return func(*args, **kwds)
 
-    op = DataFrameApply(func=func, axis=axis, raw=raw, result_type=result_type,
-                        args=args, kwds=kwds, object_type=object_type,
-                        elementwise=elementwise, is_transform=False)
-    return op(df, dtypes=dtypes, index=index)
-
-
-def df_transform(df, func, axis=0, *args, dtypes=None, index=None, **kwargs):
-    # todo fulfill support on df.agg later
-    op = DataFrameTransform(func=func, axis=axis, is_transform=True, args=args, kwds=kwargs)
+    op = DataFrameApply(func=func, axis=axis, raw=raw, result_type=result_type, args=args, kwds=kwds,
+                        object_type=object_type, elementwise=elementwise)
     return op(df, dtypes=dtypes, index=index)
 
 
 def series_apply(series, func, convert_dtype=True, args=(), **kwds):
-    # todo fulfill this when series.aggregate is implemented
     if isinstance(func, (list, dict)):
-        raise NotImplementedError('Currently does support func as lists or dicts')
+        return series.aggregate(func)
 
     # calling member function
     if isinstance(func, str):
@@ -350,12 +303,5 @@ def series_apply(series, func, convert_dtype=True, args=(), **kwds):
                                  (func, type(series).__name__))
 
     op = SeriesApply(func=func, convert_dtype=convert_dtype, args=args, kwds=kwds,
-                     object_type=ObjectType.series, is_transform=False)
-    return op(series)
-
-
-def series_transform(series, func, axis=0, *args, **kwargs):
-    # todo fulfill support on df.agg later
-    op = SeriesTransform(func=func, convert_dtype=True, axis=axis, args=args, kwds=kwargs,
-                         object_type=ObjectType.series, is_transform=True)
+                     object_type=ObjectType.series)
     return op(series)
