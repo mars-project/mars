@@ -531,6 +531,12 @@ class SeriesData(HasShapeTileableData):
 
         return StringAccessor(self)
 
+    @cache_readonly
+    def dt(self):
+        from .base.accessor import DatetimeAccessor
+
+        return DatetimeAccessor(self)
+
     def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_series
         return from_series(self, dtype=dtype)

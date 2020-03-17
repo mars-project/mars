@@ -13,10 +13,12 @@
 # limitations under the License.
 
 from functools import wraps
+from typing import Iterable
 
 import pandas as pd
 
 from .string_ import _string_method_to_handlers, SeriesStringMethod
+from .datetimes import _datetime_method_to_handlers, SeriesDatetimeMethod
 
 
 class StringAccessor:
@@ -39,6 +41,11 @@ class StringAccessor:
             return self._gen_func(item)
         return super().__getattribute__(item)
 
+    def __dir__(self) -> Iterable[str]:
+        s = set(super().__dir__())
+        s.update(_string_method_to_handlers.keys())
+        return list(s)
+
     def split(self, pat=None, n=-1, expand=False):
         return self._gen_func('split')(pat=pat, n=n, expand=expand)
 
@@ -48,3 +55,33 @@ class StringAccessor:
     def cat(self, others=None, sep=None, na_rep=None, join='left'):
         return self._gen_func('cat')(others=others, sep=sep,
                                      na_rep=na_rep, join=join)
+
+
+class DatetimeAccessor:
+    def __init__(self, series):
+        self._series = series
+
+    def _gen_func(self, method, is_property):
+        if is_property:
+            op = SeriesDatetimeMethod(method=method,
+                                      is_property=is_property)
+            return op(self._series)
+        else:
+            @wraps(getattr(pd.Series.dt, method))
+            def _inner(*args, **kwargs):
+                op = SeriesDatetimeMethod(method=method,
+                                          method_args=args,
+                                          method_kwargs=kwargs)
+                return op(self._series)
+            return _inner
+
+    def __getattr__(self, item):
+        if item in _datetime_method_to_handlers:
+            is_property = not callable(getattr(pd.Series.dt, item))
+            return self._gen_func(item, is_property)
+        return super().__getattribute__(item)
+
+    def __dir__(self) -> Iterable[str]:
+        s = set(super().__dir__())
+        s.update(_datetime_method_to_handlers.keys())
+        return list(s)

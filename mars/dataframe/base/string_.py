@@ -81,9 +81,6 @@ class SeriesStringMethod(DataFrameOperand, DataFrameOperandMixin):
         return _string_method_to_handlers[op.method].execute(ctx, op)
 
 
-_string_method_to_handlers = {}
-
-
 class SeriesStringMethodBaseHandler:
     @classmethod
     def call(cls, op, inp):
@@ -108,7 +105,6 @@ class SeriesStringMethodBaseHandler:
                 name=series_chunk.name)
             out_chunks.append(out_chunk)
 
-        out = op.outputs[0]
         params = out.params
         params['chunks'] = out_chunks
         params['nsplits'] = op.input.nsplits
@@ -381,6 +377,7 @@ class SeriesStringExtractHandler(SeriesStringMethodBaseHandler):
         return new_op.new_tileables([op.input], kws=[params])
 
 
+_string_method_to_handlers = {}
 _not_implements = ['get_dummies']
 # start to register handlers for string methods
 # register special methods first

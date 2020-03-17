@@ -520,3 +520,34 @@ class Test(TestBase):
                                           s.index[i * 2: (i + 1) * 2])
             pd.testing.assert_index_equal(c.columns_value.to_pandas(), pd.RangeIndex(1))
             self.assertEqual(c.shape, (2, 1) if i == 0 else (1, 1))
+
+        self.assertIn('lstrip', dir(series.str))
+
+    def testDatetimeMethod(self):
+        s = pd.Series([pd.Timestamp('2020-1-1'),
+                       pd.Timestamp('2020-2-1'),
+                       pd.Timestamp('2020-3-1')],
+                      name='ss')
+        series = from_pandas_series(s, chunk_size=2)
+
+        r = series.dt.year
+        self.assertEqual(r.dtype, s.dt.year.dtype)
+        pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
+        self.assertEqual(r.shape, s.shape)
+        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.name, s.dt.year.name)
+
+        r = r.tiles()
+        for i, c in enumerate(r.chunks):
+            self.assertEqual(c.index, (i,))
+            self.assertEqual(c.dtype, s.dt.year.dtype)
+            self.assertEqual(c.op.object_type, ObjectType.series)
+            self.assertEqual(r.name, s.dt.year.name)
+            pd.testing.assert_index_equal(c.index_value.to_pandas(),
+                                          s.index[i * 2: (i + 1) * 2])
+            self.assertEqual(c.shape, (2,) if i == 0 else (1,))
+
+        with self.assertRaises(AttributeError):
+            _ = series.dt.non_exist
+
+        self.assertIn('ceil', dir(series.dt))
