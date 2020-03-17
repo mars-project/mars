@@ -29,7 +29,6 @@ class Test(TestBase):
         raw = pd.DataFrame({'a': np.random.randint(100, size=(10,)),
                             'b': np.random.rand(10),
                             'c': np.random.randint(100, size=(10,)),
-                            'd': ['c' * i for i in np.random.randint(4, size=10)]
                             })
         raw.iloc[1, ::4] = np.nan
         s = raw.iloc[:, 1]
