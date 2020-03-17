@@ -45,25 +45,49 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
         df = op.inputs[0]
 
         if op.axis == 0:
-            df = build_concatenated_rows_frame(df)
-
             if df.chunk_shape[op.axis] == 1:
-                out_chunks = []
-                for chunk in df.chunks:
-                    chunk_op = op.copy().reset_key()
-                    out_chunks.append(chunk_op.new_chunk(
-                        [chunk], shape=chunk.shape, index=chunk.index, index_value=chunk.index_value,
-                        columns_value=chunk.columns_value, dtypes=chunk.dtypes))
-                new_op = op.copy()
-                kws = op.outputs[0].params.copy()
-                kws['nsplits'] = df.nsplits
-                kws['chunks'] = out_chunks
-                return new_op.new_dataframes(op.inputs, **kws)
+                if op.object_type == ObjectType.dataframe:
+                    df = build_concatenated_rows_frame(df)
+                    out_chunks = []
+                    for chunk in df.chunks:
+                        chunk_op = op.copy().reset_key()
+                        out_chunks.append(chunk_op.new_chunk(
+                            [chunk], shape=chunk.shape, index=chunk.index, index_value=chunk.index_value,
+                            columns_value=chunk.columns_value, dtypes=chunk.dtypes))
+                    new_op = op.copy()
+                    kws = op.outputs[0].params.copy()
+                    kws['nsplits'] = df.nsplits
+                    kws['chunks'] = out_chunks
+                    return new_op.new_dataframes(op.inputs, **kws)
+                else:
+                    out_chunks = []
+                    for chunk in df.chunks:
+                        chunk_op = op.copy().reset_key()
+                        out_chunks.append(chunk_op.new_chunk(
+                            [chunk], shape=chunk.shape, index=chunk.index, index_value=chunk.index_value,
+                            name=chunk.name, dtype=chunk.dtype))
+                    new_op = op.copy()
+                    kws = op.outputs[0].params.copy()
+                    kws['nsplits'] = df.nsplits
+                    kws['chunks'] = out_chunks
+                    return new_op.new_seriess(op.inputs, **kws)
             else:
+                if op.object_type == ObjectType.dataframe:
+                    df = build_concatenated_rows_frame(df)
                 if op.na_position != 'last':  # pragma: no cover
                     raise NotImplementedError('Only support puts NaNs at the end.')
                 # use parallel sorting by regular sampling
                 return cls._tile_psrs(op, df)
+        else:
+            assert op.axis == 1
+
+            sorted_columns = list(df.columns_value.to_pandas().sort_values(ascending=op.ascending))
+            return [df[sorted_columns]._inplace_tile()]
+
+    @classmethod
+    def execute(cls, ctx, op):
+        in_data = ctx[op.inputs[0].key]
+        ctx[op.outputs[0].key] = execute_sort_index(in_data, op)
 
     def _call_dataframe(self, df):
         if self.axis == 0:
@@ -85,13 +109,8 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
                                       index_value=df.index_value,
                                       columns_value=columns_value)
 
-    @classmethod
-    def execute(cls, ctx, op):
-        in_data = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = execute_sort_index(in_data, op)
-
     def _call_series(self, series):
-        if self.axis != 0:
+        if self.axis != 0:  # pragma: no cover
             raise TypeError('Invalid axis: {}'.format(self.axis))
         if self.ignore_index:
             index_value = parse_index(pd.RangeIndex(series.shape[0]))

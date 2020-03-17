@@ -19,7 +19,9 @@ import pandas as pd
 
 from mars.operands import OperandStage
 from mars.dataframe.initializer import DataFrame
+from mars.dataframe.indexing.getitem import DataFrameIndex
 from mars.dataframe.sort.sort_values import dataframe_sort_values, DataFrameSortValues
+from mars.dataframe.sort.sort_index import sort_index, DataFrameSortIndex
 
 
 class Test(unittest.TestCase):
@@ -53,7 +55,6 @@ class Test(unittest.TestCase):
         self.assertEqual(len(tiled.chunks), 2)
         self.assertEqual(tiled.chunks[0].op.stage, OperandStage.reduce)
 
-        # test ignore index
         df = DataFrame(raw, chunk_size=3)
         sorted_df = dataframe_sort_values(df, by=['a', 'c'])
 
@@ -70,3 +71,52 @@ class Test(unittest.TestCase):
         pd.testing.assert_index_equal(tiled.chunks[1].index_value.to_pandas(), pd.RangeIndex(3, 6))
         self.assertEqual(tiled.chunks[2].op.stage, OperandStage.reduce)
         pd.testing.assert_index_equal(tiled.chunks[2].index_value.to_pandas(), pd.RangeIndex(6, 10))
+
+    def testSortIndex(self):
+        raw = pd.DataFrame(np.random.rand(10, 10), columns=np.random.rand(10), index=np.random.rand(10))
+        df = DataFrame(raw)
+        sorted_df = sort_index(df)
+
+        self.assertEqual(sorted_df.shape, raw.shape)
+        self.assertIsInstance(sorted_df.op, DataFrameSortIndex)
+
+        tiled = sorted_df.tiles()
+
+        self.assertEqual(len(tiled.chunks), 1)
+        self.assertIsInstance(tiled.chunks[0].op, DataFrameSortIndex)
+
+        df = DataFrame(raw, chunk_size=6)
+        sorted_df = sort_index(df)
+
+        self.assertEqual(sorted_df.shape, raw.shape)
+        self.assertIsInstance(sorted_df.op, DataFrameSortIndex)
+
+        tiled = sorted_df.tiles()
+
+        self.assertEqual(len(tiled.chunks), 2)
+        self.assertEqual(tiled.chunks[0].op.stage, OperandStage.reduce)
+
+        df = DataFrame(raw, chunk_size=3)
+        sorted_df = sort_index(df)
+
+        self.assertEqual(sorted_df.shape, raw.shape)
+        self.assertIsInstance(sorted_df.op, DataFrameSortIndex)
+
+        tiled = sorted_df.tiles()
+
+        self.assertEqual(len(tiled.chunks), 3)
+        self.assertEqual(tiled.chunks[0].op.stage, OperandStage.reduce)
+        self.assertEqual(tiled.chunks[1].op.stage, OperandStage.reduce)
+        self.assertEqual(tiled.chunks[2].op.stage, OperandStage.reduce)
+
+        # support on axis 1
+        df = DataFrame(raw, chunk_size=4)
+        sorted_df = sort_index(df, axis=1)
+
+        self.assertEqual(sorted_df.shape, raw.shape)
+        self.assertIsInstance(sorted_df.op, DataFrameSortIndex)
+
+        tiled = sorted_df.tiles()
+
+        self.assertEqual(len(tiled.chunks), 18)
+        self.assertTrue(all(isinstance(c.op, DataFrameIndex) for c in tiled.chunks))

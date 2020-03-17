@@ -506,7 +506,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     @classmethod
     def _execute_map(cls, ctx, op):
-        a, pivots = [ctx[c.key] for c in op.inputs]
+        a = [ctx[c.key] for c in op.inputs][0]
         if op.sort_type == 'sort_values':
             if len(a.shape) == 2:
                 # DataFrame type

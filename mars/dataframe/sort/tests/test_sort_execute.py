@@ -161,10 +161,16 @@ class Test(unittest.TestCase):
         pd.testing.assert_series_equal(result, expected)
 
     def testSortIndexExecution(self):
-        raw = pd.DataFrame(np.random.rand(100, 10), index=np.random.rand(100))
+        raw = pd.DataFrame(np.random.rand(100, 20), index=np.random.rand(100))
 
         mdf = DataFrame(raw)
         result = self.executor.execute_dataframe(mdf.sort_index(), concat=True)[0]
+        expected = raw.sort_index()
+        pd.testing.assert_frame_equal(result, expected)
+
+        mdf = DataFrame(raw)
+        mdf.sort_index(inplace=True)
+        result = self.executor.execute_dataframe(mdf, concat=True)[0]
         expected = raw.sort_index()
         pd.testing.assert_frame_equal(result, expected)
 
@@ -178,3 +184,50 @@ class Test(unittest.TestCase):
         expected = raw.sort_index(ascending=False)
         pd.testing.assert_frame_equal(result, expected)
 
+        executor = ExecutorForTest(storage=new_session().context)
+
+        mdf = DataFrame(raw, chunk_size=10)
+        result = executor.execute_dataframe(mdf.sort_index(ignore_index=True), concat=True)[0]
+        expected = raw.sort_index(ignore_index=True)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test axis=1
+        raw = pd.DataFrame(np.random.rand(10, 10), columns=np.random.rand(10))
+
+        mdf = DataFrame(raw)
+        result = self.executor.execute_dataframe(mdf.sort_index(axis=1), concat=True)[0]
+        expected = raw.sort_index(axis=1)
+        pd.testing.assert_frame_equal(result, expected)
+
+        mdf = DataFrame(raw, chunk_size=3)
+        result = self.executor.execute_dataframe(mdf.sort_index(axis=1), concat=True)[0]
+        expected = raw.sort_index(axis=1)
+        pd.testing.assert_frame_equal(result, expected)
+
+        mdf = DataFrame(raw, chunk_size=4)
+        result = self.executor.execute_dataframe(mdf.sort_index(axis=1, ascending=False), concat=True)[0]
+        expected = raw.sort_index(axis=1, ascending=False)
+        pd.testing.assert_frame_equal(result, expected)
+
+        mdf = DataFrame(raw, chunk_size=4)
+        result = self.executor.execute_dataframe(mdf.sort_index(axis=1, ignore_index=True), concat=True)[0]
+        expected = raw.sort_index(axis=1, ignore_index=True)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test series
+        raw = pd.Series(np.random.rand(10, ), index=np.random.rand(10))
+
+        series = Series(raw)
+        result = self.executor.execute_dataframe(series.sort_index(), concat=True)[0]
+        expected = raw.sort_index()
+        pd.testing.assert_series_equal(result, expected)
+
+        series = Series(raw, chunk_size=2)
+        result = self.executor.execute_dataframe(series.sort_index(), concat=True)[0]
+        expected = raw.sort_index()
+        pd.testing.assert_series_equal(result, expected)
+
+        series = Series(raw, chunk_size=3)
+        result = self.executor.execute_dataframe(series.sort_index(ascending=False), concat=True)[0]
+        expected = raw.sort_index(ascending=False)
+        pd.testing.assert_series_equal(result, expected)
