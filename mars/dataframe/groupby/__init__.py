@@ -17,6 +17,7 @@ def _install():
     from ..operands import DATAFRAME_TYPE, GROUPBY_TYPE
     from .core import dataframe_groupby
     from .aggregation import agg
+    from .cum import cumcount, cummin, cummax, cumprod, cumsum
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'groupby', dataframe_groupby)
@@ -28,6 +29,12 @@ def _install():
         setattr(cls, 'prod', lambda groupby, **kw: agg(groupby, 'prod', **kw))
         setattr(cls, 'max', lambda groupby, **kw: agg(groupby, 'max', **kw))
         setattr(cls, 'min', lambda groupby, **kw: agg(groupby, 'min', **kw))
+
+        setattr(cls, 'cumcount', cumcount)
+        setattr(cls, 'cummin', cummin)
+        setattr(cls, 'cummax', cummax)
+        setattr(cls, 'cumprod', cumprod)
+        setattr(cls, 'cumsum', cumsum)
 
 
 _install()

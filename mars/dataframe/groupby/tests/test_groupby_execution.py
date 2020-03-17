@@ -125,3 +125,22 @@ class Test(TestBase):
         r3 = mdf2.groupby('c2').agg({'c1': 'min'}, method='shuffle')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                       df2.groupby('c2').agg({'c1': 'min'}))
+
+    def testGroupByCum(self):
+        df1 = pd.DataFrame({'a': [3, 5, 2, 7, 1, 2, 4, 6, 2, 4],
+                            'b': [8, 3, 4, 1, 8, 2, 2, 2, 2, 3],
+                            'c': [1, 8, 8, 5, 3, 5, 0, 0, 5, 4]})
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        for fun in ['cummin', 'cummax', 'cumprod', 'cumsum']:
+            r1 = getattr(mdf.groupby('b'), fun)()
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0].sort_index(),
+                                          getattr(df1.groupby('b'), fun)().sort_index())
+
+            r2 = getattr(mdf.groupby('b'), fun)(axis=1)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r2, concat=True)[0].sort_index(),
+                                          getattr(df1.groupby('b'), fun)(axis=1).sort_index())
+
+        r3 = mdf.groupby('b').cumcount()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r3, concat=True)[0].sort_index(),
+                                       df1.groupby('b').cumcount().sort_index())
