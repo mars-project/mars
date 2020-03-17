@@ -17,7 +17,6 @@ import copy
 
 import numpy as np
 import pandas as pd
-from pandas.core.dtypes.cast import find_common_type
 
 from ...tensor.datasource import tensor as astensor
 from ...serialize import AnyField, Float64Field
@@ -28,7 +27,7 @@ from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHU
 from ..operands import DataFrameOperandMixin, ObjectType, DataFrameOperand
 from ..initializer import Series, DataFrame
 from ..ufunc.tensor import TensorUfuncMixin
-from ..utils import parse_index, infer_dtypes, infer_index_value
+from ..utils import parse_index, infer_dtypes, infer_dtype, infer_index_value
 
 
 class DataFrameBinOp(DataFrameOperand):
@@ -300,7 +299,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
         if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) \
                 and (x2 is None or np.isscalar(x2) or isinstance(x2, TENSOR_TYPE)):
-            dtype = find_common_type([x1.dtype, type(x2)])
+            x2_dtype = x2.dtype if hasattr(x2, 'dtype') else type(x2)
+            dtype = infer_dtype(x1.dtype, np.dtype(x2_dtype), cls._operator)
             return {'shape': x1.shape, 'dtype': dtype, 'index_value': x1.index_value}
 
         if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and isinstance(
@@ -372,7 +372,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 isinstance(x2, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
             index_shape, dtype, index = np.nan, None, None
 
-            dtype = find_common_type([x1.dtype, x2.dtype])
+            dtype = infer_dtype(x1.dtype, x2.dtype, cls._operator)
             if x1.index_value is not None and x2.index_value is not None:
                 if x1.index_value.key == x2.index_value.key:
                     index = copy.copy(x1.index_value)

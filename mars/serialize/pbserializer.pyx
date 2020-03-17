@@ -164,6 +164,9 @@ cdef class ProtobufSerializeProvider(Provider):
             return KeyPlaceholder(to_str(obj.key.key), to_str(obj.key.id))
 
     cdef inline void _set_datetime64(self, value, obj, tp=None):
+        if isinstance(value, pd.Timestamp):
+            # convert to np.datetime64
+            value = value.to_datetime64()
         bio = six.BytesIO()
         np.save(bio, value)
         obj.datetime64 = bio.getvalue()
@@ -180,6 +183,9 @@ cdef class ProtobufSerializeProvider(Provider):
             return None
 
     cdef inline void _set_timedelta64(self, value, obj, tp=None):
+        if isinstance(value, pd.Timedelta):
+            # convert to np.timedelta64
+            value = value.to_timedelta64()
         bio = six.BytesIO()
         np.save(bio, value)
         obj.timedelta64 = bio.getvalue()
@@ -456,9 +462,9 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_tuple(value, obj, tp=None, weak_ref=weak_ref)
         elif isinstance(value, dict):
             self._set_dict(value, obj, tp=None, weak_ref=weak_ref)
-        elif isinstance(value, np.datetime64):
+        elif isinstance(value, (np.datetime64, pd.Timestamp)):
             self._set_datetime64(value, obj)
-        elif isinstance(value, np.timedelta64):
+        elif isinstance(value, (np.timedelta64, pd.Timedelta)):
             self._set_timedelta64(value, obj)
         elif isinstance(value, np.number):
             self._set_untyped_value(value.item(), obj)

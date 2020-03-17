@@ -1052,6 +1052,7 @@ class TestBinary(TestBase):
 
         self.assertEqual(r.index_value.key, s1.index_value.key)
         self.assertEqual(r.chunk_shape, s1.chunk_shape)
+        self.assertEqual(r.dtype, getattr(data, self.func_name)(456).dtype)
 
         for cr in r.chunks:
             cs = s1.cix[cr.index]
