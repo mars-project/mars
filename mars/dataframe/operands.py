@@ -118,9 +118,22 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
     def new_series(self, inputs, shape=None, dtype=None, index_value=None, name=None, **kw):
         if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new tensor with more than 1 outputs')
+            raise TypeError('cannot new Series with more than 1 outputs')
 
         return self.new_seriess(inputs, shape=shape, dtype=dtype,
+                                index_value=index_value, name=name, **kw)[0]
+
+    def new_indexes(self, inputs, shape=None, dtype=None, index_value=None, name=None,
+                    chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
+        return self.new_tileables(inputs, shape=shape, dtype=dtype, index_value=index_value,
+                                  name=name, chunks=chunks, nsplits=nsplits,
+                                  output_limit=output_limit, kws=kws, **kw)
+
+    def new_index(self, inputs, shape=None, dtype=None, index_value=None, name=None, **kw):
+        if getattr(self, 'output_limit') !=  1:
+            raise TypeError('cannot new Index with more than 1 outputs')
+
+        return self.new_indexes(inputs, shape=shape, dtype=dtype,
                                 index_value=index_value, name=name, **kw)[0]
 
     def new_scalars(self, inputs, dtype=None, chunks=None, output_limit=None, kws=None, **kw):
@@ -162,6 +175,14 @@ class DataFrameOperandMixin(TileableOperandMixin):
                 df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
             return DataFrameConcat(object_type=ObjectType.series).new_series(
+                [df], shape=df.shape, chunks=[chunk],
+                nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
+                index_value=df.index_value, name=df.name)
+        elif isinstance(df, INDEX_TYPE):
+            chunk = DataFrameConcat(object_type=ObjectType.index).new_chunk(
+                df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
+                index_value=df.index_value, name=df.name)
+            return DataFrameConcat(object_type=ObjectType.index).new_series(
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)

@@ -11,6 +11,7 @@ message IndexChunkDef {
     Value op = 4;  // just store key here
     bool cached = 5;
     Value dtype = 6;
+    IndexValue index_value = 11;
     Value extra_params = 8;
     string id = 9;
     Value name = 10;

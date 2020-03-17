@@ -43,6 +43,8 @@ message OperandDef {
         DATAFRAME_FROM_RECORDS = 24;
         // series
         SERIES_DATA_SOURCE = 23;
+        // index
+        INDEX_DATA_SOURCE = 33;
 
         //GPU
         TO_GPU = 30;

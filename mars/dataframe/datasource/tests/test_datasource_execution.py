@@ -27,6 +27,7 @@ from mars.session import new_session
 from mars.tests.core import TestBase, require_cudf, ExecutorForTest
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tensors
 from mars.dataframe.datasource.from_records import from_records
 
@@ -49,6 +50,54 @@ class Test(TestBase):
 
         result = self.executor.execute_dataframe(series, concat=True)[0]
         pd.testing.assert_series_equal(ps, result)
+
+    def testFromPandasIndexExecution(self):
+        pd_index = pd.timedelta_range('1 days', periods=10)
+        index = from_pandas_index(pd_index, chunk_size=7)
+
+        result = self.executor.execute_dataframe(index, concat=True)[0]
+        pd.testing.assert_index_equal(pd_index, result)
+
+    def testIndexExecution(self):
+        rs = np.random.RandomState(0)
+        pdf = pd.DataFrame(rs.rand(20, 10), index=np.arange(20, 0, -1),
+                           columns=['a' + str(i) for i in range(10)])
+        df = from_pandas_df(pdf, chunk_size=13)
+
+        # test df.index
+        result = self.executor.execute_dataframe(df.index, concat=True)[0]
+        pd.testing.assert_index_equal(result, pdf.index)
+
+        result = self.executor.execute_dataframe(df.columns, concat=True)[0]
+        pd.testing.assert_index_equal(result, pdf.columns)
+
+        # df has unknown chunk shape on axis 0
+        df = df[df.a1 < 0.5]
+
+        # test df.index
+        result = self.executor.execute_dataframe(df.index, concat=True)[0]
+        pd.testing.assert_index_equal(result, pdf[pdf.a1 < 0.5].index)
+
+        s = pd.Series(pdf['a1'], index=pd.RangeIndex(20))
+        series = from_pandas_series(s, chunk_size=13)
+
+        # test series.index which has value
+        result = self.executor.execute_dataframe(series.index, concat=True)[0]
+        pd.testing.assert_index_equal(result, s.index)
+
+        s = pdf['a2']
+        series = from_pandas_series(s, chunk_size=13)
+
+        # test series.index
+        result = self.executor.execute_dataframe(series.index, concat=True)[0]
+        pd.testing.assert_index_equal(result, s.index)
+
+        # test tensor
+        raw = rs.random(20)
+        t = mt.tensor(raw, chunk_size=13)
+
+        result = self.executor.execute_dataframe(from_tileable(t), concat=True)[0]
+        pd.testing.assert_index_equal(result, pd.Index(raw))
 
     def testInitializerExecution(self):
         pdf = pd.DataFrame(np.random.rand(20, 30), index=[np.arange(20), np.arange(20, 0, -1)])
