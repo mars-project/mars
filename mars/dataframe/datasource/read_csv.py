@@ -23,7 +23,7 @@ from pyarrow import HdfsFile
 from ... import opcodes as OperandDef
 from ...config import options
 from ...utils import parse_readable_size, lazy_import
-from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, AnyField
+from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, BoolField, AnyField
 from ...filesystem import open_file, file_size, glob
 from ..core import IndexValue
 from ..utils import parse_index, build_empty_df, standardize_range_index
@@ -86,16 +86,18 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     _usecols = ListField('usecols')
     _offset = Int64Field('offset')
     _size = Int64Field('size')
+    _sort_range_index = BoolField('sort_range_index')
 
     _storage_options = DictField('storage_options')
 
-    def __init__(self, path=None, names=None, sep=None, header=None, index_col=None, compression=None,
-                 usecols=None, offset=None, size=None, gpu=None, storage_options=None, **kw):
-        super(DataFrameReadCSV, self).__init__(_path=path, _names=names, _sep=sep, _header=header,
-                                               _index_col=index_col, _compression=compression,
-                                               _usecols=usecols, _offset=offset, _size=size, _gpu=gpu,
-                                               _storage_options=storage_options,
-                                               _object_type=ObjectType.dataframe, **kw)
+    def __init__(self, path=None, names=None, sep=None, header=None, index_col=None,
+                 compression=None, usecols=None, offset=None, size=None, gpu=None,
+                 sort_range_index=None, storage_options=None, **kw):
+        super(DataFrameReadCSV, self).__init__(
+            _path=path, _names=names, _sep=sep, _header=header, _index_col=index_col,
+            _compression=compression, _usecols=usecols, _offset=offset, _size=size, _gpu=gpu,
+            _sort_range_index=sort_range_index, _storage_options=storage_options,
+            _object_type=ObjectType.dataframe, **kw)
 
     @property
     def path(self):
@@ -132,6 +134,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     @property
     def size(self):
         return self._size
+
+    @property
+    def sort_range_index(self):
+        return self._sort_range_index
 
     @property
     def storage_options(self):
@@ -190,7 +196,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 index_num += 1
                 offset += chunk_bytes
 
-        if len(out_chunks) > 1 and isinstance(df.index_value._index_value, IndexValue.RangeIndex):
+        if op.sort_range_index and len(out_chunks) > 1 and \
+                isinstance(df.index_value._index_value, IndexValue.RangeIndex):
             out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
@@ -253,8 +260,9 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                                   columns_value=columns_value, chunk_bytes=chunk_bytes)
 
 
-def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer', dtype=None, usecols=None,
-             chunk_bytes=None, gpu=None, head_bytes='100k', head_lines=None, storage_options=None, **kwargs):
+def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer',
+             dtype=None, usecols=None, chunk_bytes=None, gpu=None, head_bytes='100k',
+             head_lines=None, sort_range_index=False, storage_options=None, **kwargs):
     """
     Read comma-separated values (csv) file(s) into DataFrame.
     :param path: file path(s).
@@ -271,6 +279,7 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     :param gpu: If read into cudf DataFrame.
     :param head_bytes: Number of bytes to use in the head of file, mainly for data inference.
     :param head_lines: Number of lines to use in the head of file, mainly for data inference.
+    :param sort_range_index: Sort RangeIndex if csv doesn't contain index columns.
     :param storage_options: Options for storage connection.
     :param kwargs:
     :return: Mars DataFrame.
@@ -298,8 +307,9 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     if index_col and not isinstance(index_col, int):
         index_col = list(mini_df.columns).index(index_col)
     names = list(mini_df.columns)
-    op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col, usecols=usecols,
-                          compression=compression, gpu=gpu, storage_options=storage_options, **kwargs)
+    op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col,
+                          usecols=usecols, compression=compression, gpu=gpu,
+                          sort_range_index=sort_range_index, storage_options=storage_options, **kwargs)
     chunk_bytes = chunk_bytes or options.chunk_store_limit
     return op(index_value=index_value, columns_value=columns_value,
               dtypes=mini_df.dtypes, chunk_bytes=chunk_bytes)
