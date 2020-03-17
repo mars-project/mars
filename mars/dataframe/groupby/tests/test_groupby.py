@@ -21,6 +21,7 @@ from mars.tests.core import TestBase
 from mars.dataframe.core import DataFrameGroupBy, DataFrame
 from mars.dataframe.groupby.core import DataFrameGroupByOperand, DataFrameShuffleProxy
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
+from mars.dataframe.operands import ObjectType
 
 
 class Test(TestBase):
@@ -78,3 +79,30 @@ class Test(TestBase):
         # test unknown method
         with self.assertRaises(NotImplementedError):
             mdf.groupby('c2').sum(method='not_exist')
+
+    def testGroupByCum(self):
+        df1 = pd.DataFrame({'a': [3, 5, 2, 7, 1, 2, 4, 6, 2, 4],
+                            'b': [8, 3, 4, 1, 8, 2, 2, 2, 2, 3],
+                            'c': [1, 8, 8, 5, 3, 5, 0, 0, 5, 4]})
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        for fun in ['cummin', 'cummax', 'cumprod', 'cumsum']:
+            r = getattr(mdf.groupby('b'), fun)().tiles()
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(len(r.chunks), 4)
+            self.assertEqual(r.shape, (len(df1), 2))
+            self.assertEqual(r.chunks[0].shape, (np.nan, 2))
+            pd.testing.assert_index_equal(r.chunks[0].columns_value.to_pandas(), pd.Index(['a', 'c']))
+
+            r = getattr(mdf.groupby('b'), fun)(axis=1).tiles()
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(len(r.chunks), 4)
+            self.assertEqual(r.shape, (len(df1), 3))
+            self.assertEqual(r.chunks[0].shape, (np.nan, 3))
+            pd.testing.assert_index_equal(r.chunks[0].columns_value.to_pandas(), df1.columns)
+
+        r = mdf.groupby('b').cumcount().tiles()
+        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(len(r.chunks), 4)
+        self.assertEqual(r.shape, (len(df1),))
+        self.assertEqual(r.chunks[0].shape, (np.nan,))
