@@ -167,3 +167,40 @@ class Test(TestBase):
         self.assertEqual(len(applied.chunks), 3)
         self.assertEqual(applied.chunks[0].shape, (np.nan,))
         self.assertEqual(applied.chunks[0].dtype, series1.dtype)
+
+    def testGroupByCum(self):
+        df1 = pd.DataFrame({'a': [3, 5, 2, 7, 1, 2, 4, 6, 2, 4],
+                            'b': [8, 3, 4, 1, 8, 2, 2, 2, 2, 3],
+                            'c': [1, 8, 8, 5, 3, 5, 0, 0, 5, 4]})
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        for fun in ['cummin', 'cummax', 'cumprod', 'cumsum']:
+            r = getattr(mdf.groupby('b'), fun)().tiles()
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(len(r.chunks), 4)
+            self.assertEqual(r.shape, (len(df1), 2))
+            self.assertEqual(r.chunks[0].shape, (np.nan, 2))
+            pd.testing.assert_index_equal(r.chunks[0].columns_value.to_pandas(), pd.Index(['a', 'c']))
+
+            r = getattr(mdf.groupby('b'), fun)(axis=1).tiles()
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(len(r.chunks), 4)
+            self.assertEqual(r.shape, (len(df1), 3))
+            self.assertEqual(r.chunks[0].shape, (np.nan, 3))
+            pd.testing.assert_index_equal(r.chunks[0].columns_value.to_pandas(), df1.columns)
+
+        r = mdf.groupby('b').cumcount().tiles()
+        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(len(r.chunks), 4)
+        self.assertEqual(r.shape, (len(df1),))
+        self.assertEqual(r.chunks[0].shape, (np.nan,))
+
+        series1 = pd.Series([2, 2, 5, 7, 3, 7, 8, 8, 5, 6])
+        ms1 = md.Series(series1, chunk_size=3)
+
+        for fun in ['cummin', 'cummax', 'cumprod', 'cumsum', 'cumcount']:
+            r = getattr(ms1.groupby(lambda x: x % 2), fun)().tiles()
+            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(len(r.chunks), 4)
+            self.assertEqual(r.shape, (len(series1),))
+            self.assertEqual(r.chunks[0].shape, (np.nan,))

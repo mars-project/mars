@@ -22,7 +22,7 @@ from ..utils import build_empty_df, build_empty_series, parse_index
 
 
 class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
-    # todo these three args belowshall be redesigned when we extend
+    # todo these three args below shall be redesigned when we extend
     #  the functionality of groupby func
     _by = AnyField('by')
     _as_index = BoolField('as_index')
@@ -73,9 +73,8 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
                 ctx[op.outputs[0].key] = build_empty_series(op.outputs[0].dtype)
             return
 
-        by = op.by
         concatenated = pd.concat([df for _, df in in_data])
-        grouped = concatenated.groupby(by, as_index=op.as_index)
+        grouped = concatenated.groupby(op.by, as_index=op.as_index)
 
         if not op.is_transform:
             applied = grouped.apply(op.func, *op.args, **op.kwds)

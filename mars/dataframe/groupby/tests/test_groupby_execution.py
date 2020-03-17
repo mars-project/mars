@@ -256,44 +256,63 @@ class Test(TestBase):
         mdf = md.DataFrame(df1, chunk_size=3)
 
         applied = mdf.groupby('b').apply(apply_df)
-        result = self.executor.execute_dataframe(applied, concat=True)[0]
-        expected = df1.groupby('b').apply(apply_df)
-        pd.testing.assert_frame_equal(result.sort_index(), expected.sort_index())
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
+                                      df1.groupby('b').apply(apply_df).sort_index())
 
         applied = mdf.groupby('b').apply(lambda df: df.a)
-        result = self.executor.execute_dataframe(applied, concat=True)[0]
-        expected = df1.groupby('b').apply(lambda df: df.a)
-        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
+                                       df1.groupby('b').apply(lambda df: df.a).sort_index())
 
         applied = mdf.groupby('b').apply(lambda df: df.a.sum())
-        result = self.executor.execute_dataframe(applied, concat=True)[0]
-        expected = df1.groupby('b').apply(lambda df: df.a.sum())
-        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
+                                       df1.groupby('b').apply(lambda df: df.a.sum()).sort_index())
 
         applied = mdf.groupby('b').transform(apply_series, truncate=False)
-        result = self.executor.execute_dataframe(applied, concat=True)[0]
-        expected = df1.groupby('b').transform(apply_series, truncate=False)
-        pd.testing.assert_frame_equal(result.sort_index(), expected.sort_index())
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
+                                      df1.groupby('b').transform(apply_series, truncate=False).sort_index())
 
         series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
-
         ms1 = md.Series(series1, chunk_size=3)
+
         applied = ms1.groupby(lambda x: x % 3).apply(apply_series)
-        result = self.executor.execute_dataframe(applied, concat=True)[0]
-        expected = series1.groupby(lambda x: x % 3).apply(apply_series)
-        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
+                                       series1.groupby(lambda x: x % 3).apply(apply_series).sort_index())
 
         sindex2 = pd.MultiIndex.from_arrays([list(range(9)), list('ABCDEFGHI')])
         series2 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3], index=sindex2)
-
         ms2 = md.Series(series2, chunk_size=3)
-        applied = ms2.groupby(lambda x: x[0] % 3).apply(apply_series)
-        result = self.executor.execute_dataframe(applied, concat=True)[0]
-        expected = series2.groupby(lambda x: x[0] % 3).apply(apply_series)
-        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())
 
-        ms1 = md.Series(series1, chunk_size=3)
+        applied = ms2.groupby(lambda x: x[0] % 3).apply(apply_series)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
+                                       series2.groupby(lambda x: x[0] % 3).apply(apply_series).sort_index())
+
         applied = ms1.groupby(lambda x: x % 3).transform(lambda x: x + 1)
-        result = self.executor.execute_dataframe(applied, concat=True)[0]
-        expected = series1.groupby(lambda x: x % 3).transform(lambda x: x + 1)
-        pd.testing.assert_series_equal(result.sort_index(), expected.sort_index())
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
+                                       series1.groupby(lambda x: x % 3).transform(lambda x: x + 1).sort_index())
+
+    def testGroupByCum(self):
+        df1 = pd.DataFrame({'a': [3, 5, 2, 7, 1, 2, 4, 6, 2, 4],
+                            'b': [8, 3, 4, 1, 8, 2, 2, 2, 2, 3],
+                            'c': [1, 8, 8, 5, 3, 5, 0, 0, 5, 4]})
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        for fun in ['cummin', 'cummax', 'cumprod', 'cumsum']:
+            r1 = getattr(mdf.groupby('b'), fun)()
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0].sort_index(),
+                                          getattr(df1.groupby('b'), fun)().sort_index())
+
+            r2 = getattr(mdf.groupby('b'), fun)(axis=1)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r2, concat=True)[0].sort_index(),
+                                          getattr(df1.groupby('b'), fun)(axis=1).sort_index())
+
+        r3 = mdf.groupby('b').cumcount()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r3, concat=True)[0].sort_index(),
+                                       df1.groupby('b').cumcount().sort_index())
+
+        series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
+        ms1 = md.Series(series1, chunk_size=3)
+
+        for fun in ['cummin', 'cummax', 'cumprod', 'cumsum', 'cumcount']:
+            r1 = getattr(ms1.groupby(lambda x: x % 2), fun)()
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0].sort_index(),
+                                           getattr(series1.groupby(lambda x: x % 2), fun)().sort_index())

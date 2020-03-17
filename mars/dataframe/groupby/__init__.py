@@ -18,6 +18,7 @@ def _install():
     from .core import groupby
     from .aggregation import agg
     from .apply import groupby_apply, groupby_transform
+    from .cum import cumcount, cummin, cummax, cumprod, cumsum
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'groupby', groupby)
@@ -38,6 +39,12 @@ def _install():
 
         setattr(cls, 'apply', groupby_apply)
         setattr(cls, 'transform', groupby_transform)
+
+        setattr(cls, 'cumcount', cumcount)
+        setattr(cls, 'cummin', cummin)
+        setattr(cls, 'cummax', cummax)
+        setattr(cls, 'cumprod', cumprod)
+        setattr(cls, 'cumsum', cumsum)
 
 
 _install()
