@@ -20,6 +20,8 @@ from .reset_index import df_reset_index, series_reset_index
 from .describe import describe
 from .apply import df_apply, df_transform, series_apply, series_transform
 from .fillna import fillna, ffill, bfill
+from .string_ import SeriesStringMethod
+from .datetimes import SeriesDatetimeMethod
 
 
 def _install():
@@ -52,3 +54,5 @@ def _install():
 
 _install()
 del _install
+del SeriesStringMethod
+del SeriesDatetimeMethod

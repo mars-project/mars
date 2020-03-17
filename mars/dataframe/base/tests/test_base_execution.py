@@ -562,3 +562,98 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = s_raw.transform(lambda x: x + 1)
         pd.testing.assert_series_equal(result, expected)
+
+    def testStringMethodExecution(self):
+        s = pd.Series(['s1,s2', 'ef,', 'dd', np.nan])
+        s2 = pd.concat([s, s, s])
+
+        series = from_pandas_series(s, chunk_size=2)
+        series2 = from_pandas_series(s2, chunk_size=2)
+
+        # test getitem
+        r = series.str[:3]
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.str[:3]
+        pd.testing.assert_series_equal(result, expected)
+
+        # test split, expand=False
+        r = series.str.split(',', n=2)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.str.split(',', n=2)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test split, expand=True
+        r = series.str.split(',', expand=True, n=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.str.split(',', expand=True, n=1)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test rsplit
+        r = series.str.rsplit(',', expand=True, n=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.str.rsplit(',', expand=True, n=1)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test cat all data
+        r = series2.str.cat(sep='/', na_rep='e')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s2.str.cat(sep='/', na_rep='e')
+        self.assertEqual(result, expected)
+
+        # test cat list
+        r = series.str.cat(['a', 'b', np.nan, 'c'])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.str.cat(['a', 'b', np.nan, 'c'])
+        pd.testing.assert_series_equal(result, expected)
+
+        # test cat series
+        r = series.str.cat(series.str.capitalize(), join='outer')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.str.cat(s.str.capitalize(), join='outer')
+        pd.testing.assert_series_equal(result, expected)
+
+        # test extractall
+        r = series.str.extractall(r"(?P<letter>[ab])(?P<digit>\d)")
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.str.extractall(r"(?P<letter>[ab])(?P<digit>\d)")
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test extract, expand=False
+        r = series.str.extract(r'[ab](\d)', expand=False)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.str.extract(r'[ab](\d)', expand=False)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test extract, expand=True
+        r = series.str.extract(r'[ab](\d)', expand=True)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.str.extract(r'[ab](\d)', expand=True)
+        pd.testing.assert_frame_equal(result, expected)
+
+    def testDatetimeMethodExecution(self):
+        # test datetime
+        s = pd.Series([pd.Timestamp('2020-1-1'),
+                       pd.Timestamp('2020-2-1'),
+                       np.nan])
+        series = from_pandas_series(s, chunk_size=2)
+
+        r = series.dt.year
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.dt.year
+        pd.testing.assert_series_equal(result, expected)
+
+        r = series.dt.strftime('%m-%d-%Y')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.dt.strftime('%m-%d-%Y')
+        pd.testing.assert_series_equal(result, expected)
+
+        # test timedelta
+        s = pd.Series([pd.Timedelta('1 days'),
+                       pd.Timedelta('3 days'),
+                       np.nan])
+        series = from_pandas_series(s, chunk_size=2)
+
+        r = series.dt.days
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.dt.days
+        pd.testing.assert_series_equal(result, expected)
