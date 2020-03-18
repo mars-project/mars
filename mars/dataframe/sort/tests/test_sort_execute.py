@@ -218,7 +218,7 @@ class Test(unittest.TestCase):
         try:  # for python3.5
             expected = raw.sort_index(axis=1, ignore_index=True)
         except TypeError:
-            expected = raw.sort_index(axis=1, ignore_index=True)
+            expected = raw.sort_index(axis=1)
             expected.index = pd.RangeIndex(len(expected))
         pd.testing.assert_frame_equal(result, expected)
 
