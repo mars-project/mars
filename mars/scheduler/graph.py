@@ -1023,7 +1023,10 @@ class GraphActor(SchedulerActor):
             # the `_operand_infos` will be a completely new one,
             # in this case, we don't actually care about if the op is freed
             return
-
+        if op_key not in self._operand_infos and self.state in GraphState.TERMINATED_STATES:
+            # if operand has been cleared in iterative tiling and execute again in another
+            # graph, just ignore it.
+            return
         op_info = self._operand_infos[op_key]
         op_info['state'] = state
         self._graph_meta_ref.update_op_state(op_key, op_info['op_name'], state,
@@ -1045,6 +1048,10 @@ class GraphActor(SchedulerActor):
 
     @log_unhandled
     def set_operand_worker(self, op_key, worker):
+        if op_key not in self._operand_infos and self.state in GraphState.TERMINATED_STATES:
+            # if operand has been cleared in iterative tiling and execute again in another
+            # graph, just ignore it.
+            return
         op_info = self._operand_infos[op_key]
         if worker:
             op_info['worker'] = worker
