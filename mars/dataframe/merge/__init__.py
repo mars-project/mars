@@ -14,14 +14,18 @@
 
 from .concat import DataFrameConcat
 from .merge import join, merge, DataFrameShuffleMerge, DataFrameMergeAlign
+from .append import DataFrameAppend, append
 
 
 def _install():
-    from ..core import DATAFRAME_TYPE
+    from ..core import DATAFRAME_TYPE, SERIES_TYPE
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'join', join)
         setattr(cls, 'merge', merge)
+
+    for cls in DATAFRAME_TYPE + SERIES_TYPE:
+        setattr(cls, 'append', append)
 
 
 _install()

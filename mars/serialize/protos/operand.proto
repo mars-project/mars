@@ -357,6 +357,9 @@ message OperandDef {
         DATAFRAME_SHUFFLE_MERGE = 2010;
         DATAFRAME_SHUFFLE_MERGE_ALIGN = 2011;
 
+        // append
+        APPEND = 2015;
+
         // dataframe reduction
         COUNT = 2025;
 
