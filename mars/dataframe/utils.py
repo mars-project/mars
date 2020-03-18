@@ -140,7 +140,7 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
             cs = min(col_left_size, dim_size)
             col_chunk_size.append(cs)
             start = int(np.sum(col_chunk_size[:-1]))
-            col_chunk_store.append(average_memory_usage[start: start + cs].sum())
+            col_chunk_store.append(average_memory_usage.iloc[start: start + cs].sum())
             col_left_size -= cs
         if row_left_size > 0:
             max_col_chunk_store = max(col_chunk_store)
