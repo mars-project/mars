@@ -13,14 +13,21 @@
 # limitations under the License.
 
 from .sort_values import DataFrameSortValues
+from .sort_index import DataFrameSortIndex
 
 
 def _install():
-    from ..core import DATAFRAME_TYPE
-    from .sort_values import sort_values
+    from ..core import DATAFRAME_TYPE, SERIES_TYPE
+    from .sort_values import dataframe_sort_values, series_sort_values
+    from .sort_index import sort_index
 
     for cls in DATAFRAME_TYPE:
-        setattr(cls, 'sort_values', sort_values)
+        setattr(cls, 'sort_values', dataframe_sort_values)
+        setattr(cls, 'sort_index', sort_index)
+
+    for cls in SERIES_TYPE:
+        setattr(cls, 'sort_values', series_sort_values)
+        setattr(cls, 'sort_index', sort_index)
 
 
 _install()
