@@ -24,8 +24,7 @@ from mars.session import new_session
 
 
 class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        super().setUp()
+    def setUp(self):
         self.executor = ExecutorForTest('numpy')
 
     def testSortValuesExecution(self):
