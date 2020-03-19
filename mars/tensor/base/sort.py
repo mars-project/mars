@@ -21,10 +21,10 @@ from ..operands import TensorOperand, TensorShuffleProxy, TensorOrder
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..utils import validate_axis, validate_order
-from .psrs import PSRSOperandMixin
+from .psrs import TensorPSRSOperandMixin
 
 
-class TensorSort(TensorOperand, PSRSOperandMixin):
+class TensorSort(TensorOperand, TensorPSRSOperandMixin):
     _op_type_ = OperandDef.SORT
 
     _axis = Int32Field('axis')
@@ -242,25 +242,7 @@ class TensorSort(TensorOperand, PSRSOperandMixin):
 _AVAILABLE_KINDS = {'QUICKSORT', 'MERGESORT', 'HEAPSORT', 'STABLE'}
 
 
-def _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order):
-    a = astensor(a)
-    if axis is None:
-        a = a.flatten()
-        axis = 0
-    else:
-        axis = validate_axis(a.ndim, axis)
-    if kind is not None:
-        raw_kind = kind
-        kind = kind.upper()
-        if kind not in _AVAILABLE_KINDS:
-            # check kind
-            raise ValueError('{} is an unrecognized kind of sort'.format(raw_kind))
-    if parallel_kind is not None:
-        raw_parallel_kind = parallel_kind
-        parallel_kind = parallel_kind.upper()
-        if parallel_kind not in {'PSRS'}:
-            raise ValueError('{} is an unrecognized kind of '
-                             'parallel sort'.format(raw_parallel_kind))
+def _validate_sort_psrs_kinds(psrs_kinds):
     if psrs_kinds is not None:
         if isinstance(psrs_kinds, (list, tuple)):
             psrs_kinds = list(psrs_kinds)
@@ -281,8 +263,31 @@ def _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order):
             raise TypeError('psrs_kinds should be list or tuple')
     else:
         psrs_kinds = ['quicksort', 'mergesort', 'mergesort']
-    order = validate_order(a.dtype, order)
+    return psrs_kinds
 
+
+def _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order):
+    a = astensor(a)
+    if axis is None:
+        a = a.flatten()
+        axis = 0
+    else:
+        axis = validate_axis(a.ndim, axis)
+    if kind is not None:
+        raw_kind = kind
+        kind = kind.upper()
+        if kind not in _AVAILABLE_KINDS:
+            # check kind
+            raise ValueError('{} is an unrecognized kind of sort'.format(raw_kind))
+    if parallel_kind is not None:
+        raw_parallel_kind = parallel_kind
+        parallel_kind = parallel_kind.upper()
+        if parallel_kind not in {'PSRS'}:
+            raise ValueError('{} is an unrecognized kind of '
+                             'parallel sort'.format(raw_parallel_kind))
+
+    order = validate_order(a.dtype, order)
+    psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     return a, axis, kind, parallel_kind, psrs_kinds, order
 
 

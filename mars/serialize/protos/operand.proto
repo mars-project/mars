@@ -383,6 +383,9 @@ message OperandDef {
         CALC_PARTITIONS_INFO = 2046;
         PARTITION_MERGED = 2047;
 
+        // dataframe sort
+        SORT_VALUES = 2050;
+
         // store
         READ_CSV = 2100;
         TO_CSV = 2101;
