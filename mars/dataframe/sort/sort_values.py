@@ -174,7 +174,7 @@ def sort_values(df, by, axis=0, ascending=True, inplace=False, kind='quicksort',
     mergesort is the only stable algorithm. For DataFrames, this option is only applied
     when sorting on a single column or label.
     :param na_position: Puts NaNs at the beginning if first; last puts NaNs at the end.
-    :param ignore_index: If True, the resulting axis will be labeled 0, 1, …, n - 1.
+    :param ignore_index: If True, the resulting axis will be labeled 0, 1, ..., n - 1.
     :param parallel_kind: {'PSRS'}, optional. Parallel sorting algorithm, for the details, refer to:
     http://csweb.cs.wfu.edu/bigiron/LittleFE-PSRS/build/html/PSRSalgorithm.html
     :param psrs_kinds: Sorting algorithms during PSRS algorithm.

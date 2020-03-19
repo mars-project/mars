@@ -157,7 +157,7 @@ class DataFramePSRSSortRegularSample(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, by=None, axis=None, ascending=None, inplace=None, kind=None,
                  na_position=None,  n_partition=None, **kw):
-        super(DataFramePSRSSortRegularSample).__init__(
+        super(DataFramePSRSSortRegularSample, self).__init__(
             _by=by, _axis=axis, _ascending=ascending, _inplace=inplace,
             _kind=kind, _na_position=na_position, _n_partition=n_partition,
             _object_type=ObjectType.dataframe, **kw)
@@ -217,9 +217,9 @@ class DataFramePSRSConcatPivot(DataFrameOperand, DataFrameOperandMixin):
     _kind = StringField('kind')
 
     def __init__(self, by=None, axis=None, ascending=None, na_position=None, kind=None, **kw):
-        super(DataFramePSRSConcatPivot).__init__(_by=by, _axis=axis, _ascending=ascending,
-                                                 _na_position=na_position, _kind=kind,
-                                                 _object_type=ObjectType.dataframe, **kw)
+        super(DataFramePSRSConcatPivot, self).__init__(_by=by, _axis=axis, _ascending=ascending,
+                                                       _na_position=na_position, _kind=kind,
+                                                       _object_type=ObjectType.dataframe, **kw)
 
     @property
     def by(self):
@@ -273,7 +273,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     def __init__(self, by=None, axis=None, ascending=None, n_partition=None, na_position=None,
                  inplace=None, kind=None, stage=None, shuffle_key=None, **kw):
-        super(DataFramePSRSShuffle).__init__(
+        super(DataFramePSRSShuffle, self).__init__(
             _by=by, _axis=axis, _ascending=ascending, _n_partition=n_partition,
             _na_position=na_position, _inplace=inplace, _kind=kind, _stage=stage,
             _shuffle_key=shuffle_key, _object_type=ObjectType.dataframe, **kw)
