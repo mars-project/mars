@@ -18,7 +18,7 @@ import pandas as pd
 from ...serialize import Int32Field, StringField, ListField, BoolField, ValueType
 from ... import opcodes as OperandDef
 from ...tensor.base.sort import _validate_sort_psrs_kinds
-from ..utils import parse_index, standardize_range_index, validate_axis, build_concatenated_rows_frame
+from ..utils import parse_index, standardize_range_index, validate_axis, build_concated_rows_frame
 from ..operands import DataFrameOperand, DataFrameShuffleProxy, ObjectType
 from .psrs import DataFramePSRSOperandMixin, sort_dataframe
 
@@ -124,7 +124,7 @@ class DataFrameSortValues(DataFrameOperand, DataFramePSRSOperandMixin):
     def tile(cls, op):
         df = op.inputs[0]
 
-        df = build_concatenated_rows_frame(df)
+        df = build_concated_rows_frame(df)
 
         if df.chunk_shape[op.axis] == 1:
             out_chunks = []
