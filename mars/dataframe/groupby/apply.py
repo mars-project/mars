@@ -179,11 +179,13 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
 
 
 class GroupByApply(GroupByApplyTransform):
-    _op_type_ = opcodes.GROUPBY_APPLY
+    _op_type_ = opcodes.APPLY
+    _op_module_ = 'dataframe.groupby'
 
 
 class GroupByTransform(GroupByApplyTransform):
-    _op_type_ = opcodes.GROUPBY_TRANSFORM
+    _op_type_ = opcodes.TRANSFORM
+    _op_module_ = 'dataframe.groupby'
 
 
 def groupby_apply(groupby, func, *args, dtypes=None, index=None, object_type=None, **kwargs):

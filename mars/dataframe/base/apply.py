@@ -25,21 +25,22 @@ from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index, validate_axis
 
 
-class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = opcodes.DATAFRAME_APPLY
+class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = opcodes.APPLY
 
     _func = FunctionField('func')
     _axis = AnyField('axis')
+    _convert_dtype = BoolField('convert_dtype')
     _raw = BoolField('raw')
     _result_type = StringField('result_type')
     _elementwise = BoolField('elementwise')
     _args = TupleField('args')
     _kwds = DictField('kwds')
 
-    def __init__(self, func=None, axis=None, raw=None, result_type=None, args=None,
-                 kwds=None, object_type=None, elementwise=None, **kw):
-        super().__init__(_func=func, _axis=axis, _raw=raw, _result_type=result_type,
-                         _args=args, _kwds=kwds, _object_type=object_type,
+    def __init__(self, func=None, axis=None, convert_dtype=None, raw=None, result_type=None,
+                 args=None, kwds=None, object_type=None, elementwise=None, **kw):
+        super().__init__(_func=func, _axis=axis, _convert_dtype=convert_dtype, _raw=raw,
+                         _result_type=result_type, _args=args, _kwds=kwds, _object_type=object_type,
                          _elementwise=elementwise, **kw)
 
     @property
@@ -49,6 +50,10 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
     @property
     def axis(self):
         return self._axis
+
+    @property
+    def convert_dtype(self):
+        return self._convert_dtype
 
     @property
     def raw(self):
@@ -72,15 +77,17 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        in_df = op.inputs[0]
-        df = op.outputs[0]
-
-        input_data = ctx[in_df.key]
-        ctx[df.key] = input_data.apply(op.func, axis=op.axis, raw=op.raw, result_type=op.result_type,
-                                       args=op.args, **op.kwds)
+        input_data = ctx[op.inputs[0].key]
+        if isinstance(input_data, pd.DataFrame):
+            result = input_data.apply(op.func, axis=op.axis, raw=op.raw, result_type=op.result_type,
+                                      args=op.args, **op.kwds)
+        else:
+            result = input_data.apply(op.func, convert_dtype=op.convert_dtype, args=op.args,
+                                      **op.kwds)
+        ctx[op.outputs[0].key] = result
 
     @classmethod
-    def tile(cls, op):
+    def _tile_df(cls, op):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
         axis = op.axis
@@ -129,6 +136,30 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
         kw.update(dict(chunks=chunks, nsplits=in_df.nsplits))
         return new_op.new_tileables(op.inputs, **kw)
 
+    @classmethod
+    def _tile_series(cls, op):
+        in_series = op.inputs[0]
+        out_series = op.outputs[0]
+
+        chunks = []
+        for c in in_series.chunks:
+            new_op = op.copy().reset_key()
+            kw = c.params.copy()
+            kw['dtype'] = out_series.dtype
+            chunks.append(new_op.new_chunk([c], **kw))
+
+        new_op = op.copy().reset_key()
+        kw = out_series.params.copy()
+        kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
+        return new_op.new_tileables(op.inputs, **kw)
+
+    @classmethod
+    def tile(cls, op):
+        if op.inputs[0].op.object_type == ObjectType.dataframe:
+            return cls._tile_df(op)
+        else:
+            return cls._tile_series(op)
+
     def _infer_df_func_returns(self, in_dtypes, dtypes, index):
         if isinstance(self._func, np.ufunc):
             object_type, new_dtypes, index_value, new_elementwise = \
@@ -163,10 +194,17 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
         self._elementwise = new_elementwise if self._elementwise is None else self._elementwise
         return dtypes, index_value
 
-    def __call__(self, df, dtypes=None, index=None):
-        axis = getattr(self, 'axis', None) or 0
-        self._axis = axis = validate_axis(axis, df)
+    def _infer_series_func_returns(self, in_dtype):
+        try:
+            empty_series = build_empty_series(in_dtype, index=pd.RangeIndex(2))
+            with np.errstate(all='ignore'):
+                infer_series = empty_series.apply(self._func, args=self.args, **self.kwds)
+            new_dtype = infer_series.dtype
+        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+            new_dtype = np.dtype('object')
+        return new_dtype
 
+    def _call_dataframe(self, df, dtypes=None, index=None):
         dtypes, index_value = self._infer_df_func_returns(df.dtypes, dtypes, index)
         for arg, desc in zip((self._object_type, dtypes, index_value),
                              ('object_type', 'dtypes', 'index')):
@@ -187,7 +225,7 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
             shape = (df.shape[1 - self.axis],)
 
         if self._object_type == ObjectType.dataframe:
-            if axis == 0:
+            if self.axis == 0:
                 return self.new_dataframe([df], shape=shape, dtypes=dtypes, index_value=index_value,
                                           columns_value=parse_index(dtypes.index))
             else:
@@ -196,75 +234,22 @@ class DataFrameApply(DataFrameOperand, DataFrameOperandMixin):
         else:
             return self.new_series([df], shape=shape, dtype=dtypes, index_value=index_value)
 
-
-class SeriesApply(DataFrameOperand, DataFrameOperandMixin):
-    _func = FunctionField('func')
-    _convert_dtype = BoolField('convert_dtype')
-    _args = TupleField('args')
-    _kwds = DictField('kwds')
-
-    @property
-    def func(self):
-        return self._func
-
-    @property
-    def convert_dtype(self):
-        return self._convert_dtype
-
-    @property
-    def args(self):
-        return getattr(self, '_args', None) or ()
-
-    @property
-    def kwds(self):
-        return getattr(self, '_kwds', None) or dict()
-
-    def __init__(self, func=None, convert_dtype=None, args=None, kwds=None, object_type=None, **kw):
-        super().__init__(_func=func, _convert_dtype=convert_dtype, _args=args, _kwds=kwds,
-                         _object_type=object_type, **kw)
-
-    @classmethod
-    def execute(cls, ctx, op):
-        in_series = op.inputs[0]
-        series = op.outputs[0]
-
-        input_data = ctx[in_series.key]
-        ctx[series.key] = input_data.apply(op.func, convert_dtype=op.convert_dtype, args=op.args, **op.kwds)
-
-    @classmethod
-    def tile(cls, op):
-        in_series = op.inputs[0]
-        out_series = op.outputs[0]
-
-        chunks = []
-        for c in in_series.chunks:
-            new_op = op.copy().reset_key()
-            kw = c.params.copy()
-            kw['dtype'] = out_series.dtype
-            chunks.append(new_op.new_chunk([c], **kw))
-
-        new_op = op.copy().reset_key()
-        kw = out_series.params.copy()
-        kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
-        return new_op.new_tileables(op.inputs, **kw)
-
-    def _infer_series_func_returns(self, in_dtype):
-        try:
-            empty_series = build_empty_series(in_dtype, index=pd.RangeIndex(2))
-            with np.errstate(all='ignore'):
-                infer_series = empty_series.apply(self._func, args=self.args, **self.kwds)
-            new_dtype = infer_series.dtype
-        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
-            new_dtype = np.dtype('object')
-        return new_dtype
-
-    def __call__(self, series):
+    def _call_series(self, series):
         if self._convert_dtype:
             dtype = self._infer_series_func_returns(series.dtype)
         else:
             dtype = np.dtype('object')
         return self.new_series([series], dtype=dtype, shape=series.shape,
                                index_value=series.index_value)
+
+    def __call__(self, df, dtypes=None, index=None):
+        axis = getattr(self, 'axis', None) or 0
+        self._axis = validate_axis(axis, df)
+
+        if df.op.object_type == ObjectType.dataframe:
+            return self._call_dataframe(df, dtypes=dtypes, index=index)
+        else:
+            return self._call_series(df)
 
 
 def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None,
@@ -283,8 +268,8 @@ def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None
             kwds["axis"] = axis
         return func(*args, **kwds)
 
-    op = DataFrameApply(func=func, axis=axis, raw=raw, result_type=result_type, args=args, kwds=kwds,
-                        object_type=object_type, elementwise=elementwise)
+    op = ApplyOperand(func=func, axis=axis, raw=raw, result_type=result_type, args=args, kwds=kwds,
+                      object_type=object_type, elementwise=elementwise)
     return op(df, dtypes=dtypes, index=index)
 
 
@@ -302,6 +287,6 @@ def series_apply(series, func, convert_dtype=True, args=(), **kwds):
             raise AttributeError("'%r' is not a valid function for '%s' object" %
                                  (func, type(series).__name__))
 
-    op = SeriesApply(func=func, convert_dtype=convert_dtype, args=args, kwds=kwds,
-                     object_type=ObjectType.series)
+    op = ApplyOperand(func=func, convert_dtype=convert_dtype, args=args, kwds=kwds,
+                      object_type=ObjectType.series)
     return op(series)

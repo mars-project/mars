@@ -18,24 +18,34 @@ import pandas as pd
 from ... import opcodes
 from ...config import options
 from ...serialize import AnyField, BoolField, TupleField, DictField, FunctionField
+from ..core import DATAFRAME_CHUNK_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
-from ..utils import build_empty_df, build_empty_series, parse_index, validate_axis
+from ..utils import build_empty_df, build_empty_series, validate_axis, parse_index
 
 
-class DataFrameTransform(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = opcodes.DATAFRAME_TRANSFORM
+class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = opcodes.TRANSFORM
 
     _func = FunctionField('func')
     _axis = AnyField('axis')
+    _convert_dtype = BoolField('convert_dtype')
     _args = TupleField('args')
     _kwds = DictField('kwds')
 
-    def __init__(self, func=None, axis=None, args=None, kwds=None, object_type=None, **kw):
-        super().__init__(_func=func, _axis=axis, _args=args, _kwds=kwds, _object_type=object_type, **kw)
+    _call_agg = BoolField('call_agg')
+
+    def __init__(self, func=None, axis=None, convert_dtype=None, args=None, kwds=None,
+                 call_agg=None, object_type=None, **kw):
+        super().__init__(_func=func, _axis=axis, _convert_dtype=convert_dtype, _args=args,
+                         _kwds=kwds, _call_agg=call_agg, _object_type=object_type, **kw)
 
     @property
     def func(self):
         return self._func
+
+    @property
+    def convert_dtype(self):
+        return self._convert_dtype
 
     @property
     def axis(self):
@@ -49,13 +59,23 @@ class DataFrameTransform(DataFrameOperand, DataFrameOperandMixin):
     def kwds(self):
         return getattr(self, '_kwds', None) or dict()
 
+    @property
+    def call_agg(self):
+        return self._call_agg
+
     @classmethod
     def execute(cls, ctx, op):
-        in_df = op.inputs[0]
-        df = op.outputs[0]
+        in_data = ctx[op.inputs[0].key]
+        out_chunk = op.outputs[0]
 
-        input_data = ctx[in_df.key]
-        ctx[df.key] = input_data.transform(op.func, axis=op.axis, *op.args, **op.kwds)
+        if op.call_agg:
+            result = in_data.agg(op.func, axis=op.axis, *op.args, **op.kwds)
+        else:
+            result = in_data.transform(op.func, axis=op.axis, *op.args, **op.kwds)
+
+        if isinstance(out_chunk, DATAFRAME_CHUNK_TYPE):
+            result.columns = out_chunk.dtypes.index
+        ctx[op.outputs[0].key] = result
 
     @classmethod
     def tile(cls, op):
@@ -63,157 +83,113 @@ class DataFrameTransform(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
         axis = op.axis
 
-        chunk_size = (
-            in_df.shape[axis],
-            max(1, options.chunk_store_limit // in_df.shape[axis]),
-        )
-        if axis == 1:
-            chunk_size = chunk_size[::-1]
-        in_df = in_df.rechunk(chunk_size).tiles()
+        if in_df.op.object_type == ObjectType.dataframe:
+            chunk_size = (in_df.shape[axis],
+                          max(1, options.chunk_store_limit // in_df.shape[axis]))
+            if axis == 1:
+                chunk_size = chunk_size[::-1]
+            in_df = in_df.rechunk(chunk_size).tiles()
+        elif isinstance(op.func, str) or \
+                 (isinstance(op.func, list) and any(isinstance(e, str) for e in op.func)):
+            # builtin cols handles whole columns, thus merge is needed
+            in_df = in_df.rechunk((in_df.shape[axis],)).tiles()
 
         chunks = []
+        axis_index_map = dict()
         for c in in_df.chunks:
-            new_shape = c.shape
-            new_index_value, new_columns_value = c.index_value, c.columns_value
-
-            new_dtypes = out_df.dtypes.loc[c.dtypes.keys()]
-
             new_op = op.copy().reset_key()
-            chunks.append(new_op.new_chunk([c], shape=tuple(new_shape), index=c.index, dtypes=new_dtypes,
-                                           index_value=new_index_value, columns_value=new_columns_value))
+            params = c.params.copy()
+
+            if op.object_type == ObjectType.dataframe:
+                if isinstance(c, DATAFRAME_CHUNK_TYPE):
+                    columns = c.columns_value.to_pandas()
+                    try:
+                        new_dtypes = out_df.dtypes.loc[columns]
+                    except KeyError:
+                        new_dtypes = out_df.dtypes.reindex(columns).dropna()
+
+                    if len(new_dtypes) == 0:
+                        continue
+
+                    new_index = list(c.index)
+                    try:
+                        new_index[op.axis] = axis_index_map[c.index[op.axis]]
+                    except KeyError:
+                        new_index[op.axis] = axis_index_map[c.index[op.axis]] = len(axis_index_map)
+
+                    if isinstance(op.func, dict):
+                        new_op._func = dict((k, v) for k, v in op.func.items() if k in new_dtypes)
+                else:
+                    new_dtypes, new_index = out_df.dtypes, c.index
+                params.update(dict(dtypes=new_dtypes, index=tuple(new_index)))
+            else:
+                params['dtype'] = out_df.dtype
+                if in_df.op.object_type == ObjectType.dataframe:
+                    params.pop('columns_value', None)
+                    params['index_value'] = out_df.index_value
+            chunks.append(new_op.new_chunk([c], **params))
 
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
         kw.update(dict(chunks=chunks, nsplits=in_df.nsplits))
         return new_op.new_tileables(op.inputs, **kw)
 
-    def _infer_df_func_returns(self, in_dtypes, dtypes, index):
-        object_type, new_dtypes, index_value = None, None, None
-        try:
+    def _infer_df_func_returns(self, in_dtypes, dtypes):
+        if self.object_type == ObjectType.dataframe:
             empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(2))
             with np.errstate(all='ignore'):
-                infer_df = empty_df.transform(self._func, axis=self._axis, *self.args, **self.kwds)
-            if index_value is None:
-                if infer_df.index is empty_df.index:
-                    index_value = 'inherit'
+                if self.call_agg:
+                    infer_df = empty_df.agg(self._func, axis=self._axis, *self.args, **self.kwds)
                 else:
-                    index_value = parse_index(pd.RangeIndex(-1))
+                    infer_df = empty_df.transform(self._func, axis=self._axis, *self.args, **self.kwds)
+        else:
+            empty_df = build_empty_series(in_dtypes[1], index=pd.RangeIndex(2), name=in_dtypes[0])
+            with np.errstate(all='ignore'):
+                if self.call_agg:
+                    infer_df = empty_df.agg(self._func, args=self.args, **self.kwds)
+                else:
+                    infer_df = empty_df.transform(self._func, convert_dtype=self.convert_dtype,
+                                                  args=self.args, **self.kwds)
 
-            if isinstance(infer_df, pd.DataFrame):
-                object_type = object_type or ObjectType.dataframe
-                new_dtypes = new_dtypes or infer_df.dtypes
-            else:
-                object_type = object_type or ObjectType.series
-                new_dtypes = new_dtypes or infer_df.dtype
-        except:  # noqa: E722  # nosec
-            import traceback
-            traceback.print_exc()
-            pass
+        if isinstance(infer_df, pd.DataFrame):
+            new_dtypes = dtypes or infer_df.dtypes
+            self._object_type = ObjectType.dataframe
+        else:
+            new_dtypes = dtypes or (infer_df.name, infer_df.dtype)
+            self._object_type = ObjectType.series
 
-        self._object_type = object_type if self._object_type is None else self._object_type
-        dtypes = new_dtypes if dtypes is None else dtypes
-        index_value = index_value if index is None else parse_index(index)
-        return dtypes, index_value
+        return new_dtypes
 
     def __call__(self, df, dtypes=None, index=None):
         axis = getattr(self, 'axis', None) or 0
-        self._axis = axis = validate_axis(axis, df)
+        self._axis = validate_axis(axis, df)
 
-        dtypes, index_value = self._infer_df_func_returns(df.dtypes, dtypes, index)
-        for arg, desc in zip((self._object_type, dtypes, index_value),
-                             ('object_type', 'dtypes', 'index')):
+        if self.object_type == ObjectType.dataframe:
+            dtypes = self._infer_df_func_returns(df.dtypes, dtypes)
+        else:
+            dtypes = self._infer_df_func_returns((df.name, df.dtype), dtypes)
+
+        for arg, desc in zip((self._object_type, dtypes), ('object_type', 'dtypes')):
             if arg is None:
                 raise TypeError('Cannot determine %s by calculating with enumerate data, '
                                 'please specify it as arguments' % desc)
 
-        if index_value == 'inherit':
-            index_value = df.index_value
-
-        if axis == 0:
-            return self.new_dataframe([df], shape=df.shape, dtypes=dtypes, index_value=index_value,
-                                      columns_value=df.columns_value)
-        else:
+        if self.object_type == ObjectType.dataframe:
             return self.new_dataframe([df], shape=df.shape, dtypes=dtypes, index_value=df.index_value,
-                                      columns_value=index_value)
-
-
-class SeriesTransform(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = opcodes.SERIES_TRANSFORM
-
-    _func = FunctionField('func')
-    _convert_dtype = BoolField('convert_dtype')
-    _args = TupleField('args')
-    _kwds = DictField('kwds')
-
-    @property
-    def func(self):
-        return self._func
-
-    @property
-    def convert_dtype(self):
-        return self._convert_dtype
-
-    @property
-    def args(self):
-        return getattr(self, '_args', None) or ()
-
-    @property
-    def kwds(self):
-        return getattr(self, '_kwds', None) or dict()
-
-    def __init__(self, func=None, convert_dtype=None, args=None, kwds=None, object_type=None, **kw):
-        super().__init__(_func=func, _convert_dtype=convert_dtype, _args=args, _kwds=kwds,
-                         _object_type=object_type, **kw)
-
-    @classmethod
-    def execute(cls, ctx, op):
-        input_data = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = input_data.transform(op.func, *op.args, **op.kwds)
-
-    @classmethod
-    def tile(cls, op):
-        in_series = op.inputs[0]
-        out_series = op.outputs[0]
-
-        chunks = []
-        for c in in_series.chunks:
-            new_op = op.copy().reset_key()
-            kw = c.params.copy()
-            kw['dtype'] = out_series.dtype
-            chunks.append(new_op.new_chunk([c], **kw))
-
-        new_op = op.copy().reset_key()
-        kw = out_series.params.copy()
-        kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
-        return new_op.new_tileables(op.inputs, **kw)
-
-    def _infer_series_func_returns(self, in_dtype):
-        try:
-            empty_series = build_empty_series(in_dtype, index=pd.RangeIndex(2))
-            with np.errstate(all='ignore'):
-                infer_series = empty_series.apply(self._func, args=self.args, **self.kwds)
-            new_dtype = infer_series.dtype
-        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
-            new_dtype = np.dtype('object')
-        return new_dtype
-
-    def __call__(self, series):
-        if self._convert_dtype:
-            dtype = self._infer_series_func_returns(series.dtype)
+                                      columns_value=parse_index(dtypes.index, store_data=True))
         else:
-            dtype = np.dtype('object')
-        return self.new_series([series], dtype=dtype, shape=series.shape,
-                               index_value=series.index_value)
+            name, dtype = dtypes
+            return self.new_series([df], shape=df.shape, name=name, dtype=dtype, index_value=df.index_value)
 
 
-def df_transform(df, func, axis=0, *args, dtypes=None, index=None, **kwargs):
-    # todo fulfill support on df.agg later
-    op = DataFrameTransform(func=func, axis=axis, args=args, kwds=kwargs)
-    return op(df, dtypes=dtypes, index=index)
+def df_transform(df, func, axis=0, *args, dtypes=None, **kwargs):
+    op = TransformOperand(func=func, axis=axis, args=args, kwds=kwargs, object_type=df.op.object_type,
+                          call_agg=kwargs.pop('_call_agg', False))
+    return op(df, dtypes=dtypes)
 
 
-def series_transform(series, func, axis=0, *args, **kwargs):
-    # todo fulfill support on df.agg later
-    op = SeriesTransform(func=func, convert_dtype=True, axis=axis, args=args, kwds=kwargs,
-                         object_type=ObjectType.series)
-    return op(series)
+def series_transform(series, func, convert_dtype=True, axis=0, *args, dtype=None, **kwargs):
+    op = TransformOperand(func=func, axis=axis, convert_dtype=convert_dtype, args=args, kwds=kwargs,
+                          object_type=series.op.object_type, call_agg=kwargs.pop('_call_agg', False))
+    dtypes = (series.name, dtype) if dtype is not None else None
+    return op(series, dtypes=dtypes)

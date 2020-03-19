@@ -568,20 +568,20 @@ class Test(TestBase):
         idx_vals = [chr(ord('A') + i) for i in range(20)]
         s_raw = pd.Series([i ** 2 for i in range(20)], index=idx_vals)
 
+        def rename_fn(f, new_name):
+            f.__name__ = new_name
+            return f
+
         old_chunk_store_limit = options.chunk_store_limit
         try:
             options.chunk_store_limit = 20
 
             df = from_pandas_df(df_raw, chunk_size=5)
 
+            # test transform scenarios on data frames
             r = df.transform(lambda x: list(range(len(x))))
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = df_raw.transform(lambda x: list(range(len(x))))
-            pd.testing.assert_frame_equal(result, expected)
-
-            r = df.transform(['cumsum', 'cummax', lambda x: x + 1])
-            result = self.executor.execute_dataframe(r, concat=True)[0]
-            expected = df_raw.transform(['cumsum', 'cummax', lambda x: x + 1])
             pd.testing.assert_frame_equal(result, expected)
 
             r = df.transform(lambda x: list(range(len(x))), axis=1)
@@ -589,12 +589,60 @@ class Test(TestBase):
             expected = df_raw.transform(lambda x: list(range(len(x))), axis=1)
             pd.testing.assert_frame_equal(result, expected)
 
+            r = df.transform(['cumsum', 'cummax', lambda x: x + 1])
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform(['cumsum', 'cummax', lambda x: x + 1])
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.transform({'A': 'cumsum', 'D': ['cumsum', 'cummax'], 'F': lambda x: x + 1})
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform({'A': 'cumsum', 'D': ['cumsum', 'cummax'], 'F': lambda x: x + 1})
+            pd.testing.assert_frame_equal(result, expected)
+
+            # test agg scenarios on series
+            r = df.transform(lambda x: x.iloc[:-1], _call_agg=True)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.agg(lambda x: x.iloc[:-1])
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.transform(lambda x: x.iloc[:-1], axis=1, _call_agg=True)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.agg(lambda x: x.iloc[:-1], axis=1)
+            pd.testing.assert_frame_equal(result, expected)
+
+            fn_list = [rename_fn(lambda x: x.iloc[1:], 'f1'), lambda x: x.iloc[:-1]]
+            r = df.transform(fn_list, _call_agg=True)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.agg(fn_list)
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.transform(lambda x: x.sum(), _call_agg=True)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.agg(lambda x: x.sum())
+            pd.testing.assert_series_equal(result, expected)
+
+            fn_dict = {
+                'A': rename_fn(lambda x: x.iloc[1:], 'f1'),
+                'D': [rename_fn(lambda x: x.iloc[1:], 'f1'), lambda x: x.iloc[:-1]],
+                'F': lambda x: x.iloc[:-1],
+            }
+            r = df.transform(fn_dict, _call_agg=True)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.agg(fn_dict)
+            pd.testing.assert_frame_equal(result, expected)
+
             series = from_pandas_series(s_raw, chunk_size=5)
 
+            # test transform scenarios on series
             r = series.transform(lambda x: x + 1)
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = s_raw.transform(lambda x: x + 1)
             pd.testing.assert_series_equal(result, expected)
+
+            r = series.transform(['cumsum', lambda x: x + 1])
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = s_raw.transform(['cumsum', lambda x: x + 1])
+            pd.testing.assert_frame_equal(result, expected)
         finally:
             options.chunk_store_limit = old_chunk_store_limit
 
