@@ -14,6 +14,8 @@
 
 import itertools
 
+import pandas as pd
+
 from ... import opcodes as OperandDef
 from ...compat import izip, lzip
 from ...serialize import KeyField, AnyField, Int32Field, Int64Field
@@ -94,7 +96,7 @@ def rechunk(a, chunk_size, threshold=None, chunk_size_limit=None):
     return op(a)
 
 
-def _concat_dataframe_index_and_columns(to_concat_chunks):
+def _concat_dataframe_meta(to_concat_chunks):
     if to_concat_chunks[0].index_value.to_pandas().empty:
         index_value = to_concat_chunks[0].index_value
     else:
@@ -103,7 +105,10 @@ def _concat_dataframe_index_and_columns(to_concat_chunks):
 
     idx_to_columns_value = dict((c.index[1], c.columns_value) for c in to_concat_chunks if c.index[0] == 0)
     columns_value = merge_index_value(idx_to_columns_value, store_data=True)
-    return index_value, columns_value
+
+    idx_to_dtypes = dict((c.index[1], c.dtypes) for c in to_concat_chunks if c.index[0] == 0)
+    dtypes = pd.concat([v[1] for v in list(sorted(idx_to_dtypes.items()))])
+    return index_value, columns_value, dtypes
 
 
 def _concat_series_index(to_concat_chunks):
@@ -139,7 +144,8 @@ def compute_rechunk(a, chunk_size):
                                                       object_type=ObjectType.dataframe)
                 merge_chunk = merge_chunk_op.new_chunk([old_chunk], shape=merge_chunk_shape,
                                                        index=merge_idx, index_value=new_index_value,
-                                                       columns_value=new_columns_value, dtypes=old_chunk.dtypes)
+                                                       columns_value=new_columns_value,
+                                                       dtypes=old_chunk.dtypes.iloc[chunk_slice[1]])
             else:
                 merge_chunk_op = SeriesIlocGetItem(chunk_slice, sparse=old_chunk.op.sparse,
                                                    object_type=ObjectType.series)
@@ -162,11 +168,11 @@ def compute_rechunk(a, chunk_size):
         else:
             if is_dataframe:
                 chunk_op = DataFrameConcat(object_type=ObjectType.dataframe)
-                index_value, columns_value = _concat_dataframe_index_and_columns(to_merge)
+                index_value, columns_value, dtypes = _concat_dataframe_meta(to_merge)
                 out_chunk = chunk_op.new_chunk(to_merge, shape=chunk_shape,
                                                index=idx, index_value=index_value,
                                                columns_value=columns_value,
-                                               dtypes=to_merge[0].dtypes)
+                                               dtypes=dtypes)
             else:
                 chunk_op = DataFrameConcat(object_type=ObjectType.series)
                 index_value = _concat_series_index(to_merge)
