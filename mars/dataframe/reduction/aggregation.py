@@ -285,7 +285,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     columns_value=chunk.columns_value)
             elif op.object_type == ObjectType.series:
                 agg_chunk = map_op.new_chunk([chunk], shape=(out_df.shape[0], 1), index=new_index,
-                                             index_value=out_df.index_value)
+                                             index_value=out_df.index_value, name=out_df.name)
             else:  # scalar target
                 agg_chunk = map_op.new_chunk([chunk], shape=(1, 1), index=new_index)
             agg_chunks[agg_chunk.index] = agg_chunk
@@ -299,10 +299,11 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         chunk_op = op.copy().reset_key()
         if op.object_type == ObjectType.dataframe:
             chunk = chunk_op.new_chunk(in_df.chunks, index=(0, 0), shape=out_df.shape,
-                                       index_value=out_df.index_value, columns_value=out_df.columns_value)
+                                       index_value=out_df.index_value, columns_value=out_df.columns_value,
+                                       dtypes=out_df.dtypes)
         else:
             chunk = chunk_op.new_chunk(in_df.chunks, index=(0,), shape=out_df.shape,
-                                       index_value=out_df.index_value)
+                                       index_value=out_df.index_value, name=out_df.name)
 
         tileable_op = op.copy().reset_key()
         kw = out_df.params.copy()

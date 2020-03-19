@@ -113,20 +113,26 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     @classmethod
     def _tile_one_chunk(cls, op):
         df = op.outputs[0]
-        params = df.params
 
         chk = op.inputs[0].chunks[0]
         chunk_params = {k: v for k, v in chk.params.items()
                         if k in df.params}
         chunk_params['shape'] = df.shape
         chunk_params['index'] = chk.index
+        if op.object_type == ObjectType.series:
+            chunk_params.update(dict(dtype=df.dtype, index_value=df.index_value))
+        elif op.object_type == ObjectType.dataframe:
+            chunk_params.update(dict(dtypes=df.dtypes, index_value=df.index_value,
+                                     columns_value=df.columns_value))
+        else:
+            chunk_params.update(dict(dtype=df.dtype))
         new_chunk_op = op.copy().reset_key()
         chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, kws=[chunk_params])
 
         new_op = op.copy()
         nsplits = tuple((s,) for s in chunk.shape)
-        params['chunks'] = [chunk]
-        params['nsplits'] = nsplits
+        params = df.params.copy()
+        params.update(dict(chunks=[chunk], nsplits=nsplits))
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
@@ -413,7 +419,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                                                                     numeric_only=numeric_only)
         reduced_shape = (df.shape[0],) if axis == 1 else reduced_df.shape
         return self.new_series([df], shape=reduced_shape, dtype=reduced_df.dtype,
-                               index_value=parse_index(reduced_df.index))
+                               index_value=parse_index(reduced_df.index, store_data=axis == 0))
 
     def _call_series(self, series):
         level = getattr(self, 'level', None)
@@ -438,7 +444,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
     @classmethod
     def _tile_one_chunk(cls, op):
         df = op.outputs[0]
-        params = df.params
+        params = df.params.copy()
 
         chk = op.inputs[0].chunks[0]
         chunk_params = {k: v for k, v in chk.params.items()
@@ -525,7 +531,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         new_op = op.copy().reset_key()
         return new_op.new_tileables(op.inputs, shape=in_series.shape, nsplits=in_series.nsplits,
                                     chunks=output_chunks, dtype=series.dtype,
-                                    index_value=series.index_value)
+                                    index_value=series.index_value, name=series.name)
 
     @classmethod
     def tile(cls, op):

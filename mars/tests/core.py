@@ -128,10 +128,7 @@ class TestBase(unittest.TestCase):
                 [serial(c) for c in (ob.composed or [])]
                 serial(ob.op)
             else:
-                try:
-                    assert isinstance(ob, Operand)
-                except AssertionError:
-                    raise
+                assert isinstance(ob, Operand)
                 to_serials.add(ob)
                 [serial(i) for i in (ob.inputs or [])]
                 [serial(i) for i in (ob.outputs or []) if i is not None]
@@ -353,17 +350,27 @@ class MarsObjectCheckMixin:
     def assert_shape_consistent(expected_shape, real_shape):
         assert len(expected_shape) == len(real_shape)
         for e, r in zip(expected_shape, real_shape):
-            assert np.isnan(e) or e == r
+            if not np.isnan(e) and e != r:
+                raise AssertionError('shape in metadata %r is not consistent with real shape %r'
+                                     % (expected_shape, real_shape))
 
     @staticmethod
     def assert_dtype_consistent(expected_dtype, real_dtype):
         if expected_dtype != real_dtype:
-            assert np.can_cast(expected_dtype, real_dtype)
+            if expected_dtype is None:
+                raise AssertionError('Expected dtype cannot be None')
+            if not np.can_cast(expected_dtype, real_dtype):
+                raise AssertionError('dtype in metadata %r cannot cast to real dtype %r'
+                                     % (expected_dtype, real_dtype))
 
     @classmethod
     def assert_tensor_consistent(cls, expected, real):
         from mars.lib.sparse import SparseNDArray
-        assert isinstance(real, (np.generic, np.ndarray, SparseNDArray))
+        if isinstance(real, (str, int, bool, float, complex)):
+            real = np.array([real])[0]
+        if not isinstance(real, (np.generic, np.ndarray, SparseNDArray)):
+            raise AssertionError('Type of real value (%r) not one of '
+                                 '(np.generic, np.array, SparseNDArray)' % type(real))
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
         cls.assert_shape_consistent(expected.shape, real.shape)
 
@@ -374,19 +381,31 @@ class MarsObjectCheckMixin:
 
     @classmethod
     def assert_dataframe_consistent(cls, expected, real):
-        assert isinstance(real, pd.DataFrame)
+        if not isinstance(real, pd.DataFrame):
+            raise AssertionError('Type of real value (%r) not DataFrame' % type(real))
         cls.assert_shape_consistent(expected.shape, real.shape)
         pd.testing.assert_index_equal(expected.dtypes.index, real.dtypes.index)
-        for expected_dtype, real_dtype in zip(expected.dtypes, real.dtypes):
-            cls.assert_dtype_consistent(expected_dtype, real_dtype)
+
+        try:
+            for expected_dtype, real_dtype in zip(expected.dtypes, real.dtypes):
+                cls.assert_dtype_consistent(expected_dtype, real_dtype)
+        except AssertionError:
+            raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
+                                 % (expected.dtypes, real.dtypes))
+
         cls.assert_index_consistent(expected.columns_value, real.columns)
         cls.assert_index_consistent(expected.index_value, real.index)
 
     @classmethod
     def assert_series_consistent(cls, expected, real):
-        assert isinstance(real, pd.Series)
+        if not isinstance(real, pd.Series):
+            raise AssertionError('Type of real value (%r) not Series' % type(real))
         cls.assert_shape_consistent(expected.shape, real.shape)
-        assert expected.name == real.name
+
+        if expected.name != real.name:
+            raise AssertionError('series name in metadata %r is not equal to real name %r'
+                                 % (expected.name, real.name))
+
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
         cls.assert_index_consistent(expected.index_value, real.index)
 
