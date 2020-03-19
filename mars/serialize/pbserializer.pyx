@@ -18,6 +18,7 @@ import pickle
 import sys
 import weakref
 from collections import OrderedDict
+from datetime import tzinfo
 from io import BytesIO
 
 import numpy as np
@@ -207,6 +208,13 @@ cdef class ProtobufSerializeProvider(Provider):
     cdef inline object _get_function(self, obj):
         x = obj.function
         return cloudpickle.loads(x) if x is not None and len(x) > 0 else None
+
+    cdef inline void _set_tzinfo(self, value, obj, tp=None):
+        obj.tzinfo = pickle.dumps(value)
+
+    cdef inline object _get_tzinfo(self, obj):
+        x = obj.tzinfo
+        return pickle.loads(x) if x is not None and len(x) > 0 else None
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
@@ -404,6 +412,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_timedelta64(value, obj, tp)
         elif tp is ValueType.function:
             self._set_function(value, obj, tp)
+        elif tp is ValueType.tzinfo:
+            self._set_tzinfo(value, obj, tp)
         elif tp in {ValueType.complex64, ValueType.complex128}:
             self._set_complex(value, obj, tp)
         elif isinstance(tp, Identity):
@@ -470,6 +480,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_timedelta64(value, obj)
         elif isinstance(value, np.number):
             self._set_untyped_value(value.item(), obj)
+        elif isinstance(value, tzinfo):
+            self._set_tzinfo(value, obj)
         elif callable(value):
             self._set_function(value, obj)
         else:
@@ -667,6 +679,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_timedelta64(obj))
         elif tp is ValueType.function:
             return ref(self._get_function(obj))
+        elif tp is ValueType.tzinfo:
+            return ref(self._get_tzinfo(obj))
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             return ref(getattr(obj, value_field))
@@ -739,6 +753,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_timedelta64(obj))
         elif field == 'function':
             return ref(self._get_function(obj))
+        elif field == 'tzinfo':
+            return ref(self._get_tzinfo(obj))
         else:
             raise TypeError('Unknown type to deserialize')
 

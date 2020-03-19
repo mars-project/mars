@@ -45,6 +45,7 @@ cpdef enum ExtendType:
     series = 22
     dataframe = 23
     function = 26
+    tzinfo = 27
 
 
 cdef class Identity:
@@ -231,6 +232,10 @@ cdef class OneOfField(Field):
 
 
 cdef class FunctionField(Field):
+    pass
+
+
+cdef class TZInfoField(Field):
     pass
 
 

@@ -45,6 +45,8 @@ message OperandDef {
         SERIES_DATA_SOURCE = 23;
         // index
         INDEX_DATA_SOURCE = 33;
+        DATE_RANGE = 34;
+        TIMEDELTA_RANGE = 35;
 
         //GPU
         TO_GPU = 30;

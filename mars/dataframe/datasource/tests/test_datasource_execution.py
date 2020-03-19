@@ -471,3 +471,79 @@ class Test(TestBase):
                 pd.testing.assert_frame_equal(result, test_df)
             finally:
                 engine.dispose()
+
+    def testDateRangeExecution(self):
+        for closed in [None, 'left', 'right']:
+            # start, periods, freq
+            dr = md.date_range('2020-1-1', periods=10, chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range('2020-1-1', periods=10, closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+            # end, periods, freq
+            dr = md.date_range(end='2020-1-10', periods=10, chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range(end='2020-1-10', periods=10, closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+            # start, end, freq
+            dr = md.date_range('2020-1-1', '2020-1-10', chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range('2020-1-1', '2020-1-10', closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+            # start, end and periods
+            dr = md.date_range('2020-1-1', '2020-1-10', periods=19,
+                               chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range('2020-1-1', '2020-1-10', periods=19,
+                                     closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+            # start, end and freq
+            dr = md.date_range('2020-1-1', '2020-1-10', freq='12H',
+                               chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range('2020-1-1', '2020-1-10', freq='12H',
+                                     closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+        # test timezone
+        dr = md.date_range('2020-1-1', periods=10, tz='Asia/Shanghai', chunk_size=7)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range('2020-1-1', periods=10, tz='Asia/Shanghai')
+        pd.testing.assert_index_equal(result, expected)
+
+        # test periods=0
+        dr = md.date_range('2020-1-1', periods=0)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range('2020-1-1', periods=0)
+        pd.testing.assert_index_equal(result, expected)
+
+        # test start == end
+        dr = md.date_range('2020-1-1', '2020-1-1', periods=1)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range('2020-1-1', '2020-1-1', periods=1)
+        pd.testing.assert_index_equal(result, expected)
+
+        # test normalize=True
+        dr = md.date_range('2020-1-1', periods=10, normalize=True, chunk_size=4)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range('2020-1-1', periods=10, normalize=True)
+        pd.testing.assert_index_equal(result, expected)
+
+        # test freq
+        dr = md.date_range(start='1/1/2018', periods=5, freq='M', chunk_size=3)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range(start='1/1/2018', periods=5, freq='M')
+        pd.testing.assert_index_equal(result, expected)

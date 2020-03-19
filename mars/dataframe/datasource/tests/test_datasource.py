@@ -33,6 +33,7 @@ from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, \
 from mars.dataframe.datasource.from_records import from_records
 from mars.dataframe.datasource.read_csv import read_csv, DataFrameReadCSV
 from mars.dataframe.datasource.read_sql_table import read_sql_table, DataFrameReadSQLTable
+from mars.dataframe.datasource.date_range import date_range
 
 
 class Test(TestBase):
@@ -547,3 +548,45 @@ class Test(TestBase):
             with self.assertRaises(TypeError):
                 read_sql_table(table_name, uri, chunk_size=4,
                                index_col=b'a')
+
+    def testDateRange(self):
+        with self.assertRaises(TypeError):
+            _ = date_range('2020-1-1', periods='2')
+
+        with self.assertRaises(ValueError):
+            _ = date_range('2020-1-1', '2020-1-10', periods=10, freq='D')
+
+        with self.assertRaises(ValueError):
+            _ = date_range(pd.NaT, periods=10)
+
+        expected = pd.date_range('2020-1-1', periods=9., name='date')
+
+        dr = date_range('2020-1-1', periods=9., name='date', chunk_size=3)
+        self.assertIsInstance(dr, DatetimeIndex)
+        self.assertEqual(dr.shape, (9,))
+        self.assertEqual(dr.dtype, expected.dtype)
+        self.assertIsInstance(dr.index_value.value, IndexValue.DatetimeIndex)
+        self.assertEqual(dr.index_value.min_val, expected.min())
+        self.assertTrue(dr.index_value.min_val_close)
+        self.assertEqual(dr.index_value.max_val, expected.max())
+        self.assertTrue(dr.index_value.max_val_close)
+        self.assertEqual(dr.index_value.is_unique, expected.is_unique)
+        self.assertEqual(dr.index_value.is_monotonic_increasing,
+                         expected.is_monotonic_increasing)
+        self.assertEqual(dr.name, expected.name)
+
+        dr = dr.tiles()
+
+        for i, c in enumerate(dr.chunks):
+            ec = expected[i * 3: (i + 1) * 3]
+            self.assertEqual(c.shape, (3,))
+            self.assertEqual(c.dtype, ec.dtype)
+            self.assertIsInstance(c.index_value.value, IndexValue.DatetimeIndex)
+            self.assertEqual(c.index_value.min_val, ec.min())
+            self.assertTrue(c.index_value.min_val_close)
+            self.assertEqual(c.index_value.max_val, ec.max())
+            self.assertTrue(c.index_value.max_val_close)
+            self.assertEqual(c.index_value.is_unique, ec.is_unique)
+            self.assertEqual(c.index_value.is_monotonic_increasing,
+                             ec.is_monotonic_increasing)
+            self.assertEqual(c.name, ec.name)
