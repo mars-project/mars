@@ -24,6 +24,7 @@ import traceback
 import unittest
 import uuid
 import platform
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -799,8 +800,9 @@ class Test(unittest.TestCase):
     def testIterativeDependency(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True):
-            with tempfile.TemporaryDirectory() as d:
-                file_path = os.path.join(d, 'test.csv')
+            tempdir = tempfile.mkdtemp()
+            file_path = os.path.join(tempdir, 'test.csv')
+            try:
                 df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
                 df.to_csv(file_path)
 
@@ -815,6 +817,8 @@ class Test(unittest.TestCase):
                 f = mdf1[mdf1.a > mdf2.a]
                 r3 = f.iloc[:3].execute()
                 pd.testing.assert_frame_equal(r3, df[df.a > df.a])
+            finally:
+                shutil.rmtree(tempdir)
 
     @unittest.skipIf(platform.system() == 'Darwin' and PY27, 'skip when OS is Mac OS and python version == 2.7')
     def testDataFrameShuffle(self, *_):
