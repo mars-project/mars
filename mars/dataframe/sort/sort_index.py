@@ -17,7 +17,7 @@ import pandas as pd
 from ...serialize import ListField, BoolField
 from ... import opcodes as OperandDef
 from ...tensor.base.sort import _validate_sort_psrs_kinds
-from ..utils import parse_index, validate_axis, build_concatenated_rows_frame
+from ..utils import parse_index, validate_axis, build_concated_rows_frame
 from ..operands import DATAFRAME_TYPE, ObjectType
 from .core import DataFrameSortOperand
 from .psrs import DataFramePSRSOperandMixin, execute_sort_index
@@ -47,7 +47,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
         if op.axis == 0:
             if df.chunk_shape[op.axis] == 1:
                 if op.object_type == ObjectType.dataframe:
-                    df = build_concatenated_rows_frame(df)
+                    df = build_concated_rows_frame(df)
                     out_chunks = []
                     for chunk in df.chunks:
                         chunk_op = op.copy().reset_key()
@@ -73,7 +73,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
                     return new_op.new_seriess(op.inputs, **kws)
             else:
                 if op.object_type == ObjectType.dataframe:
-                    df = build_concatenated_rows_frame(df)
+                    df = build_concated_rows_frame(df)
                 if op.na_position != 'last':  # pragma: no cover
                     raise NotImplementedError('Only support puts NaNs at the end.')
                 # use parallel sorting by regular sampling
@@ -130,7 +130,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
 
 
 def sort_index(a, axis=0, level=None, ascending=True, inplace=False, kind='quicksort',
-               na_position='last', sort_remaining=True, ignore_index: bool = False,
+               na_position='last', sort_remaining=True, ignore_index=False,
                parallel_kind='PSRS', psrs_kinds=None):
     """
     Sort object by labels (along an axis).
@@ -159,7 +159,7 @@ def sort_index(a, axis=0, level=None, ascending=True, inplace=False, kind='quick
         If True and sorting by level and index is multilevel, sort by other
         levels too (in order) after sorting by specified level.
     ignore_index : bool, default False
-        If True, the resulting axis will be labeled 0, 1, …, n - 1.
+        If True, the resulting axis will be labeled 0, 1, ..., n - 1.
     parallel_kind: {'PSRS'}, optional.
         Parallel sorting algorithm, for the details, refer to:
         http://csweb.cs.wfu.edu/bigiron/LittleFE-PSRS/build/html/PSRSalgorithm.html

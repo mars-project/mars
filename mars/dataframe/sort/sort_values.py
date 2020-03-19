@@ -17,7 +17,7 @@ import pandas as pd
 from ...serialize import ListField, ValueType
 from ... import opcodes as OperandDef
 from ...tensor.base.sort import _validate_sort_psrs_kinds
-from ..utils import parse_index, validate_axis, build_concatenated_rows_frame
+from ..utils import parse_index, validate_axis, build_concated_rows_frame
 from ..operands import ObjectType
 from .core import DataFrameSortOperand
 from .psrs import DataFramePSRSOperandMixin, execute_sort_values
@@ -37,7 +37,7 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
 
     @classmethod
     def _tile_dataframe(cls, op):
-        df = build_concatenated_rows_frame(op.inputs[0])
+        df = build_concated_rows_frame(op.inputs[0])
 
         if df.chunk_shape[op.axis] == 1:
             out_chunks = []
@@ -218,7 +218,7 @@ def series_sort_values(series, axis=0, ascending=True, inplace=False, kind='quic
         Argument 'first' puts NaNs at the beginning, 'last' puts NaNs at
         the end.
     ignore_index : bool, default False
-         If True, the resulting axis will be labeled 0, 1, …, n - 1.
+         If True, the resulting axis will be labeled 0, 1, ..., n - 1.
 
     Returns
     -------
