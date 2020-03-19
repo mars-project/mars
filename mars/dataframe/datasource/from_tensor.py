@@ -26,6 +26,7 @@ from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
+from ..core import INDEX_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index
 
@@ -77,7 +78,11 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     def _process_index(self, index, inputs):
         if not isinstance(index, pd.Index):
-            if isinstance(index, (Base, Entity)):
+            if isinstance(index, INDEX_TYPE):
+                self._index = index
+                index_value = index.index_value
+                inputs.append(index)
+            elif isinstance(index, (Base, Entity)):
                 self._index = index
                 index = astensor(index)
                 if index.ndim != 1:
@@ -185,7 +190,9 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             columns_value = out_df.columns_value
             dtypes = out_df.dtypes
             chunk_index = (i, 0)
-            if out_df.index_value.has_value():
+            if isinstance(op.index, INDEX_TYPE):
+                index_value = in_tensors[-1].chunks[i].index_value
+            elif out_df.index_value.has_value():
                 pd_index = out_df.index_value.to_pandas()[cum_sizes[i]: cum_sizes[i + 1]]
                 index_value = parse_index(pd_index, store_data=True)
             else:
@@ -240,7 +247,11 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 columns_value = parse_index(chunk_pd_columns, store_data=True)
 
             index_stop = cum_size[0][i]
-            if out_df.index_value.has_value():
+            if isinstance(op.index, INDEX_TYPE):
+                index_chunk = index_tensor.chunks[i]
+                index_value = index_chunk.index_value
+                chunk_inputs.append(index_chunk)
+            elif out_df.index_value.has_value():
                 pd_index = out_df.index_value.to_pandas()
                 chunk_pd_index = pd_index[index_stop - in_chunk.shape[0]:index_stop]
                 index_value = parse_index(chunk_pd_index, store_data=True)
@@ -366,7 +377,11 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
             if index_tensor is not None:
                 index_chunk = index_tensor.cix[in_chunk.index]
                 chunk_inputs.append(index_chunk)
-                index_value = parse_index(pd.Index([], dtype=in_chunk.dtype), index_chunk, type(new_op).__name__)
+                if isinstance(op.index, INDEX_TYPE):
+                    index_value = index_chunk.index_value
+                else:
+                    index_value = parse_index(pd.Index([], dtype=in_chunk.dtype),
+                                              index_chunk, type(new_op).__name__)
             else:
                 chunk_pd_index = series_index[index_start: index_start + in_chunk.shape[0]]
                 index_value = parse_index(chunk_pd_index, store_data=True)
@@ -394,7 +409,11 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
         inputs = [input_tensor]
         if index is not None:
             if not isinstance(index, pd.Index):
-                if isinstance(index, (Base, Entity)):
+                if isinstance(index, INDEX_TYPE):
+                    self._index = index
+                    index_value = index.index_value
+                    inputs.append(index)
+                elif isinstance(index, (Base, Entity)):
                     self._index = index
                     index = astensor(index)
                     if index.ndim != 1:

@@ -420,6 +420,9 @@ class Index(TileableEntity):
         clz = globals()[type(data.index_value.value).__name__]
         return object.__new__(clz)
 
+    def __len__(self):
+        return len(self._data)
+
 
 class RangeIndex(Index):
     __slots__ = ()

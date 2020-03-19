@@ -130,6 +130,11 @@ class Test(TestBase):
         pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
                                        pd.Series(data, name='a', index=index_data))
 
+        series = md.Series(mt.tensor(data, chunk_size=3), name='a',
+                           index=md.date_range('2020-1-1', periods=10))
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
+                                       pd.Series(data, name='a', index=pd.date_range('2020-1-1', periods=10)))
+
     def testFromTensorExecution(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)
         df = dataframe_from_tensor(tensor)
@@ -179,6 +184,15 @@ class Test(TestBase):
         pdf_expected = pd.DataFrame(raw7, index=index_raw7)
         pd.testing.assert_frame_equal(pdf_expected, result7)
 
+        # from tensor with given index is a md.Index
+        raw10 = np.random.rand(10, 10)
+        tensor10 = mt.tensor(raw10, chunk_size=3)
+        index10 = md.date_range('2020-1-1', periods=10, chunk_size=3)
+        df10 = dataframe_from_tensor(tensor10, index=index10)
+        result10 = self.executor.execute_dataframe(df10, concat=True)[0]
+        pdf_expected = pd.DataFrame(raw10, index=pd.date_range('2020-1-1', periods=10))
+        pd.testing.assert_frame_equal(pdf_expected, result10)
+
         # from tensor with given columns
         tensor6 = mt.ones((10, 10), chunk_size=3)
         df6 = dataframe_from_tensor(tensor6, columns=list('abcdefghij'))
@@ -203,6 +217,14 @@ class Test(TestBase):
                                         index=index9)
         result = self.executor.execute_dataframe(df9, concat=True)[0]
         pdf_expected = pd.DataFrame(OrderedDict(raws8), index=index_raw9)
+        pd.testing.assert_frame_equal(result, pdf_expected)
+
+        # from 1d tensors and specify index
+        df11 = dataframe_from_1d_tensors(tensors8, columns=[r[0] for r in raws8],
+                                         index=md.date_range('2020-1-1', periods=8))
+        result = self.executor.execute_dataframe(df11, concat=True)[0]
+        pdf_expected = pd.DataFrame(OrderedDict(raws8),
+                                    index=pd.date_range('2020-1-1', periods=8))
         pd.testing.assert_frame_equal(result, pdf_expected)
 
     def testFromRecordsExecution(self):
