@@ -19,10 +19,12 @@ import logging
 import os
 import sys
 import time
+import tempfile
 import traceback
 import unittest
 import uuid
 import platform
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -794,6 +796,29 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(res, expected)
             self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
             self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+    def testIterativeDependency(self, *_):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True):
+            tempdir = tempfile.mkdtemp()
+            file_path = os.path.join(tempdir, 'test.csv')
+            try:
+                df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+                df.to_csv(file_path)
+
+                mdf1 = md.read_csv(file_path, index_col=0, chunk_bytes=10)
+                r1 = mdf1.iloc[:3].execute()
+                pd.testing.assert_frame_equal(df[:3], r1)
+
+                mdf2 = md.read_csv(file_path, index_col=0, chunk_bytes=10)
+                r2 = mdf2.iloc[:3].execute()
+                pd.testing.assert_frame_equal(df[:3], r2)
+
+                f = mdf1[mdf1.a > mdf2.a]
+                r3 = f.iloc[:3].execute()
+                pd.testing.assert_frame_equal(r3, df[df.a > df.a])
+            finally:
+                shutil.rmtree(tempdir)
 
     @unittest.skipIf(platform.system() == 'Darwin' and PY27, 'skip when OS is Mac OS and python version == 2.7')
     def testDataFrameShuffle(self, *_):

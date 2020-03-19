@@ -19,8 +19,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...operands import OperandStage
 from ...serialize import AnyField, BoolField, StringField, TupleField, KeyField, Int32Field
-from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
-from ...tiles import TilesError
+from ...utils import get_shuffle_input_keys_idxes
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
     DataFrameMapReduceOperand, DataFrameShuffleProxy
 from ..utils import build_concated_rows_frame, build_empty_df, parse_index, hash_dataframe_on, \
@@ -258,14 +257,6 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         df = op.outputs[0]
         left = build_concated_rows_frame(op.inputs[0])
         right = build_concated_rows_frame(op.inputs[1])
-
-        # left and right now are guaranteed only chunked along index axis, not column axis.
-        if left.chunk_shape[1] > 1:
-            check_chunks_unknown_shape([left], TilesError)
-            left = left.rechunk({1: left.shape[1]})._inplace_tile()
-        if right.chunk_shape[1] > 1:
-            check_chunks_unknown_shape([right], TilesError)
-            right = right.rechunk({1: right.shape[1]})._inplace_tile()
 
         if len(left.chunks) == 1 or len(right.chunks) == 1:
             return cls._tile_one_chunk(op, left, right)
