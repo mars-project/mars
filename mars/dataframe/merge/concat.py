@@ -15,10 +15,11 @@
 import pandas as pd
 import numpy as np
 
-from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
+from ...serialize import ListField, StringField, BoolField, AnyField
 from ... import opcodes as OperandDef
 from ...utils import lazy_import
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..utils import parse_index, build_empty_df, standardize_range_index
+from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, SERIES_TYPE
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -28,7 +29,6 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
     _axis = AnyField('axis')
     _join = StringField('join')
-    _join_axes = ListField('join_axes', ValueType.key)
     _ignore_index = BoolField('ignore_index')
     _keys = ListField('keys')
     _levels = ListField('levels')
@@ -37,11 +37,11 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     _sort = BoolField('sort')
     _copy = BoolField('copy')
 
-    def __init__(self, axis=None, join=None, join_axes=None, ignore_index=None,
+    def __init__(self, axis=None, join=None, ignore_index=None,
                  keys=None, levels=None, names=None, verify_integrity=None,
                  sort=None, copy=None, sparse=None, object_type=None, **kw):
         super(DataFrameConcat, self).__init__(
-            _axis=axis, _join=join, _join_axes=join_axes, _ignore_index=ignore_index,
+            _axis=axis, _join=join, _ignore_index=ignore_index,
             _keys=keys, _levels=levels, _names=names,
             _verify_integrity=verify_integrity, _sort=sort, _copy=copy,
             _sparse=sparse, _object_type=object_type, **kw)
@@ -53,10 +53,6 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     @property
     def join(self):
         return self._join
-
-    @property
-    def join_axes(self):
-        return self._join_axes
 
     @property
     def ignore_index(self):
@@ -72,7 +68,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
     @property
     def name(self):
-        return self._name
+        return self._names
 
     @property
     def verify_integrity(self):
@@ -85,6 +81,102 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     @property
     def copy_(self):
         return self._copy
+
+    @classmethod
+    def _tile_dataframe(cls, op):
+        from ..indexing.iloc import DataFrameIlocGetItem
+
+        out_df = op.outputs[0]
+        inputs = op.inputs
+
+        normalized_nsplits = {1: inputs[0].nsplits[1]} if op.axis == 0 else {0: inputs[0].nsplits[0]}
+        inputs = [item.rechunk(normalized_nsplits)._inplace_tile() for item in inputs]
+        out_chunks = []
+        nsplits = []
+        cum_index = 0
+        for df in inputs:
+            for c in df.chunks:
+                if op.axis == 0:
+                    index = (c.index[0] + cum_index, c.index[1])
+                else:
+                    index = (c.index[0], c.index[1] + cum_index)
+
+                iloc_op = DataFrameIlocGetItem(indexes=(slice(None),) * 2)
+                out_chunks.append(iloc_op.new_chunk([c], shape=c.shape, index=index,
+                                                    dtypes=c.dtypes,
+                                                    index_value=c.index_value,
+                                                    columns_value=c.columns_value))
+            nsplits.extend(df.nsplits[op.axis])
+            cum_index += len(df.nsplits[op.axis])
+        out_nsplits = (tuple(nsplits), inputs[0].nsplits[1]) \
+            if op.axis == 0 else (inputs[0].nsplits[0], tuple(nsplits))
+
+        if op.ignore_index:
+            out_chunks = standardize_range_index(out_chunks)
+
+        new_op = op.copy()
+        return new_op.new_dataframes(op.inputs, out_df.shape,
+                                     nsplits=out_nsplits, chunks=out_chunks,
+                                     dtypes=out_df.dtypes,
+                                     index_value=out_df.index_value,
+                                     columns_value=out_df.columns_value)
+
+    @classmethod
+    def _tile_series(cls, op):
+        from ..indexing.iloc import SeriesIlocGetItem
+
+        out = op.outputs[0]
+        inputs = op.inputs
+        out_chunks = []
+
+        if op.axis == 1:
+            inputs = [item.rechunk(op.inputs[0].nsplits)._inplace_tile() for item in inputs]
+
+        cum_index = 0
+        nsplits = []
+        for series in inputs:
+            for c in series.chunks:
+                if op.axis == 0:
+                    index = (c.index[0] + cum_index,)
+                else:
+                    index = (c.index[0], cum_index)
+                iloc_op = SeriesIlocGetItem(indexes=(slice(None),))
+                out_chunks.append(iloc_op.new_chunk([c], shape=c.shape, index=index,
+                                                    index_value=c.index_value,
+                                                    dtype=c.dtype,
+                                                    name=c.name))
+            if op.axis == 0:
+                nsplits.extend(series.nsplits[0])
+                cum_index += len(series.nsplits[op.axis])
+            else:
+                nsplits.append(1)
+                cum_index += 1
+
+        if op.ignore_index:
+            out_chunks = standardize_range_index(out_chunks)
+
+        new_op = op.copy()
+        if op.axis == 0:
+            nsplits = (tuple(nsplits),)
+            return new_op.new_seriess(op.inputs, out.shape,
+                                      nsplits=nsplits, chunks=out_chunks,
+                                      dtype=out.dtype,
+                                      index_value=out.index_value,
+                                      name=out.name)
+        else:
+            nsplits = (inputs[0].nsplits[0], tuple(nsplits))
+            return new_op.new_dataframes(op.inputs, out.shape,
+                                         nsplits=nsplits, chunks=out_chunks,
+                                         dtypes=out.dtypes,
+                                         index_value=out.index_value,
+                                         columns_value=out.columns_value)
+
+    @classmethod
+    def tile(cls, op):
+        if isinstance(op.inputs[0], SERIES_TYPE):
+            return cls._tile_series(op)
+        else:
+            return cls._tile_dataframe(op)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -106,7 +198,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             n_cols = int(len(inputs) // n_rows)
             assert n_rows * n_cols == len(inputs)
 
-            xdf = pd if isinstance(inputs[0], pd.DataFrame) else cudf
+            xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
 
             concats = []
             for i in range(n_rows):
@@ -152,6 +244,91 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         else:
             ctx[chunk.key] = _base_concat(chunk, inputs)
 
+    def _call_series(self, objs):
+        if self.axis == 0:
+            row_length = 0
+            index = None
+            for series in objs:
+                if index is None:
+                    index = series.index_value.to_pandas()
+                else:
+                    index = index.append(series.index_value.to_pandas())
+                row_length += series.shape[0]
+            if self.ignore_index:  # pragma: no cover
+                index_value = parse_index(pd.RangeIndex(row_length))
+            else:
+                index_value = parse_index(index)
+            return self.new_series(objs, shape=(row_length,), dtype=objs[0].dtype,
+                                   index_value=index_value)
+        else:
+            self._object_type = ObjectType.dataframe
+            col_length = 0
+            columns = []
+            dtypes = dict()
+            for series in objs:
+                dtypes[series.name] = series.dtype
+                columns.append(series.name)
+                col_length += 1
+            if self.ignore_index:
+                columns_value = parse_index(pd.RangeIndex(col_length))
+            else:
+                columns_value = parse_index(pd.Index(columns), store_data=True)
+            shape = (objs[0].shape[0], col_length)
+            return self.new_dataframe(objs, shape=shape, dtypes=pd.Series(dtypes),
+                                      index_value=objs[0].index_value,
+                                      columns_value=columns_value)
+
+    def _call_dataframes(self, objs):
+        if self.axis == 0:
+            row_length = 0
+            index = None
+            empty_dfs = []
+            for df in objs:
+                if index is None:
+                    index = df.index_value.to_pandas()
+                else:
+                    index = index.append(df.index_value.to_pandas())
+                row_length += df.shape[0]
+                empty_dfs.append(build_empty_df(df.dtypes))
+
+            emtpy_result = pd.concat(empty_dfs, join=self.join, sort=True)
+            shape = (row_length, emtpy_result.shape[1])
+            columns_value = parse_index(emtpy_result.columns, store_data=True)
+
+            if self.join == 'inner':
+                objs = [o[list(emtpy_result.columns)] for o in objs]
+
+            if self.ignore_index:  # pragma: no cover
+                index_value = parse_index(pd.RangeIndex(row_length))
+            else:
+                index_value = parse_index(index)
+            return self.new_dataframe(objs, shape=shape, dtypes=emtpy_result.dtypes,
+                                      index_value=index_value, columns_value=columns_value)
+        else:
+            col_length = 0
+            empty_dfs = []
+            for df in objs:
+                col_length += df.shape[1]
+                empty_dfs.append(build_empty_df(df.dtypes))
+
+            emtpy_result = pd.concat(empty_dfs, join=self.join, axis=0, sort=True)
+            if self.ignore_index:
+                columns_value = parse_index(pd.RangeIndex(col_length))
+            else:
+                columns_value = parse_index(pd.Index(emtpy_result.columns), store_data=True)
+            shape = (objs[0].shape[0], col_length)
+            return self.new_dataframe(objs, shape=shape, dtypes=emtpy_result.dtypes,
+                                      index_value=objs[0].index_value,
+                                      columns_value=columns_value)
+
+    def __call__(self, objs):
+        if all(isinstance(obj, SERIES_TYPE) for obj in objs):
+            self._object_type = ObjectType.series
+            return self._call_series(objs)
+        else:
+            self._object_type = ObjectType.dataframe
+            return self._call_dataframes(objs)
+
 
 class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_CONCAT
@@ -170,3 +347,24 @@ class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
         input_data = [group[1] for inp in inputs if len(inp) > 1 for group in inp]
         obj = pd.concat(input_data)
         ctx[op.outputs[0].key] = obj.groupby(by=op.by)
+
+
+def concat(objs, axis=0, join='outer', ignore_index=False, keys=None, levels=None,
+           names=None, verify_integrity=False, sort=False, copy=True):
+    if not isinstance(objs, (list, tuple)):  # pragma: no cover
+        raise TypeError('first argument must be an iterable of dataframe or series objects')
+    if axis == 'index':
+        axis = 0
+    if axis == 'columns':
+        axis = 1
+    if isinstance(objs, dict):  # pragma: no cover
+        keys = objs.keys()
+        objs = objs.values()
+    if axis == 1 and join == 'inner':  # pragma: no cover
+        raise NotImplementedError('inner join is not support when specify `axis=1`')
+    if verify_integrity or sort or keys:  # pragma: no cover
+        raise NotImplementedError('verify_integrity, sort, keys arguments are not supported now')
+    op = DataFrameConcat(axis=axis, join=join, ignore_index=ignore_index, keys=keys, levels=levels,
+                         names=names, verify_integrity=verify_integrity, sort=sort, copy=copy)
+
+    return op(objs)

@@ -19,6 +19,7 @@ from .initializer import DataFrame, Series
 from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
 from .datasource.read_csv import read_csv
+from .merge import concat
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 
 from . import arithmetic
