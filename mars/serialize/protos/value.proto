@@ -63,6 +63,7 @@ message Value {
         bytes dataframe = 17;  // pandas DataFrame
         TypedValue typed = 18;
         bytes function = 20;  // callable
+        bytes tzinfo = 21;  // tzinfo
     }
 
 }

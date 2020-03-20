@@ -21,6 +21,7 @@ from mars.config import options
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+from mars.dataframe.datasource.index import from_pandas as from_pandas_index
 from mars.session import new_session
 from mars.tests.core import TestBase, require_cudf, ExecutorForTest
 from mars.utils import lazy_import
@@ -95,6 +96,17 @@ class Test(TestBase):
         series2 = series.rechunk(1)
         res = self.executor.execute_dataframe(series2, concat=True)[0]
         pd.testing.assert_series_equal(data, res)
+
+        # test index rechunk execution
+        data = pd.Index(np.random.rand(10,))
+        index = from_pandas_index(data)
+        index2 = index.rechunk(3)
+        res = self.executor.execute_dataframe(index2, concat=True)[0]
+        pd.testing.assert_index_equal(data, res)
+
+        index2 = index.rechunk(1)
+        res = self.executor.execute_dataframe(index2, concat=True)[0]
+        pd.testing.assert_index_equal(data, res)
 
     def testResetIndexExecution(self):
         data = pd.DataFrame([('bird',    389.0),

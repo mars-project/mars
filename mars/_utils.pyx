@@ -16,7 +16,7 @@ import os
 import pickle
 import uuid
 from collections import deque
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
 from enum import Enum
 from functools import lru_cache, partial
 
@@ -209,6 +209,11 @@ def tokenize_function(ob):
             return str(ob)
 
 
+@lru_cache(500)
+def tokenize_pickled(ob):
+    return pickle.dumps(ob)
+
+
 cdef Tokenizer tokenize_handler = Tokenizer()
 
 base_types = (int, float, str, unicode, bytes, complex,
@@ -231,6 +236,7 @@ tokenize_handler.register(pd.Index, tokenize_pandas_index)
 tokenize_handler.register(pd.Series, tokenize_pandas_series)
 tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)
 tokenize_handler.register(pd.Categorical, tokenize_pandas_categorical)
+tokenize_handler.register(tzinfo, tokenize_pickled)
 
 cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)

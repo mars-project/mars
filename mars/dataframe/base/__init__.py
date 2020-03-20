@@ -25,7 +25,7 @@ from .datetimes import SeriesDatetimeMethod
 
 
 def _install():
-    from ..core import DATAFRAME_TYPE, SERIES_TYPE
+    from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 
     for t in DATAFRAME_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -50,6 +50,8 @@ def _install():
         setattr(t, 'fillna', fillna)
         setattr(t, 'ffill', ffill)
         setattr(t, 'bfill', bfill)
+    for t in INDEX_TYPE:
+        setattr(t, 'rechunk', rechunk)
 
 
 _install()

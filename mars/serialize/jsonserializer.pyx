@@ -19,6 +19,7 @@ import pickle
 import sys
 import weakref
 from collections import OrderedDict
+from datetime import tzinfo
 from io import BytesIO
 
 import cloudpickle
@@ -345,6 +346,22 @@ cdef class JsonSerializeProvider(Provider):
             return cloudpickle.loads(v)
         return None
 
+    cdef inline dict _serialize_tzinfo(self, value):
+        return {
+            'type': 'tzinfo',
+            'value': self._to_str(base64.b64encode(pickle.dumps(value)))
+        }
+
+    cdef inline _deserialize_tzinfo(self, obj, list callbacks):
+        cdef bytes v
+
+        value = obj['value']
+        v = base64.b64decode(value)
+
+        if v is not None:
+            return pickle.loads(v)
+        return None
+
     cdef inline object _serialize_typed_value(self, value, tp, bint weak_ref=False):
         if type(tp) not in (List, Tuple, Dict) and weak_ref:
             # not iterable, and is weak ref
@@ -383,6 +400,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_timedelta64(value)
         elif tp == ValueType.function:
             return self._serialize_function(value)
+        elif tp == ValueType.tzinfo:
+            return self._serialize_tzinfo(value)
         elif isinstance(tp, List):
             if not isinstance(value, list):
                 value = list(value)
@@ -442,6 +461,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_timedelta64(value)
         elif isinstance(value, np.number):
             return self._serialize_untyped_value(value.item())
+        elif isinstance(value, tzinfo):
+            return self._serialize_tzinfo(value)
         elif callable(value):
             return self._serialize_function(value)
         else:
@@ -562,6 +583,8 @@ cdef class JsonSerializeProvider(Provider):
             return ref(self._deserialize_timedelta64(obj, callbacks))
         elif tp is ValueType.function:
             return ref(self._deserialize_function(obj, callbacks))
+        elif tp is ValueType.tzinfo:
+            return ref(self._deserialize_tzinfo(obj, callbacks))
         elif tp is ValueType.list:
             return self._deserialize_list(obj, callbacks, weak_ref)
         elif tp is ValueType.tuple:
