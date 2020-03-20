@@ -393,14 +393,15 @@ class MarsObjectCheckMixin:
         if not isinstance(real, pd.DataFrame):
             raise AssertionError('Type of real value (%r) not DataFrame' % type(real))
         cls.assert_shape_consistent(expected.shape, real.shape)
-        pd.testing.assert_index_equal(expected.dtypes.index, real.dtypes.index)
+        if not np.isnan(expected.shape[1]):  # ignore when columns length is nan
+            pd.testing.assert_index_equal(expected.dtypes.index, real.dtypes.index)
 
-        try:
-            for expected_dtype, real_dtype in zip(expected.dtypes, real.dtypes):
-                cls.assert_dtype_consistent(expected_dtype, real_dtype)
-        except AssertionError:
-            raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
-                                 % (expected.dtypes, real.dtypes))
+            try:
+                for expected_dtype, real_dtype in zip(expected.dtypes, real.dtypes):
+                    cls.assert_dtype_consistent(expected_dtype, real_dtype)
+            except AssertionError:
+                raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
+                                     % (expected.dtypes, real.dtypes))
 
         cls.assert_index_consistent(expected.columns_value, real.columns)
         cls.assert_index_consistent(expected.index_value, real.index)
