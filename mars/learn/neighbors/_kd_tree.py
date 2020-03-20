@@ -19,13 +19,21 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ...utils import require_not_none
-from .tree import TreeBase, TreeQueryBase
+from .tree import TreeObject, TreeBase, TreeQueryBase
+
+
+class KDTree(TreeObject):
+    pass
 
 
 @require_not_none(SklearnKDTree)
 class _KDTree(TreeBase):
     _op_type_ = OperandDef.KD_TREE_TRAIN
     _tree_type = SklearnKDTree
+
+    def __call__(self, a):
+        result = super().__call__(a)
+        return KDTree(result.data)
 
 
 @require_not_none(SklearnKDTree)
@@ -45,7 +53,7 @@ def kd_tree_query(tree, data, n_neighbors, return_distance):
 
 
 @require_not_none(SklearnKDTree)
-def KDTree(X, leaf_size, metric=None, **metric_params):
+def create_kd_tree(X, leaf_size, metric=None, **metric_params):
     # kd_tree cannot accept callable metric
     assert not callable(metric)
     op = _KDTree(leaf_size=leaf_size, metric=metric,

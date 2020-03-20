@@ -21,6 +21,10 @@ try:
 except ImportError:  # pragma: no cover
     faiss = None
 try:
+    import cupy
+except ImportError:
+    cupy = None
+try:
     from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
     from sklearn.neighbors import BallTree as SkBallTree
     from sklearn.neighbors import KDTree as SkKDTree
@@ -163,6 +167,9 @@ class Test(unittest.TestCase):
                 np.testing.assert_almost_equal(result[0], expected[0])
                 np.testing.assert_almost_equal(result[1], expected[1])
 
+                if nn._tree is not None:
+                    self.assertIsInstance(nn._tree.fetch(), type(snn._tree))
+
                 # test return_distance=False
                 ret = nn.kneighbors(Y, return_distance=False)
 
@@ -242,8 +249,29 @@ class Test(unittest.TestCase):
         expected = snn.kneighbors(y2)
 
         result = ret.fetch()
+        self.assertEqual(nn._fit_method, snn._fit_method)
         np.testing.assert_almost_equal(result[0], expected[0])
         np.testing.assert_almost_equal(result[1], expected[1])
+
+        # test serialization
+        graph = ret[0].build_graph()
+        self.assertEqual(len(graph.from_pb(graph.to_pb())), len(graph))
+        self.assertEqual(len(graph.from_json(graph.to_json())), len(graph))
+
+        # test fit a sklearn tree
+        nn = NearestNeighbors(n_neighbors=3)
+        nn.fit(snn._tree)
+
+        ret = nn.kneighbors(Y)
+        result = ret.fetch()
+        self.assertEqual(nn._fit_method, snn._fit_method)
+        np.testing.assert_almost_equal(result[0], expected[0])
+        np.testing.assert_almost_equal(result[1], expected[1])
+
+        # test serialization
+        graph = ret[0].build_graph()
+        self.assertEqual(len(graph.from_pb(graph.to_pb())), len(graph))
+        self.assertEqual(len(graph.from_json(graph.to_json())), len(graph))
 
     @unittest.skipIf(faiss is None, 'faiss not installed')
     def testFaissNearestNeighborsExecution(self):
@@ -282,3 +310,27 @@ class Test(unittest.TestCase):
         result = [r.fetch() for r in ret]
         np.testing.assert_almost_equal(result[0], expected[0], decimal=5)
         np.testing.assert_almost_equal(result[1], expected[1])
+
+    @unittest.skipIf(cupy is None or faiss is None, 'either cupy or faiss not installed')
+    def testGPUFaissNearestNeighborsExecution(self):
+        rs = np.random.RandomState(0)
+
+        raw_X = rs.rand(10, 5)
+        raw_Y = rs.rand(8, 5)
+
+        # test faiss execution
+        X = mt.tensor(raw_X, chunk_size=7).to_gpu()
+        Y = mt.tensor(raw_Y, chunk_size=8).to_gpu()
+
+        nn = NearestNeighbors(n_neighbors=3, algorithm='faiss', metric='l2')
+        nn.fit(X)
+
+        ret = nn.kneighbors(Y)
+
+        snn = SkNearestNeighbors(n_neighbors=3, algorithm='auto', metric='l2')
+        snn.fit(raw_X)
+        expected = snn.kneighbors(raw_Y)
+
+        result = [r.fetch() for r in ret]
+        np.testing.assert_almost_equal(result[0].get(), expected[0], decimal=6)
+        np.testing.assert_almost_equal(result[1].get(), expected[1])

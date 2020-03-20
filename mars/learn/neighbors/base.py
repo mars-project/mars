@@ -15,7 +15,6 @@
 import warnings
 from abc import ABCMeta, abstractmethod
 
-import cloudpickle
 import numpy as np
 from sklearn.base import BaseEstimator, MultiOutputMixin
 
@@ -25,8 +24,8 @@ from ..metrics.pairwise import PAIRWISE_DISTANCE_FUNCTIONS
 from ..metrics import pairwise_distances
 from ..utils import check_array
 from ..utils.validation import check_is_fitted
-from ._ball_tree import BallTree, ball_tree_query, SklearnBallTree
-from ._kd_tree import KDTree, kd_tree_query, SklearnKDTree
+from ._ball_tree import create_ball_tree, ball_tree_query, SklearnBallTree
+from ._kd_tree import create_kd_tree, kd_tree_query, SklearnKDTree
 from ._faiss import build_faiss_index, faiss_query, METRIC_TO_FAISS_METRIC_TYPE
 
 
@@ -155,6 +154,10 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
 
         X = check_array(X, accept_sparse=True)
 
+        if np.isnan(X.size):
+            # if X has unknown shape, execute it first
+            X.execute(fetch=False, session=session, **(run_kwargs or dict()))
+
         if X.issparse():
             if self.algorithm not in ('auto', 'brute'):
                 warnings.warn("cannot use tree with sparse input: "
@@ -192,17 +195,15 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
                 self._fit_method = 'brute'
 
         if self._fit_method == 'ball_tree':
-            tree = BallTree(X, self.leaf_size,
-                            metric=self.effective_metric_,
-                            **self.effective_metric_params_)
-            self._tree = cloudpickle.loads(
-                tree.execute(session=session, **(run_kwargs or dict())))
+            self._tree = tree = create_ball_tree(X, self.leaf_size,
+                                                 metric=self.effective_metric_,
+                                                 **self.effective_metric_params_)
+            tree.execute(session=session, **(run_kwargs or dict()))
         elif self._fit_method == 'kd_tree':
-            tree = KDTree(X, self.leaf_size,
-                          metric=self.effective_metric_,
-                          **self.effective_metric_params_)
-            self._tree = cloudpickle.loads(
-                tree.execute(session=session, **(run_kwargs or dict())))
+            self._tree = tree = create_kd_tree(X, self.leaf_size,
+                                               metric=self.effective_metric_,
+                                               **self.effective_metric_params_)
+            tree.execute(session=session, **(run_kwargs or dict()))
         elif self._fit_method == 'brute':
             self._tree = None
         elif self._fit_method == 'faiss':
@@ -261,10 +262,11 @@ class KNeighborsMixin:
             # returned, which is removed later
             n_neighbors += 1
 
-        for x in (X, self._fit_X):
-            if np.isnan(x.size):
-                # has unknown size, execute first
-                x.execute(fetch=False, session=session, **(run_kwargs or dict()))
+        if X.key == self._fit_X.key and X is not self._fit_X:
+            X = self._fit_X
+        if np.isnan(X.size):
+            # has unknown size, execute first
+            X.execute(fetch=False, session=session, **(run_kwargs or dict()))
 
         train_size = self._fit_X.shape[0]
         if n_neighbors > train_size:

@@ -19,13 +19,21 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ...utils import require_not_none
-from .tree import TreeBase, TreeQueryBase
+from .tree import TreeObject, TreeBase, TreeQueryBase
+
+
+class BallTree(TreeObject):
+    pass
 
 
 @require_not_none(SklearnBallTree)
 class _BallTree(TreeBase):
     _op_type_ = OperandDef.BALL_TREE_TRAIN
     _tree_type = SklearnBallTree
+
+    def __call__(self, a):
+        result = super().__call__(a)
+        return BallTree(result.data)
 
 
 @require_not_none(SklearnBallTree)
@@ -45,7 +53,7 @@ def ball_tree_query(tree, data, n_neighbors, return_distance):
 
 
 @require_not_none(SklearnBallTree)
-def BallTree(X, leaf_size, metric=None, **metric_params):
+def create_ball_tree(X, leaf_size, metric=None, **metric_params):
     op = _BallTree(leaf_size=leaf_size, metric=metric,
                    **metric_params)
     return op(X)

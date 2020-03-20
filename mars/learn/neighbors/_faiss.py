@@ -142,6 +142,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             faiss_index, n_sample = _gen_index_string_and_sample_count(
                 in_tensor.shape, op.n_sample, op.accuracy, op.memory_require,
                 gpu=op.gpu, **op.extra_params)
+            op._n_sample = n_sample
         else:
             faiss_index, n_sample = op.faiss_index, op.n_sample
 
@@ -198,6 +199,9 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             train_op = FaissTrainSampledIndex(faiss_index=faiss_index, metric=op.metric,
                                               return_index_type=op.return_index_type)
             train_chunk = train_op.new_chunk([sample_chunk])
+        elif op.gpu:  # pragma: no cover
+            # if not need train, and on gpu, just merge data together to train
+            in_tensor = in_tensor.rechunk(in_tensor.shape)._inplace_tile()
 
         # build index for each input chunk
         build_index_chunks = []
@@ -239,8 +243,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
                                         op.faiss_metric_type)
             # GPU
             if device_id >= 0:  # pragma: no cover
-                res = faiss.StandardGpuResources()
-                index = faiss.index_cpu_to_gpu(res, device_id, index)
+                index = _index_to_gpu(index, device_id)
 
             # train index
             if not index.is_trained:
@@ -257,7 +260,12 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
                 # https://github.com/facebookresearch/faiss/wiki/FAQ#how-can-i-index-vectors-for-cosine-distance
                 faiss.normalize_L2(inp)
             # add vectors to index
-            index.add(inp)
+            if device_id >= 0:  # pragma: no cover
+                # gpu
+                inp = inp.astype(np.float32, copy=False)
+                index.add_c(inp.shape[0], _swig_ptr_from_cupy_float32_array(inp))
+            else:
+                index.add(inp)
 
             ctx[op.outputs[0].key] = _store_index(ctx, op, index, device_id)
 
@@ -286,14 +294,22 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
                 else:
                     # distribution no the same, train on each chunk
                     trained_index.train(data)
+
+                if device_id >= 0:  # pragma: no cover
+                    trained_index = _index_to_gpu(trained_index, device_id)
             if op.metric == 'cosine':
                 # faiss does not support cosine distances directly,
                 # data needs to be normalize before adding to index,
                 # refer to:
                 # https://github.com/facebookresearch/faiss/wiki/FAQ#how-can-i-index-vectors-for-cosine-distance
                 faiss.normalize_L2(data)
+
             # add data into index
-            trained_index.add(data)
+            if device_id >= 0:  # pragma: no cover
+                # gpu
+                trained_index.add_c(data.shape[0], _swig_ptr_from_cupy_float32_array(data))
+            else:
+                trained_index.add(data)
 
             ctx[op.outputs[0].key] = _store_index(ctx, op, trained_index, device_id)
 
@@ -387,9 +403,27 @@ def _load_index(ctx, op, index, device_id):
             f.write(index)
         index = faiss.read_index(f.name)
         if device_id >= 0:  # pragma: no cover
-            res = faiss.StandardGpuResources()
-            index = faiss.index_cpu_to_gpu(res, device_id, index)
+            index = _index_to_gpu(index, device_id)
         return index
+
+
+def _index_to_gpu(index, device_id):  # pragma: no cover
+    res = faiss.StandardGpuResources()
+    return faiss.index_cpu_to_gpu(res, device_id, index)
+
+
+def _swig_ptr_from_cupy_float32_array(x):  # pragma: no cover
+    assert x.flags.c_contiguous
+    assert x.dtype == np.float32
+    data_ptr = x.__cuda_array_interface__['data'][0]
+    return faiss.cast_integer_to_float_ptr(data_ptr)
+
+
+def _swig_ptr_from_cupy_int64_array(x):  # pragma: no cover
+    assert x.flags.c_contiguous
+    assert x.dtype == np.int64
+    data_ptr = x.__cuda_array_interface__['data'][0]
+    return faiss.cast_integer_to_long_ptr(data_ptr)
 
 
 @require_not_none(faiss)
@@ -442,11 +476,13 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
         with device(device_id):
             index = faiss.index_factory(data.shape[1], op.faiss_index,
                                         op.faiss_metric_type)
-            # GPU
+
             if device_id >= 0:  # pragma: no cover
-                res = faiss.StandardGpuResources()
-                index = faiss.index_cpu_to_gpu(res, device_id, index)
-            index.train(data)
+                # GPU
+                index = _index_to_gpu(index, device_id)
+                index.train_c(data.shape[0], _swig_ptr_from_cupy_float32_array(data))
+            else:
+                index.train(data)
 
             ctx[op.outputs[0].key] = _store_index(
                 ctx, op, index, device_id)
@@ -699,7 +735,16 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
             if op.nprobe is not None:
                 index.nprobe = op.nprobe
 
-            distances, indices = index.search(y, op.n_neighbors)
+            if device_id >= 0:  # pragma: no cover
+                n = y.shape[0]
+                k = op.n_neighbors
+                distances = xp.empty((n, k), dtype=xp.float32)
+                indices = xp.empty((n, k), dtype=xp.int64)
+                index.search_c(n, _swig_ptr_from_cupy_float32_array(y),
+                               k, _swig_ptr_from_cupy_float32_array(distances),
+                               _swig_ptr_from_cupy_int64_array(indices))
+            else:
+                distances, indices = index.search(y, op.n_neighbors)
             if op.return_distance:
                 if index.metric_type == faiss.METRIC_L2:
                     # make it equivalent to `pairwise.euclidean_distances`

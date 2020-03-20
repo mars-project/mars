@@ -12,16 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pickle
-
 import cloudpickle
 import numpy as np
 
-from ...serialize import KeyField, Int32Field, DictField, AnyField, BytesField, BoolField
+from ...context import RunningMode
+from ...core import Object, OBJECT_TYPE
+from ...serialize import KeyField, Int32Field, DictField, AnyField, BoolField
 from ...tiles import TilesError
 from ...tensor.core import TensorOrder
 from ...utils import check_chunks_unknown_shape, tokenize
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
+
+
+class TreeObject(Object):
+    def fetch(self, session=None, **kw):
+        result = self._data.fetch(session=session, **kw)
+        return cloudpickle.loads(result) \
+            if isinstance(result, bytes) else result
 
 
 class TreeBase(LearnOperand, LearnOperandMixin):
@@ -93,13 +100,26 @@ class TreeBase(LearnOperand, LearnOperandMixin):
         tree = cls._tree_type(
             a, op.leaf_size, metric=op.metric,
             **(op.metric_params or dict()))
-        ctx[op.outputs[0].key] = cloudpickle.dumps(tree)
+        if ctx.running_mode in [RunningMode.local_cluster, RunningMode.distributed]:
+            # for local cluster and distributed, pickle always
+            ctx[op.outputs[0].key] = cloudpickle.dumps(tree)
+        else:
+            # otherwise, to be clear for local, just put into storage directly
+            ctx[op.outputs[0].key] = tree
+
+
+def _on_serialize_tree(tree):
+    return cloudpickle.dumps(tree) if not hasattr(tree, 'key') else tree
+
+
+def _on_deserialize_tree(ser):
+    return cloudpickle.loads(ser) if isinstance(ser, bytes) else ser
 
 
 class TreeQueryBase(LearnOperand, LearnOperandMixin):
     _input = KeyField('input')
-    _tree = BytesField('tree', on_serialize=pickle.dumps,
-                       on_deserialize=pickle.loads)
+    _tree = AnyField('tree', on_serialize=_on_serialize_tree,
+                     on_deserialize=_on_deserialize_tree)
     _n_neighbors = Int32Field('n_neighbors')
     _return_distance = BoolField('return_distance')
 
@@ -134,6 +154,8 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
+        if isinstance(self._tree, OBJECT_TYPE):
+            self._tree = self._inputs[1]
 
     def _update_key(self):
         values = []
@@ -158,18 +180,27 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
             'order': TensorOrder.C_ORDER,
             'type': 'indices'
         })
-        return self.new_tileables([x], kws=kws, output_limit=len(kws))
+        inputs = [x]
+        if isinstance(self._tree, OBJECT_TYPE):
+            inputs.append(self._tree)
+        return self.new_tileables(inputs, kws=kws, output_limit=len(kws))
 
     @classmethod
     def tile(cls, op):
         inp = op.input
+
         if inp.chunk_shape[1] != 1:
             check_chunks_unknown_shape([inp], TilesError)
             inp = inp.rechunk({1: inp.shape[1]})._inplace_tile()
 
+        tree_chunk = None
+        if isinstance(op.tree, OBJECT_TYPE):
+            tree_chunk = op.tree.chunks[0]
         out_chunks = [[] for _ in range(len(op.outputs))]
         for chunk in inp.chunks:
             chunk_op = op.copy().reset_key()
+            if tree_chunk is not None:
+                chunk_op._tree = tree_chunk
             chunk_kws = []
             if op.return_distance:
                 chunk_kws.append({
@@ -186,7 +217,11 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
                 'index': chunk.index,
                 'type': 'indices'
             })
-            chunks = chunk_op.new_chunks([chunk], kws=chunk_kws, output_limit=len(chunk_kws))
+            chunk_inputs = [chunk]
+            if tree_chunk is not None:
+                chunk_inputs.append(tree_chunk)
+            chunks = chunk_op.new_chunks(chunk_inputs, kws=chunk_kws,
+                                         output_limit=len(chunk_kws))
             for cs, c in zip(out_chunks, chunks):
                 cs.append(c)
 
@@ -208,7 +243,12 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
                                       'nearest neighbors on GPU')
 
         x = ctx[op.input.key]
-        ret = op.tree.query(x, op.n_neighbors, op.return_distance)
+        if len(op.inputs) == 2:
+            tree = ctx[op.tree.key]
+        else:
+            tree = op.tree
+        tree = cloudpickle.loads(tree) if isinstance(tree, bytes) else tree
+        ret = tree.query(x, op.n_neighbors, op.return_distance)
         if op.return_distance:
             ctx[op.outputs[0].key] = ret[0]
             ctx[op.outputs[1].key] = ret[1]
