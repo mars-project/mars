@@ -381,7 +381,12 @@ class MarsObjectCheckMixin:
     @classmethod
     def assert_index_consistent(cls, expected_index_value, real_index):
         if expected_index_value.has_value():
-            pd.testing.assert_index_equal(expected_index_value.to_pandas(), real_index)
+            expected_index = expected_index_value.to_pandas()
+            try:
+                pd.testing.assert_index_equal(expected_index, real_index)
+            except AssertionError as e:
+                raise AssertionError('Index of real value (%r) not equal to (%r)' %
+                                     (expected_index, real_index)) from e
 
     @classmethod
     def assert_dataframe_consistent(cls, expected, real):
