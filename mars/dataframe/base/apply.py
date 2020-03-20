@@ -146,11 +146,15 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             new_op = op.copy().reset_key()
             kw = c.params.copy()
             kw['dtype'] = out_series.dtype
+            if op.object_type == ObjectType.dataframe:
+                kw['columns_value'] = out_series.columns_value
             chunks.append(new_op.new_chunk([c], **kw))
 
         new_op = op.copy().reset_key()
         kw = out_series.params.copy()
         kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
+        if op.object_type == ObjectType.dataframe:
+            kw['columns_value'] = out_series.columns_value
         return new_op.new_tileables(op.inputs, **kw)
 
     @classmethod

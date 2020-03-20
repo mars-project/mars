@@ -336,6 +336,11 @@ class TestAggregate(TestBase):
 
         df = from_pandas_df(data, chunk_size=3)
 
+        # will redirect to transform
+        result = df.agg(['cumsum', 'cummax'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(result, concat=True)[0],
+                                      data.agg(['cumsum', 'cummax']))
+
         for func in all_aggs:
             result = df.agg(func)
             pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],

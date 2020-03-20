@@ -488,6 +488,11 @@ class Test(TestBase):
             expected = df_raw.apply('ffill')
             pd.testing.assert_frame_equal(result, expected)
 
+            r = df.apply(['sum', 'max'])
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.apply(['sum', 'max'])
+            pd.testing.assert_frame_equal(result, expected)
+
             r = df.apply(np.sqrt)
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = df_raw.apply(np.sqrt)
@@ -546,6 +551,11 @@ class Test(TestBase):
         expected = s_raw.apply('add', args=(1,))
         pd.testing.assert_series_equal(result, expected)
 
+        r = series.apply(['sum', 'max'])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw.apply(['sum', 'max'])
+        pd.testing.assert_series_equal(result, expected)
+
         r = series.apply(np.sqrt)
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = s_raw.apply(np.sqrt)
@@ -576,6 +586,7 @@ class Test(TestBase):
         try:
             options.chunk_store_limit = 20
 
+            # DATAFRAME CASES
             df = from_pandas_df(df_raw, chunk_size=5)
 
             # test transform scenarios on data frames
@@ -610,7 +621,8 @@ class Test(TestBase):
             expected = df_raw.agg(lambda x: x.iloc[:-1], axis=1)
             pd.testing.assert_frame_equal(result, expected)
 
-            fn_list = [rename_fn(lambda x: x.iloc[1:], 'f1'), lambda x: x.iloc[:-1]]
+            fn_list = [rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
+                       lambda x: x.iloc[:-1].reset_index(drop=True)]
             r = df.transform(fn_list, _call_agg=True)
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = df_raw.agg(fn_list)
@@ -622,15 +634,17 @@ class Test(TestBase):
             pd.testing.assert_series_equal(result, expected)
 
             fn_dict = {
-                'A': rename_fn(lambda x: x.iloc[1:], 'f1'),
-                'D': [rename_fn(lambda x: x.iloc[1:], 'f1'), lambda x: x.iloc[:-1]],
-                'F': lambda x: x.iloc[:-1],
+                'A': rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
+                'D': [rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
+                      lambda x: x.iloc[:-1].reset_index(drop=True)],
+                'F': lambda x: x.iloc[:-1].reset_index(drop=True),
             }
             r = df.transform(fn_dict, _call_agg=True)
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = df_raw.agg(fn_dict)
             pd.testing.assert_frame_equal(result, expected)
 
+            # SERIES CASES
             series = from_pandas_series(s_raw, chunk_size=5)
 
             # test transform scenarios on series

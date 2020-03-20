@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...config import options
 from ...serialize import AnyField, BoolField, TupleField, DictField, FunctionField
-from ..core import DATAFRAME_CHUNK_TYPE
+from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, validate_axis, parse_index
 
@@ -78,12 +78,12 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = result
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "TransformOperand"):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
         axis = op.axis
 
-        if in_df.op.object_type == ObjectType.dataframe:
+        if isinstance(in_df, DATAFRAME_TYPE):
             chunk_size = (in_df.shape[axis],
                           max(1, options.chunk_store_limit // in_df.shape[axis]))
             if axis == 1:
@@ -119,14 +119,25 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
                     if isinstance(op.func, dict):
                         new_op._func = dict((k, v) for k, v in op.func.items() if k in new_dtypes)
+
+                    new_shape = list(c.shape)
+                    new_shape[1] = len(new_dtypes)
+
+                    if op.call_agg:
+                        new_shape[op.axis] = np.nan
                 else:
                     new_dtypes, new_index = out_df.dtypes, c.index
-                params.update(dict(dtypes=new_dtypes, index=tuple(new_index)))
+                    new_shape = [c.shape[0], len(new_dtypes)]
+                    if op.call_agg:
+                        new_shape[0] = np.nan
+                    params['columns_value'] = out_df.columns_value
+                params.update(dict(dtypes=new_dtypes, shape=tuple(new_shape), index=tuple(new_index)))
             else:
                 params['dtype'] = out_df.dtype
-                if in_df.op.object_type == ObjectType.dataframe:
+                if isinstance(in_df, DATAFRAME_TYPE):
                     params.pop('columns_value', None)
                     params['index_value'] = out_df.index_value
+                    params['shape'] = (c.shape[1 - op.axis],)
             chunks.append(new_op.new_chunk([c], **params))
 
         new_op = op.copy().reset_key()
@@ -175,21 +186,39 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                                 'please specify it as arguments' % desc)
 
         if self.object_type == ObjectType.dataframe:
-            return self.new_dataframe([df], shape=df.shape, dtypes=dtypes, index_value=df.index_value,
+            new_shape = list(df.shape)
+            new_index_value = df.index_value
+            if len(new_shape) == 1:
+                new_shape.append(len(dtypes))
+            else:
+                new_shape[1] = len(dtypes)
+
+            if self.call_agg:
+                new_shape[self.axis] = np.nan
+                new_index_value = parse_index(None, (df.key, df.index_value.key))
+            return self.new_dataframe([df], shape=tuple(new_shape), dtypes=dtypes, index_value=new_index_value,
                                       columns_value=parse_index(dtypes.index, store_data=True))
         else:
             name, dtype = dtypes
-            return self.new_series([df], shape=df.shape, name=name, dtype=dtype, index_value=df.index_value)
+
+            if isinstance(df, DATAFRAME_TYPE):
+                new_shape = (df.shape[1 - axis],)
+                new_index_value = [df.columns_value, df.index_value][axis]
+            else:
+                new_shape = (np.nan,) if self.call_agg else df.shape
+                new_index_value = df.index_value
+
+            return self.new_series([df], shape=new_shape, name=name, dtype=dtype, index_value=new_index_value)
 
 
 def df_transform(df, func, axis=0, *args, dtypes=None, **kwargs):
-    op = TransformOperand(func=func, axis=axis, args=args, kwds=kwargs, object_type=df.op.object_type,
+    op = TransformOperand(func=func, axis=axis, args=args, kwds=kwargs, object_type=ObjectType.dataframe,
                           call_agg=kwargs.pop('_call_agg', False))
     return op(df, dtypes=dtypes)
 
 
 def series_transform(series, func, convert_dtype=True, axis=0, *args, dtype=None, **kwargs):
     op = TransformOperand(func=func, axis=axis, convert_dtype=convert_dtype, args=args, kwds=kwargs,
-                          object_type=series.op.object_type, call_agg=kwargs.pop('_call_agg', False))
+                          object_type=ObjectType.series, call_agg=kwargs.pop('_call_agg', False))
     dtypes = (series.name, dtype) if dtype is not None else None
     return op(series, dtypes=dtypes)

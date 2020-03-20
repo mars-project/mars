@@ -442,19 +442,108 @@ class Test(TestBase):
         s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
         series = from_pandas_series(s_raw, chunk_size=5)
 
+        def rename_fn(f, new_name):
+            f.__name__ = new_name
+            return f
+
         old_chunk_store_limit = options.chunk_store_limit
         try:
             options.chunk_store_limit = 20
 
-            r = df.transform(lambda x: x + 1).tiles()
+            # DATAFRAME CASES
+            # test transform scenarios on data frames
+            r = df.transform(lambda x: list(range(len(x)))).tiles()
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, df.shape)
+            self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (df.shape[0], 20 // df.shape[0]))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
+            r = df.transform(lambda x: list(range(len(x))), axis=1).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, df.shape)
+            self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (20 // df.shape[1], df.shape[1]))
+            self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
+            r = df.transform(['cumsum', 'cummax', lambda x: x + 1]).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (df.shape[0], df.shape[1] * 3))
+            self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (df.shape[0], 20 // df.shape[0] * 3))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
+            r = df.transform({'A': 'cumsum', 'D': ['cumsum', 'cummax'], 'F': lambda x: x + 1}).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (df.shape[0], 4))
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
             self.assertEqual(r.op.object_type, ObjectType.dataframe)
             self.assertEqual(r.chunks[0].shape, (df.shape[0], 1))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
 
+            # test agg scenarios on series
+            r = df.transform(lambda x: x.iloc[:-1], _call_agg=True).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (np.nan, df.shape[1]))
+            self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (np.nan, 1))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
+            r = df.transform(lambda x: x.iloc[:-1], axis=1, _call_agg=True).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (df.shape[0], np.nan))
+            self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (2, np.nan))
+            self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
+            fn_list = [rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
+                       lambda x: x.iloc[:-1].reset_index(drop=True)]
+            r = df.transform(fn_list, _call_agg=True).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (np.nan, df.shape[1] * 2))
+            self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (np.nan, 2))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
+            r = df.transform(lambda x: x.sum(), _call_agg=True).tiles()
+            self.assertEqual(r.dtype, np.dtype('int64'))
+            self.assertEqual(r.shape, (df.shape[1],))
+            self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.chunks[0].shape, (20 // df.shape[0],))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
+            fn_dict = {
+                'A': rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
+                'D': [rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
+                      lambda x: x.iloc[:-1].reset_index(drop=True)],
+                'F': lambda x: x.iloc[:-1].reset_index(drop=True),
+            }
+            r = df.transform(fn_dict, _call_agg=True).tiles()
+            self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
+            self.assertEqual(r.shape, (np.nan, 4))
+            self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (np.nan, 1))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
+            # SERIES CASES
+            # test transform scenarios on series
             r = series.transform(lambda x: x + 1).tiles()
             self.assertTrue(np.dtype('float64'), r.dtype)
             self.assertEqual(r.shape, series.shape)
