@@ -456,3 +456,41 @@ class Test(TestBase):
         series5 = series[selected]
         pd.testing.assert_series_equal(
             self.executor.execute_dataframe(series5, concat=True)[0], data[selected])
+
+    def testHead(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df = md.DataFrame(data, chunk_size=2)
+
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.head(), concat=True)[0], data.head())
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.head(3), concat=True)[0], data.head(3))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.head(-3), concat=True)[0], data.head(-3))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.head(8), concat=True)[0], data.head(8))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.head(-8), concat=True)[0], data.head(-8))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.head(13), concat=True)[0], data.head(13))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.head(-13), concat=True)[0], data.head(-13))
+
+    def testTail(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df = md.DataFrame(data, chunk_size=2)
+
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.tail(), concat=True)[0], data.tail())
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.tail(3), concat=True)[0], data.tail(3))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.tail(-3), concat=True)[0], data.tail(-3))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.tail(8), concat=True)[0], data.tail(8))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.tail(-8), concat=True)[0], data.tail(-8))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.tail(13), concat=True)[0], data.tail(13))
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df.tail(-13), concat=True)[0], data.tail(-13))
