@@ -124,7 +124,7 @@ def is_sparse_module(xp):
 def device(device_id):
     if device_id is None or device_id < 0:
         yield
-    else:
+    else:  # pragma: no cover
         with cp.cuda.Device(device_id) as dev:
             yield dev
 

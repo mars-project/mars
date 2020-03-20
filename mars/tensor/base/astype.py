@@ -83,7 +83,7 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
                 if xp is np:
                     ctx[chunk.key] = x.astype(op.dtype, order=op.order,
                                               casting=op.casting)
-                else:
+                else:  # pragma: no cover
                     # cupy does not support casting
                     ctx[chunk.key] = x.astype(op.dtype, order=op.order)
 
