@@ -425,7 +425,7 @@ class TensorBoolIndexHandler(TensorBoolIndexHandlerBase):
         assert index_info.input_axis == 0, \
             'bool indexing on axis columns cannot be tensor'
 
-        index_value = parse_index(chunk_input.index_value.to_pandas(),
+        index_value = parse_index(pd.Index([], chunk_input.index_value.to_pandas().dtype),
                                   chunk_input, index, store_data=False)
 
         info = ChunkIndexAxisInfo(output_axis_index=output_axis_index,
