@@ -579,6 +579,7 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
                 chunk_kw = {
                     'index_value': chunk.index_value if splits[0].isdummy() else None,
                     'columns_value': chunk.columns_value if splits[1].isdummy() else None,
+                    'dtypes': chunk.dtypes if splits[1].isdummy() else None
                 }
                 align_op = DataFrameIndexAlign(
                     stage=OperandStage.map, index_min_max=index_min_max,
