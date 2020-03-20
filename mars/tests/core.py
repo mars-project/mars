@@ -348,7 +348,9 @@ def create_actor_pool(*args, **kwargs):
 class MarsObjectCheckMixin:
     @staticmethod
     def assert_shape_consistent(expected_shape, real_shape):
-        assert len(expected_shape) == len(real_shape)
+        if len(expected_shape) != len(real_shape):
+            raise AssertionError('ndim in metadata %r is not consistent with real ndim %r'
+                                 % (len(expected_shape), len(real_shape)))
         for e, r in zip(expected_shape, real_shape):
             if not np.isnan(e) and e != r:
                 raise AssertionError('shape in metadata %r is not consistent with real shape %r'
@@ -371,6 +373,8 @@ class MarsObjectCheckMixin:
         if not isinstance(real, (np.generic, np.ndarray, SparseNDArray)):
             raise AssertionError('Type of real value (%r) not one of '
                                  '(np.generic, np.array, SparseNDArray)' % type(real))
+        if not hasattr(expected, 'dtype'):
+            return
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
         cls.assert_shape_consistent(expected.shape, real.shape)
 
