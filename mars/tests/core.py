@@ -127,10 +127,7 @@ class TestBase(unittest.TestCase):
                 [serial(c) for c in (ob.composed or [])]
                 serial(ob.op)
             else:
-                try:
-                    assert isinstance(ob, Operand)
-                except AssertionError:
-                    raise
+                assert isinstance(ob, Operand)
                 to_serials.add(ob)
                 [serial(i) for i in (ob.inputs or [])]
                 [serial(i) for i in (ob.outputs or []) if i is not None]

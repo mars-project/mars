@@ -32,7 +32,8 @@ class TensorIRFFT(TensorRealFFT, TensorFFTMixin):
         new_shape = list(shape)
         if op.n is not None:
             new_shape[op.axis] = op.n
-        new_shape[op.axis] = 2 * (new_shape[op.axis] - 1)
+        else:
+            new_shape[op.axis] = 2 * (new_shape[op.axis] - 1)
         return tuple(new_shape)
 
 

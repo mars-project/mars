@@ -751,7 +751,7 @@ def histogram_bin_edges(a, bins=10, range=None, weights=None):
     a, weights = _ravel_and_check_weights(a, weights)
     op = TensorHistogramBinEdges(input=a, bins=bins,
                                  range=range, weights=weights,
-                                 dtype=np.dtype(np.float64))
+                                 dtype=a.dtype)
     return op(a, bins, range, weights)
 
 

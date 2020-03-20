@@ -107,7 +107,7 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
                     columns_value=out_df.columns_value, index_value=out_df.index_value))
             else:
                 chunks.append(new_op.new_chunk(
-                    inp_chunks, index=c.index, shape=(np.nan,), dtype=out_df.dtype,
+                    inp_chunks, name=out_df.name, index=c.index, shape=(np.nan,), dtype=out_df.dtype,
                     index_value=out_df.index_value))
 
         new_op = op.copy().reset_key()
@@ -129,7 +129,7 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
             if in_object_type == ObjectType.dataframe:
                 empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(2))
             else:
-                empty_df = build_empty_series(in_dtypes, index=pd.RangeIndex(2))
+                empty_df = build_empty_series(in_dtypes[1], index=pd.RangeIndex(2), name=in_dtypes[0])
 
             with np.errstate(all='ignore'):
                 if self.is_transform:
@@ -148,10 +148,10 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
                 new_dtypes = new_dtypes or infer_df.dtypes
             elif isinstance(infer_df, pd.Series):
                 object_type = object_type or ObjectType.series
-                new_dtypes = new_dtypes or infer_df.dtype
+                new_dtypes = new_dtypes or (infer_df.name, infer_df.dtype)
             else:
                 object_type = ObjectType.series
-                new_dtypes = pd.Series(infer_df).dtype
+                new_dtypes = (None, pd.Series(infer_df).dtype)
         except:  # noqa: E722  # nosec
             pass
 
@@ -164,7 +164,8 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
         in_df = groupby.inputs[0]
         in_dtypes = getattr(in_df, 'dtypes', None)
         if in_dtypes is None:
-            in_dtypes = in_df.dtype
+            in_dtypes = (in_df.name, in_df.dtype)
+
         dtypes, index_value = self._infer_df_func_returns(
             in_df.op.object_type, in_dtypes, dtypes, index)
         for arg, desc in zip((self._object_type, dtypes, index_value),
@@ -178,8 +179,10 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
             return self.new_dataframe([groupby], shape=new_shape, dtypes=dtypes,
                                       index_value=index_value, columns_value=in_df.columns_value)
         else:
+            name, dtype = dtypes
             new_shape = in_df.shape if self.is_transform else (np.nan,)
-            return self.new_series([groupby], shape=new_shape, dtype=dtypes, index_value=index_value)
+            return self.new_series([groupby], name=name, shape=new_shape, dtype=dtype,
+                                   index_value=index_value)
 
 
 class GroupByApply(GroupByApplyTransform):

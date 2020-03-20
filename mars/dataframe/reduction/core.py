@@ -21,7 +21,7 @@ from ...config import options
 from ...operands import OperandStage
 from ...utils import lazy_import
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
-from ..utils import parse_index, build_empty_df, validate_axis
+from ..utils import parse_index, build_empty_df, build_empty_series, validate_axis
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType, DATAFRAME_TYPE
 from ..merge import DataFrameConcat
 
@@ -113,20 +113,26 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     @classmethod
     def _tile_one_chunk(cls, op):
         df = op.outputs[0]
-        params = df.params
 
         chk = op.inputs[0].chunks[0]
         chunk_params = {k: v for k, v in chk.params.items()
                         if k in df.params}
         chunk_params['shape'] = df.shape
         chunk_params['index'] = chk.index
+        if op.object_type == ObjectType.series:
+            chunk_params.update(dict(dtype=df.dtype, index_value=df.index_value))
+        elif op.object_type == ObjectType.dataframe:
+            chunk_params.update(dict(dtypes=df.dtypes, index_value=df.index_value,
+                                     columns_value=df.columns_value))
+        else:
+            chunk_params.update(dict(dtype=df.dtype))
         new_chunk_op = op.copy().reset_key()
         chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, kws=[chunk_params])
 
         new_op = op.copy()
         nsplits = tuple((s,) for s in chunk.shape)
-        params['chunks'] = [chunk]
-        params['nsplits'] = nsplits
+        params = df.params.copy()
+        params.update(dict(chunks=[chunk], nsplits=nsplits))
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
@@ -402,6 +408,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None) or 0
         level = getattr(self, 'level', None)
+        skipna = getattr(self, 'skipna', None)
         numeric_only = getattr(self, 'numeric_only', None)
         self._axis = axis = validate_axis(axis, df)
         # TODO: enable specify level if we support groupby
@@ -409,15 +416,21 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             raise NotImplementedError('Not support specify level now')
 
         empty_df = build_empty_df(df.dtypes)
-        reduced_df = getattr(empty_df, getattr(self, '_func_name'))(axis=axis, level=level,
-                                                                    numeric_only=numeric_only)
+        func_name = getattr(self, '_func_name')
+        if func_name == 'count':
+            reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, numeric_only=numeric_only)
+        else:
+            reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, skipna=skipna,
+                                                      numeric_only=numeric_only)
         reduced_shape = (df.shape[0],) if axis == 1 else reduced_df.shape
         return self.new_series([df], shape=reduced_shape, dtype=reduced_df.dtype,
-                               index_value=parse_index(reduced_df.index))
+                               index_value=parse_index(reduced_df.index, store_data=axis == 0))
 
     def _call_series(self, series):
         level = getattr(self, 'level', None)
         axis = getattr(self, 'axis', None)
+        skipna = getattr(self, 'skipna', None)
+        numeric_only = getattr(self, 'numeric_only', None)
         if axis == 'index':
             axis = 0
         self._axis = axis
@@ -425,7 +438,15 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             raise NotImplementedError('Not support specified level now')
 
-        return self.new_scalar([series], dtype=series.dtype)
+        empty_series = build_empty_series(series.dtype)
+        func_name = getattr(self, '_func_name')
+        if func_name == 'count':
+            reduced_series = empty_series.count(level=level)
+        else:
+            reduced_series = getattr(empty_series, func_name)(axis=axis, level=level, skipna=skipna,
+                                                              numeric_only=numeric_only)
+
+        return self.new_scalar([series], dtype=np.array(reduced_series).dtype)
 
     def __call__(self, a):
         if isinstance(a, DATAFRAME_TYPE):
@@ -438,7 +459,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
     @classmethod
     def _tile_one_chunk(cls, op):
         df = op.outputs[0]
-        params = df.params
+        params = df.params.copy()
 
         chk = op.inputs[0].chunks[0]
         chunk_params = {k: v for k, v in chk.params.items()
@@ -525,7 +546,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         new_op = op.copy().reset_key()
         return new_op.new_tileables(op.inputs, shape=in_series.shape, nsplits=in_series.nsplits,
                                     chunks=output_chunks, dtype=series.dtype,
-                                    index_value=series.index_value)
+                                    index_value=series.index_value, name=series.name)
 
     @classmethod
     def tile(cls, op):

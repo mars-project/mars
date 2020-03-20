@@ -94,19 +94,23 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(self._q, TENSOR_TYPE):
             q_val = self._q
             pd_index = pd.Index([], dtype=q_val.dtype)
+            name = None
+            store_index_value = False
         else:
             q_val = np.asanyarray(self._q)
             pd_index = pd.Index(q_val)
+            name = self._q if q_val.size == 1 else None
+            store_index_value = True
         tokenize_objects = (a, q_val, self._interpolation, type(self).__name__)
 
         if q_val.ndim == 0 and self._axis == 0:
             self._object_type = ObjectType.series
-            index_value = parse_index(dtypes.index, store_data=True)
+            index_value = parse_index(dtypes.index, store_data=store_index_value)
             shape = (len(dtypes),)
             # calc dtype
             dtype = self._calc_dtype_on_axis_1(a, dtypes)
             return self.new_series(inputs, shape=shape, dtype=dtype,
-                                   index_value=index_value, name=dtypes.index.name)
+                                   index_value=index_value, name=name or dtypes.index.name)
         elif q_val.ndim == 0 and self._axis == 1:
             self._object_type = ObjectType.series
             index_value = a.index_value
@@ -116,11 +120,11 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                                  self._q, interpolation=self._interpolation,
                                  handle_non_numeric=not self._numeric_only).dtype
             return self.new_series(inputs, shape=shape, dtype=dt,
-                                   index_value=index_value, name=index_value.name)
+                                   index_value=index_value, name=name or index_value.name)
         elif q_val.ndim == 1 and self._axis == 0:
             self._object_type = ObjectType.dataframe
             shape = (len(q_val), len(dtypes))
-            index_value = parse_index(pd_index, *tokenize_objects, store_data=True)
+            index_value = parse_index(pd_index, *tokenize_objects, store_data=store_index_value)
             dtype_list = []
             for name in dtypes.index:
                 dtype_list.append(
@@ -135,7 +139,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             assert q_val.ndim == 1 and self._axis == 1
             self._object_type = ObjectType.dataframe
             shape = (len(q_val), a.shape[0])
-            index_value = parse_index(pd_index, *tokenize_objects, store_data=True)
+            index_value = parse_index(pd_index, *tokenize_objects, store_data=store_index_value)
             pd_columns = a.index_value.to_pandas()
             dtype_list = np.full(len(pd_columns), self._calc_dtype_on_axis_1(a, dtypes))
             dtypes = pd.Series(dtype_list, index=pd_columns)
@@ -149,9 +153,11 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(self._q, TENSOR_TYPE):
             q_val = self._q
             index_val = pd.Index([], dtype=q_val.dtype)
+            store_index_value = False
         else:
             q_val = np.asanyarray(self._q)
             index_val = pd.Index(q_val)
+            store_index_value = True
 
         # get dtype by tensor
         a_t = astensor(a)
@@ -167,7 +173,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             return self.new_series(
                 inputs, shape=q_val.shape, dtype=dtype,
                 index_value=parse_index(index_val, a, q_val, self._interpolation,
-                                        type(self).__name__, store_data=True),
+                                        type(self).__name__, store_data=store_index_value),
                 name=a.name)
 
     def __call__(self, a, q_input=None):
@@ -193,12 +199,12 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                                         handle_non_numeric=not op.numeric_only)
                     ts.append(t)
                 try:
-                    dtype = np.result_type([it.dtype for it in ts])
+                    dtype = np.result_type(*[it.dtype for it in ts])
                 except TypeError:
                     dtype = np.dtype(object)
                 stack_op = TensorStack(axis=0, dtype=dtype)
                 tr = stack_op(ts)
-                r = series_from_tensor(tr, index=op.input.columns_value.to_pandas(),
+                r = series_from_tensor(tr, index=df.index_value.to_pandas(),
                                        name=np.asscalar(ts[0].op.q))
             else:
                 assert op.axis == 1
