@@ -28,6 +28,9 @@ from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, An
 
 
 class IndexValue(Serializable):
+    """
+    Meta class for index, held by IndexData, SeriesData and DataFrameData
+    """
     __slots__ = ()
 
     class IndexBase(Serializable):
@@ -323,6 +326,10 @@ class IndexChunkData(ChunkData):
         return self._dtype
 
     @property
+    def name(self):
+        return self._name
+
+    @property
     def index_value(self):
         return self._index_value
 
@@ -397,6 +404,10 @@ class IndexData(HasShapeTileableData):
         return getattr(self, '_dtype', None) or self.op.dtype
 
     @property
+    def name(self):
+        return self._name
+
+    @property
     def index_value(self):
         return self._index_value
 
@@ -404,6 +415,55 @@ class IndexData(HasShapeTileableData):
 class Index(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (IndexData,)
+
+    def __new__(cls, data):
+        # create corresponding Index class
+        # according to type of index_value
+        clz = globals()[type(data.index_value.value).__name__]
+        return object.__new__(clz)
+
+    def __len__(self):
+        return len(self._data)
+
+
+class RangeIndex(Index):
+    __slots__ = ()
+
+
+class CategoricalIndex(Index):
+    __slots__ = ()
+
+
+class IntervalIndex(Index):
+    __slots__ = ()
+
+
+class DatetimeIndex(Index):
+    __slots__ = ()
+
+
+class TimedeltaIndex(Index):
+    __slots__ = ()
+
+
+class PeriodIndex(Index):
+    __slots__ = ()
+
+
+class Int64Index(Index):
+    __slots__ = ()
+
+
+class UInt64Index(Index):
+    __slots__ = ()
+
+
+class Float64Index(Index):
+    __slots__ = ()
+
+
+class MultiIndex(Index):
+    __slots__ = ()
 
 
 class SeriesChunkData(ChunkData):
@@ -541,6 +601,12 @@ class SeriesData(HasShapeTileableData):
 
         return DatetimeAccessor(self)
 
+    @property
+    def index(self):
+        from .datasource.index import from_tileable
+
+        return from_tileable(self)
+
     def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_series
         return from_series(self, dtype=dtype)
@@ -564,6 +630,14 @@ class Series(TileableEntity):
     @cache_readonly
     def str(self):
         return self._data.str
+
+    @cache_readonly
+    def dt(self):
+        return self._data.dt
+
+    @property
+    def index(self):
+        return self._data.index
 
     def __mars_tensor__(self, dtype=None, order='K'):
         tensor = self._data.to_tensor()
@@ -721,9 +795,21 @@ class DataFrameData(HasShapeTileableData):
         from .datasource.from_records import from_records
         return from_records(records, **kw)
 
+    @property
+    def index(self):
+        from .datasource.index import from_tileable
+
+        return from_tileable(self)
+
+    @property
+    def columns(self):
+        from .datasource.index import from_pandas as from_pandas_index
+
+        return from_pandas_index(self.dtypes.index)
+
 
 class DataFrame(TileableEntity):
-    __slots__ = ()
+    __slots__ = '_cache',
     _allow_data_type_ = (DataFrameData,)
 
     def __len__(self):
@@ -749,6 +835,14 @@ class DataFrame(TileableEntity):
                 return self[key]
             else:
                 raise
+
+    @property
+    def index(self):
+        return self._data.index
+
+    @property
+    def columns(self):
+        return self._data.columns
 
 
 class DataFrameGroupByData(TileableData):

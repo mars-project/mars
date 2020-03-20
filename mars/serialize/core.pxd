@@ -44,6 +44,7 @@ cpdef enum ExtendType:
     index = 21
     series = 22
     dataframe = 23
+    tzinfo = 27
 
 
 cdef class Identity:
@@ -227,6 +228,10 @@ cdef class ReferenceField(Field):
 
 cdef class OneOfField(Field):
     cdef public list fields
+
+
+cdef class TZInfoField(Field):
+    pass
 
 
 cdef class KeyPlaceholder:

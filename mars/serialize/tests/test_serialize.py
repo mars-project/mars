@@ -21,14 +21,9 @@ import tempfile
 import unittest
 
 import numpy as np
-try:
-    import pyarrow
-except ImportError:
-    pyarrow = None
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
+import pyarrow
+import pytz
+import pandas as pd
 
 from mars.compat import six, OrderedDict, BytesIO
 from mars.lib import sparse
@@ -38,7 +33,7 @@ from mars.serialize.core import Serializable, IdentityField, StringField, Unicod
     Datetime64Field, Timedelta64Field, DataTypeField, KeyField, ReferenceField, OneOfField, \
     ListField, NDArrayField, DictField, TupleField, ValueType, serializes, deserializes, \
     IndexField, SeriesField, DataFrameField, SliceField, Complex64Field, Complex128Field, \
-    AnyField, ProviderType, AttributeAsDict
+    AnyField, TZInfoField, ProviderType, AttributeAsDict
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
@@ -66,6 +61,7 @@ class Node1(Serializable):
     g = ReferenceField('g', 'Node2')
     h = ListField('h')
     i = ListField('i', ValueType.reference('self'))
+    m = TZInfoField('m')
 
     def __new__(cls, *args, **kwargs):
         if 'a' in kwargs and kwargs['a'] == 'test1':
@@ -179,8 +175,10 @@ class Test(unittest.TestCase):
                       f=node2,
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
-                         np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j)],
-                      i=[Node8(b1=111), Node8(b1=222)])
+                         np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
+                         pytz.timezone('Asia/Shanghai')],
+                      i=[Node8(b1=111), Node8(b1=222)],
+                      m=pytz.timezone('Asia/Shanghai'))
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -218,8 +216,10 @@ class Test(unittest.TestCase):
         self.assertEqual(node3.value.h[2], True)
         self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
         self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
+        self.assertEqual(node3.value.h[8], d_node3.value.h[8])
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
         self.assertIsInstance(d_node3.value.i[0], Node8)
+        self.assertEqual(d_node3.value.m, node3.value.m)
 
         with self.assertRaises(ValueError):
             serializes(provider, [Node3(value='sth else')])
@@ -237,8 +237,10 @@ class Test(unittest.TestCase):
                       f=node2,
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
-                         np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j)],
-                      i=[Node8(b1=111), Node8(b1=222)])
+                         np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
+                         pytz.timezone('Asia/Shanghai')],
+                      i=[Node8(b1=111), Node8(b1=222)],
+                      m=pytz.timezone('Asia/Shanghai'))
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -277,8 +279,10 @@ class Test(unittest.TestCase):
         self.assertEqual(node3.value.h[2], True)
         self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
         self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
+        self.assertEqual(node3.value.h[8], d_node3.value.h[8])
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
         self.assertIsInstance(d_node3.value.i[0], Node8)
+        self.assertEqual(d_node3.value.m, node3.value.m)
 
         with self.assertRaises(ValueError):
             serializes(provider, [Node3(value='sth else')])

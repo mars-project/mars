@@ -19,6 +19,7 @@ from .initializer import DataFrame, Series
 from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
 from .datasource.read_csv import read_csv
+from .datasource.date_range import date_range
 from .merge import concat
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 
@@ -39,4 +40,4 @@ del reduction, statistics, arithmetic, indexing, merge, base, \
 del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences
-from pandas import Timedelta, Timestamp
+from pandas import Timedelta, Timestamp, offsets

@@ -87,7 +87,7 @@ def _wrap_comparison(func):
 
 
 def _install():
-    from ..core import DATAFRAME_TYPE, SERIES_TYPE
+    from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 
     # register mars unary ufuncs
     unary_ops = [
@@ -158,6 +158,9 @@ def _install():
 
         setattr(entity, '__matmul__', dot)
         setattr(entity, 'dot', dot)
+
+    for entity in INDEX_TYPE:
+        setattr(entity, '__eq__', _wrap_eq())
 
 
 _install()

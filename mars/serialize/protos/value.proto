@@ -56,6 +56,7 @@ message Value {
         bytes index = 15; // pandas Index
         bytes series = 16;  // pandas Series
         bytes dataframe = 17;  // pandas DataFrame
+        bytes tzinfo = 21;  // tzinfo
     }
 
 }
