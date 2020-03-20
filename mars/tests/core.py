@@ -359,6 +359,9 @@ class MarsObjectCheckMixin:
     @staticmethod
     def assert_dtype_consistent(expected_dtype, real_dtype):
         if expected_dtype != real_dtype:
+            if expected_dtype == np.dtype('O') and real_dtype.type is np.str_:
+                # real dtype is string, this matches expectation
+                return
             if expected_dtype is None:
                 raise AssertionError('Expected dtype cannot be None')
             if not np.can_cast(expected_dtype, real_dtype):

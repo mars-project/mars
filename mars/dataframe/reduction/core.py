@@ -21,7 +21,7 @@ from ...config import options
 from ...operands import OperandStage
 from ...utils import lazy_import
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
-from ..utils import parse_index, build_empty_df, validate_axis
+from ..utils import parse_index, build_empty_df, build_empty_series, validate_axis
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType, DATAFRAME_TYPE
 from ..merge import DataFrameConcat
 
@@ -408,6 +408,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None) or 0
         level = getattr(self, 'level', None)
+        skipna = getattr(self, 'skipna', None)
         numeric_only = getattr(self, 'numeric_only', None)
         self._axis = axis = validate_axis(axis, df)
         # TODO: enable specify level if we support groupby
@@ -415,8 +416,12 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             raise NotImplementedError('Not support specify level now')
 
         empty_df = build_empty_df(df.dtypes)
-        reduced_df = getattr(empty_df, getattr(self, '_func_name'))(axis=axis, level=level,
-                                                                    numeric_only=numeric_only)
+        func_name = getattr(self, '_func_name')
+        if func_name == 'count':
+            reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, numeric_only=numeric_only)
+        else:
+            reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, skipna=skipna,
+                                                      numeric_only=numeric_only)
         reduced_shape = (df.shape[0],) if axis == 1 else reduced_df.shape
         return self.new_series([df], shape=reduced_shape, dtype=reduced_df.dtype,
                                index_value=parse_index(reduced_df.index, store_data=axis == 0))
@@ -424,6 +429,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
     def _call_series(self, series):
         level = getattr(self, 'level', None)
         axis = getattr(self, 'axis', None)
+        skipna = getattr(self, 'skipna', None)
+        numeric_only = getattr(self, 'numeric_only', None)
         if axis == 'index':
             axis = 0
         self._axis = axis
@@ -431,7 +438,15 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             raise NotImplementedError('Not support specified level now')
 
-        return self.new_scalar([series], dtype=series.dtype)
+        empty_series = build_empty_series(series.dtype)
+        func_name = getattr(self, '_func_name')
+        if func_name == 'count':
+            reduced_series = empty_series.count(level=level)
+        else:
+            reduced_series = getattr(empty_series, func_name)(axis=axis, level=level, skipna=skipna,
+                                                              numeric_only=numeric_only)
+
+        return self.new_scalar([series], dtype=np.array(reduced_series).dtype)
 
     def __call__(self, a):
         if isinstance(a, DATAFRAME_TYPE):
