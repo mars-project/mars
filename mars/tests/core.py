@@ -26,12 +26,11 @@ from collections.abc import Iterable
 from weakref import ReferenceType
 
 import numpy as np
-import pandas as pd
 
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
 from mars.utils import lazy_import
-from mars.executor import Executor, GraphExecution
+from mars.executor import Executor
 
 try:
     import pytest
@@ -345,138 +344,15 @@ def create_actor_pool(*args, **kwargs):
     raise OSError("Failed to create actor pool")
 
 
-class MarsObjectCheckMixin:
-    @staticmethod
-    def assert_shape_consistent(expected_shape, real_shape):
-        if len(expected_shape) != len(real_shape):
-            raise AssertionError('ndim in metadata %r is not consistent with real ndim %r'
-                                 % (len(expected_shape), len(real_shape)))
-        for e, r in zip(expected_shape, real_shape):
-            if not np.isnan(e) and e != r:
-                raise AssertionError('shape in metadata %r is not consistent with real shape %r'
-                                     % (expected_shape, real_shape))
-
-    @staticmethod
-    def assert_dtype_consistent(expected_dtype, real_dtype):
-        if expected_dtype != real_dtype:
-            if expected_dtype == np.dtype('O') and real_dtype.type is np.str_:
-                # real dtype is string, this matches expectation
-                return
-            if expected_dtype is None:
-                raise AssertionError('Expected dtype cannot be None')
-            if not np.can_cast(expected_dtype, real_dtype):
-                raise AssertionError('dtype in metadata %r cannot cast to real dtype %r'
-                                     % (expected_dtype, real_dtype))
-
-    @classmethod
-    def assert_tensor_consistent(cls, expected, real):
-        from mars.lib.sparse import SparseNDArray
-        if isinstance(real, (str, int, bool, float, complex)):
-            real = np.array([real])[0]
-        if not isinstance(real, (np.generic, np.ndarray, SparseNDArray)):
-            raise AssertionError('Type of real value (%r) not one of '
-                                 '(np.generic, np.array, SparseNDArray)' % type(real))
-        if not hasattr(expected, 'dtype'):
-            return
-        cls.assert_dtype_consistent(expected.dtype, real.dtype)
-        cls.assert_shape_consistent(expected.shape, real.shape)
-
-    @classmethod
-    def assert_index_consistent(cls, expected_index_value, real_index):
-        if expected_index_value.has_value():
-            expected_index = expected_index_value.to_pandas()
-            try:
-                pd.testing.assert_index_equal(expected_index, real_index)
-            except AssertionError as e:
-                raise AssertionError('Index of real value (%r) not equal to (%r)' %
-                                     (expected_index, real_index)) from e
-
-    @classmethod
-    def assert_dataframe_consistent(cls, expected, real):
-        if not isinstance(real, pd.DataFrame):
-            raise AssertionError('Type of real value (%r) not DataFrame' % type(real))
-        cls.assert_shape_consistent(expected.shape, real.shape)
-        if not np.isnan(expected.shape[1]):  # ignore when columns length is nan
-            pd.testing.assert_index_equal(expected.dtypes.index, real.dtypes.index)
-
-            try:
-                for expected_dtype, real_dtype in zip(expected.dtypes, real.dtypes):
-                    cls.assert_dtype_consistent(expected_dtype, real_dtype)
-            except AssertionError:
-                raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
-                                     % (expected.dtypes, real.dtypes))
-
-        cls.assert_index_consistent(expected.columns_value, real.columns)
-        cls.assert_index_consistent(expected.index_value, real.index)
-
-    @classmethod
-    def assert_series_consistent(cls, expected, real):
-        if not isinstance(real, pd.Series):
-            raise AssertionError('Type of real value (%r) not Series' % type(real))
-        cls.assert_shape_consistent(expected.shape, real.shape)
-
-        if expected.name != real.name:
-            raise AssertionError('series name in metadata %r is not equal to real name %r'
-                                 % (expected.name, real.name))
-
-        cls.assert_dtype_consistent(expected.dtype, real.dtype)
-        cls.assert_index_consistent(expected.index_value, real.index)
-
-    @classmethod
-    def assert_object_consistent(cls, expected, real):
-        from mars.tensor.core import TENSOR_TYPE
-        from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
-
-        from mars.tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE
-        from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
-
-        if isinstance(expected, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
-            cls.assert_tensor_consistent(expected, real)
-        elif isinstance(expected, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)):
-            cls.assert_dataframe_consistent(expected, real)
-        elif isinstance(expected, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
-            cls.assert_series_consistent(expected, real)
-
-
-class GraphExecutionWithChunkCheck(MarsObjectCheckMixin, GraphExecution):
-    def _execute_operand(self, op):
-        super()._execute_operand(op)
-        if self._mock:
-            return
-        for o in op.outputs:
-            if o.key not in self._key_set:
-                continue
-            self.assert_object_consistent(o, self._chunk_results[o.key])
-
-
-class ExecutorForTest(MarsObjectCheckMixin, Executor):
+class ExecutorForTest(Executor):
     """
     Mostly identical to normal executor, difference is that when executing graph,
     graph will be serialized then deserialized by Protocol Buffers and JSON both.
     """
     __test__ = False
-    _graph_execution_cls = GraphExecutionWithChunkCheck
 
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
             graph = type(graph).from_json(graph.to_json())
             graph = type(graph).from_pb(graph.to_pb())
         return super().execute_graph(graph, keys, **kw)
-
-    def execute_tileable(self, tileable, *args, **kwargs):
-        result = super().execute_tileable(tileable, *args, **kwargs)
-        if kwargs.get('concat', False):
-            self.assert_object_consistent(tileable, result[0])
-        return result
-
-    execute_tensor = execute_tileable
-    execute_dataframe = execute_tileable
-
-    def execute_tileables(self, tileables, *args, **kwargs):
-        results = super().execute_tileables(tileables, *args, **kwargs)
-        for tileable, result in zip(tileables, results):
-            self.assert_object_consistent(tileable, result)
-        return results
-
-    execute_tensors = execute_tileables
-    execute_dataframes = execute_tileables
