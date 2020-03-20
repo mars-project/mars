@@ -275,9 +275,10 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             out_chunks = []
             for idx, df_chunk in zip(out_chunk_indexes, df_chunks):
                 mask_chunk = mask_chunks[df_chunk.index[0]]
+                index_value = parse_index(out_df.index_value.to_pandas(), df_chunk)
                 out_chunk = op.copy().reset_key().new_chunk([df_chunk, mask_chunk],
                                                             shape=(np.nan, df_chunk.shape[1]), index=idx,
-                                                            index_value=df_chunk.index_value,
+                                                            index_value=index_value,
                                                             columns_value=df_chunk.columns_value,
                                                             dtypes=df_chunk.dtypes)
                 out_chunks.append(out_chunk)

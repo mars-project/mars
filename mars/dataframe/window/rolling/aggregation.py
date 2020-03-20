@@ -126,6 +126,8 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
             params = rolling.params.copy()
             if params['win_type'] == 'freq':
                 params['win_type'] = None
+            if self._func != 'count':
+                empty_df = empty_df._get_numeric_data()
             test_df = empty_df.rolling(**params).agg(self._func)
             if self._axis == 0:
                 index_value = inp.index_value
@@ -135,8 +137,8 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
                                           store_data=False)
             self._object_type = ObjectType.dataframe
             return self.new_dataframe(
-                [inp], shape=inp.shape, dtypes=test_df.dtypes,
-                index_value=index_value,
+                [inp], shape=(inp.shape[0], test_df.shape[1]),
+                dtypes=test_df.dtypes, index_value=index_value,
                 columns_value=parse_index(test_df.columns, store_data=True))
         else:
             pd_index = inp.index_value.to_pandas()
