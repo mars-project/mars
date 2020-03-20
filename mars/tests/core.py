@@ -456,11 +456,18 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
 
     def execute_tileable(self, tileable, *args, **kwargs):
         result = super().execute_tileable(tileable, *args, **kwargs)
-        self.assert_object_consistent(tileable, result)
+        if kwargs.get('concat', False):
+            self.assert_object_consistent(tileable, result[0])
         return result
+
+    execute_tensor = execute_tileable
+    execute_dataframe = execute_tileable
 
     def execute_tileables(self, tileables, *args, **kwargs):
         results = super().execute_tileables(tileables, *args, **kwargs)
         for tileable, result in zip(tileables, results):
             self.assert_object_consistent(tileable, result)
         return results
+
+    execute_tensors = execute_tileables
+    execute_dataframes = execute_tileables
