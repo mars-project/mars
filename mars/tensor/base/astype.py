@@ -80,7 +80,12 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
             if op.sparse:
                 ctx[chunk.key] = x.astype(op.dtype)
             else:
-                ctx[chunk.key] = x.astype(op.dtype, order=op.order, casting=op.casting)
+                if xp is np:
+                    ctx[chunk.key] = x.astype(op.dtype, order=op.order,
+                                              casting=op.casting)
+                else:
+                    # cupy does not support casting
+                    ctx[chunk.key] = x.astype(op.dtype, order=op.order)
 
 
 def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):

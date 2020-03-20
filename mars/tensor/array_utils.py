@@ -125,8 +125,8 @@ def device(device_id):
     if device_id is None or device_id < 0:
         yield
     else:
-        with cp.cuda.Device(device_id):
-            yield
+        with cp.cuda.Device(device_id) as dev:
+            yield dev
 
 
 def create_array(op):
