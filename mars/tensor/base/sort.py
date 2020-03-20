@@ -159,14 +159,16 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
                 'shape': out_tensor.shape,
                 'order': out_tensor.order,
                 'chunks': out_value_chunks,
-                'nsplits': nsplits
+                'nsplits': nsplits,
+                'dtype': out_tensor.dtype
             })
         if return_indices:
             kws.append({
                 'shape': out_tensor.shape,
                 'order': TensorOrder.C_ORDER,
                 'chunks': out_indices_chunks,
-                'nsplits': nsplits
+                'nsplits': nsplits,
+                'dtype': np.dtype(np.int64)
             })
         return new_op.new_tensors(op.inputs, kws=kws)
 

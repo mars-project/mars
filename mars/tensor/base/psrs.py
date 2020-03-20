@@ -286,6 +286,7 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
                     'shape': in_chunk.shape,
                     'index': in_chunk.index,
                     'order': in_chunk.order,
+                    'dtype': in_chunk.dtype,
                     'type': 'sorted'
                 })
             if return_indices:
@@ -293,6 +294,7 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
                     'shape': in_chunk.shape,
                     'index': in_chunk.index,
                     'order': TensorOrder.C_ORDER,
+                    'dtype': np.dtype(np.int64),
                     'type': 'argsort'
                 })
             align_reduce_chunks = align_reduce_op.new_chunks([proxy_chunk], kws=kws)
