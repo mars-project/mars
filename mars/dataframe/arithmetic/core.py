@@ -281,8 +281,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         if op.fill_value is not None:
             # comparison function like eq does not have `fill_value`
             kw['fill_value'] = op.fill_value
-        ctx[op.outputs[0].key] = getattr(df, func_name)(
-            other, level=op.level, **kw)
+        if op.level is not None:
+            # logical function like and may don't have `level` (for Series type)
+            kw['level'] = op.level
+        ctx[op.outputs[0].key] = getattr(df, func_name)(other, **kw)
 
     @classproperty
     def _operator(self):
