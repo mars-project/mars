@@ -29,7 +29,8 @@ from mars.dataframe.datasource.series import from_pandas as from_pandas_series, 
 from mars.dataframe.arithmetic import DataFrameAbs, DataFrameAdd, DataFrameSubtract, \
     DataFrameMul, DataFrameFloorDiv, DataFrameTrueDiv, DataFramePower, \
     DataFrameEqual, DataFrameNotEqual, DataFrameGreater, DataFrameLess, \
-    DataFrameGreaterEqual, DataFrameLessEqual
+    DataFrameGreaterEqual, DataFrameLessEqual, DataFrameNot, \
+    DataFrameAnd, DataFrameOr, DataFrameXor
 from mars.dataframe.align import DataFrameIndexAlign, DataFrameShuffleProxy
 from mars.tiles import get_tiled
 from mars.tests.core import TestBase, parameterized
@@ -66,22 +67,36 @@ binary_functions = dict(
                        func_name='ge', rfunc_name='le'),
     less_equal=dict(func=comp_func('le', 'ge'), op=DataFrameLessEqual,
                     func_name='le', rfunc_name='ge'),
+    logical_and=dict(func=operator.and_, op=DataFrameAnd,
+                    func_name='__and__', rfunc_name='and'),
+    logical_or=dict(func=operator.or_, op=DataFrameOr,
+                    func_name='__or__', rfunc_name='__ror__'),
+    logical_xor=dict(func=operator.xor, op=DataFrameXor,
+                    func_name='__xor__', rfunc_name='__rxor__'),
 )
 
 
 @parameterized(**binary_functions)
 class TestBinary(TestBase):
+    def to_boolean_if_needed(self, value, split_value=0.5):
+        if self.func_name in ['__and__', '__or__', '__xor__']:
+            return value > split_value
+        else:
+            return value
+
     def testWithoutShuffle(self):
         # all the axes are monotonic
         # data1 with index split into [0...4], [5...9],
         # columns [3...7], [8...12]
         data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
                              columns=np.arange(3, 13))
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=5)
         # data2 with index split into [6...11], [2, 5],
         # columns [4...9], [10, 13]
         data2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
                              columns=np.arange(4, 14))
+        data2 = self.to_boolean_if_needed(data2)
         df2 = from_pandas(data2, chunk_size=6)
 
         df3 = self.func(df1, df2)
@@ -178,6 +193,7 @@ class TestBinary(TestBase):
     def testDataFrameAndSeriesWithAlignMap(self):
         data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
                              columns=np.arange(3, 13))
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=5)
         s1 = df1[3]
 
@@ -235,6 +251,7 @@ class TestBinary(TestBase):
     def testDataFrameAndSeriesIdentical(self):
         data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
                              columns=np.arange(10))
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=5)
         s1 = from_pandas_series(data1[3], chunk_size=5)
 
@@ -271,6 +288,7 @@ class TestBinary(TestBase):
         data1 = pd.DataFrame(np.random.rand(10, 10),
                              index=[4, 9, 3, 2, 1, 5, 8, 6, 7, 10],
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=5)
         s1 = from_pandas_series(data1[10], chunk_size=6)
 
@@ -339,6 +357,7 @@ class TestBinary(TestBase):
     def testSeriesAndSeriesWithAlignMap(self):
         data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
                              columns=np.arange(3, 13))
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=5)
 
         s1 = df1.iloc[4]
@@ -400,6 +419,7 @@ class TestBinary(TestBase):
     def testSeriesAndSeriesIdentical(self):
         data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
                              columns=np.arange(10))
+        data1 = self.to_boolean_if_needed(data1)
         s1 = from_pandas_series(data1[1], chunk_size=5)
         s2 = from_pandas_series(data1[3], chunk_size=5)
 
@@ -431,6 +451,7 @@ class TestBinary(TestBase):
         data1 = pd.DataFrame(np.random.rand(10, 10),
                              index=[4, 9, 3, 2, 1, 5, 8, 6, 7, 10],
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data1 = self.to_boolean_if_needed(data1)
         s1 = from_pandas_series(data1.iloc[4], chunk_size=5)
         s2 = from_pandas_series(data1[10], chunk_size=6)
 
@@ -484,9 +505,11 @@ class TestBinary(TestBase):
     def testIdenticalIndexAndColumns(self):
         data1 = pd.DataFrame(np.random.rand(10, 10),
                              columns=np.arange(3, 13))
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=5)
         data2 = pd.DataFrame(np.random.rand(10, 10),
                              columns=np.arange(3, 13))
+        data2 = self.to_boolean_if_needed(data2)
         df2 = from_pandas(data2, chunk_size=5)
 
         df3 = self.func(df1, df2)
@@ -527,10 +550,12 @@ class TestBinary(TestBase):
         # data1 with index split into [0...4], [5...9],
         data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=5)
         # data2 with index split into [6...11], [2, 5],
         data2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
                              columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+        data2 = self.to_boolean_if_needed(data2)
         df2 = from_pandas(data2, chunk_size=6)
 
         df3 = self.func(df1, df2)
@@ -634,9 +659,11 @@ class TestBinary(TestBase):
         # no axis is monotonic
         data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=5)
         data2 = pd.DataFrame(np.random.rand(10, 10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
                              columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+        data2 = self.to_boolean_if_needed(data2)
         df2 = from_pandas(data2, chunk_size=6)
 
         df3 = self.func(df1, df2)
@@ -710,10 +737,12 @@ class TestBinary(TestBase):
 
         data4 = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
                              columns=[np.random.bytes(10) for _ in range(10)])
+        data4 = self.to_boolean_if_needed(data4)
         df4 = from_pandas(data4, chunk_size=3)
 
         data5 = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
                              columns=[np.random.bytes(10) for _ in range(10)])
+        data5 = self.to_boolean_if_needed(data5)
         df5 = from_pandas(data5, chunk_size=3)
 
         df6 = self.func(df4, df5)
@@ -790,10 +819,12 @@ class TestBinary(TestBase):
         # data1 with index split into [0...4], [5...9],
         data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=(5, 10))
         # data2 with index split into [6...11], [2, 5],
         data2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
                              columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+        data2 = self.to_boolean_if_needed(data2)
         df2 = from_pandas(data2, chunk_size=(6, 10))
 
         df3 = self.func(df1, df2)
@@ -869,9 +900,11 @@ class TestBinary(TestBase):
         # no axis is monotonic, but 1 chunk for all axes
         data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=10)
         data2 = pd.DataFrame(np.random.rand(10, 10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
                              columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+        data2 = self.to_boolean_if_needed(data2)
         df2 = from_pandas(data2, chunk_size=10)
 
         df3 = self.func(df1, df2)
@@ -902,9 +935,11 @@ class TestBinary(TestBase):
         # no axis is monotonic
         data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data1 = self.to_boolean_if_needed(data1)
         df1 = from_pandas(data1, chunk_size=(5, 10))
         data2 = pd.DataFrame(np.random.rand(10, 10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
                              columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+        data2 = self.to_boolean_if_needed(data2)
         df2 = from_pandas(data2, chunk_size=(6, 10))
 
         df3 = self.func(df1, df2)
@@ -978,6 +1013,7 @@ class TestBinary(TestBase):
     def testOnSameDataFrame(self):
         data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
                             columns=[np.random.bytes(10) for _ in range(10)])
+        data = self.to_boolean_if_needed(data)
         df = from_pandas(data, chunk_size=3)
         df2 = self.func(df, df)
 
@@ -1004,6 +1040,10 @@ class TestBinary(TestBase):
             self.assertIs(c.inputs[1], df.cix[c.index].data)
 
     def testDataFrameAndScalar(self):
+        if self.func_name in ['__and__', '__or__', '__xor__']:
+            # bitwise logical operators doesn\'t support floating point scalars
+            return
+
         data = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
                             columns=np.arange(3, 13))
         df = from_pandas(data, chunk_size=5)
@@ -1044,6 +1084,10 @@ class TestBinary(TestBase):
         self.assertEqual(ret, 1)
 
     def testSeriesAndScalar(self):
+        if self.func_name in ['__and__', '__or__', '__xor__']:
+            # bitwise logical operators doesn\'t support floating point scalars
+            return
+
         data = pd.Series(range(10), index=[1, 3, 4, 2, 9, 10, 33, 23, 999, 123])
         s1 = from_pandas_series(data, chunk_size=3)
         r = getattr(s1, self.func_name)(456)
@@ -1083,6 +1127,7 @@ class TestBinary(TestBase):
 
     def testCheckInputs(self):
         data = pd.DataFrame(np.random.rand(10, 3))
+        data = self.to_boolean_if_needed(data)
         df = from_pandas(data)
 
         with self.assertRaises(ValueError):
@@ -1123,6 +1168,30 @@ class TestUnary(TestBase):
         self.assertEqual(df2.chunk_shape, (2, 1))
         for c2, c1 in zip(df2.chunks, df1.chunks):
             self.assertIsInstance(c2.op, DataFrameAbs)
+            self.assertEqual(len(c2.inputs), 1)
+            # compare with input chunks
+            self.assertEqual(c2.index, c1.index)
+            pd.testing.assert_index_equal(c2.columns_value.to_pandas(), c1.columns_value.to_pandas())
+            pd.testing.assert_index_equal(c2.index_value.to_pandas(), c1.index_value.to_pandas())
+
+    def testNot(self):
+        data1 = pd.DataFrame(np.random.rand(10, 10) > 0.5, index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
+                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        df1 = from_pandas(data1, chunk_size=(5, 10))
+
+        df2 = ~df1
+
+        # test df2's index and columns
+        pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df1.columns_value.to_pandas())
+        self.assertIsInstance(df2.index_value.value, IndexValue.Int64Index)
+        self.assertEqual(df2.shape, (10, 10))
+
+        df2 = df2.tiles()
+        df1 = get_tiled(df1)
+
+        self.assertEqual(df2.chunk_shape, (2, 1))
+        for c2, c1 in zip(df2.chunks, df1.chunks):
+            self.assertIsInstance(c2.op, DataFrameNot)
             self.assertEqual(len(c2.inputs), 1)
             # compare with input chunks
             self.assertEqual(c2.index, c1.index)
