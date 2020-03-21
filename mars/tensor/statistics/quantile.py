@@ -258,6 +258,7 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
         if out is not None:
             inputs.append(out)
             order = out.order
+            shape = out.shape
         t = self.new_tensor(inputs, shape=tuple(shape), order=order)
         if out is not None:
             check_out_param(out, t, 'same_kind')

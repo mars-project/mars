@@ -992,6 +992,8 @@ class SparseArray(SparseNDArray):
     def all(self, axis=None, dtype=None, keepdims=None):
         ret = self._reduction('all', axis=axis, dtype=dtype, keepdims=keepdims, todense=True)
         if not issparse(ret):
+            if get_array_module(ret).isscalar(ret):
+                return ret
             xps = get_sparse_module(self.spmatrix)
             ret = SparseNDArray(xps.csr_matrix(ret))
             return ret
@@ -1000,6 +1002,8 @@ class SparseArray(SparseNDArray):
     def any(self, axis=None, dtype=None, keepdims=None):
         ret = self._reduction('any', axis=axis, dtype=dtype, keepdims=keepdims, todense=True)
         if not issparse(ret):
+            if get_array_module(ret).isscalar(ret):
+                return ret
             xps = get_sparse_module(self.spmatrix)
             ret = SparseNDArray(xps.csr_matrix(ret))
             return ret
@@ -1017,6 +1021,8 @@ class SparseArray(SparseNDArray):
     def nanmax(self, axis=None, dtype=None, keepdims=None):
         ret = self._reduction('nanmax', axis=axis, dtype=dtype, keepdims=keepdims, todense=True)
         if not issparse(ret):
+            if get_array_module(ret).isscalar(ret):
+                return ret
             xps = get_sparse_module(self.spmatrix)
             ret = SparseNDArray(xps.csr_matrix(ret))
             return ret
@@ -1025,6 +1031,8 @@ class SparseArray(SparseNDArray):
     def nanmin(self, axis=None, dtype=None, keepdims=None):
         ret = self._reduction('nanmin', axis=axis, dtype=dtype, keepdims=keepdims, todense=True)
         if not issparse(ret):
+            if get_array_module(ret).isscalar(ret):
+                return ret
             xps = get_sparse_module(self.spmatrix)
             ret = SparseNDArray(xps.csr_matrix(ret))
             return ret

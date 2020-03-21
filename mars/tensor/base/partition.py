@@ -74,6 +74,7 @@ class ParallelPartitionMixin(TensorPSRSOperandMixin):
                     'shape': partition_merged_chunk.shape,
                     'order': partition_merged_chunk.order,
                     'index': partition_merged_chunk.index,
+                    'dtype': partition_merged_chunk.dtype,
                     'type': 'partitioned'
                 })
             if return_indices:
@@ -85,6 +86,7 @@ class ParallelPartitionMixin(TensorPSRSOperandMixin):
                     'shape': partition_merged_chunk.shape,
                     'order': TensorOrder.C_ORDER,
                     'index': partition_merged_chunk.index,
+                    'dtype': np.dtype(np.int64),
                     'type': 'argpartition'
                 })
             chunk_inputs.append(partition_info_chunk)
@@ -175,13 +177,15 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
             kws.append({
                 'shape': a.shape,
                 'order': a.order,
-                'type': 'sorted'
+                'type': 'sorted',
+                'dtype': a.dtype,
             })
         if self._return_indices:
             kws.append({
                 'shape': a.shape,
                 'order': TensorOrder.C_ORDER,
-                'type': 'argsort'
+                'type': 'argsort',
+                'dtype': np.dtype(np.int64)
             })
         ret = self.new_tensors(inputs, kws=kws)
         if len(kws) == 1:
@@ -264,6 +268,7 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
                 'order': out_tensor.order,
                 'chunks': out_chunks,
                 'nsplits': tuple(nsplits),
+                'dtype': out_tensor.dtype,
                 'type': 'partitioned'
             })
         if return_indices:
@@ -272,6 +277,7 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
                 'order': TensorOrder.C_ORDER,
                 'chunks': out_indices_chunks,
                 'nsplits': tuple(nsplits),
+                'dtype': np.dtype(np.int64),
                 'type': 'argpartition'
             })
         return new_op.new_tensors(op.inputs, kws=kws)
@@ -299,7 +305,7 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
                         'shape': chunk.shape,
                         'index': chunk.index,
                         'order': chunk.order,
-                        'dtyep': chunk.dtype,
+                        'dtype': chunk.dtype,
                         'type': 'partitioned'
                     })
                 if return_indices:

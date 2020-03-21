@@ -509,6 +509,7 @@ class GraphExecution(object):
 class Executor(object):
     _op_runners = {}
     _op_size_estimators = {}
+    _graph_execution_cls = GraphExecution
 
     class SyncProviderType(enum.Enum):
         THREAD = 0
@@ -604,12 +605,11 @@ class Executor(object):
 
         executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tileables.values()]))
         chunk_result = self._chunk_result if chunk_result is None else chunk_result
-        graph_execution = GraphExecution(chunk_result, optimized_graph,
-                                         keys, executed_keys, self._sync_provider,
-                                         n_parallel=n_parallel, engine=self._engine,
-                                         prefetch=self._prefetch, print_progress=print_progress,
-                                         mock=mock, mock_max_memory=self._mock_max_memory,
-                                         fetch_keys=fetch_keys, no_intermediate=no_intermediate)
+        graph_execution = self._graph_execution_cls(
+            chunk_result, optimized_graph, keys, executed_keys, self._sync_provider,
+            n_parallel=n_parallel, engine=self._engine, prefetch=self._prefetch,
+            print_progress=print_progress, mock=mock, mock_max_memory=self._mock_max_memory,
+            fetch_keys=fetch_keys, no_intermediate=no_intermediate)
         res = graph_execution.execute(retval)
         self._mock_max_memory = max(self._mock_max_memory, graph_execution._mock_max_memory)
         if mock:

@@ -724,10 +724,15 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         out_chunks = []
         for chunk_index in itertools.product(*(range(s) for s in other_index_chunk_shape)):
             to_shuffle_chunks = []
+            other_shape = None
             for i in range(chunk_shape[to_concat_axis]):
                 to_concat_chunk_index = \
                     chunk_index[:to_concat_axis] + (i,) + chunk_index[to_concat_axis:]
-                to_shuffle_chunks.append(concat_index_to_chunks[to_concat_chunk_index])
+                to_concat_chunk = concat_index_to_chunks[to_concat_chunk_index]
+                to_shuffle_chunks.append(to_concat_chunk)
+                if other_shape is None:
+                    other_shape = tuple(s for ax, s in enumerate(to_concat_chunk.shape)
+                                        if ax != to_concat_axis)
 
             proxy_chunk = TensorShuffleProxy(dtype=to_shuffle_chunks[0].dtype).new_chunk(
                 to_shuffle_chunks, shape=(), order=TensorOrder.C_ORDER)
@@ -741,8 +746,8 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
                     fancy_index_shape=fancy_index_chunk.shape,
                     dtype=proxy_chunk.dtype, sparse=to_shuffle_chunks[0].issparse(),
                     shuffle_key=str(next(it)))
-                reduce_chunk_shape = other_index_chunk_shape[:to_concat_axis] + \
-                    fancy_index_chunk.shape + other_index_chunk_shape[to_concat_axis:]
+                reduce_chunk_shape = other_shape[:to_concat_axis] + \
+                    fancy_index_chunk.shape + other_shape[to_concat_axis:]
                 reduce_chunk_index = chunk_index[:to_concat_axis] + \
                     fancy_index_chunk.index + chunk_index[to_concat_axis:]
                 concat_reduce_chunk = concat_reduce_op.new_chunk(

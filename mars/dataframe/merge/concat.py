@@ -269,7 +269,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             else:
                 index_value = parse_index(index)
             return self.new_series(objs, shape=(row_length,), dtype=objs[0].dtype,
-                                   index_value=index_value)
+                                   index_value=index_value, name=objs[0].name)
         else:
             self._object_type = ObjectType.dataframe
             col_length = 0
