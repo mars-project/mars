@@ -24,13 +24,15 @@ import mars.tensor as mt
 from mars import opcodes as OperandDef
 from mars.graph import DAG
 from mars.tests.core import TestBase
-from mars.dataframe.core import IndexValue, DataFrameChunk
+from mars.dataframe.core import IndexValue, DataFrameChunk, DatetimeIndex, Int64Index, Float64Index
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, \
     series_from_tensor, dataframe_from_1d_tensors
 from mars.dataframe.datasource.from_records import from_records
 from mars.dataframe.datasource.read_csv import read_csv, DataFrameReadCSV
+from mars.dataframe.datasource.date_range import date_range
 
 
 class Test(TestBase):
@@ -243,6 +245,65 @@ class Test(TestBase):
         self.assertTrue(series.chunks[2].index_value._index_value._is_monotonic_increasing)
         self.assertFalse(series.chunks[2].index_value._index_value._is_monotonic_decreasing)
         self.assertTrue(series.chunks[2].index_value._index_value._is_unique)
+
+    def testFromPandasIndex(self):
+        data = pd.date_range('2020-1-1', periods=10, name='date')
+        index = from_pandas_index(data, chunk_size=4)
+
+        self.assertIsInstance(index, DatetimeIndex)
+        self.assertEqual(index.name, data.name)
+        self.assertEqual(index.dtype, data.dtype)
+        self.assertIsInstance(index.index_value.value, IndexValue.DatetimeIndex)
+
+        index = index.tiles()
+
+        for i, c in enumerate(index.chunks):
+            self.assertEqual(c.name, data.name)
+            pd.testing.assert_index_equal(c.op.data, data[i * 4: (i + 1) * 4])
+            self.assertEqual(c.dtype, data.dtype)
+            self.assertIsInstance(c.index_value.value, IndexValue.DatetimeIndex)
+
+    def testFromTileableIndex(self):
+        t = mt.random.rand(10, 4)
+
+        with self.assertRaises(ValueError):
+            from_tileable(t)
+
+        pd_df = pd.DataFrame(np.random.rand(10, 4),
+                             index=np.arange(10, 0, -1).astype(np.int64))
+        pd_df.index.name = 'ind'
+        df = from_pandas_df(pd_df, chunk_size=6)
+
+        for o in [df, df[0]]:
+            index = o.index
+            self.assertIsInstance(index, Int64Index)
+            self.assertEqual(index.dtype, np.int64)
+            self.assertEqual(index.name, pd_df.index.name)
+            self.assertIsInstance(index.index_value.value, IndexValue.Int64Index)
+
+            index = index.tiles()
+
+            self.assertEqual(len(index.chunks), 2)
+            for c in index.chunks:
+                self.assertEqual(c.dtype, np.int64)
+                self.assertEqual(c.name, pd_df.index.name)
+                self.assertIsInstance(c.index_value.value, IndexValue.Int64Index)
+
+        t = mt.random.rand(10, chunk_size=6)
+        index = from_tileable(t, name='new_name')
+
+        self.assertIsInstance(index, Float64Index)
+        self.assertEqual(index.dtype, np.float64)
+        self.assertEqual(index.name, 'new_name')
+        self.assertIsInstance(index.index_value.value, IndexValue.Float64Index)
+
+        index = index.tiles()
+
+        self.assertEqual(len(index.chunks), 2)
+        for c in index.chunks:
+            self.assertEqual(c.dtype, np.float64)
+            self.assertEqual(c.name, 'new_name')
+            self.assertIsInstance(c.index_value.value, IndexValue.Float64Index)
 
     def testFromTensorSerialize(self):
         # test serialization and deserialization
@@ -458,3 +519,45 @@ class Test(TestBase):
         finally:
             shutil.rmtree(tempdir)
 
+
+    def testDateRange(self):
+        with self.assertRaises(TypeError):
+            _ = date_range('2020-1-1', periods='2')
+
+        with self.assertRaises(ValueError):
+            _ = date_range('2020-1-1', '2020-1-10', periods=10, freq='D')
+
+        with self.assertRaises(ValueError):
+            _ = date_range(pd.NaT, periods=10)
+
+        expected = pd.date_range('2020-1-1', periods=9., name='date')
+
+        dr = date_range('2020-1-1', periods=9., name='date', chunk_size=3)
+        self.assertIsInstance(dr, DatetimeIndex)
+        self.assertEqual(dr.shape, (9,))
+        self.assertEqual(dr.dtype, expected.dtype)
+        self.assertIsInstance(dr.index_value.value, IndexValue.DatetimeIndex)
+        self.assertEqual(dr.index_value.min_val, expected.min())
+        self.assertTrue(dr.index_value.min_val_close)
+        self.assertEqual(dr.index_value.max_val, expected.max())
+        self.assertTrue(dr.index_value.max_val_close)
+        self.assertEqual(dr.index_value.is_unique, expected.is_unique)
+        self.assertEqual(dr.index_value.is_monotonic_increasing,
+                         expected.is_monotonic_increasing)
+        self.assertEqual(dr.name, expected.name)
+
+        dr = dr.tiles()
+
+        for i, c in enumerate(dr.chunks):
+            ec = expected[i * 3: (i + 1) * 3]
+            self.assertEqual(c.shape, (3,))
+            self.assertEqual(c.dtype, ec.dtype)
+            self.assertIsInstance(c.index_value.value, IndexValue.DatetimeIndex)
+            self.assertEqual(c.index_value.min_val, ec.min())
+            self.assertTrue(c.index_value.min_val_close)
+            self.assertEqual(c.index_value.max_val, ec.max())
+            self.assertTrue(c.index_value.max_val_close)
+            self.assertEqual(c.index_value.is_unique, ec.is_unique)
+            self.assertEqual(c.index_value.is_monotonic_increasing,
+                             ec.is_monotonic_increasing)
+            self.assertEqual(c.name, ec.name)

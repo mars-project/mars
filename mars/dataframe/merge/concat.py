@@ -186,6 +186,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 return _auto_concat_dataframe_chunks(chunk, inputs)
             elif chunk.op.object_type == ObjectType.series:
                 return _auto_concat_series_chunks(chunk, inputs)
+            elif chunk.op.object_type == ObjectType.index:
+                return _auto_concat_index_chunks(chunk, inputs)
             else:
                 raise TypeError('Only DataFrameChunk, SeriesChunk and IndexChunk '
                                 'can be automatically concatenated')
@@ -234,6 +236,14 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 if getattr(chunk.index_value, 'should_be_monotonic', False):
                     concat.sort_index(inplace=True)
                 return concat
+
+        def _auto_concat_index_chunks(chunk, inputs):
+            xdf = pd if isinstance(inputs[0], pd.Index) else cudf
+            empty_dfs = [xdf.DataFrame(index=inp) for inp in inputs]
+            concat_df = xdf.concat(empty_dfs, axis=0)
+            if getattr(chunk.index_value, 'should_be_monotonic', False):
+                concat_df.sort_index(inplace=True)
+            return concat_df.index
 
         chunk = op.outputs[0]
         inputs = [ctx[input.key] for input in op.inputs]

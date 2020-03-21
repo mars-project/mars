@@ -111,6 +111,7 @@ cdef class ValueType:
     index = ExtendType.index
     series = ExtendType.series
     dataframe = ExtendType.dataframe
+    tzinfo = ExtendType.tzinfo
 
     identity = Identity()
 
@@ -393,6 +394,14 @@ cdef class SliceField(Field):
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.slice
+
+
+cdef class TZInfoField(Field):
+    def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
+        super().__init__(
+            tag, default=default, weak_ref=weak_ref,
+            on_serialize=on_serialize, on_deserialize=on_deserialize)
+        self._type = ValueType.tzinfo
 
 
 cdef inline _handle_nest_reference(field, ref):

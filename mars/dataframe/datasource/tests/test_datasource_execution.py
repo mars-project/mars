@@ -27,6 +27,7 @@ from mars.session import new_session
 from mars.tests.core import TestBase, require_cudf, ExecutorForTest
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tensors
 from mars.dataframe.datasource.from_records import from_records
 
@@ -49,6 +50,54 @@ class Test(TestBase):
 
         result = self.executor.execute_dataframe(series, concat=True)[0]
         pd.testing.assert_series_equal(ps, result)
+
+    def testFromPandasIndexExecution(self):
+        pd_index = pd.timedelta_range('1 days', periods=10)
+        index = from_pandas_index(pd_index, chunk_size=7)
+
+        result = self.executor.execute_dataframe(index, concat=True)[0]
+        pd.testing.assert_index_equal(pd_index, result)
+
+    def testIndexExecution(self):
+        rs = np.random.RandomState(0)
+        pdf = pd.DataFrame(rs.rand(20, 10), index=np.arange(20, 0, -1),
+                           columns=['a' + str(i) for i in range(10)])
+        df = from_pandas_df(pdf, chunk_size=13)
+
+        # test df.index
+        result = self.executor.execute_dataframe(df.index, concat=True)[0]
+        pd.testing.assert_index_equal(result, pdf.index)
+
+        result = self.executor.execute_dataframe(df.columns, concat=True)[0]
+        pd.testing.assert_index_equal(result, pdf.columns)
+
+        # df has unknown chunk shape on axis 0
+        df = df[df.a1 < 0.5]
+
+        # test df.index
+        result = self.executor.execute_dataframe(df.index, concat=True)[0]
+        pd.testing.assert_index_equal(result, pdf[pdf.a1 < 0.5].index)
+
+        s = pd.Series(pdf['a1'], index=pd.RangeIndex(20))
+        series = from_pandas_series(s, chunk_size=13)
+
+        # test series.index which has value
+        result = self.executor.execute_dataframe(series.index, concat=True)[0]
+        pd.testing.assert_index_equal(result, s.index)
+
+        s = pdf['a2']
+        series = from_pandas_series(s, chunk_size=13)
+
+        # test series.index
+        result = self.executor.execute_dataframe(series.index, concat=True)[0]
+        pd.testing.assert_index_equal(result, s.index)
+
+        # test tensor
+        raw = rs.rand(20)
+        t = mt.tensor(raw, chunk_size=13)
+
+        result = self.executor.execute_dataframe(from_tileable(t), concat=True)[0]
+        pd.testing.assert_index_equal(result, pd.Index(raw))
 
     def testInitializerExecution(self):
         pdf = pd.DataFrame(np.random.rand(20, 30), index=[np.arange(20), np.arange(20, 0, -1)])
@@ -80,6 +129,11 @@ class Test(TestBase):
                            index=mt.tensor(index_data, chunk_size=4))
         pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
                                        pd.Series(data, name='a', index=index_data))
+
+        series = md.Series(mt.tensor(data, chunk_size=3), name='a',
+                           index=md.date_range('2020-1-1', periods=10))
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
+                                       pd.Series(data, name='a', index=pd.date_range('2020-1-1', periods=10)))
 
     def testFromTensorExecution(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)
@@ -130,6 +184,15 @@ class Test(TestBase):
         pdf_expected = pd.DataFrame(raw7, index=index_raw7)
         pd.testing.assert_frame_equal(pdf_expected, result7)
 
+        # from tensor with given index is a md.Index
+        raw10 = np.random.rand(10, 10)
+        tensor10 = mt.tensor(raw10, chunk_size=3)
+        index10 = md.date_range('2020-1-1', periods=10, chunk_size=3)
+        df10 = dataframe_from_tensor(tensor10, index=index10)
+        result10 = self.executor.execute_dataframe(df10, concat=True)[0]
+        pdf_expected = pd.DataFrame(raw10, index=pd.date_range('2020-1-1', periods=10))
+        pd.testing.assert_frame_equal(pdf_expected, result10)
+
         # from tensor with given columns
         tensor6 = mt.ones((10, 10), chunk_size=3)
         df6 = dataframe_from_tensor(tensor6, columns=list('abcdefghij'))
@@ -154,6 +217,14 @@ class Test(TestBase):
                                         index=index9)
         result = self.executor.execute_dataframe(df9, concat=True)[0]
         pdf_expected = pd.DataFrame(OrderedDict(raws8), index=index_raw9)
+        pd.testing.assert_frame_equal(result, pdf_expected)
+
+        # from 1d tensors and specify index
+        df11 = dataframe_from_1d_tensors(tensors8, columns=[r[0] for r in raws8],
+                                         index=md.date_range('2020-1-1', periods=8))
+        result = self.executor.execute_dataframe(df11, concat=True)[0]
+        pdf_expected = pd.DataFrame(OrderedDict(raws8),
+                                    index=pd.date_range('2020-1-1', periods=8))
         pd.testing.assert_frame_equal(result, pdf_expected)
 
     def testFromRecordsExecution(self):
@@ -358,3 +429,79 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(pdf, mdf2)
         finally:
             shutil.rmtree(tempdir)
+
+    def testDateRangeExecution(self):
+        for closed in [None, 'left', 'right']:
+            # start, periods, freq
+            dr = md.date_range('2020-1-1', periods=10, chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range('2020-1-1', periods=10, closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+            # end, periods, freq
+            dr = md.date_range(end='2020-1-10', periods=10, chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range(end='2020-1-10', periods=10, closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+            # start, end, freq
+            dr = md.date_range('2020-1-1', '2020-1-10', chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range('2020-1-1', '2020-1-10', closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+            # start, end and periods
+            dr = md.date_range('2020-1-1', '2020-1-10', periods=19,
+                               chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range('2020-1-1', '2020-1-10', periods=19,
+                                     closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+            # start, end and freq
+            dr = md.date_range('2020-1-1', '2020-1-10', freq='12H',
+                               chunk_size=3, closed=closed)
+
+            result = self.executor.execute_dataframe(dr, concat=True)[0]
+            expected = pd.date_range('2020-1-1', '2020-1-10', freq='12H',
+                                     closed=closed)
+            pd.testing.assert_index_equal(result, expected)
+
+        # test timezone
+        dr = md.date_range('2020-1-1', periods=10, tz='Asia/Shanghai', chunk_size=7)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range('2020-1-1', periods=10, tz='Asia/Shanghai')
+        pd.testing.assert_index_equal(result, expected)
+
+        # test periods=0
+        dr = md.date_range('2020-1-1', periods=0)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range('2020-1-1', periods=0)
+        pd.testing.assert_index_equal(result, expected)
+
+        # test start == end
+        dr = md.date_range('2020-1-1', '2020-1-1', periods=1)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range('2020-1-1', '2020-1-1', periods=1)
+        pd.testing.assert_index_equal(result, expected)
+
+        # test normalize=True
+        dr = md.date_range('2020-1-1', periods=10, normalize=True, chunk_size=4)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range('2020-1-1', periods=10, normalize=True)
+        pd.testing.assert_index_equal(result, expected)
+
+        # test freq
+        dr = md.date_range(start='1/1/2018', periods=5, freq='M', chunk_size=3)
+
+        result = self.executor.execute_dataframe(dr, concat=True)[0]
+        expected = pd.date_range(start='1/1/2018', periods=5, freq='M')
+        pd.testing.assert_index_equal(result, expected)

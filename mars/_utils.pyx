@@ -17,7 +17,7 @@ import pickle
 import uuid
 from binascii import hexlify
 from collections import deque
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,7 @@ cimport cython
 from cpython.version cimport PY_MAJOR_VERSION
 
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
-from .compat import Enum
+from .compat import Enum, functools32
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -194,6 +194,17 @@ cdef list tokenize_pandas_dataframe(ob):
     return iterative_tokenize(l)
 
 
+cdef list tokenize_pandas_categorical(ob):
+    l = ob.to_list()
+    l.append(ob.shape)
+    return iterative_tokenize(l)
+
+
+@functools32.lru_cache(500)
+def tokenize_pickled(ob):
+    return pickle.dumps(ob)
+
+
 cdef Tokenizer tokenize_handler = Tokenizer()
 
 base_types = (int, long, float, str, unicode, bytes, complex,
@@ -215,6 +226,9 @@ tokenize_handler.register(Enum, lambda ob: iterative_tokenize((type(ob), ob.name
 tokenize_handler.register(pd.Index, tokenize_pandas_index)
 tokenize_handler.register(pd.Series, tokenize_pandas_series)
 tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)
+tokenize_handler.register(pd.Categorical, tokenize_pandas_categorical)
+tokenize_handler.register(tzinfo, tokenize_pickled)
+tokenize_handler.register(pd.DateOffset, tokenize_pickled)
 
 cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)

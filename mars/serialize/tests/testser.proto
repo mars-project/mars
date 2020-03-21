@@ -23,6 +23,7 @@ message Node1Def {
     Node2Def g = 15;
     repeated Value h = 16;
     repeated Node1Def i = 17;
+    Value m = 23;
 }
 
 

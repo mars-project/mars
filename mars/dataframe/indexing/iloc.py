@@ -375,7 +375,11 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
                             for index in op.indexes)
         else:
             indexes = tuple(op.indexes)
-        ctx[chunk.key] = series.iloc[indexes]
+        if hasattr(series, 'iloc'):
+            ctx[chunk.key] = series.iloc[indexes]
+        else:
+            # index, only happen for calling from rechunk
+            ctx[chunk.key] = series[indexes]
 
     def __call__(self, series):
         shape = tuple(calc_shape(series.shape, self.indexes))

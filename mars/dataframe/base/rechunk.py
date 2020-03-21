@@ -62,8 +62,9 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
             return self.new_dataframe([x], shape=x.shape, dtypes=x.dtypes,
                                       columns_value=x.columns_value, index_value=x.index_value)
         else:
-            self._object_type = ObjectType.series
-            return self.new_series([x], shape=x.shape, dtype=x.dtype, index_value=x.index_value, name=x.name)
+            self._object_type = x.op.object_type
+            f = self.new_series if self._object_type == ObjectType.series else self.new_index
+            return f([x], shape=x.shape, dtype=x.dtype, index_value=x.index_value, name=x.name)
 
     @classmethod
     def tile(cls, op):
@@ -148,7 +149,7 @@ def compute_rechunk(a, chunk_size):
                                                        dtypes=old_chunk.dtypes.iloc[chunk_slice[1]])
             else:
                 merge_chunk_op = SeriesIlocGetItem(chunk_slice, sparse=old_chunk.op.sparse,
-                                                   object_type=ObjectType.series)
+                                                   object_type=a.op.object_type)
                 merge_chunk = merge_chunk_op.new_chunk([old_chunk], shape=merge_chunk_shape,
                                                        index=merge_idx, index_value=new_index_value,
                                                        dtype=old_chunk.dtype)
@@ -174,7 +175,7 @@ def compute_rechunk(a, chunk_size):
                                                columns_value=columns_value,
                                                dtypes=dtypes)
             else:
-                chunk_op = DataFrameConcat(object_type=ObjectType.series)
+                chunk_op = DataFrameConcat(object_type=a.op.object_type)
                 index_value = _concat_series_index(to_merge)
                 out_chunk = chunk_op.new_chunk(to_merge, shape=chunk_shape,
                                                index=idx, index_value=index_value,
@@ -186,6 +187,10 @@ def compute_rechunk(a, chunk_size):
         return op.new_dataframe([a], a.shape, dtypes=a.dtypes, columns_value=a.columns_value,
                                 index_value=a.index_value, nsplits=chunk_size, chunks=result_chunks)
     else:
-        op = DataFrameRechunk(chunk_size, object_type=ObjectType.series)
-        return op.new_series([a], a.shape, dtype=a.dtype, index_value=a.index_value,
-                             nsplits=chunk_size, chunks=result_chunks)
+        op = DataFrameRechunk(chunk_size, object_type=a.op.object_type)
+        if a.op.object_type == ObjectType.index:
+            f = op.new_index
+        else:
+            f = op.new_series
+        return f([a], a.shape, dtype=a.dtype, index_value=a.index_value,
+                 nsplits=chunk_size, chunks=result_chunks)
