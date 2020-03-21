@@ -276,11 +276,11 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             out_chunks = []
             for idx, df_chunk in zip(out_chunk_indexes, df_chunks):
                 mask_chunk = mask_chunks[df_chunk.index[0]]
-                out_chunk = op.copy().reset_key().new_chunk([df_chunk, mask_chunk],
-                                                            shape=(np.nan, df_chunk.shape[1]), index=idx,
+                out_chunk = op.copy().reset_key().new_chunk([df_chunk, mask_chunk], index=idx,
+                                                            shape=(np.nan, df_chunk.shape[1]),
+                                                            dtypes=df_chunk.dtypes,
                                                             index_value=df_chunk.index_value,
-                                                            columns_value=df_chunk.columns_value,
-                                                            dtypes=df_chunk.dtypes)
+                                                            columns_value=df_chunk.columns_value)
                 out_chunks.append(out_chunk)
 
         else:
@@ -292,8 +292,10 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                     chunk_op = op.copy().reset_key()
                     chunk_op._mask = op.mask.iloc[nsplits_acc[idx]:nsplits_acc[idx+1]]
                     out_chunk = chunk_op.new_chunk([in_chunk], index=in_chunk.index,
-                                                    shape=(np.nan, in_chunk.shape[1]), dtypes=in_chunk.dtypes,
-                                                    index_value=in_df.index_value, columns_value=in_chunk.columns_value)
+                                                    shape=(np.nan, in_chunk.shape[1]),
+                                                   dtypes=in_chunk.dtypes,
+                                                    index_value=in_df.index_value,
+                                                   columns_value=in_chunk.columns_value)
                     out_chunks.append(out_chunk)
 
             nsplits = ((np.nan,) * in_df.chunk_shape[0], in_df.nsplits[1])
@@ -363,7 +365,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 mask = ctx[op.inputs[1].key]
             else:
                 mask = op.mask
-            ctx[op.outputs[0].key] = df[mask]
+            ctx[op.outputs[0].key] = df[mask.reindex_like(ctx[op.inputs[0].key]).fillna(False)]
 
 
 _list_like_types = (list, np.ndarray, SERIES_TYPE, pd.Series, TENSOR_TYPE)
@@ -382,7 +384,9 @@ def dataframe_getitem(df, item):
             if col_name not in columns:
                 raise KeyError('%s not in columns' % col_name)
         op = DataFrameIndex(col_names=item, object_type=ObjectType.dataframe)
-    elif isinstance(item, _list_like_types) and astensor(item).dtype == np.bool:
+    elif isinstance(item, _list_like_types):
+        # NB: don't enforce the dtype of `item` to be `bool` since it may be unknown
+        print('use mask: item = ', item)
         op = DataFrameIndex(mask=item, object_type=ObjectType.dataframe)
     else:
         if item not in columns:
