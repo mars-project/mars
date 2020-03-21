@@ -34,6 +34,10 @@ from .greater_equal import ge, DataFrameGreaterEqual
 from .log import DataFrameLog
 from .log2 import DataFrameLog2
 from .log10 import DataFrameLog10
+from .logical_and import logical_and, logical_rand, DataFrameAnd
+from .logical_not import logical_not, DataFrameNot
+from .logical_or import logical_or, logical_ror, DataFrameOr
+from .logical_xor import logical_xor, logical_rxor, DataFrameXor
 from .sin import DataFrameSin
 from .cos import DataFrameCos
 from .tan import DataFrameTan
@@ -99,7 +103,7 @@ def _install():
         DataFrameRadians, DataFrameDegrees,
         DataFrameCeil, DataFrameFloor, DataFrameAround,
         DataFrameExp, DataFrameExp2, DataFrameExpm1,
-        DataFrameSqrt,
+        DataFrameSqrt, DataFrameNot,
     ]
     for unary_op in unary_ops:
         register_tensor_unary_ufunc(unary_op)
@@ -108,6 +112,7 @@ def _install():
         setattr(entity, '__abs__', abs_)
         setattr(entity, 'abs', abs_)
         setattr(entity, 'round', around)
+        setattr(entity, '__invert__', logical_not)
 
         setattr(entity, '__add__', wrap_notimplemented_exception(add))
         setattr(entity, '__radd__', wrap_notimplemented_exception(radd))
@@ -151,13 +156,28 @@ def _install():
         setattr(entity, 'lt', lt)
         setattr(entity, '__gt__', _wrap_comparison(gt))
         setattr(entity, 'gt', gt)
-        setattr(entity, '__ge__', _wrap_comparison(ge)),
+        setattr(entity, '__ge__', _wrap_comparison(ge))
         setattr(entity, 'ge', ge)
         setattr(entity, '__le__', _wrap_comparison(le))
         setattr(entity, 'le', le)
 
         setattr(entity, '__matmul__', dot)
         setattr(entity, 'dot', dot)
+
+        setattr(entity, '__and__', wrap_notimplemented_exception(logical_and))
+        setattr(entity, '__rand__', wrap_notimplemented_exception(logical_rand))
+        setattr(entity, 'and', wrap_notimplemented_exception(logical_and))
+        setattr(entity, 'rand', wrap_notimplemented_exception(logical_rand))
+
+        setattr(entity, '__or__', wrap_notimplemented_exception(logical_or))
+        setattr(entity, '__ror__', wrap_notimplemented_exception(logical_ror))
+        setattr(entity, 'or', wrap_notimplemented_exception(logical_or))
+        setattr(entity, 'ror', wrap_notimplemented_exception(logical_ror))
+
+        setattr(entity, '__xor__', wrap_notimplemented_exception(logical_xor))
+        setattr(entity, '__rxor__', wrap_notimplemented_exception(logical_rxor))
+        setattr(entity, 'xor', wrap_notimplemented_exception(logical_xor))
+        setattr(entity, 'rxor', wrap_notimplemented_exception(logical_rxor))
 
     for entity in INDEX_TYPE:
         setattr(entity, '__eq__', _wrap_eq())
