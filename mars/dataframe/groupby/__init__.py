@@ -17,7 +17,8 @@ def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
     from .core import groupby
     from .aggregation import agg
-    from .apply import groupby_apply, groupby_transform
+    from .apply import groupby_apply
+    from .transform import groupby_transform
     from .cum import cumcount, cummin, cummax, cumprod, cumsum
 
     for cls in DATAFRAME_TYPE:

@@ -166,6 +166,10 @@ class Test(TestBase):
                                       df2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
         self.assertTrue(r13.op.as_index)
 
+        r11 = mdf2.groupby('c2').agg(['cumsum', 'cumcount'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0].sort_index(),
+                                      df2.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
+
     def testSeriesGroupByAgg(self):
         rs = np.random.RandomState(0)
         series1 = pd.Series(rs.rand(10))
@@ -235,7 +239,11 @@ class Test(TestBase):
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r11, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).std())
 
-    def testGroupByApplyTransform(self):
+        r11 = ms1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0].sort_index(),
+                                      series1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount']).sort_index())
+
+    def testGroupByApply(self):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                             'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
                             'c': list('aabaaddce')})
@@ -267,10 +275,6 @@ class Test(TestBase):
         pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
                                        df1.groupby('b').apply(lambda df: df.a.sum()).sort_index())
 
-        applied = mdf.groupby('b').transform(apply_series, truncate=False)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
-                                      df1.groupby('b').transform(apply_series, truncate=False).sort_index())
-
         series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
         ms1 = md.Series(series1, chunk_size=3)
 
@@ -286,9 +290,62 @@ class Test(TestBase):
         pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
                                        series2.groupby(lambda x: x[0] % 3).apply(apply_series).sort_index())
 
-        applied = ms1.groupby(lambda x: x % 3).transform(lambda x: x + 1)
-        pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
+    def testGroupByTransform(self):
+        df1 = pd.DataFrame({
+            'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+            'c': list('aabaaddce'),
+            'd': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+            'e': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+            'f': list('aabaaddce'),
+        })
+
+        def transform_series(s, truncate=True):
+            s = s.sort_index()
+            if truncate and len(s.index) > 1:
+                s = s.iloc[:-1].reset_index(drop=True)
+            return s
+
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        r = mdf.groupby('b').transform(transform_series, truncate=False)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b').transform(transform_series, truncate=False).sort_index())
+
+        r = mdf.groupby('b').transform(['cummax', 'cumsum'], _call_agg=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b').agg(['cummax', 'cumsum']).sort_index())
+
+        agg_list = ['cummax', 'cumsum']
+        r = mdf.groupby('b').transform(agg_list, _call_agg=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b').agg(agg_list).sort_index())
+
+        agg_dict = {'d': 'cummax', 'b': 'cumsum'}
+        r = mdf.groupby('b').transform(agg_dict, _call_agg=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b').agg(agg_dict).sort_index())
+
+        agg_list = ['sum', lambda s: s.sum()]
+        r = mdf.groupby('b').transform(agg_list, _call_agg=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b').agg(agg_list).sort_index())
+
+        series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
+        ms1 = md.Series(series1, chunk_size=3)
+
+        r = ms1.groupby(lambda x: x % 3).transform(lambda x: x + 1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
                                        series1.groupby(lambda x: x % 3).transform(lambda x: x + 1).sort_index())
+
+        r = ms1.groupby(lambda x: x % 3).transform('cummax', _call_agg=True)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       series1.groupby(lambda x: x % 3).agg('cummax').sort_index())
+
+        agg_list = ['cummax', 'cumcount']
+        r = ms1.groupby(lambda x: x % 3).transform(agg_list, _call_agg=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      series1.groupby(lambda x: x % 3).agg(agg_list).sort_index())
 
     def testGroupByCum(self):
         df1 = pd.DataFrame({'a': [3, 5, 2, 7, 1, 2, 4, 6, 2, 4],

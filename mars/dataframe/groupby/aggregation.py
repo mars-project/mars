@@ -536,13 +536,11 @@ def _check_if_func_available(func):
 
     for f in to_check:
         if f not in _available_aggregation_functions:
-            raise NotImplementedError(
-                'Aggregation function {} has not been implemented, '
-                'available functions include: {}'.format(
-                    f, _available_aggregation_functions))
+            return False
+    return True
 
 
-def agg(groupby, func, method='tree'):
+def agg(groupby, func, method='tree', *args, **kwargs):
     """
     Aggregate using one or more operations on grouped data.
     :param groupby: Groupby data.
@@ -561,7 +559,8 @@ def agg(groupby, func, method='tree'):
         raise ValueError("Method %s is not available, "
                          "please specify 'tree' or 'shuffle" % method)
 
-    _check_if_func_available(func)
+    if not _check_if_func_available(func):
+        return groupby.transform(func, *args, _call_agg=True, **kwargs)
 
     in_df = groupby.inputs[0]
     agg_op = DataFrameGroupByAgg(func=func, by=groupby.op.by, method=method, raw_func=func,
