@@ -25,6 +25,7 @@ from ...operands import OperandStage
 from ...tensor.core import TensorOrder
 from ...tensor.operands import TensorOperand, TensorOperandMixin
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..utils import parse_index
 
 
 class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
@@ -183,10 +184,11 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         for chunk in in_df.chunks:
             chunk_op = op.copy().reset_key()
             if not one_file:
+                index_value = parse_index(chunk.index_value.to_pandas()[:0], chunk)
                 out_chunk = chunk_op.new_chunk([chunk], shape=(0, 0),
-                                               index_value=chunk.index_value,
-                                               columns_value=chunk.columns_value,
-                                               dtypes=chunk.dtypes,
+                                               index_value=index_value,
+                                               columns_value=out_df.columns_value,
+                                               dtypes=out_df.dtypes,
                                                index=chunk.index)
                 out_chunks[0].append(out_chunk)
             else:
@@ -237,8 +239,10 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
                                      nsplits=((0,) * in_df.chunk_shape[0], (0,)))
 
     def __call__(self, df):
-        return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes,
-                                  index_value=df.index_value, columns_value=df.columns_value)
+        index_value = parse_index(df.index_value.to_pandas()[:0], df)
+        columns_value = parse_index(df.columns_value.to_pandas()[:0], store_data=True)
+        return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes[:0],
+                                  index_value=index_value, columns_value=columns_value)
 
     @classmethod
     def _to_csv(cls, op, df, path, header=None):

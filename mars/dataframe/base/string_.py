@@ -333,9 +333,11 @@ class SeriesStringExtractHandler(SeriesStringMethodBaseHandler):
             op._object_type = ObjectType.dataframe
             if op.method == 'extractall':
                 index_value = parse_index(test_df.index, inp)
+                shape = (np.nan, test_df.shape[1])
             else:
                 index_value = inp.index_value
-            return op.new_dataframe([inp], shape=(inp.shape[0], test_df.shape[1]),
+                shape=(inp.shape[0], test_df.shape[1])
+            return op.new_dataframe([inp], shape=shape,
                                     dtypes=test_df.dtypes,
                                     index_value=index_value,
                                     columns_value=parse_index(test_df.columns,
