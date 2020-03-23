@@ -48,7 +48,7 @@ class Test(TestBase):
         expected = df1.iloc[1]
         df3 = df2.iloc[1]
         pd.testing.assert_series_equal(
-            expected, self.executor.execute_dataframe(df3, concat=True)[0])
+            expected, self.executor.execute_dataframe(df3, concat=True, check_series_name=False)[0])
 
         # plain index on axis 1
         expected = df1.iloc[:2, 1]

@@ -345,6 +345,10 @@ def create_actor_pool(*args, **kwargs):
     raise OSError("Failed to create actor pool")
 
 
+_check_options = dict()
+_check_args = ['check_series_name', 'check_dtypes', 'check_dtype']
+
+
 class MarsObjectCheckMixin:
     @staticmethod
     def assert_shape_consistent(expected_shape, real_shape):
@@ -403,12 +407,13 @@ class MarsObjectCheckMixin:
         if not np.isnan(expected.shape[1]):  # ignore when columns length is nan
             pd.testing.assert_index_equal(expected.dtypes.index, real.dtypes.index)
 
-            try:
-                for expected_dtype, real_dtype in zip(expected.dtypes, real.dtypes):
-                    cls.assert_dtype_consistent(expected_dtype, real_dtype)
-            except AssertionError:
-                raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
-                                     % (expected.dtypes, real.dtypes))
+            if _check_options['check_dtypes']:
+                try:
+                    for expected_dtype, real_dtype in zip(expected.dtypes, real.dtypes):
+                        cls.assert_dtype_consistent(expected_dtype, real_dtype)
+                except AssertionError:
+                    raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
+                                         % (expected.dtypes, real.dtypes))
 
         cls.assert_index_consistent(expected.columns_value, real.columns)
         cls.assert_index_consistent(expected.index_value, real.index)
@@ -423,7 +428,7 @@ class MarsObjectCheckMixin:
             raise AssertionError('Type of real value (%r) not Series' % type(real))
         cls.assert_shape_consistent(expected.shape, real.shape)
 
-        if expected.name != real.name:
+        if _check_options['check_series_name'] and expected.name != real.name:
             raise AssertionError('series name in metadata %r is not equal to real name %r'
                                  % (expected.name, real.name))
 
@@ -465,6 +470,11 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     __test__ = False
     _graph_execution_cls = GraphExecutionWithChunkCheck
 
+    @staticmethod
+    def _extract_check_options(kw_dict):
+        for key in _check_args:
+            _check_options[key] = kw_dict.pop(key, True)
+
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
             graph = type(graph).from_json(graph.to_json())
@@ -472,6 +482,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         return super().execute_graph(graph, keys, **kw)
 
     def execute_tileable(self, tileable, *args, **kwargs):
+        self._extract_check_options(kwargs)
+
         result = super().execute_tileable(tileable, *args, **kwargs)
         if kwargs.get('concat', False):
             self.assert_object_consistent(tileable, result[0])
@@ -481,6 +493,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     execute_dataframe = execute_tileable
 
     def execute_tileables(self, tileables, *args, **kwargs):
+        self._extract_check_options(kwargs)
+
         results = super().execute_tileables(tileables, *args, **kwargs)
         for tileable, result in zip(tileables, results):
             self.assert_object_consistent(tileable, result)
