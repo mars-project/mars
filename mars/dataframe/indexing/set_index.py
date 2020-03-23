@@ -53,7 +53,7 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, df):
         new_df = build_empty_df(df.dtypes).set_index(keys=self.keys, drop=self.drop, append=self.append,
                                                      verify_integrity=self.verify_integrity)
-        return self.new_dataframe([df], shape=new_df.shape, dtypes=new_df.dtypes,
+        return self.new_dataframe([df], shape=(df.shape[0], new_df.shape[1]), dtypes=new_df.dtypes,
                                   index_value=parse_index(new_df.index),
                                   columns_value=parse_index(new_df.columns, store_data=True))
 

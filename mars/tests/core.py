@@ -346,7 +346,7 @@ def create_actor_pool(*args, **kwargs):
 
 
 _check_options = dict()
-_check_args = ['check_series_name', 'check_dtypes', 'check_dtype']
+_check_args = ['check_series_name', 'check_dtypes', 'check_dtype', 'check_shape']
 
 
 class MarsObjectCheckMixin:
@@ -383,7 +383,8 @@ class MarsObjectCheckMixin:
         if not hasattr(expected, 'dtype'):
             return
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
-        cls.assert_shape_consistent(expected.shape, real.shape)
+        if _check_options['check_shape']:
+            cls.assert_shape_consistent(expected.shape, real.shape)
 
     @classmethod
     def assert_index_consistent(cls, expected_index_value, real_index):
