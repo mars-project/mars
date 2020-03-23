@@ -376,3 +376,6 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             validate_axis(2, df)
+
+        df2 = df[df[0] < 0.5]  # create unknown shape
+        self.assertEqual(validate_axis(0, df2), 0)
