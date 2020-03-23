@@ -613,7 +613,7 @@ def validate_axis(axis, tileable=None):
     illegal = False
     try:
         axis = operator.index(axis)
-        if axis < 0 or (tileable and axis >= tileable.ndim):
+        if axis < 0 or (tileable is not None and axis >= tileable.ndim):
             illegal = True
     except TypeError:
         illegal = True
