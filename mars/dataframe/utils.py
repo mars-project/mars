@@ -608,7 +608,7 @@ def wrap_notimplemented_exception(func):
     return wrapper
 
 
-def validate_axis(axis, tileable):
+def validate_axis(axis, tileable=None):
     if axis == 'index':
         axis = 0
     elif axis == 'columns':
@@ -617,7 +617,7 @@ def validate_axis(axis, tileable):
     illegal = False
     try:
         axis = operator.index(axis)
-        if axis < 0 or axis >= tileable.ndim:
+        if axis < 0 or (tileable is not None and axis >= tileable.ndim):
             illegal = True
     except TypeError:
         illegal = True

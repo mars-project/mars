@@ -458,9 +458,10 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
                 kth = xp.arange(p - 1, (p - 1) ** 2 + 1, p - 1)
                 a.partition(kth, axis=op.axis)
 
-            select = slice(p - 1, (p - 1) ** 2 + 1, p - 1)
+            select = slice(p, p ** 2 + 1, p)
             slc = (slice(None),) * op.axis + (select,)
-            ctx[op.outputs[0].key] = a[slc]
+            ctx[op.outputs[0].key] = result = a[slc]
+            assert result.shape[op.axis] == p - 1
 
 
 class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
