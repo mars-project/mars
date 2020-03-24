@@ -22,7 +22,7 @@ from ...operands import OperandStage
 from ...serialize import BoolField, Int32Field, AnyField
 from ...compat import six
 from ...utils import get_shuffle_input_keys_idxes
-from ..utils import build_concated_rows_frame, hash_dataframe_on
+from ..utils import build_concatenated_rows_frame, hash_dataframe_on
 from ..operands import DataFrameOperandMixin, \
     DataFrameMapReduceOperand, DataFrameShuffleProxy, ObjectType
 
@@ -67,7 +67,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        in_df = build_concated_rows_frame(op.inputs[0])
+        in_df = build_concatenated_rows_frame(op.inputs[0])
 
         # generate map chunks
         map_chunks = []

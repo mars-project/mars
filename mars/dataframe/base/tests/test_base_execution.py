@@ -150,9 +150,9 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(result, expected)
 
         columns = pd.MultiIndex.from_tuples([('speed', 'max'), ('species', 'type')])
+        data.columns = columns
         df = from_pandas_df(data, chunk_size=2)
         df2 = df_reset_index(df, level='class', col_level=1, col_fill='species')
-        data.columns = columns
         result = self.executor.execute_dataframe(df2, concat=True)[0]
         expected = data.reset_index(level='class', col_level=1, col_fill='species')
         pd.testing.assert_frame_equal(result, expected)

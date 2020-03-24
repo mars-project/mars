@@ -24,7 +24,7 @@ from ...compat import six
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy, ObjectType
 from ..core import GROUPBY_TYPE
-from ..utils import build_empty_df, parse_index, build_concated_rows_frame
+from ..utils import build_empty_df, parse_index, build_concatenated_rows_frame
 from .core import DataFrameGroupByOperand
 
 
@@ -115,7 +115,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_with_shuffle(cls, op):
-        in_df = build_concated_rows_frame(op.inputs[0])
+        in_df = build_concatenated_rows_frame(op.inputs[0])
         out_df = op.outputs[0]
 
         # First, perform groupby and aggregation on each chunk.
@@ -141,7 +141,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_with_tree(cls, op):
-        in_df = build_concated_rows_frame(op.inputs[0])
+        in_df = build_concatenated_rows_frame(op.inputs[0])
         out_df = op.outputs[0]
 
         combine_size = options.combine_size

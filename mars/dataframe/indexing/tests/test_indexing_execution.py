@@ -48,7 +48,7 @@ class Test(TestBase):
         expected = df1.iloc[1]
         df3 = df2.iloc[1]
         pd.testing.assert_series_equal(
-            expected, self.executor.execute_dataframe(df3, concat=True)[0])
+            expected, self.executor.execute_dataframe(df3, concat=True, check_series_name=False)[0])
 
         # plain index on axis 1
         expected = df1.iloc[:2, 1]
@@ -103,6 +103,12 @@ class Test(TestBase):
         df12 = df2.iloc[[True, False, True], [2, 1]]
         pd.testing.assert_frame_equal(
             expected, self.executor.execute_dataframe(df12, concat=True)[0])
+
+        # bool index array on axis 1
+        expected = df1.iloc[[2, 1], [True, False, True]]
+        df14 = df2.iloc[[2, 1], [True, False, True]]
+        pd.testing.assert_frame_equal(
+            expected, self.executor.execute_dataframe(df14, concat=True)[0])
 
         # bool index
         expected = df1.iloc[[True, False, True], [2, 1]]
@@ -229,7 +235,7 @@ class Test(TestBase):
         self.assertEqual(result, expected)
 
         df = df1.loc['a3', 'b']
-        result = self.executor.execute_tensor(df, concat=True)[0]
+        result = self.executor.execute_tensor(df, concat=True, check_shape=False)[0]
         expected = raw1.loc['a3', 'b']
         self.assertEqual(result, expected)
 

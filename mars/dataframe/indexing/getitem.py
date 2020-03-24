@@ -57,8 +57,8 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     def is_intermediate(self):
         return self._is_intermediate
 
-    def __call__(self, series):
-        return self.new_tileable([series], dtype=series.dtype)
+    def __call__(self, series, name=None):
+        return self.new_tileable([series], dtype=series.dtype, name=name)
 
     def _new_tileables(self, inputs, kws=None, **kw):
         # Override this method to automatically decide the output type,
@@ -113,7 +113,8 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         out_series = op.outputs[0]
 
         index_op = SeriesIndex(labels=op.labels)
-        index_chunk = index_op.new_chunk(in_series.chunks, dtype=out_series.dtype)
+        kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
+        index_chunk = index_op.new_chunk(in_series.chunks, dtype=out_series.dtype, **kw)
         new_op = op.copy()
         nsplits = ((len(op.labels),),) if isinstance(op.labels, list) else ()
         return new_op.new_tileables(op.inputs, chunks=[index_chunk], nsplits=nsplits,
@@ -138,18 +139,23 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                     concat_op = DataFrameConcat(object_type=ObjectType.series)
                     chk = concat_op.new_chunk(chks, dtype=chks[0].dtype)
                 chk_op = SeriesIndex(labels=op.labels, is_intermediate=True)
+                kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
                 chk = chk_op.new_chunk([chk], shape=(np.nan,), dtype=chk.dtype,
-                                       index_value=parse_index(pd.RangeIndex(-1)))
+                                       index_value=parse_index(pd.RangeIndex(-1)), **kw)
                 new_chunks.append(chk)
             chunks = new_chunks
 
         concat_op = DataFrameConcat(object_type=ObjectType.series)
-        chk = concat_op.new_chunk(chunks, dtype=chunks[0].dtype)
+        kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
+        chk = concat_op.new_chunk(chunks, dtype=chunks[0].dtype, **kw)
         index_op = SeriesIndex(labels=op.labels)
-        chunk = index_op.new_chunk([chk], dtype=chk.dtype)
+        chunk = index_op.new_chunk([chk], dtype=chk.dtype, **kw)
         new_op = op.copy()
         nsplits = ((len(op.labels),),) if isinstance(op.labels, list) else ()
-        return new_op.new_tileables(op.inputs, dtype=out_series.dtype, chunks=[chunk], nsplits=nsplits)
+        kw = out_series.params
+        kw['nsplits'] = nsplits
+        kw['chunks'] = [chunk]
+        return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod
     def tile(cls, op):
@@ -183,13 +189,15 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                 index_op = SeriesIndex(labels=list(labels))
                 c = in_series.chunks[idx[0]]
                 nsplits.append(len(labels))
+                index_value = parse_index(pd.Index([], dtype=c.index_value.to_pandas().dtype),
+                                          c, labels)
                 out_chunks.append(index_op.new_chunk([c], shape=(len(labels),), dtype=c.dtype,
-                                                     index_value=parse_index(pd.RangeIndex(len(labels))),
+                                                     index_value=index_value,
                                                      name=c.name, index=(i,)))
             new_op = op.copy()
             return new_op.new_seriess(op.inputs, shape=out_series.shape, dtype=out_series.dtype,
                                       index_value=out_series.index_value, nsplits=(tuple(nsplits),),
-                                      chunks=out_chunks)
+                                      chunks=out_chunks, name=out_series.name)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -399,7 +407,7 @@ def dataframe_getitem(df, item):
 def series_getitem(series, labels, combine_size=None):
     if isinstance(labels, list) or np.isscalar(labels):
         op = SeriesIndex(labels=labels, combine_size=combine_size)
-        return op(series)
+        return op(series, name=series.name)
     elif isinstance(labels, _list_like_types) and astensor(labels).dtype == np.bool:
         return series.loc[labels]
     else:

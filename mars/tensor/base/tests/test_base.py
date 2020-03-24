@@ -653,11 +653,11 @@ class Test(unittest.TestCase):
         self.assertEqual(x.shape, (10, np.nan))
         self.assertEqual(x.dtype, np.dtype(np.int64))
         self.assertEqual(indices.shape, (np.nan,))
-        self.assertEqual(indices.dtype, np.dtype(np.int64))
+        self.assertEqual(indices.dtype, np.dtype(np.intp))
         self.assertEqual(inverse.shape, (20,))
-        self.assertEqual(inverse.dtype, np.dtype(np.int64))
+        self.assertEqual(inverse.dtype, np.dtype(np.intp))
         self.assertEqual(counts.shape, (np.nan,))
-        self.assertEqual(counts.dtype, np.dtype(np.int64))
+        self.assertEqual(counts.dtype, np.dtype(np.int_))
 
         x = x.tiles()
         indices, inverse, counts = \
@@ -688,7 +688,7 @@ class Test(unittest.TestCase):
         self.assertEqual(counts.nsplits, ((np.nan, np.nan),))
         for i in range(2):
             self.assertEqual(counts.chunks[i].shape, (np.nan,))
-            self.assertEqual(counts.chunks[i].dtype, raw.dtype)
+            self.assertEqual(counts.chunks[i].dtype, np.dtype(np.int_))
             self.assertEqual(counts.chunks[i].index, (i,))
 
     def testSort(self):

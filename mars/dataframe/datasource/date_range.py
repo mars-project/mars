@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import time
+from datetime import datetime, date, time
 
 import numpy as np
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
 from pandas.tseries.offsets import Tick
-from pandas._libs.tslibs import timezones, normalize_date
+from pandas._libs.tslibs import timezones
 
 from ... import opcodes as OperandDef
 from ...config import options
@@ -26,6 +26,21 @@ from ...serialize import AnyField, Int64Field, BoolField, StringField
 from ...tensor.utils import decide_chunk_sizes
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index
+
+try:
+    from pandas._libs.tslib import normalize_date
+except ImportError:  # pragma: no cover
+    def normalize_date(dt):  # from pandas/_libs/tslibs/conversion.pyx
+        if isinstance(dt, datetime):
+            if isinstance(dt, pd.Timestamp):
+                return dt.replace(hour=0, minute=0, second=0, microsecond=0,
+                                  nanosecond=0)
+            else:
+                return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif isinstance(dt, date):
+            return datetime(dt.year, dt.month, dt.day)
+        else:
+            raise TypeError('Unrecognized type: %r' % type(dt))
 
 
 class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):

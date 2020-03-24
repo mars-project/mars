@@ -17,7 +17,8 @@ import pandas as pd
 from ...serialize import ListField, ValueType
 from ... import opcodes as OperandDef
 from ...tensor.base.sort import _validate_sort_psrs_kinds
-from ..utils import parse_index, validate_axis, build_concated_rows_frame
+from ..utils import parse_index, validate_axis, build_concatenated_rows_frame
+from ..core import IndexValue
 from ..operands import ObjectType
 from .core import DataFrameSortOperand
 from .psrs import DataFramePSRSOperandMixin, execute_sort_values
@@ -37,14 +38,14 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
 
     @classmethod
     def _tile_dataframe(cls, op):
-        df = build_concated_rows_frame(op.inputs[0])
+        df = build_concatenated_rows_frame(op.inputs[0])
 
         if df.chunk_shape[op.axis] == 1:
             out_chunks = []
             for chunk in df.chunks:
                 chunk_op = op.copy().reset_key()
                 out_chunks.append(chunk_op.new_chunk(
-                    [chunk], shape=chunk.shape, index=chunk.index, index_value=chunk.index_value,
+                    [chunk], shape=chunk.shape, index=chunk.index, index_value=op.outputs[0].index_value,
                     columns_value=chunk.columns_value, dtypes=chunk.dtypes))
             new_op = op.copy()
             kws = op.outputs[0].params.copy()
@@ -64,7 +65,7 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
             chunk = series.chunks[0]
             chunk_op = op.copy().reset_key()
             out_chunks = [chunk_op.new_chunk(series.chunks, shape=chunk.shape, index=chunk.index,
-                                             index_value=chunk.index_value, dtype=chunk.dtype,
+                                             index_value=op.outputs[0].index_value, dtype=chunk.dtype,
                                              name=chunk.name)]
             new_op = op.copy()
             kws = op.outputs[0].params.copy()
@@ -94,7 +95,10 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
         if self.ignore_index:
             index_value = parse_index(pd.RangeIndex(a.shape[0]))
         else:
-            index_value = a.index_value
+            if isinstance(a.index_value.value, IndexValue.RangeIndex):
+                index_value = parse_index(pd.Int64Index([]))
+            else:
+                index_value = a.index_value
         if a.op.object_type == ObjectType.dataframe:
             return self.new_dataframe([a], shape=a.shape, dtypes=a.dtypes,
                                       index_value=index_value,

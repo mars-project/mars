@@ -211,7 +211,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
                 ind -= 1
             return inp_indices[ind], inp_data[ind]
         else:
-            ret_indices = np.empty(v.shape, dtype=int)
+            ret_indices = np.empty(v.shape, dtype=np.intp)
             ret_data = np.empty(v.shape, dtype=inp_data.dtype)
             for idx in itertools.product(*(range(s) for s in v.shape)):
                 ind = xp.searchsorted(inp_data[(slice(None),) + idx], v[idx], side=op.side)
@@ -230,7 +230,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
                 ind -= 1
             return inp_indices[ind]
         else:
-            indices = np.empty(v.shape, dtype=int)
+            indices = np.empty(v.shape, dtype=np.intp)
             for idx in itertools.product(*(range(s) for s in v.shape)):
                 ind = xp.searchsorted(inp_data[(slice(None),) + idx], v[idx], side=op.side)
                 if ind >= len(inp_indices):
@@ -358,6 +358,6 @@ def searchsorted(a, v, side='left', sorter=None, combine_size=None):
     if not np.isscalar(v):
         v = astensor(v)
 
-    op = TensorSearchsorted(values=v, side=side, dtype=np.dtype(np.int64),
+    op = TensorSearchsorted(values=v, side=side, dtype=np.dtype(np.intp),
                             combine_size=combine_size)
     return op(a, v)

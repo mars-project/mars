@@ -234,6 +234,17 @@ def parse_index(index_value, *args, **kwargs):
     if kwargs:  # pragma: no cover
         raise TypeError('Unknown keyword: {}'.format(list(kwargs)[0]))
 
+    if index_value is None:
+        return IndexValue(_index_value=IndexValue.Index(
+            _is_monotonic_increasing=False,
+            _is_monotonic_decreasing=False,
+            _is_unique=False,
+            _min_val=None,
+            _max_val=None,
+            _min_val_close=True,
+            _max_val_close=True,
+            _key=key or tokenize(*args),
+        ))
     if isinstance(index_value, pd.RangeIndex):
         return IndexValue(_index_value=_serialize_range_index(index_value))
     elif isinstance(index_value, pd.MultiIndex):
@@ -407,7 +418,7 @@ def concat_index_value(index_values, store_data=False):
     return parse_index(result, store_data=store_data)
 
 
-def build_concated_rows_frame(df):
+def build_concatenated_rows_frame(df):
     from .operands import ObjectType
     from .merge.concat import DataFrameConcat
 
