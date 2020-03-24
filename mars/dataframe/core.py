@@ -187,7 +187,7 @@ class IndexValue(Serializable):
             if data is None:
                 return pd.MultiIndex.from_arrays([[], []], sortorder=self._sortorder,
                                                  names=self._names)
-            return pd.MultiIndex.from_tuples(np.asarray(data), sortorder=self._sortorder,
+            return pd.MultiIndex.from_tuples([tuple(d) for d in data], sortorder=self._sortorder,
                                              names=self._names)
 
     _index_value = OneOfField('index_value', index=Index,

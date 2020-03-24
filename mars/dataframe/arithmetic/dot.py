@@ -65,8 +65,19 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
             return self.new_scalar([lhs, rhs], dtype=test_ret.dtype)
         elif test_ret.ndim == 1:
             self._object_type = ObjectType.series
+            if lhs.ndim == 1:
+                if hasattr(rhs, 'columns_value'):
+                    index_value = rhs.columns_value
+                else:
+                    # tensor
+                    length = -1 if np.isnan(rhs.shape[1]) else rhs.shape[1]
+                    pd_index = pd.RangeIndex(length)
+                    index_value = parse_index(pd_index, store_data=True)
+            else:
+                assert rhs.ndim == 1
+                index_value = lhs.index_value
             return self.new_series([lhs, rhs], shape=test_ret.shape,
-                                   dtype=test_ret.dtype, index_value=lhs.index_value)
+                                   dtype=test_ret.dtype, index_value=index_value)
         else:
             self._object_type = ObjectType.dataframe
             if isinstance(rhs, TENSOR_TYPE):

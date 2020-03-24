@@ -184,7 +184,9 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
                 return self.new_scalar(inputs, dtype=dtype)
             else:
                 self._object_type = ObjectType.series
-                return self.new_series(inputs, shape=shape, dtype=dtype, index_value=index_value)
+                return self.new_series(inputs, shape=shape, dtype=dtype,
+                                       index_value=index_value,
+                                       name=df.dtypes.index[self.indexes[1]])
         elif isinstance(self.indexes[0], Integral):
             shape = shape1
             dtype = find_common_type(df.dtypes.iloc[self.indexes[1]].values)
@@ -382,10 +384,14 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
             ctx[chunk.key] = series[indexes]
 
     def __call__(self, series):
-        shape = tuple(calc_shape(series.shape, self.indexes))
-        index_value = indexing_index_value(series.index_value, self.indexes[0])
-        inputs = [series] + [index for index in self._indexes if isinstance(index, (Base, Entity))]
-        return self.new_series(inputs, shape=shape, dtype=series.dtype, index_value=index_value)
+        if isinstance(self._indexes[0], Integral):
+            self._object_type = ObjectType.scalar
+            return self.new_scalar([series], dtype=series.dtype)
+        else:
+            shape = tuple(calc_shape(series.shape, self.indexes))
+            index_value = indexing_index_value(series.index_value, self.indexes[0])
+            inputs = [series] + [index for index in self._indexes if isinstance(index, (Base, Entity))]
+            return self.new_series(inputs, shape=shape, dtype=series.dtype, index_value=index_value)
 
 
 class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):

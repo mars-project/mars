@@ -273,7 +273,7 @@ class TensorReductionMixin(TensorOperandMixin):
                 ret = reduce_func(input_chunk, axis=axis,
                                   keepdims=bool(op.keepdims))
 
-            ctx[out.key] = ret.astype(ret.dtype, order=out.order.value, copy=False)
+            ctx[out.key] = ret.astype(op.dtype, order=out.order.value, copy=False)
 
     @classmethod
     def execute_one_chunk(cls, ctx, op):

@@ -48,5 +48,5 @@ class ChunkStandardizeRangeIndex(DataFrameOperand, DataFrameOperandMixin):
         if op.axis == 0:
             in_data.index = xdf.RangeIndex(index_start, index_start + len(in_data))
         else:
-            in_data.columns = xdf.RangeIndex(index_start, index_start + len(in_data))
+            in_data.columns = xdf.RangeIndex(index_start, index_start + in_data.shape[1])
         ctx[op.outputs[0].key] = in_data

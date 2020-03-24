@@ -24,7 +24,7 @@ from ...compat import six
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy, ObjectType
 from ..core import GROUPBY_TYPE
-from ..utils import build_empty_df, parse_index, build_concated_rows_frame
+from ..utils import build_empty_df, parse_index, build_concatenated_rows_frame
 from .core import DataFrameGroupByOperand
 
 
@@ -115,7 +115,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_with_shuffle(cls, op):
-        in_df = build_concated_rows_frame(op.inputs[0])
+        in_df = build_concatenated_rows_frame(op.inputs[0])
         out_df = op.outputs[0]
 
         # First, perform groupby and aggregation on each chunk.
@@ -130,18 +130,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             combine_op = op.copy().reset_key()
             combine_op._stage = OperandStage.combine
             combine_chunk = combine_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
-                                                 index_value=out_df.index_value,
+                                                 index_value=out_df.index_value, dtypes=out_df.dtypes,
                                                  columns_value=out_df.columns_value)
             combine_chunks.append(combine_chunk)
 
         new_op = op.copy()
-        return new_op.new_dataframes([in_df], shape=out_df.shape, index_value=out_df.index_value,
-                                     columns_value=out_df.columns_value, chunks=combine_chunks,
-                                     nsplits=((np.nan,) * len(combine_chunks), (out_df.shape[1],)))
+        params = out_df.params.copy()
+        return new_op.new_dataframes([in_df], chunks=combine_chunks,
+                                     nsplits=((np.nan,) * len(combine_chunks), (out_df.shape[1],)), **params)
 
     @classmethod
     def _tile_with_tree(cls, op):
-        in_df = build_concated_rows_frame(op.inputs[0])
+        in_df = build_concatenated_rows_frame(op.inputs[0])
         out_df = op.outputs[0]
 
         combine_size = options.combine_size
@@ -200,7 +200,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _execute_map(cls, df, op):
         if isinstance(op.func, (six.string_types, dict)):
-            return df.groupby(op.by, as_index=op.as_index, sort=False).agg(op.func)
+            val = df.groupby(op.by, as_index=op.as_index, sort=False).agg(op.func)
+            if len(val) == 0:
+                val = df.copy().groupby(op.by, as_index=op.as_index, sort=False).agg(op.func)
+            return val
         else:
             raise NotImplementedError
 

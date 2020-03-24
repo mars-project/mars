@@ -408,10 +408,30 @@ class DataFrameIndexHandler:
         chunk_index_info.set(info)
 
 
-class NDArrayBoolIndexHandler(DataFrameIndexHandler, NDArrayBoolIndexHandlerBase):
-    @classproperty
-    def kind(self):  # pylint: disable=no-self-use
-        return 'iloc'
+class NDArrayBoolIndexHandler(NDArrayBoolIndexHandlerBase):
+    @classmethod
+    def set_chunk_index_info(cls, context, index_info, chunk_index, chunk_index_info,
+                             output_axis_index, index, output_shape):
+        tileable = context.tileable
+        chunk_input = tileable.cix[chunk_index]
+
+        if index_info.input_axis == 0:
+            dtype = chunk_input.index_value.to_pandas().dtype
+            index_value = parse_index(pd.Index([], dtype=dtype),
+                                      chunk_input, index, store_data=False)
+            dtypes = None
+        else:
+            pd_index = chunk_input.columns_value.to_pandas()
+            filtered_index = pd_index[index]
+            index_value = parse_index(filtered_index, store_data=True)
+            dtypes = chunk_input.dtypes[index]
+
+        info = ChunkIndexAxisInfo(output_axis_index=output_axis_index,
+                                  processed_index=index,
+                                  output_shape=output_shape,
+                                  index_value=index_value,
+                                  dtypes=dtypes)
+        chunk_index_info.set(info)
 
 
 class TensorBoolIndexHandler(TensorBoolIndexHandlerBase):
