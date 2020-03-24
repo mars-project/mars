@@ -410,14 +410,8 @@ class DataFrameIndexHandler:
 
 class NDArrayBoolIndexHandler(NDArrayBoolIndexHandlerBase):
     @classmethod
-    def set_chunk_index_info(cls,
-                             context: IndexHandlerContext,
-                             index_info: IndexInfo,
-                             chunk_index: Tuple[int],
-                             chunk_index_info: ChunkIndexInfo,
-                             output_axis_index: int,
-                             index,
-                             output_shape: int):
+    def set_chunk_index_info(cls, context, index_info, chunk_index, chunk_index_info,
+                             output_axis_index, index, output_shape):
         tileable = context.tileable
         chunk_input = tileable.cix[chunk_index]
 

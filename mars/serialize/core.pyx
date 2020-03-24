@@ -398,7 +398,7 @@ cdef class SliceField(Field):
 
 cdef class TZInfoField(Field):
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        super().__init__(
+        super(TZInfoField, self).__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.tzinfo

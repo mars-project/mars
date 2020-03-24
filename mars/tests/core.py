@@ -360,6 +360,9 @@ _check_args = ['check_series_name', 'check_dtypes', 'check_dtype', 'check_shape'
 class MarsObjectCheckMixin:
     @staticmethod
     def assert_shape_consistent(expected_shape, real_shape):
+        if not _check_options['check_shape']:
+            return
+
         if len(expected_shape) != len(real_shape):
             raise AssertionError('ndim in metadata %r is not consistent with real ndim %r'
                                  % (len(expected_shape), len(real_shape)))
@@ -391,8 +394,7 @@ class MarsObjectCheckMixin:
         if not hasattr(expected, 'dtype'):
             return
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
-        if _check_options['check_shape']:
-            cls.assert_shape_consistent(expected.shape, real.shape)
+        cls.assert_shape_consistent(expected.shape, real.shape)
 
     @classmethod
     def assert_index_consistent(cls, expected_index_value, real_index):
@@ -400,9 +402,9 @@ class MarsObjectCheckMixin:
             expected_index = expected_index_value.to_pandas()
             try:
                 pd.testing.assert_index_equal(expected_index, real_index)
-            except AssertionError as e:
+            except AssertionError:
                 raise AssertionError('Index of real value (%r) not equal to (%r)' %
-                                     (expected_index, real_index)) from e
+                                     (expected_index, real_index))
 
     @classmethod
     def assert_dataframe_consistent(cls, expected, real):
@@ -462,7 +464,7 @@ class MarsObjectCheckMixin:
 
 class GraphExecutionWithChunkCheck(MarsObjectCheckMixin, GraphExecution):
     def _execute_operand(self, op):
-        super()._execute_operand(op)
+        super(GraphExecutionWithChunkCheck, self)._execute_operand(op)
         if self._mock:
             return
         for o in op.outputs:
@@ -493,7 +495,7 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     def execute_tileable(self, tileable, *args, **kwargs):
         self._extract_check_options(kwargs)
 
-        result = super().execute_tileable(tileable, *args, **kwargs)
+        result = super(ExecutorForTest, self).execute_tileable(tileable, *args, **kwargs)
         if kwargs.get('concat', False):
             self.assert_object_consistent(tileable, result[0])
         return result
@@ -504,7 +506,7 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     def execute_tileables(self, tileables, *args, **kwargs):
         self._extract_check_options(kwargs)
 
-        results = super().execute_tileables(tileables, *args, **kwargs)
+        results = super(ExecutorForTest, self).execute_tileables(tileables, *args, **kwargs)
         for tileable, result in zip(tileables, results):
             self.assert_object_consistent(tileable, result)
         return results
