@@ -104,7 +104,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                 if isinstance(c, DATAFRAME_CHUNK_TYPE):
                     columns = c.columns_value.to_pandas()
                     try:
-                        new_dtypes = out_df.dtypes.loc[columns]
+                        new_dtypes = out_df.dtypes.loc[columns].dropna()
                     except KeyError:
                         new_dtypes = out_df.dtypes.reindex(columns).dropna()
 
@@ -125,13 +125,15 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
                     if op.call_agg:
                         new_shape[op.axis] = np.nan
+                    new_columns_value = parse_index(new_dtypes.index)
                 else:
                     new_dtypes, new_index = out_df.dtypes, c.index
                     new_shape = [c.shape[0], len(new_dtypes)]
                     if op.call_agg:
                         new_shape[0] = np.nan
-                    params['columns_value'] = out_df.columns_value
-                params.update(dict(dtypes=new_dtypes, shape=tuple(new_shape), index=tuple(new_index)))
+                    new_columns_value = out_df.columns_value
+                params.update(dict(dtypes=new_dtypes, shape=tuple(new_shape), index=tuple(new_index),
+                                   columns_value=new_columns_value))
             else:
                 params['dtype'] = out_df.dtype
                 if isinstance(in_df, DATAFRAME_TYPE):

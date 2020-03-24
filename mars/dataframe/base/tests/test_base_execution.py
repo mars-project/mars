@@ -16,6 +16,7 @@ import random
 
 import numpy as np
 import pandas as pd
+from collections import OrderedDict
 
 from mars.config import options
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index
@@ -605,9 +606,14 @@ class Test(TestBase):
             expected = df_raw.transform(['cumsum', 'cummax', lambda x: x + 1])
             pd.testing.assert_frame_equal(result, expected)
 
-            r = df.transform({'A': 'cumsum', 'D': ['cumsum', 'cummax'], 'F': lambda x: x + 1})
+            fn_dict = OrderedDict([
+                ('A', 'cumsum'),
+                ('D', ['cumsum', 'cummax']),
+                ('F', lambda x: x + 1),
+            ])
+            r = df.transform(fn_dict)
             result = self.executor.execute_dataframe(r, concat=True)[0]
-            expected = df_raw.transform({'A': 'cumsum', 'D': ['cumsum', 'cummax'], 'F': lambda x: x + 1})
+            expected = df_raw.transform(fn_dict)
             pd.testing.assert_frame_equal(result, expected)
 
             # test agg scenarios on series
@@ -633,12 +639,12 @@ class Test(TestBase):
             expected = df_raw.agg(lambda x: x.sum())
             pd.testing.assert_series_equal(result, expected)
 
-            fn_dict = {
-                'A': rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
-                'D': [rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
-                      lambda x: x.iloc[:-1].reset_index(drop=True)],
-                'F': lambda x: x.iloc[:-1].reset_index(drop=True),
-            }
+            fn_dict = OrderedDict([
+                ('A', rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1')),
+                ('D', [rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
+                       lambda x: x.iloc[:-1].reset_index(drop=True)]),
+                ('F', lambda x: x.iloc[:-1].reset_index(drop=True)),
+            ])
             r = df.transform(fn_dict, _call_agg=True)
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = df_raw.agg(fn_dict)

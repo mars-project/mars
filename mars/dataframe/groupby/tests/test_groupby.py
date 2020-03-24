@@ -14,6 +14,7 @@
 
 import numpy as np
 import pandas as pd
+from collections import OrderedDict
 
 import mars.dataframe as md
 from mars import opcodes
@@ -182,7 +183,7 @@ class Test(TestBase):
         self.assertEqual(len(r.chunks), 3)
         self.assertEqual(r.chunks[0].shape, (np.nan, 6))
 
-        agg_dict = {'d': 'cummax', 'b': 'cumsum'}
+        agg_dict = OrderedDict([('d', 'cummax'), ('b', 'cumsum')])
         r = mdf.groupby('b').transform(agg_dict, _call_agg=True).tiles()
         self.assertEqual(r.shape, (np.nan, 2))
         self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
