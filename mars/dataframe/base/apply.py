@@ -200,10 +200,10 @@ class DataFrameApplyTransform(DataFrameOperand, DataFrameOperandMixin):
         if self._object_type == ObjectType.dataframe:
             if axis == 0:
                 return self.new_dataframe([df], shape=shape, dtypes=dtypes, index_value=index_value,
-                                          columns_value=df.columns_value)
+                                          columns_value=parse_index(dtypes.index))
             else:
                 return self.new_dataframe([df], shape=shape, dtypes=dtypes, index_value=df.index_value,
-                                          columns_value=index_value)
+                                          columns_value=parse_index(dtypes.index))
         else:
             return self.new_series([df], shape=shape, dtype=dtypes, index_value=index_value)
 
