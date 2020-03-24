@@ -122,7 +122,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
         # unique counts tensor
         if op.return_counts:
             kw = {'shape': (np.nan,),
-                  'dtype': np.dtype(np.intp),
+                  'dtype': np.dtype(np.int_),
                   'gpu': input_obj.op.gpu,
                   'type': 'counts'}
             if chunk:

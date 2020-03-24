@@ -82,7 +82,8 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
         new_op = op.copy()
         if op.drop:
             return new_op.new_seriess(op.inputs, op.inputs[0].shape, nsplits=op.inputs[0].nsplits,
-                                      chunks=out_chunks, dtype=out.dtype, index_value=out.index_value)
+                                      name=out.name, chunks=out_chunks, dtype=out.dtype,
+                                      index_value=out.index_value)
         else:
             nsplits = (op.inputs[0].nsplits[0], (out.shape[1],))
             return new_op.new_dataframes(op.inputs, out.shape, nsplits=nsplits, chunks=out_chunks,

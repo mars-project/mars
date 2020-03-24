@@ -237,6 +237,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 dtypes = out_df.dtypes
                 columns_value = parse_index(out_df.columns_value.to_pandas()[0:1],
                                             store_data=True)
+                chunk_shape = (in_chunk.shape[0], 1)
             else:
                 i, j = in_chunk.index
                 column_stop = cum_size[1][j]
@@ -245,6 +246,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 pd_columns = out_df.columns_value.to_pandas()
                 chunk_pd_columns = pd_columns[column_stop - in_chunk.shape[1]:column_stop]
                 columns_value = parse_index(chunk_pd_columns, store_data=True)
+                chunk_shape = in_chunk.shape
 
             index_stop = cum_size[0][i]
             if isinstance(op.index, INDEX_TYPE):
@@ -264,7 +266,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
             out_op.extra_params['index_stop'] = index_stop
             out_op.extra_params['column_stop'] = column_stop
-            out_chunk = out_op.new_chunk(chunk_inputs, shape=in_chunk.shape,
+            out_chunk = out_op.new_chunk(chunk_inputs, shape=chunk_shape,
                                          index=chunk_index, dtypes=dtypes,
                                          index_value=index_value,
                                          columns_value=columns_value)

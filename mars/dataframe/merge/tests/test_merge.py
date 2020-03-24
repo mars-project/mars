@@ -252,7 +252,8 @@ class Test(TestBase):
         r = concat([mdf1, mdf2], axis='columns')
 
         self.assertEqual(r.shape, (10, 8))
-        pd.testing.assert_series_equal(r.dtypes, df1.dtypes)
+        expected_dtypes = pd.concat([df1, df2], axis='columns').dtypes
+        pd.testing.assert_series_equal(r.dtypes, expected_dtypes)
 
         tiled = r.tiles()
         self.assertEqual(tiled.nsplits, ((3, 3, 3, 1), (3, 1, 4)))

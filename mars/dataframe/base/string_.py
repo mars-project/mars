@@ -247,7 +247,8 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
                                                    index=(i,), index_value=index_value,
                                                    name=concat_chunk.name)
                 else:
-                    out_chunk = chunk_op.new_chunk([concat_chunk], dtype=concat_chunk.dtype)
+                    out_chunk = chunk_op.new_chunk([concat_chunk], dtype=concat_chunk.dtype,
+                                                   shape=out.shape)
                 new_out_chunks.append(out_chunk)
             out_chunks = new_out_chunks
 
@@ -333,9 +334,11 @@ class SeriesStringExtractHandler(SeriesStringMethodBaseHandler):
             op._object_type = ObjectType.dataframe
             if op.method == 'extractall':
                 index_value = parse_index(test_df.index, inp)
+                shape = (np.nan, test_df.shape[1])
             else:
                 index_value = inp.index_value
-            return op.new_dataframe([inp], shape=(inp.shape[0], test_df.shape[1]),
+                shape=(inp.shape[0], test_df.shape[1])
+            return op.new_dataframe([inp], shape=shape,
                                     dtypes=test_df.dtypes,
                                     index_value=index_value,
                                     columns_value=parse_index(test_df.columns,

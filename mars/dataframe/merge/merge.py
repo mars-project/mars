@@ -161,6 +161,13 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, left, right):
         empty_left, empty_right = build_empty_df(left.dtypes), build_empty_df(right.dtypes)
+        # left should have values to keep columns order.
+        gen_left_data = [np.random.rand(1).astype(dt)[0] for dt in left.dtypes]
+        empty_left = empty_left.append(pd.DataFrame([gen_left_data], columns=list(empty_left.columns))
+                                       .astype(left.dtypes))
+        gen_right_data = [np.random.rand(1).astype(dt)[0] for dt in right.dtypes]
+        empty_right = empty_right.append(pd.DataFrame([gen_right_data], columns=list(empty_right.columns))
+                                         .astype(right.dtypes))
         # this `merge` will check whether the combination of those arguments is valid
         merged = empty_left.merge(empty_right, how=self.how, on=self.on,
                                   left_on=self.left_on, right_on=self.right_on,
@@ -216,6 +223,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
                                            shape=df.shape,
                                            index=left.chunks[0].index,
                                            index_value=df.index_value,
+                                           dtypes=df.dtypes,
                                            columns_value=df.columns_value)
             out_chunks = [out_chunk]
             nsplits = ((np.nan,), (df.shape[1],))
@@ -229,6 +237,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
                                                index=c.index,
                                                index_value=infer_index_value(left_chunk.index_value,
                                                                              c.index_value),
+                                               dtypes=df.dtypes,
                                                columns_value=df.columns_value)
                 out_chunks.append(out_chunk)
             nsplits = ((np.nan,) * len(right.chunks), (df.shape[1],))
@@ -242,6 +251,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
                                                index=c.index,
                                                index_value=infer_index_value(right_chunk.index_value,
                                                                              c.index_value),
+                                               dtypes=df.dtypes,
                                                columns_value=df.columns_value)
                 out_chunks.append(out_chunk)
             nsplits = ((np.nan,) * len(left.chunks), (df.shape[1],))
@@ -312,6 +322,10 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
             r = execute_merge(left, right)
         except ValueError:
             r = execute_merge(left.copy(deep=True), right.copy(deep=True))
+
+        # make sure column's order
+        if not all(n1 == n2 for n1, n2 in zip(chunk.columns_value.to_pandas(), r.columns)):
+            r = r[list(chunk.columns_value.to_pandas())]
         ctx[chunk.key] = r
 
 

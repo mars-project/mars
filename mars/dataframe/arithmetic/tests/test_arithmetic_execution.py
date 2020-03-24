@@ -339,7 +339,9 @@ class TestBinary(TestBase):
         data3 = self.to_boolean_if_needed(data3)
         df4 = from_pandas(data3, chunk_size=5)
         df5 = getattr(df4, self.rfunc_name)(1)
-        result = self.executor.execute_dataframe(df5, concat=True)[0]
+        # todo check dtypes when pandas reverts its behavior on broadcasting
+        check_dtypes = self.func_name not in ('__and__', '__or__', '__xor__')
+        result = self.executor.execute_dataframe(df5, concat=True, check_dtypes=check_dtypes)[0]
         expected2 = self.func(1, data3)
         pd.testing.assert_frame_equal(expected2, result)
 

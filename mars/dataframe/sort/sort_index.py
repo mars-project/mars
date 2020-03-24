@@ -17,7 +17,7 @@ import pandas as pd
 from ...serialize import ListField, BoolField
 from ... import opcodes as OperandDef
 from ...tensor.base.sort import _validate_sort_psrs_kinds
-from ..utils import parse_index, validate_axis, build_concatenated_rows_frame
+from ..utils import parse_index, validate_axis, build_concatenated_rows_frame, standardize_range_index
 from ..operands import DATAFRAME_TYPE, ObjectType
 from .core import DataFrameSortOperand
 from .psrs import DataFramePSRSOperandMixin, execute_sort_index
@@ -82,7 +82,15 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
             assert op.axis == 1
 
             sorted_columns = list(df.columns_value.to_pandas().sort_values(ascending=op.ascending))
-            return [df[sorted_columns]._inplace_tile()]
+            r = [df[sorted_columns]._inplace_tile()]
+            if op.ignore_index:
+                out = op.outputs[0]
+                chunks = standardize_range_index(r[0].chunks, axis=0)
+                new_op = op.copy()
+                return new_op.new_dataframes(op.inputs, shape=out.shape, chunks=chunks,
+                                             nsplits=r[0].nsplits, index_value=out.index_value,
+                                             columns_value=out.columns_value, dtypes=out.dtypes)
+            return r
 
     @classmethod
     def execute(cls, ctx, op):
@@ -90,23 +98,19 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
         ctx[op.outputs[0].key] = execute_sort_index(in_data, op)
 
     def _call_dataframe(self, df):
+        if self.ignore_index:
+            index_value = parse_index(pd.RangeIndex(df.shape[0]))
+        else:
+            index_value = df.index_value
         if self.axis == 0:
-            if self.ignore_index:
-                index_value = parse_index(pd.RangeIndex(df.shape[0]))
-            else:
-                index_value = df.index_value
             return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
                                       index_value=index_value,
                                       columns_value=df.columns_value)
         else:
-            if self.ignore_index:
-                dtypes = df.dtypes.reset_index(drop=True)
-                columns_value = parse_index(pd.RangeIndex(df.shape[1]), store_data=True)
-            else:
-                dtypes = df.dtypes.sort_values()
-                columns_value = parse_index(dtypes.index, store_data=True)
+            dtypes = df.dtypes.sort_index(ascending=self.ascending)
+            columns_value = parse_index(dtypes.index, store_data=True)
             return self.new_dataframe([df], shape=df.shape, dtypes=dtypes,
-                                      index_value=df.index_value,
+                                      index_value=index_value,
                                       columns_value=columns_value)
 
     def _call_series(self, series):

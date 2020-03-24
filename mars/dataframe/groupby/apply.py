@@ -84,9 +84,9 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
             if op.object_type == ObjectType.series and isinstance(applied, pd.DataFrame):
                 assert len(applied.index) == 1
                 applied_idx = pd.MultiIndex.from_arrays(
-                    [[applied.index[0]] * len(applied.columns), applied.columns.to_list()])
+                    [[applied.index[0]] * len(applied.columns), applied.columns.tolist()])
                 applied_idx.names = [applied.index.name, None]
-                applied = pd.Series(applied.iloc[0].to_numpy(), applied_idx, name=applied.columns.name)
+                applied = pd.Series(np.array(applied.iloc[0]), applied_idx, name=applied.columns.name)
         else:
             applied = grouped.transform(op.func, *op.args, **op.kwds)
         ctx[op.outputs[0].key] = applied
@@ -120,28 +120,26 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
                 kw['nsplits'] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
 
-    def _infer_df_func_returns(self, in_object_type, in_dtypes, dtypes, index):
+    def _infer_df_func_returns(self, in_df, dtypes, index):
         index_value, object_type, new_dtypes = None, None, None
         if self.is_transform:
-            object_type = in_object_type
+            object_type = in_df.op.object_type
 
         try:
-            if in_object_type == ObjectType.dataframe:
-                empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(2))
+            if in_df.op.object_type == ObjectType.dataframe:
+                empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
             else:
-                empty_df = build_empty_series(in_dtypes[1], index=pd.RangeIndex(2), name=in_dtypes[0])
+                empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
 
             with np.errstate(all='ignore'):
                 if self.is_transform:
-                    infer_df = empty_df.apply(self.func, *self.args, **self.kwds)
+                    infer_df = empty_df.groupby(by=self.by, as_index=self.as_index) \
+                        .transform(self.func, *self.args, **self.kwds)
                 else:
                     infer_df = self.func(empty_df, *self.args, **self.kwds)
 
-            if isinstance(infer_df, np.number):
-                index_value = parse_index(pd.RangeIndex(0, 1))
-            else:
-                # todo return proper index when sort=True is implemented
-                index_value = parse_index(pd.RangeIndex(-1))
+            # todo return proper index when sort=True is implemented
+            index_value = parse_index(None, in_df.key, self.func)
 
             if isinstance(infer_df, pd.DataFrame):
                 object_type = object_type or ObjectType.dataframe
@@ -162,12 +160,7 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, groupby, dtypes=None, index=None):
         in_df = groupby.inputs[0]
-        in_dtypes = getattr(in_df, 'dtypes', None)
-        if in_dtypes is None:
-            in_dtypes = (in_df.name, in_df.dtype)
-
-        dtypes, index_value = self._infer_df_func_returns(
-            in_df.op.object_type, in_dtypes, dtypes, index)
+        dtypes, index_value = self._infer_df_func_returns(in_df, dtypes, index)
         for arg, desc in zip((self._object_type, dtypes, index_value),
                              ('object_type', 'dtypes', 'index')):
             if arg is None:
@@ -175,9 +168,9 @@ class GroupByApplyTransform(DataFrameOperand, DataFrameOperandMixin):
                                 'please specify it as arguments' % desc)
 
         if self.object_type == ObjectType.dataframe:
-            new_shape = in_df.shape if self.is_transform else (np.nan, len(dtypes))
-            return self.new_dataframe([groupby], shape=new_shape, dtypes=dtypes,
-                                      index_value=index_value, columns_value=in_df.columns_value)
+            new_shape = (in_df.shape[0], len(dtypes)) if self.is_transform else (np.nan, len(dtypes))
+            return self.new_dataframe([groupby], shape=new_shape, dtypes=dtypes, index_value=index_value,
+                                      columns_value=parse_index(dtypes.index, store_data=True))
         else:
             name, dtype = dtypes
             new_shape = in_df.shape if self.is_transform else (np.nan,)

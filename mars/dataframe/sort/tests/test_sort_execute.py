@@ -214,7 +214,9 @@ class Test(unittest.TestCase):
         pd.testing.assert_frame_equal(result, expected)
 
         mdf = DataFrame(raw, chunk_size=4)
-        result = self.executor.execute_dataframe(mdf.sort_index(axis=1, ignore_index=True), concat=True)[0]
+        executor = ExecutorForTest(storage=new_session().context)
+
+        result = executor.execute_dataframe(mdf.sort_index(axis=1, ignore_index=True), concat=True)[0]
         try:  # for python3.5
             expected = raw.sort_index(axis=1, ignore_index=True)
         except TypeError:

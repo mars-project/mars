@@ -230,6 +230,17 @@ def parse_index(index_value, *args, store_data=False, key=None):
         kw['_sortorder'] = index.sortorder
         return IndexValue.MultiIndex(_names=index.names, **kw)
 
+    if index_value is None:
+        return IndexValue(_index_value=IndexValue.Index(
+            _is_monotonic_increasing=False,
+            _is_monotonic_decreasing=False,
+            _is_unique=False,
+            _min_val=None,
+            _max_val=None,
+            _min_val_close=True,
+            _max_val_close=True,
+            _key=key or tokenize(*args),
+        ))
     if isinstance(index_value, pd.RangeIndex):
         return IndexValue(_index_value=_serialize_range_index(index_value))
     elif isinstance(index_value, pd.MultiIndex):
