@@ -275,11 +275,17 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             col_length = 0
             columns = []
             dtypes = dict()
+            undefined_name = 0
             for series in objs:
-                dtypes[series.name] = series.dtype
-                columns.append(series.name)
+                if series.name is None:
+                    dtypes[undefined_name] = series.dtype
+                    undefined_name += 1
+                    columns.append(undefined_name)
+                else:
+                    dtypes[series.name] = series.dtype
+                    columns.append(series.name)
                 col_length += 1
-            if self.ignore_index:
+            if self.ignore_index or undefined_name == len(objs):
                 columns_value = parse_index(pd.RangeIndex(col_length))
             else:
                 columns_value = parse_index(pd.Index(columns), store_data=True)
@@ -321,7 +327,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 col_length += df.shape[1]
                 empty_dfs.append(build_empty_df(df.dtypes))
 
-            emtpy_result = pd.concat(empty_dfs, join=self.join, axis=0, sort=True)
+            emtpy_result = pd.concat(empty_dfs, join=self.join, axis=1, sort=True)
             if self.ignore_index:
                 columns_value = parse_index(pd.RangeIndex(col_length))
             else:

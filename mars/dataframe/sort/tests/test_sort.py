@@ -60,7 +60,6 @@ class Test(unittest.TestCase):
 
         self.assertEqual(sorted_df.shape, raw.shape)
         self.assertIsInstance(sorted_df.op, DataFrameSortValues)
-        pd.testing.assert_index_equal(sorted_df.index_value.to_pandas(), pd.RangeIndex(10))
 
         tiled = sorted_df.tiles()
 
