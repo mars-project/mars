@@ -110,6 +110,6 @@ def count_nonzero(a, axis=None, combine_size=None):
     array([2, 3])
 
     """
-    op = TensorCountNonzero(axis=axis, dtype=np.dtype(np.intp),
+    op = TensorCountNonzero(axis=axis, dtype=np.dtype(np.int_),
                             keepdims=None, combine_size=combine_size)
     return op(a)

@@ -163,9 +163,11 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
         empty_left, empty_right = build_empty_df(left.dtypes), build_empty_df(right.dtypes)
         # left should have values to keep columns order.
         gen_left_data = [np.random.rand(1).astype(dt)[0] for dt in left.dtypes]
-        empty_left = empty_left.append(pd.DataFrame([gen_left_data], columns=list(empty_left.columns)))
+        empty_left = empty_left.append(pd.DataFrame([gen_left_data], columns=list(empty_left.columns))
+                                       .astype(left.dtypes))
         gen_right_data = [np.random.rand(1).astype(dt)[0] for dt in right.dtypes]
-        empty_right = empty_right.append(pd.DataFrame([gen_right_data], columns=list(empty_right.columns)))
+        empty_right = empty_right.append(pd.DataFrame([gen_right_data], columns=list(empty_right.columns))
+                                         .astype(right.dtypes))
         # this `merge` will check whether the combination of those arguments is valid
         merged = empty_left.merge(empty_right, how=self.how, on=self.on,
                                   left_on=self.left_on, right_on=self.right_on,

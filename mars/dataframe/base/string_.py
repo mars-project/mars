@@ -247,7 +247,8 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
                                                    index=(i,), index_value=index_value,
                                                    name=concat_chunk.name)
                 else:
-                    out_chunk = chunk_op.new_chunk([concat_chunk], dtype=concat_chunk.dtype)
+                    out_chunk = chunk_op.new_chunk([concat_chunk], dtype=concat_chunk.dtype,
+                                                   shape=out.shape)
                 new_out_chunks.append(out_chunk)
             out_chunks = new_out_chunks
 
