@@ -491,7 +491,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             col_iter = iter(processed_cols)
             for field, funcs in func.items():
                 for f in funcs:
-                    d[next(col_iter)] = getattr(grouped[field], f)()
+                    try:
+                        d[next(col_iter)] = getattr(grouped[field], f)()
+                    except ValueError:
+                        # fail due to buffer read-only
+                        # force to get grouped again by copy
+                        grouped = cls._get_grouped(op, df, copy=True)
+                        d[next(col_iter)] = getattr(grouped[field], f)()
             result = type(df)(d)
 
         if len(op.output_column_to_func) > 0:
