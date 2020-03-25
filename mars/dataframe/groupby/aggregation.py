@@ -484,16 +484,15 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 # force to get grouped again by copy
                 grouped = cls._get_grouped(op, df, copy=True)
                 result = grouped.agg(func)
+            result.columns = processed_cols
         else:
             # agg the funcs that can be done
-            try:
-                result = grouped.agg(func)
-            except ValueError:  # pragma: no cover
-                # fail due to buffer read-only
-                # force to get grouped again by copy
-                grouped = cls._get_grouped(op, df, copy=True)
-                result = grouped.agg(func)
-        result.columns = processed_cols
+            d = OrderedDict()
+            col_iter = iter(processed_cols)
+            for field, funcs in func.items():
+                for f in funcs:
+                    d[next(col_iter)] = getattr(grouped[field], f)()
+            result = type(df)(d)
 
         if len(op.output_column_to_func) > 0:
             # process the functions that require operating on the grouped data

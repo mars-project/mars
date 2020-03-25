@@ -204,8 +204,11 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
             concats = []
             for i in range(n_rows):
-                concat = xdf.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis=1)
-                concats.append(concat)
+                if n_cols == 1:
+                    concats.append(inputs[i])
+                else:
+                    concat = xdf.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis=1)
+                    concats.append(concat)
 
             if xdf is pd:
                 # The `sort=False` is to suppress a `FutureWarning` of pandas, when the index or column of chunks to
@@ -248,7 +251,10 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         chunk = op.outputs[0]
         inputs = [ctx[input.key] for input in op.inputs]
 
-        if isinstance(inputs[0], tuple):
+        if len(inputs) == 1:
+            # no need to concat
+            ctx[chunk.key] = inputs[0]
+        elif isinstance(inputs[0], tuple):
             ctx[chunk.key] = tuple(_base_concat(chunk, [input[i] for input in inputs])
                                    for i in range(len(inputs[0])))
         else:
