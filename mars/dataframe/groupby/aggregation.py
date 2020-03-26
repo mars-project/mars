@@ -240,23 +240,27 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 elif f == 'count':
                     _add_column_to_functions(col, f, [f], ['sum'], 'sum')
                 elif f == 'mean':
-                    def _mean(df, columns):
-                        return df[columns[0]].sum() / df[columns[1]].sum()
+                    def _mean(_, grouped, columns):
+                        return grouped[columns[0]].sum() / grouped[columns[1]].sum()
 
                     _add_column_to_functions(col, f, ['sum', 'count'], ['sum', 'sum'], _mean)
                 elif f in {'var', 'std'}:
-                    def _reduce_var(df, columns):
-                        cnt = df[columns[1]]
-                        reduced_cnt = cnt.sum()
+                    def _reduce_var(df, grouped, columns):
+                        grouper = grouped.grouper
+
                         data = df[columns[0]]
+                        cnt = df[columns[1]]
                         var_square = df[columns[2]] * (cnt - 1)
-                        avg = data.sum() / reduced_cnt
-                        avg_diff = data / cnt - avg
-                        var_square = var_square.sum() + (cnt * avg_diff ** 2).sum()
+
+                        reduced_cnt = grouped[columns[1]].sum()
+                        avg = grouped[columns[0]].sum() / reduced_cnt
+                        avg_diff_square = (data / cnt - avg.loc[df.index]) ** 2
+                        var_square = var_square.groupby(grouper).sum() + \
+                                     (cnt * avg_diff_square).groupby(grouper).sum()
                         return var_square / (reduced_cnt - 1)
 
-                    def _reduce_std(df, columns):
-                        return np.sqrt(_reduce_var(df, columns))
+                    def _reduce_std(df, grouped, columns):
+                        return np.sqrt(_reduce_var(df, grouped, columns))
 
                     _add_column_to_functions(col, f, ['sum', 'count', 'var'],
                                              ['sum', 'sum', _reduce_var],
@@ -499,7 +503,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             # process the functions that require operating on the grouped data
             for out_col, f in op.output_column_to_func.items():
                 if len(df) > 0:
-                    result[out_col] = grouped.apply(f)
+                    result[out_col] = f(df, grouped)
                 else:
                     result[out_col] = []
 

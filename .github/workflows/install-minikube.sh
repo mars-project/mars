@@ -6,14 +6,14 @@ sudo apt-get remove -y docker.io || true
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 sudo apt-get -q update || true
-sudo apt-get install -yq docker-ce
+sudo apt-get install -yq conntrack docker-ce
 
 K8S_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
 
 curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/$K8S_VERSION/bin/linux/amd64/kubectl && \
   chmod +x kubectl && sudo mv kubectl /usr/local/bin/
 
-curl -Lo minikube https://storage.googleapis.com/minikube/releases/v1.3.1/minikube-linux-amd64 && \
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 && \
   chmod +x minikube && sudo mv minikube /usr/local/bin/
 
 sudo minikube start --vm-driver=none --kubernetes-version=$K8S_VERSION

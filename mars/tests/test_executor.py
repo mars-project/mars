@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import sys
+import threading
 import unittest
 
 import numpy as np
 
 import mars.tensor as mt
-from mars.executor import Executor, register, GraphDeviceAssigner
+from mars.executor import Executor, register, GraphDeviceAssigner, EventQueue
 from mars.serialize import Int64Field
 from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.graph import DirectedGraph
@@ -181,3 +182,19 @@ class Test(unittest.TestCase):
         self.assertEqual(a.cix[0, 0].device, a.cix[0, 1].device)
         self.assertEqual(a.cix[1, 0].device, a.cix[1, 1].device)
         self.assertNotEqual(a.cix[0, 0].device, a.cix[1, 0].device)
+
+    def testEventQueue(self):
+        q = EventQueue(threading.Event)
+
+        self.assertFalse(q._has_value.is_set())
+        q.append(1)
+        self.assertTrue(q._has_value.is_set())
+        q.pop()
+        self.assertFalse(q._has_value.is_set())
+        q.insert(0, 2)
+        self.assertTrue(q._has_value.is_set())
+        q.wait()
+        q.clear()
+        self.assertFalse(q._has_value.is_set())
+        q.errored()
+        self.assertTrue(q._has_value.is_set())

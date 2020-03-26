@@ -64,16 +64,31 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
         out_chunks = []
+        index_values = dict()
+        column_values = dict()
         for chunk_shape, chunk_idx in zip(itertools.product(*chunk_size),
                                           itertools.product(*chunk_size_idxes)):
             chunk_op = op.copy().reset_key()
             slc = get_chunk_slices(chunk_size, chunk_idx)
-            chunk_op._data = raw_df.iloc[slc]
+            i_slc, j_slc = slc
+            if j_slc == slice(0, df.shape[1]):
+                # optimize full slice, it's way more faster
+                j_slc = slice(None)
+            chunk_op._data = raw_df.iloc[i_slc, j_slc]
             chunk_op._dtypes = chunk_op._data.dtypes
+            i, j = chunk_idx
+            if i in index_values:
+                index_value = index_values[i]
+            else:
+                index_value =index_values[i] = parse_index(chunk_op.data.index)
+            if j in column_values:
+                column_value = column_values[j]
+            else:
+                column_value = column_values[j] = parse_index(chunk_op.data.columns,
+                                                              store_data=True)
             out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx,
-                                           index_value=parse_index(chunk_op.data.index),
-                                           columns_value=parse_index(chunk_op.data.columns,
-                                                                     store_data=True),
+                                           index_value=index_value,
+                                           columns_value=column_value,
                                            dtypes=chunk_op._data.dtypes)
             out_chunks.append(out_chunk)
 
