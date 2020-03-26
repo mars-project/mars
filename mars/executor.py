@@ -99,7 +99,7 @@ class EventQueue(list):
         if self._has_value is not None:
             self._has_value.set()
 
-    def pop(self, index):
+    def pop(self, index=-1):
         item = super().pop(index)
         if self._has_value is not None and len(self) == 0:
             self._has_value.clear()
