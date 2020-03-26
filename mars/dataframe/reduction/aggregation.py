@@ -31,6 +31,7 @@ from ..utils import build_empty_df, build_empty_series, parse_index, validate_ax
 
 cudf = lazy_import('cudf', globals=globals())
 
+_builtin_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count', 'mean', 'var', 'std'}
 _stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_groups', 'combine_sources',
                                          'agg_sources', 'agg_columns', 'agg_funcs', 'key_to_funcs',
                                          'valid_columns'))
@@ -565,7 +566,29 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = ctx[op.inputs[0].key].agg(op.func, axis=op.axis)
 
 
+def _is_funcs_agg(func):
+    to_check = []
+    if isinstance(func, list):
+        to_check.extend(func)
+    elif isinstance(func, dict):
+        for f in func.values():
+            if isinstance(f, Iterable) and not isinstance(f, str):
+                to_check.extend(f)
+            else:
+                to_check.append(f)
+    else:
+        to_check.append(func)
+
+    for f in to_check:
+        if f not in _builtin_aggregation_functions:
+            return False
+    return True
+
+
 def aggregate(df, func, axis=0):
+    if not _is_funcs_agg(func):
+        return df.transform(func, axis=axis, _call_agg=True)
+
     axis = validate_axis(axis, df)
     if (df.op.object_type == ObjectType.series or axis == 1) and isinstance(func, dict):
         raise NotImplementedError('Currently cannot aggregate dicts over axis=1 on %s' % type(df).__name__)

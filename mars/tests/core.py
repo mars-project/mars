@@ -352,6 +352,9 @@ _check_args = ['check_series_name', 'check_dtypes', 'check_dtype', 'check_shape'
 class MarsObjectCheckMixin:
     @staticmethod
     def assert_shape_consistent(expected_shape, real_shape):
+        if not _check_options['check_shape']:
+            return
+
         if len(expected_shape) != len(real_shape):
             raise AssertionError('ndim in metadata %r is not consistent with real ndim %r'
                                  % (len(expected_shape), len(real_shape)))
@@ -383,8 +386,7 @@ class MarsObjectCheckMixin:
         if not hasattr(expected, 'dtype'):
             return
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
-        if _check_options['check_shape']:
-            cls.assert_shape_consistent(expected.shape, real.shape)
+        cls.assert_shape_consistent(expected.shape, real.shape)
 
     @classmethod
     def assert_index_consistent(cls, expected_index_value, real_index):

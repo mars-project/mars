@@ -18,10 +18,11 @@ from .to_cpu import to_cpu
 from .rechunk import rechunk
 from .reset_index import df_reset_index, series_reset_index
 from .describe import describe
-from .apply import df_apply, df_transform, series_apply, series_transform
+from .apply import df_apply, series_apply
 from .fillna import fillna, ffill, bfill
-from .string_ import SeriesStringMethod
 from .datetimes import SeriesDatetimeMethod
+from .string_ import SeriesStringMethod
+from .transform import df_transform, series_transform
 
 
 def _install():

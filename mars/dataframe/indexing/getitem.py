@@ -394,7 +394,6 @@ def dataframe_getitem(df, item):
         op = DataFrameIndex(col_names=item, object_type=ObjectType.dataframe)
     elif isinstance(item, _list_like_types):
         # NB: don't enforce the dtype of `item` to be `bool` since it may be unknown
-        print('use mask: item = ', item)
         op = DataFrameIndex(mask=item, object_type=ObjectType.dataframe)
     else:
         if item not in columns:
