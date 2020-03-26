@@ -73,6 +73,45 @@ class ExecutorSyncProvider(object):
     def event(cls):
         raise NotImplementedError
 
+    @classmethod
+    def queue(cls, *args, **kwargs):
+        raise NotImplementedError
+
+
+class EventQueue(list):
+    def __init__(self, event_cls, *args, **kwargs):
+        super(EventQueue, self).__init__(*args, **kwargs)
+        if event_cls is not None:
+            self._has_value = event_cls()
+            if len(self) > 0:
+                self._has_value.set()
+        else:
+            self._has_value = None
+
+    def append(self, item):
+        super(EventQueue, self).append(item)
+        if self._has_value is not None:
+            self._has_value.set()
+
+    def insert(self, index, item):
+        super(EventQueue, self).insert(index, item)
+        if self._has_value is not None:
+            self._has_value.set()
+
+    def pop(self, index=-1):
+        item = super(EventQueue, self).pop(index)
+        if self._has_value is not None and len(self) == 0:
+            self._has_value.clear()
+        return item
+
+    def wait(self, timeout=None):
+        if self._has_value is not None:
+            self._has_value.wait(timeout)
+
+    def errored(self):
+        if self._has_value is not None:
+            self._has_value.set()
+
 
 class ThreadExecutorSyncProvider(ExecutorSyncProvider):
     @classmethod
@@ -94,6 +133,10 @@ class ThreadExecutorSyncProvider(ExecutorSyncProvider):
     @classmethod
     def event(cls):
         return threading.Event()
+
+    @classmethod
+    def queue(cls, *args, **kwargs):
+        return EventQueue(threading.Event, *args, **kwargs)
 
 
 class GeventExecutorSyncProvider(ExecutorSyncProvider):
@@ -121,6 +164,10 @@ class GeventExecutorSyncProvider(ExecutorSyncProvider):
         # as gevent threadpool is the **real** thread, so use threading.Event
         return threading.Event()
 
+    @classmethod
+    def queue(cls, *args, **kwargs):
+        return EventQueue(threading.Event, *args, **kwargs)
+
 
 class MockThreadPoolExecutor(object):
     class _MockResult(object):
@@ -145,6 +192,10 @@ class MockThreadPoolExecutor(object):
             return self._MockResult(fn(*args, **kwargs))
         except:  # noqa: E722
             return self._MockResult(None, sys.exc_info())
+
+    @classmethod
+    def queue(cls, *args, **kwargs):
+        return EventQueue(None, *args, **kwargs)
 
 
 class MockExecutorSyncProvider(ThreadExecutorSyncProvider):
@@ -307,17 +358,19 @@ class GraphExecution(object):
         self._semaphore = sync_provider.semaphore(self._n_parallel)
         # event for setting error happened
         self._has_error = sync_provider.event()
-        self._queue = list(self._order_starts()) if len(graph) > 0 else []
-        assert len(self._queue) == graph.count_indep()
+        self._queue = sync_provider.queue(self._order_starts()) \
+            if len(graph) > 0 else sync_provider.queue()
         self._chunk_key_ref_counts = self._calc_ref_counts()
         self._op_key_to_ops = self._calc_op_key_to_ops()
         self._submitted_op_keys = set()
+        self._add_queue_op_keys = {op.key for op in self._queue}
         self._executed_op_keys = set()
         # initial assignment for GPU
         self._assign_devices()
 
     def _order_starts(self):
         visited = set()
+        op_keys = set()
         starts = deque(self._graph.iter_indep())
         stack = deque([starts.popleft()])
 
@@ -327,7 +380,10 @@ class GraphExecution(object):
                 preds = self._graph.predecessors(node)
                 if not preds or all(pred in visited for pred in preds):
                     if len(preds) == 0:
-                        yield node.op
+                        op_key = node.op.key
+                        if op_key not in op_keys:
+                            op_keys.add(op_key)
+                            yield node.op
                     visited.add(node)
                     stack.extend(n for n in self._graph[node] if n not in visited)
                 else:
@@ -401,11 +457,11 @@ class GraphExecution(object):
                     if rest_op_output.key not in executed_chunk_keys:
                         results[rest_op_output.key] = results[op_output.key]
 
-            with self._lock:
-                for output in itertools.chain(*[op.outputs for op in ops]):
-                    # the output not in the graph will be skipped
-                    if output not in self._graph:
-                        continue
+            for output in itertools.chain(*[op.outputs for op in ops]):
+                # the output not in the graph will be skipped
+                if output not in self._graph:
+                    continue
+                with self._lock:
                     # in case that operand has multiple outputs
                     # and some of the output not in result keys, delete them
                     if ref_counts.get(output.key) == 0:
@@ -414,22 +470,27 @@ class GraphExecution(object):
                             deleted_chunk_keys.add(output.key)
                             del results[output.key]
 
-                    # clean the predecessors' results if ref counts equals 0
-                    for dep_key in output.op.get_dependent_data_keys():
+                # clean the predecessors' results if ref counts equals 0
+                for dep_key in output.op.get_dependent_data_keys():
+                    with self._lock:
                         if dep_key in ref_counts:
                             ref_counts[dep_key] -= 1
                             if ref_counts[dep_key] == 0:
                                 del results[dep_key]
                                 del ref_counts[dep_key]
 
-                    # add successors' operands to queue
-                    for succ_chunk in self._graph.iter_successors(output):
-                        preds = self._graph.predecessors(succ_chunk)
-                        if succ_chunk.op.key not in self._submitted_op_keys and \
+                # add successors' operands to queue
+                for succ_chunk in self._graph.iter_successors(output):
+                    preds = self._graph.predecessors(succ_chunk)
+                    with self._lock:
+                        succ_op_key = succ_chunk.op.key
+                        if succ_op_key not in self._add_queue_op_keys and \
                                 (len(preds) == 0 or all(pred.op.key in op_keys for pred in preds)):
                             self._queue.insert(0, succ_chunk.op)
+                            self._add_queue_op_keys.add(succ_op_key)
         except Exception:
             self._has_error.set()
+            self._queue.errored()
             raise
         finally:
             self._semaphore.release()
@@ -464,16 +525,15 @@ class GraphExecution(object):
 
     def _submit_operand_to_execute(self):
         self._semaphore.acquire()
+        self._queue.wait()
 
-        with self._lock:
-            try:
-                to_submit_op = self._queue.pop(0)
-                if to_submit_op.key in self._submitted_op_keys:
-                    raise ValueError('Get submitted operand')
-                self._submitted_op_keys.add(to_submit_op.key)
-            except (IndexError, ValueError):
-                self._semaphore.release()
-                return
+        if self._has_error.is_set():
+            # error happens, ignore
+            return
+
+        to_submit_op = self._queue.pop(0)
+        assert to_submit_op.key not in self._submitted_op_keys
+        self._submitted_op_keys.add(to_submit_op.key)
 
         if self._print_progress:
             i, n = len(self._submitted_op_keys), len(self._op_key_to_ops)
@@ -489,7 +549,7 @@ class GraphExecution(object):
 
     def execute(self, retval=True):
         executed_futures = []
-        while len(self._submitted_op_keys) < len(self._op_key_to_ops):
+        for _ in range(len(self._op_key_to_ops)):
             if self._has_error.is_set():
                 # something wrong happened
                 break
