@@ -42,6 +42,7 @@ jobs:
       shell: bash
       run: |
         source ./.github/workflows/install-conda.sh
+        python -m pip install --upgrade coverage;
 
     - name: Install dependencies
       env:
@@ -75,8 +76,6 @@ jobs:
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "2.7" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost
-            fi
-            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "2.7" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               pip install tensorflow
               pip install torch torchvision
             fi
