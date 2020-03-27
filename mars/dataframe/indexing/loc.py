@@ -25,10 +25,14 @@ from ...operands import OperandStage
 from ...serialize import KeyField, ListField
 from ...tensor.datasource import asarray
 from ...tensor.utils import calc_sliced_size, filter_inputs
+from ...utils import lazy_import
 from ..core import IndexValue, DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index
 from .index_lib import DataFrameLocIndexesHandler
+
+
+cudf = lazy_import('cudf', globals=globals())
 
 
 def process_loc_indexes(inp, indexes):
@@ -302,6 +306,7 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
                             for index in op.indexes)
         else:
             indexes = tuple(op.indexes)
+        xdf = pd if isinstance(df, (pd.Series, pd.DataFrame)) or cudf is None else cudf
 
         if op.stage != OperandStage.map:
             r = df.loc[indexes]
@@ -309,12 +314,37 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
             # for map stage, and when some index is fancy index
             # ignore keys that do not exist
             new_indexes = []
+            str_loc_on_datetime_index = False
             for ax, index in enumerate(indexes):
-                if ax == 0 and isinstance(index, np.ndarray) and index.dtype != np.bool_:
-                    new_indexes.append(df.index.intersection(index))
+                if ax == 0:
+                    if isinstance(index, np.ndarray) and index.dtype != np.bool_:
+                        new_indexes.append(df.index.intersection(index))
+                    elif isinstance(df.index, pd.DatetimeIndex) and isinstance(index, str):
+                        # special process for datetime index
+                        str_loc_on_datetime_index = True
+                        new_indexes.append(index)
+                    else:
+                        new_indexes.append(index)
                 else:
                     new_indexes.append(index)
-            r = df.loc[tuple(new_indexes)]
+
+            try:
+                r = df.loc[tuple(new_indexes)]
+                if str_loc_on_datetime_index:
+                    # convert back to DataFrame or Series
+                    if r.ndim == 0:
+                        index = df.index[df.index.get_loc(new_indexes[0])]
+                        r = xdf.Series([r], index=[index])
+                    elif r.ndim == 1:
+                        rdf = xdf.DataFrame(columns=r.index)
+                        rdf.loc[r.name] = r
+                        r = rdf
+            except KeyError:
+                if str_loc_on_datetime_index:
+                    new_indexes[0] = []
+                    r = df.loc[tuple(new_indexes)]
+                else:  # pragma: no cover
+                    raise
 
         if isinstance(r, pd.Series) and r.dtype != chunk.dtype:
             r = r.astype(chunk.dtype)

@@ -223,11 +223,15 @@ class Test(TestBase):
         # columns are non unique and non monotonic
         raw4 = raw1.copy()
         raw4.columns = ['b', 'a', 'b', 'd']
+        # index that is timestamp
+        raw5 = raw1.copy()
+        raw5.index = pd.date_range('2020-1-1', periods=5)
 
         df1 = md.DataFrame(raw1, chunk_size=2)
         df2 = md.DataFrame(raw2, chunk_size=2)
         df3 = md.DataFrame(raw3, chunk_size=2)
         df4 = md.DataFrame(raw4, chunk_size=2)
+        df5 = md.DataFrame(raw5, chunk_size=2)
 
         df = df2.loc[3, 'b']
         result = self.executor.execute_tensor(df, concat=True)[0]
@@ -308,6 +312,18 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(df, concat=True)[0]
         expected = raw1.loc[['a3', 'a1'], ['b', 'a', 'd']]
         pd.testing.assert_frame_equal(result, expected)
+
+        # get timestamp by str
+        df = df5.loc['20200101']
+        result = self.executor.execute_dataframe(df, concat=True, check_series_name=False)[0]
+        expected = raw5.loc['20200101']
+        pd.testing.assert_series_equal(result, expected)
+
+        # get timestamp by str, return scalar
+        df = df5.loc['2020-1-1', 'c']
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw5.loc['2020-1-1', 'c']
+        self.assertEqual(result, expected)
 
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])

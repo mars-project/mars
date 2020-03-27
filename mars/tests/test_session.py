@@ -347,6 +347,19 @@ class Test(unittest.TestCase):
         tensor = md.dataframe_from_tensor(mt.array([1, 2, 3]))
         np.testing.assert_equal(sess.run(tensor), np.array([1, 2, 3]).reshape(3, 1))
 
+    def testDataFrameExecution(self):
+        sess = new_session()
+
+        raw = pd.DataFrame(np.random.rand(5, 3),
+                           index=pd.date_range('2020-1-1', periods=5))
+
+        for chunk_size in (3, 5):
+            df = md.DataFrame(raw, chunk_size=chunk_size)
+
+            r = df.loc['2020-1-2']
+            result = sess.run(r)
+            pd.testing.assert_series_equal(result, raw.loc['2020-1-2'])
+
     def testFetchSlices(self):
         sess = new_session()
 
