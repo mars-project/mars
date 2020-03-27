@@ -28,7 +28,7 @@ from mars.tests.core import TestBase, require_cudf, ExecutorForTest
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
-from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tensors
+from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
 from mars.dataframe.datasource.from_records import from_records
 
 
@@ -204,8 +204,12 @@ class Test(TestBase):
         # from 1d tensors
         raws8 = [('a', np.random.rand(8)), ('b', np.random.randint(10, size=8)),
                  ('c', [''.join(np.random.choice(list(printable), size=6)) for _ in range(8)])]
-        tensors8 = [mt.tensor(r[1], chunk_size=3) for r in raws8]
-        df8 = dataframe_from_1d_tensors(tensors8, columns=[r[0] for r in raws8])
+        tensors8 = OrderedDict((r[0], mt.tensor(r[1], chunk_size=3)) for r in raws8)
+        raws8.append(('d', 1))
+        raws8.append(('e', pd.date_range('2020-1-1', periods=8)))
+        tensors8['d'] = 1
+        tensors8['e'] = raws8[-1][1]
+        df8 = dataframe_from_1d_tileables(tensors8, columns=[r[0] for r in raws8])
         result = self.executor.execute_dataframe(df8, concat=True)[0]
         pdf_expected = pd.DataFrame(OrderedDict(raws8))
         pd.testing.assert_frame_equal(result, pdf_expected)
@@ -213,15 +217,15 @@ class Test(TestBase):
         # from 1d tensors and specify index with a tensor
         index_raw9 = np.random.rand(8)
         index9 = mt.tensor(index_raw9, chunk_size=4)
-        df9 = dataframe_from_1d_tensors(tensors8, columns=[r[0] for r in raws8],
-                                        index=index9)
+        df9 = dataframe_from_1d_tileables(tensors8, columns=[r[0] for r in raws8],
+                                          index=index9)
         result = self.executor.execute_dataframe(df9, concat=True)[0]
         pdf_expected = pd.DataFrame(OrderedDict(raws8), index=index_raw9)
         pd.testing.assert_frame_equal(result, pdf_expected)
 
         # from 1d tensors and specify index
-        df11 = dataframe_from_1d_tensors(tensors8, columns=[r[0] for r in raws8],
-                                         index=md.date_range('2020-1-1', periods=8))
+        df11 = dataframe_from_1d_tileables(tensors8, columns=[r[0] for r in raws8],
+                                           index=md.date_range('2020-1-1', periods=8))
         result = self.executor.execute_dataframe(df11, concat=True)[0]
         pdf_expected = pd.DataFrame(OrderedDict(raws8),
                                     index=pd.date_range('2020-1-1', periods=8))
