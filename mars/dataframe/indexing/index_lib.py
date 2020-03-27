@@ -353,7 +353,10 @@ class LabelIndexHandler(IndexHandler):
               context: IndexHandlerContext) -> IndexInfo:
         tileable = context.tileable
         input_axis = context.input_axis
-        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        if tileable.ndim == 2:
+            index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        else:
+            index_value = tileable.index_value
 
         if index_value.has_value():
             pd_index = index_value.to_pandas()
@@ -710,7 +713,10 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
         check_chunks_unknown_shape([tileable], TilesError)
 
         input_axis = index_info.input_axis
-        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        if tileable.ndim == 2:
+            index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        else:
+            index_value = tileable.index_value
         cum_nsplit = [0] + np.cumsum(tileable.nsplits[input_axis]).tolist()
         if index_value.has_value():
             # turn label-based fancy index into position-based
@@ -817,6 +823,9 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
                         params['name'] = context.op.outputs[0].name
                 if context.op.outputs[0].ndim == 0:
                     del params['index_value']
+                    shape = list(params['shape'])
+                    shape.pop(index_info.output_axis)
+                    params['shape'] = tuple(shape)
             elif axis == 0:
                 params['index_value'] = parse_index(pd.Index(index_info.raw_index), store_data=False)
             else:
