@@ -23,6 +23,7 @@ from .fillna import fillna, ffill, bfill
 from .datetimes import SeriesDatetimeMethod
 from .string_ import SeriesStringMethod
 from .transform import df_transform, series_transform
+from .isin import isin
 
 
 def _install():
@@ -51,6 +52,7 @@ def _install():
         setattr(t, 'fillna', fillna)
         setattr(t, 'ffill', ffill)
         setattr(t, 'bfill', bfill)
+        setattr(t, 'isin', isin)
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
 

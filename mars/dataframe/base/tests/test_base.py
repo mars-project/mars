@@ -668,3 +668,52 @@ class Test(TestBase):
             _ = series.dt.non_exist
 
         self.assertIn('ceil', dir(series.dt))
+
+    def testSeriesIsin(self):
+        # one chunk in multiple chunks
+        a = from_pandas_series(pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), chunk_size=10)
+        b = from_pandas_series(pd.Series([2, 1, 9, 3]), chunk_size=2)
+
+        r = a.isin(b).tiles()
+        for i, c in enumerate(r.chunks):
+            self.assertEqual(c.index, (i,))
+            self.assertEqual(c.dtype, np.dtype('bool'))
+            self.assertEqual(c.shape, (10,))
+            self.assertEqual(len(c.op.inputs), 2)
+            self.assertEqual(c.op.object_type, ObjectType.series)
+            self.assertEqual(c.op.inputs[0].index, (i,))
+            self.assertEqual(c.op.inputs[0].shape, (10,))
+            self.assertEqual(c.op.inputs[1].index, (0,))
+            self.assertEqual(c.op.inputs[1].shape, (4,))  # has been rechunked
+
+        # multiple chunk in one chunks
+        a = from_pandas_series(pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), chunk_size=2)
+        b = from_pandas_series(pd.Series([2, 1, 9, 3]), chunk_size=4)
+
+        r = a.isin(b).tiles()
+        for i, c in enumerate(r.chunks):
+            self.assertEqual(c.index, (i,))
+            self.assertEqual(c.dtype, np.dtype('bool'))
+            self.assertEqual(c.shape, (2,))
+            self.assertEqual(len(c.op.inputs), 2)
+            self.assertEqual(c.op.object_type, ObjectType.series)
+            self.assertEqual(c.op.inputs[0].index, (i,))
+            self.assertEqual(c.op.inputs[0].shape, (2,))
+            self.assertEqual(c.op.inputs[1].index, (0,))
+            self.assertEqual(c.op.inputs[1].shape, (4,))
+
+        # multiple chunk in multiple chunks
+        a = from_pandas_series(pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), chunk_size=2)
+        b = from_pandas_series(pd.Series([2, 1, 9, 3]), chunk_size=2)
+
+        r = a.isin(b).tiles()
+        for i, c in enumerate(r.chunks):
+            self.assertEqual(c.index, (i,))
+            self.assertEqual(c.dtype, np.dtype('bool'))
+            self.assertEqual(c.shape, (2,))
+            self.assertEqual(len(c.op.inputs), 2)
+            self.assertEqual(c.op.object_type, ObjectType.series)
+            self.assertEqual(c.op.inputs[0].index, (i,))
+            self.assertEqual(c.op.inputs[0].shape, (2,))
+            self.assertEqual(c.op.inputs[1].index, (0,))
+            self.assertEqual(c.op.inputs[1].shape, (4,))  # has been rechunked

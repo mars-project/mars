@@ -760,3 +760,34 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = s.dt.days
         pd.testing.assert_series_equal(result, expected)
+
+    def testSeriesIsin(self):
+        # one chunk in multiple chunks
+        a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        b = pd.Series([2, 1, 9, 3])
+        sa = from_pandas_series(a, chunk_size=10)
+        sb = from_pandas_series(b, chunk_size=2)
+
+        result = self.executor.execute_dataframe(sa.isin(sb), concat=True)[0]
+        expected = a.isin(b)
+        pd.testing.assert_series_equal(result, expected)
+
+        # multiple chunk in one chunks
+        a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        b = pd.Series([2, 1, 9, 3])
+        sa = from_pandas_series(a, chunk_size=2)
+        sb = from_pandas_series(b, chunk_size=4)
+
+        result = self.executor.execute_dataframe(sa.isin(sb), concat=True)[0]
+        expected = a.isin(b)
+        pd.testing.assert_series_equal(result, expected)
+
+        # multiple chunk in multiple chunks
+        a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        b = pd.Series([2, 1, 9, 3])
+        sa = from_pandas_series(a, chunk_size=2)
+        sb = from_pandas_series(b, chunk_size=2)
+
+        result = self.executor.execute_dataframe(sa.isin(sb), concat=True)[0]
+        expected = a.isin(b)
+        pd.testing.assert_series_equal(result, expected)
