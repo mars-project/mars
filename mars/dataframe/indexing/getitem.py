@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+from numbers import Integral
 
 import pandas as pd
 import numpy as np
@@ -25,7 +26,7 @@ from ...tensor.datasource import tensor as astensor
 from ...utils import tokenize, check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..align import align_dataframe_series
-from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, TILEABLE_TYPE, CHUNK_TYPE
+from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, TILEABLE_TYPE, CHUNK_TYPE, IndexValue
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index, in_range_index
@@ -386,7 +387,13 @@ def dataframe_getitem(df, item):
         item = item.tolist()
 
     if isinstance(item, slice):
-        return df.iloc[item]
+        edge = item.start if item.start is not None else item.stop
+        if isinstance(edge, Integral) and not \
+                isinstance(df.index_value, (IndexValue.RangeIndex, IndexValue.Int64Index,
+                                            IndexValue.UInt64Index)):
+            return df.iloc[item]
+        else:
+            return df.loc[item]
     elif isinstance(item, list):
         for col_name in item:
             if col_name not in columns:
