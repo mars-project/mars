@@ -71,7 +71,7 @@ class Test(TestBase):
                             'b': rs.choice([2, 3, 4], size=(100,))})
         mdf = md.DataFrame(df1, chunk_size=3)
 
-        df2 = pd.DataFrame({'c1': range(10),
+        df2 = pd.DataFrame({'c1': np.arange(10).astype(np.int64),
                             'c2': rs.choice(['a', 'b', 'c'], (10,)),
                             'c3': rs.rand(10)})
         mdf2 = md.DataFrame(df2, chunk_size=2)

@@ -500,3 +500,31 @@ class Test(TestBase):
             self.executor.execute_dataframe(df.tail(13), concat=True)[0], data.tail(13))
         pd.testing.assert_frame_equal(
             self.executor.execute_dataframe(df.tail(-13), concat=True)[0], data.tail(-13))
+
+    def testAt(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c' + str(i) for i in range(5)],
+                            index=['i' + str(i) for i in range(10)])
+        df = md.DataFrame(data, chunk_size=3)
+
+        with self.assertRaises(ValueError):
+            _ = df.at[['i3, i4'], 'c1']
+
+        result = self.executor.execute_dataframe(df.at['i3', 'c1'], concat=True)[0]
+        self.assertEqual(result, data.at['i3', 'c1'])
+
+        result = self.executor.execute_dataframe(df['c1'].at['i2'], concat=True)[0]
+        self.assertEqual(result, data['c1'].at['i2'])
+
+    def testIAt(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c' + str(i) for i in range(5)],
+                            index=['i' + str(i) for i in range(10)])
+        df = md.DataFrame(data, chunk_size=3)
+
+        with self.assertRaises(ValueError):
+            _ = df.iat[[1, 2], 3]
+
+        result = self.executor.execute_dataframe(df.iat[3, 4], concat=True)[0]
+        self.assertEqual(result, data.iat[3, 4])
+
+        result = self.executor.execute_dataframe(df.iloc[:, 2].iat[3], concat=True)[0]
+        self.assertEqual(result, data.iloc[:, 2].iat[3])
