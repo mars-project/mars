@@ -262,7 +262,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
 
 
 def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer',
-             dtype=None, usecols=None, chunk_bytes=None, gpu=None, head_bytes='100k',
+             dtype=None, usecols=None, chunk_bytes='64M', gpu=None, head_bytes='100k',
              head_lines=None, sort_range_index=False, storage_options=None, **kwargs):
     """
     Read comma-separated values (csv) file(s) into DataFrame.
