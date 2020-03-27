@@ -42,7 +42,7 @@ else
   CONDA_FILE="Miniconda3-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
 fi
 
-TEST_PACKAGES="virtualenv gevent psutil pyyaml lz4"
+TEST_PACKAGES="virtualenv gevent psutil pyyaml lz4 pip setuptools coverage wheel"
 
 if [[ "$FILE_EXT" == "sh" ]]; then
   curl -s -o "miniconda.${FILE_EXT}" https://repo.continuum.io/miniconda/$CONDA_FILE

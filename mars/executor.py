@@ -448,7 +448,8 @@ class GraphExecution(object):
                 self._mock_max_memory = max(cur_memory, self._mock_max_memory)
 
             executed_chunk_keys.update([c.key for c in first_op.outputs])
-            op_keys.add(first_op.key)
+            with self._lock:
+                op_keys.add(first_op.key)
             # handle other operands
             for rest_op in ops[1:]:
                 for op_output, rest_op_output in zip(first_op.outputs, rest_op.outputs):
@@ -531,7 +532,8 @@ class GraphExecution(object):
             # error happens, ignore
             return
 
-        to_submit_op = self._queue.pop(0)
+        with self._lock:
+            to_submit_op = self._queue.pop(0)
         assert to_submit_op.key not in self._submitted_op_keys
         self._submitted_op_keys.add(to_submit_op.key)
 
