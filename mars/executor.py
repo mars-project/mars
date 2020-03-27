@@ -537,7 +537,8 @@ class GraphExecution(object):
             # error happens, ignore
             return
 
-        to_submit_op = self._queue.pop(0)
+        with self._lock:
+            to_submit_op = self._queue.pop(0)
         assert to_submit_op.key not in self._submitted_op_keys
         self._submitted_op_keys.add(to_submit_op.key)
 

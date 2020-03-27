@@ -16,12 +16,11 @@ import pandas as pd
 
 from ..core import Base, Entity
 from ..tensor.core import TENSOR_TYPE
-from ..tensor import tensor as astensor
 from .core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame as _Frame, Series as _Series
 from .datasource.dataframe import from_pandas as from_pandas_df
 from .datasource.series import from_pandas as from_pandas_series
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
-    dataframe_from_1d_tensors
+    dataframe_from_1d_tileables
 
 
 class DataFrame(_Frame):
@@ -39,13 +38,8 @@ class DataFrame(_Frame):
                 df = data
         elif isinstance(data, dict) and any(isinstance(v, (Base, Entity)) for v in data.values()):
             # data is a dict and some value is tensor
-            columns = list(data.keys()) if columns is None else columns
-            tensors = []
-            for c in columns:
-                tensors.append(astensor(data[c]))
-            df = dataframe_from_1d_tensors(
-                tensors, index=index, columns=columns,
-                gpu=gpu, sparse=sparse)
+            df = dataframe_from_1d_tileables(
+                data, index=index, columns=columns, gpu=gpu, sparse=sparse)
         else:
             pdf = pd.DataFrame(data, index=index, columns=columns, dtype=dtype, copy=copy)
             df = from_pandas_df(pdf, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
