@@ -418,6 +418,11 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(
             self.executor.execute_dataframe(df[mask], concat=True)[0].sort_index(), data[mask_data])
 
+        # getitem by DataFrame with all bool columns
+        r = df[df > 0.5]
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(result, data[data > 0.5])
+
     def testDataFrameGetitemUsingAttr(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'key', 'dtypes', 'size'])
         df = md.DataFrame(data, chunk_size=2)
