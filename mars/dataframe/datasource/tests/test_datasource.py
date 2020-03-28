@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from weakref import ReferenceType
 import os
 import tempfile
 import shutil
+from collections import OrderedDict
+from weakref import ReferenceType
 
 import numpy as np
 import pandas as pd
@@ -29,7 +30,7 @@ from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, \
-    series_from_tensor, dataframe_from_1d_tensors
+    series_from_tensor, dataframe_from_1d_tileables
 from mars.dataframe.datasource.from_records import from_records
 from mars.dataframe.datasource.read_csv import read_csv, DataFrameReadCSV
 from mars.dataframe.datasource.date_range import date_range
@@ -413,8 +414,9 @@ class Test(TestBase):
         pd.testing.assert_index_equal(series.chunks[2].index_value.to_pandas(), pd.RangeIndex(8, 10))
         self.assertEqual(series.chunks[2].name, 'a')
 
-        df = dataframe_from_1d_tensors([mt.tensor(np.random.rand(4)),
-                                        mt.tensor(np.random.rand(4))])
+        d = OrderedDict([(0, mt.tensor(np.random.rand(4))),
+                         (1, mt.tensor(np.random.rand(4)))])
+        df = dataframe_from_1d_tileables(d)
         pd.testing.assert_index_equal(df.columns_value.to_pandas(), pd.RangeIndex(2))
 
         df = df.tiles()
@@ -447,20 +449,20 @@ class Test(TestBase):
             dataframe_from_tensor(mt.tensor(np.random.rand(3, 2)),
                                   index=mt.tensor(np.random.rand(3, 2)))
 
-        # 1-d tensors should have same shapen
+        # 1-d tensors should have same shape
         with self.assertRaises(ValueError):
-            dataframe_from_1d_tensors([mt.tensor(np.random.rand(3)),
-                                       mt.tensor(np.random.rand(2))])
+            dataframe_from_1d_tileables(OrderedDict([(0, mt.tensor(np.random.rand(3))),
+                                                     (1, mt.tensor(np.random.rand(2)))]))
 
         # index has wrong shape
         with self.assertRaises(ValueError):
-            dataframe_from_1d_tensors([mt.tensor(np.random.rand(3))],
-                                      index=mt.tensor(np.random.rand(2)))
+            dataframe_from_1d_tileables({0: mt.tensor(np.random.rand(3))},
+                                        index=mt.tensor(np.random.rand(2)))
 
         # columns have wrong shape
         with self.assertRaises(ValueError):
-            dataframe_from_1d_tensors([mt.tensor(np.random.rand(3))],
-                                      columns=['a', 'b'])
+            dataframe_from_1d_tileables({0: mt.tensor(np.random.rand(3))},
+                                        columns=['a', 'b'])
 
         # index should be 1-d
         with self.assertRaises(ValueError):
