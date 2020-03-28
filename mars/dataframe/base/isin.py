@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+from pandas.api.types import is_list_like
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField
+from ...tensor.core import TENSOR_TYPE
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..core import SERIES_TYPE
@@ -49,7 +51,7 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, elements):
         inputs = [elements]
-        if isinstance(self._values, SERIES_TYPE):
+        if isinstance(self._values, (SERIES_TYPE, TENSOR_TYPE)):
             inputs.append(self._values)
         return self.new_series(inputs, shape=elements.shape, dtype=np.dtype('bool'),
                                index_value=elements.index_value, name=elements.name)
@@ -91,13 +93,21 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
             values = ctx[op.inputs[1].key]
         else:
             values = op.values
-        # FIXME(hetao): will be a "buffer source array is read-only" if not copy
-        ctx[op.outputs[0].key] = elements.copy().isin(values)
+        try:
+            ctx[op.outputs[0].key] = elements.isin(values)
+        except ValueError:
+            # buffer read-only
+            ctx[op.outputs[0].key] = elements.copy().isin(values)
 
 
 def isin(elements, values):
     # TODO(hetao): support more type combinations, for example, DataFrame.isin.
-    if not isinstance(elements, SERIES_TYPE) or not isinstance(values, SERIES_TYPE):
+    if is_list_like(values):
+        values = list(values)
+    elif not isinstance(values, (SERIES_TYPE, TENSOR_TYPE)):
+        raise TypeError('only list-like objects are allowed to be passed to isin(), '
+                        'you passed a [{}]'.format(type(values)))
+    if not isinstance(elements, SERIES_TYPE):  # pragma: no cover
         raise NotImplementedError('Unsupported parameter types: %s and %s' %
                                   (type(elements), type(values)))
     op = DataFrameIsin(values)

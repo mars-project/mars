@@ -717,3 +717,6 @@ class Test(TestBase):
             self.assertEqual(c.op.inputs[0].shape, (2,))
             self.assertEqual(c.op.inputs[1].index, (0,))
             self.assertEqual(c.op.inputs[1].shape, (4,))  # has been rechunked
+
+        with self.assertRaises(TypeError):
+            _ = a.isin('sth')
