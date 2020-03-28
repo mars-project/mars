@@ -14,15 +14,20 @@
 
 
 def _install():
+    from pandas.util import cache_readonly
     from .iloc import iloc, head, tail
     from .loc import loc
+    from .iat import iat
+    from .at import at
     from .set_index import set_index
     from .getitem import dataframe_getitem, series_getitem
     from ..operands import DATAFRAME_TYPE, SERIES_TYPE
 
     for cls in DATAFRAME_TYPE + SERIES_TYPE:
-        setattr(cls, 'iloc', property(iloc))
-        setattr(cls, 'loc', property(loc))
+        setattr(cls, 'iloc', cache_readonly(iloc))
+        setattr(cls, 'loc', cache_readonly(loc))
+        setattr(cls, 'iat', cache_readonly(iat))
+        setattr(cls, 'at', cache_readonly(at))
         setattr(cls, 'head', head)
         setattr(cls, 'tail', tail)
 
