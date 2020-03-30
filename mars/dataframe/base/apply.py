@@ -93,14 +93,14 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         axis = op.axis
         elementwise = op.elementwise
 
-        if not elementwise:
+        if not elementwise and in_df.chunk_shape[axis] > 1:
             chunk_size = (
                 in_df.shape[axis],
                 max(1, options.chunk_store_limit // in_df.shape[axis]),
             )
             if axis == 1:
                 chunk_size = chunk_size[::-1]
-            in_df = in_df.rechunk(chunk_size).tiles()
+            in_df = in_df.rechunk(chunk_size)._inplace_tile()
 
         chunks = []
         if op.object_type == ObjectType.dataframe:
@@ -123,17 +123,23 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                 new_op = op.copy().reset_key()
                 chunks.append(new_op.new_chunk([c], shape=tuple(new_shape), index=c.index, dtypes=new_dtypes,
                                                index_value=new_index_value, columns_value=new_columns_value))
+
+            new_nsplits = list(in_df.nsplits)
+            if not elementwise:
+                new_nsplits[axis] = (np.nan,) * len(new_nsplits[axis])
         else:
             for c in in_df.chunks:
                 shape_len = c.shape[1 - axis]
                 new_index_value = c.index_value if axis == 1 else c.columns_value
+                new_index = (c.index[1 - axis],)
                 new_op = op.copy().reset_key()
-                chunks.append(new_op.new_chunk([c], shape=(shape_len,), index=c.index, dtype=out_df.dtype,
+                chunks.append(new_op.new_chunk([c], shape=(shape_len,), index=new_index, dtype=out_df.dtype,
                                                index_value=new_index_value))
+            new_nsplits = (in_df.nsplits[1 - axis],)
 
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
-        kw.update(dict(chunks=chunks, nsplits=in_df.nsplits))
+        kw.update(dict(chunks=chunks, nsplits=tuple(new_nsplits)))
         return new_op.new_tileables(op.inputs, **kw)
 
     @classmethod

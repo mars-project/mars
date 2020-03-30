@@ -478,6 +478,19 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         for key in _check_args:
             _check_options[key] = kw_dict.pop(key, True)
 
+    @staticmethod
+    def _check_nsplits(tileable):
+        from mars.tiles import get_tiled
+        tiled = get_tiled(tileable)
+
+        for c in tiled.chunks:
+            if tiled.cix[c.index] is not c:
+                raise AssertionError('Cannot spot chunk via index %r' % (c.index,))
+        for cid, shape in enumerate(itertools.product(*tiled.nsplits)):
+            if shape != tiled.chunks[cid].shape:
+                raise AssertionError('Shape in nsplits %r does not meet shape in chunk %r'
+                                     % (shape, tiled.chunks[cid].shape))
+
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
             graph = type(graph).from_json(graph.to_json())
@@ -488,6 +501,10 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         self._extract_check_options(kwargs)
 
         result = super().execute_tileable(tileable, *args, **kwargs)
+
+        self._check_nsplits(tileable)
+
+        # check returned type
         if kwargs.get('concat', False):
             self.assert_object_consistent(tileable, result[0])
         return result
@@ -500,6 +517,7 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
 
         results = super().execute_tileables(tileables, *args, **kwargs)
         for tileable, result in zip(tileables, results):
+            self._check_nsplits(tileable)
             self.assert_object_consistent(tileable, result)
         return results
 
