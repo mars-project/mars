@@ -31,7 +31,7 @@ from ...tensor.indexing.index_lib import IndexHandlerContext, IndexHandler, \
 from ...tensor.utils import split_indexes_into_chunks, calc_pos, \
     filter_inputs, slice_split, calc_sliced_size, to_numpy
 from ...utils import check_chunks_unknown_shape, classproperty
-from ..core import SERIES_CHUNK_TYPE
+from ..core import SERIES_CHUNK_TYPE, IndexValue
 from ..operands import ObjectType
 from ..utils import parse_index
 from .utils import convert_labels_into_positions
@@ -676,6 +676,7 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
                 {i: index for i in range(tileable.chunk_shape[input_axis])}
 
     def process(self, index_info, context):
+        tileable = context.tileable
         input_axis = index_info.input_axis
         chunk_index_to_labels = index_info.chunk_index_to_labels
 
@@ -684,29 +685,32 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
         for chunk_index, chunk_index_info in chunk_index_to_info.items():
             i = chunk_index[input_axis]
             chunk_labels = chunk_index_to_labels[i]
+            size = chunk_labels.size
 
-            if chunk_labels.size == 0:
+            if size == 0:
                 # not effected
                 del context.chunk_index_to_info[chunk_index]
                 continue
+
+            if np.isscalar(index_info.raw_index) and \
+                    isinstance(tileable.index_value.value, IndexValue.DatetimeIndex) and \
+                    isinstance(chunk_labels[0], str):
+                # special case when index is DatetimeIndex and loc by string
+                # convert back list to scalar because if keep list,
+                # KeyError will always happen
+                chunk_labels = chunk_labels[0].item()
 
             other_index = chunk_index[:1] if input_axis == 1 else chunk_index[1:]
             if other_index not in other_index_to_iter:
                 other_index_to_iter[other_index] = itertools.count()
             output_axis_index = next(other_index_to_iter[other_index])
-            output_axis_shape = chunk_labels.size
+            output_axis_shape = size
             self.set_chunk_index_info(context, index_info, chunk_index,
                                       chunk_index_info, output_axis_index,
                                       chunk_labels, output_axis_shape)
 
     @classmethod
     def need_postprocess(cls, index_info, context):
-        tileable = context.tileable
-
-        if tileable.chunk_shape[index_info.input_axis] == 1:
-            # if tileable only has 1 chunk on this axis
-            # do not need postprocess
-            return False
         # if ascending sorted, no need to postprocess
         return not index_info.is_label_asc_sorted
 
