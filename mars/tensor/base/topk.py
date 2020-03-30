@@ -226,7 +226,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
             kws = []
             if op.return_value:
                 kws.append({
-                    'shape': shape,
+                    'shape': tuple(shape),
                     'order': input_chunk.order,
                     'dtype': input_chunk.dtype,
                     'index': chunk_index,
@@ -234,7 +234,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
                 })
             if op.return_indices:
                 kws.append({
-                    'shape': shape,
+                    'shape': tuple(shape),
                     'order': TensorOrder.C_ORDER,
                     'dtype': np.dtype(np.int64),
                     'index': chunk_index,

@@ -482,10 +482,19 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     def _check_nsplits(tileable):
         from mars.tiles import get_tiled
         tiled = get_tiled(tileable)
+        if tiled.nsplits == () and len(tiled.chunks) == 1:
+            return
 
         for c in tiled.chunks:
-            if tiled.cix[c.index] is not c:
-                raise AssertionError('Cannot spot chunk via index %r' % (c.index,))
+            try:
+                tiled_c = tiled.cix[c.index]
+            except ValueError:
+                raise AssertionError('Malformed index %r, nsplits is %r'
+                                     % (c.index, tiled.nsplits)) from None
+
+            if tiled_c is not c:
+                raise AssertionError('Cannot spot chunk via index %r, nsplits is %r'
+                                     % (c.index, tiled.nsplits))
         for cid, shape in enumerate(itertools.product(*tiled.nsplits)):
             if shape != tiled.chunks[cid].shape:
                 raise AssertionError('Shape in nsplits %r does not meet shape in chunk %r'
@@ -498,11 +507,14 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         return super().execute_graph(graph, keys, **kw)
 
     def execute_tileable(self, tileable, *args, **kwargs):
+        from mars.dataframe.core import GROUPBY_TYPE
         self._extract_check_options(kwargs)
 
         result = super().execute_tileable(tileable, *args, **kwargs)
 
-        self._check_nsplits(tileable)
+        # fixme with ISSUE:1036
+        if not isinstance(tileable, GROUPBY_TYPE):
+            self._check_nsplits(tileable)
 
         # check returned type
         if kwargs.get('concat', False):

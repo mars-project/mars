@@ -100,7 +100,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
                     columns_value=out_df.columns_value, index_value=out_df.index_value))
             else:
                 chunks.append(new_op.new_chunk(
-                    inp_chunks, name=out_df.name, index=c.index, shape=(np.nan,), dtype=out_df.dtype,
+                    inp_chunks, name=out_df.name, index=(c.index[0],), shape=(np.nan,), dtype=out_df.dtype,
                     index_value=out_df.index_value))
 
         new_op = op.copy().reset_key()

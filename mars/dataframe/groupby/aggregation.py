@@ -353,8 +353,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                                              index_value=out_df.index_value, dtypes=out_df.dtypes,
                                              columns_value=out_df.columns_value)
             else:
-                agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index, dtype=out_df.dtype,
-                                             index_value=out_df.index_value, name=out_df.name)
+                agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=(chunk.index[0],),
+                                             dtype=out_df.dtype, index_value=out_df.index_value,
+                                             name=out_df.name)
             agg_chunks.append(agg_chunk)
 
         new_op = op.copy()

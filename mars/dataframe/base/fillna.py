@@ -172,7 +172,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             new_chunks.append(new_op.new_chunk(inputs, **kw))
 
         kw = df.params.copy()
-        kw.update(dict(chunks=new_chunks))
+        kw.update(dict(chunks=new_chunks, nsplits=in_df.nsplits))
         new_op = op.copy().reset_key()
         return new_op.new_tileables(op.inputs, **kw)
 
