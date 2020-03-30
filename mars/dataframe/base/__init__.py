@@ -20,6 +20,7 @@ from .describe import describe
 from .fillna import fillna, ffill, bfill
 from .string_ import SeriesStringMethod
 from .datetimes import SeriesDatetimeMethod
+from .isin import isin
 
 
 def _install():
@@ -43,6 +44,7 @@ def _install():
         setattr(t, 'fillna', fillna)
         setattr(t, 'ffill', ffill)
         setattr(t, 'bfill', bfill)
+        setattr(t, 'isin', isin)
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
 

@@ -22,6 +22,7 @@ from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
 from mars.session import new_session
+from mars.tensor import tensor
 from mars.tests.core import TestBase, require_cudf, ExecutorForTest
 from mars.utils import lazy_import
 
@@ -493,4 +494,60 @@ class Test(TestBase):
         r = series.dt.days
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = s.dt.days
+        pd.testing.assert_series_equal(result, expected)
+
+    def testSeriesIsin(self):
+        # one chunk in multiple chunks
+        a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        b = pd.Series([2, 1, 9, 3])
+        sa = from_pandas_series(a, chunk_size=10)
+        sb = from_pandas_series(b, chunk_size=2)
+
+        result = self.executor.execute_dataframe(sa.isin(sb), concat=True)[0]
+        expected = a.isin(b)
+        pd.testing.assert_series_equal(result, expected)
+
+        # multiple chunk in one chunks
+        a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        b = pd.Series([2, 1, 9, 3])
+        sa = from_pandas_series(a, chunk_size=2)
+        sb = from_pandas_series(b, chunk_size=4)
+
+        result = self.executor.execute_dataframe(sa.isin(sb), concat=True)[0]
+        expected = a.isin(b)
+        pd.testing.assert_series_equal(result, expected)
+
+        # multiple chunk in multiple chunks
+        a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        b = pd.Series([2, 1, 9, 3])
+        sa = from_pandas_series(a, chunk_size=2)
+        sb = from_pandas_series(b, chunk_size=2)
+
+        result = self.executor.execute_dataframe(sa.isin(sb), concat=True)[0]
+        expected = a.isin(b)
+        pd.testing.assert_series_equal(result, expected)
+
+        a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        b = pd.Series([2, 1, 9, 3])
+        sa = from_pandas_series(a, chunk_size=2)
+
+        result = self.executor.execute_dataframe(sa.isin(b), concat=True)[0]
+        expected = a.isin(b)
+        pd.testing.assert_series_equal(result, expected)
+
+        a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        b = np.array([2, 1, 9, 3])
+        sa = from_pandas_series(a, chunk_size=2)
+        sb = tensor(b, chunk_size=3)
+
+        result = self.executor.execute_dataframe(sa.isin(sb), concat=True)[0]
+        expected = a.isin(b)
+        pd.testing.assert_series_equal(result, expected)
+
+        a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        b = {2, 1, 9, 3}  # set
+        sa = from_pandas_series(a, chunk_size=2)
+
+        result = self.executor.execute_dataframe(sa.isin(b), concat=True)[0]
+        expected = a.isin(b)
         pd.testing.assert_series_equal(result, expected)
