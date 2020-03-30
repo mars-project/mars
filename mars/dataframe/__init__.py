@@ -21,13 +21,13 @@ from .datasource.from_records import from_records
 from .datasource.read_csv import read_csv
 from .datasource.read_sql_table import read_sql_table
 from .datasource.date_range import date_range
-from .merge import concat
+from .merge import concat, merge
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 
 from . import arithmetic
 from . import base
 from . import indexing
-from . import merge
+from . import merge as merge_
 from . import reduction
 from . import statistics
 from . import sort
@@ -36,8 +36,8 @@ from . import ufunc
 from . import datastore
 from . import window
 
-del reduction, statistics, arithmetic, indexing, merge, base, \
-    groupby, ufunc, datastore, sort, window
+del reduction, statistics, arithmetic, indexing, merge_, \
+    base, groupby, ufunc, datastore, sort, window
 del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences

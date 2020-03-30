@@ -223,11 +223,15 @@ class Test(TestBase):
         # columns are non unique and non monotonic
         raw4 = raw1.copy()
         raw4.columns = ['b', 'a', 'b', 'd']
+        # index that is timestamp
+        raw5 = raw1.copy()
+        raw5.index = pd.date_range('2020-1-1', periods=5)
 
         df1 = md.DataFrame(raw1, chunk_size=2)
         df2 = md.DataFrame(raw2, chunk_size=2)
         df3 = md.DataFrame(raw3, chunk_size=2)
         df4 = md.DataFrame(raw4, chunk_size=2)
+        df5 = md.DataFrame(raw5, chunk_size=2)
 
         df = df2.loc[3, 'b']
         result = self.executor.execute_tensor(df, concat=True)[0]
@@ -309,9 +313,24 @@ class Test(TestBase):
         expected = raw1.loc[['a3', 'a1'], ['b', 'a', 'd']]
         pd.testing.assert_frame_equal(result, expected)
 
+        # get timestamp by str
+        df = df5.loc['20200101']
+        result = self.executor.execute_dataframe(df, concat=True, check_series_name=False)[0]
+        expected = raw5.loc['20200101']
+        pd.testing.assert_series_equal(result, expected)
+
+        # get timestamp by str, return scalar
+        df = df5.loc['2020-1-1', 'c']
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw5.loc['2020-1-1', 'c']
+        self.assertEqual(result, expected)
+
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
         df = md.DataFrame(data, chunk_size=2)
+        data2 = data.copy()
+        data2.index = pd.date_range('2020-1-1', periods=10)
+        mdf = md.DataFrame(data2, chunk_size=3)
 
         series1 = df['c2']
         pd.testing.assert_series_equal(
@@ -353,6 +372,14 @@ class Test(TestBase):
         self.assertEqual(
             self.executor.execute_dataframe(series3, concat=True)[0], data['c1'][0])
 
+        df8 = mdf[3:7]
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df8, concat=True)[0], data2[3:7])
+
+        df9 = mdf['2020-1-2': '2020-1-5']
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(df9, concat=True)[0], data2['2020-1-2': '2020-1-5'])
+
     def testDataFrameGetitemBool(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
         df = md.DataFrame(data, chunk_size=2)
@@ -390,6 +417,11 @@ class Test(TestBase):
         mask = md.Series(mask_data, chunk_size=2)
         pd.testing.assert_frame_equal(
             self.executor.execute_dataframe(df[mask], concat=True)[0].sort_index(), data[mask_data])
+
+        # getitem by DataFrame with all bool columns
+        r = df[df > 0.5]
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(result, data[data > 0.5])
 
     def testDataFrameGetitemUsingAttr(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'key', 'dtypes', 'size'])
