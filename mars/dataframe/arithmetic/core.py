@@ -129,13 +129,13 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if op.axis == 'columns' or op.axis == 1:
                 series_chunk = right_chunks[out_idx[1]]
                 kw = {
-                    'shape': (df_chunk.shape[0], np.nan),
+                    'shape': (nsplits[0][out_idx[0]], nsplits[1][out_idx[1]]),
                     'index_value': df_chunk.index_value,
                 }
             else:
                 series_chunk = right_chunks[out_idx[0]]
                 kw = {
-                    'shape': (np.nan, df_chunk.shape[1]),
+                    'shape': (nsplits[0][out_idx[0]], nsplits[1][out_idx[1]]),
                     'columns_value': df_chunk.columns_value,
                 }
             out_chunk = op.copy().reset_key().new_chunk([df_chunk, series_chunk], index=out_idx, **kw)
@@ -420,11 +420,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             properties = self._calc_properties(df1, df2, axis=self.axis)
 
         inputs = [inp for inp in inputs if isinstance(inp, (Chunk, ChunkData))]
-        shapes = [properties.pop('shape')]
-        shapes.extend(kw_item.pop('shape') for kw_item in kws or ())
+
+        shape = properties.pop('shape')
         if 'shape' in kw:
-            shapes.append(kw.pop('shape'))
-        shape = self._merge_shape(*shapes)
+            shape = kw.pop('shape')
 
         for prop, value in properties.items():
             if kw.get(prop, None) is None:
