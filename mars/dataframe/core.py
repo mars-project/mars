@@ -830,6 +830,10 @@ class DataFrame(TileableEntity):
             else:
                 raise
 
+    def __dir__(self):
+        result = list(super().__dir__())
+        return sorted(result + [k for k in self.dtypes.index if isinstance(k, str) and k.isidentifier()])
+
     @property
     def index(self):
         return self._data.index

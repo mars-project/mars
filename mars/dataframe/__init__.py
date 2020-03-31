@@ -16,6 +16,7 @@
 
 from .initializer import DataFrame, Series
 # do imports to register operands
+from .base.checkna import isna, isnull, notna, notnull
 from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
 from .datasource.read_csv import read_csv
@@ -41,4 +42,8 @@ del reduction, statistics, arithmetic, indexing, merge_, \
 del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences
-from pandas import Timedelta, Timestamp, offsets
+from pandas import Timedelta, Timestamp, offsets, NaT
+try:
+    from pandas import NA
+except ImportError:  # pragma: no cover
+    pass
