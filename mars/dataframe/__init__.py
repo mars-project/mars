@@ -41,4 +41,8 @@ del reduction, statistics, arithmetic, indexing, merge_, \
 del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences
-from pandas import Timedelta, Timestamp, offsets
+from pandas import Timedelta, Timestamp, offsets, NaT
+try:
+    from pandas import NA
+except ImportError:  # pragma: no cover
+    pass
