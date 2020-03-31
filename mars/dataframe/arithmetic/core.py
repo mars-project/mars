@@ -88,7 +88,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         out_chunks = []
         for idx, left_chunk, right_chunk in zip(out_chunk_indexes, left_chunks, right_chunks):
             out_chunk = op.copy().reset_key().new_chunk([left_chunk, right_chunk],
-                                                        shape=(np.nan, np.nan), index=idx)
+                                                        shape=(nsplits[0][idx[0]], nsplits[1][idx[1]]),
+                                                        index=idx)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
@@ -107,7 +108,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         out_chunks = []
         for idx, left_chunk, right_chunk in zip(range(out_shape[0]), left_chunks, right_chunks):
             out_chunk = op.copy().reset_key().new_chunk([left_chunk, right_chunk],
-                                                        shape=(np.nan,), index=(idx,))
+                                                        shape=(nsplits[0][idx],), index=(idx,))
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
