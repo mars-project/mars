@@ -16,6 +16,7 @@
 
 from .initializer import DataFrame, Series
 # do imports to register operands
+from .base.checkna import isna, isnull, notna, notnull
 from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
 from .datasource.read_csv import read_csv

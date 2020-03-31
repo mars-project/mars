@@ -96,3 +96,7 @@ def isna(df):
 def notna(df):
     op = DataFrameCheckNA(positive=False, use_inf_as_na=options.dataframe.mode.use_inf_as_na)
     return op(df)
+
+
+isnull = isna
+notnull = notna
