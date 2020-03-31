@@ -478,27 +478,38 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         for key in _check_args:
             _check_options[key] = kw_dict.pop(key, True)
 
-    @staticmethod
-    def _check_nsplits(tileable):
+    def _check_nsplits(self, tileable):
         from mars.tiles import get_tiled
         tiled = get_tiled(tileable)
         if tiled.nsplits == () and len(tiled.chunks) == 1:
             return
 
+        nsplit_chunk_shape = tuple(len(s) for s in tiled.nsplits)
+        if nsplit_chunk_shape != tiled.chunk_shape:
+            raise AssertionError('Operand %r: shape of nsplits %r not consistent with chunk shape %r'
+                                 % (tiled.op, nsplit_chunk_shape, tiled.chunk_shape)) from None
+
+        nsplit_shape = tuple(np.sum(s) for s in tiled.nsplits)
+        try:
+            self.assert_shape_consistent(nsplit_shape, tiled.shape)
+        except AssertionError:
+            raise AssertionError('Operand %r: shape computed from nsplits %r not consistent with real shape %r'
+                                 % (tiled.op, nsplit_shape, tiled.shape)) from None
+
         for c in tiled.chunks:
             try:
                 tiled_c = tiled.cix[c.index]
-            except ValueError:
-                raise AssertionError('Malformed index %r, nsplits is %r'
-                                     % (c.index, tiled.nsplits)) from None
+            except ValueError as ex:
+                raise AssertionError('Operand %r: Malformed index %r, nsplits is %r. Raw error is %r'
+                                     % (c.op, c.index, tiled.nsplits, ex)) from None
 
             if tiled_c is not c:
-                raise AssertionError('Cannot spot chunk via index %r, nsplits is %r'
-                                     % (c.index, tiled.nsplits))
+                raise AssertionError('Operand %r: Cannot spot chunk via index %r, nsplits is %r'
+                                     % (c.op, c.index, tiled.nsplits))
         for cid, shape in enumerate(itertools.product(*tiled.nsplits)):
             if shape != tiled.chunks[cid].shape:
-                raise AssertionError('Shape in nsplits %r does not meet shape in chunk %r'
-                                     % (shape, tiled.chunks[cid].shape))
+                raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
+                                     % (tiled.chunks[cid].op, shape, tiled.chunks[cid].shape))
 
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:

@@ -149,6 +149,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 
         concat_op = DataFrameConcat(object_type=ObjectType.series)
         kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
+        kw['index'] = (0,)
         chk = concat_op.new_chunk(chunks, dtype=chunks[0].dtype, **kw)
         index_op = SeriesIndex(labels=op.labels)
         chunk = index_op.new_chunk([chk], dtype=chk.dtype, **kw)
