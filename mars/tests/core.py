@@ -493,8 +493,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         try:
             self.assert_shape_consistent(nsplit_shape, tiled.shape)
         except AssertionError:
-            raise AssertionError('Operand %r: shape computed from nsplits %r not consistent with real shape %r'
-                                 % (tiled.op, nsplit_shape, tiled.shape)) from None
+            raise AssertionError('Operand %r: shape computed from nsplits %r -> %r not consistent with real shape %r'
+                                 % (tiled.op, tiled.nsplits, nsplit_shape, tiled.shape)) from None
 
         for c in tiled.chunks:
             try:
