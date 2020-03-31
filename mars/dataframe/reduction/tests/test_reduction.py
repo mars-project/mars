@@ -26,7 +26,7 @@ from mars.tensor import Tensor
 from mars.dataframe.core import DataFrame, IndexValue, Series
 from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, \
     DataFrameMax, DataFrameCount, DataFrameMean, DataFrameVar, DataFrameCummin, \
-    DataFrameCummax, DataFrameCumprod, DataFrameCumsum
+    DataFrameCummax, DataFrameCumprod, DataFrameCumsum, DataFrameNunique
 from mars.dataframe.merge import DataFrameConcat
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
@@ -199,7 +199,7 @@ class TestReduction(TestBase):
         reduction_df = reduction_df.tiles()
 
         self.assertEqual(len(reduction_df.chunks), 5)
-        self.assertEqual(reduction_df.nsplits, ((np.nan,) * 5,))
+        self.assertEqual(reduction_df.nsplits, ((4,) * 5,))
         self.assertIsInstance(reduction_df.chunks[0].op, self.op)
         self.assertIsInstance(reduction_df.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(reduction_df.chunks[0].inputs[0].inputs), 2)
@@ -368,6 +368,38 @@ class TestCumReduction(TestBase):
         self.assertIsInstance(reduction_df.chunks[-1].inputs[-1].op, self.op)
         self.assertEqual(reduction_df.chunks[-1].inputs[-1].op.stage, OperandStage.map)
         self.assertEqual(len(reduction_df.chunks[-1].inputs), 7)
+
+    def testNunique(self):
+        data = pd.DataFrame(np.random.randint(0, 6, size=(20, 10)),
+                            columns=['c' + str(i) for i in range(10)])
+        df = from_pandas_df(data, chunk_size=3)
+        result = df.nunique()
+
+        self.assertEqual(result.shape, (10,))
+        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertIsInstance(result.op, DataFrameNunique)
+
+        tiled = result.tiles()
+        self.assertEqual(tiled.shape, (10,))
+        self.assertEqual(len(tiled.chunks), 4)
+        self.assertEqual(tiled.nsplits, ((3, 3, 3, 1,),))
+        self.assertEqual(tiled.chunks[0].op.stage, OperandStage.agg)
+        self.assertIsInstance(tiled.chunks[0].op, DataFrameNunique)
+
+        data2 = data.copy()
+        df2 = from_pandas_df(data2, chunk_size=3)
+        result2 = df2.nunique(axis=1)
+
+        self.assertEqual(result2.shape, (20,))
+        self.assertEqual(result2.op.object_type, ObjectType.series)
+        self.assertIsInstance(result2.op, DataFrameNunique)
+
+        tiled = result2.tiles()
+        self.assertEqual(tiled.shape, (20,))
+        self.assertEqual(len(tiled.chunks), 7)
+        self.assertEqual(tiled.nsplits, ((3, 3, 3, 3, 3, 3, 2,),))
+        self.assertEqual(tiled.chunks[0].op.stage, OperandStage.agg)
+        self.assertIsInstance(tiled.chunks[0].op, DataFrameNunique)
 
 
 class TestAggregate(TestBase):
