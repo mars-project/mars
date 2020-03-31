@@ -32,7 +32,7 @@ jobs:
 
     steps:
     - name: Check out code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
 
     - name: Set up conda ${{ matrix.python-version }}
       env:
@@ -175,7 +175,7 @@ jobs:
     runs-on: ubuntu-16.04
     steps:
       - name: Check out code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
       - name: Set up Python 3.7
         uses: actions/setup-python@v1

@@ -21,7 +21,8 @@ import numpy as np
 import pandas as pd
 
 from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
-    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
+    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE, \
+    DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
 from ..core import FuseChunkData, FuseChunk
 from ..operands import Operand, TileableOperandMixin, MapReduceOperand, Fuse
 from ..operands import ShuffleProxy, FuseChunkMixin
@@ -48,7 +49,9 @@ class DataFrameOperandMixin(TileableOperandMixin):
         ObjectType.dataframe: DATAFRAME_CHUNK_TYPE,
         ObjectType.series: SERIES_CHUNK_TYPE,
         ObjectType.index: INDEX_CHUNK_TYPE,
-        ObjectType.scalar: TENSOR_CHUNK_TYPE
+        ObjectType.scalar: TENSOR_CHUNK_TYPE,
+        ObjectType.dataframe_groupby: DATAFRAME_GROUPBY_CHUNK_TYPE,
+        ObjectType.series_groupby: SERIES_GROUPBY_CHUNK_TYPE,
     }
 
     _OBJECT_TYPE_TO_TILEABLE_TYPES = {

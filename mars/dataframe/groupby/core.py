@@ -21,7 +21,7 @@ from ... import opcodes as OperandDef
 from ...operands import OperandStage
 from ...serialize import BoolField, Int32Field, AnyField
 from ...utils import get_shuffle_input_keys_idxes
-from ..utils import build_concatenated_rows_frame, hash_dataframe_on
+from ..utils import build_concatenated_rows_frame, hash_dataframe_on, parse_index
 from ..operands import DataFrameOperandMixin, \
     DataFrameMapReduceOperand, DataFrameShuffleProxy, ObjectType
 
@@ -73,7 +73,9 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         return self._object_type in (ObjectType.dataframe_groupby, ObjectType.dataframe)
 
     def __call__(self, df):
-        return self.new_tileable([df])
+        params = df.params.copy()
+        params['index_value'] = parse_index(None, df.key, df.index_value.key)
+        return self.new_tileable([df], **params)
 
     @classmethod
     def tile(cls, op):
@@ -112,8 +114,14 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
                 new_shape = (np.nan, chunk.shape[1])
             else:
                 new_shape = (np.nan,)
-            groupby_op._object_type = out_object_type
-            out_chunks.append(groupby_op.new_chunk([chunk], shape=new_shape, index=chunk.index))
+            params = dict(shape=new_shape, index=chunk.index)
+            if op.is_dataframe_obj:
+                params.update(dict(dtypes=in_df.dtypes, columns_value=in_df.columns_value,
+                                   index_value=parse_index(None, chunk.key, proxy_chunk.key)))
+            else:
+                params.update(dict(name=in_df.name, dtype=in_df.dtype,
+                                   index_value=parse_index(None, chunk.key, proxy_chunk.key)))
+            out_chunks.append(groupby_op.new_chunk([chunk], **params))
 
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, chunks=out_chunks)

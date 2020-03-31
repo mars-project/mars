@@ -21,7 +21,7 @@ from pandas.util import cache_readonly
 
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
     is_eager_mode, build_mode
-from ..core import ChunkData, Chunk, TileableEntity, TileableData, HasShapeTileableData
+from ..core import ChunkData, Chunk, TileableEntity, HasShapeTileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField
@@ -464,7 +464,7 @@ class MultiIndex(Index):
     __slots__ = ()
 
 
-class SeriesChunkData(ChunkData):
+class BaseSeriesChunkData(ChunkData):
     __slots__ = ()
 
     # required fields
@@ -479,13 +479,6 @@ class SeriesChunkData(ChunkData):
                  index_value=None, **kw):
         super().__init__(_op=op, _shape=shape, _index=index, _dtype=dtype, _name=name,
                          _index_value=index_value, **kw)
-
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import SeriesChunkDef
-            return SeriesChunkDef
-        return super().cls(provider)
 
     @property
     def params(self):
@@ -519,13 +512,23 @@ class SeriesChunkData(ChunkData):
         return self._index_value
 
 
+class SeriesChunkData(BaseSeriesChunkData):
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import SeriesChunkDef
+            return SeriesChunkDef
+        return super().cls(provider)
+
+
 class SeriesChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (SeriesChunkData,)
 
 
-class SeriesData(HasShapeTileableData):
+class BaseSeriesData(HasShapeTileableData):
     __slots__ = '_cache',
+    _type_name = None
 
     # optional field
     _dtype = DataTypeField('dtype')
@@ -540,13 +543,6 @@ class SeriesData(HasShapeTileableData):
         super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtype=dtype, _name=name,
                          _index_value=index_value, _chunks=chunks, **kw)
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import SeriesDef
-            return SeriesDef
-        return super().cls(provider)
-
     @property
     def params(self):
         # params return the properties which useful to rebuild a new tileable object
@@ -559,19 +555,17 @@ class SeriesData(HasShapeTileableData):
 
     def __str__(self):
         if is_eager_mode():
-            return 'Series(op={0}, data=\n{1})'.format(self.op.__class__.__name__,
-                                                       str(self.fetch()))
+            return '{0}(op={1}, data=\n{2})'.format(self._type_name, self.op.__class__.__name__,
+                                                    str(self.fetch()))
         else:
-            return 'Series(op={0})'.format(self.op.__class__.__name__)
+            return '{0}(op={1})'.format(self._type_name, self.op.__class__.__name__)
 
     def __repr__(self):
         if is_eager_mode():
-            return 'Series <op={0}, key={1}, data=\n{2}>'.format(self.op.__class__.__name__,
-                                                                 self.key,
-                                                                 repr(self.fetch()))
+            return '{0} <op={1}, key={2}, data=\n{3}>'.format(self._type_name, self.op.__class__.__name__,
+                                                              self.key, repr(self.fetch()))
         else:
-            return 'Series <op={0}, key={1}>'.format(self.op.__class__.__name__,
-                                                     self.key)
+            return '{0} <op={1}, key={2}>'.format(self._type_name, self.op.__class__.__name__, self.key)
 
     @property
     def dtype(self):
@@ -613,6 +607,17 @@ class SeriesData(HasShapeTileableData):
         return series_from_tensor(in_tensor, index=index, name=name)
 
 
+class SeriesData(BaseSeriesData):
+    _type_name = 'Series'
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import SeriesDef
+            return SeriesDef
+        return super().cls(provider)
+
+
 class Series(TileableEntity):
     __slots__ = '_cache',
     _allow_data_type_ = (SeriesData,)
@@ -641,7 +646,7 @@ class Series(TileableEntity):
         return tensor.astype(dtype=dtype, order=order, copy=False)
 
 
-class DataFrameChunkData(ChunkData):
+class BaseDataFrameChunkData(ChunkData):
     __slots__ = ()
 
     # required fields
@@ -659,13 +664,6 @@ class DataFrameChunkData(ChunkData):
 
     def __len__(self):
         return self.shape[0]
-
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import DataFrameChunkDef
-            return DataFrameChunkDef
-        return super().cls(provider)
 
     @property
     def params(self):
@@ -702,6 +700,15 @@ class DataFrameChunkData(ChunkData):
         return self._columns_value
 
 
+class DataFrameChunkData(BaseDataFrameChunkData):
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import DataFrameChunkDef
+            return DataFrameChunkDef
+        return super().cls(provider)
+
+
 class DataFrameChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (DataFrameChunkData,)
@@ -710,8 +717,9 @@ class DataFrameChunk(Chunk):
         return len(self._data)
 
 
-class DataFrameData(HasShapeTileableData):
+class BaseDataFrameData(HasShapeTileableData):
     __slots__ = ()
+    _type_name = None
 
     # optional fields
     _dtypes = SeriesField('dtypes')
@@ -727,28 +735,19 @@ class DataFrameData(HasShapeTileableData):
                          _index_value=index_value, _columns_value=columns_value,
                          _chunks=chunks, **kw)
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import DataFrameDef
-            return DataFrameDef
-        return super().cls(provider)
-
     def __str__(self):
         if is_eager_mode():
-            return 'DataFrame(op={0}, data=\n{1})'.format(self.op.__class__.__name__,
-                                                          str(self.fetch()))
+            return '{0}(op={1}, data=\n{2})'.format(self._type_name, self.op.__class__.__name__,
+                                                    str(self.fetch()))
         else:
-            return 'DataFrame(op={0})'.format(self.op.__class__.__name__)
+            return '{0}(op={1})'.format(self._type_name, self.op.__class__.__name__)
 
     def __repr__(self):
         if is_eager_mode():
-            return 'DataFrame <op={0}, key={1}, data=\n{2}>'.format(self.op.__class__.__name__,
-                                                                    self.key,
-                                                                    repr(self.fetch()))
+            return '{0} <op={1}, key={2}, data=\n{3}>'.format(self._type_name, self.op.__class__.__name__,
+                                                              self.key, repr(self.fetch()))
         else:
-            return 'DataFrame <op={0}, key={1}>'.format(self.op.__class__.__name__,
-                                                        self.key)
+            return '{0} <op={1}, key={2}>'.format(self._type_name, self.op.__class__.__name__, self.key)
 
     @property
     def params(self):
@@ -802,6 +801,17 @@ class DataFrameData(HasShapeTileableData):
         return from_pandas_index(self.dtypes.index)
 
 
+class DataFrameData(BaseDataFrameData):
+    _type_name = 'DataFrame'
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import DataFrameDef
+            return DataFrameDef
+        return super().cls(provider)
+
+
 class DataFrame(TileableEntity):
     __slots__ = '_cache',
     _allow_data_type_ = (DataFrameData,)
@@ -843,15 +853,49 @@ class DataFrame(TileableEntity):
         return self._data.columns
 
 
-class DataFrameGroupByData(TileableData):
+class DataFrameGroupByChunkData(BaseDataFrameChunkData):
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import DataFrameGroupByChunkDef
+            return DataFrameGroupByChunkDef
+        return super().cls(provider)
+
+
+class DataFrameGroupByChunk(Chunk):
     __slots__ = ()
+    _allow_data_type_ = (DataFrameGroupByChunkData,)
 
-    _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
-                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-                        on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
+    def __len__(self):
+        return len(self._data)
 
-    def __init__(self, op=None, chunks=None, **kw):
-        super().__init__(_op=op, _chunks=chunks, **kw)
+
+class SeriesGroupByChunkData(BaseSeriesChunkData):
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import SeriesGroupByChunkDef
+            return SeriesGroupByChunkDef
+        return super().cls(provider)
+
+
+class SeriesGroupByChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (SeriesGroupByChunkData,)
+
+    def __len__(self):
+        return len(self._data)
+
+
+class DataFrameGroupByData(BaseDataFrameData):
+    _type_name = 'DataFrameGroupBy'
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import DataFrameGroupByDef
+            return DataFrameGroupByDef
+        return super().cls(provider)
 
     def _equal(self, o):
         # FIXME We need to implemented a true `==` operator for DataFrameGroupby
@@ -861,7 +905,29 @@ class DataFrameGroupByData(TileableData):
             return self == o
 
 
-class DataFrameGroupBy(TileableEntity):
+class SeriesGroupByData(BaseSeriesData):
+    _type_name = 'SeriesGroupBy'
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import SeriesGroupByDef
+            return SeriesGroupByDef
+        return super().cls(provider)
+
+    def _equal(self, o):
+        # FIXME We need to implemented a true `==` operator for DataFrameGroupby
+        if build_mode().is_build_mode:
+            return self is o
+        else:
+            return self == o
+
+
+class GroupBy(TileableEntity):
+    __slots__ = ()
+
+
+class DataFrameGroupBy(GroupBy):
     __slots__ = ()
     _allow_data_type_ = (DataFrameGroupByData,)
 
@@ -873,25 +939,7 @@ class DataFrameGroupBy(TileableEntity):
         return super().__hash__()
 
 
-class SeriesGroupByData(TileableData):
-    __slots__ = ()
-
-    _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
-                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
-                        on_deserialize=lambda x: [SeriesChunk(it) for it in x] if x is not None else x)
-
-    def __init__(self, op=None, chunks=None, **kw):
-        super().__init__(_op=op, _chunks=chunks, **kw)
-
-    def _equal(self, o):
-        # FIXME We need to implemented a true `==` operator for DataFrameGroupby
-        if build_mode().is_build_mode:
-            return self is o
-        else:
-            return self == o
-
-
-class SeriesGroupBy(TileableEntity):
+class SeriesGroupBy(GroupBy):
     __slots__ = ()
     _allow_data_type_ = (SeriesGroupByData,)
 
@@ -910,7 +958,10 @@ SERIES_CHUNK_TYPE = (SeriesChunk, SeriesChunkData)
 DATAFRAME_TYPE = (DataFrame, DataFrameData)
 DATAFRAME_CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)
 DATAFRAME_GROUPBY_TYPE = (DataFrameGroupBy, DataFrameGroupByData)
+DATAFRAME_GROUPBY_CHUNK_TYPE = (DataFrameGroupByChunk, DataFrameGroupByChunkData)
 SERIES_GROUPBY_TYPE = (SeriesGroupBy, SeriesGroupByData)
-GROUPBY_TYPE = DATAFRAME_GROUPBY_TYPE + SERIES_GROUPBY_TYPE
+SERIES_GROUPBY_CHUNK_TYPE = (SeriesGroupByChunk, SeriesGroupByChunkData)
+GROUPBY_TYPE = (GroupBy,) + DATAFRAME_GROUPBY_TYPE + SERIES_GROUPBY_TYPE
+GROUPBY_CHUNK_TYPE = DATAFRAME_GROUPBY_CHUNK_TYPE + SERIES_GROUPBY_CHUNK_TYPE
 TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE + GROUPBY_TYPE
-CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE
+CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE + GROUPBY_CHUNK_TYPE
