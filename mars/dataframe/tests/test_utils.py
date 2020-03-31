@@ -379,3 +379,9 @@ class Test(unittest.TestCase):
 
         df2 = df[df[0] < 0.5]  # create unknown shape
         self.assertEqual(validate_axis(0, df2), 0)
+
+    def testDataFrameDir(self):
+        df = DataFrame(pd.DataFrame(np.random.rand(4, 3), columns=list('ABC')))
+        dir_result = set(dir(df))
+        for c in df.dtypes.index:
+            self.assertIn(c, dir_result)
