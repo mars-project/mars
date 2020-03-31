@@ -92,6 +92,8 @@ def on_deserialize_shape(shape):
 
 
 def on_serialize_numpy_type(value):
+    if value is pd.NaT:
+        value = None
     return value.item() if isinstance(value, np.generic) else value
 
 
