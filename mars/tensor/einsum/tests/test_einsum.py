@@ -66,4 +66,3 @@ class Test(TestBase):
 
         t = t.tiles()
         self.assertEqual(len(t.chunks), 3)
-

@@ -292,7 +292,7 @@ class DistributedContext(ContextBase):
         return results
 
     # Meta API
-    def get_tileable_metas(self, tileable_keys, filter_fields: List[str]=None) -> List:
+    def get_tileable_metas(self, tileable_keys, filter_fields: List[str] = None) -> List:
         return self._meta_api.get_tileable_metas(self._session_id, tileable_keys, filter_fields)
 
     def get_chunk_metas(self, chunk_keys, filter_fields: List[str] = None) -> List:
@@ -302,8 +302,8 @@ class DistributedContext(ContextBase):
         return self._meta_api.get_tileable_key_by_name(self._session_id, name)
 
     # Worker API
-    def get_chunks_data(self, worker: str, chunk_keys: List[str], indexes: List=None,
-                        compression_types: List[str]=None):
+    def get_chunks_data(self, worker: str, chunk_keys: List[str], indexes: List = None,
+                        compression_types: List[str] = None):
         return self._worker_api.get_chunks_data(self._session_id, worker, chunk_keys, indexes=indexes,
                                                 compression_types=compression_types)
 

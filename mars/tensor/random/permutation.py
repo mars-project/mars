@@ -125,7 +125,7 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
 
         new_op = op.copy()
         nsplits = list(in_tensor.nsplits)
-        nsplits[op.axis] = [np.nan,] * len(nsplits[op.axis])
+        nsplits[op.axis] = [np.nan, ] * len(nsplits[op.axis])
         return new_op.new_tensors(op.inputs, out_tensor.shape, order=out_tensor.order,
                                   chunks=reduce_chunks, nsplits=nsplits)
 

@@ -522,13 +522,14 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         return super().execute_graph(graph, keys, **kw)
 
     def execute_tileable(self, tileable, *args, **kwargs):
+        from mars.core import OBJECT_TYPE
         from mars.dataframe.core import GROUPBY_TYPE
         self._extract_check_options(kwargs)
 
         result = super().execute_tileable(tileable, *args, **kwargs)
 
         # fixme with ISSUE:1036
-        if not isinstance(tileable, GROUPBY_TYPE):
+        if not isinstance(tileable, (GROUPBY_TYPE, OBJECT_TYPE)):
             if _check_options['check_nsplits']:
                 self._check_nsplits(tileable)
 

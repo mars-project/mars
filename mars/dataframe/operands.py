@@ -132,7 +132,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
                                   output_limit=output_limit, kws=kws, **kw)
 
     def new_index(self, inputs, shape=None, dtype=None, index_value=None, name=None, **kw):
-        if getattr(self, 'output_limit') !=  1:
+        if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new Index with more than 1 outputs')
 
         return self.new_indexes(inputs, shape=shape, dtype=dtype,

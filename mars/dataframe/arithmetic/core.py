@@ -535,7 +535,7 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
         new_op = op.copy()
         kw = out_df.params
         kw['nsplits'] = in_df.nsplits
-        kw['chunks'] =  out_chunks
+        kw['chunks'] = out_chunks
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod

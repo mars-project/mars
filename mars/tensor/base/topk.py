@@ -134,7 +134,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def _tile_one_chunk(cls, op):
-        return_value, return_indices = op.return_value ,op.return_indices
+        return_value, return_indices = op.return_value, op.return_indices
         out = op.outputs[0]
         chunk_op = op.copy().reset_key()
         kws = []

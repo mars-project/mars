@@ -50,7 +50,7 @@ class Test(TestBase):
 
         # index cannot be tuple
         with self.assertRaises(IndexingError):
-            _ = df2.iloc[(1,),]
+            _ = df2.iloc[(1,), ]
 
         # index wrong type
         with self.assertRaises(TypeError):
@@ -327,9 +327,9 @@ class Test(TestBase):
         self.assertEqual(series.shape, (10,))
         self.assertEqual(len(series.chunks), 4)
 
-        self.assertEqual(series.chunks[0].op.indexes, [slice(None, None, None),])
+        self.assertEqual(series.chunks[0].op.indexes, [slice(None, None, None), ])
         self.assertEqual(series.chunks[0].op.value, 2)
-        self.assertEqual(series.chunks[1].op.indexes, [slice(0, 1, 1),])
+        self.assertEqual(series.chunks[1].op.indexes, [slice(0, 1, 1), ])
         self.assertEqual(series.chunks[1].op.value, 2)
 
         # fancy index

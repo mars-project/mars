@@ -568,7 +568,7 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
         chunk_index_to_info = context.chunk_index_to_info.copy()
         for chunk_index, chunk_index_info in chunk_index_to_info.items():
             i = chunk_index[index_info.input_axis]
-            fancy_index_array = chunk_index_to_fancy_index_arrays[i,][0]
+            fancy_index_array = chunk_index_to_fancy_index_arrays[i, ][0]
 
             if fancy_index_array.size == 0:
                 # not effected

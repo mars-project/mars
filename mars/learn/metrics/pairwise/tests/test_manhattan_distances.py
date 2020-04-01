@@ -45,7 +45,7 @@ class Test(unittest.TestCase):
 
         d = manhattan_distances(x, y, sum_over_features=True)
         self.assertEqual(d.shape, (10, 11))
-        d =manhattan_distances(x, y, sum_over_features=False)
+        d = manhattan_distances(x, y, sum_over_features=False)
         self.assertEqual(d.shape, (110, 3))
 
     def testManhattanDistancesExecution(self):
