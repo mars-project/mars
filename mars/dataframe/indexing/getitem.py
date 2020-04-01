@@ -300,6 +300,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                                             columns_value=df_chunk.columns_value)
                 out_chunks.append(out_chunk)
 
+            nsplits = ((np.nan,) * len(nsplits[0]), nsplits[1])
         else:
             check_chunks_unknown_shape([in_df], TilesError)
             nsplits_acc = np.cumsum((0,) + in_df.nsplits[0])
