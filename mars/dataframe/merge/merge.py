@@ -187,17 +187,17 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
     @staticmethod
     def _make_data(obj):
         empty_df = build_empty_df(obj.dtypes, index=obj.index_value.to_pandas()[:0])
+        dtypes = empty_df.dtypes
         record = [_DataFrameMergeBase._make_value(dtype) for dtype in empty_df.dtypes]
         if isinstance(empty_df.index, pd.MultiIndex):
             index = tuple(_DataFrameMergeBase._make_value(level.dtype)
                           for level in empty_df.index.levels)
-            dtypes = empty_df.dtypes
             empty_df.loc[index,] = record
-            # make sure dtypes correct for MultiIndex
-            empty_df = empty_df.astype(dtypes, copy=False)
         else:
             index = _DataFrameMergeBase._make_value(empty_df.index.dtype)
             empty_df.loc[index] = record
+        # make sure dtypes correct for MultiIndex
+        empty_df = empty_df.astype(dtypes, copy=False)
         return empty_df
 
     def __call__(self, left, right):
