@@ -17,11 +17,11 @@
 import numpy as np
 
 import pandas as pd
-from pandas.util import cache_readonly
 
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
     is_eager_mode, build_mode
-from ..core import ChunkData, Chunk, TileableEntity, HasShapeTileableData
+from ..core import ChunkData, Chunk, TileableEntity, \
+    HasShapeTileableData, HasShapeTileableEnity
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField
@@ -410,7 +410,7 @@ class IndexData(HasShapeTileableData):
         return self._index_value
 
 
-class Index(TileableEntity):
+class Index(HasShapeTileableEnity):
     __slots__ = ()
     _allow_data_type_ = (IndexData,)
 
@@ -527,7 +527,7 @@ class SeriesChunk(Chunk):
 
 
 class BaseSeriesData(HasShapeTileableData):
-    __slots__ = '_cache',
+    __slots__ = '_cache', '_accessors'
     _type_name = None
 
     # optional field
@@ -542,6 +542,7 @@ class BaseSeriesData(HasShapeTileableData):
                  name=None, index_value=None, chunks=None, **kw):
         super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtype=dtype, _name=name,
                          _index_value=index_value, _chunks=chunks, **kw)
+        self._accessors = dict()
 
     @property
     def params(self):
@@ -579,18 +580,6 @@ class BaseSeriesData(HasShapeTileableData):
     def index_value(self):
         return self._index_value
 
-    @cache_readonly
-    def str(self):
-        from .base.accessor import StringAccessor
-
-        return StringAccessor(self)
-
-    @cache_readonly
-    def dt(self):
-        from .base.accessor import DatetimeAccessor
-
-        return DatetimeAccessor(self)
-
     @property
     def index(self):
         from .datasource.index import from_tileable
@@ -618,8 +607,8 @@ class SeriesData(BaseSeriesData):
         return super().cls(provider)
 
 
-class Series(TileableEntity):
-    __slots__ = '_cache',
+class Series(HasShapeTileableEnity):
+    __slots__ = '_cache', '_accessors'
     _allow_data_type_ = (SeriesData,)
 
     def to_tensor(self, dtype=None):
@@ -628,17 +617,53 @@ class Series(TileableEntity):
     def from_tensor(self, in_tensor, index=None, name=None):
         return self._data.from_tensor(in_tensor, index=index, name=name)
 
-    @cache_readonly
-    def str(self):
-        return self._data.str
-
-    @cache_readonly
-    def dt(self):
-        return self._data.dt
-
     @property
     def index(self):
+        """
+        The index (axis labels) of the Series.
+        """
         return self._data.index
+
+    @property
+    def name(self):
+        return self._data.name
+
+    @property
+    def dtype(self):
+        """
+        Return the dtype object of the underlying data.
+        """
+        return self._data.dtype
+
+    def copy(self, deep=True):  # pylint: disable=arguments-differ
+        """
+        Make a copy of this object's indices and data.
+
+        When ``deep=True`` (default), a new object will be created with a
+        copy of the calling object's data and indices. Modifications to
+        the data or indices of the copy will not be reflected in the
+        original object (see notes below).
+
+        When ``deep=False``, a new object will be created without copying
+        the calling object's data or index (only references to the data
+        and index are copied). Any changes to the data of the original
+        will be reflected in the shallow copy (and vice versa).
+
+        Parameters
+        ----------
+        deep : bool, default True
+            Make a deep copy, including a copy of the data and the indices.
+            With ``deep=False`` neither the indices nor the data are copied.
+
+        Returns
+        -------
+        copy : Series or DataFrame
+            Object type matches caller.
+        """
+        if deep:
+            return super().copy()
+        else:
+            return super()._view()
 
     def __mars_tensor__(self, dtype=None, order='K'):
         tensor = self._data.to_tensor()
@@ -812,7 +837,7 @@ class DataFrameData(BaseDataFrameData):
         return super().cls(provider)
 
 
-class DataFrame(TileableEntity):
+class DataFrame(HasShapeTileableEnity):
     __slots__ = '_cache',
     _allow_data_type_ = (DataFrameData,)
 
@@ -851,6 +876,10 @@ class DataFrame(TileableEntity):
     @property
     def columns(self):
         return self._data.columns
+
+    @property
+    def dtypes(self):
+        return self._data.dtypes
 
 
 class DataFrameGroupByChunkData(BaseDataFrameChunkData):

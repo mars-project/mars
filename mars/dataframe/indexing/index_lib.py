@@ -393,7 +393,6 @@ class LabelIndexHandler(IndexHandler):
             index_value = tileable.index_value
         else:
             index_value = [tileable.index_value, tileable.columns_value][input_axis]
-
         if index_value.has_value():
             if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
                 raise TilesError('Input tileable {} has chunks with unknown shape '
@@ -833,6 +832,10 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
                     del params['dtypes']
                     if getattr(context.op.outputs[0], 'name', None) is not None:
                         params['name'] = context.op.outputs[0].name
+                if len(params['index']) == chunks[0].ndim:
+                    index = list(params['index'])
+                    index.pop(index_info.output_axis)
+                    params['index'] = tuple(index)
                 if len(params['index']) == chunks[0].ndim:
                     index = list(params['index'])
                     index.pop(index_info.output_axis)

@@ -417,17 +417,18 @@ def to_csv(df, path, sep=',', na_rep='', float_format=None, columns=None, header
     None or str
         If path_or_buf is None, returns the resulting csv format as a
         string. Otherwise returns None.
+
     See Also
     --------
     read_csv : Load a CSV file into a DataFrame.
-    to_excel : Write DataFrame to an Excel file.
+
     Examples
     --------
     >>> import mars.dataframe as md
     >>> df = md.DataFrame({'name': ['Raphael', 'Donatello'],
     ...                    'mask': ['red', 'purple'],
     ...                    'weapon': ['sai', 'bo staff']})
-    >>> df.to_csv('out.csv', index=False)
+    >>> df.to_csv('out.csv', index=False).execute()
     """
 
     if mode != 'w':  # pragma: no cover

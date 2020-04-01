@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# noinspection PyUnresolvedReferences
+from ..core import GroupBy, DataFrameGroupBy, SeriesGroupBy
+
 
 def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE

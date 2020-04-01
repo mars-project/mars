@@ -451,9 +451,9 @@ class TileableEntity(Entity):
                 entity_view_handler.add_observer(self._data.inputs[0], self)
 
     def __copy__(self):
-        return self.view()
+        return self._view()
 
-    def view(self):
+    def _view(self):
         return super().copy()
 
     def copy(self):
@@ -526,6 +526,22 @@ class HasShapeTileableData(TileableData):
 
     def _equals(self, o):
         return self is o
+
+
+class HasShapeTileableEnity(TileableEntity):
+    __slots__ = ()
+
+    @property
+    def shape(self):
+        return self._data.shape
+
+    @property
+    def ndim(self):
+        return self._data.ndim
+
+    @property
+    def size(self):
+        return self._data.size
 
 
 class ObjectData(TileableData):
