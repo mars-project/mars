@@ -166,9 +166,13 @@ class Test(TestBase):
                                       df2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
         self.assertTrue(r13.op.as_index)
 
-        r11 = mdf2.groupby('c2').agg(['cumsum', 'cumcount'])
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0].sort_index(),
-                                      df2.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
+        try:
+            r14 = mdf2.groupby('c2').agg(['cumsum', 'cumcount'])
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r14, concat=True)[0].sort_index(),
+                                          df2.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
+        except:
+            print(df2)
+            raise
 
     def testSeriesGroupByAgg(self):
         rs = np.random.RandomState(0)
