@@ -19,12 +19,13 @@ import numpy as np
 import pandas as pd
 from pandas.util import cache_readonly
 
-from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
-    is_eager_mode, build_mode
+from ..compat import dir2, isvalidattr, six
 from ..core import ChunkData, Chunk, TileableEntity, TileableData, HasShapeTileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField
+from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
+    is_eager_mode, build_mode
 
 
 class IndexValue(Serializable):
@@ -835,6 +836,11 @@ class DataFrame(TileableEntity):
                 return self[key]
             else:
                 raise
+
+    def __dir__(self):
+        result = list(dir2(self))
+        return sorted(result + [k for k in self.dtypes.index
+                                if isinstance(k, six.string_types) and isvalidattr(k)])
 
     @property
     def index(self):

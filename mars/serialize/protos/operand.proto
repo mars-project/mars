@@ -44,7 +44,7 @@ message OperandDef {
         DATE_RANGE = 34;
         TIMEDELTA_RANGE = 35;
 
-        //GPU
+        // GPU
         TO_GPU = 30;
         TO_CPU = 31;
 
@@ -330,6 +330,8 @@ message OperandDef {
         AGGREGATE = 714;
         STRING_METHOD = 715;
         DATETIME_METHOD = 716;
+        CHECK_NA = 719;
+        DROP_NA = 720;
 
         FUSE = 801;
 

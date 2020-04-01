@@ -551,3 +551,26 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(sa.isin(b), concat=True)[0]
         expected = a.isin(b)
         pd.testing.assert_series_equal(result, expected)
+
+    def testCheckNA(self):
+        df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
+        for _ in range(20):
+            df_raw.iloc[random.randint(0, 19), random.randint(0, 9)] = random.randint(0, 99)
+
+        df = from_pandas_df(df_raw, chunk_size=4)
+
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df.isna(), concat=True)[0],
+                                      df_raw.isna())
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df.notna(), concat=True)[0],
+                                      df_raw.notna())
+
+        series_raw = pd.Series(np.nan, index=range(20))
+        for _ in range(3):
+            series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
+
+        series = from_pandas_series(series_raw, chunk_size=4)
+
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(series.isna(), concat=True)[0],
+                                       series_raw.isna())
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(series.notna(), concat=True)[0],
+                                       series_raw.notna())
