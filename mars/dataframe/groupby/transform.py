@@ -165,8 +165,6 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
 
         if op.call_agg:
             result = grouped.agg(op.func, *op.args, **op.kwds)
-            if isinstance(result, pd.DataFrame):
-                result = result.reindex(out_chunk.columns_value.to_pandas(), axis=1)
         else:
             result = grouped.transform(op.func, *op.args, **op.kwds)
         ctx[op.outputs[0].key] = result
