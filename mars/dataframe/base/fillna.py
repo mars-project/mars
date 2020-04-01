@@ -25,6 +25,7 @@ from ...serialize import StringField, AnyField, BoolField, Int64Field
 from ..align import align_dataframe_dataframe, align_dataframe_series, align_series_series
 from ..core import DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..utils import validate_axis
 
 
 class FillNA(DataFrameOperand, DataFrameOperandMixin):
@@ -349,11 +350,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             method = 'ffill'
         self._method = method
         axis = getattr(self, 'axis', None) or 0
-        if axis == 'index':
-            axis = 0
-        elif axis == 'columns':
-            axis = 1
-        self._axis = axis
+        self._axis = validate_axis(axis, a)
 
         inputs = [a]
         if value_df is not None:
