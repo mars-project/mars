@@ -309,7 +309,7 @@ class Test(TestBase):
         # label-based fancy index on index
         # whose index_value does not have value
         df = df1.loc[['a3', 'a1'], ['b', 'a', 'd']]
-        result = self.executor.execute_dataframe(df, concat=True)[0]
+        result = self.executor.execute_dataframe(df, concat=True, check_nsplits=False)[0]
         expected = raw1.loc[['a3', 'a1'], ['b', 'a', 'd']]
         pd.testing.assert_frame_equal(result, expected)
 

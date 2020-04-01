@@ -315,7 +315,9 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                                    columns_value=in_chunk.columns_value)
                     out_chunks.append(out_chunk)
 
-            nsplits = ((np.nan,) * in_df.chunk_shape[0], in_df.nsplits[1])
+        nsplits_on_columns = tuple(c.shape[1] for c in out_chunks if c.index[0] == 0)
+        row_chunk_num = len([c.shape[0] for c in out_chunks if c.index[1] == 0])
+        nsplits = ((np.nan,) * row_chunk_num, nsplits_on_columns)
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, shape=out_df.shape, dtypes=out_df.dtypes,

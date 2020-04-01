@@ -346,7 +346,7 @@ def create_actor_pool(*args, **kwargs):
 
 
 _check_options = dict()
-_check_args = ['check_series_name', 'check_dtypes', 'check_dtype', 'check_shape']
+_check_args = ['check_series_name', 'check_dtypes', 'check_dtype', 'check_shape', 'check_nsplits']
 
 
 class MarsObjectCheckMixin:
@@ -507,9 +507,13 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                 raise AssertionError('Operand %r: Cannot spot chunk via index %r, nsplits is %r'
                                      % (c.op, c.index, tiled.nsplits))
         for cid, shape in enumerate(itertools.product(*tiled.nsplits)):
-            if shape != tiled.chunks[cid].shape:
+            if len(shape) != len(tiled.chunks[cid].shape):
                 raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
                                      % (tiled.chunks[cid].op, shape, tiled.chunks[cid].shape))
+            for s1, s2 in zip(shape, tiled.chunks[cid].shape):
+                if (not (np.isnan(s1) and np.isnan(s2))) and s1 != s2:
+                    raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
+                                         % (tiled.chunks[cid].op, shape, tiled.chunks[cid].shape))
 
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
@@ -525,7 +529,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
 
         # fixme with ISSUE:1036
         if not isinstance(tileable, GROUPBY_TYPE):
-            self._check_nsplits(tileable)
+            if _check_options['check_nsplits']:
+                self._check_nsplits(tileable)
 
         # check returned type
         if kwargs.get('concat', False):
@@ -540,7 +545,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
 
         results = super().execute_tileables(tileables, *args, **kwargs)
         for tileable, result in zip(tileables, results):
-            self._check_nsplits(tileable)
+            if _check_options['check_nsplits']:
+                self._check_nsplits(tileable)
             self.assert_object_consistent(tileable, result)
         return results
 
