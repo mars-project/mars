@@ -46,15 +46,15 @@ class DataFrameCount(DataFrameReductionOperand, DataFrameReductionMixin):
         ctx[op.outputs[0].key] = in_data.sum(axis=op.axis)
 
 
-def count_series(series, level=None, combine_size=None):
-    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+def count_series(series, level=None, combine_size=None, **kw):
+    use_inf_as_na = kw.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
     op = DataFrameCount(level=level, combine_size=combine_size, object_type=ObjectType.scalar,
                         use_inf_as_na=use_inf_as_na)
     return op(series)
 
 
-def count_dataframe(df, axis=0, level=None, numeric_only=False, combine_size=None):
-    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+def count_dataframe(df, axis=0, level=None, numeric_only=False, combine_size=None, **kw):
+    use_inf_as_na = kw.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
     op = DataFrameCount(axis=axis, level=level, numeric_only=numeric_only, combine_size=combine_size,
                         object_type=ObjectType.series, use_inf_as_na=use_inf_as_na)
     return op(df)

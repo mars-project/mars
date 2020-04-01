@@ -720,3 +720,52 @@ class Test(TestBase):
 
         with self.assertRaises(TypeError):
             _ = a.isin('sth')
+
+    def testDropNA(self):
+        # dataframe cases
+        df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
+        for _ in range(30):
+            df_raw.iloc[random.randint(0, 19), random.randint(0, 9)] = random.randint(0, 99)
+        for rowid in range(random.randint(1, 5)):
+            row = random.randint(0, 19)
+            for idx in range(0, 10):
+                df_raw.iloc[row, idx] = random.randint(0, 99)
+
+        # not supporting drop with axis=1
+        with self.assertRaises(NotImplementedError):
+            from_pandas_df(df_raw).dropna(axis=1)
+
+        # only one chunk in columns, can run dropna directly
+        r = from_pandas_df(df_raw, chunk_size=(4, 10)).dropna().tiles()
+        self.assertEqual(r.shape, (np.nan, 10))
+        self.assertEqual(r.nsplits, ((np.nan,) * 5, (10,)))
+        for c in r.chunks:
+            self.assertIsInstance(c.op, type(r.op))
+            self.assertEqual(len(c.inputs), 1)
+            self.assertEqual(len(c.inputs[0].inputs), 0)
+            self.assertEqual(c.shape, (np.nan, 10))
+
+        # multiple chunks in columns, count() will be called first
+        r = from_pandas_df(df_raw, chunk_size=4).dropna().tiles()
+        self.assertEqual(r.shape, (np.nan, 10))
+        self.assertEqual(r.nsplits, ((np.nan,) * 5, (4, 4, 2)))
+        for c in r.chunks:
+            self.assertIsInstance(c.op, type(r.op))
+            self.assertEqual(len(c.inputs), 2)
+            self.assertEqual(len(c.inputs[0].inputs), 0)
+            self.assertEqual(c.inputs[1].op.stage, OperandStage.agg)
+            self.assertTrue(np.isnan(c.shape[0]))
+
+        # series cases
+        series_raw = pd.Series(np.nan, index=range(20))
+        for _ in range(10):
+            series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
+
+        r = from_pandas_series(series_raw, chunk_size=4).dropna().tiles()
+        self.assertEqual(r.shape, (np.nan,))
+        self.assertEqual(r.nsplits, ((np.nan,) * 5,))
+        for c in r.chunks:
+            self.assertIsInstance(c.op, type(r.op))
+            self.assertEqual(len(c.inputs), 1)
+            self.assertEqual(len(c.inputs[0].inputs), 0)
+            self.assertEqual(c.shape, (np.nan,))

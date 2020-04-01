@@ -23,7 +23,7 @@ import pandas as pd
 from ... import opcodes
 from ...config import options
 from ...operands import OperandStage
-from ...serialize import BytesField, AnyField, DictField
+from ...serialize import BoolField, BytesField, AnyField, DictField
 from ...utils import tokenize, ceildiv, lazy_import
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
@@ -43,6 +43,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
     _func = AnyField('func')
     _axis = AnyField('axis')
+    _use_inf_as_na = BoolField('use_inf_as_na')
 
     _map_groups = DictField('map_groups')
     _map_sources = DictField('map_sources')
@@ -54,13 +55,14 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     _key_to_funcs = BytesField('keys_to_funcs', on_serialize=cloudpickle.dumps,
                                on_deserialize=cloudpickle.loads)
 
-    def __init__(self, func=None, axis=None, map_groups=None, map_sources=None, combine_groups=None,
-                 combine_sources=None, agg_sources=None, agg_columns=None, agg_funcs=None,
-                 key_to_funcs=None, object_type=None, stage=None, **kw):
-        super().__init__(_func=func, _axis=axis, _map_groups=map_groups, _map_sources=map_sources,
-                         _combine_groups=combine_groups, _combine_sources=combine_sources,
-                         _agg_sources=agg_sources, _agg_columns=agg_columns, _agg_funcs=agg_funcs,
-                         _key_to_funcs=key_to_funcs, _stage=stage, _object_type=object_type, **kw)
+    def __init__(self, func=None, axis=None, use_inf_as_na=None, map_groups=None, map_sources=None,
+                 combine_groups=None, combine_sources=None, agg_sources=None, agg_columns=None,
+                 agg_funcs=None, key_to_funcs=None, object_type=None, stage=None, **kw):
+        super().__init__(_func=func, _axis=axis, _use_inf_as_na=use_inf_as_na, _map_groups=map_groups,
+                         _map_sources=map_sources, _combine_groups=combine_groups,
+                         _combine_sources=combine_sources, _agg_sources=agg_sources,
+                         _agg_columns=agg_columns, _agg_funcs=agg_funcs, _key_to_funcs=key_to_funcs,
+                         _stage=stage, _object_type=object_type, **kw)
 
     @property
     def func(self):
@@ -69,6 +71,10 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     @property
     def axis(self) -> int:
         return self._axis
+
+    @property
+    def use_inf_as_na(self) -> int:
+        return self._use_inf_as_na
 
     @property
     def map_groups(self) -> Dict:
@@ -417,15 +423,16 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                                    shape=(src_col_chunk.shape[0], out_df.shape[1]),
                                    dtypes=out_df.dtypes))
             else:
-                src_col_chunk = in_df.chunks[output_index_to_input[idx] if output_index_to_input else 0]
                 if op.object_type == ObjectType.series:
                     if in_df.op.object_type == ObjectType.series:
                         index_value, shape = out_df.index_value, out_df.shape
                     elif axis == 0:
-                        index_value, shape = src_col_chunk.index_value, (src_col_chunk.shape[0],)
+                        src_chunk = in_df.cix[0, output_index_to_input[idx]]
+                        index_value, shape = src_chunk.columns_value, (src_chunk.shape[1],)
                     else:
-                        index_value, shape = src_col_chunk.columns_value, (src_col_chunk.shape[1],)
-                    kw.update(dict(name=out_df.name, dtype=out_df.dtype, index=(0,),
+                        src_chunk = in_df.cix[output_index_to_input[idx], 0]
+                        index_value, shape = src_chunk.index_value, (src_chunk.shape[0],)
+                    kw.update(dict(name=out_df.name, dtype=out_df.dtype, index=(idx,),
                                    index_value=index_value, shape=shape))
                 else:
                     kw.update(dict(index=(0,), shape=(), dtype=out_df.dtype))
@@ -446,7 +453,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                                         shape=out_df.shape, index_value=out_df.index_value, name=out_df.name)
         else:  # scalar
             return new_op.new_tileables(op.inputs, chunks=agg_chunks, dtype=out_df.dtype,
-                                        shape=())
+                                        shape=(), nsplits=())
 
     @classmethod
     def tile(cls, op: "DataFrameAggregate"):
@@ -556,14 +563,18 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameAggregate"):
-        if op.stage == OperandStage.map:
-            cls._execute_map(ctx, op)
-        elif op.stage == OperandStage.combine:
-            cls._execute_combine(ctx, op)
-        elif op.stage == OperandStage.agg:
-            cls._execute_agg(ctx, op)
-        else:
-            ctx[op.outputs[0].key] = ctx[op.inputs[0].key].agg(op.func, axis=op.axis)
+        try:
+            pd.set_option('mode.use_inf_as_na', op.use_inf_as_na)
+            if op.stage == OperandStage.map:
+                cls._execute_map(ctx, op)
+            elif op.stage == OperandStage.combine:
+                cls._execute_combine(ctx, op)
+            elif op.stage == OperandStage.agg:
+                cls._execute_agg(ctx, op)
+            else:
+                ctx[op.outputs[0].key] = ctx[op.inputs[0].key].agg(op.func, axis=op.axis)
+        finally:
+            pd.reset_option('mode.use_inf_as_na')
 
 
 def _is_funcs_agg(func):
@@ -585,12 +596,15 @@ def _is_funcs_agg(func):
     return True
 
 
-def aggregate(df, func, axis=0):
+def aggregate(df, func, axis=0, **kw):
     if not _is_funcs_agg(func):
         return df.transform(func, axis=axis, _call_agg=True)
 
     axis = validate_axis(axis, df)
+    use_inf_as_na = kw.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
     if (df.op.object_type == ObjectType.series or axis == 1) and isinstance(func, dict):
-        raise NotImplementedError('Currently cannot aggregate dicts over axis=1 on %s' % type(df).__name__)
-    op = DataFrameAggregate(func=func, axis=axis, object_type=df.op.object_type)
+        raise NotImplementedError('Currently cannot aggregate dicts over axis=1 on %s'
+                                  % type(df).__name__)
+    op = DataFrameAggregate(func=func, axis=axis, object_type=df.op.object_type,
+                            use_inf_as_na=use_inf_as_na)
     return op(df)
