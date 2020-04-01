@@ -297,7 +297,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             out_chunk = op.copy().reset_key().new_chunk([df_chunk, series_chunk], index=out_idx, **kw)
             out_chunks.append(out_chunk)
 
-        new_op = op.copy()
+        new_op = op.copy().reset_key()
         return new_op.new_dataframes(op.inputs, df.shape,
                                      nsplits=tuple(tuple(ns) for ns in nsplits),
                                      chunks=out_chunks, dtypes=df.dtypes,

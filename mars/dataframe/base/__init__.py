@@ -22,6 +22,7 @@ from .string_ import SeriesStringMethod
 from .datetimes import SeriesDatetimeMethod
 from .isin import isin
 from .checkna import isna, notna, isnull, notnull
+from .dropna import df_dropna, series_dropna
 
 
 def _install():
@@ -40,6 +41,7 @@ def _install():
         setattr(t, 'isnull', isnull)
         setattr(t, 'notna', notna)
         setattr(t, 'notnull', notnull)
+        setattr(t, 'dropna', df_dropna)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -55,6 +57,7 @@ def _install():
         setattr(t, 'isnull', isnull)
         setattr(t, 'notna', notna)
         setattr(t, 'notnull', notnull)
+        setattr(t, 'dropna', series_dropna)
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
