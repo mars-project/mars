@@ -72,8 +72,13 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         try:
             if in_df.op.object_type == ObjectType.dataframe:
                 empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
+                obj_dtypes = in_df.dtypes[in_df.dtypes == np.dtype('O')]
+                empty_df[obj_dtypes.index] = 'O'
             else:
-                empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
+                if in_df.dtype == np.dtype('O'):
+                    empty_df = pd.Series('O', index=pd.RangeIndex(2), name=in_df.name, dtype=np.dtype('O'))
+                else:
+                    empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
 
             with np.errstate(all='ignore'):
                 if self.call_agg:
@@ -167,6 +172,11 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
             result = grouped.agg(op.func, *op.args, **op.kwds)
         else:
             result = grouped.transform(op.func, *op.args, **op.kwds)
+
+        if result.ndim == 2:
+            result = result.astype(op.outputs[0].dtypes, copy=False)
+        else:
+            result = result.astype(op.outputs[0].dtype, copy=False)
         ctx[op.outputs[0].key] = result
 
 
