@@ -148,7 +148,7 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
 
             in_data = ctx[op.inputs[0].key]
             if op.drop_directly:
-                if isinstance(in_data, pd.DataFrame):
+                if in_data.ndim == 2:
                     result = in_data.dropna(axis=op.axis, how=op.how, thresh=op.thresh,
                                             subset=op.subset)
                 else:
@@ -169,6 +169,101 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
 
 
 def df_dropna(df, axis=0, how='any', thresh=None, subset=None, inplace=False):
+    """
+    Remove missing values.
+
+    See the :ref:`User Guide <missing_data>` for more on which values are
+    considered missing, and how to work with missing data.
+
+    Parameters
+    ----------
+    axis : {0 or 'index', 1 or 'columns'}, default 0
+        Determine if rows or columns which contain missing values are
+        removed.
+
+        * 0, or 'index' : Drop rows which contain missing values.
+        * 1, or 'columns' : Drop columns which contain missing value.
+
+        .. versionchanged:: 1.0.0
+
+           Pass tuple or list to drop on multiple axes.
+           Only a single axis is allowed.
+
+    how : {'any', 'all'}, default 'any'
+        Determine if row or column is removed from DataFrame, when we have
+        at least one NA or all NA.
+
+        * 'any' : If any NA values are present, drop that row or column.
+        * 'all' : If all values are NA, drop that row or column.
+
+    thresh : int, optional
+        Require that many non-NA values.
+    subset : array-like, optional
+        Labels along other axis to consider, e.g. if you are dropping rows
+        these would be a list of columns to include.
+    inplace : bool, default False
+        If True, do operation inplace and return None.
+
+    Returns
+    -------
+    DataFrame
+        DataFrame with NA entries dropped from it.
+
+    See Also
+    --------
+    DataFrame.isna: Indicate missing values.
+    DataFrame.notna : Indicate existing (non-missing) values.
+    DataFrame.fillna : Replace missing values.
+    Series.dropna : Drop missing values.
+    Index.dropna : Drop missing indices.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({"name": ['Alfred', 'Batman', 'Catwoman'],
+    ...                    "toy": [np.nan, 'Batmobile', 'Bullwhip'],
+    ...                    "born": [md.NaT, md.Timestamp("1940-04-25"),
+    ...                             md.NaT]})
+    >>> df.execute()
+           name        toy       born
+    0    Alfred        NaN        NaT
+    1    Batman  Batmobile 1940-04-25
+    2  Catwoman   Bullwhip        NaT
+
+    Drop the rows where at least one element is missing.
+
+    >>> df.dropna().execute()
+         name        toy       born
+    1  Batman  Batmobile 1940-04-25
+
+    Drop the rows where all elements are missing.
+
+    >>> df.dropna(how='all').execute()
+           name        toy       born
+    0    Alfred        NaN        NaT
+    1    Batman  Batmobile 1940-04-25
+    2  Catwoman   Bullwhip        NaT
+
+    Keep only the rows with at least 2 non-NA values.
+
+    >>> df.dropna(thresh=2).execute()
+           name        toy       born
+    1    Batman  Batmobile 1940-04-25
+    2  Catwoman   Bullwhip        NaT
+
+    Define in which columns to look for missing values.
+
+    >>> df.dropna(subset=['name', 'born']).execute()
+           name        toy       born
+    1    Batman  Batmobile 1940-04-25
+
+    Keep the DataFrame with valid entries in the same variable.
+
+    >>> df.dropna(inplace=True)
+    >>> df.execute()
+         name        toy       born
+    1  Batman  Batmobile 1940-04-25
+    """
     axis = validate_axis(axis, df)
     if axis != 0:
         raise NotImplementedError('Does not support dropna on DataFrame when axis=1')
@@ -184,6 +279,77 @@ def df_dropna(df, axis=0, how='any', thresh=None, subset=None, inplace=False):
 
 
 def series_dropna(series, axis=0, inplace=False, how=None):
+    """
+    Return a new Series with missing values removed.
+
+    See the :ref:`User Guide <missing_data>` for more on which values are
+    considered missing, and how to work with missing data.
+
+    Parameters
+    ----------
+    axis : {0 or 'index'}, default 0
+        There is only one axis to drop values from.
+    inplace : bool, default False
+        If True, do operation inplace and return None.
+    how : str, optional
+        Not in use. Kept for compatibility.
+
+    Returns
+    -------
+    Series
+        Series with NA entries dropped from it.
+
+    See Also
+    --------
+    Series.isna: Indicate missing values.
+    Series.notna : Indicate existing (non-missing) values.
+    Series.fillna : Replace missing values.
+    DataFrame.dropna : Drop rows or columns which contain NA values.
+    Index.dropna : Drop missing indices.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> ser = md.Series([1., 2., np.nan])
+    >>> ser.execute()
+    0    1.0
+    1    2.0
+    2    NaN
+    dtype: float64
+
+    Drop NA values from a Series.
+
+    >>> ser.dropna().execute()
+    0    1.0
+    1    2.0
+    dtype: float64
+
+    Keep the Series with valid entries in the same variable.
+
+    >>> ser.dropna(inplace=True)
+    >>> ser.execute()
+    0    1.0
+    1    2.0
+    dtype: float64
+
+    Empty strings are not considered NA values. ``None`` is considered an
+    NA value.
+
+    >>> ser = md.Series([np.NaN, 2, md.NaT, '', None, 'I stay'])
+    >>> ser.execute()
+    0       NaN
+    1         2
+    2       NaT
+    3
+    4      None
+    5    I stay
+    dtype: object
+    >>> ser.dropna().execute()
+    1         2
+    3
+    5    I stay
+    dtype: object
+    """
     axis = validate_axis(axis, series)
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameDropNA(axis=axis, how=how, object_type=ObjectType.series,
