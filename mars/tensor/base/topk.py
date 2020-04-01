@@ -296,7 +296,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
 
         new_op = op.copy()
         nsplits = list(a.nsplits)
-        nsplits[axis] = (op.k,)
+        nsplits[axis] = (min(a.shape[axis], op.k),)
         kws = [out.params for out in op.outputs]
         if return_value:
             kws[0]['nsplits'] = nsplits
