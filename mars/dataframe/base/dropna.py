@@ -95,7 +95,7 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
 
             params = c.params.copy()
             params['index_value'] = parse_index(None, c.key, c.index_value.key)
-            params['shape'] = new_shape
+            params['shape'] = tuple(new_shape)
 
             new_op = op.copy().reset_key()
             new_op._drop_directly = True
@@ -171,7 +171,8 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
 def df_dropna(df, axis=0, how='any', thresh=None, subset=None, inplace=False):
     axis = validate_axis(axis, df)
     if axis != 0:
-        raise ValueError('Does not support dropna on DataFrame when axis=1')
+        raise NotImplementedError('Does not support dropna on DataFrame when axis=1')
+
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameDropNA(axis=axis, how=how, thresh=thresh, subset=subset,
                          object_type=ObjectType.dataframe, use_inf_as_na=use_inf_as_na)

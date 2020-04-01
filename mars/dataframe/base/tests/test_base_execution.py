@@ -842,6 +842,7 @@ class Test(TestBase):
                                        series_raw.notna())
 
     def testDropNA(self):
+        # dataframe cases
         df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
         for _ in range(30):
             df_raw.iloc[random.randint(0, 19), random.randint(0, 9)] = random.randint(0, 99)
@@ -877,6 +878,7 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       df_raw.dropna(how='all'))
 
+        # series cases
         series_raw = pd.Series(np.nan, index=range(20))
         for _ in range(10):
             series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
