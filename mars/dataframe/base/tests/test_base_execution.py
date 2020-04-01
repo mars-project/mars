@@ -840,3 +840,52 @@ class Test(TestBase):
                                        series_raw.isna())
         pd.testing.assert_series_equal(self.executor.execute_dataframe(series.notna(), concat=True)[0],
                                        series_raw.notna())
+
+    def testDropNA(self):
+        df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
+        for _ in range(30):
+            df_raw.iloc[random.randint(0, 19), random.randint(0, 9)] = random.randint(0, 99)
+        for rowid in range(random.randint(1, 5)):
+            row = random.randint(0, 19)
+            for idx in range(0, 10):
+                df_raw.iloc[row, idx] = random.randint(0, 99)
+
+        # only one chunk in columns, can run dropna directly
+        r = from_pandas_df(df_raw, chunk_size=(4, 10)).dropna()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df_raw.dropna())
+
+        # multiple chunks in columns, count() will be called first
+        r = from_pandas_df(df_raw, chunk_size=4).dropna()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df_raw.dropna())
+
+        r = from_pandas_df(df_raw, chunk_size=4).dropna(how='all')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df_raw.dropna(how='all'))
+
+        r = from_pandas_df(df_raw, chunk_size=4).dropna(subset=list('ABFI'))
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df_raw.dropna(subset=list('ABFI')))
+
+        r = from_pandas_df(df_raw, chunk_size=4).dropna(how='all', subset=list('BDHJ'))
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df_raw.dropna(how='all', subset=list('BDHJ')))
+
+        r = from_pandas_df(df_raw, chunk_size=4)
+        r.dropna(how='all', inplace=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df_raw.dropna(how='all'))
+
+        series_raw = pd.Series(np.nan, index=range(20))
+        for _ in range(10):
+            series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
+
+        r = from_pandas_series(series_raw, chunk_size=4).dropna()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       series_raw.dropna())
+
+        r = from_pandas_series(series_raw, chunk_size=4)
+        r.dropna(inplace=True)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       series_raw.dropna())
