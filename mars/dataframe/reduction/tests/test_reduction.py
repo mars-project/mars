@@ -393,8 +393,8 @@ class TestAggregate(TestBase):
         self.assertEqual(result.op.object_type, ObjectType.series)
         self.assertListEqual(result.op.func, ['sum'])
         agg_chunk = result.chunks[0]
-        self.assertEqual(agg_chunk.shape, (3,))
-        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(3)))
+        self.assertEqual(agg_chunk.shape, (4,))
+        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(4)))
         self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
 
         result = df.agg('sum', axis=1).tiles()
@@ -403,8 +403,8 @@ class TestAggregate(TestBase):
         self.assertListEqual(list(result.index_value.to_pandas()), list(range(data.shape[0])))
         self.assertEqual(result.op.object_type, ObjectType.series)
         agg_chunk = result.chunks[0]
-        self.assertEqual(agg_chunk.shape, (4,))
-        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(4)))
+        self.assertEqual(agg_chunk.shape, (3,))
+        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(3)))
         self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
 
         result = df.agg('var', axis=1).tiles()
@@ -414,8 +414,8 @@ class TestAggregate(TestBase):
         self.assertEqual(result.op.object_type, ObjectType.series)
         self.assertListEqual(result.op.func, ['var'])
         agg_chunk = result.chunks[0]
-        self.assertEqual(agg_chunk.shape, (4,))
-        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(4)))
+        self.assertEqual(agg_chunk.shape, (3,))
+        self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(3)))
         self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
 
         result = df.agg(['sum', 'min', 'max', 'mean', 'var', 'std']).tiles()
