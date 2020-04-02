@@ -393,7 +393,6 @@ class LabelIndexHandler(IndexHandler):
             index_value = tileable.index_value
         else:
             index_value = [tileable.index_value, tileable.columns_value][input_axis]
-
         if index_value.has_value():
             if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
                 raise TilesError('Input tileable {} has chunks with unknown shape '

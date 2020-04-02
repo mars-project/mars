@@ -41,7 +41,7 @@ def from_dataframe(in_df, dtype=None):
 
     if dtype is None:
         empty_pdf = build_empty_df(in_df.dtypes)
-        dtype = empty_pdf.dtypes[0]
+        dtype = to_numpy(empty_pdf).dtype
     op = TensorFromDataFrame(dtype=dtype, gpu=in_df.op.gpu)
     return op(in_df, order=TensorOrder.F_ORDER)  # return tensor with F-order always
 

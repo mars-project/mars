@@ -767,7 +767,8 @@ class Test(TestBase):
             shutil.rmtree(tempdir)
 
     def testFromDataFrame(self):
-        mdf = md.DataFrame({'a': [0, 1, 2], 'b': [3, 4, 5]}, index=['c', 'd', 'e'], chunk_size=2)
+        mdf = md.DataFrame({'a': [0, 1, 2], 'b': [3, 4, 5],
+                            'c': [0.1, 0.2, 0.3]}, index=['c', 'd', 'e'], chunk_size=2)
         tensor = from_dataframe(mdf)
-        self.assertEqual(tensor.shape, (3, 2))
-        self.assertEqual(mdf.dtypes[0], tensor.dtype)
+        self.assertEqual(tensor.shape, (3, 3))
+        self.assertEqual(np.float64, tensor.dtype)

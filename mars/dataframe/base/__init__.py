@@ -20,8 +20,6 @@ from .reset_index import df_reset_index, series_reset_index
 from .describe import describe
 from .apply import df_apply, series_apply
 from .fillna import fillna, ffill, bfill
-from .datetimes import SeriesDatetimeMethod
-from .string_ import SeriesStringMethod
 from .transform import df_transform, series_transform
 from .isin import isin
 from .checkna import isna, notna, isnull, notnull
@@ -30,6 +28,9 @@ from .dropna import df_dropna, series_dropna
 
 def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+    from .string_ import _string_method_to_handlers
+    from .datetimes import _datetime_method_to_handlers
+    from .accessor import StringAccessor, DatetimeAccessor, CachedAccessor
 
     for t in DATAFRAME_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -70,8 +71,18 @@ def _install():
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
 
+    for method in _string_method_to_handlers:
+        if not hasattr(StringAccessor, method):
+            StringAccessor._register(method)
+
+    for method in _datetime_method_to_handlers:
+        if not hasattr(DatetimeAccessor, method):
+            DatetimeAccessor._register(method)
+
+    for series in SERIES_TYPE:
+        series.str = CachedAccessor('str', StringAccessor)
+        series.dt = CachedAccessor('dt', DatetimeAccessor)
+
 
 _install()
 del _install
-del SeriesStringMethod
-del SeriesDatetimeMethod

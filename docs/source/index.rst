@@ -26,6 +26,26 @@ Mars tensor provides a familiar interface like Numpy.
 |                                                |                                                    |
 +------------------------------------------------+----------------------------------------------------+
 
+Mars dataframe
+--------------
+
+:doc:`documentation <dataframe/index>`
+
+Mars DataFrame provides a familiar interface like pandas.
+
++-----------------------------------------------------+-----------------------------------------------------+
+| **Pandas**                                          | **Mars DataFrame**                                  |
++-----------------------------------------------------+-----------------------------------------------------+
+|.. code-block:: python                               |.. code-block:: python                               |
+|                                                     |                                                     |
+|    import numpy as np                               |    import mars.tensor as mt                         |
+|    import pandas as pd                              |    import mars.dataframe as md                      |
+|    df = pd.DataFrame(np.random.rand(100000000, 4),  |    df = md.DataFrame(mt.random.rand(100000000, 4),  |
+|                      columns=list('abcd')           |                      columns=list('abcd')           |
+|    print(df.sum())                                  |    print(df.sum().execute())                        |
+|                                                     |                                                     |
++-----------------------------------------------------+-----------------------------------------------------+
+
 Easy to scale in and scale out
 ------------------------------
 
@@ -54,6 +74,14 @@ it's fairly simple to migrate from a single machine to a cluster due to the incr
    tensor/sparse
    tensor/execution
    tensor/eager-mode
+
+.. toctree::
+   :maxdepth: 2
+   :caption: DataFrame Interface
+   :hidden:
+
+   dataframe/user_guide/10min
+   dataframe/reference/index
 
 .. toctree::
    :maxdepth: 2

@@ -56,6 +56,11 @@ def _install():
             setattr(t, func_name, df_func)
         for t in SERIES_TYPE:
             setattr(t, func_name, series_func)
+    # alias
+    for t in DATAFRAME_TYPE:
+        setattr(t, 'product', prod_dataframe)
+    for t in SERIES_TYPE:
+        setattr(t, 'product', prod_series)
 
 
 _install()

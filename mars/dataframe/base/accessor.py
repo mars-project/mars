@@ -25,35 +25,35 @@ class StringAccessor:
     def __init__(self, series):
         self._series = series
 
-    def _gen_func(self, method):
+    @classmethod
+    def _gen_func(cls, method):
         @wraps(getattr(pd.Series.str, method))
-        def _inner(*args, **kwargs):
+        def _inner(self, *args, **kwargs):
             op = SeriesStringMethod(method=method, method_args=args,
                                     method_kwargs=kwargs)
             return op(self._series)
         return _inner
 
     def __getitem__(self, item):
-        return self._gen_func('__getitem__')(item)
-
-    def __getattr__(self, item):
-        if item in _string_method_to_handlers:
-            return self._gen_func(item)
-        return super().__getattribute__(item)
+        return self._gen_func('__getitem__')(self, item)
 
     def __dir__(self) -> Iterable[str]:
         s = set(super().__dir__())
         s.update(_string_method_to_handlers.keys())
         return list(s)
 
+    @classmethod
+    def _register(cls, method):
+        setattr(cls, method, cls._gen_func(method))
+
     def split(self, pat=None, n=-1, expand=False):
-        return self._gen_func('split')(pat=pat, n=n, expand=expand)
+        return self._gen_func('split')(self, pat=pat, n=n, expand=expand)
 
     def rsplit(self, pat=None, n=-1, expand=False):
-        return self._gen_func('rsplit')(pat=pat, n=n, expand=expand)
+        return self._gen_func('rsplit')(self, pat=pat, n=n, expand=expand)
 
     def cat(self, others=None, sep=None, na_rep=None, join='left'):
-        return self._gen_func('cat')(others=others, sep=sep,
+        return self._gen_func('cat')(self, others=others, sep=sep,
                                      na_rep=na_rep, join=join)
 
 
@@ -61,27 +61,40 @@ class DatetimeAccessor:
     def __init__(self, series):
         self._series = series
 
-    def _gen_func(self, method, is_property):
-        if is_property:
+    @classmethod
+    def _gen_func(cls, method, is_property):
+        @wraps(getattr(pd.Series.dt, method))
+        def _inner(self, *args, **kwargs):
             op = SeriesDatetimeMethod(method=method,
-                                      is_property=is_property)
+                                      is_property=is_property,
+                                      method_args=args,
+                                      method_kwargs=kwargs)
             return op(self._series)
-        else:
-            @wraps(getattr(pd.Series.dt, method))
-            def _inner(*args, **kwargs):
-                op = SeriesDatetimeMethod(method=method,
-                                          method_args=args,
-                                          method_kwargs=kwargs)
-                return op(self._series)
-            return _inner
+        return _inner
 
-    def __getattr__(self, item):
-        if item in _datetime_method_to_handlers:
-            is_property = not callable(getattr(pd.Series.dt, item))
-            return self._gen_func(item, is_property)
-        return super().__getattribute__(item)
+    @classmethod
+    def _register(cls, method):
+        is_property = not callable(getattr(pd.Series.dt, method))
+        func = cls._gen_func(method, is_property)
+        if is_property:
+            func = property(func)
+        setattr(cls, method, func)
 
     def __dir__(self) -> Iterable[str]:
         s = set(super().__dir__())
         s.update(_datetime_method_to_handlers.keys())
         return list(s)
+
+
+class CachedAccessor:
+    def __init__(self, name: str, accessor) -> None:
+        self._name = name
+        self._accessor = accessor
+
+    def __get__(self, obj, cls):
+        if obj is None:
+            # we're accessing the attribute of the class, i.e., Dataset.geo
+            return self._accessor
+        if self._name not in obj._accessors:
+            obj._accessors[self._name] = self._accessor(obj)
+        return obj._accessors[self._name]

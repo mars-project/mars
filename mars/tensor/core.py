@@ -23,7 +23,7 @@ from operator import attrgetter
 
 import numpy as np
 
-from ..core import Entity, TileableEntity, ChunkData, Chunk, HasShapeTileableData, \
+from ..core import Entity, HasShapeTileableEnity, ChunkData, Chunk, HasShapeTileableData, \
     build_mode, Serializable
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
@@ -259,7 +259,7 @@ class TensorData(HasShapeTileableData):
         return flatiter(self)
 
 
-class Tensor(TileableEntity):
+class Tensor(HasShapeTileableEnity):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)
 
@@ -268,7 +268,7 @@ class Tensor(TileableEntity):
 
     @property
     def shape(self):
-        return self.data.shape
+        return self._data.shape
 
     @shape.setter
     def shape(self, new_shape):
@@ -318,6 +318,9 @@ class Tensor(TileableEntity):
             # avoid Numpy func
             return NotImplemented
         return mars_func(*args, **kwargs)
+
+    def view(self):
+        return self._view()
 
     def transpose(self, *axes):
         """

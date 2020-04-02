@@ -537,6 +537,9 @@ class Test(TestBase):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c' + str(i) for i in range(5)],
                             index=['i' + str(i) for i in range(10)])
         df = md.DataFrame(data, chunk_size=3)
+        data2 = data.copy()
+        data2.index = np.arange(10)
+        df2 = md.DataFrame(data2, chunk_size=3)
 
         with self.assertRaises(ValueError):
             _ = df.at[['i3, i4'], 'c1']
@@ -546,6 +549,12 @@ class Test(TestBase):
 
         result = self.executor.execute_dataframe(df['c1'].at['i2'], concat=True)[0]
         self.assertEqual(result, data['c1'].at['i2'])
+
+        result = self.executor.execute_dataframe(df2.at[3, 'c2'], concat=True)[0]
+        self.assertEqual(result, data2.at[3, 'c2'])
+
+        result = self.executor.execute_dataframe(df2.loc[3].at['c2'], concat=True)[0]
+        self.assertEqual(result, data2.loc[3].at['c2'])
 
     def testIAt(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c' + str(i) for i in range(5)],
