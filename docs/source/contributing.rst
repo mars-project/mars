@@ -127,7 +127,7 @@ into HTML.
 
 .. code-block:: bash
 
-    pip install -r docs/doc-requirements.txt
+    pip install -r docs/requirements-doc.txt
     cd docs
     make html
 
