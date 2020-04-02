@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...serialize import AnyField, BoolField, TupleField, DictField, FunctionField
+from ...serialize import TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index
 
@@ -25,31 +25,16 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.APPLY
     _op_module_ = 'dataframe.groupby'
 
-    # todo these three args below shall be redesigned when we extend
-    #  the functionality of groupby func
-    _by = AnyField('by')
-    _as_index = BoolField('as_index')
-
     _func = FunctionField('func')
     _args = TupleField('args')
     _kwds = DictField('kwds')
 
-    def __init__(self, func=None, by=None, as_index=None, args=None, kwds=None,
-                 object_type=None, **kw):
-        super().__init__(_func=func, _by=by, _as_index=as_index, _args=args, _kwds=kwds,
-                         _object_type=object_type, **kw)
+    def __init__(self, func=None, args=None, kwds=None, object_type=None, **kw):
+        super().__init__(_func=func, _args=args, _kwds=kwds, _object_type=object_type, **kw)
 
     @property
     def func(self):
         return self._func
-
-    @property
-    def by(self):
-        return self._by
-
-    @property
-    def as_index(self):
-        return self._as_index
 
     @property
     def args(self):
@@ -69,10 +54,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
                 ctx[op.outputs[0].key] = build_empty_series(op.outputs[0].dtype)
             return
 
-        concatenated = pd.concat([df for _, df in in_data])
-        grouped = concatenated.groupby(op.by, as_index=op.as_index)
-
-        applied = grouped.apply(op.func, *op.args, **op.kwds)
+        applied = in_data.apply(op.func, *op.args, **op.kwds)
 
         # when there is only one group, pandas tend to return a DataFrame, while
         # we need to convert it into a compatible series
@@ -168,6 +150,5 @@ def groupby_apply(groupby, func, *args, dtypes=None, index=None, object_type=Non
     # todo this can be done with sort_index implemented
     if not groupby.op.as_index:
         raise NotImplementedError('apply when set_index == False is not supported')
-    op = GroupByApply(func=func, by=groupby.op.by, as_index=groupby.op.as_index,
-                      args=args, kwds=kwargs, object_type=object_type)
+    op = GroupByApply(func=func, args=args, kwds=kwargs, object_type=object_type)
     return op(groupby, dtypes=dtypes, index=index)

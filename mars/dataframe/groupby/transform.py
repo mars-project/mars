@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...serialize import AnyField, BoolField, TupleField, DictField, FunctionField
+from ...serialize import BoolField, TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index
 
@@ -25,33 +25,19 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.TRANSFORM
     _op_module_ = 'dataframe.groupby'
 
-    # todo these three args below shall be redesigned when we extend
-    #  the functionality of groupby func
-    _by = AnyField('by')
-    _as_index = BoolField('as_index')
-
     _func = FunctionField('func')
     _args = TupleField('args')
     _kwds = DictField('kwds')
 
     _call_agg = BoolField('call_agg')
 
-    def __init__(self, func=None, by=None, as_index=None, args=None, kwds=None,
-                 call_agg=None, object_type=None, **kw):
-        super().__init__(_func=func, _by=by, _as_index=as_index, _args=args, _kwds=kwds,
-                         _call_agg=call_agg, _object_type=object_type, **kw)
+    def __init__(self, func=None, args=None, kwds=None, call_agg=None, object_type=None, **kw):
+        super().__init__(_func=func, _args=args, _kwds=kwds, _call_agg=call_agg,
+                         _object_type=object_type, **kw)
 
     @property
     def func(self):
         return self._func
-
-    @property
-    def by(self):
-        return self._by
-
-    @property
-    def as_index(self):
-        return self._as_index
 
     @property
     def args(self):
@@ -65,28 +51,18 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
     def call_agg(self):
         return self._call_agg
 
-    def _infer_df_func_returns(self, in_df, dtypes, index):
+    def _infer_df_func_returns(self, in_groupby, dtypes, index):
+        in_df = in_groupby.inputs[0]
         index_value, object_type, new_dtypes = None, None, None
         object_type = in_df.op.object_type if not self.call_agg else None
 
         try:
-            if in_df.op.object_type == ObjectType.dataframe:
-                empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
-                obj_dtypes = in_df.dtypes[in_df.dtypes == np.dtype('O')]
-                empty_df[obj_dtypes.index] = 'O'
-            else:
-                if in_df.dtype == np.dtype('O'):
-                    empty_df = pd.Series('O', index=pd.RangeIndex(2), name=in_df.name, dtype=np.dtype('O'))
-                else:
-                    empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
-
+            empty_groupby = in_groupby.op.build_mock_groupby()
             with np.errstate(all='ignore'):
                 if self.call_agg:
-                    infer_df = empty_df.groupby(by=self.by, as_index=self.as_index) \
-                        .agg(self.func, *self.args, **self.kwds)
+                    infer_df = empty_groupby.agg(self.func, *self.args, **self.kwds)
                 else:
-                    infer_df = empty_df.groupby(by=self.by, as_index=self.as_index) \
-                            .transform(self.func, *self.args, **self.kwds)
+                    infer_df = empty_groupby.transform(self.func, *self.args, **self.kwds)
 
             # todo return proper index when sort=True is implemented
             index_value = parse_index(None, in_df.key, self.func)
@@ -108,7 +84,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, groupby, dtypes=None, index=None):
         in_df = groupby.inputs[0]
 
-        dtypes, index_value = self._infer_df_func_returns(in_df, dtypes, index)
+        dtypes, index_value = self._infer_df_func_returns(groupby, dtypes, index)
         for arg, desc in zip((self._object_type, dtypes, index_value),
                              ('object_type', 'dtypes', 'index')):
             if arg is None:
@@ -165,13 +141,10 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
                 ctx[op.outputs[0].key] = build_empty_series(out_chunk.dtype)
             return
 
-        concatenated = pd.concat([df for _, df in in_data])
-        grouped = concatenated.groupby(op.by, as_index=op.as_index)
-
         if op.call_agg:
-            result = grouped.agg(op.func, *op.args, **op.kwds)
+            result = in_data.agg(op.func, *op.args, **op.kwds)
         else:
-            result = grouped.transform(op.func, *op.args, **op.kwds)
+            result = in_data.transform(op.func, *op.args, **op.kwds)
 
         if result.ndim == 2:
             result = result.astype(op.outputs[0].dtypes, copy=False)
@@ -189,6 +162,6 @@ def groupby_transform(groupby, func, *args, dtypes=None, index=None, object_type
     if not call_agg and isinstance(func, (dict, list)):
         raise TypeError('Does not support transform with %r' % type(func))
 
-    op = GroupByTransform(func=func, by=groupby.op.by, as_index=groupby.op.as_index,
-                          args=args, kwds=kwargs, object_type=object_type, call_agg=call_agg)
+    op = GroupByTransform(func=func, args=args, kwds=kwargs, object_type=object_type,
+                          call_agg=call_agg)
     return op(groupby, dtypes=dtypes, index=index)

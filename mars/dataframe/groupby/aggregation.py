@@ -23,7 +23,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...config import options
 from ...operands import OperandStage
-from ...serialize import ValueType, BoolField, AnyField, StringField, \
+from ...serialize import ValueType, AnyField, StringField, \
     ListField, DictField
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, \
@@ -50,9 +50,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     _func = AnyField('func')
     _raw_func = AnyField('raw_func')
-    _by = AnyField('by')
-    _as_index = BoolField('as_index')
-    _sort = BoolField('sort')
+
+    _groupby_params = DictField('groupby_params')
+
     _method = StringField('method')
     # for chunk
     # store the intermediate aggregated columns for the result
@@ -62,10 +62,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     # store original name of the series
     _series_name = StringField('series_name')
 
-    def __init__(self, func=None, by=None, as_index=None, sort=None, method=None, raw_func=None,
+    def __init__(self, func=None, method=None, groupby_params=None, raw_func=None,
                  agg_columns=None, output_column_to_func=None, series_name=None, stage=None,
                  object_type=None, **kw):
-        super().__init__(_func=func, _by=by, _as_index=as_index, _sort=sort, _method=method,
+        super().__init__(_func=func, _method=method, _groupby_params=groupby_params,
                          _agg_columns=agg_columns, _output_column_to_func=output_column_to_func,
                          _raw_func=raw_func, _series_name=series_name, _stage=stage,
                          _object_type=object_type, **kw)
@@ -79,16 +79,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return self._raw_func
 
     @property
-    def by(self):
-        return self._by
-
-    @property
-    def as_index(self):
-        return self._as_index
-
-    @property
-    def sort(self):
-        return self._sort
+    def groupby_params(self) -> dict:
+        return self._groupby_params
 
     @property
     def method(self):
@@ -118,7 +110,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             self._func = func
         else:
             # force as_index=True
-            agg_df = empty_df.groupby(self.by, as_index=True).aggregate(self.func)
+            groupby_params = self.groupby_params.copy()
+            groupby_params['as_index'] = True
+            agg_df = empty_df.groupby(**groupby_params).aggregate(self.func)
 
             if isinstance(agg_df, pd.Series):
                 self._func = OrderedDict([(_series_col_name, [raw_func])])
@@ -139,7 +133,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     def _call_dataframe(self, df):
         empty_df = build_empty_df(df.dtypes)
-        agg_df = empty_df.groupby(self.by, as_index=self.as_index).aggregate(self.func)
+        agg_df = empty_df.groupby(**self.groupby_params).aggregate(self.func)
 
         shape = (np.nan, agg_df.shape[1])
         index_value = parse_index(agg_df.index, df.key)
@@ -148,15 +142,16 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         # convert func to dict always
         self._normalize_keyword_aggregations(empty_df)
 
+        as_index = self.groupby_params.get('as_index')
         # make sure if as_index=False takes effect
-        if not self._as_index:
+        if not as_index:
             if isinstance(agg_df.index, pd.MultiIndex):
                 # if MultiIndex, as_index=False definitely takes no effect
-                self._as_index = True
+                self.groupby_params['as_index'] = True
             elif agg_df.index.name is not None:
                 # if not MultiIndex and agg_df.index has a name
                 # means as_index=False takes no effect
-                self._as_index = True
+                self.groupby_params['as_index'] = True
 
         return self.new_dataframe([df], shape=shape, dtypes=agg_df.dtypes,
                                   index_value=index_value,
@@ -164,7 +159,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     def _call_series(self, series):
         empty_series = build_empty_series(series.dtype)
-        agg_result = empty_series.groupby(self.by, as_index=self.as_index).aggregate(self.func)
+        agg_result = empty_series.groupby(**self.groupby_params).aggregate(self.func)
 
         index_value = parse_index(agg_result.index, series.key)
         index_value.value.should_be_monotonic = True
@@ -309,7 +304,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_op = op.copy().reset_key()
             # force as_index=True for map phase
             agg_op._object_type = ObjectType.dataframe
-            agg_op._as_index = True
+            agg_op._groupby_params = agg_op.groupby_params.copy()
+            agg_op._groupby_params['as_index'] = True
             agg_op._stage = OperandStage.map
             agg_op._func = stage_infos.map_func
             agg_op._output_column_to_func = stage_infos.map_output_column_to_func
@@ -433,11 +429,16 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     def _get_grouped(cls, op: "DataFrameGroupByAgg", df, copy=False):
         if copy:
             df = df.copy()
+
+        groupby_params = op.groupby_params.copy()
+        groupby_params.pop('as_index', None)
+
         if op.stage == OperandStage.agg:
-            return df.groupby(op.by, sort=op.sort)
+            return df.groupby(**groupby_params)
         else:
             # for the intermediate phases, do not sort
-            return df.groupby(op.by, sort=False)
+            groupby_params['sort'] = False
+            return df.groupby(**groupby_params)
 
     @classmethod
     def _is_raw_one_func(cls, op):
@@ -520,7 +521,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             result.name = op.series_name
         else:
             if op.stage == OperandStage.agg:
-                if not op.as_index:
+                if not op.groupby_params.get('as_index', True):
                     result.reset_index(inplace=True)
                 result.columns = out.columns_value.to_pandas()
         ctx[out.key] = result
@@ -568,7 +569,7 @@ def agg(groupby, func, method='tree', *args, **kwargs):
         return groupby.transform(func, *args, _call_agg=True, **kwargs)
 
     in_df = groupby.inputs[0]
-    agg_op = DataFrameGroupByAgg(func=func, by=groupby.op.by, method=method, raw_func=func,
-                                 as_index=groupby.op.as_index, sort=groupby.op.sort,
+    agg_op = DataFrameGroupByAgg(func=func, method=method, raw_func=func,
+                                 groupby_params=groupby.op.groupby_params,
                                  object_type=in_df.op.object_type)
     return agg_op(in_df)

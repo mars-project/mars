@@ -21,7 +21,8 @@ from ... import opcodes as OperandDef
 from ...operands import OperandStage
 from ...serialize import BoolField, Int32Field, AnyField
 from ...utils import get_shuffle_input_keys_idxes
-from ..utils import build_concatenated_rows_frame, hash_dataframe_on, parse_index
+from ..utils import build_concatenated_rows_frame, hash_dataframe_on, \
+    build_empty_df, build_empty_series, parse_index
 from ..operands import DataFrameOperandMixin, \
     DataFrameMapReduceOperand, DataFrameShuffleProxy, ObjectType
 
@@ -71,6 +72,24 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     @property
     def is_dataframe_obj(self):
         return self._object_type in (ObjectType.dataframe_groupby, ObjectType.dataframe)
+
+    @property
+    def groupby_params(self):
+        return dict(by=self.by, as_index=self.as_index, sort=self.sort)
+
+    def build_mock_groupby(self):
+        in_df = self.inputs[0]
+        if self.is_dataframe_obj:
+            empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
+            obj_dtypes = in_df.dtypes[in_df.dtypes == np.dtype('O')]
+            empty_df[obj_dtypes.index] = 'O'
+        else:
+            if in_df.dtype == np.dtype('O'):
+                empty_df = pd.Series('O', index=pd.RangeIndex(2), name=in_df.name, dtype=np.dtype('O'))
+            else:
+                empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
+
+        return empty_df.groupby(by=self.by, as_index=self.as_index, sort=self.sort)
 
     def __call__(self, df):
         params = df.params.copy()
@@ -179,8 +198,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             cls.execute_reduce(ctx, op)
         else:
             df = ctx[op.inputs[0].key]
-            by = op.by
-            ctx[op.outputs[0].key] = list(df.groupby(by))
+            ctx[op.outputs[0].key] = df.groupby(op.by)
 
 
 def groupby(df, by, as_index=True, sort=True):
