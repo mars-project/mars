@@ -100,7 +100,7 @@ class EuclideanDistances(PairwiseDistances):
                 raise ValueError(
                     "Incompatible dimensions for Y and Y_norm_squared")
             if YY.dtype == np.float32:
-                YY =  self._y_norm_squared = None
+                YY = self._y_norm_squared = None
         else:
             YY = None
 

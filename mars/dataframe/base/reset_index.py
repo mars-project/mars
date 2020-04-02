@@ -74,7 +74,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
                                                name=c.name, index_value=index_value)
             else:
                 shape = (c.shape[0], out.shape[1])
-                out_chunk = chunk_op.new_chunk([c], shape=shape, index=c.index, dtypes=out.dtypes,
+                out_chunk = chunk_op.new_chunk([c], shape=shape, index=c.index + (0,), dtypes=out.dtypes,
                                                index_value=index_value, columns_value=out.columns_value)
             out_chunks.append(out_chunk)
         if not is_range_index and isinstance(out.index_value._index_value, IndexValue.RangeIndex):

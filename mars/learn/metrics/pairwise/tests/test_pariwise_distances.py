@@ -48,7 +48,7 @@ class Test(unittest.TestCase):
 
         # test precomputed
         d2 = d.copy()
-        d2[0, 0 ] = -1
+        d2[0, 0] = -1
         d2 = pairwise_distances(d2, y, metric='precomputed')
         with self.assertRaises(ValueError):
             _ = self.executor.execute_tensor(d2, concat=True)[0]

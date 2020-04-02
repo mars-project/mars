@@ -22,8 +22,8 @@ class WorkerAPI:
     def __init__(self, actor_ctx=None):
         self._actor_context = actor_ctx or new_client()
 
-    def get_chunks_data(self, session_id, worker: str, chunk_keys: List[str], indexes: List=None,
-                        compression_types: List[str]=None):
+    def get_chunks_data(self, session_id, worker: str, chunk_keys: List[str], indexes: List = None,
+                        compression_types: List[str] = None):
         """
         Fetch chunks data from a specified worker.
         :param session_id: session_id

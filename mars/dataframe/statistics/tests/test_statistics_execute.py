@@ -140,8 +140,7 @@ class Test(unittest.TestCase):
                              'b': np.random.randint(1000, size=10),
                              'c': np.random.rand(10),
                              'd': [pd.Timestamp('201{}'.format(i)) for i in range(10)],
-                            },
-                           index=pd.RangeIndex(1, 11))
+                             }, index=pd.RangeIndex(1, 11))
         df2 = DataFrame(raw2, chunk_size=3)
 
         r = df2.quantile([0.3, 0.7], numeric_only=False)

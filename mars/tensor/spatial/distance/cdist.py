@@ -99,7 +99,7 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
             if val is not None:
                 chunk_inputs.append(val.chunks[0])
         chunk = chunk_op.new_chunk(chunk_inputs, shape=out_tensor.shape,
-                                   order=out_tensor.order)
+                                   order=out_tensor.order, index=(0,) * out_tensor.ndim)
 
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, shape=out_tensor.shape,

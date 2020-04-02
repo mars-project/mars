@@ -72,8 +72,13 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         try:
             if in_df.op.object_type == ObjectType.dataframe:
                 empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
+                obj_dtypes = in_df.dtypes[in_df.dtypes == np.dtype('O')]
+                empty_df[obj_dtypes.index] = 'O'
             else:
-                empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
+                if in_df.dtype == np.dtype('O'):
+                    empty_df = pd.Series('O', index=pd.RangeIndex(2), name=in_df.name, dtype=np.dtype('O'))
+                else:
+                    empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
 
             with np.errstate(all='ignore'):
                 if self.call_agg:
@@ -136,12 +141,16 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
                     columns_value=out_df.columns_value, index_value=out_df.index_value))
             else:
                 chunks.append(new_op.new_chunk(
-                    inp_chunks, name=out_df.name, index=c.index, shape=(np.nan,), dtype=out_df.dtype,
+                    inp_chunks, name=out_df.name, index=(c.index[0],), shape=(np.nan,), dtype=out_df.dtype,
                     index_value=out_df.index_value))
 
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
         kw['chunks'] = chunks
+        if op.object_type == ObjectType.dataframe:
+            kw['nsplits'] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
+        else:
+            kw['nsplits'] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
 
     @classmethod
@@ -161,10 +170,13 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
 
         if op.call_agg:
             result = grouped.agg(op.func, *op.args, **op.kwds)
-            if isinstance(result, pd.DataFrame):
-                result = result.reindex(out_chunk.columns_value.to_pandas(), axis=1)
         else:
             result = grouped.transform(op.func, *op.args, **op.kwds)
+
+        if result.ndim == 2:
+            result = result.astype(op.outputs[0].dtypes, copy=False)
+        else:
+            result = result.astype(op.outputs[0].dtype, copy=False)
         ctx[op.outputs[0].key] = result
 
 

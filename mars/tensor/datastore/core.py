@@ -49,4 +49,4 @@ class TensorDataStore(TensorHasInput, TensorOperandMixin):
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,
                                   chunks=out_chunks,
-                                  nsplits=((0,) * len(ns) for ns in in_tensor.nsplits))
+                                  nsplits=((0,) for _ in range(in_tensor.ndim)))

@@ -17,7 +17,6 @@ from collections import OrderedDict
 from enum import Enum
 from functools import reduce
 
-import numpy as np
 import pandas as pd
 
 from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
@@ -133,7 +132,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
                                   output_limit=output_limit, kws=kws, **kw)
 
     def new_index(self, inputs, shape=None, dtype=None, index_value=None, name=None, **kw):
-        if getattr(self, 'output_limit') !=  1:
+        if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new Index with more than 1 outputs')
 
         return self.new_indexes(inputs, shape=shape, dtype=dtype,
@@ -148,15 +147,6 @@ class DataFrameOperandMixin(TileableOperandMixin):
             raise TypeError('cannot new tensor with more than 1 outputs')
 
         return self.new_scalars(inputs, dtype=dtype, **kw)[0]
-
-    @staticmethod
-    def _merge_shape(*shapes):
-        ret = [np.nan] * len(shapes[0])
-        for shape in shapes:
-            for i, s in enumerate(shape):
-                if np.isnan(ret[i]) and not np.isnan(s):
-                    ret[i] = s
-        return tuple(ret)
 
     @classmethod
     def concat_tileable_chunks(cls, tileable):

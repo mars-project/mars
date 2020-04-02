@@ -71,5 +71,3 @@ def enter_mars_context():
     scheduler = os.environ['MARS_SCHEDULER']
     session_id = os.environ['MARS_SESSION']
     return DistributedContext(scheduler_address=scheduler, session_id=session_id)
-
-

@@ -270,12 +270,13 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
             # rechunk others as input
             others = op.inputs[1].rechunk(op.input.nsplits)._inplace_tile()
             out_chunks = []
-            for c in op.input.chunks:
+            for c in inp.chunks:
                 chunk_op = op.copy().reset_key()
                 chunk_op._method_kwargs = op.method_kwargs.copy()
                 out_chunk = chunk_op.new_chunk([c, others.cix[c.index]],
                                                dtype=c.dtype,
                                                index=c.index,
+                                               shape=c.shape,
                                                index_value=c.index_value,
                                                name=c.name)
                 out_chunks.append(out_chunk)
@@ -291,11 +292,9 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
             for left_chunk, right_chunk in zip(left_chunks, right_chunks):
                 chunk_op = op.copy().reset_key()
                 chunk_op._method_kwargs = op.method_kwargs.copy()
-                out_chunk = chunk_op.new_chunk([left_chunk, right_chunk],
-                                               dtype=left_chunk.dtype,
-                                               index=left_chunk.index,
-                                               index_value=left_chunk.index_value,
-                                               name=out.name)
+                params = left_chunk.params
+                params['name'] = out.name
+                out_chunk = chunk_op.new_chunk([left_chunk, right_chunk], **params)
                 out_chunks.append(out_chunk)
             new_op = op.copy()
             params = out.params
@@ -337,7 +336,7 @@ class SeriesStringExtractHandler(SeriesStringMethodBaseHandler):
                 shape = (np.nan, test_df.shape[1])
             else:
                 index_value = inp.index_value
-                shape=(inp.shape[0], test_df.shape[1])
+                shape = (inp.shape[0], test_df.shape[1])
             return op.new_dataframe([inp], shape=shape,
                                     dtypes=test_df.dtypes,
                                     index_value=index_value,
@@ -359,12 +358,13 @@ class SeriesStringExtractHandler(SeriesStringMethodBaseHandler):
             else:
                 if op.method == 'extract':
                     index_value = series_chunk.index_value
+                    shape = (series_chunk.shape[0], out.shape[1])
                 else:
                     index_value = parse_index(out.index_value.to_pandas()[:0],
                                               series_chunk)
+                    shape = (np.nan, out.shape[1])
                 out_chunk = chunk_op.new_chunk(
-                    [series_chunk], shape=(series_chunk.shape[0], out.shape[1]),
-                    index=(series_chunk.index[0], 0),
+                    [series_chunk], shape=shape, index=(series_chunk.index[0], 0),
                     dtypes=out.dtypes, index_value=index_value,
                     columns_value=out.columns_value)
             out_chunks.append(out_chunk)
@@ -374,8 +374,10 @@ class SeriesStringExtractHandler(SeriesStringMethodBaseHandler):
         params['chunks'] = out_chunks
         if out.ndim == 1:
             params['nsplits'] = op.input.nsplits
-        else:
+        elif op.method == 'extract':
             params['nsplits'] = (op.input.nsplits[0], (out.shape[1],))
+        else:
+            params['nsplits'] = ((np.nan,) * len(op.input.nsplits[0]), (out.shape[1],))
         new_op = op.copy()
         return new_op.new_tileables([op.input], kws=[params])
 

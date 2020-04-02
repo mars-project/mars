@@ -96,7 +96,7 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
         if not np.can_cast(src.dtype, dst.dtype, casting=self.casting):
             raise TypeError('Cannot cast array from {0!r} to {1!r} '
                             'according to the rule {2!s}'.format(
-                src.dtype, dst.dtype, self.casting))
+                                src.dtype, dst.dtype, self.casting))
 
         try:
             broadcast_to(src, dst.shape)

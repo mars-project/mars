@@ -88,7 +88,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         out_chunks = []
         for idx, left_chunk, right_chunk in zip(out_chunk_indexes, left_chunks, right_chunks):
             out_chunk = op.copy().reset_key().new_chunk([left_chunk, right_chunk],
-                                                        shape=(np.nan, np.nan), index=idx)
+                                                        shape=(nsplits[0][idx[0]], nsplits[1][idx[1]]),
+                                                        index=idx)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
@@ -107,7 +108,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         out_chunks = []
         for idx, left_chunk, right_chunk in zip(range(out_shape[0]), left_chunks, right_chunks):
             out_chunk = op.copy().reset_key().new_chunk([left_chunk, right_chunk],
-                                                        shape=(np.nan,), index=(idx,))
+                                                        shape=(nsplits[0][idx],), index=(idx,))
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
@@ -129,13 +130,13 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if op.axis == 'columns' or op.axis == 1:
                 series_chunk = right_chunks[out_idx[1]]
                 kw = {
-                    'shape': (df_chunk.shape[0], np.nan),
+                    'shape': (nsplits[0][out_idx[0]], nsplits[1][out_idx[1]]),
                     'index_value': df_chunk.index_value,
                 }
             else:
                 series_chunk = right_chunks[out_idx[0]]
                 kw = {
-                    'shape': (np.nan, df_chunk.shape[1]),
+                    'shape': (nsplits[0][out_idx[0]], nsplits[1][out_idx[1]]),
                     'columns_value': df_chunk.columns_value,
                 }
             out_chunk = op.copy().reset_key().new_chunk([df_chunk, series_chunk], index=out_idx, **kw)
@@ -420,11 +421,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             properties = self._calc_properties(df1, df2, axis=self.axis)
 
         inputs = [inp for inp in inputs if isinstance(inp, (Chunk, ChunkData))]
-        shapes = [properties.pop('shape')]
-        shapes.extend(kw_item.pop('shape') for kw_item in kws or ())
+
+        shape = properties.pop('shape')
         if 'shape' in kw:
-            shapes.append(kw.pop('shape'))
-        shape = self._merge_shape(*shapes)
+            shape = kw.pop('shape')
 
         for prop, value in properties.items():
             if kw.get(prop, None) is None:
@@ -535,7 +535,7 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
         new_op = op.copy()
         kw = out_df.params
         kw['nsplits'] = in_df.nsplits
-        kw['chunks'] =  out_chunks
+        kw['chunks'] = out_chunks
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod

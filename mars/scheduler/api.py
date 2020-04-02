@@ -36,11 +36,11 @@ class MetaAPI:
         sess_ref = self._get_session_ref(session_id)
         return sess_ref.get_tileable_key(name)
 
-    def get_tileable_metas(self, session_id, tileable_keys, filter_fields: List[str]=None) -> List:
+    def get_tileable_metas(self, session_id, tileable_keys, filter_fields: List[str] = None) -> List:
         session_ref = self._get_session_ref(session_id)
         graph_ref = self._actor_ctx.actor_ref(session_ref.get_graph_ref_by_tileable_key(tileable_keys[0]))
         return graph_ref.get_tileable_metas(tileable_keys, filter_fields=filter_fields)
 
-    def get_chunk_metas(self, session_id, chunk_keys, filter_fields: List[str]=None) -> List:
+    def get_chunk_metas(self, session_id, chunk_keys, filter_fields: List[str] = None) -> List:
         return self._chunk_meta_client.batch_get_chunk_meta(
             session_id, chunk_keys, filter_fields=filter_fields)

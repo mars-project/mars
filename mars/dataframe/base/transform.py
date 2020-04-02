@@ -84,18 +84,21 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         axis = op.axis
 
         if isinstance(in_df, DATAFRAME_TYPE):
-            chunk_size = (in_df.shape[axis],
-                          max(1, options.chunk_store_limit // in_df.shape[axis]))
-            if axis == 1:
-                chunk_size = chunk_size[::-1]
-            in_df = in_df.rechunk(chunk_size).tiles()
+            if in_df.chunk_shape[axis] > 1:
+                chunk_size = (in_df.shape[axis],
+                              max(1, options.chunk_store_limit // in_df.shape[axis]))
+                if axis == 1:
+                    chunk_size = chunk_size[::-1]
+                in_df = in_df.rechunk(chunk_size)._inplace_tile()
         elif isinstance(op.func, str) or \
                  (isinstance(op.func, list) and any(isinstance(e, str) for e in op.func)):
             # builtin cols handles whole columns, thus merge is needed
-            in_df = in_df.rechunk((in_df.shape[axis],)).tiles()
+            if in_df.chunk_shape[0] > 1:
+                in_df = in_df.rechunk((in_df.shape[axis],))._inplace_tile()
 
         chunks = []
         axis_index_map = dict()
+        col_sizes = []
         for c in in_df.chunks:
             new_op = op.copy().reset_key()
             params = c.params.copy()
@@ -110,12 +113,14 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
                     if len(new_dtypes) == 0:
                         continue
+                    if c.index[0] == 0:
+                        col_sizes.append(len(new_dtypes))
 
                     new_index = list(c.index)
                     try:
-                        new_index[op.axis] = axis_index_map[c.index[op.axis]]
+                        new_index[1 - op.axis] = axis_index_map[c.index[1 - op.axis]]
                     except KeyError:
-                        new_index[op.axis] = axis_index_map[c.index[op.axis]] = len(axis_index_map)
+                        new_index[1 - op.axis] = axis_index_map[c.index[1 - op.axis]] = len(axis_index_map)
 
                     if isinstance(op.func, dict):
                         new_op._func = dict((k, v) for k, v in op.func.items() if k in new_dtypes)
@@ -127,10 +132,13 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                         new_shape[op.axis] = np.nan
                     new_columns_value = parse_index(new_dtypes.index)
                 else:
-                    new_dtypes, new_index = out_df.dtypes, c.index
+                    new_dtypes = out_df.dtypes
+                    new_index = c.index + (0,)
                     new_shape = [c.shape[0], len(new_dtypes)]
                     if op.call_agg:
                         new_shape[0] = np.nan
+                    if c.index[0] == 0:
+                        col_sizes.append(len(new_dtypes))
                     new_columns_value = out_df.columns_value
                 params.update(dict(dtypes=new_dtypes, shape=tuple(new_shape), index=tuple(new_index),
                                    columns_value=new_columns_value))
@@ -140,11 +148,24 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                     params.pop('columns_value', None)
                     params['index_value'] = out_df.index_value
                     params['shape'] = (c.shape[1 - op.axis],)
+                    params['index'] = (c.index[1 - op.axis],)
             chunks.append(new_op.new_chunk([c], **params))
+
+        if op.object_type == ObjectType.dataframe:
+            new_nsplits = [in_df.nsplits[0], tuple(col_sizes)]
+            if op.call_agg:
+                new_nsplits[op.axis] = (np.nan,)
+        elif op.call_agg:
+            if isinstance(in_df, DATAFRAME_TYPE):
+                new_nsplits = (in_df.nsplits[1],)
+            else:
+                new_nsplits = ((np.nan,),)
+        else:
+            new_nsplits = in_df.nsplits
 
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
-        kw.update(dict(chunks=chunks, nsplits=in_df.nsplits))
+        kw.update(dict(chunks=chunks, nsplits=tuple(new_nsplits)))
         return new_op.new_tileables(op.inputs, **kw)
 
     def _infer_df_func_returns(self, in_dtypes, dtypes):

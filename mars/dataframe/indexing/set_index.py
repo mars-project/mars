@@ -94,10 +94,14 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
                 out_chunks.append(out_chunk)
 
         new_op = op.copy()
+        columns_nsplits = list(in_df.nsplits[1])
+        if op.drop:
+            columns_nsplits = tuple(split - 1 if i == 0 else split for i, split in enumerate(columns_nsplits))
+        nsplits = (in_df.nsplits[0], columns_nsplits)
         return new_op.new_dataframes(op.inputs, out_df.shape, dtypes=out_df.dtypes,
                                      index_value=out_df.index_value,
                                      columns_value=out_df.columns_value,
-                                     chunks=out_chunks, nsplits=in_df.nsplits)
+                                     chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
     def execute(cls, ctx, op):
