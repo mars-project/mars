@@ -836,10 +836,6 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
                     index = list(params['index'])
                     index.pop(index_info.output_axis)
                     params['index'] = tuple(index)
-                if len(params['index']) == chunks[0].ndim:
-                    index = list(params['index'])
-                    index.pop(index_info.output_axis)
-                    params['index'] = tuple(index)
                     shape = list(params['shape'])
                     shape.pop(index_info.output_axis)
                     params['shape'] = tuple(shape)
