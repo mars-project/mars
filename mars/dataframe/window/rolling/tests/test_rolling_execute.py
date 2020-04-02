@@ -82,7 +82,7 @@ class Test(TestBase):
         # test axis=1
         df2 = dfs[1].rolling(3, axis=1).agg('sum')
 
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
+        result = self.executor.execute_dataframe(df2, concat=True, check_nsplits=False)[0]
         expected = raw.rolling(3, axis=1).agg('sum')
         pd.testing.assert_frame_equal(result, expected)
 

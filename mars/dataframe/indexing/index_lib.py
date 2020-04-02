@@ -351,7 +351,11 @@ class LabelIndexHandler(IndexHandler):
         # thus chunks cannot have unknown shape on this axis
         tileable = context.tileable
         input_axis = index_info.input_axis
-        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        if tileable.ndim == 1:
+            index_value = tileable.index_value
+        else:
+            index_value = [tileable.index_value, tileable.columns_value][input_axis]
+
         if index_value.has_value():
             if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
                 raise TilesError('Input tileable {} has chunks with unknown shape '
@@ -360,7 +364,10 @@ class LabelIndexHandler(IndexHandler):
     def process(self, index_info, context):
         tileable = context.tileable
         input_axis = index_info.input_axis
-        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        if tileable.ndim == 1:
+            index_value = tileable.index_value
+        else:
+            index_value = [tileable.index_value, tileable.columns_value][input_axis]
 
         if index_value.has_value():
             pd_index = index_value.to_pandas()
@@ -499,7 +506,7 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
         chunk_index_to_info = context.chunk_index_to_info.copy()
         for chunk_index, chunk_index_info in chunk_index_to_info.items():
             i = chunk_index[index_info.input_axis]
-            fancy_index_array = chunk_index_to_fancy_index_arrays[i,][0]
+            fancy_index_array = chunk_index_to_fancy_index_arrays[i, ][0]
 
             if fancy_index_array.size == 0:
                 # not effected
@@ -571,8 +578,8 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
             new_out_chunks.append(reorder_chunk)
 
         new_nsplits = list(nsplits)
-        for ax, fancy_index in zip(to_concat_axes, fancy_indexes):
-            new_nsplits[ax] = (fancy_index.raw_index.shape[0],)
+        for fancy_index in fancy_indexes:
+            new_nsplits[fancy_index.output_axis] = (fancy_index.raw_index.shape[0],)
         context.out_chunks = new_out_chunks
         context.out_nsplits = new_nsplits
 
@@ -724,6 +731,7 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
 
         axis = index_info.output_axis
         new_out_chunks = []
+        chunk_axis_shapes = dict()
         for chunk_index in itertools.product(*(range(len(ns)) for ax, ns in enumerate(nsplits)
                                                if ax != axis)):
             to_concat_chunks = []
@@ -746,22 +754,33 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
                     del params['dtypes']
                     if getattr(context.op.outputs[0], 'name', None) is not None:
                         params['name'] = context.op.outputs[0].name
-                if context.op.outputs[0].ndim == 0:
-                    del params['index_value']
+                if len(params['index']) == chunks[0].ndim:
+                    index = list(params['index'])
+                    index.pop(index_info.output_axis)
+                    params['index'] = tuple(index)
                     shape = list(params['shape'])
                     shape.pop(index_info.output_axis)
                     params['shape'] = tuple(shape)
+                if context.op.outputs[0].ndim == 0:
+                    del params['index_value']
             elif axis == 0:
                 params['index_value'] = parse_index(pd.Index(index_info.raw_index), store_data=False)
             else:
                 params['dtypes'] = dtypes = concat_chunk.dtypes.loc[index_info.raw_index]
                 params['columns_value'] = parse_index(dtypes.index, store_data=True)
+                shape = list(params['shape'])
+                shape[1] = len(dtypes)
             chunk_op._indexes = indexes
             out_chunk = chunk_op.new_chunk([concat_chunk], kws=[params])
+            if len(out_chunk.shape) != 0:
+                chunk_axis_shapes[out_chunk.index[axis]] = out_chunk.shape[axis]
             new_out_chunks.append(out_chunk)
 
         new_nsplits = list(nsplits)
-        new_nsplits[axis] = (len(index_info.raw_index),)
+        if np.isscalar(index_info.raw_index):
+            new_nsplits = new_nsplits[:axis] + new_nsplits[axis + 1:]
+        else:
+            new_nsplits[axis] = (sum(chunk_axis_shapes.values()),)
         context.out_chunks = new_out_chunks
         context.out_nsplits = new_nsplits
 

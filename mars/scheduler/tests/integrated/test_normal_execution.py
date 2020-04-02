@@ -369,4 +369,3 @@ class Test(SchedulerIntegratedTest):
 
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
-

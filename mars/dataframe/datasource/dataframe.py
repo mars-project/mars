@@ -82,7 +82,7 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
             if i in index_values:
                 index_value = index_values[i]
             else:
-                index_value =index_values[i] = parse_index(chunk_op.data.index)
+                index_value = index_values[i] = parse_index(chunk_op.data.index)
             if j in column_values:
                 column_value = column_values[j]
             else:

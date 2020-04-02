@@ -378,7 +378,7 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
         if input_ndim == 1 and output_ndim == 2:
             nsplits.append((out.shape[1],))
         elif input_ndim == 2 and output_ndim == 2:
-            nsplits[1] = (out.shape[1],)
+            nsplits[1 - op.axis] = (out.shape[1 - op.axis],)
         params['nsplits'] = tuple(nsplits)
         new_op = op.copy()
         return new_op.new_tileables([inp], kws=[params])

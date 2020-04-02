@@ -129,7 +129,7 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for out_idx, df_chunk in zip(out_chunk_indexes, left_chunks):
             series_chunk = right_chunks[out_idx[0]]
-            kw = dict(shape=(nsplits[0][out_idx[0]], nsplits[1][out_idx[1]]),
+            kw = dict(shape=(np.nan, nsplits[1][out_idx[1]]),
                       index_value=df_chunk.index_value, columns_value=df_chunk.columns_value)
 
             new_op = op.copy().reset_key()
@@ -139,7 +139,9 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
 
         new_op = op.copy().reset_key()
         params = out_df.params.copy()
-        params.update(dict(nsplits=tuple(tuple(ns) for ns in nsplits), chunks=out_chunks))
+        new_nsplits = list(tuple(ns) for ns in nsplits)
+        new_nsplits[0] = (np.nan,) * len(new_nsplits[0])
+        params.update(dict(nsplits=tuple(new_nsplits), chunks=out_chunks))
         return new_op.new_tileables(op.inputs, **params)
 
     @classmethod
