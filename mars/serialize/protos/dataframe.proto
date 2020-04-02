@@ -99,6 +99,8 @@ message DataFrameGroupByChunkDef {
     IndexValue columns_value = 12;
     Value extra_params = 8;
     string id = 9;
+    Value key_columns = 13;
+    Value selection = 14;
 }
 
 
@@ -108,11 +110,13 @@ message DataFrameGroupByDef {
     Value dtypes = 3;
     Value op = 4;  // store operand's key and id
     Value nsplits = 5;
-    repeated DataFrameChunkDef chunks = 6;
+    repeated DataFrameGroupByChunkDef chunks = 6;
     Value extra_params = 7;
     string id = 8;
     IndexValue index_value = 9;
     IndexValue columns_value = 10;
+    Value key_columns = 11;
+    Value selection = 12;
 }
 
 
@@ -127,6 +131,7 @@ message SeriesGroupByChunkDef {
     Value extra_params = 8;
     string id = 9;
     Value name = 10;
+    Value key_columns = 12;
 }
 
 
@@ -136,9 +141,10 @@ message SeriesGroupByDef {
     Value dtype = 3;
     Value op = 4;  // store operand's key and id
     Value nsplits = 5;
-    repeated SeriesChunkDef chunks = 6;
+    repeated SeriesGroupByChunkDef chunks = 6;
     Value extra_params = 7;
     string id = 8;
     Value name = 9;
     IndexValue index_value = 10;
+    Value key_columns = 11;
 }

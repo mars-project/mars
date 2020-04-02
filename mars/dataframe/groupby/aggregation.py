@@ -112,7 +112,12 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             # force as_index=True
             groupby_params = self.groupby_params.copy()
             groupby_params['as_index'] = True
-            agg_df = empty_df.groupby(**groupby_params).aggregate(self.func)
+            selection = groupby_params.pop('selection', None)
+
+            grouped = empty_df.groupby(**groupby_params)
+            if selection:
+                grouped = grouped[selection]
+            agg_df = grouped.aggregate(self.func)
 
             if isinstance(agg_df, pd.Series):
                 self._func = OrderedDict([(_series_col_name, [raw_func])])
@@ -133,7 +138,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     def _call_dataframe(self, df):
         empty_df = build_empty_df(df.dtypes)
-        agg_df = empty_df.groupby(**self.groupby_params).aggregate(self.func)
+        groupby_params = self.groupby_params.copy()
+        selection = groupby_params.pop('selection', None)
+
+        grouped = empty_df.groupby(**groupby_params)
+        if selection:
+            grouped = grouped[selection]
+        agg_df = grouped.aggregate(self.func)
 
         shape = (np.nan, agg_df.shape[1])
         index_value = parse_index(agg_df.index, df.key)
@@ -159,7 +170,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     def _call_series(self, series):
         empty_series = build_empty_series(series.dtype)
-        agg_result = empty_series.groupby(**self.groupby_params).aggregate(self.func)
+        groupby_params = self.groupby_params.copy()
+        groupby_params.pop('selection', None)
+        agg_result = empty_series.groupby(**groupby_params).aggregate(self.func)
 
         index_value = parse_index(agg_result.index, series.key)
         index_value.value.should_be_monotonic = True
@@ -179,7 +192,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             return self.new_series([series], shape=(np.nan,), dtype=agg_result.dtype,
                                    index_value=index_value)
 
-    def __call__(self, df):
+    def __call__(self, groupby):
+        df = groupby
+        while df.op.object_type not in (ObjectType.dataframe, ObjectType.series):
+            df = df.inputs[0]
+
+        self._object_type = df.op.object_type
+
         if df.op.object_type == ObjectType.dataframe:
             return self._call_dataframe(df)
         else:
@@ -340,6 +359,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         agg_chunks = []
         for chunk in reduce_chunks:
             agg_op = op.copy().reset_key()
+            agg_op._groupby_params = agg_op.groupby_params.copy()
+            agg_op._groupby_params.pop('selection', None)
             agg_op._stage = OperandStage.agg
             agg_op._func = stage_infos.agg_func
             agg_op._output_column_to_func = stage_infos.agg_output_column_to_func
@@ -388,6 +409,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op = op.copy().reset_key()
                 chunk_op._object_type = ObjectType.dataframe
                 chunk_op._stage = OperandStage.combine
+                chunk_op._groupby_params = chunk_op.groupby_params.copy()
+                chunk_op._groupby_params.pop('selection', None)
                 chunk_op._func = stage_infos.combine_func
                 chunk_op._output_column_to_func = stage_infos.combine_output_column_to_func
                 columns_value = parse_index(pd.Index(stage_infos.intermediate_cols), store_data=True)
@@ -400,6 +423,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         chk = concat_op.new_chunk(chunks, dtypes=chunks[0].dtypes)
         chunk_op = op.copy().reset_key()
         chunk_op._stage = OperandStage.agg
+        chunk_op._groupby_params = chunk_op.groupby_params.copy()
+        chunk_op._groupby_params.pop('selection', None)
         chunk_op._func = stage_infos.agg_func
         chunk_op._output_column_to_func = stage_infos.agg_output_column_to_func
         chunk_op._agg_columns = stage_infos.agg_cols
@@ -430,15 +455,20 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         if copy:
             df = df.copy()
 
-        groupby_params = op.groupby_params.copy()
-        groupby_params.pop('as_index', None)
+        params = op.groupby_params.copy()
+        params.pop('as_index', None)
+        selection = params.pop('selection', None)
 
         if op.stage == OperandStage.agg:
-            return df.groupby(**groupby_params)
+            grouped = df.groupby(**params)
         else:
             # for the intermediate phases, do not sort
-            groupby_params['sort'] = False
-            return df.groupby(**groupby_params)
+            params['sort'] = False
+            grouped = df.groupby(**params)
+
+        if selection:
+            grouped = grouped[selection]
+        return grouped
 
     @classmethod
     def _is_raw_one_func(cls, op):
@@ -500,7 +530,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 grouped = cls._get_grouped(op, df, copy=True)
                 result = grouped.agg(func)
         result.columns = processed_cols
-
         if len(op.output_column_to_func) > 0:
             # process the functions that require operating on the grouped data
             for out_col, f in op.output_column_to_func.items():
@@ -568,8 +597,6 @@ def agg(groupby, func, method='tree', *args, **kwargs):
     if not _check_if_func_available(func):
         return groupby.transform(func, *args, _call_agg=True, **kwargs)
 
-    in_df = groupby.inputs[0]
     agg_op = DataFrameGroupByAgg(func=func, method=method, raw_func=func,
-                                 groupby_params=groupby.op.groupby_params,
-                                 object_type=in_df.op.object_type)
-    return agg_op(in_df)
+                                 groupby_params=groupby.op.groupby_params)
+    return agg_op(groupby)

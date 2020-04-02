@@ -883,6 +883,20 @@ class DataFrame(HasShapeTileableEnity):
 
 
 class DataFrameGroupByChunkData(BaseDataFrameChunkData):
+    _key_columns = AnyField('key_columns')
+    _selection = AnyField('selection')
+
+    @property
+    def key_columns(self):
+        return self._key_columns
+
+    @property
+    def selection(self):
+        return self._selection
+
+    def __init__(self, key_columns=None, selection=None, **kw):
+        super().__init__(_key_columns=key_columns, _selection=selection, **kw)
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -900,6 +914,15 @@ class DataFrameGroupByChunk(Chunk):
 
 
 class SeriesGroupByChunkData(BaseSeriesChunkData):
+    _key_columns = AnyField('key_columns')
+
+    @property
+    def key_columns(self):
+        return self._key_columns
+
+    def __init__(self, key_columns=None, **kw):
+        super().__init__(_key_columns=key_columns, **kw)
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -919,6 +942,20 @@ class SeriesGroupByChunk(Chunk):
 class DataFrameGroupByData(BaseDataFrameData):
     _type_name = 'DataFrameGroupBy'
 
+    _key_columns = AnyField('key_columns')
+    _selection = AnyField('selection')
+
+    @property
+    def key_columns(self):
+        return self._key_columns
+
+    @property
+    def selection(self):
+        return self._selection
+
+    def __init__(self, key_columns=None, selection=None, **kw):
+        super().__init__(_key_columns=key_columns, _selection=selection, **kw)
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -936,6 +973,15 @@ class DataFrameGroupByData(BaseDataFrameData):
 
 class SeriesGroupByData(BaseSeriesData):
     _type_name = 'SeriesGroupBy'
+
+    _key_columns = AnyField('key_columns')
+
+    @property
+    def key_columns(self):
+        return self._key_columns
+
+    def __init__(self, key_columns=None, **kw):
+        super().__init__(_key_columns=key_columns, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -966,6 +1012,19 @@ class DataFrameGroupBy(GroupBy):
     def __hash__(self):
         # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
         return super().__hash__()
+
+    def __getattr__(self, item):
+        try:
+            return super().__getattr__(item)
+        except AttributeError:
+            if item in self.dtypes:
+                return self[item]
+            else:
+                raise
+
+    def __dir__(self):
+        result = list(super().__dir__())
+        return sorted(result + [k for k in self.dtypes.index if isinstance(k, str) and k.isidentifier()])
 
 
 class SeriesGroupBy(GroupBy):

@@ -23,10 +23,6 @@ from io import BytesIO
 import pickle  # nosec
 
 import numpy as np
-try:
-    from pandas.core.groupby import GroupBy, SeriesGroupBy, DataFrameGroupBy
-except ImportError:  # pragma: no cover
-    GroupBy, SeriesGroupBy, DataFrameGroupBy = None, None, None
 
 try:
     import scipy.sparse as sps
@@ -34,6 +30,7 @@ except ImportError:  # pragma: no cover
     sps = None
 
 from ..lib.sparse import SparseNDArray
+from ..lib.groupby_wrapper import GroupByWrapper
 
 try:
     import pyarrow
@@ -278,31 +275,12 @@ def deserialize(data):
 _FreezeGrouping = namedtuple('_FreezeGrouping', 'name codes grouper ')
 
 
-def _serialize_groupby(obj: GroupBy):
-    is_df_groupby = isinstance(obj, DataFrameGroupBy)
-    grouper_cache = list(getattr(obj.grouper, '_cache', {}).items())
-
-    return is_df_groupby, obj.obj, obj.keys, obj.axis, obj.level, obj.exclusions, \
-        getattr(obj, '_selection'), obj.as_index, obj.sort, obj.group_keys, \
-        obj.squeeze, obj.observed, obj.mutated, grouper_cache
+def _serialize_groupby_wrapper(obj: GroupByWrapper):
+    return obj.to_tuple(pickle_function=True, truncate=True)
 
 
-def _deserialize_groupby(serialized):
-    is_df_groupby, obj, keys, axis, level, exclusions, selection, \
-        as_index, sort, group_keys, squeeze, observed, mutated, \
-        grouper_cache = serialized
-
-    cls = DataFrameGroupBy if is_df_groupby else SeriesGroupBy
-    obj = cls(obj, keys=keys, axis=axis, level=level, exclusions=exclusions,
-              as_index=as_index, sort=sort, group_keys=group_keys, squeeze=squeeze,
-              observed=observed, mutated=mutated)  # type: GroupBy
-
-    for k, v in grouper_cache:
-        if not hasattr(obj.grouper, '_cache'):  # pragma: no cover
-            obj.grouper._cache = {}
-        obj.grouper._cache[k] = v
-
-    return obj
+def _deserialize_groupby_wrapper(serialized):
+    return GroupByWrapper.from_tuple(serialized)
 
 
 if LooseVersion(pyarrow.__version__) < LooseVersion('0.16'):
@@ -415,10 +393,9 @@ def mars_serialize_context():
         ctx.register_type(SparseNDArray, 'mars.SparseNDArray',
                           custom_serializer=_serialize_sparse_nd_array,
                           custom_deserializer=_deserialize_sparse_nd_array)
-        if GroupBy:  # pragma: no branch
-            ctx.register_type(GroupBy, 'pandas.GroupBy',
-                              custom_serializer=_serialize_groupby,
-                              custom_deserializer=_deserialize_groupby)
+        ctx.register_type(GroupByWrapper, 'pandas.GroupByWrapper',
+                          custom_serializer=_serialize_groupby_wrapper,
+                          custom_deserializer=_deserialize_groupby_wrapper)
         _apply_pyarrow_serialization_patch(ctx)
         if vineyard is not None:  # pragma: no cover
             vineyard.register_vineyard_serialize_context(ctx)

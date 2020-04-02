@@ -29,6 +29,7 @@ import pandas as pd
 from numpy.testing import assert_array_equal
 
 from mars.lib import sparse
+from mars.lib.groupby_wrapper import wrapped_groupby
 from mars.serialize.core import Serializable, IdentityField, StringField, UnicodeField, \
     BytesField, Int8Field, Int16Field, Int32Field, Int64Field, UInt8Field, UInt16Field, \
     UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, BoolField, \
@@ -671,23 +672,27 @@ class Test(unittest.TestCase):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                             'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
                             'c': list('aabaaddce')})
-        grouped = df1.groupby('b')
+        grouped = wrapped_groupby(df1, 'b')
         restored = dataserializer.loads(dataserializer.dumps(grouped))
-        assert_groupby_equal(grouped, restored)
+        assert_groupby_equal(grouped, restored.groupby_obj)
 
-        grouped = df1.groupby('b')
+        grouped = wrapped_groupby(df1, 'b').c
+        restored = dataserializer.loads(dataserializer.dumps(grouped))
+        assert_groupby_equal(grouped, restored.groupby_obj)
+
+        grouped = wrapped_groupby(df1, 'b')
         getattr(grouped, 'indices')
         restored = dataserializer.loads(dataserializer.dumps(grouped))
-        assert_groupby_equal(grouped, restored)
+        assert_groupby_equal(grouped, restored.groupby_obj)
 
-        grouped = df1.b.groupby(lambda x: x % 2)
+        grouped = wrapped_groupby(df1.b, lambda x: x % 2)
         restored = dataserializer.loads(dataserializer.dumps(grouped))
-        assert_groupby_equal(grouped, restored)
+        assert_groupby_equal(grouped, restored.groupby_obj)
 
-        grouped = df1.b.groupby(lambda x: x % 2)
+        grouped = wrapped_groupby(df1.b, lambda x: x % 2)
         getattr(grouped, 'indices')
         restored = dataserializer.loads(dataserializer.dumps(grouped))
-        assert_groupby_equal(grouped, restored)
+        assert_groupby_equal(grouped, restored.groupby_obj)
 
     @unittest.skipIf(pyarrow is None, 'PyArrow is not installed.')
     def testArrowSerialize(self):

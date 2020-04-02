@@ -57,6 +57,64 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              series2.groupby(lambda x: int(x[1:]) % 3))
 
+    def testGroupByGetItem(self):
+        df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')})
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        r = mdf.groupby('b')[['a', 'b']]
+        assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                             df1.groupby('b')[['a', 'b']], with_selection=True)
+
+        r = mdf.groupby('b')[['a', 'c']]
+        assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                             df1.groupby('b')[['a', 'c']], with_selection=True)
+
+        r = mdf.groupby('b')[['a', 'b']].sum()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b')[['a', 'b']].sum())
+
+        r = mdf.groupby('b')[['a', 'b']].agg(['sum', 'count'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b')[['a', 'b']].agg(['sum', 'count']))
+
+        r = mdf.groupby('b')[['a', 'c']].agg(['sum', 'count'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b')[['a', 'c']].agg(['sum', 'count']))
+
+        r = mdf.groupby('b')[['a', 'b']].apply(lambda x: x + 1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b')[['a', 'b']].apply(lambda x: x + 1).sort_index())
+
+        r = mdf.groupby('b')[['a', 'b']].transform(lambda x: x + 1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b')[['a', 'b']].transform(lambda x: x + 1).sort_index())
+
+        r = mdf.groupby('b')[['a', 'b']].cumsum()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b')[['a', 'b']].cumsum().sort_index())
+
+        r = mdf.groupby('b').a
+        assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                             df1.groupby('b').a, with_selection=True)
+
+        # r = mdf.groupby('b').a.sum()
+        # pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+        #                                df1.groupby('b').a.sum())
+
+        r = mdf.groupby('b').a.apply(lambda x: x + 1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       df1.groupby('b').a.apply(lambda x: x + 1).sort_index())
+
+        r = mdf.groupby('b').a.transform(lambda x: x + 1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       df1.groupby('b').a.transform(lambda x: x + 1).sort_index())
+
+        r = mdf.groupby('b').a.cumsum()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       df1.groupby('b').a.cumsum().sort_index())
+
     def testDataFrameGroupByAgg(self):
         rs = np.random.RandomState(0)
         df1 = pd.DataFrame({'a': rs.choice([2, 3, 4], size=(100,)),

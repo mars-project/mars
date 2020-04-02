@@ -180,14 +180,14 @@ class DataFrameOperandMixin(TileableOperandMixin):
                 nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
         elif isinstance(df, DATAFRAME_GROUPBY_TYPE):
-            chunk = GroupByConcat(by=df.op.by,
+            chunk = GroupByConcat(groupby_params=df.op.groupby_params,
                                   object_type=ObjectType.dataframe).new_chunk(df.chunks)
-            return GroupByConcat(by=df.op.by,
+            return GroupByConcat(groupby_params=df.op.groupby_params,
                                  object_type=ObjectType.dataframe).new_dataframe([df], chunks=[chunk])
         elif isinstance(df, SERIES_GROUPBY_TYPE):
-            chunk = GroupByConcat(by=df.op.by,
+            chunk = GroupByConcat(groupby_params=df.op.groupby_params,
                                   object_type=ObjectType.series).new_chunk(df.chunks)
-            return GroupByConcat(by=df.op.by,
+            return GroupByConcat(groupby_params=df.op.groupby_params,
                                  object_type=ObjectType.series).new_dataframe([df], chunks=[chunk])
         else:
             raise NotImplementedError

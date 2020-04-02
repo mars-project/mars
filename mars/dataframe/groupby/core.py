@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...lib.groupby_wrapper import wrapped_groupby
 from ...operands import OperandStage
 from ...serialize import BoolField, Int32Field, AnyField
 from ...utils import get_shuffle_input_keys_idxes
@@ -77,7 +78,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def groupby_params(self):
         return dict(by=self.by, as_index=self.as_index, sort=self.sort)
 
-    def build_mock_groupby(self):
+    def build_mock_groupby(self, **kwargs):
         in_df = self.inputs[0]
         if self.is_dataframe_obj:
             empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
@@ -89,11 +90,18 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             else:
                 empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
 
-        return empty_df.groupby(by=self.by, as_index=self.as_index, sort=self.sort)
+        new_kw = dict(by=self.by, as_index=self.as_index, sort=self.sort)
+        new_kw.update(kwargs)
+        return empty_df.groupby(**new_kw)
 
     def __call__(self, df):
         params = df.params.copy()
         params['index_value'] = parse_index(None, df.key, df.index_value.key)
+        if df.ndim == 2:
+            if isinstance(self.by, str):
+                params['key_columns'] = [self.by]
+            elif isinstance(self.by, list):
+                params['key_columns'] = self.by
         return self.new_tileable([df], **params)
 
     @classmethod
@@ -143,7 +151,13 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             out_chunks.append(groupby_op.new_chunk([chunk], **params))
 
         new_op = op.copy()
-        return new_op.new_tileables(op.inputs, chunks=out_chunks)
+        params = op.outputs[0].params.copy()
+        if is_dataframe_obj:
+            params['nsplits'] = ((np.nan,) * len(out_chunks), (in_df.shape[1],))
+        else:
+            params['nsplits'] = ((np.nan,) * len(out_chunks),)
+        params['chunks'] = out_chunks
+        return new_op.new_tileables(op.inputs, **params)
 
     @classmethod
     def execute_map(cls, ctx, op):
@@ -198,7 +212,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             cls.execute_reduce(ctx, op)
         else:
             df = ctx[op.inputs[0].key]
-            ctx[op.outputs[0].key] = df.groupby(op.by)
+            ctx[op.outputs[0].key] = wrapped_groupby(df, op.by)
 
 
 def groupby(df, by, as_index=True, sort=True):

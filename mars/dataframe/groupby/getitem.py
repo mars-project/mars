@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import pandas as pd
+from collections.abc import Iterable
+
 from pandas.core import groupby as pd_groupby
 
 from ... import opcodes
-from ...operands import OperandStage
-from ...serialize import BoolField, Int32Field, AnyField
-from ...utils import get_shuffle_input_keys_idxes
-from ..utils import build_concatenated_rows_frame, hash_dataframe_on, \
-    build_empty_df, build_empty_series, parse_index
+from ...serialize import AnyField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 
 
@@ -29,24 +25,93 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
     _op_type_ = opcodes.INDEX
     _op_module_ = 'dataframe.groupby'
 
-    _labels = AnyField('labels')
+    _selection = AnyField('selection')
 
-    def __init__(self, labels=None, object_type=None, **kw):
-        super().__init__(_labels=labels, _object_type=object_type, **kw)
+    def __init__(self, selection=None, object_type=None, **kw):
+        super().__init__(_selection=selection, _object_type=object_type, **kw)
 
     @property
-    def labels(self):
-        return self._labels
+    def selection(self):
+        return self._selection
+
+    @property
+    def groupby_params(self):
+        groupby_op = self.inputs[0].op
+        return dict(by=groupby_op.by, as_index=groupby_op.as_index, sort=groupby_op.sort,
+                    selection=self.selection)
+
+    def build_mock_groupby(self):
+        groupby_op = self.inputs[0].op
+        return groupby_op.build_mock_groupby()[self.selection]
 
     def __call__(self, groupby):
-        indexed = groupby.op.build_mock_groupby()[self.labels]
-        if isinstance(indexed, pd_groupby.DataFrameGroupBy):
-            self._object_type = ObjectType.dataframe_groupby
-        else:
-            self._object_type = ObjectType.series_groupby
+        indexed = groupby.op.build_mock_groupby()[self.selection]
 
-        return self.new_tileable([groupby])
+        if isinstance(indexed, pd_groupby.SeriesGroupBy):
+            self._object_type = ObjectType.series_groupby
+            params = dict(shape=(groupby.shape[0],), name=self.selection,
+                          dtype=groupby.dtypes[self.selection],
+                          index_value=groupby.index_value)
+        else:
+            self._object_type = ObjectType.dataframe_groupby
+
+            if isinstance(self.selection, Iterable) and not isinstance(self.selection, str):
+                item_list = list(self.selection)
+            else:
+                item_list = [self.selection]
+            item_set = set(item_list)
+
+            extra_keys = [k for k in groupby.key_columns or () if k not in item_set]
+
+            params = groupby.params.copy()
+            params['dtypes'] = groupby.dtypes[item_list + extra_keys]
+            params['selection'] = self.selection
+
+        return self.new_tileable([groupby], **params)
 
     @classmethod
     def tile(cls, op):
         in_groupby = op.inputs[0]
+        out_groupby = op.outputs[0]
+
+        chunks = []
+        for c in in_groupby.chunks:
+            if op.object_type == ObjectType.series_groupby:
+                params = dict(shape=(c.shape[0],), name=op.selection,
+                              index=(c.index[0],), dtype=c.dtypes[op.selection],
+                              index_value=c.index_value)
+            else:
+                params = c.params.copy()
+                params['dtypes'] = out_groupby.dtypes
+                params['selection'] = op.selection
+
+            new_op = op.copy().reset_key()
+            chunks.append(new_op.new_chunk([c], **params))
+
+        new_op = op.copy().reset_key()
+        params = out_groupby.params.copy()
+        params.update(dict(chunks=chunks, nsplits=in_groupby.nsplits))
+        return new_op.new_tileables([in_groupby], **params)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        in_data = ctx[op.inputs[0].key]
+        ctx[op.outputs[0].key] = in_data[op.selection]
+
+
+def df_groupby_getitem(df_groupby, item):
+    try:
+        hash(item)
+        hashable = True
+    except TypeError:
+        hashable = False
+
+    if hashable and item in df_groupby.dtypes:
+        object_type = ObjectType.series_groupby
+    elif isinstance(item, Iterable) and all(it in df_groupby.dtypes for it in item):
+        object_type = ObjectType.dataframe_groupby
+    else:
+        raise NameError('Cannot slice groupby with %r' % item)
+
+    op = GroupByIndex(selection=item, object_type=object_type)
+    return op(df_groupby)

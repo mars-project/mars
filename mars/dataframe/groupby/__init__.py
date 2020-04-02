@@ -17,17 +17,20 @@ from ..core import GroupBy, DataFrameGroupBy, SeriesGroupBy
 
 
 def _install():
-    from ..core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
+    from ..core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE, DATAFRAME_GROUPBY_TYPE
     from .core import groupby
     from .aggregation import agg
     from .apply import groupby_apply
     from .transform import groupby_transform
     from .cum import cumcount, cummin, cummax, cumprod, cumsum
+    from .getitem import df_groupby_getitem
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'groupby', groupby)
+
     for cls in SERIES_TYPE:
         setattr(cls, 'groupby', groupby)
+
     for cls in GROUPBY_TYPE:
         setattr(cls, 'agg', agg)
         setattr(cls, 'aggregate', agg)
@@ -49,6 +52,9 @@ def _install():
         setattr(cls, 'cummax', cummax)
         setattr(cls, 'cumprod', cumprod)
         setattr(cls, 'cumsum', cumsum)
+
+    for cls in DATAFRAME_GROUPBY_TYPE:
+        setattr(cls, '__getitem__', df_groupby_getitem)
 
 
 _install()

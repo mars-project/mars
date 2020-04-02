@@ -52,9 +52,10 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         return self._call_agg
 
     def _infer_df_func_returns(self, in_groupby, dtypes, index):
-        in_df = in_groupby.inputs[0]
         index_value, object_type, new_dtypes = None, None, None
-        object_type = in_df.op.object_type if not self.call_agg else None
+
+        object_type = ObjectType.dataframe \
+            if in_groupby.op.object_type == ObjectType.dataframe_groupby else ObjectType.series
 
         try:
             empty_groupby = in_groupby.op.build_mock_groupby()
@@ -65,13 +66,13 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
                     infer_df = empty_groupby.transform(self.func, *self.args, **self.kwds)
 
             # todo return proper index when sort=True is implemented
-            index_value = parse_index(None, in_df.key, self.func)
+            index_value = parse_index(None, in_groupby.key, self.func)
 
             if isinstance(infer_df, pd.DataFrame):
-                object_type = object_type or ObjectType.dataframe
+                object_type = ObjectType.dataframe
                 new_dtypes = new_dtypes or infer_df.dtypes
             else:
-                object_type = object_type or ObjectType.series
+                object_type = ObjectType.series
                 new_dtypes = new_dtypes or (infer_df.name, infer_df.dtype)
         except:  # noqa: E722  # nosec
             pass
@@ -97,7 +98,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
                                       columns_value=parse_index(dtypes.index, store_data=True))
         else:
             name, dtype = dtypes
-            new_shape = (np.nan,) if self.call_agg else in_df.shape
+            new_shape = (np.nan,) if self.call_agg else groupby.shape
             return self.new_series([groupby], name=name, shape=new_shape, dtype=dtype,
                                    index_value=index_value)
 
@@ -155,7 +156,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
 
 def groupby_transform(groupby, func, *args, dtypes=None, index=None, object_type=None, **kwargs):
     # todo this can be done with sort_index implemented
-    if not groupby.op.as_index:
+    if not groupby.op.groupby_params.get('as_index', True):
         raise NotImplementedError('transform when set_index == False is not supported')
 
     call_agg = kwargs.pop('_call_agg', False)
