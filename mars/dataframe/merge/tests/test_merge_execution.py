@@ -31,9 +31,15 @@ class Test(TestBase):
     def testMerge(self):
         df1 = pd.DataFrame(np.arange(20).reshape((4, 5)) + 1, columns=['a', 'b', 'c', 'd', 'e'])
         df2 = pd.DataFrame(np.arange(20).reshape((5, 4)) + 1, columns=['a', 'b', 'x', 'y'])
+        df3 = df1.copy()
+        df3.index = pd.RangeIndex(2, 6, name='index')
+        df4 = df1.copy()
+        df4.index = pd.MultiIndex.from_tuples([(i, i + 1) for i in range(4)], names=['i1', 'i2'])
 
         mdf1 = from_pandas(df1, chunk_size=2)
         mdf2 = from_pandas(df2, chunk_size=2)
+        mdf3 = from_pandas(df3, chunk_size=3)
+        mdf4 = from_pandas(df4, chunk_size=2)
 
         # Note [Index of Merge]
         #
@@ -87,6 +93,24 @@ class Test(TestBase):
         jdf5 = mdf1.merge(mdf2, how='inner', on=['a', 'b'])
         result5 = self.executor.execute_dataframe(jdf5, concat=True)[0]
         pd.testing.assert_frame_equal(sort_dataframe_inplace(expected5, 0), sort_dataframe_inplace(result5, 0))
+
+        # merge when some on is index
+        expected6 = df3.merge(df2, how='inner', left_on='index', right_on='a')
+        jdf6 = mdf3.merge(mdf2, how='inner', left_on='index', right_on='a')
+        result6 = self.executor.execute_dataframe(jdf6, concat=True)[0]
+        pd.testing.assert_frame_equal(sort_dataframe_inplace(expected6, 0), sort_dataframe_inplace(result6, 0))
+
+        # merge when on is in MultiIndex
+        expected7 = df4.merge(df2, how='inner', left_on='i1', right_on='a')
+        jdf7 = mdf4.merge(mdf2, how='inner', left_on='i1', right_on='a')
+        result7 = self.executor.execute_dataframe(jdf7, concat=True)[0]
+        pd.testing.assert_frame_equal(sort_dataframe_inplace(expected7, 0), sort_dataframe_inplace(result7, 0))
+
+        # merge when on is in MultiIndex, and on not in index
+        expected8 = df4.merge(df2, how='inner', on=['a', 'b'])
+        jdf8 = mdf4.merge(mdf2, how='inner', on=['a', 'b'])
+        result8 = self.executor.execute_dataframe(jdf8, concat=True)[0]
+        pd.testing.assert_frame_equal(sort_dataframe_inplace(expected8, 0), sort_dataframe_inplace(result8, 0))
 
     def testJoin(self):
         df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]], index=['a1', 'a2', 'a3'])
