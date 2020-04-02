@@ -62,7 +62,7 @@ class TensorImread(TensorOperand, TensorOperandMixin):
             nsplits = (tuple(splits),) + tuple((s,) for s in out_shape[1:])
         else:
             chunk_op = op.copy().reset_key()
-            chunks = [chunk_op.new_chunk(None, shape=out_shape)]
+            chunks = [chunk_op.new_chunk(None, shape=out_shape, index=(0,) * len(out_shape))]
             nsplits = tuple((s,) for s in out_shape)
         new_op = op.copy()
         return new_op.new_tensors(None, shape=out_shape, chunks=chunks, nsplits=nsplits)

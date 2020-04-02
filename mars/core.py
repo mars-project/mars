@@ -587,7 +587,7 @@ class ChunksIndexer(object):
             if len(item) == 0 and self._tileable.is_scalar():
                 return self._tileable.chunks[0]
             if len(item) != self._tileable.ndim:
-                raise ValueError('Cannot get tensor chunk by %s, expect length %d' % (
+                raise ValueError('Cannot get chunk by %s, expect length %d' % (
                     item, self._tileable.ndim))
             slices, singleton = [], True
             for it, dim in zip(item, self._tileable.chunk_shape):
@@ -597,7 +597,7 @@ class ChunksIndexer(object):
                 elif np.issubdtype(type(it), np.integer):
                     slices.append([it if it >= 0 else dim + it])
                 else:
-                    raise TypeError('Cannot get tensor chunk by %s, invalid value has type %s' % (
+                    raise TypeError('Cannot get chunk by %s, invalid value has type %s' % (
                         it, type(it)))
 
             indexes = tuple(zip(*itertools.product(*slices)))

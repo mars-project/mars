@@ -105,12 +105,16 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
                     columns_value=out_df.columns_value, index_value=new_index))
             else:
                 chunks.append(new_op.new_chunk(
-                    [c], index=c.index, shape=(np.nan,), dtype=out_df.dtype,
+                    [c], index=(c.index[0],), shape=(np.nan,), dtype=out_df.dtype,
                     index_value=new_index))
 
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
         kw['chunks'] = chunks
+        if op.object_type == ObjectType.dataframe:
+            kw['nsplits'] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
+        else:
+            kw['nsplits'] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
 
     @classmethod

@@ -169,7 +169,7 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
         new_op = op.copy()
         params = out.params
         params['chunks'] = out_chunks
-        params['nsplits'] = (chunk_length,)
+        params['nsplits'] = (tuple(c.shape[0] for c in out_chunks),)
         return new_op.new_indexes(None, kws=[params])
 
     @classmethod

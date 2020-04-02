@@ -354,7 +354,7 @@ def create_actor_pool(*args, **kwargs):
 
 
 _check_options = dict()
-_check_args = ['check_series_name', 'check_dtypes', 'check_dtype', 'check_shape']
+_check_args = ['check_series_name', 'check_dtypes', 'check_dtype', 'check_shape', 'check_nsplits']
 
 
 class MarsObjectCheckMixin:
@@ -486,6 +486,43 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         for key in _check_args:
             _check_options[key] = kw_dict.pop(key, True)
 
+    def _check_nsplits(self, tileable):
+        from mars.tiles import get_tiled
+        tiled = get_tiled(tileable)
+        if tiled.nsplits == () and len(tiled.chunks) == 1:
+            return
+
+        nsplit_chunk_shape = tuple(len(s) for s in tiled.nsplits)
+        if nsplit_chunk_shape != tiled.chunk_shape:
+            raise AssertionError('Operand %r: shape of nsplits %r not consistent with chunk shape %r'
+                                 % (tiled.op, nsplit_chunk_shape, tiled.chunk_shape))
+
+        nsplit_shape = tuple(np.sum(s) for s in tiled.nsplits)
+        try:
+            self.assert_shape_consistent(nsplit_shape, tiled.shape)
+        except AssertionError:
+            raise AssertionError('Operand %r: shape computed from nsplits %r -> %r not consistent with real shape %r'
+                                 % (tiled.op, tiled.nsplits, nsplit_shape, tiled.shape))
+
+        for c in tiled.chunks:
+            try:
+                tiled_c = tiled.cix[c.index]
+            except ValueError as ex:
+                raise AssertionError('Operand %r: Malformed index %r, nsplits is %r. Raw error is %r'
+                                     % (c.op, c.index, tiled.nsplits, ex))
+
+            if tiled_c is not c:
+                raise AssertionError('Operand %r: Cannot spot chunk via index %r, nsplits is %r'
+                                     % (c.op, c.index, tiled.nsplits))
+        for cid, shape in enumerate(itertools.product(*tiled.nsplits)):
+            if len(shape) != len(tiled.chunks[cid].shape):
+                raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
+                                     % (tiled.chunks[cid].op, shape, tiled.chunks[cid].shape))
+            for s1, s2 in zip(shape, tiled.chunks[cid].shape):
+                if (not (np.isnan(s1) and np.isnan(s2))) and s1 != s2:
+                    raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
+                                         % (tiled.chunks[cid].op, shape, tiled.chunks[cid].shape))
+
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
             graph = type(graph).from_pb(graph.to_pb())
@@ -493,9 +530,18 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         return super(ExecutorForTest, self).execute_graph(graph, keys, **kw)
 
     def execute_tileable(self, tileable, *args, **kwargs):
+        from mars.core import OBJECT_TYPE
+        from mars.dataframe.core import GROUPBY_TYPE
         self._extract_check_options(kwargs)
 
         result = super(ExecutorForTest, self).execute_tileable(tileable, *args, **kwargs)
+
+        # fixme with ISSUE:1036
+        if not isinstance(tileable, (GROUPBY_TYPE, OBJECT_TYPE)):
+            if _check_options['check_nsplits']:
+                self._check_nsplits(tileable)
+
+        # check returned type
         if kwargs.get('concat', False):
             self.assert_object_consistent(tileable, result[0])
         return result
@@ -508,6 +554,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
 
         results = super(ExecutorForTest, self).execute_tileables(tileables, *args, **kwargs)
         for tileable, result in zip(tileables, results):
+            if _check_options['check_nsplits']:
+                self._check_nsplits(tileable)
             self.assert_object_consistent(tileable, result)
         return results
 

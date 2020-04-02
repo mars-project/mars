@@ -202,8 +202,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
                     'order': TensorOrder.C_ORDER,
                     'object_type': ObjectType.scalar,
                     'type': 'csv',
-                },
-                {
+                }, {
                     'shape': (),
                     'dtype': np.dtype(np.intp),
                     'index': chunk.index,

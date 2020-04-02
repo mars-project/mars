@@ -149,6 +149,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 
         concat_op = DataFrameConcat(object_type=ObjectType.series)
         kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
+        kw['index'] = (0,)
         chk = concat_op.new_chunk(chunks, dtype=chunks[0].dtype, **kw)
         index_op = SeriesIndex(labels=op.labels)
         chunk = index_op.new_chunk([chk], dtype=chk.dtype, **kw)
@@ -300,6 +301,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                                             columns_value=df_chunk.columns_value)
                 out_chunks.append(out_chunk)
 
+            nsplits = ((np.nan,) * len(nsplits[0]), nsplits[1])
         else:
             check_chunks_unknown_shape([in_df], TilesError)
             nsplits_acc = np.cumsum((0,) + in_df.nsplits[0])
@@ -315,7 +317,9 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                                    columns_value=in_chunk.columns_value)
                     out_chunks.append(out_chunk)
 
-            nsplits = ((np.nan,) * in_df.chunk_shape[0], in_df.nsplits[1])
+        nsplits_on_columns = tuple(c.shape[1] for c in out_chunks if c.index[0] == 0)
+        row_chunk_num = len([c.shape[0] for c in out_chunks if c.index[1] == 0])
+        nsplits = ((np.nan,) * row_chunk_num, nsplits_on_columns)
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, shape=out_df.shape, dtypes=out_df.dtypes,

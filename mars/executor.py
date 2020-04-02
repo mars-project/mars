@@ -24,15 +24,6 @@ from collections import deque, defaultdict
 from numbers import Integral
 
 import numpy as np
-try:
-    from numpy.core._exceptions import UFuncTypeError
-except ImportError:  # pragma: no cover
-    UFuncTypeError = None
-
-try:
-    import gevent
-except ImportError:  # pragma: no cover
-    gevent = None
 
 from .operands import Fetch, ShuffleProxy
 from .graph import DirectedGraph
@@ -45,6 +36,16 @@ from .graph_builder import TileableGraphBuilder
 from .context import LocalContext
 from .utils import kernel_mode, enter_build_mode, build_fetch, calc_nsplits,\
     has_unknown_shape
+
+try:
+    from numpy.core._exceptions import UFuncTypeError
+except ImportError:  # pragma: no cover
+    UFuncTypeError = None
+
+try:
+    import gevent
+except ImportError:  # pragma: no cover
+    gevent = None
 
 if gevent:
     from .actors.pool.gevent_pool import GeventThreadPool

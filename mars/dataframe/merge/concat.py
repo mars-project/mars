@@ -138,10 +138,12 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             for c in series.chunks:
                 if op.axis == 0:
                     index = (c.index[0] + cum_index,)
+                    shape = c.shape
                 else:
                     index = (c.index[0], cum_index)
+                    shape = (c.shape[0], 1)
                 iloc_op = SeriesIlocGetItem(indexes=(slice(None),))
-                out_chunks.append(iloc_op.new_chunk([c], shape=c.shape, index=index,
+                out_chunks.append(iloc_op.new_chunk([c], shape=shape, index=index,
                                                     index_value=c.index_value,
                                                     dtype=c.dtype,
                                                     name=c.name))

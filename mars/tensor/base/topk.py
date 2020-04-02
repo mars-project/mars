@@ -141,7 +141,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def _tile_one_chunk(cls, op):
-        return_value, return_indices = op.return_value ,op.return_indices
+        return_value, return_indices = op.return_value, op.return_indices
         out = op.outputs[0]
         chunk_op = op.copy().reset_key()
         kws = []
@@ -233,7 +233,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
             kws = []
             if op.return_value:
                 kws.append({
-                    'shape': shape,
+                    'shape': tuple(shape),
                     'order': input_chunk.order,
                     'dtype': input_chunk.dtype,
                     'index': chunk_index,
@@ -241,7 +241,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
                 })
             if op.return_indices:
                 kws.append({
-                    'shape': shape,
+                    'shape': tuple(shape),
                     'order': TensorOrder.C_ORDER,
                     'dtype': np.dtype(np.int64),
                     'index': chunk_index,
@@ -303,7 +303,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
 
         new_op = op.copy()
         nsplits = list(a.nsplits)
-        nsplits[axis] = (op.k,)
+        nsplits[axis] = (min(a.shape[axis], op.k),)
         kws = [out.params for out in op.outputs]
         if return_value:
             kws[0]['nsplits'] = nsplits

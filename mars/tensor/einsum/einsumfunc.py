@@ -64,6 +64,7 @@ def _flop_count(idx_contraction, inner, num_terms, size_dictionary):
 
     return overall_size * op_factor
 
+
 def _compute_size_by_dict(indices, idx_dict):
     """
     Computes the product of the elements in indices based on the dictionary
@@ -203,7 +204,7 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
                     continue
 
                 # Build (total_cost, positions, indices_remaining)
-                total_cost =  cost + _flop_count(idx_contract, idx_removed, len(con), idx_dict)
+                total_cost = cost + _flop_count(idx_contract, idx_removed, len(con), idx_dict)
                 new_pos = positions + [con]
                 iter_results.append((total_cost, new_pos, new_input_sets))
 
@@ -222,6 +223,7 @@ def _optimal_path(input_sets, output_set, idx_dict, memory_limit):
 
     path = min(full_results, key=lambda x: x[0])[1]
     return path
+
 
 def _parse_possible_contraction(positions, input_sets, output_set, idx_dict, memory_limit, path_cost, naive_cost):
     """Compute the cost (removed size + flops) and resultant indices for
@@ -319,6 +321,7 @@ def _update_other_results(results, best):
         mod_results.append((cost, mod_con, con_sets))
 
     return mod_results
+
 
 def _greedy_path(input_sets, output_set, idx_dict, memory_limit):
     """
@@ -573,7 +576,7 @@ def parse_einsum_input(operands):
             if s not in einsum_symbols:
                 raise ValueError("Character %s is not a valid symbol." % s)
 
-    else: # pragma: no cover
+    else:  # pragma: no cover
         tmp_operands = list(operands)
         operand_list = []
         subscript_list = []
@@ -980,7 +983,7 @@ def einsum_path(*operands, **kwargs):
     speedup = naive_cost / opt_cost
     max_i = max(size_list)
 
-    path_print  = "  Complete contraction:  %s\n" % overall_contraction
+    path_print  = "  Complete contraction:  %s\n" % overall_contraction  # noqa: E221
     path_print += "         Naive scaling:  %d\n" % len(indices)
     path_print += "     Optimized scaling:  %d\n" % max(scale_list)
     path_print += "      Naive FLOP count:  %.3e\n" % naive_cost

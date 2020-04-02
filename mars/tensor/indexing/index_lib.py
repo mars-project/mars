@@ -508,7 +508,6 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
                                                     processed_index=fancy_index_array,
                                                     output_shape=output_axis_shape))
 
-
     @classmethod
     def need_postprocess(cls, context):
         fancy_indexes = context.get_indexes(IndexType.fancy_index)
@@ -564,8 +563,8 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
                                                        order=TensorOrder.C_ORDER)
             new_out_chunks.append(reorder_chunk)
 
-        new_nsplits = nsplits[:to_concat_axis] + tuple((s,) for s in fancy_index_shape) + \
-                      nsplits[to_concat_axis + 1:]
+        new_nsplits = nsplits[:to_concat_axis] + tuple((s,) for s in fancy_index_shape) \
+            + nsplits[to_concat_axis + 1:]
         context.out_chunks = new_out_chunks
         context.out_nsplits = new_nsplits
 

@@ -673,8 +673,13 @@ def align_dataframe_dataframe(left, right):
 
     index_splits, index_nsplits = _calc_axis_splits(left.index_value, right.index_value,
                                                     left_index_chunks, right_index_chunks)
+    if _is_index_identical(left_index_chunks, right_index_chunks):
+        index_nsplits = left.nsplits[0]
+
     columns_splits, columns_nsplits = _calc_axis_splits(left.columns_value, right.columns_value,
                                                         left_columns_chunks, right_columns_chunks)
+    if _is_index_identical(left_columns_chunks, right_columns_chunks):
+        columns_nsplits = left.nsplits[1]
 
     nsplits = [index_nsplits, columns_nsplits]
     out_chunk_shape = tuple(len(ns) for ns in nsplits)
@@ -692,6 +697,8 @@ def align_dataframe_series(left, right, axis='columns'):
         right_index_chunks = [c.index_value for c in right.chunks]
         index_splits, index_nsplits = _calc_axis_splits(left.columns_value, right.index_value,
                                                         left_columns_chunks, right_index_chunks)
+        if _is_index_identical(left_columns_chunks, right_index_chunks):
+            index_nsplits = left.nsplits[1]
         dummy_splits, dummy_nsplits = _build_dummy_axis_split(left.chunk_shape[0]), left.nsplits[0]
         nsplits = [dummy_nsplits, index_nsplits]
         out_chunk_shape = tuple(len(ns) for ns in nsplits)
@@ -703,6 +710,8 @@ def align_dataframe_series(left, right, axis='columns'):
         right_index_chunks = [c.index_value for c in right.chunks]
         index_splits, index_nsplits = _calc_axis_splits(left.index_value, right.index_value,
                                                         left_index_chunks, right_index_chunks)
+        if _is_index_identical(left_index_chunks, right_index_chunks):
+            index_nsplits = left.nsplits[0]
         dummy_splits, dummy_nsplits = _build_dummy_axis_split(left.chunk_shape[1]), left.nsplits[1]
         nsplits = [index_nsplits, dummy_nsplits]
         out_chunk_shape = tuple(len(ns) for ns in nsplits)
@@ -718,7 +727,8 @@ def align_series_series(left, right):
 
     index_splits, index_nsplits = _calc_axis_splits(left.index_value, right.index_value,
                                                     left_index_chunks, right_index_chunks)
-
+    if _is_index_identical(left_index_chunks, right_index_chunks):
+        index_nsplits = left.nsplits[0]
     nsplits = [index_nsplits]
     out_chunk_shape = (len(index_nsplits),)
     splits = _MinMaxSplitInfo(index_splits, None)

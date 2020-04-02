@@ -121,7 +121,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         chunk_params['shape'] = df.shape
         chunk_params['index'] = chk.index
         if op.object_type == ObjectType.series:
-            chunk_params.update(dict(dtype=df.dtype, index_value=df.index_value))
+            chunk_params.update(dict(dtype=df.dtype, index_value=df.index_value, index=(0,)))
         elif op.object_type == ObjectType.dataframe:
             chunk_params.update(dict(dtypes=df.dtypes, index_value=df.index_value,
                                      columns_value=df.columns_value))
