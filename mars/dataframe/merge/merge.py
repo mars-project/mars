@@ -60,8 +60,22 @@ class DataFrameMergeAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def execute_map(cls, ctx, op):
         chunk = op.outputs[0]
         df = ctx[op.inputs[0].key]
+        shuffle_on = op.shuffle_on
 
-        filters = hash_dataframe_on(df, op.shuffle_on, op.index_shuffle_size)
+        if shuffle_on is not None:
+            # shuffle on field may be resident in index
+            to_reset_index_names = []
+            if not isinstance(shuffle_on, (list, tuple)):
+                if shuffle_on not in df.dtypes:
+                    to_reset_index_names.append(shuffle_on)
+            else:
+                for son in shuffle_on:
+                    if son not in df.dtypes:
+                        to_reset_index_names.append(shuffle_on)
+            if len(to_reset_index_names) > 0:
+                df = df.reset_index(to_reset_index_names)
+
+        filters = hash_dataframe_on(df, shuffle_on, op.index_shuffle_size)
 
         # shuffle on index
         for index_idx, index_filter in enumerate(filters):
@@ -159,15 +173,35 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
     def validate(self):
         return self._validate
 
+    @staticmethod
+    def _make_value(dtype):
+        # special handle for datetime64 and timedelta64
+        dispatch = {
+            np.datetime64: pd.Timestamp,
+            np.timedelta64: pd.Timedelta,
+        }
+        # otherwise, just use dtype.type itself to convert
+        convert = dispatch.get(dtype.type, dtype.type)
+        return convert(1)
+
+    @staticmethod
+    def _make_data(obj):
+        empty_df = build_empty_df(obj.dtypes, index=obj.index_value.to_pandas()[:0])
+        dtypes = empty_df.dtypes
+        record = [_DataFrameMergeBase._make_value(dtype) for dtype in empty_df.dtypes]
+        if isinstance(empty_df.index, pd.MultiIndex):
+            index = tuple(_DataFrameMergeBase._make_value(level.dtype)
+                          for level in empty_df.index.levels)
+            empty_df.loc[index,] = record
+        else:
+            index = _DataFrameMergeBase._make_value(empty_df.index.dtype)
+            empty_df.loc[index] = record
+        # make sure dtypes correct for MultiIndex
+        empty_df = empty_df.astype(dtypes, copy=False)
+        return empty_df
+
     def __call__(self, left, right):
-        empty_left, empty_right = build_empty_df(left.dtypes), build_empty_df(right.dtypes)
-        # left should have values to keep columns order.
-        gen_left_data = [np.random.rand(1).astype(dt)[0] for dt in left.dtypes]
-        empty_left = empty_left.append(pd.DataFrame([gen_left_data], columns=list(empty_left.columns))
-                                       .astype(left.dtypes))
-        gen_right_data = [np.random.rand(1).astype(dt)[0] for dt in right.dtypes]
-        empty_right = empty_right.append(pd.DataFrame([gen_right_data], columns=list(empty_right.columns))
-                                         .astype(right.dtypes))
+        empty_left, empty_right = self._make_data(left), self._make_data(right)
         # this `merge` will check whether the combination of those arguments is valid
         merged = empty_left.merge(empty_right, how=self.how, on=self.on,
                                   left_on=self.left_on, right_on=self.right_on,
