@@ -28,7 +28,14 @@ class Test(unittest.TestCase):
                            'B': ['one', 'one', 'two', 'three',
                                  'two', 'two', 'one', 'three'],
                            'C': np.random.randn(8),
-                           'D': np.random.randn(8)})
+                           'D': np.random.randn(8)},
+                          index=pd.MultiIndex.from_tuples([(i // 4, i) for i in range(8)]))
+
+        grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, level=0).to_tuple())
+        assert_groupby_equal(grouped, df.groupby(level=0))
+
+        grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, level=0).C.to_tuple())
+        assert_groupby_equal(grouped, df.groupby(level=0).C)
 
         grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, 'B').to_tuple())
         assert_groupby_equal(grouped, df.groupby('B'))
@@ -55,16 +62,16 @@ class Test(unittest.TestCase):
         assert_groupby_equal(grouped, df.groupby(['B', 'C'])[['C', 'D']], with_selection=True)
 
         grouped = GroupByWrapper.from_tuple(
-            wrapped_groupby(df, lambda x: x % 2).to_tuple(pickle_function=True))
-        assert_groupby_equal(grouped, df.groupby(lambda x: x % 2), with_selection=True)
+            wrapped_groupby(df, lambda x: x[-1] % 2).to_tuple(pickle_function=True))
+        assert_groupby_equal(grouped, df.groupby(lambda x: x[-1] % 2), with_selection=True)
 
         grouped = GroupByWrapper.from_tuple(
-            wrapped_groupby(df, lambda x: x % 2).C.to_tuple(pickle_function=True))
-        assert_groupby_equal(grouped, df.groupby(lambda x: x % 2).C, with_selection=True)
+            wrapped_groupby(df, lambda x: x[-1] % 2).C.to_tuple(pickle_function=True))
+        assert_groupby_equal(grouped, df.groupby(lambda x: x[-1] % 2).C, with_selection=True)
 
         grouped = GroupByWrapper.from_tuple(
-            wrapped_groupby(df, lambda x: x % 2)[['C', 'D']].to_tuple(pickle_function=True))
-        assert_groupby_equal(grouped, df.groupby(lambda x: x % 2)[['C', 'D']], with_selection=True)
+            wrapped_groupby(df, lambda x: x[-1] % 2)[['C', 'D']].to_tuple(pickle_function=True))
+        assert_groupby_equal(grouped, df.groupby(lambda x: x[-1] % 2)[['C', 'D']], with_selection=True)
 
-        grouped = GroupByWrapper.from_tuple(wrapped_groupby(df.B, lambda x: x % 2).to_tuple())
-        assert_groupby_equal(grouped, df.B.groupby(lambda x: x % 2), with_selection=True)
+        grouped = GroupByWrapper.from_tuple(wrapped_groupby(df.B, lambda x: x[-1] % 2).to_tuple())
+        assert_groupby_equal(grouped, df.B.groupby(lambda x: x[-1] % 2), with_selection=True)

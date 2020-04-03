@@ -78,6 +78,10 @@ class GroupByWrapper:
     def __iter__(self):
         return self.groupby_obj.__iter__()
 
+    @property
+    def empty(self):
+        return self.obj.empty
+
     def to_tuple(self, truncate=False, pickle_function=False):
         if self.selection and truncate:
             if isinstance(self.selection, Iterable) and not isinstance(self.selection, str):
@@ -119,8 +123,8 @@ class GroupByWrapper:
             keys = cloudpickle.loads(keys)
 
         return cls(obj, keys=keys, axis=axis, level=level, exclusions=exclusions, selection=selection,
-                   as_index=as_index, sort=sort, squeeze=squeeze, observed=observed, mutated=mutated,
-                   grouper_cache=grouper_cache)
+                   as_index=as_index, sort=sort, group_keys=group_keys, squeeze=squeeze, observed=observed,
+                   mutated=mutated, grouper_cache=grouper_cache)
 
 
 def wrapped_groupby(obj, by=None, axis=0, level=None, as_index=True, sort=True, group_keys=True,

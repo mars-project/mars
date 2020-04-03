@@ -894,6 +894,12 @@ class DataFrameGroupByChunkData(BaseDataFrameChunkData):
     def selection(self):
         return self._selection
 
+    @property
+    def params(self):
+        p = super().params
+        p.update(dict(key_columns=self.key_columns, selection=self.selection))
+        return p
+
     def __init__(self, key_columns=None, selection=None, **kw):
         super().__init__(_key_columns=key_columns, _selection=selection, **kw)
 
@@ -919,6 +925,12 @@ class SeriesGroupByChunkData(BaseSeriesChunkData):
     @property
     def key_columns(self):
         return self._key_columns
+
+    @property
+    def params(self):
+        p = super().params
+        p['key_columns'] = self.key_columns
+        return p
 
     def __init__(self, key_columns=None, **kw):
         super().__init__(_key_columns=key_columns, **kw)
@@ -953,6 +965,12 @@ class DataFrameGroupByData(BaseDataFrameData):
     def selection(self):
         return self._selection
 
+    @property
+    def params(self):
+        p = super().params
+        p.update(dict(key_columns=self.key_columns, selection=self.selection))
+        return p
+
     def __init__(self, key_columns=None, selection=None, **kw):
         super().__init__(_key_columns=key_columns, _selection=selection, **kw)
 
@@ -979,6 +997,12 @@ class SeriesGroupByData(BaseSeriesData):
     @property
     def key_columns(self):
         return self._key_columns
+
+    @property
+    def params(self):
+        p = super().params
+        p['key_columns'] = self.key_columns
+        return p
 
     def __init__(self, key_columns=None, **kw):
         super().__init__(_key_columns=key_columns, **kw)

@@ -36,13 +36,13 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
 
     @property
     def groupby_params(self):
-        groupby_op = self.inputs[0].op
-        return dict(by=groupby_op.by, as_index=groupby_op.as_index, sort=groupby_op.sort,
-                    selection=self.selection)
+        params = self.inputs[0].op.groupby_params
+        params['selection'] = self.selection
+        return params
 
-    def build_mock_groupby(self):
+    def build_mock_groupby(self, **kwargs):
         groupby_op = self.inputs[0].op
-        return groupby_op.build_mock_groupby()[self.selection]
+        return groupby_op.build_mock_groupby(**kwargs)[self.selection]
 
     def __call__(self, groupby):
         indexed = groupby.op.build_mock_groupby()[self.selection]

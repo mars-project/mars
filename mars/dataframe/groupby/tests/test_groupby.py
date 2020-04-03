@@ -21,6 +21,7 @@ from mars import opcodes
 from mars.dataframe.core import DataFrameGroupBy, SeriesGroupBy, DataFrame
 from mars.dataframe.groupby.core import DataFrameGroupByOperand, DataFrameShuffleProxy
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
+from mars.dataframe.groupby.getitem import GroupByIndex
 from mars.dataframe.operands import ObjectType
 from mars.operands import OperandStage
 from mars.tests.core import TestBase
@@ -35,6 +36,7 @@ class Test(TestBase):
 
         self.assertIsInstance(grouped, DataFrameGroupBy)
         self.assertIsInstance(grouped.op, DataFrameGroupByOperand)
+        self.assertEqual(grouped.key_columns, ['c2'])
 
         grouped = grouped.tiles()
         self.assertEqual(len(grouped.chunks), 5)
@@ -55,6 +57,24 @@ class Test(TestBase):
 
         with self.assertRaises(TypeError):
             ms.groupby(lambda x: x + 1, as_index=False)
+
+    def testGroupByGetItem(self):
+        df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')})
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        r = mdf.groupby('b')[['a', 'b']].tiles()
+        self.assertIsInstance(r, DataFrameGroupBy)
+        self.assertIsInstance(r.op, GroupByIndex)
+        self.assertEqual(r.selection, ['a', 'b'])
+        self.assertEqual(len(r.chunks), 3)
+
+        r = mdf.groupby('b').a.tiles()
+        self.assertIsInstance(r, SeriesGroupBy)
+        self.assertIsInstance(r.op, GroupByIndex)
+        self.assertEqual(r.name, 'a')
+        self.assertEqual(len(r.chunks), 3)
 
     def testGroupByAgg(self):
         df = pd.DataFrame({'a': np.random.choice([2, 3, 4], size=(20,)),

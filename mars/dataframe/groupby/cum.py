@@ -52,17 +52,19 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
         else:
             result_df = getattr(empty_groupby, func_name)(axis=self.axis)
 
-        return result_df.dtypes
+        if isinstance(result_df, pd.DataFrame):
+            self._object_type = ObjectType.dataframe
+            return result_df.dtypes
+        else:
+            self._object_type = ObjectType.series
+            return result_df.name, result_df.dtype
 
     def __call__(self, groupby):
         in_df = groupby
         while in_df.op.object_type not in (ObjectType.dataframe, ObjectType.series):
             in_df = in_df.inputs[0]
 
-        self._axis = validate_axis(self.axis, in_df)
-
-        self._object_type = ObjectType.dataframe \
-            if groupby.op.object_type == ObjectType.dataframe_groupby else ObjectType.series
+        self._axis = validate_axis(self.axis or 0, in_df)
 
         out_dtypes = self._calc_out_dtypes(groupby)
 
@@ -72,7 +74,8 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
             kw.update(dict(columns_value=parse_index(out_dtypes.index, store_data=True),
                            dtypes=out_dtypes, shape=(groupby.shape[0], len(out_dtypes))))
         else:
-            kw.update(dtype=out_dtypes, name=groupby.name, shape=(groupby.shape[0],))
+            name, dtype = out_dtypes
+            kw.update(dtype=dtype, name=name, shape=(groupby.shape[0],))
         return self.new_tileable([groupby], **kw)
 
     @classmethod
@@ -108,7 +111,7 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
         in_data = ctx[op.inputs[0].key]
         out_df = op.outputs[0]
 
-        if not in_data:
+        if not in_data or in_data.empty:
             ctx[out_df.key] = build_empty_df(out_df.dtypes) \
                 if op.object_type == ObjectType.dataframe else build_empty_series(out_df.dtype)
             return
@@ -117,7 +120,11 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
         if func_name == 'cumcount':
             ctx[out_df.key] = in_data.cumcount(ascending=op.ascending)
         else:
-            ctx[out_df.key] = getattr(in_data, func_name)(axis=op.axis)
+            result = getattr(in_data, func_name)(axis=op.axis)
+            if result.ndim == 2:
+                ctx[out_df.key] = result.astype(out_df.dtypes, copy=False)
+            else:
+                ctx[out_df.key] = result.astype(out_df.dtype, copy=False)
 
 
 class GroupByCummin(GroupByCumReductionOperand):

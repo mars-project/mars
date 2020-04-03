@@ -44,6 +44,15 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              df2.groupby('b'))
 
+        df3 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')},
+                           index=pd.MultiIndex.from_tuples([(i % 3, 'i' + str(i)) for i in range(9)]))
+        mdf = md.DataFrame(df3, chunk_size=3)
+        grouped = mdf.groupby(level=0)
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             df3.groupby(level=0))
+
         series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
         ms1 = md.Series(series1, chunk_size=3)
         grouped = ms1.groupby(lambda x: x % 3)
@@ -60,8 +69,21 @@ class Test(TestBase):
     def testGroupByGetItem(self):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                             'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
-                            'c': list('aabaaddce')})
+                            'c': list('aabaaddce')},
+                           index=pd.MultiIndex.from_tuples([(i % 3, 'i' + str(i)) for i in range(9)]))
         mdf = md.DataFrame(df1, chunk_size=3)
+
+        r = mdf.groupby(level=0)[['a', 'b']]
+        assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                             df1.groupby(level=0)[['a', 'b']], with_selection=True)
+
+        r = mdf.groupby(level=0)[['a', 'b']].sum()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby(level=0)[['a', 'b']].sum())
+
+        r = mdf.groupby(level=0)[['a', 'b']].apply(lambda x: x + 1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby(level=0)[['a', 'b']].apply(lambda x: x + 1).sort_index())
 
         r = mdf.groupby('b')[['a', 'b']]
         assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
@@ -99,9 +121,13 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
                              df1.groupby('b').a, with_selection=True)
 
-        # r = mdf.groupby('b').a.sum()
-        # pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
-        #                                df1.groupby('b').a.sum())
+        r = mdf.groupby('b').a.sum()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       df1.groupby('b').a.sum())
+
+        r = mdf.groupby('b').a.agg(['sum', 'mean', 'var'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b').a.agg(['sum', 'mean', 'var']))
 
         r = mdf.groupby('b').a.apply(lambda x: x + 1)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
