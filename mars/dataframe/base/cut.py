@@ -318,6 +318,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
                         bins = np.unique(bins)
                     else:
                         bins = bins.unique()
+                    bins = bins.astype(outs[1].dtype, copy=False)
                 convert = \
                     astensor if not isinstance(bins, pd.IntervalIndex) else asindex
                 bins_chunks.append(
