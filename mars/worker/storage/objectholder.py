@@ -289,7 +289,10 @@ class SimpleObjectHolderActor(ObjectHolderActor):
 
 
 class SharedHolderActor(ObjectHolderActor):
-    _storage_device = DataStorageDevice.SHARED_MEMORY
+    if options.vineyard.socket:
+        _storage_device = DataStorageDevice.VINEYARD  # pragma: no cover
+    else:
+        _storage_device = DataStorageDevice.SHARED_MEMORY
     _spill_devices = (DataStorageDevice.DISK,)
 
     def post_create(self):
@@ -321,7 +324,7 @@ class SharedHolderActor(ObjectHolderActor):
             self.pin_data_keys(session_id, data_keys, pin_token)
 
         self.storage_client.register_data(
-            session_id, data_keys, (0, DataStorageDevice.SHARED_MEMORY), sizes, shapes=shapes)
+            session_id, data_keys, (0, self._storage_device), sizes, shapes=shapes)
 
 
 class InProcHolderActor(SimpleObjectHolderActor):
@@ -330,7 +333,12 @@ class InProcHolderActor(SimpleObjectHolderActor):
 
 class CudaHolderActor(SimpleObjectHolderActor):
     _storage_device = DataStorageDevice.CUDA
-    _spill_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
+    if options.vineyard.socket:
+        shared_memory_device = DataStorageDevice.VINEYARD  # pragma: no cover
+    else:
+        shared_memory_device = DataStorageDevice.SHARED_MEMORY
+
+    _spill_devices = [shared_memory_device, DataStorageDevice.DISK]
 
     def __init__(self, size_limit=0, device_id=None):
         super().__init__(size_limit=size_limit)

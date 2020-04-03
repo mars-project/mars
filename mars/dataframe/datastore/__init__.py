@@ -15,10 +15,12 @@
 
 def _install():
     from .to_csv import to_csv
+    from .to_vineyard import to_vineyard
     from ..operands import DATAFRAME_TYPE
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'to_csv', to_csv)
+        setattr(cls, 'to_vineyard', to_vineyard)
 
 
 _install()

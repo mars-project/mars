@@ -32,13 +32,17 @@ class DataStorageDevice(Enum):
     CUDA = 1
     SHARED_MEMORY = 2
     DISK = 3
+    VINEYARD = 4
 
     def __lt__(self, other):
         return self.value < other.value
 
     @classproperty
     def GLOBAL_DEVICES(cls):
-        return cls.SHARED_MEMORY, cls.DISK
+        if options.vineyard.socket:
+            return cls.VINEYARD, cls.DISK  # pragma: no cover
+        else:
+            return cls.SHARED_MEMORY, cls.DISK
 
     def build_location(self, proc_id):
         if self in self.GLOBAL_DEVICES:

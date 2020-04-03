@@ -361,6 +361,8 @@ default_options.register_option('optimize_tileable_graph', True, validator=is_bo
 # eager mode
 default_options.register_option('eager_mode', False, validator=is_bool)
 
+# vineyard
+default_options.register_option('vineyard.socket', None)
 
 _options_local = threading.local()
 _options_local.default_options = default_options

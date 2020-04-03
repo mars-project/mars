@@ -360,8 +360,22 @@ class GraphAnalyzer(object):
             self._assign_by_bfs(cur, worker, worker_quotas, spread_ranges, op_keys,
                                 cur_assigns, graph=graph)
 
-        keys_to_assign = set(n.op.key for n in chunks_to_assign)
-        return OrderedDict((k, v) for k, v in cur_assigns.items() if k in keys_to_assign)
+        # FIXME: force to assign vineyard source/sink ops to their `expect_worker` even when
+        # the worker has an input.
+        # The special case should be fixed by respecting the `expect_worker` attribute of an
+        # op, regardless it has inputs or not.
+        #
+        # See also: "TODO refine this to support mixed scenarios here" in graph.py.
+        keys_to_assign = {n.op.key: n.op for n in chunks_to_assign}
+        assignments = OrderedDict()
+        for k, v in cur_assigns.items():
+            if k in keys_to_assign:
+                if keys_to_assign[k].expect_worker is not None and \
+                        'Vineyard' in type(keys_to_assign[k]).__name__:
+                    assignments[k] = keys_to_assign[k].expect_worker
+                else:
+                    assignments[k] = v
+        return assignments
 
     def analyze_state_changes(self):
         """

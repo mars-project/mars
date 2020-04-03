@@ -19,6 +19,7 @@ from .initializer import DataFrame, Series
 from .base.checkna import isna, isnull, notna, notnull
 from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
+from .datasource.from_vineyard import from_vineyard
 from .datasource.read_csv import read_csv
 from .datasource.read_sql_table import read_sql_table
 from .datasource.date_range import date_range
