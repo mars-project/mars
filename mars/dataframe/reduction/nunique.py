@@ -39,7 +39,7 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._dropna
 
     @classmethod
-    def _execute_map(cls, ctx, op, reduction_func=None):
+    def _execute_map(cls, ctx, op):
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
         if isinstance(in_data, xdf.Series) or op.object_type == ObjectType.series:
@@ -86,14 +86,89 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def nunique_dataframe(df, axis=0, dropna=True, combine_size=None):
+    """
+    Count distinct observations over requested axis.
+
+    Return Series with number of distinct observations. Can ignore NaN
+    values.
+
+    Parameters
+    ----------
+    axis : {0 or 'index', 1 or 'columns'}, default 0
+        The axis to use. 0 or 'index' for row-wise, 1 or 'columns' for
+        column-wise.
+    dropna : bool, default True
+        Don't include NaN in the counts.
+    combine_size : int, optional
+        The number of chunks to combine.
+
+    Returns
+    -------
+    Series
+
+    See Also
+    --------
+    Series.nunique: Method nunique for Series.
+    DataFrame.count: Count non-NA cells for each column or row.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'A': [1, 2, 3], 'B': [1, 1, 1]})
+    >>> df.nunique().execute()
+    A    3
+    B    1
+    dtype: int64
+
+    >>> df.nunique(axis=1).execute()
+    0    1
+    1    2
+    2    2
+    dtype: int64
+    """
     op = DataFrameNunique(axis=axis, dropna=dropna, combine_size=combine_size,
                           object_type=ObjectType.series)
     return op(df)
 
 
 def nunique_series(df, dropna=True, combine_size=None):
+    """
+    Return number of unique elements in the object.
+
+    Excludes NA values by default.
+
+    Parameters
+    ----------
+    dropna : bool, default True
+        Don't include NaN in the count.
+    combine_size : int, optional
+        The number of chunks to combine.
+
+    Returns
+    -------
+    int
+
+    See Also
+    --------
+    DataFrame.nunique: Method nunique for DataFrame.
+    Series.count: Count non-NA/null observations in the Series.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> s = md.Series([1, 3, 5, 7, 7])
+    >>> s.execute()
+    0    1
+    1    3
+    2    5
+    3    7
+    4    7
+    dtype: int64
+
+    >>> s.nunique().execute()
+    4
+    """
     op = DataFrameNunique(dropna=dropna, combine_size=combine_size,
                           object_type=ObjectType.scalar)
     return op(df)
-
 
