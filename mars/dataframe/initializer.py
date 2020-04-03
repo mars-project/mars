@@ -16,9 +16,11 @@ import pandas as pd
 
 from ..core import Base, Entity
 from ..tensor.core import TENSOR_TYPE
-from .core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame as _Frame, Series as _Series
+from .core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DataFrame as _Frame, \
+    Series as _Series, Index as _Index
 from .datasource.dataframe import from_pandas as from_pandas_df
 from .datasource.series import from_pandas as from_pandas_series
+from .datasource.index import from_pandas as from_pandas_index
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
     dataframe_from_1d_tileables
 
@@ -63,3 +65,20 @@ class Series(_Series):
             pd_series = pd.Series(data, index=index, dtype=dtype, name=name, copy=copy)
             series = from_pandas_series(pd_series, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
         super().__init__(series.data)
+
+
+class Index(_Index):
+    def __init__(self, data=None, dtype=None, copy=False, name=None,
+                 tupleize_cols=False, chunk_size=None, gpu=None, sparse=None):
+        if isinstance(data, INDEX_TYPE):
+            if not hasattr(data, 'data'):
+                # IndexData
+                index = _Index(data)
+            else:
+                index = data
+        else:
+            pd_index = pd.Index(data=data, dtype=dtype, copy=copy,
+                                name=name, tupleize_cols=tupleize_cols)
+            index = from_pandas_index(pd_index, chunk_size=chunk_size,
+                                      gpu=gpu, sparse=sparse)
+        super().__init__(index.data)

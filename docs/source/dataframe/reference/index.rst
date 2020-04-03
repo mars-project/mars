@@ -11,6 +11,7 @@ methods. All classes and functions exposed in ``mars.dataframe.*`` namespace are
    :maxdepth: 2
 
    io
+   general_functions
    series
    frame
    groupby

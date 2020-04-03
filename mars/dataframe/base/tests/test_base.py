@@ -19,11 +19,14 @@ import pandas as pd
 
 from mars import opcodes
 from mars.config import options
+from mars.dataframe.core import SERIES_TYPE, SERIES_CHUNK_TYPE, \
+    CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index
+from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut
 from mars.dataframe.operands import ObjectType
 from mars.operands import OperandStage
+from mars.tensor.core import TENSOR_TYPE
 from mars.tests.core import TestBase
 from mars.tiles import get_tiled
 
@@ -769,3 +772,41 @@ class Test(TestBase):
             self.assertEqual(len(c.inputs), 1)
             self.assertEqual(len(c.inputs[0].inputs), 0)
             self.assertEqual(c.shape, (np.nan,))
+
+    def testCut(self):
+        s = from_pandas_series(pd.Series([1., 2., 3., 4.]), chunk_size=2)
+
+        with self.assertRaises(ValueError):
+            _ = cut(s, -1)
+
+        with self.assertRaises(ValueError):
+            _ = cut([[1, 2], [3, 4]], 3)
+
+        with self.assertRaises(ValueError):
+            _ = cut([], 3)
+
+        r, b = cut(s, [1.5, 2.5], retbins=True)
+        self.assertIsInstance(r, SERIES_TYPE)
+        self.assertIsInstance(b, TENSOR_TYPE)
+
+        r = r.tiles()
+
+        self.assertEqual(len(r.chunks), 2)
+        for c in r.chunks:
+            self.assertIsInstance(c, SERIES_CHUNK_TYPE)
+            self.assertEqual(c.shape, (2,))
+
+        r = cut(s.to_tensor(), [1.5, 2.5])
+        self.assertIsInstance(r, CATEGORICAL_TYPE)
+
+        r = r.tiles()
+
+        self.assertEqual(len(r.chunks), 2)
+        for c in r.chunks:
+            self.assertIsInstance(c, CATEGORICAL_CHUNK_TYPE)
+            self.assertEqual(c.shape, (2,))
+
+        r = cut([0, 1, 1, 2], bins=4, labels=False)
+        self.assertIsInstance(r, TENSOR_TYPE)
+        e = pd.cut([0, 1, 1, 2], bins=4, labels=False)
+        self.assertEqual(r.dtype, e.dtype)

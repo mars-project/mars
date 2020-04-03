@@ -28,6 +28,7 @@ message Node1Def {
     repeated AnyReference k = 21;
     Value l = 22;
     Value m = 23;
+    Value n = 24;
 }
 
 

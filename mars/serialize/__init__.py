@@ -14,14 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+# noinspection PyUnresolvedReferences
 from .core import HasKey, ValueType, Serializable, SerializableMetaclass, AttributeAsDict, \
     serializes, deserializes, ProviderType, Provider, \
     AnyField, IdentityField, BoolField, Int8Field, Int16Field, Int32Field, Int64Field, \
     UInt8Field, UInt16Field, UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, \
     StringField, BytesField, UnicodeField, KeyField, NDArrayField, DataTypeField, \
     SliceField, IndexField, SeriesField, DataFrameField, ListField, TupleField, DictField, \
-    FunctionField, TZInfoField, ReferenceField, OneOfField
+    FunctionField, TZInfoField, IntervalArrayField, ReferenceField, OneOfField
 from .jsonserializer import JsonSerializeProvider
 try:
     from .pbserializer import ProtobufSerializeProvider

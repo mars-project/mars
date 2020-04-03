@@ -27,6 +27,11 @@ cimport cython
 
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
 
+try:
+    from pandas.arrays import DatetimeArray, TimedeltaArray, PeriodArray, IntervalArray
+except ImportError:
+    PeriodArray, DatetimeArray, TimedeltaArray, IntervalArray = (None,) * 4
+
 
 cpdef str to_str(s, encoding='utf-8'):
     if type(s) is str:
@@ -192,6 +197,22 @@ cdef list tokenize_pandas_categorical(ob):
     return iterative_tokenize(l)
 
 
+cdef list tokenize_categories_dtype(ob):
+    return iterative_tokenize([ob.categories, ob.ordered])
+
+
+cdef list tokenize_interval_dtype(ob):
+    return iterative_tokenize([type(ob).__name__, ob.subtype])
+
+
+cdef list tokenize_pandas_time_arrays(ob):
+    return iterative_tokenize([ob.asi8, ob.dtype])
+
+
+cdef list tokenize_pandas_interval_arrays(ob):
+    return iterative_tokenize([ob.left, ob.right, ob.closed])
+
+
 @lru_cache(500)
 def tokenize_function(ob):
     if isinstance(ob, partial):
@@ -236,7 +257,14 @@ tokenize_handler.register(pd.Index, tokenize_pandas_index)
 tokenize_handler.register(pd.Series, tokenize_pandas_series)
 tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)
 tokenize_handler.register(pd.Categorical, tokenize_pandas_categorical)
+tokenize_handler.register(pd.CategoricalDtype, tokenize_categories_dtype)
+tokenize_handler.register(pd.IntervalDtype, tokenize_interval_dtype)
 tokenize_handler.register(tzinfo, tokenize_pickled)
+if DatetimeArray is not None:
+    tokenize_handler.register(DatetimeArray, tokenize_pandas_time_arrays)
+    tokenize_handler.register(TimedeltaArray, tokenize_pandas_time_arrays)
+    tokenize_handler.register(PeriodArray, tokenize_pandas_time_arrays)
+    tokenize_handler.register(IntervalArray, tokenize_pandas_interval_arrays)
 
 cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)

@@ -345,6 +345,7 @@ message OperandDef {
         CHECK_NA = 719;
         DROP_NA = 720;
         NUNIQUE = 721;
+        CUT = 722;
 
         FUSE = 801;
 

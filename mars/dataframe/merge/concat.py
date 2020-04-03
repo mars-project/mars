@@ -190,9 +190,11 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 return _auto_concat_series_chunks(chunk, inputs)
             elif chunk.op.object_type == ObjectType.index:
                 return _auto_concat_index_chunks(chunk, inputs)
+            elif chunk.op.object_type == ObjectType.categorical:
+                return _auto_concat_categorical_chunks(chunk, inputs)
             else:
-                raise TypeError('Only DataFrameChunk, SeriesChunk and IndexChunk '
-                                'can be automatically concatenated')
+                raise TypeError('Only DataFrameChunk, SeriesChunk, IndexChunk, '
+                                'and CategoricalChunk can be automatically concatenated')
 
         def _auto_concat_dataframe_chunks(chunk, inputs):
             if chunk.op.axis is not None:
@@ -261,6 +263,16 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             if getattr(chunk.index_value, 'should_be_monotonic', False):
                 concat_df.sort_index(inplace=True)
             return concat_df.index
+
+        def _auto_concat_categorical_chunks(_, inputs):
+            if len(inputs) == 1:
+                return inputs[0]
+            else:
+                # convert categorical into array
+                arrays = [np.asarray(inp) for inp in inputs]
+                array = np.concatenate(arrays)
+                return pd.Categorical(array, categories=inputs[0].categories,
+                                      ordered=inputs[0].ordered)
 
         chunk = op.outputs[0]
         inputs = [ctx[input.key] for input in op.inputs]

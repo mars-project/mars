@@ -132,6 +132,7 @@ Missing data handling
 .. autosummary::
    :toctree: api/
 
+   DataFrame.dropna
    DataFrame.fillna
 
 Reshaping, sorting, transposing

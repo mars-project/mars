@@ -46,6 +46,7 @@ cpdef enum ExtendType:
     dataframe = 23
     function = 26
     tzinfo = 27
+    interval_arr = 28
 
 
 cdef class Identity:
@@ -236,6 +237,10 @@ cdef class FunctionField(Field):
 
 
 cdef class TZInfoField(Field):
+    pass
+
+
+cdef class IntervalArrayField(Field):
     pass
 
 
