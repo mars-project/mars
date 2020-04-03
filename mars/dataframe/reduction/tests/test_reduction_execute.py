@@ -42,7 +42,7 @@ class TestReduction(TestBase):
         return getattr(data, self.func_name)(**kwargs)
 
     def testSeriesReduction(self):
-        data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
+        data = pd.Series(np.random.randint(0, 100, (20,)), index=[str(i) for i in range(20)], name='a')
         reduction_df1 = self.compute(from_pandas_series(data))
         self.assertEqual(
             self.compute(data), self.executor.execute_dataframe(reduction_df1, concat=True)[0])
@@ -85,7 +85,7 @@ class TestReduction(TestBase):
                 np.isnan(self.executor.execute_dataframe(reduction_df5, concat=True)[0]))
 
     def testDataFrameReduction(self):
-        data = pd.DataFrame(np.random.rand(20, 10))
+        data = pd.DataFrame(np.random.randint(0, 100, (20, 10)))
         reduction_df1 = self.compute(from_pandas_df(data))
         pd.testing.assert_series_equal(
             self.compute(data), self.executor.execute_dataframe(reduction_df1, concat=True)[0])

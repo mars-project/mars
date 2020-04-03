@@ -21,7 +21,7 @@ from ...config import options
 from ...operands import OperandStage
 from ...utils import lazy_import
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
-from ..utils import parse_index, build_empty_df, build_empty_series, validate_axis
+from ..utils import parse_index, build_df, build_empty_df, build_series, validate_axis
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType, DATAFRAME_TYPE
 from ..merge import DataFrameConcat
 
@@ -180,7 +180,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             concat_shape = (chunks[0].shape[0], (sum([c.shape[1] for c in chunks])))
         concat_op = DataFrameConcat(axis=op.axis, object_type=ObjectType.dataframe)
         chk = concat_op.new_chunk(chunks, index=(idx,), shape=concat_shape)
-        empty_df = build_empty_df(chunks[0].dtypes)
+        empty_df = build_df(chunks[0])
         reduced_df = cls._execute_reduction(empty_df, op)
         reduced_shape = (chk.shape[0],) if op.axis == 1 else reduced_df.shape
         new_op = op.copy().reset_key()
@@ -418,25 +418,18 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             raise NotImplementedError('Not support specify level now')
 
-        empty_df = build_empty_df(df.dtypes)
+        empty_df = build_df(df)
         func_name = getattr(self, '_func_name')
         if func_name == 'count':
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, numeric_only=numeric_only)
-            dtype = reduced_df.dtype
         elif func_name == 'nunique':
             reduced_df = getattr(empty_df, func_name)(axis=axis)
-            if axis == 1:
-                # fix dtype when axis is 1
-                dtype = np.dtype('int')
-            else:
-                dtype = reduced_df.dtype
         else:
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, skipna=skipna,
                                                       numeric_only=numeric_only)
-            dtype = reduced_df.dtype
 
         reduced_shape = (df.shape[0],) if axis == 1 else reduced_df.shape
-        return self.new_series([df], shape=reduced_shape, dtype=dtype,
+        return self.new_series([df], shape=reduced_shape, dtype=reduced_df.dtype,
                                index_value=parse_index(reduced_df.index, store_data=axis == 0))
 
     def _call_series(self, series):
@@ -451,7 +444,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             raise NotImplementedError('Not support specified level now')
 
-        empty_series = build_empty_series(series.dtype)
+        empty_series = build_series(series)
         func_name = getattr(self, '_func_name')
         if func_name == 'count':
             reduced_series = empty_series.count(level=level)
