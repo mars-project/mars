@@ -192,7 +192,8 @@ class Test(unittest.TestCase):
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
                          np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
-                         lambda x: x + 2, pytz.timezone('Asia/Shanghai')],
+                         lambda x: x + 2, pytz.timezone('Asia/Shanghai'),
+                         pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)])],
                       i=[Node8(b1=111), Node8(b1=222)],
                       j=Node2(a=[['u'], ['v']]),
                       k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None],
@@ -238,6 +239,7 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
         self.assertEqual(node3.value.h[8](2), 4)
         self.assertEqual(node3.value.h[9], d_node3.value.h[9])
+        np.testing.assert_array_equal(node3.value.h[10], d_node3.value.h[10])
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
         self.assertIsInstance(d_node3.value.i[0], Node8)
         self.assertIsInstance(d_node3.value.j, Node2)
@@ -270,7 +272,8 @@ class Test(unittest.TestCase):
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
                          np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
-                         lambda x: x + 2, pytz.timezone('Asia/Shanghai')],
+                         lambda x: x + 2, pytz.timezone('Asia/Shanghai'),
+                         pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)])],
                       i=[Node8(b1=111), Node8(b1=222)],
                       j=Node2(a=[['u'], ['v']]),
                       k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None],
@@ -317,6 +320,7 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
         self.assertEqual(node3.value.h[8](2), 4)
         self.assertEqual(node3.value.h[9], d_node3.value.h[9])
+        np.testing.assert_array_equal(node3.value.h[10], d_node3.value.h[10])
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
         self.assertIsInstance(d_node3.value.i[0], Node8)
         self.assertIsInstance(d_node3.value.j, Node2)

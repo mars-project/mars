@@ -111,7 +111,7 @@ class Test(TestBase):
         pd.testing.assert_series_equal(ps, result)
 
         pi = pd.IntervalIndex.from_tuples([(0, 1), (2, 3), (4, 5)])
-        index = md.Index(pi)
+        index = md.Index(md.Index(pi))
         result = self.executor.execute_dataframe(index, concat=True)[0]
         pd.testing.assert_index_equal(pi, result)
 

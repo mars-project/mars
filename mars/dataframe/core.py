@@ -669,6 +669,9 @@ class Series(HasShapeTileableEnity):
         else:
             return super()._view()
 
+    def __len__(self):
+        return len(self._data)
+
     def __mars_tensor__(self, dtype=None, order='K'):
         tensor = self._data.to_tensor()
         dtype = dtype if dtype is not None else tensor.dtype
@@ -1128,9 +1131,6 @@ class CategoricalChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (CategoricalChunkData,)
 
-    def __len__(self):
-        return len(self._data)
-
 
 class CategoricalData(HasShapeTileableData):
     __slots__ = '_cache',
@@ -1158,7 +1158,7 @@ class CategoricalData(HasShapeTileableData):
         }
 
     def __str__(self):
-        if is_eager_mode():
+        if is_eager_mode():  # pragma: no cover
             return '{0}(op={1}, data=\n{2})'.format(self._type_name, self.op.__class__.__name__,
                                                     str(self.fetch()))
         else:
@@ -1182,7 +1182,7 @@ class CategoricalData(HasShapeTileableData):
         # FIXME We need to implemented a true `==` operator for DataFrameGroupby
         if build_mode().is_build_mode:
             return self is o
-        else:
+        else:  # pragma: no cover
             return self == o
 
     @property

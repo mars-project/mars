@@ -68,6 +68,10 @@ class Series(_Series):
 
 
 class Index(_Index):
+    def __new__(cls, data):
+        # just return cls always until we support other Index's initializers
+        return object.__new__(cls)
+
     def __init__(self, data=None, dtype=None, copy=False, name=None,
                  tupleize_cols=False, chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, INDEX_TYPE):

@@ -798,6 +798,8 @@ class Test(TestBase):
 
         r = cut(s.to_tensor(), [1.5, 2.5])
         self.assertIsInstance(r, CATEGORICAL_TYPE)
+        self.assertEqual(len(r), len(s))
+        self.assertIn('Categorical', repr(r))
 
         r = r.tiles()
 
@@ -805,6 +807,14 @@ class Test(TestBase):
         for c in r.chunks:
             self.assertIsInstance(c, CATEGORICAL_CHUNK_TYPE)
             self.assertEqual(c.shape, (2,))
+            self.assertEqual(c.ndim, 1)
+
+        # test serialize
+        g = r.build_graph(tiled=False)
+        g2 = type(g).from_pb(g.to_pb())
+        g2 = type(g).from_json(g2.to_json())
+        r2 = next(n for n in g2 if isinstance(n, CATEGORICAL_TYPE))
+        self.assertEqual(len(r2), len(r))
 
         r = cut([0, 1, 1, 2], bins=4, labels=False)
         self.assertIsInstance(r, TENSOR_TYPE)
