@@ -27,11 +27,6 @@ cimport cython
 
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
 
-try:
-    from pandas.arrays import DatetimeArray, TimedeltaArray, PeriodArray, IntervalArray
-except ImportError:
-    PeriodArray, DatetimeArray, TimedeltaArray, IntervalArray = (None,) * 4
-
 
 cpdef str to_str(s, encoding='utf-8'):
     if type(s) is str:
@@ -260,11 +255,10 @@ tokenize_handler.register(pd.Categorical, tokenize_pandas_categorical)
 tokenize_handler.register(pd.CategoricalDtype, tokenize_categories_dtype)
 tokenize_handler.register(pd.IntervalDtype, tokenize_interval_dtype)
 tokenize_handler.register(tzinfo, tokenize_pickled)
-if DatetimeArray is not None:
-    tokenize_handler.register(DatetimeArray, tokenize_pandas_time_arrays)
-    tokenize_handler.register(TimedeltaArray, tokenize_pandas_time_arrays)
-    tokenize_handler.register(PeriodArray, tokenize_pandas_time_arrays)
-    tokenize_handler.register(IntervalArray, tokenize_pandas_interval_arrays)
+tokenize_handler.register(pd.arrays.DatetimeArray, tokenize_pandas_time_arrays)
+tokenize_handler.register(pd.arrays.TimedeltaArray, tokenize_pandas_time_arrays)
+tokenize_handler.register(pd.arrays.PeriodArray, tokenize_pandas_time_arrays)
+tokenize_handler.register(pd.arrays.IntervalArray, tokenize_pandas_interval_arrays)
 
 cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)
