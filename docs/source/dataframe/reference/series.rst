@@ -109,6 +109,7 @@ Computations / descriptive stats
    Series.std
    Series.sum
    Series.var
+   Series.nunique
 
 Reindexing / selection / label manipulation
 -------------------------------------------

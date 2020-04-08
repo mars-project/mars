@@ -24,6 +24,7 @@ Creating a :class:`Series` by passing a list of values, letting it create
 a default integer index:
 
 .. ipython:: python
+   :okwarning:
 
    s = md.Series([1, 3, 5, mt.nan, 6, 8])
    s.execute()

@@ -5,10 +5,10 @@ mars.tensor.random.RandomState
 
 .. autoclass:: RandomState
 
-   
+
    .. automethod:: __init__
 
-   
+
    .. rubric:: Methods
 
    .. autosummary::
@@ -37,6 +37,7 @@ mars.tensor.random.RandomState
       ~RandomState.noncentral_f
       ~RandomState.normal
       ~RandomState.pareto
+      ~RandomState.permutation
       ~RandomState.poisson
       ~RandomState.power
       ~RandomState.rand
@@ -49,6 +50,7 @@ mars.tensor.random.RandomState
       ~RandomState.rayleigh
       ~RandomState.sample
       ~RandomState.seed
+      ~RandomState.shuffle
       ~RandomState.standard_cauchy
       ~RandomState.standard_exponential
       ~RandomState.standard_gamma
@@ -60,9 +62,8 @@ mars.tensor.random.RandomState
       ~RandomState.wald
       ~RandomState.weibull
       ~RandomState.zipf
-   
-   
 
-   
-   
-   
+
+
+
+

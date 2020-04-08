@@ -1,5 +1,5 @@
 mars.dataframe.DataFrame.nunique
-==============================
+================================
 
 .. currentmodule:: mars.dataframe
 

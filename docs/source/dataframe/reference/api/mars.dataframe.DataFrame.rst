@@ -33,6 +33,7 @@ mars.dataframe.DataFrame
       ~DataFrame.describe
       ~DataFrame.div
       ~DataFrame.dot
+      ~DataFrame.dropna
       ~DataFrame.eq
       ~DataFrame.ffill
       ~DataFrame.fillna
@@ -43,6 +44,8 @@ mars.dataframe.DataFrame
       ~DataFrame.groupby
       ~DataFrame.gt
       ~DataFrame.head
+      ~DataFrame.isna
+      ~DataFrame.isnull
       ~DataFrame.join
       ~DataFrame.le
       ~DataFrame.lt
@@ -53,6 +56,9 @@ mars.dataframe.DataFrame
       ~DataFrame.mul
       ~DataFrame.multiply
       ~DataFrame.ne
+      ~DataFrame.notna
+      ~DataFrame.notnull
+      ~DataFrame.nunique
       ~DataFrame.or
       ~DataFrame.pow
       ~DataFrame.prod
@@ -84,10 +90,10 @@ mars.dataframe.DataFrame
       ~DataFrame.to_csv
       ~DataFrame.to_gpu
       ~DataFrame.to_tensor
+      ~DataFrame.to_vineyard
       ~DataFrame.transform
       ~DataFrame.truediv
       ~DataFrame.var
-      ~DataFrame.view
       ~DataFrame.xor
    
    
@@ -98,10 +104,16 @@ mars.dataframe.DataFrame
 
    .. autosummary::
    
+      ~DataFrame.at
       ~DataFrame.columns
       ~DataFrame.data
+      ~DataFrame.dtypes
+      ~DataFrame.iat
       ~DataFrame.iloc
       ~DataFrame.index
       ~DataFrame.loc
+      ~DataFrame.ndim
+      ~DataFrame.shape
+      ~DataFrame.size
    
    

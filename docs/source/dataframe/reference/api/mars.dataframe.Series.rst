@@ -33,6 +33,7 @@ mars.dataframe.Series
       ~Series.describe
       ~Series.div
       ~Series.dot
+      ~Series.dropna
       ~Series.eq
       ~Series.ffill
       ~Series.fillna
@@ -42,6 +43,9 @@ mars.dataframe.Series
       ~Series.groupby
       ~Series.gt
       ~Series.head
+      ~Series.isin
+      ~Series.isna
+      ~Series.isnull
       ~Series.le
       ~Series.lt
       ~Series.map
@@ -51,6 +55,9 @@ mars.dataframe.Series
       ~Series.mul
       ~Series.multiply
       ~Series.ne
+      ~Series.notna
+      ~Series.notnull
+      ~Series.nunique
       ~Series.or
       ~Series.pow
       ~Series.prod
@@ -83,7 +90,6 @@ mars.dataframe.Series
       ~Series.transform
       ~Series.truediv
       ~Series.var
-      ~Series.view
       ~Series.xor
    
    
@@ -94,11 +100,16 @@ mars.dataframe.Series
 
    .. autosummary::
    
+      ~Series.at
       ~Series.data
-      ~Series.dt
+      ~Series.dtype
+      ~Series.iat
       ~Series.iloc
       ~Series.index
       ~Series.loc
-      ~Series.str
+      ~Series.name
+      ~Series.ndim
+      ~Series.shape
+      ~Series.size
    
    
