@@ -30,13 +30,10 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
     _axis = AnyField('axis')
     _ascending = BoolField('ascending')
 
-    _by = AnyField('by')
-    _as_index = BoolField('as_index')
-
-    def __init__(self, axis=None, ascending=None, by=None, as_index=None, gpu=None, sparse=None,
-                 object_type=None, stage=None, **kw):
-        super().__init__(_axis=axis, _ascending=ascending, _by=by, _as_index=as_index,
-                         _gpu=gpu, _sparse=sparse, _object_type=object_type, _stage=stage, **kw)
+    def __init__(self, axis=None, ascending=None, gpu=None, sparse=None, object_type=None,
+                 stage=None, **kw):
+        super().__init__(_axis=axis, _ascending=ascending, _gpu=gpu, _sparse=sparse,
+                         _object_type=object_type, _stage=stage, **kw)
 
     @property
     def axis(self) -> int:
@@ -46,46 +43,39 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
     def ascending(self) -> bool:
         return self._ascending
 
-    @property
-    def by(self):
-        return self._by
-
-    @property
-    def as_index(self) -> bool:
-        return self._as_index
-
-    def _calc_out_dtypes(self, in_object_type, in_dtypes):
-        if in_object_type == ObjectType.dataframe:
-            empty_df = build_empty_df(in_dtypes, pd.RangeIndex(0, 5))
-        else:
-            empty_df = build_empty_series(in_dtypes, pd.RangeIndex(0, 5))
-
+    def _calc_out_dtypes(self, in_groupby):
+        empty_groupby = in_groupby.op.build_mock_groupby()
         func_name = getattr(self, '_func_name')
 
         if func_name == 'cumcount':
-            result_df = empty_df.groupby(self.by, as_index=self.as_index) \
-                .cumcount(ascending=self.ascending)
+            result_df = empty_groupby.cumcount(ascending=self.ascending)
         else:
-            grouped = empty_df.groupby(self.by, as_index=self.as_index)
-            result_df = getattr(grouped, func_name)(axis=self.axis)
+            result_df = getattr(empty_groupby, func_name)(axis=self.axis)
 
-        return result_df.dtypes
+        if isinstance(result_df, pd.DataFrame):
+            self._object_type = ObjectType.dataframe
+            return result_df.dtypes
+        else:
+            self._object_type = ObjectType.series
+            return result_df.name, result_df.dtype
 
     def __call__(self, groupby):
-        in_df = groupby.op.inputs[0]
+        in_df = groupby
+        while in_df.op.object_type not in (ObjectType.dataframe, ObjectType.series):
+            in_df = in_df.inputs[0]
 
-        if in_df.op.object_type == ObjectType.dataframe:
-            out_dtypes = self._calc_out_dtypes(in_df.op.object_type, in_df.dtypes)
-        else:
-            out_dtypes = self._calc_out_dtypes(in_df.op.object_type, in_df.dtype)
+        self._axis = validate_axis(self.axis or 0, in_df)
+
+        out_dtypes = self._calc_out_dtypes(groupby)
 
         kw = in_df.params.copy()
         kw['index_value'] = parse_index(pd.RangeIndex(-1), groupby.key)
         if self.object_type == ObjectType.dataframe:
             kw.update(dict(columns_value=parse_index(out_dtypes.index, store_data=True),
-                           dtypes=out_dtypes, shape=(in_df.shape[0], len(out_dtypes))))
+                           dtypes=out_dtypes, shape=(groupby.shape[0], len(out_dtypes))))
         else:
-            kw.update(dtype=out_dtypes, shape=(in_df.shape[0],))
+            name, dtype = out_dtypes
+            kw.update(dtype=dtype, name=name, shape=(groupby.shape[0],))
         return self.new_tileable([groupby], **kw)
 
     @classmethod
@@ -121,19 +111,20 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
         in_data = ctx[op.inputs[0].key]
         out_df = op.outputs[0]
 
-        if not in_data:
+        if not in_data or in_data.empty:
             ctx[out_df.key] = build_empty_df(out_df.dtypes) \
                 if op.object_type == ObjectType.dataframe else build_empty_series(out_df.dtype)
             return
 
-        concatenated = pd.concat([df for _, df in in_data])
-        grouped = concatenated.groupby(op.by, as_index=op.as_index)
-
         func_name = getattr(op, '_func_name')
         if func_name == 'cumcount':
-            ctx[out_df.key] = grouped.cumcount(ascending=op.ascending)
+            ctx[out_df.key] = in_data.cumcount(ascending=op.ascending)
         else:
-            ctx[out_df.key] = getattr(grouped, func_name)(axis=op.axis)
+            result = getattr(in_data, func_name)(axis=op.axis)
+            if result.ndim == 2:
+                ctx[out_df.key] = result.astype(out_df.dtypes, copy=False)
+            else:
+                ctx[out_df.key] = result.astype(out_df.dtype, copy=False)
 
 
 class GroupByCummin(GroupByCumReductionOperand):
@@ -162,35 +153,25 @@ class GroupByCumcount(GroupByCumReductionOperand):
 
 
 def cumcount(groupby, ascending: bool = True):
-    op = GroupByCumcount(ascending=ascending, by=groupby.op.by, as_index=groupby.op.as_index,
-                         object_type=ObjectType.series)
+    op = GroupByCumcount(ascending=ascending)
     return op(groupby)
 
 
 def cummin(groupby, axis=0):
-    in_df = groupby.op.inputs[0]
-    op = GroupByCummin(axis=axis, by=groupby.op.by, as_index=groupby.op.as_index,
-                       object_type=in_df.op.object_type)
+    op = GroupByCummin(axis=axis)
     return op(groupby)
 
 
 def cummax(groupby, axis=0):
-    in_df = groupby.op.inputs[0]
-    op = GroupByCummax(axis=axis, by=groupby.op.by, as_index=groupby.op.as_index,
-                       object_type=in_df.op.object_type)
+    op = GroupByCummax(axis=axis)
     return op(groupby)
 
 
 def cumprod(groupby, axis=0):
-    in_df = groupby.op.inputs[0]
-    op = GroupByCumprod(axis=axis, by=groupby.op.by, as_index=groupby.op.as_index,
-                        object_type=in_df.op.object_type)
+    op = GroupByCumprod(axis=axis)
     return op(groupby)
 
 
 def cumsum(groupby, axis=0):
-    in_df = groupby.op.inputs[0]
-    axis = validate_axis(axis, in_df)
-    op = GroupByCumsum(axis=axis, by=groupby.op.by, as_index=groupby.op.as_index,
-                       object_type=in_df.op.object_type)
+    op = GroupByCumsum(axis=axis)
     return op(groupby)

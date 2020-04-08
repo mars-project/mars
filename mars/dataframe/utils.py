@@ -37,9 +37,12 @@ def hash_index(index, size):
     return [idx_to_grouped.get(i, list()) for i in range(size)]
 
 
-def hash_dataframe_on(df, on, size):
+def hash_dataframe_on(df, on, size, level=None):
     if on is None:
-        hashed_label = pd.util.hash_pandas_object(df.index, categorize=False)
+        idx = df.index
+        if level is not None:
+            idx = idx.to_frame(False)[level]
+        hashed_label = pd.util.hash_pandas_object(idx, categorize=False)
     elif callable(on):
         # todo optimization can be added, if ``on`` is a numpy ufunc or sth can be vectorized
         hashed_label = pd.util.hash_pandas_object(df.index.map(on), categorize=False)

@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...serialize import AnyField, BoolField, TupleField, DictField, FunctionField
+from ...serialize import TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index
 
@@ -25,31 +25,16 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.APPLY
     _op_module_ = 'dataframe.groupby'
 
-    # todo these three args below shall be redesigned when we extend
-    #  the functionality of groupby func
-    _by = AnyField('by')
-    _as_index = BoolField('as_index')
-
     _func = FunctionField('func')
     _args = TupleField('args')
     _kwds = DictField('kwds')
 
-    def __init__(self, func=None, by=None, as_index=None, args=None, kwds=None,
-                 object_type=None, **kw):
-        super().__init__(_func=func, _by=by, _as_index=as_index, _args=args, _kwds=kwds,
-                         _object_type=object_type, **kw)
+    def __init__(self, func=None, args=None, kwds=None, object_type=None, **kw):
+        super().__init__(_func=func, _args=args, _kwds=kwds, _object_type=object_type, **kw)
 
     @property
     def func(self):
         return self._func
-
-    @property
-    def by(self):
-        return self._by
-
-    @property
-    def as_index(self):
-        return self._as_index
 
     @property
     def args(self):
@@ -69,10 +54,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
                 ctx[op.outputs[0].key] = build_empty_series(op.outputs[0].dtype)
             return
 
-        concatenated = pd.concat([df for _, df in in_data])
-        grouped = concatenated.groupby(op.by, as_index=op.as_index)
-
-        applied = grouped.apply(op.func, *op.args, **op.kwds)
+        applied = in_data.apply(op.func, *op.args, **op.kwds)
 
         # when there is only one group, pandas tend to return a DataFrame, while
         # we need to convert it into a compatible series
@@ -112,7 +94,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             kw['nsplits'] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
 
-    def _infer_df_func_returns(self, in_df, dtypes, index):
+    def _infer_df_func_returns(self, in_groupby, in_df, dtypes, index):
         index_value, object_type, new_dtypes = None, None, None
 
         try:
@@ -120,6 +102,10 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
                 empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
             else:
                 empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
+
+            selection = getattr(in_groupby.op, 'selection', None)
+            if selection:
+                empty_df = empty_df[selection]
 
             with np.errstate(all='ignore'):
                 infer_df = self.func(empty_df, *self.args, **self.kwds)
@@ -145,8 +131,11 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
         return dtypes, index_value
 
     def __call__(self, groupby, dtypes=None, index=None):
-        in_df = groupby.inputs[0]
-        dtypes, index_value = self._infer_df_func_returns(in_df, dtypes, index)
+        in_df = groupby
+        while in_df.op.object_type not in (ObjectType.dataframe, ObjectType.series):
+            in_df = in_df.inputs[0]
+
+        dtypes, index_value = self._infer_df_func_returns(groupby, in_df, dtypes, index)
         for arg, desc in zip((self._object_type, dtypes, index_value),
                              ('object_type', 'dtypes', 'index')):
             if arg is None:
@@ -155,8 +144,8 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
 
         if self.object_type == ObjectType.dataframe:
             new_shape = (np.nan, len(dtypes))
-            return self.new_dataframe([groupby], shape=new_shape, dtypes=dtypes,
-                                      index_value=index_value, columns_value=in_df.columns_value)
+            return self.new_dataframe([groupby], shape=new_shape, dtypes=dtypes, index_value=index_value,
+                                      columns_value=parse_index(dtypes.index, store_data=True))
         else:
             name, dtype = dtypes
             new_shape = (np.nan,)
@@ -166,8 +155,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
 
 def groupby_apply(groupby, func, *args, dtypes=None, index=None, object_type=None, **kwargs):
     # todo this can be done with sort_index implemented
-    if not groupby.op.as_index:
+    if not groupby.op.groupby_params.get('as_index', True):
         raise NotImplementedError('apply when set_index == False is not supported')
-    op = GroupByApply(func=func, by=groupby.op.by, as_index=groupby.op.as_index,
-                      args=args, kwds=kwargs, object_type=object_type)
+    op = GroupByApply(func=func, args=args, kwds=kwargs, object_type=object_type)
     return op(groupby, dtypes=dtypes, index=index)

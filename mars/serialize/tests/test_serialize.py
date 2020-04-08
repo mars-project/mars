@@ -26,8 +26,10 @@ import numpy as np
 import pyarrow
 import pytz
 import pandas as pd
+from numpy.testing import assert_array_equal
 
 from mars.lib import sparse
+from mars.lib.groupby_wrapper import wrapped_groupby
 from mars.serialize.core import Serializable, IdentityField, StringField, UnicodeField, \
     BytesField, Int8Field, Int16Field, Int32Field, Int64Field, UInt8Field, UInt16Field, \
     UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, BoolField, \
@@ -39,7 +41,13 @@ from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
 from mars.core import Base
+from mars.tests.core import assert_groupby_equal
 from mars.utils import to_binary, to_text
+
+try:
+    import scipy.sparse as sps
+except ImportError:
+    sps = None
 
 
 class Node1(Serializable):
@@ -576,76 +584,65 @@ class Test(unittest.TestCase):
             node1.serialize(jss)
 
     def testDataSerialize(self):
+        array = np.random.rand(1000, 100)
+        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
+        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+            array, compress=dataserializer.CompressType.LZ4)))
+        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+            array, compress=dataserializer.CompressType.GZIP)))
+
+        array = np.random.rand(1000, 100)
+        assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(array))))
+        assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
+            array, compress=dataserializer.CompressType.LZ4))))
+        assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
+            array, compress=dataserializer.CompressType.GZIP))))
+
+        array = np.random.rand(1000, 100).T  # test non c-contiguous
+        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
+        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+            array, compress=dataserializer.CompressType.LZ4)))
+        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+            array, compress=dataserializer.CompressType.GZIP)))
+
+        array = np.float64(0.2345)
+        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
+        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+            array, compress=dataserializer.CompressType.LZ4)))
+        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+            array, compress=dataserializer.CompressType.GZIP)))
+
+        # test structured arrays.
+        rec_dtype = np.dtype([('a', 'int64'), ('b', 'double'), ('c', '<U8')])
+        array = np.ones((100,), dtype=rec_dtype)
+        array_loaded = dataserializer.loads(dataserializer.dumps(array))
+        self.assertEqual(array.dtype, array_loaded.dtype)
+        assert_array_equal(array, array_loaded)
+
+        fn = os.path.join(tempfile.gettempdir(), 'test_dump_file_%d.bin' % id(self))
         try:
-            import numpy as np
-            from numpy.testing import assert_array_equal
-        except ImportError:
-            np = None
-
-        try:
-            import scipy.sparse as sps
-        except ImportError:
-            sps = None
-
-        if np:
-            array = np.random.rand(1000, 100)
-            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
-            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-                array, compress=dataserializer.CompressType.LZ4)))
-            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-                array, compress=dataserializer.CompressType.GZIP)))
-
-            array = np.random.rand(1000, 100)
-            assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(array))))
-            assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
-                array, compress=dataserializer.CompressType.LZ4))))
-            assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
-                array, compress=dataserializer.CompressType.GZIP))))
-
             array = np.random.rand(1000, 100).T  # test non c-contiguous
-            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
-            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-                array, compress=dataserializer.CompressType.LZ4)))
-            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-                array, compress=dataserializer.CompressType.GZIP)))
+            with open(fn, 'wb') as dump_file:
+                dataserializer.dump(array, dump_file)
+            with open(fn, 'rb') as dump_file:
+                assert_array_equal(array, dataserializer.load(dump_file))
 
-            array = np.float64(0.2345)
-            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
-            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-                array, compress=dataserializer.CompressType.LZ4)))
-            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-                array, compress=dataserializer.CompressType.GZIP)))
+            with open(fn, 'wb') as dump_file:
+                dataserializer.dump(array, dump_file,
+                                    compress=dataserializer.CompressType.LZ4)
+            with open(fn, 'rb') as dump_file:
+                assert_array_equal(array, dataserializer.load(dump_file))
 
-            # test structured arrays.
-            rec_dtype = np.dtype([('a', 'int64'), ('b', 'double'), ('c', '<U8')])
-            array = np.ones((100,), dtype=rec_dtype)
-            array_loaded = dataserializer.loads(dataserializer.dumps(array))
-            self.assertEqual(array.dtype, array_loaded.dtype)
-            assert_array_equal(array, array_loaded)
+            with open(fn, 'wb') as dump_file:
+                dataserializer.dump(array, dump_file,
+                                    compress=dataserializer.CompressType.GZIP)
+            with open(fn, 'rb') as dump_file:
+                assert_array_equal(array, dataserializer.load(dump_file))
+        finally:
+            if os.path.exists(fn):
+                os.unlink(fn)
 
-            fn = os.path.join(tempfile.gettempdir(), 'test_dump_file_%d.bin' % id(self))
-            try:
-                array = np.random.rand(1000, 100).T  # test non c-contiguous
-                with open(fn, 'wb') as dump_file:
-                    dataserializer.dump(array, dump_file)
-                with open(fn, 'rb') as dump_file:
-                    assert_array_equal(array, dataserializer.load(dump_file))
-
-                with open(fn, 'wb') as dump_file:
-                    dataserializer.dump(array, dump_file,
-                                        compress=dataserializer.CompressType.LZ4)
-                with open(fn, 'rb') as dump_file:
-                    assert_array_equal(array, dataserializer.load(dump_file))
-
-                with open(fn, 'wb') as dump_file:
-                    dataserializer.dump(array, dump_file,
-                                        compress=dataserializer.CompressType.GZIP)
-                with open(fn, 'rb') as dump_file:
-                    assert_array_equal(array, dataserializer.load(dump_file))
-            finally:
-                if os.path.exists(fn):
-                    os.unlink(fn)
-
+        # test sparse
         if sps:
             mat = sparse.SparseMatrix(sps.random(100, 100, 0.1, format='csr'))
             des_mat = dataserializer.loads(dataserializer.dumps(mat))
@@ -671,29 +668,42 @@ class Test(unittest.TestCase):
                 vector, compress=dataserializer.CompressType.GZIP))
             self.assertTrue((vector.spmatrix != des_vector.spmatrix).nnz == 0)
 
+        # test groupby
+        df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')})
+        grouped = wrapped_groupby(df1, 'b')
+        restored = dataserializer.loads(dataserializer.dumps(grouped))
+        assert_groupby_equal(grouped, restored.groupby_obj)
+
+        grouped = wrapped_groupby(df1, 'b').c
+        restored = dataserializer.loads(dataserializer.dumps(grouped))
+        assert_groupby_equal(grouped, restored.groupby_obj)
+
+        grouped = wrapped_groupby(df1, 'b')
+        getattr(grouped, 'indices')
+        restored = dataserializer.loads(dataserializer.dumps(grouped))
+        assert_groupby_equal(grouped, restored.groupby_obj)
+
+        grouped = wrapped_groupby(df1.b, lambda x: x % 2)
+        restored = dataserializer.loads(dataserializer.dumps(grouped))
+        assert_groupby_equal(grouped, restored.groupby_obj)
+
+        grouped = wrapped_groupby(df1.b, lambda x: x % 2)
+        getattr(grouped, 'indices')
+        restored = dataserializer.loads(dataserializer.dumps(grouped))
+        assert_groupby_equal(grouped, restored.groupby_obj)
+
     @unittest.skipIf(pyarrow is None, 'PyArrow is not installed.')
     def testArrowSerialize(self):
-        try:
-            import numpy as np
-            from numpy.testing import assert_array_equal
-        except ImportError:
-            np = None
-
-        try:
-            import scipy.sparse as sps
-        except ImportError:
-            sps = None
-
-        if np:
-            array = np.random.rand(1000, 100)
-            assert_array_equal(array, dataserializer.deserialize(dataserializer.serialize(array).to_buffer()))
+        array = np.random.rand(1000, 100)
+        assert_array_equal(array, dataserializer.deserialize(dataserializer.serialize(array).to_buffer()))
 
         if sps:
             mat = sparse.SparseMatrix(sps.random(100, 100, 0.1, format='csr'))
             des_mat = dataserializer.deserialize(dataserializer.serialize(mat).to_buffer())
             self.assertTrue((mat.spmatrix != des_mat.spmatrix).nnz == 0)
 
-        if np and sps:
             array = np.random.rand(1000, 100)
             mat = sparse.SparseMatrix(sps.random(100, 100, 0.1, format='csr'))
             tp = (array, mat)

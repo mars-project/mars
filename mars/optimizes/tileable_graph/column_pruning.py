@@ -29,7 +29,8 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
     def match(self, node):
         if isinstance(node.inputs[0].op, DataFrameReadCSV) and \
                 node.inputs[0] not in self._optimizer_context.result_tileables:
-            by_columns = node.op.by if isinstance(node.op.by, (list, tuple)) else [node.op.by]
+            by_data = node.op.groupby_params.get('by')
+            by_columns = by_data if isinstance(by_data, (list, tuple)) else [by_data]
             if isinstance(node.op.func, (str, list)):
                 # Passing func name(s) means perform on all columns.
                 return False
@@ -40,7 +41,8 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
         return False
 
     def apply(self, node):
-        by_columns = node.op.by if isinstance(node.op.by, (list, tuple)) else [node.op.by]
+        by_data = node.op.groupby_params.get('by')
+        by_columns = by_data if isinstance(by_data, (list, tuple)) else [by_data]
         agg_columns = list(node.op.func)
         input_node = node.inputs[0]
         selected_columns = [c for c in list(input_node.dtypes.index) if c in by_columns + agg_columns]

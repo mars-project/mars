@@ -17,17 +17,20 @@ import gzip
 import struct
 import zlib
 from collections import namedtuple
+from distutils.version import LooseVersion
 from enum import Enum
 from io import BytesIO
 import pickle  # nosec
 
 import numpy as np
+
 try:
     import scipy.sparse as sps
 except ImportError:  # pragma: no cover
     sps = None
 
 from ..lib.sparse import SparseNDArray
+from ..lib.groupby_wrapper import GroupByWrapper
 
 try:
     import pyarrow
@@ -269,68 +272,50 @@ def deserialize(data):
     return pyarrow.deserialize(data, mars_serialize_context())
 
 
-def _serialize_numpy_array_list(obj):
-    if obj.dtype.str != '|O':
-        # Make the array c_contiguous if necessary so that we can call change
-        # the view.
-        if not obj.flags.c_contiguous:
-            obj = np.ascontiguousarray(obj)
-        return obj.view('uint8'), obj.dtype.str
-    else:
-        return obj.tolist(), obj.dtype.str
+_FreezeGrouping = namedtuple('_FreezeGrouping', 'name codes grouper ')
 
 
-def _deserialize_numpy_array_list(data):
-    if data[1] != '|O':
-        assert data[0].dtype == np.uint8
-        return data[0].view(data[1])
-    else:
-        return np.array(data[0], dtype=np.dtype(data[1]))
+def _serialize_groupby_wrapper(obj: GroupByWrapper):
+    return obj.to_tuple(pickle_function=True, truncate=True)
 
 
-def _serialize_sparse_csr_list(obj):
-    sizes = []
-    outputs = [None, None]
-    for item in (obj.data, obj.indices, obj.indptr):
-        serialized_items = _serialize_numpy_array_list(item)
-        outputs.extend(serialized_items)
-        sizes.append(len(serialized_items))
-    outputs[0] = struct.pack('<' + 'B' * len(sizes), *sizes)
-    outputs[1] = struct.pack('<' + 'L' * len(obj.shape), *obj.shape)
-    return tuple(outputs)
+def _deserialize_groupby_wrapper(serialized):
+    return GroupByWrapper.from_tuple(serialized)
 
 
-def _deserialize_sparse_csr_list(data):
-    sizes = struct.unpack('<' + 'B' * len(data[0]), data[0])
-    shape = struct.unpack('<' + 'L' * (len(data[1]) // 4), data[1])
-    data_parts = []
-    pos = 2
-    for size in sizes:
-        data_parts.append(_deserialize_numpy_array_list(data[pos:pos + size]))
-        pos += size
+if LooseVersion(pyarrow.__version__) < LooseVersion('0.16'):
+    def _serialize_sparse_nd_array(obj):
+        return obj.data, obj.indices, obj.indptr, obj.shape
 
-    empty_arr = np.zeros(0, dtype=data_parts[0].dtype)
-    if len(shape) == 1:
-        sps_shape = (1, shape[0])
-    else:
-        sps_shape = shape
-    target_csr = sps.coo_matrix((empty_arr, (empty_arr,) * 2), shape=sps_shape,
-                                dtype=data_parts[0].dtype).tocsr()
-    target_csr.data, target_csr.indices, target_csr.indptr = data_parts
-    return SparseNDArray(target_csr, shape=shape)
+    def _deserialize_sparse_nd_array(serialized):
+        data, indices, indptr, shape = serialized
+        empty_arr = np.zeros(0, dtype=data.dtype)
+
+        target_csr = sps.coo_matrix((empty_arr, (empty_arr,) * 2), dtype=data.dtype,
+                                    shape=shape if len(shape) > 1 else (1, shape[0])).tocsr()
+
+        target_csr.data, target_csr.indices, target_csr.indptr = data, indices, indptr
+        return SparseNDArray(target_csr, shape=shape)
+else:  # pragma: no cover
+    def _serialize_sparse_nd_array(obj):
+        return obj.raw, obj.shape
+
+    def _deserialize_sparse_nd_array(serialized):
+        data, shape = serialized
+        return SparseNDArray(data, shape=shape)
 
 
 _serialize_context = None
 
 
-def _apply_pyarrow_serialization_patch(serialization_context):
+def _apply_pyarrow_serialization_patch(serialization_context):  # pragma: no cover
     """
     Fix the bug about dtype serialization in pyarrow (pyarrow#4953).
 
     From the JIRA of arrow, the fixed version of this bug is 1.0, so we only apply
     the patch for pyarrow less than version 1.0.
     """
-    from distutils.version import LooseVersion
+    import pyarrow
 
     try:
         # This function is available after numpy-0.16.0.
@@ -394,7 +379,7 @@ def _apply_pyarrow_serialization_patch(serialization_context):
         else:
             return np.array(data[0], dtype=np.dtype(data[1]))
 
-    if LooseVersion(pyarrow.__version__) < LooseVersion('1.0'):
+    if LooseVersion(pyarrow.__version__) < LooseVersion('0.15'):
         serialization_context.register_type(
             np.ndarray, 'np.array',
             custom_serializer=_serialize_numpy_array_list,
@@ -406,8 +391,11 @@ def mars_serialize_context():
     if _serialize_context is None:
         ctx = pyarrow.default_serialization_context()
         ctx.register_type(SparseNDArray, 'mars.SparseNDArray',
-                          custom_serializer=_serialize_sparse_csr_list,
-                          custom_deserializer=_deserialize_sparse_csr_list)
+                          custom_serializer=_serialize_sparse_nd_array,
+                          custom_deserializer=_deserialize_sparse_nd_array)
+        ctx.register_type(GroupByWrapper, 'pandas.GroupByWrapper',
+                          custom_serializer=_serialize_groupby_wrapper,
+                          custom_deserializer=_deserialize_groupby_wrapper)
         _apply_pyarrow_serialization_patch(ctx)
         if vineyard is not None:  # pragma: no cover
             vineyard.register_vineyard_serialize_context(ctx)

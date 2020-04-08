@@ -345,6 +345,45 @@ def create_actor_pool(*args, **kwargs):
     raise OSError("Failed to create actor pool")
 
 
+def assert_groupby_equal(left, right, sort_keys=False, with_selection=False):
+    if hasattr(left, 'groupby_obj'):
+        left = left.groupby_obj
+    if hasattr(right, 'groupby_obj'):
+        right = right.groupby_obj
+
+    if type(left) is not type(right):
+        raise AssertionError('Type of groupby not consistent: %r != %r'
+                             % (type(left), type(right)))
+
+    left_selection = getattr(left, '_selection', None)
+    right_selection = getattr(right, '_selection', None)
+    if sort_keys:
+        left = sorted(left, key=lambda p: p[0])
+        right = sorted(right, key=lambda p: p[0])
+    else:
+        left, right = list(left), list(right)
+
+    if len(left) != len(right):
+        raise AssertionError('Count of groupby keys not consistent: %r != %r'
+                             % (len(left), len(right)))
+
+    left_keys = [p[0] for p in left]
+    right_keys = [p[0] for p in right]
+    if left_keys != right_keys:
+        raise AssertionError('Group keys not consistent: %r != %r' % (left_keys, right_keys))
+    for (left_key, left_frame), (right_key, right_frame) in zip(left, right):
+        if with_selection:
+            if left_selection and isinstance(left_frame, pd.DataFrame):
+                left_frame = left_frame[left_selection]
+            if right_selection and isinstance(right_frame, pd.DataFrame):
+                right_frame = right_frame[right_selection]
+
+        if isinstance(left_frame, pd.DataFrame):
+            pd.testing.assert_frame_equal(left_frame, right_frame)
+        else:
+            pd.testing.assert_series_equal(left_frame, right_frame)
+
+
 _check_options = dict()
 _check_args = ['check_series_name', 'check_dtypes', 'check_dtype', 'check_shape', 'check_nsplits']
 
@@ -439,12 +478,30 @@ class MarsObjectCheckMixin:
         cls.assert_index_consistent(expected.index_value, real.index)
 
     @classmethod
+    def assert_groupby_consistent(cls, expected, real):
+        from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
+        from mars.dataframe.core import DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
+        from mars.dataframe.core import DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
+
+        if isinstance(expected, (DATAFRAME_GROUPBY_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE)) \
+                and isinstance(real, DataFrameGroupBy):
+            selection = getattr(real, '_selection', None)
+            if not selection:
+                cls.assert_dataframe_consistent(expected, real.obj)
+        elif isinstance(expected, (SERIES_GROUPBY_TYPE, SERIES_GROUPBY_CHUNK_TYPE)) \
+                and isinstance(real, SeriesGroupBy):
+            cls.assert_series_consistent(expected, real.obj)
+        else:
+            raise AssertionError('GroupBy type not consistent. Expecting %r but receive %r'
+                                 % (type(expected), type(real)))
+
+    @classmethod
     def assert_object_consistent(cls, expected, real):
         from mars.tensor.core import TENSOR_TYPE
-        from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
+        from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
 
         from mars.tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE
-        from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
+        from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, GROUPBY_CHUNK_TYPE
 
         if isinstance(expected, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             cls.assert_tensor_consistent(expected, real)
@@ -452,6 +509,8 @@ class MarsObjectCheckMixin:
             cls.assert_dataframe_consistent(expected, real)
         elif isinstance(expected, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
             cls.assert_series_consistent(expected, real)
+        elif isinstance(expected, (GROUPBY_TYPE, GROUPBY_CHUNK_TYPE)):
+            cls.assert_groupby_consistent(expected, real)
 
 
 class GraphExecutionWithChunkCheck(MarsObjectCheckMixin, GraphExecution):

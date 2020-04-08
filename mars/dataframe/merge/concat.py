@@ -365,21 +365,29 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
 class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_CONCAT
-    _by = AnyField('by')
 
-    def __init__(self, by=None, object_type=None, **kw):
-        super().__init__(_by=by, _object_type=object_type, **kw)
+    _groupby_params = AnyField('groupby_params')
+
+    def __init__(self, groupby_params=None, object_type=None, **kw):
+        super().__init__(_groupby_params=groupby_params, _object_type=object_type, **kw)
 
     @property
-    def by(self):
-        return self._by
+    def groupby_params(self):
+        return self._groupby_params
 
     @classmethod
     def execute(cls, ctx, op):
-        inputs = [ctx[input.key] for input in op.inputs]
-        input_data = [group[1] for inp in inputs if len(inp) > 1 for group in inp]
-        obj = pd.concat(input_data)
-        ctx[op.outputs[0].key] = obj.groupby(by=op.by)
+        input_data = [ctx[input.key] for input in op.inputs]
+        obj = pd.concat([d.obj for d in input_data])
+
+        params = op.groupby_params.copy()
+        selection = params.pop('selection', None)
+
+        result = obj.groupby(**params)
+        if selection:
+            result = result[selection]
+
+        ctx[op.outputs[0].key] = result
 
 
 def concat(objs, axis=0, join='outer', ignore_index=False, keys=None, levels=None, names=None,

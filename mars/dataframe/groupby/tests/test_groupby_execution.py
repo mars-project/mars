@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
-from mars.tests.core import TestBase, ExecutorForTest
+from mars.tests.core import TestBase, ExecutorForTest, assert_groupby_equal
 
 
 class Test(TestBase):
@@ -32,10 +32,8 @@ class Test(TestBase):
                             'c': list('aabaaddce')})
         mdf = md.DataFrame(df1, chunk_size=3)
         grouped = mdf.groupby('b')
-        r = self.executor.execute_dataframe(grouped, concat=True)[0]
-        expected = df1.groupby('b')
-        for key, group in r:
-            pd.testing.assert_frame_equal(group, expected.get_group(key))
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             df1.groupby('b'))
 
         df2 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                             'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
@@ -43,27 +41,105 @@ class Test(TestBase):
                            index=['i' + str(i) for i in range(9)])
         mdf = md.DataFrame(df2, chunk_size=3)
         grouped = mdf.groupby('b')
-        r = self.executor.execute_dataframe(grouped, concat=True)[0]
-        expected = df2.groupby('b')
-        for key, group in r:
-            pd.testing.assert_frame_equal(group, expected.get_group(key))
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             df2.groupby('b'))
+
+        df3 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')},
+                           index=pd.MultiIndex.from_tuples([(i % 3, 'i' + str(i)) for i in range(9)]))
+        mdf = md.DataFrame(df3, chunk_size=3)
+        grouped = mdf.groupby(level=0)
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             df3.groupby(level=0))
 
         series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
         ms1 = md.Series(series1, chunk_size=3)
         grouped = ms1.groupby(lambda x: x % 3)
-        r = self.executor.execute_dataframe(grouped, concat=True)[0]
-        expected = series1.groupby(lambda x: x % 3)
-        for key, group in r:
-            pd.testing.assert_series_equal(group, expected.get_group(key))
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             series1.groupby(lambda x: x % 3))
 
         series2 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3],
                             index=['i' + str(i) for i in range(9)])
         ms2 = md.Series(series2, chunk_size=3)
         grouped = ms2.groupby(lambda x: int(x[1:]) % 3)
-        r = self.executor.execute_dataframe(grouped, concat=True)[0]
-        expected = series2.groupby(lambda x: int(x[1:]) % 3)
-        for key, group in r:
-            pd.testing.assert_series_equal(group, expected.get_group(key))
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             series2.groupby(lambda x: int(x[1:]) % 3))
+
+    def testGroupByGetItem(self):
+        df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')},
+                           index=pd.MultiIndex.from_tuples([(i % 3, 'i' + str(i)) for i in range(9)]))
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        r = mdf.groupby(level=0)[['a', 'b']]
+        assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                             df1.groupby(level=0)[['a', 'b']], with_selection=True)
+
+        r = mdf.groupby(level=0)[['a', 'b']].sum()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby(level=0)[['a', 'b']].sum())
+
+        r = mdf.groupby(level=0)[['a', 'b']].apply(lambda x: x + 1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby(level=0)[['a', 'b']].apply(lambda x: x + 1).sort_index())
+
+        r = mdf.groupby('b')[['a', 'b']]
+        assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                             df1.groupby('b')[['a', 'b']], with_selection=True)
+
+        r = mdf.groupby('b')[['a', 'c']]
+        assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                             df1.groupby('b')[['a', 'c']], with_selection=True)
+
+        r = mdf.groupby('b')[['a', 'b']].sum()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b')[['a', 'b']].sum())
+
+        r = mdf.groupby('b')[['a', 'b']].agg(['sum', 'count'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b')[['a', 'b']].agg(['sum', 'count']))
+
+        r = mdf.groupby('b')[['a', 'c']].agg(['sum', 'count'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b')[['a', 'c']].agg(['sum', 'count']))
+
+        r = mdf.groupby('b')[['a', 'b']].apply(lambda x: x + 1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b')[['a', 'b']].apply(lambda x: x + 1).sort_index())
+
+        r = mdf.groupby('b')[['a', 'b']].transform(lambda x: x + 1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b')[['a', 'b']].transform(lambda x: x + 1).sort_index())
+
+        r = mdf.groupby('b')[['a', 'b']].cumsum()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b')[['a', 'b']].cumsum().sort_index())
+
+        r = mdf.groupby('b').a
+        assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                             df1.groupby('b').a, with_selection=True)
+
+        r = mdf.groupby('b').a.sum()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       df1.groupby('b').a.sum())
+
+        r = mdf.groupby('b').a.agg(['sum', 'mean', 'var'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b').a.agg(['sum', 'mean', 'var']))
+
+        r = mdf.groupby('b').a.apply(lambda x: x + 1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       df1.groupby('b').a.apply(lambda x: x + 1).sort_index())
+
+        r = mdf.groupby('b').a.transform(lambda x: x + 1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       df1.groupby('b').a.transform(lambda x: x + 1).sort_index())
+
+        r = mdf.groupby('b').a.cumsum()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       df1.groupby('b').a.cumsum().sort_index())
 
     def testDataFrameGroupByAgg(self):
         rs = np.random.RandomState(0)
@@ -158,13 +234,13 @@ class Test(TestBase):
         r12 = mdf2.groupby('c2', as_index=False).agg('mean')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r12, concat=True)[0],
                                       df2.groupby('c2', as_index=False).agg('mean'))
-        self.assertFalse(r12.op.as_index)
+        self.assertFalse(r12.op.groupby_params['as_index'])
 
         # test as_index=False takes no effect
         r13 = mdf2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count'])
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r13, concat=True)[0],
                                       df2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
-        self.assertTrue(r13.op.as_index)
+        self.assertTrue(r13.op.groupby_params['as_index'])
 
         r14 = mdf2.groupby('c2').agg(['cumsum', 'cumcount'])
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r14, concat=True)[0].sort_index(),
