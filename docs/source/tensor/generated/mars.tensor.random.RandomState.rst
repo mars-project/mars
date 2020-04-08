@@ -12,7 +12,7 @@ mars.tensor.random.RandomState
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~RandomState.__init__
       ~RandomState.beta
       ~RandomState.binomial

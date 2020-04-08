@@ -47,9 +47,12 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
             ctx[op.outputs[0].key] = xdf.Series(unique_values, name=in_data.name)
         else:
             if op.axis == 0:
-                df = xdf.DataFrame(OrderedDict((d, [v.drop_duplicates().to_list()]) for d, v in in_data.iteritems()))
+                df = xdf.DataFrame(OrderedDict((d, [v.drop_duplicates().to_list()])
+                                               for d, v in in_data.iteritems()))
             else:
-                df = xdf.DataFrame(in_data.apply(xdf.Series.drop_duplicates, axis=1))
+                df = xdf.DataFrame(columns=[0])
+                for d, v in in_data.iterrows():
+                    df.loc[d] = [v.drop_duplicates().to_list()]
             ctx[op.outputs[0].key] = df
 
     @classmethod
@@ -64,7 +67,9 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
                 df = xdf.DataFrame(OrderedDict((d, [v.explode().drop_duplicates().to_list()])
                                                for d, v in in_data.iteritems()))
             else:
-                df = xdf.DataFrame(in_data.apply(lambda x: x.explode().drop_duplicates(), axis=1))
+                df = xdf.DataFrame(columns=[0])
+                for d, v in in_data.iterrows():
+                    df.loc[d] = [v.explode().drop_duplicates().to_list()]
             ctx[op.outputs[0].key] = df
 
     @classmethod
@@ -74,8 +79,12 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
         if isinstance(in_data, xdf.Series):
             ctx[op.outputs[0].key] = in_data.explode().nunique(dropna=op.dropna)
         else:
-            ctx[op.outputs[0].key] = in_data.apply(
-                lambda x: x.explode().nunique(dropna=op.dropna), axis=op.axis)
+            if op.axis == 0:
+                ctx[op.outputs[0].key] = xdf.Series(OrderedDict((d, v.explode().nunique(dropna=op.dropna))
+                                                    for d, v in in_data.iteritems()))
+            else:
+                ctx[op.outputs[0].key] = xdf.Series(OrderedDict((d, v.explode().nunique(dropna=op.dropna))
+                                                    for d, v in in_data.iterrows()))
 
     @classmethod
     def _execute_reduction(cls, in_data, op, min_count=None, reduction_func=None):
