@@ -625,7 +625,7 @@ class ExecutableTuple(tuple):
 
         if session is None:
             session = Session.default_or_local()
-        return session.run(*self, **kw)
+        return session.run(self, **kw)
 
     def fetch(self, session=None, **kw):
         from .session import Session

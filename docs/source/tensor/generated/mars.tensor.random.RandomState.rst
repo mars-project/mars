@@ -22,6 +22,7 @@ mars.tensor.random.RandomState
       ~RandomState.dirichlet
       ~RandomState.exponential
       ~RandomState.f
+      ~RandomState.from_numpy
       ~RandomState.gamma
       ~RandomState.geometric
       ~RandomState.gumbel
@@ -56,6 +57,7 @@ mars.tensor.random.RandomState
       ~RandomState.standard_gamma
       ~RandomState.standard_normal
       ~RandomState.standard_t
+      ~RandomState.to_numpy
       ~RandomState.triangular
       ~RandomState.uniform
       ~RandomState.vonmises
