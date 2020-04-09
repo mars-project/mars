@@ -32,11 +32,15 @@ class Test(TestBase):
         df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4]})
         mdf = md.DataFrame(df, chunk_size=2)
-        grouped = mdf.groupby('c2')
+        with self.assertRaises(KeyError):
+            mdf.groupby('c2')
+        with self.assertRaises(KeyError):
+            mdf.groupby(['b', 'c2'])
 
+        grouped = mdf.groupby('b')
         self.assertIsInstance(grouped, DataFrameGroupBy)
         self.assertIsInstance(grouped.op, DataFrameGroupByOperand)
-        self.assertEqual(grouped.key_columns, ['c2'])
+        self.assertEqual(list(grouped.key_dtypes.index), ['b'])
 
         grouped = grouped.tiles()
         self.assertEqual(len(grouped.chunks), 5)
@@ -68,13 +72,18 @@ class Test(TestBase):
         self.assertIsInstance(r, DataFrameGroupBy)
         self.assertIsInstance(r.op, GroupByIndex)
         self.assertEqual(r.selection, ['a', 'b'])
+        self.assertEqual(list(r.key_dtypes.index), ['b'])
         self.assertEqual(len(r.chunks), 3)
 
         r = mdf.groupby('b').a.tiles()
         self.assertIsInstance(r, SeriesGroupBy)
         self.assertIsInstance(r.op, GroupByIndex)
         self.assertEqual(r.name, 'a')
+        self.assertEqual(list(r.key_dtypes.index), ['b'])
         self.assertEqual(len(r.chunks), 3)
+
+        with self.assertRaises(IndexError):
+            getattr(mdf.groupby('b')[['a', 'b']], 'a')
 
     def testGroupByAgg(self):
         df = pd.DataFrame({'a': np.random.choice([2, 3, 4], size=(20,)),

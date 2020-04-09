@@ -890,12 +890,12 @@ class DataFrame(HasShapeTileableEnity):
 
 
 class DataFrameGroupByChunkData(BaseDataFrameChunkData):
-    _key_columns = AnyField('key_columns')
+    _key_dtypes = SeriesField('key_dtypes')
     _selection = AnyField('selection')
 
     @property
-    def key_columns(self):
-        return self._key_columns
+    def key_dtypes(self):
+        return self._key_dtypes
 
     @property
     def selection(self):
@@ -904,11 +904,11 @@ class DataFrameGroupByChunkData(BaseDataFrameChunkData):
     @property
     def params(self):
         p = super().params
-        p.update(dict(key_columns=self.key_columns, selection=self.selection))
+        p.update(dict(key_dtypes=self.key_dtypes, selection=self.selection))
         return p
 
-    def __init__(self, key_columns=None, selection=None, **kw):
-        super().__init__(_key_columns=key_columns, _selection=selection, **kw)
+    def __init__(self, key_dtypes=None, selection=None, **kw):
+        super().__init__(_key_dtypes=key_dtypes, _selection=selection, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -927,20 +927,20 @@ class DataFrameGroupByChunk(Chunk):
 
 
 class SeriesGroupByChunkData(BaseSeriesChunkData):
-    _key_columns = AnyField('key_columns')
+    _key_dtypes = AnyField('key_dtypes')
 
     @property
-    def key_columns(self):
-        return self._key_columns
+    def key_dtypes(self):
+        return self._key_dtypes
 
     @property
     def params(self):
         p = super().params
-        p['key_columns'] = self.key_columns
+        p['key_dtypes'] = self.key_dtypes
         return p
 
-    def __init__(self, key_columns=None, **kw):
-        super().__init__(_key_columns=key_columns, **kw)
+    def __init__(self, key_dtypes=None, **kw):
+        super().__init__(_key_dtypes=key_dtypes, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -961,15 +961,15 @@ class SeriesGroupByChunk(Chunk):
 class DataFrameGroupByData(BaseDataFrameData):
     _type_name = 'DataFrameGroupBy'
 
-    _key_columns = AnyField('key_columns')
+    _key_dtypes = SeriesField('key_dtypes')
     _selection = AnyField('selection')
     _chunks = ListField('chunks', ValueType.reference(DataFrameGroupByChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [DataFrameGroupByChunk(it) for it in x] if x is not None else x)
 
     @property
-    def key_columns(self):
-        return self._key_columns
+    def key_dtypes(self):
+        return self._key_dtypes
 
     @property
     def selection(self):
@@ -978,11 +978,11 @@ class DataFrameGroupByData(BaseDataFrameData):
     @property
     def params(self):
         p = super().params
-        p.update(dict(key_columns=self.key_columns, selection=self.selection))
+        p.update(dict(key_dtypes=self.key_dtypes, selection=self.selection))
         return p
 
-    def __init__(self, key_columns=None, selection=None, **kw):
-        super().__init__(_key_columns=key_columns, _selection=selection, **kw)
+    def __init__(self, key_dtypes=None, selection=None, **kw):
+        super().__init__(_key_dtypes=key_dtypes, _selection=selection, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -1002,24 +1002,23 @@ class DataFrameGroupByData(BaseDataFrameData):
 class SeriesGroupByData(BaseSeriesData):
     _type_name = 'SeriesGroupBy'
 
-    _key_columns = AnyField('key_columns')
+    _key_dtypes = AnyField('key_dtypes')
     _chunks = ListField('chunks', ValueType.reference(SeriesGroupByChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [SeriesGroupByChunk(it) for it in x] if x is not None else x)
 
-
     @property
-    def key_columns(self):
-        return self._key_columns
+    def key_dtypes(self):
+        return self._key_dtypes
 
     @property
     def params(self):
         p = super().params
-        p['key_columns'] = self.key_columns
+        p['key_dtypes'] = self.key_dtypes
         return p
 
-    def __init__(self, key_columns=None, **kw):
-        super().__init__(_key_columns=key_columns, **kw)
+    def __init__(self, key_dtypes=None, **kw):
+        super().__init__(_key_dtypes=key_dtypes, **kw)
 
     @classmethod
     def cls(cls, provider):

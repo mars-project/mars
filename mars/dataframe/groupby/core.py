@@ -113,9 +113,14 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         params['index_value'] = parse_index(None, df.key, df.index_value.key)
         if df.ndim == 2:
             if isinstance(self.by, str):
-                params['key_columns'] = [self.by]
+                if self.by not in df.dtypes:
+                    raise KeyError(self.by)
+                params['key_dtypes'] = df.dtypes[[self.by]]
             elif isinstance(self.by, list):
-                params['key_columns'] = self.by
+                for k in self.by:
+                    if k not in df.dtypes:
+                        raise KeyError(k)
+                params['key_dtypes'] = df.dtypes[self.by]
         return self.new_tileable([df], **params)
 
     @classmethod
@@ -124,13 +129,14 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         if is_dataframe_obj:
             in_df = build_concatenated_rows_frame(op.inputs[0])
             out_object_type = ObjectType.dataframe
+            chunk_shape = (in_df.chunk_shape[0], 1)
         else:
             in_df = op.inputs[0]
             out_object_type = ObjectType.series
+            chunk_shape = (in_df.chunk_shape[0],)
 
         # generate map chunks
         map_chunks = []
-        chunk_shape = (in_df.chunk_shape[0], 1)
         for chunk in in_df.chunks:
             map_op = op.copy().reset_key()
             map_op._stage = OperandStage.map
@@ -154,7 +160,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         for chunk in reduce_chunks:
             groupby_op = op.copy().reset_key()
             if is_dataframe_obj:
-                new_shape = (np.nan, chunk.shape[1])
+                new_shape = (np.nan, in_df.shape[1])
             else:
                 new_shape = (np.nan,)
             params = dict(shape=new_shape, index=chunk.index)
@@ -192,7 +198,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             if is_dataframe_obj:
                 group_key = ','.join([str(index_idx), str(chunk.index[1])])
             else:
-                group_key = str(index_idx) + ',0'
+                group_key = str(index_idx)
             if index_filter is not None and index_filter is not list():
                 ctx[(chunk.key, group_key)] = df.loc[index_filter]
             else:
@@ -237,8 +243,9 @@ def groupby(df, by=None, level=None, as_index=True, sort=True, group_keys=True):
     if not as_index and df.op.object_type == ObjectType.series:
         raise TypeError('as_index=False only valid with DataFrame')
 
+    object_type = ObjectType.dataframe_groupby if df.ndim == 2 else ObjectType.series_groupby
     if isinstance(by, str):
         by = [by]
     op = DataFrameGroupByOperand(by=by, level=level, as_index=as_index, sort=sort,
-                                 group_keys=group_keys, object_type=df.op.object_type)
+                                 group_keys=group_keys, object_type=object_type)
     return op(df)
