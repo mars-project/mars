@@ -23,7 +23,7 @@ from io import BytesIO
 import pickle  # nosec
 
 import numpy as np
-
+import pandas as pd
 try:
     import scipy.sparse as sps
 except ImportError:  # pragma: no cover
@@ -305,6 +305,30 @@ else:  # pragma: no cover
         return SparseNDArray(data, shape=shape)
 
 
+def _serialize_pandas_interval(obj: pd.Interval):
+    return [obj.left, obj.right, obj.closed]
+
+
+def _deserialize_pandas_interval(data):
+    return pd.Interval(data[0], data[1], data[2])
+
+
+def _serialze_pandas_categorical(obj: pd.Categorical):
+    return [obj.codes, obj.dtype]
+
+
+def _deserialize_pandas_categorical(data):
+    return pd.Categorical.from_codes(data[0], dtype=data[1])
+
+
+def _serialize_pandas_categorical_dtype(obj: pd.CategoricalDtype):
+    return [obj.categories, obj.ordered]
+
+
+def _deserialize_pandas_categorical_dtype(data):
+    return pd.CategoricalDtype(data[0], data[1])
+
+
 _serialize_context = None
 
 
@@ -396,6 +420,15 @@ def mars_serialize_context():
         ctx.register_type(GroupByWrapper, 'pandas.GroupByWrapper',
                           custom_serializer=_serialize_groupby_wrapper,
                           custom_deserializer=_deserialize_groupby_wrapper)
+        ctx.register_type(pd.Interval, 'pandas.Interval',
+                          custom_serializer=_serialize_pandas_interval,
+                          custom_deserializer=_deserialize_pandas_interval)
+        ctx.register_type(pd.Categorical, 'pandas.Categorical',
+                          custom_serializer=_serialze_pandas_categorical,
+                          custom_deserializer=_deserialize_pandas_categorical)
+        ctx.register_type(pd.CategoricalDtype, 'pandas.CategoricalDtype',
+                          custom_serializer=_serialize_pandas_categorical_dtype,
+                          custom_deserializer=_deserialize_pandas_categorical_dtype)
         _apply_pyarrow_serialization_patch(ctx)
         if vineyard is not None:  # pragma: no cover
             vineyard.register_vineyard_serialize_context(ctx)

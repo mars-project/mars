@@ -26,6 +26,8 @@ cimport numpy as np
 cimport cython
 import cloudpickle
 import pandas as pd
+from pandas.api.extensions import ExtensionDtype
+from pandas.arrays import IntervalArray
 
 from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, OneOfField, \
@@ -110,8 +112,8 @@ cdef class ProtobufSerializeProvider(Provider):
         x = obj.arr
         return dataloads(x) if x is not None and len(x) > 0 else None
 
-    cdef inline void _set_dtype(self, np.dtype value, obj, tp=None):
-        if 'V' not in value.str:
+    cdef inline void _set_dtype(self, value, obj, tp=None):
+        if not isinstance(value, ExtensionDtype) and 'V' not in value.str:
             dtype = value.str
             if isinstance(dtype, unicode):
                 dtype = dtype.encode('utf-8')
@@ -119,13 +121,13 @@ cdef class ProtobufSerializeProvider(Provider):
         else:
             obj.dtype = pickle.dumps(value)
 
-    cdef inline np.dtype _get_dtype(self, obj):
+    cdef inline object _get_dtype(self, obj):
         if obj.dtype is None or len(obj.dtype) == 0:
             return
         try:
             return np.dtype(obj.dtype)
         except (TypeError, ValueError):
-            return np.dtype(pickle.loads(obj.dtype))
+            return pickle.loads(obj.dtype)
 
     cdef inline void _set_index(self, value, obj, tp=None) except *:
         obj.index = datadumps(value)
@@ -215,6 +217,23 @@ cdef class ProtobufSerializeProvider(Provider):
     cdef inline object _get_tzinfo(self, obj):
         x = obj.tzinfo
         return pickle.loads(x) if x is not None and len(x) > 0 else None
+
+    cdef inline void _set_interval_arr(self, value, obj, tp=None):
+        obj.interval_arr.left = datadumps(value.left)
+        obj.interval_arr.right = datadumps(value.right)
+        obj.interval_arr.closed = value.closed
+        self._set_dtype(value.dtype, obj.interval_arr)
+
+    cdef inline object _get_interval_arr(self, obj):
+        interval_arr = obj.interval_arr
+        if not interval_arr.left:
+            return
+        left = dataloads(interval_arr.left)
+        right = dataloads(interval_arr.right)
+        closed = interval_arr.closed
+        dtype = self._get_dtype(interval_arr)
+        return IntervalArray.from_arrays(left, right,
+                                         closed=closed, dtype=dtype)
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
@@ -414,6 +433,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_function(value, obj, tp)
         elif tp is ValueType.tzinfo:
             self._set_tzinfo(value, obj, tp)
+        elif tp is ValueType.interval_arr:
+            self._set_interval_arr(value, obj, tp)
         elif tp in {ValueType.complex64, ValueType.complex128}:
             self._set_complex(value, obj, tp)
         elif isinstance(tp, Identity):
@@ -482,6 +503,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_untyped_value(value.item(), obj)
         elif isinstance(value, tzinfo):
             self._set_tzinfo(value, obj)
+        elif isinstance(value, IntervalArray):
+            self._set_interval_arr(value, obj)
         elif callable(value):
             self._set_function(value, obj)
         else:
@@ -681,6 +704,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_function(obj))
         elif tp is ValueType.tzinfo:
             return ref(self._get_tzinfo(obj))
+        elif tp is ValueType.interval_arr:
+            return ref(self._get_interval_arr(obj))
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             return ref(getattr(obj, value_field))
@@ -755,6 +780,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_function(obj))
         elif field == 'tzinfo':
             return ref(self._get_tzinfo(obj))
+        elif field == 'interval_arr':
+            return ref(self._get_interval_arr(obj))
         else:
             raise TypeError('Unknown type to deserialize')
 

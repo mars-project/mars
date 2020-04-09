@@ -148,3 +148,29 @@ message SeriesGroupByDef {
     IndexValue index_value = 10;
     Value key_columns = 11;
 }
+
+
+message CategoricalChunkDef {
+    string key = 1;
+    repeated uint32 index = 2 [packed = true];
+    repeated int64 shape = 3;
+    Value op = 4;  // just store key here
+    bool cached = 5;
+    Value dtype = 6;
+    Value extra_params = 8;
+    string id = 9;
+    IndexValue categories_value = 11;
+}
+
+
+message CategoricalDef {
+    string key = 1;
+    repeated int64 shape = 2;
+    Value dtype = 3;
+    Value op = 4;  // store operand's key and id
+    Value nsplits = 5;
+    repeated CategoricalChunkDef chunks = 6;
+    Value extra_params = 7;
+    string id = 8;
+    IndexValue categories_value = 10;
+}

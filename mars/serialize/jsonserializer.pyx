@@ -26,6 +26,8 @@ import cloudpickle
 import numpy as np
 cimport numpy as np
 import pandas as pd
+from pandas.api.extensions import ExtensionDtype
+from pandas.arrays import IntervalArray
 
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
@@ -145,10 +147,10 @@ cdef class JsonSerializeProvider(Provider):
 
         return None
 
-    cdef inline dict _serialize_dtype(self, np.dtype value):
+    cdef inline dict _serialize_dtype(self, value):
         cdef str v
 
-        if 'V' not in value.str:
+        if not isinstance(value, ExtensionDtype) and 'V' not in value.str:
             v = value.str
         else:
             v = self._to_str(base64.b64encode(pickle.dumps(value)))
@@ -157,12 +159,12 @@ cdef class JsonSerializeProvider(Provider):
             'value': v
         }
 
-    cdef inline np.dtype _deserialize_dtype(self, object value, list callbacks):
+    cdef inline object _deserialize_dtype(self, object value, list callbacks):
         try:
             return np.dtype(value['value'])
         except TypeError:
             val = value['value']
-            return np.dtype(pickle.loads(base64.b64decode(val)))
+            return pickle.loads(base64.b64decode(val))
 
     cdef inline dict _serialize_index(self, value):
         return {
@@ -362,6 +364,27 @@ cdef class JsonSerializeProvider(Provider):
             return pickle.loads(v)
         return None
 
+    cdef inline _serialize_interval_arr(self, value):
+        return {
+            'type': 'interval_arr',
+            'value': {
+                'left': self._to_str(base64.b64encode(datadumps(value.left))),
+                'right': self._to_str(base64.b64encode(datadumps(value.right))),
+                'closed': value.closed,
+                'dtype': self._serialize_dtype(value.dtype)
+            }
+        }
+
+    cdef inline _deserialize_interval_arr(self, obj, list callbacks):
+        value = obj['value']
+
+        left = dataloads(self._to_bytes(base64.b64decode(value['left'])))
+        right = dataloads(self._to_bytes(base64.b64decode(value['right'])))
+        closed = value['closed']
+        dtype = self._deserialize_dtype(value['dtype'], callbacks)
+
+        return IntervalArray.from_arrays(left, right, closed=closed, dtype=dtype)
+
     cdef inline object _serialize_typed_value(self, value, tp, bint weak_ref=False):
         if type(tp) not in (List, Tuple, Dict) and weak_ref:
             # not iterable, and is weak ref
@@ -402,6 +425,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_function(value)
         elif tp == ValueType.tzinfo:
             return self._serialize_tzinfo(value)
+        elif tp == ValueType.interval_arr:
+            return self._serialize_interval_arr(value)
         elif isinstance(tp, List):
             if not isinstance(value, list):
                 value = list(value)
@@ -463,6 +488,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_untyped_value(value.item())
         elif isinstance(value, tzinfo):
             return self._serialize_tzinfo(value)
+        elif isinstance(value, IntervalArray):
+            return self._serialize_interval_arr(value)
         elif callable(value):
             return self._serialize_function(value)
         else:
@@ -585,6 +612,8 @@ cdef class JsonSerializeProvider(Provider):
             return ref(self._deserialize_function(obj, callbacks))
         elif tp is ValueType.tzinfo:
             return ref(self._deserialize_tzinfo(obj, callbacks))
+        elif tp is ValueType.interval_arr:
+            return ref(self._deserialize_interval_arr(obj, callbacks))
         elif tp is ValueType.list:
             return self._deserialize_list(obj, callbacks, weak_ref)
         elif tp is ValueType.tuple:

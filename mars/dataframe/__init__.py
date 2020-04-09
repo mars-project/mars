@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initializer import DataFrame, Series
+from .initializer import DataFrame, Series, Index
 # do imports to register operands
+from .base.cut import cut
 from .base.checkna import isna, isnull, notna, notnull
 from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
@@ -43,7 +44,7 @@ del reduction, statistics, arithmetic, indexing, merge_, \
 del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences
-from pandas import Timedelta, Timestamp, offsets, NaT
+from pandas import Timedelta, Timestamp, offsets, NaT, Interval
 try:
     from pandas import NA
 except ImportError:  # pragma: no cover

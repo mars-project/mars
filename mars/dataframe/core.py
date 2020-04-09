@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+from typing import Union
 
+import numpy as np
 import pandas as pd
 
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
@@ -24,7 +25,7 @@ from ..core import ChunkData, Chunk, TileableEntity, \
     HasShapeTileableData, HasShapeTileableEnity
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
-    TupleField, OneOfField, ReferenceField, NDArrayField
+    TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
 
 
 class IndexValue(Serializable):
@@ -119,7 +120,7 @@ class IndexValue(Serializable):
 
     class IntervalIndex(IndexBase):
         _name = AnyField('name')
-        _data = NDArrayField('data')
+        _data = IntervalArrayField('data')
         _closed = BoolField('closed')
 
     class DatetimeIndex(IndexBase):
@@ -414,10 +415,13 @@ class Index(HasShapeTileableEnity):
     __slots__ = ()
     _allow_data_type_ = (IndexData,)
 
-    def __new__(cls, data: IndexData):
-        # create corresponding Index class
-        # according to type of index_value
-        clz = globals()[type(data.index_value.value).__name__]
+    def __new__(cls, data: Union[pd.Index, IndexData]):
+        if not isinstance(data, pd.Index):
+            # create corresponding Index class
+            # according to type of index_value
+            clz = globals()[type(data.index_value.value).__name__]
+        else:
+            clz = cls
         return object.__new__(clz)
 
     def __len__(self):
@@ -664,6 +668,9 @@ class Series(HasShapeTileableEnity):
             return super().copy()
         else:
             return super()._view()
+
+    def __len__(self):
+        return len(self._data)
 
     def __mars_tensor__(self, dtype=None, order='K'):
         tensor = self._data.to_tensor()
@@ -956,6 +963,9 @@ class DataFrameGroupByData(BaseDataFrameData):
 
     _key_columns = AnyField('key_columns')
     _selection = AnyField('selection')
+    _chunks = ListField('chunks', ValueType.reference(DataFrameGroupByChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [DataFrameGroupByChunk(it) for it in x] if x is not None else x)
 
     @property
     def key_columns(self):
@@ -993,6 +1003,10 @@ class SeriesGroupByData(BaseSeriesData):
     _type_name = 'SeriesGroupBy'
 
     _key_columns = AnyField('key_columns')
+    _chunks = ListField('chunks', ValueType.reference(SeriesGroupByChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [SeriesGroupByChunk(it) for it in x] if x is not None else x)
+
 
     @property
     def key_columns(self):
@@ -1063,6 +1077,145 @@ class SeriesGroupBy(GroupBy):
         return super().__hash__()
 
 
+class CategoricalChunkData(ChunkData):
+    __slots__ = ()
+
+    # required fields
+    _shape = TupleField('shape', ValueType.int64,
+                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    # optional field
+    _dtype = DataTypeField('dtype')
+    _categories_value = ReferenceField('categories_value', IndexValue,
+                                       on_deserialize=_on_deserialize_index_value)
+
+    def __init__(self, op=None, shape=None, index=None, dtype=None,
+                 categories_value=None, **kw):
+        super().__init__(_op=op, _shape=shape, _index=index, _dtype=dtype,
+                         _categories_value=categories_value, **kw)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import CategoricalChunkDef
+            return CategoricalChunkDef
+        return super().cls(provider)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new chunk
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype,
+            'index': self.index,
+            'categories_value': self.categories_value,
+        }
+
+    @property
+    def shape(self):
+        return getattr(self, '_shape', None)
+
+    @property
+    def ndim(self):
+        return len(self.shape)
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def categories_value(self):
+        return self._categories_value
+
+
+class CategoricalChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (CategoricalChunkData,)
+
+
+class CategoricalData(HasShapeTileableData):
+    __slots__ = '_cache',
+    _type_name = 'Categorical'
+
+    # optional field
+    _dtype = DataTypeField('dtype')
+    _categories_value = ReferenceField('categories_value', IndexValue, on_deserialize=_on_deserialize_index_value)
+    _chunks = ListField('chunks', ValueType.reference(CategoricalChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [CategoricalChunk(it) for it in x] if x is not None else x)
+
+    def __init__(self, op=None, shape=None, nsplits=None, dtype=None,
+                 categories_value=None, chunks=None, **kw):
+        super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtype=dtype,
+                         _categories_value=categories_value, _chunks=chunks, **kw)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype,
+            'categories_value': self.categories_value,
+        }
+
+    def __str__(self):
+        if is_eager_mode():  # pragma: no cover
+            return '{0}(op={1}, data=\n{2})'.format(self._type_name, self.op.__class__.__name__,
+                                                    str(self.fetch()))
+        else:
+            return '{0}(op={1})'.format(self._type_name, self.op.__class__.__name__)
+
+    def __repr__(self):
+        if is_eager_mode():
+            return '{0} <op={1}, key={2}, data=\n{3}>'.format(self._type_name, self.op.__class__.__name__,
+                                                              self.key, repr(self.fetch()))
+        else:
+            return '{0} <op={1}, key={2}>'.format(self._type_name, self.op.__class__.__name__, self.key)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import CategoricalDef
+            return CategoricalDef
+        return super().cls(provider)
+
+    def _equal(self, o):
+        # FIXME We need to implemented a true `==` operator for DataFrameGroupby
+        if build_mode().is_build_mode:
+            return self is o
+        else:  # pragma: no cover
+            return self == o
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None) or self.op.dtype
+
+    @property
+    def categories_value(self):
+        return self._categories_value
+
+    def __eq__(self, other):
+        return self._equal(other)
+
+    def __hash__(self):
+        # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
+        return super().__hash__()
+
+
+class Categorical(HasShapeTileableEnity):
+    __slots__ = ()
+    _allow_data_type_ = (CategoricalData,)
+
+    def __len__(self):
+        return len(self._data)
+
+    def __eq__(self, other):
+        return self._equal(other)
+
+    def __hash__(self):
+        # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
+        return super().__hash__()
+
+
 INDEX_TYPE = (Index, IndexData)
 INDEX_CHUNK_TYPE = (IndexChunk, IndexChunkData)
 SERIES_TYPE = (Series, SeriesData)
@@ -1075,5 +1228,8 @@ SERIES_GROUPBY_TYPE = (SeriesGroupBy, SeriesGroupByData)
 SERIES_GROUPBY_CHUNK_TYPE = (SeriesGroupByChunk, SeriesGroupByChunkData)
 GROUPBY_TYPE = (GroupBy,) + DATAFRAME_GROUPBY_TYPE + SERIES_GROUPBY_TYPE
 GROUPBY_CHUNK_TYPE = DATAFRAME_GROUPBY_CHUNK_TYPE + SERIES_GROUPBY_CHUNK_TYPE
-TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE + GROUPBY_TYPE
-CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE + GROUPBY_CHUNK_TYPE
+CATEGORICAL_TYPE = (Categorical, CategoricalData)
+CATEGORICAL_CHUNK_TYPE = (CategoricalChunk, CategoricalChunkData)
+TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE + GROUPBY_TYPE + CATEGORICAL_TYPE
+CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE + \
+             GROUPBY_CHUNK_TYPE + CATEGORICAL_CHUNK_TYPE

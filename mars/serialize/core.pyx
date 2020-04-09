@@ -111,6 +111,7 @@ cdef class ValueType:
     dataframe = ExtendType.dataframe
     function = ExtendType.function
     tzinfo = ExtendType.tzinfo
+    interval_arr = ExtendType.interval_arr
 
     identity = Identity()
 
@@ -409,6 +410,14 @@ cdef class TZInfoField(Field):
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.tzinfo
+
+
+cdef class IntervalArrayField(Field):
+    def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
+        super().__init__(
+            tag, default=default, weak_ref=weak_ref,
+            on_serialize=on_serialize, on_deserialize=on_deserialize)
+        self._type = ValueType.interval_arr
 
 
 cdef inline _handle_nest_reference(field, ref):

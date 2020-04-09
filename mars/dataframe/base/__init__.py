@@ -24,6 +24,7 @@ from .transform import df_transform, series_transform
 from .isin import isin
 from .checkna import isna, notna, isnull, notnull
 from .dropna import df_dropna, series_dropna
+from .cut import cut
 
 
 def _install():

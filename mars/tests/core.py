@@ -496,12 +496,22 @@ class MarsObjectCheckMixin:
                                  % (type(expected), type(real)))
 
     @classmethod
+    def assert_categorical_consistent(cls, expected, real):
+        if not isinstance(real, pd.Categorical):
+            raise AssertionError('Type of real value (%r) not Categorical' % type(real))
+        cls.assert_dtype_consistent(expected.dtype, real.dtype)
+        cls.assert_shape_consistent(expected.shape, real.shape)
+        cls.assert_index_consistent(expected.categories_value, real.categories)
+
+    @classmethod
     def assert_object_consistent(cls, expected, real):
         from mars.tensor.core import TENSOR_TYPE
-        from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
+        from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE, \
+            CATEGORICAL_TYPE
 
         from mars.tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE
-        from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, GROUPBY_CHUNK_TYPE
+        from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, \
+            GROUPBY_CHUNK_TYPE, CATEGORICAL_CHUNK_TYPE
 
         if isinstance(expected, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             cls.assert_tensor_consistent(expected, real)
@@ -511,6 +521,8 @@ class MarsObjectCheckMixin:
             cls.assert_series_consistent(expected, real)
         elif isinstance(expected, (GROUPBY_TYPE, GROUPBY_CHUNK_TYPE)):
             cls.assert_groupby_consistent(expected, real)
+        elif isinstance(expected, (CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE)):
+            cls.assert_categorical_consistent(expected, real)
 
 
 class GraphExecutionWithChunkCheck(MarsObjectCheckMixin, GraphExecution):

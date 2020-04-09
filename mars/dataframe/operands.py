@@ -21,12 +21,14 @@ import pandas as pd
 
 from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
     DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE, \
-    DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
+    DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE, \
+    CATEGORICAL_CHUNK_TYPE, CATEGORICAL_TYPE
 from ..core import FuseChunkData, FuseChunk
 from ..operands import Operand, TileableOperandMixin, MapReduceOperand, Fuse
 from ..operands import ShuffleProxy, FuseChunkMixin
-from ..serialize import Int8Field
+from ..serialize import Int8Field, AnyField
 from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, TensorOrder
+from ..tensor.operands import TensorOperandMixin
 from ..utils import calc_nsplits
 from .utils import parse_index
 
@@ -36,8 +38,10 @@ class ObjectType(Enum):
     series = 2
     index = 3
     scalar = 4
+    tensor = 8
     dataframe_groupby = 5
     series_groupby = 6
+    categorical = 7
 
 
 class DataFrameOperandMixin(TileableOperandMixin):
@@ -49,8 +53,10 @@ class DataFrameOperandMixin(TileableOperandMixin):
         ObjectType.series: SERIES_CHUNK_TYPE,
         ObjectType.index: INDEX_CHUNK_TYPE,
         ObjectType.scalar: TENSOR_CHUNK_TYPE,
+        ObjectType.tensor: TENSOR_CHUNK_TYPE,
         ObjectType.dataframe_groupby: DATAFRAME_GROUPBY_CHUNK_TYPE,
         ObjectType.series_groupby: SERIES_GROUPBY_CHUNK_TYPE,
+        ObjectType.categorical: CATEGORICAL_CHUNK_TYPE,
     }
 
     _OBJECT_TYPE_TO_TILEABLE_TYPES = {
@@ -58,8 +64,10 @@ class DataFrameOperandMixin(TileableOperandMixin):
         ObjectType.series: SERIES_TYPE,
         ObjectType.index: INDEX_TYPE,
         ObjectType.scalar: TENSOR_TYPE,
+        ObjectType.tensor: TENSOR_TYPE,
         ObjectType.dataframe_groupby: DATAFRAME_GROUPBY_TYPE,
         ObjectType.series_groupby: SERIES_GROUPBY_TYPE,
+        ObjectType.categorical: CATEGORICAL_TYPE,
     }
 
     @classmethod
@@ -148,6 +156,20 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
         return self.new_scalars(inputs, dtype=dtype, **kw)[0]
 
+    def new_categoricals(self, inputs, shape=None, dtype=None, categories_value=None,
+                         chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
+        return self.new_tileables(inputs, shape=shape, dtype=dtype,
+                                  categories_value=categories_value, chunks=chunks,
+                                  nsplits=nsplits, output_limit=output_limit,
+                                  kws=kws, **kw)
+
+    def new_categorical(self, inputs, shape=None, dtype=None, categories_value=None, **kw):
+        if getattr(self, 'output_limit') != 1:
+            raise TypeError('cannot new Categorical with more than 1 outputs')
+
+        return self.new_categoricals(inputs, shape=shape, dtype=dtype,
+                                     categories_value=categories_value, **kw)[0]
+
     @classmethod
     def concat_tileable_chunks(cls, tileable):
         from .merge.concat import DataFrameConcat, GroupByConcat
@@ -189,6 +211,16 @@ class DataFrameOperandMixin(TileableOperandMixin):
                                   object_type=ObjectType.series).new_chunk(df.chunks)
             return GroupByConcat(groupby_params=df.op.groupby_params,
                                  object_type=ObjectType.series).new_dataframe([df], chunks=[chunk])
+        elif isinstance(df, CATEGORICAL_TYPE):
+            chunk = DataFrameConcat(object_type=ObjectType.categorical).new_chunk(
+                df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
+                categories_value=df.categories_value)
+            return DataFrameConcat(object_type=ObjectType.categorical).new_categorical(
+                [df], shape=df.shape, chunks=[chunk],
+                nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
+                categories_value=df.categories_value)
+        elif isinstance(df, TENSOR_TYPE):
+            return TensorOperandMixin.concat_tileable_chunks(tileable)
         else:
             raise NotImplementedError
 
@@ -269,9 +301,22 @@ class DataFrameOperandMixin(TileableOperandMixin):
         return DataFrameFuseChunk
 
 
+def on_serialize_object_type(object_type):
+    if hasattr(object_type, 'value'):
+        return object_type.value
+    # otherwise, multiple object types
+    return tuple(ot.value for ot in object_type)
+
+
+def on_deserialize_object_type(object_type):
+    if isinstance(object_type, tuple):
+        return tuple(ObjectType(v) for v in object_type)
+    return ObjectType(object_type)
+
+
 class DataFrameOperand(Operand):
-    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
-                             on_deserialize=ObjectType)
+    _object_type = AnyField('object_type', on_serialize=on_serialize_object_type,
+                             on_deserialize=on_deserialize_object_type)
 
     @property
     def object_type(self):

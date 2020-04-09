@@ -19,7 +19,8 @@ import pandas as pd
 from collections import OrderedDict
 
 from mars.config import options
-from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index
+from mars.context import LocalContext
+from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
@@ -891,3 +892,127 @@ class Test(TestBase):
         r.dropna(inplace=True)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                        series_raw.dropna())
+
+    def testCutExecution(self):
+        rs = np.random.RandomState(0)
+        raw = rs.random(15) * 1000
+        s = pd.Series(raw, index=['i{}'.format(i) for i in range(15)])
+        bins = [10, 100, 500]
+        ii = pd.interval_range(10, 500, 3)
+        labels = ['a', 'b']
+
+        t = tensor(raw, chunk_size=4)
+        series = from_pandas_series(s, chunk_size=4)
+        iii = from_pandas_index(ii, chunk_size=2)
+
+        # cut on Series
+        r = cut(series, bins)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_series_equal(result, pd.cut(s, bins))
+
+        r, b = cut(series, bins, retbins=True)
+        r_result = self.executor.execute_dataframe(r, concat=True)[0]
+        b_result = self.executor.execute_tensor(b, concat=True)[0]
+        r_expected, b_expected = pd.cut(s, bins, retbins=True)
+        pd.testing.assert_series_equal(r_result, r_expected)
+        np.testing.assert_array_equal(b_result, b_expected)
+
+        # cut on tensor
+        r = cut(t, bins)
+        # result and expected is array whose dtype is CategoricalDtype
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = pd.cut(raw, bins)
+        self.assertEqual(len(result), len(expected))
+        for r, e in zip(result, expected):
+            np.testing.assert_equal(r, e)
+
+        # one chunk
+        r = cut(s, tensor(bins, chunk_size=2), right=False, include_lowest=True)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_series_equal(result, pd.cut(s, bins, right=False, include_lowest=True))
+
+        # test labels
+        r = cut(t, bins, labels=labels)
+        # result and expected is array whose dtype is CategoricalDtype
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = pd.cut(raw, bins, labels=labels)
+        self.assertEqual(len(result), len(expected))
+        for r, e in zip(result, expected):
+            np.testing.assert_equal(r, e)
+
+        r = cut(t, bins, labels=False)
+        # result and expected is array whose dtype is CategoricalDtype
+        result = self.executor.execute_tensor(r, concat=True)[0]
+        expected = pd.cut(raw, bins, labels=False)
+        np.testing.assert_array_equal(result, expected)
+
+        # test labels which is tensor
+        labels_t = tensor(['a', 'b'], chunk_size=1)
+        r = cut(raw, bins, labels=labels_t, include_lowest=True)
+        # result and expected is array whose dtype is CategoricalDtype
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = pd.cut(raw, bins, labels=labels, include_lowest=True)
+        self.assertEqual(len(result), len(expected))
+        for r, e in zip(result, expected):
+            np.testing.assert_equal(r, e)
+
+        # test labels=False
+        r, b = cut(raw, ii, labels=False, retbins=True)
+        # result and expected is array whose dtype is CategoricalDtype
+        r_result = self.executor.execute_tileable(r, concat=True)[0]
+        b_result = self.executor.execute_tileable(b, concat=True)[0]
+        r_expected, b_expected = pd.cut(raw, ii, labels=False, retbins=True)
+        for r, e in zip(r_result, r_expected):
+            np.testing.assert_equal(r, e)
+        pd.testing.assert_index_equal(b_result, b_expected)
+
+        # test bins which is md.IntervalIndex
+        r, b = cut(series, iii, labels=tensor(labels, chunk_size=1), retbins=True)
+        r_result = self.executor.execute_dataframe(r, concat=True)[0]
+        b_result = self.executor.execute_dataframe(b, concat=True)[0]
+        r_expected, b_expected = pd.cut(s, ii, labels=labels, retbins=True)
+        pd.testing.assert_series_equal(r_result, r_expected)
+        pd.testing.assert_index_equal(b_result, b_expected)
+
+        # test duplicates
+        bins2 = [0, 2, 4, 6, 10, 10]
+        r, b = cut(s, bins2, labels=False, retbins=True,
+                   right=False, duplicates='drop')
+        r_result = self.executor.execute_dataframe(r, concat=True)[0]
+        b_result = self.executor.execute_tensor(b, concat=True)[0]
+        r_expected, b_expected = pd.cut(s, bins2, labels=False, retbins=True,
+                                        right=False, duplicates='drop')
+        pd.testing.assert_series_equal(r_result, r_expected)
+        np.testing.assert_array_equal(b_result, b_expected)
+
+        this = self
+
+        class MockSession:
+            def __init__(self):
+                self.executor = this.executor
+
+        ctx = LocalContext(MockSession())
+        executor = ExecutorForTest('numpy', storage=ctx)
+        with ctx:
+            # test integer bins
+            r = cut(series, 3)
+            result = executor.execute_dataframes([r])[0]
+            pd.testing.assert_series_equal(result, pd.cut(s, 3))
+
+            r, b = cut(series, 3, right=False, retbins=True)
+            r_result, b_result = executor.execute_dataframes([r, b])
+            r_expected, b_expected = pd.cut(s, 3, right=False, retbins=True)
+            pd.testing.assert_series_equal(r_result, r_expected)
+            np.testing.assert_array_equal(b_result, b_expected)
+
+            # test min max same
+            s2 = pd.Series([1.1] * 15)
+            r = cut(s2, 3)
+            result = executor.execute_dataframes([r])[0]
+            pd.testing.assert_series_equal(result, pd.cut(s2, 3))
+
+            # test inf exist
+            s3 = s2.copy()
+            s3[-1] = np.inf
+            with self.assertRaises(ValueError):
+                executor.execute_dataframes([cut(s3, 3)])

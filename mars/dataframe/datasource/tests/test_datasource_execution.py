@@ -110,6 +110,11 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(series, concat=True)[0]
         pd.testing.assert_series_equal(ps, result)
 
+        pi = pd.IntervalIndex.from_tuples([(0, 1), (2, 3), (4, 5)])
+        index = md.Index(md.Index(pi))
+        result = self.executor.execute_dataframe(index, concat=True)[0]
+        pd.testing.assert_index_equal(pi, result)
+
     def testSeriesFromTensor(self):
         data = np.random.rand(10)
         series = md.Series(mt.tensor(data), name='a')

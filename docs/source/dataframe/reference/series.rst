@@ -128,6 +128,7 @@ Missing data handling
 
    Series.isna
    Series.notna
+   Series.dropna
    Series.fillna
 
 Reshaping, sorting
