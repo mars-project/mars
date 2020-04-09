@@ -42,7 +42,7 @@ class TestReduction(TestBase):
         return getattr(data, self.func_name)(**kwargs)
 
     def testSeriesReduction(self):
-        data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
+        data = pd.Series(np.random.randint(0, 8, (10,)), index=[str(i) for i in range(10)], name='a')
         reduction_df1 = self.compute(from_pandas_series(data))
         self.assertEqual(
             self.compute(data), self.executor.execute_dataframe(reduction_df1, concat=True)[0])
@@ -228,6 +228,75 @@ class TestCount(TestBase):
 
         result = self.executor.execute_dataframe(df3.count(axis='columns', numeric_only=True), concat=True)[0]
         expected = data.count(axis='columns', numeric_only=True)
+        pd.testing.assert_series_equal(result, expected)
+
+    def testNunique(self):
+        data1 = pd.Series(np.random.randint(0, 5, size=(20,)))
+
+        series = from_pandas_series(data1)
+        result = self.executor.execute_dataframe(series.nunique(), concat=True)[0]
+        expected = data1.nunique()
+        self.assertEqual(result, expected)
+
+        series = from_pandas_series(data1, chunk_size=6)
+        result = self.executor.execute_dataframe(series.nunique(), concat=True)[0]
+        expected = data1.nunique()
+        self.assertEqual(result, expected)
+
+        # test dropna
+        data2 = data1.copy()
+        data2[[2, 9, 18]] = np.nan
+
+        series = from_pandas_series(data2)
+        result = self.executor.execute_dataframe(series.nunique(), concat=True)[0]
+        expected = data2.nunique()
+        self.assertEqual(result, expected)
+
+        series = from_pandas_series(data2, chunk_size=3)
+        result = self.executor.execute_dataframe(series.nunique(dropna=False), concat=True)[0]
+        expected = data2.nunique(dropna=False)
+        self.assertEqual(result, expected)
+
+        # test dataframe
+        data1 = pd.DataFrame(np.random.randint(0, 6, size=(20, 20)),
+                             columns=['c' + str(i) for i in range(20)])
+        df = from_pandas_df(data1)
+        result = self.executor.execute_dataframe(df.nunique(), concat=True)[0]
+        expected = data1.nunique()
+        pd.testing.assert_series_equal(result, expected)
+
+        df = from_pandas_df(data1, chunk_size=6)
+        result = self.executor.execute_dataframe(df.nunique(), concat=True)[0]
+        expected = data1.nunique()
+        pd.testing.assert_series_equal(result, expected)
+
+        df = from_pandas_df(data1)
+        result = self.executor.execute_dataframe(df.nunique(axis=1), concat=True)[0]
+        expected = data1.nunique(axis=1)
+        pd.testing.assert_series_equal(result, expected)
+
+        df = from_pandas_df(data1, chunk_size=3)
+        result = self.executor.execute_dataframe(df.nunique(axis=1), concat=True)[0]
+        expected = data1.nunique(axis=1)
+        pd.testing.assert_series_equal(result, expected)
+
+        # test dropna
+        data2 = data1.copy()
+        data2.iloc[[2, 9, 18], [2, 9, 18]] = np.nan
+
+        df = from_pandas_df(data2)
+        result = self.executor.execute_dataframe(df.nunique(), concat=True)[0]
+        expected = data2.nunique()
+        pd.testing.assert_series_equal(result, expected)
+
+        df = from_pandas_df(data2, chunk_size=3)
+        result = self.executor.execute_dataframe(df.nunique(dropna=False), concat=True)[0]
+        expected = data2.nunique(dropna=False)
+        pd.testing.assert_series_equal(result, expected)
+
+        df = from_pandas_df(data1, chunk_size=3)
+        result = self.executor.execute_dataframe(df.nunique(axis=1), concat=True)[0]
+        expected = data1.nunique(axis=1)
         pd.testing.assert_series_equal(result, expected)
 
 

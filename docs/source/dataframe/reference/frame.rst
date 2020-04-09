@@ -113,6 +113,7 @@ Computations / descriptive stats
    DataFrame.sum
    DataFrame.std
    DataFrame.var
+   DataFrame.nunique
 
 Reindexing / selection / label manipulation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -22,7 +22,7 @@ from ...serialize import AnyField, BoolField, StringField, TupleField, KeyField,
 from ...utils import get_shuffle_input_keys_idxes
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
     DataFrameMapReduceOperand, DataFrameShuffleProxy
-from ..utils import build_concatenated_rows_frame, build_empty_df, parse_index, hash_dataframe_on, \
+from ..utils import build_concatenated_rows_frame, build_df, parse_index, hash_dataframe_on, \
     infer_index_value
 
 import logging
@@ -173,35 +173,8 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
     def validate(self):
         return self._validate
 
-    @staticmethod
-    def _make_value(dtype):
-        # special handle for datetime64 and timedelta64
-        dispatch = {
-            np.datetime64: pd.Timestamp,
-            np.timedelta64: pd.Timedelta,
-        }
-        # otherwise, just use dtype.type itself to convert
-        convert = dispatch.get(dtype.type, dtype.type)
-        return convert(1)
-
-    @staticmethod
-    def _make_data(obj):
-        empty_df = build_empty_df(obj.dtypes, index=obj.index_value.to_pandas()[:0])
-        dtypes = empty_df.dtypes
-        record = [_DataFrameMergeBase._make_value(dtype) for dtype in empty_df.dtypes]
-        if isinstance(empty_df.index, pd.MultiIndex):
-            index = tuple(_DataFrameMergeBase._make_value(level.dtype)
-                          for level in empty_df.index.levels)
-            empty_df.loc[index,] = record
-        else:
-            index = _DataFrameMergeBase._make_value(empty_df.index.dtype)
-            empty_df.loc[index] = record
-        # make sure dtypes correct for MultiIndex
-        empty_df = empty_df.astype(dtypes, copy=False)
-        return empty_df
-
     def __call__(self, left, right):
-        empty_left, empty_right = self._make_data(left), self._make_data(right)
+        empty_left, empty_right = build_df(left), build_df(right)
         # this `merge` will check whether the combination of those arguments is valid
         merged = empty_left.merge(empty_right, how=self.how, on=self.on,
                                   left_on=self.left_on, right_on=self.right_on,

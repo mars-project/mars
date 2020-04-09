@@ -393,6 +393,17 @@ def build_split_idx_to_origin_idx(splits, increase=True):
     return res
 
 
+def _generate_value(dtype, fill_value):
+    # special handle for datetime64 and timedelta64
+    dispatch = {
+        np.datetime64: pd.Timestamp,
+        np.timedelta64: pd.Timedelta,
+    }
+    # otherwise, just use dtype.type itself to convert
+    convert = dispatch.get(dtype.type, dtype.type)
+    return convert(fill_value)
+
+
 def build_empty_df(dtypes, index=None):
     columns = dtypes.index
     df = pd.DataFrame(columns=columns, index=index)
@@ -401,8 +412,41 @@ def build_empty_df(dtypes, index=None):
     return df
 
 
+def build_df(df_obj, fill_value=1, size=1):
+    empty_df = build_empty_df(df_obj.dtypes, index=df_obj.index_value.to_pandas()[:0])
+    dtypes = empty_df.dtypes
+    record = [_generate_value(dtype, fill_value) for dtype in empty_df.dtypes]
+    if isinstance(empty_df.index, pd.MultiIndex):
+        index = tuple(_generate_value(level.dtype, fill_value) for level in empty_df.index.levels)
+        empty_df.loc[index, ] = record
+    else:
+        index = _generate_value(empty_df.index.dtype, fill_value)
+        empty_df.loc[index] = record
+
+    empty_df = pd.concat([empty_df] * size)
+    # make sure dtypes correct for MultiIndex
+    empty_df = empty_df.astype(dtypes, copy=False)
+    return empty_df
+
+
 def build_empty_series(dtype, index=None, name=None):
     return pd.Series(dtype=dtype, index=index, name=name)
+
+
+def build_series(series_obj, fill_value=1, size=1):
+    empty_series = build_empty_series(series_obj.dtype, index=series_obj.index_value.to_pandas()[:0])
+    record = _generate_value(series_obj.dtype, fill_value)
+    if isinstance(empty_series.index, pd.MultiIndex):
+        index = tuple(_generate_value(level.dtype, fill_value) for level in empty_series.index.levels)
+        empty_series.loc[index, ] = record
+    else:
+        index = _generate_value(empty_series.index.dtype, fill_value)
+        empty_series.loc[index] = record
+
+    empty_series = pd.concat([empty_series] * size)
+    # make sure dtype correct for MultiIndex
+    empty_series = empty_series.astype(series_obj.dtype, copy=False)
+    return empty_series
 
 
 def concat_index_value(index_values, store_data=False):

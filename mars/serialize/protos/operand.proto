@@ -344,6 +344,7 @@ message OperandDef {
         TRANSFORM = 718;
         CHECK_NA = 719;
         DROP_NA = 720;
+        NUNIQUE = 721;
 
         FUSE = 801;
 

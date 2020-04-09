@@ -1,6 +1,6 @@
-mars.dataframe.DataFrame.iloc
+mars.dataframe.Series.nunique
 =============================
 
 .. currentmodule:: mars.dataframe
 
-.. autoattribute:: DataFrame.iloc
+.. automethod:: Series.nunique
