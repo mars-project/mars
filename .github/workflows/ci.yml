@@ -68,6 +68,7 @@ jobs:
             if [[ $UNAME == "linux" ]]; then
               pip install h5py
               pip install zarr
+              pip install matplotlib
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true

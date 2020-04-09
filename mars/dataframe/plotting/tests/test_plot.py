@@ -27,7 +27,7 @@ from mars import tensor as mt
 from mars import dataframe as md
 
 
-def close(fignum=None):
+def close(fignum=None):  # pragma: no cover
     from matplotlib.pyplot import get_fignums, close as _close
 
     if fignum is None:
@@ -37,26 +37,26 @@ def close(fignum=None):
         _close(fignum)
 
 
-def assert_is_valid_plot_return_object(objs):
+def assert_is_valid_plot_return_object(objs):  # pragma: no cover
     import matplotlib.pyplot as plt
 
     if isinstance(objs, (pd.Series, np.ndarray)):
         for el in objs.ravel():
             msg = (
                 "one of 'objs' is not a matplotlib Axes instance, "
-                f"type encountered {repr(type(el).__name__)}"
+                "type encountered {}".format(repr(type(el).__name__))
             )
             assert isinstance(el, (plt.Axes, dict)), msg
     else:
         msg = (
             "objs is neither an ndarray of Artist instances nor a single "
-            "ArtistArtist instance, tuple, or dict, 'objs' is a "
-            f"{repr(type(objs).__name__)}"
+            "ArtistArtist instance, tuple, or dict, 'objs' is a {}".format(
+                repr(type(objs).__name__))
         )
         assert isinstance(objs, (plt.Artist, tuple, dict)), msg
 
 
-def _check_plot_works(f, filterwarnings="always", **kwargs):
+def _check_plot_works(f, filterwarnings="always", **kwargs):  # pragma: no cover
     import matplotlib.pyplot as plt
 
     ret = None
