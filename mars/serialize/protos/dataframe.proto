@@ -99,7 +99,7 @@ message DataFrameGroupByChunkDef {
     IndexValue columns_value = 12;
     Value extra_params = 8;
     string id = 9;
-    Value key_columns = 13;
+    Value key_dtypes = 13;
     Value selection = 14;
 }
 
@@ -115,7 +115,7 @@ message DataFrameGroupByDef {
     string id = 8;
     IndexValue index_value = 9;
     IndexValue columns_value = 10;
-    Value key_columns = 11;
+    Value key_dtypes = 11;
     Value selection = 12;
 }
 
@@ -131,7 +131,7 @@ message SeriesGroupByChunkDef {
     Value extra_params = 8;
     string id = 9;
     Value name = 10;
-    Value key_columns = 12;
+    Value key_dtypes = 12;
 }
 
 
@@ -146,7 +146,7 @@ message SeriesGroupByDef {
     string id = 8;
     Value name = 9;
     IndexValue index_value = 10;
-    Value key_columns = 11;
+    Value key_dtypes = 11;
 }
 
 

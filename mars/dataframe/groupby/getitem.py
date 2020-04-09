@@ -19,6 +19,7 @@ from pandas.core import groupby as pd_groupby
 from ... import opcodes
 from ...serialize import AnyField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..utils import parse_index
 
 
 class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
@@ -51,7 +52,8 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
             self._object_type = ObjectType.series_groupby
             params = dict(shape=(groupby.shape[0],), name=self.selection,
                           dtype=groupby.dtypes[self.selection],
-                          index_value=groupby.index_value)
+                          index_value=groupby.index_value,
+                          key_dtypes=groupby.key_dtypes)
         else:
             self._object_type = ObjectType.dataframe_groupby
 
@@ -59,13 +61,12 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
                 item_list = list(self.selection)
             else:
                 item_list = [self.selection]
-            item_set = set(item_list)
-
-            extra_keys = [k for k in groupby.key_columns or () if k not in item_set]
 
             params = groupby.params.copy()
-            params['dtypes'] = groupby.dtypes[item_list + extra_keys]
+            params['dtypes'] = new_dtypes = groupby.dtypes[item_list]
             params['selection'] = self.selection
+            params['shape'] = (groupby.shape[0], len(item_list))
+            params['columns_value'] = parse_index(new_dtypes.index, store_data=True)
 
         return self.new_tileable([groupby], **params)
 
@@ -79,18 +80,21 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
             if op.object_type == ObjectType.series_groupby:
                 params = dict(shape=(c.shape[0],), name=op.selection,
                               index=(c.index[0],), dtype=c.dtypes[op.selection],
-                              index_value=c.index_value)
+                              index_value=c.index_value, key_dtypes=c.key_dtypes)
             else:
                 params = c.params.copy()
                 params['dtypes'] = out_groupby.dtypes
                 params['selection'] = op.selection
+                params['shape'] = (c.shape[0], len(op.selection))
 
             new_op = op.copy().reset_key()
             chunks.append(new_op.new_chunk([c], **params))
 
         new_op = op.copy().reset_key()
         params = out_groupby.params.copy()
-        params.update(dict(chunks=chunks, nsplits=in_groupby.nsplits))
+        new_nsplits = (in_groupby.nsplits[0], (len(op.selection),)) if out_groupby.ndim == 2 \
+            else (in_groupby.nsplits[0],)
+        params.update(dict(chunks=chunks, nsplits=new_nsplits))
         return new_op.new_tileables([in_groupby], **params)
 
     @classmethod
@@ -112,6 +116,9 @@ def df_groupby_getitem(df_groupby, item):
         object_type = ObjectType.dataframe_groupby
     else:
         raise NameError('Cannot slice groupby with %r' % item)
+
+    if df_groupby.selection:
+        raise IndexError('Column(s) %r already selected' % df_groupby.selection)
 
     op = GroupByIndex(selection=item, object_type=object_type)
     return op(df_groupby)

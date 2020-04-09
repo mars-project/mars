@@ -113,8 +113,9 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
 
             new_op = op.copy().reset_key()
             if op.object_type == ObjectType.dataframe:
+                new_index = c.index if c.ndim == 2 else c.index + (0,)
                 chunks.append(new_op.new_chunk(
-                    inp_chunks, index=c.index, shape=(np.nan, len(out_df.dtypes)), dtypes=out_df.dtypes,
+                    inp_chunks, index=new_index, shape=(np.nan, len(out_df.dtypes)), dtypes=out_df.dtypes,
                     columns_value=out_df.columns_value, index_value=out_df.index_value))
             else:
                 chunks.append(new_op.new_chunk(

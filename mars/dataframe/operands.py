@@ -203,14 +203,18 @@ class DataFrameOperandMixin(TileableOperandMixin):
                 index_value=df.index_value, name=df.name)
         elif isinstance(df, DATAFRAME_GROUPBY_TYPE):
             chunk = GroupByConcat(groupby_params=df.op.groupby_params,
-                                  object_type=ObjectType.dataframe).new_chunk(df.chunks)
+                                  object_type=ObjectType.dataframe_groupby).new_chunk(
+                df.chunks, **df.params)
             return GroupByConcat(groupby_params=df.op.groupby_params,
-                                 object_type=ObjectType.dataframe).new_dataframe([df], chunks=[chunk])
+                                 object_type=ObjectType.dataframe_groupby).new_dataframe(
+                [df], chunks=[chunk], **df.params)
         elif isinstance(df, SERIES_GROUPBY_TYPE):
             chunk = GroupByConcat(groupby_params=df.op.groupby_params,
-                                  object_type=ObjectType.series).new_chunk(df.chunks)
+                                  object_type=ObjectType.series_groupby).new_chunk(
+                df.chunks, **df.params)
             return GroupByConcat(groupby_params=df.op.groupby_params,
-                                 object_type=ObjectType.series).new_dataframe([df], chunks=[chunk])
+                                 object_type=ObjectType.series_groupby).new_dataframe(
+                [df], chunks=[chunk], **df.params)
         elif isinstance(df, CATEGORICAL_TYPE):
             chunk = DataFrameConcat(object_type=ObjectType.categorical).new_chunk(
                 df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,

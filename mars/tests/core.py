@@ -439,10 +439,6 @@ class MarsObjectCheckMixin:
 
     @classmethod
     def assert_dataframe_consistent(cls, expected, real):
-        # fixme with ISSUE:1036
-        if 'GroupBy' in type(real).__name__:
-            return
-
         if not isinstance(real, pd.DataFrame):
             raise AssertionError('Type of real value (%r) not DataFrame' % type(real))
         cls.assert_shape_consistent(expected.shape, real.shape)
@@ -462,10 +458,6 @@ class MarsObjectCheckMixin:
 
     @classmethod
     def assert_series_consistent(cls, expected, real):
-        # fixme with ISSUE:1036
-        if 'GroupBy' in type(real).__name__:
-            return
-
         if not isinstance(real, pd.Series):
             raise AssertionError('Type of real value (%r) not Series' % type(real))
         cls.assert_shape_consistent(expected.shape, real.shape)
@@ -488,6 +480,8 @@ class MarsObjectCheckMixin:
             selection = getattr(real, '_selection', None)
             if not selection:
                 cls.assert_dataframe_consistent(expected, real.obj)
+            else:
+                cls.assert_dataframe_consistent(expected, real.obj[selection])
         elif isinstance(expected, (SERIES_GROUPBY_TYPE, SERIES_GROUPBY_CHUNK_TYPE)) \
                 and isinstance(real, SeriesGroupBy):
             cls.assert_series_consistent(expected, real.obj)
@@ -594,13 +588,11 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
 
     def execute_tileable(self, tileable, *args, **kwargs):
         from mars.core import OBJECT_TYPE
-        from mars.dataframe.core import GROUPBY_TYPE
         self._extract_check_options(kwargs)
 
         result = super().execute_tileable(tileable, *args, **kwargs)
 
-        # fixme with ISSUE:1036
-        if not isinstance(tileable, (GROUPBY_TYPE, OBJECT_TYPE)):
+        if not isinstance(tileable, OBJECT_TYPE):
             if _check_options['check_nsplits']:
                 self._check_nsplits(tileable)
 
