@@ -3,4 +3,4 @@ mars.tensor.random.standard\_exponential
 
 .. currentmodule:: mars.tensor.random
 
-.. autodata:: standard_exponential
+.. autofunction:: standard_exponential

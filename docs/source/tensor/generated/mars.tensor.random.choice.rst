@@ -3,4 +3,4 @@ mars.tensor.random.choice
 
 .. currentmodule:: mars.tensor.random
 
-.. autodata:: choice
+.. autofunction:: choice

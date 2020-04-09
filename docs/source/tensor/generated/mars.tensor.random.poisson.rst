@@ -3,4 +3,4 @@ mars.tensor.random.poisson
 
 .. currentmodule:: mars.tensor.random
 
-.. autodata:: poisson
+.. autofunction:: poisson

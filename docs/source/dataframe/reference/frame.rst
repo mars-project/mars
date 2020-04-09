@@ -157,18 +157,6 @@ Time series-related
 .. autosummary::
    :toctree: api/
 
-.. _api.frame.metadata:
-
-Metadata
-~~~~~~~~
-
-:attr:`DataFrame.attrs` is a dictionary for storing global metadata for this DataFrame.
-
-.. warning:: ``DataFrame.attrs`` is considered experimental and may change without warning.
-
-.. autosummary::
-   :toctree: api/
-
 
 .. _api.dataframe.plotting:
 
@@ -180,11 +168,28 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
 .. autosummary::
    :toctree: api/
 
-.. autosummary::
-   :toctree: api/
+   DataFrame.plot
 
 .. autosummary::
    :toctree: api/
+
+   DataFrame.plot.area
+   DataFrame.plot.bar
+   DataFrame.plot.barh
+   DataFrame.plot.box
+   DataFrame.plot.density
+   DataFrame.plot.hexbin
+   DataFrame.plot.hist
+   DataFrame.plot.kde
+   DataFrame.plot.line
+   DataFrame.plot.pie
+   DataFrame.plot.scatter
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.boxplot
+   DataFrame.hist
 
 Serialization / IO / conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

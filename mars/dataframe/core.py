@@ -612,7 +612,7 @@ class SeriesData(BaseSeriesData):
 
 
 class Series(HasShapeTileableEnity):
-    __slots__ = '_cache', '_accessors'
+    __slots__ = '_cache',
     _allow_data_type_ = (SeriesData,)
 
     def to_tensor(self, dtype=None):
@@ -750,7 +750,7 @@ class DataFrameChunk(Chunk):
 
 
 class BaseDataFrameData(HasShapeTileableData):
-    __slots__ = ()
+    __slots__ = '_accessors',
     _type_name = None
 
     # optional fields
@@ -766,6 +766,7 @@ class BaseDataFrameData(HasShapeTileableData):
         super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtypes=dtypes,
                          _index_value=index_value, _columns_value=columns_value,
                          _chunks=chunks, **kw)
+        self._accessors = dict()
 
     def __str__(self):
         if is_eager_mode():

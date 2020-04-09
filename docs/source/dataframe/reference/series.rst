@@ -332,3 +332,32 @@ strings and apply several methods to it. These can be accessed like
 
        Series.str
        Series.dt
+
+
+Plotting
+--------
+``Series.plot`` is both a callable method and a namespace attribute for
+specific plotting methods of the form ``Series.plot.<kind>``.
+
+.. autosummary::
+   :toctree: api/
+
+   Series.plot
+
+.. autosummary::
+   :toctree: api/
+
+   Series.plot.area
+   Series.plot.bar
+   Series.plot.barh
+   Series.plot.box
+   Series.plot.density
+   Series.plot.hist
+   Series.plot.kde
+   Series.plot.line
+   Series.plot.pie
+
+.. autosummary::
+   :toctree: api/
+
+   Series.hist
