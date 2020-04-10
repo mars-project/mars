@@ -149,8 +149,10 @@ class Test(unittest.TestCase):
             return np.add(a, b)
         self.assertEqual(utils.tokenize(f), utils.tokenize(copy.deepcopy(f)))
 
-        partial_f = partial(f, 1)
+        partial_f = partial(f, 1, k=0)
+        partial_f2 = partial(f, 1, k=1)
         self.assertEqual(utils.tokenize(partial_f), utils.tokenize(copy.deepcopy(partial_f)))
+        self.assertNotEqual(utils.tokenize(partial_f), utils.tokenize(partial_f2))
 
     def testBuildTileableGraph(self):
         a = mt.ones((10, 10), chunk_size=8)

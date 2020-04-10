@@ -116,7 +116,7 @@ cdef inline list iterative_tokenize(object ob):
         elif isinstance(x, set):
             dq.extend(sorted(x))
         elif isinstance(x, dict):
-            dq.extend(sorted(list(x.items())))
+            dq.extend(sorted(x.items()))
         else:
             h_list.append(tokenize_handler.tokenize(x))
     return h_list
@@ -212,7 +212,7 @@ cdef list tokenize_pandas_interval_arrays(ob):
 def tokenize_function(ob):
     if isinstance(ob, partial):
         args = iterative_tokenize(ob.args)
-        keywords = iterative_tokenize(ob.keywords) if ob.keywords else None
+        keywords = iterative_tokenize(ob.keywords.items()) if ob.keywords else None
         return tokenize_function(ob.func), args, keywords
     else:
         try:
@@ -244,7 +244,7 @@ for t in (list, tuple, dict, set):
     tokenize_handler.register(t, iterative_tokenize)
 
 tokenize_handler.register(np.ndarray, tokenize_numpy)
-tokenize_handler.register(dict, lambda ob: iterative_tokenize(sorted(list(ob.items()))))
+tokenize_handler.register(dict, lambda ob: iterative_tokenize(sorted(ob.items())))
 tokenize_handler.register(set, lambda ob: iterative_tokenize(sorted(ob)))
 tokenize_handler.register(np.random.RandomState, lambda ob: iterative_tokenize(ob.get_state()))
 tokenize_handler.register(Enum, lambda ob: iterative_tokenize((type(ob), ob.name)))
