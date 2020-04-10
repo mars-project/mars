@@ -838,7 +838,7 @@ class Executor(object):
                     delattr(chunk_graph_builder, '_prev_tileable_graph')
                     break
                 else:
-                    executed_keys.update(temp_result_keys)
+                    executed_keys = set(chunk_result)
                     intermediate_result_keys.update(temp_result_keys)
                     # add the node that failed
                     to_run_tileables = list(itertools.chain(

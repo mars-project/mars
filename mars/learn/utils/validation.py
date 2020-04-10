@@ -19,18 +19,23 @@ import numpy as np
 from numpy.core.numeric import ComplexWarning
 try:
     from sklearn.utils.validation import check_is_fitted
-except ImportError:  # pragma: no cover:
+    from sklearn.exceptions import DataConversionWarning
+except ImportError:  # pragma: no cover
     check_is_fitted = None
+    DataConversionWarning = UserWarning
 
 from ... import tensor as mt
 from ...lib.sparse import issparse
 from ...tensor import Tensor
-from .checks import check_non_negative_then_return_value
+from .checks import check_non_negative_then_return_value, \
+    assert_all_finite, AssertAllFinite
 
 
 # ---------------------------------------------------------
 # Original implementation is in `sklearn.utils.validation`.
 # ---------------------------------------------------------
+
+assert_all_finite = _assert_all_finite = assert_all_finite
 
 
 def _num_samples(x):
@@ -47,7 +52,9 @@ def _num_samples(x):
                             type(x))
     if hasattr(x, 'shape'):
         if len(x.shape) == 0:
-            if x.op.data is not None:
+            if isinstance(x.op, AssertAllFinite):
+                x = x.op.x
+            if hasattr(x.op, 'data') and x.op.data is not None:
                 x = np.asarray(x.op.data)
             raise TypeError("Singleton array %r cannot be considered"
                             " a valid collection." % x)
@@ -60,6 +67,24 @@ def _num_samples(x):
             return len(x)
     else:
         return len(x)
+
+
+def check_consistent_length(*arrays):
+    """Check that all arrays have consistent first dimensions.
+
+    Checks whether all objects in arrays have the same shape or length.
+
+    Parameters
+    ----------
+    *arrays : list or tuple of input objects.
+        Objects that will be checked for consistent length.
+    """
+
+    lengths = [_num_samples(X) for X in arrays if X is not None]
+    uniques = np.unique(lengths)
+    if len(uniques) > 1:
+        raise ValueError("Found input variables with inconsistent numbers of"
+                         " samples: %r" % [int(l) for l in lengths])
 
 
 def _ensure_no_complex_data(array):
@@ -149,15 +174,9 @@ def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
         # force copy
         spmatrix = spmatrix.copy()
 
-    # TODO(xuye.qin): add check when we have sort of time dependency
-    # then all the fit computation will come after the check
-    # if force_all_finite:
-    #     if not hasattr(spmatrix, "data"):
-    #         warnings.warn("Can't check %s sparse matrix for nan or inf."
-    #                       % spmatrix.format)
-    #     else:
-    #         _assert_all_finite(spmatrix.data,
-    #                            allow_nan=force_all_finite == 'allow-nan')
+    if force_all_finite:
+        spmatrix = assert_all_finite(
+            spmatrix, allow_nan=force_all_finite == 'allow-nan', check_only=False)
 
     return spmatrix
 
@@ -341,11 +360,9 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
         if not allow_nd and array.ndim >= 3:
             raise ValueError("Found array with dim %d. %s expected <= 2."
                              % (array.ndim, estimator_name))
-        # TODO(xuye.qin): add check when we have sort of time dependency
-        # then all the fit computation will come after the check
-        # if force_all_finite:
-        #     _assert_all_finite(array,
-        #                        allow_nan=force_all_finite == 'allow-nan')
+        if force_all_finite:
+            array = _assert_all_finite(
+                array, allow_nan=force_all_finite == 'allow-nan', check_only=False)
 
     if ensure_min_samples > 0:
         n_samples = _num_samples(array)
@@ -382,6 +399,36 @@ def check_non_negative(X, whom):
         Who passed X to this function.
     """
     return check_non_negative_then_return_value(X, X, whom)
+
+
+def column_or_1d(y, warn=False):
+    """ Ravel column or 1d numpy array, else raises an error
+
+    Parameters
+    ----------
+    y : array-like
+
+    warn : boolean, default False
+       To control display of warnings.
+
+    Returns
+    -------
+    y : array
+
+    """
+    y = mt.asarray(y)
+    shape = y.shape
+    if len(shape) == 1:
+        return mt.ravel(y)
+    if len(shape) == 2 and shape[1] == 1:
+        if warn:
+            warnings.warn("A column-vector y was passed when a 1d array was"
+                          " expected. Please change the shape of y to "
+                          "(n_samples, ), for example using ravel().",
+                          DataConversionWarning, stacklevel=2)
+        return mt.ravel(y)
+
+    raise ValueError("bad input shape {0}".format(shape))
 
 
 check_is_fitted = check_is_fitted

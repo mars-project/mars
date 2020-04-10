@@ -984,6 +984,13 @@ class Test(unittest.TestCase):
         res = np.sort(self.executor.execute_tensor(y, concat=True)[0])
         np.testing.assert_array_equal(res, np.array([0, 1]))
 
+        # test sparse
+        sparse_raw = sps.random(10, 3, density=0.1, format='csr', random_state=rs)
+        x = tensor(sparse_raw, chunk_size=2)
+        y = unique(x)
+        res = np.sort(self.executor.execute_tensor(y, concat=True)[0])
+        np.testing.assert_array_equal(res, np.unique(sparse_raw.data))
+
     @require_cupy
     def testToGPUExecution(self):
         raw = np.random.rand(10, 10)

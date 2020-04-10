@@ -15,6 +15,8 @@
 from itertools import product
 import unittest
 
+import numpy as np
+
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.tensor.core import Tensor
@@ -87,7 +89,8 @@ class Test(unittest.TestCase):
         copys = [True, False]
 
         for X, dtype, order, copy in product(Xs, dtypes, orders, copys):
-            X_checked = check_array(X, dtype=dtype, order=order, copy=copy)
+            X_checked = check_array(X, dtype=dtype, order=order, copy=copy,
+                                    force_all_finite=False)
             if dtype is not None:
                 self.assertEqual(X_checked.dtype, dtype)
             else:
@@ -106,44 +109,6 @@ class Test(unittest.TestCase):
                         X_checked.flags['C_CONTIGUOUS'] == X.flags['C_CONTIGUOUS']
                         and X_checked.flags['F_CONTIGUOUS'] == X.flags['F_CONTIGUOUS']):
                     assert X is X_checked
-
-        # # allowed sparse != None
-        # X_csc = sp.csc_matrix(X_C)
-        # X_coo = X_csc.tocoo()
-        # X_dok = X_csc.todok()
-        # X_int = X_csc.astype(mt.int)
-        # X_float = X_csc.astype(mt.float)
-        #
-        # Xs = [X_csc, X_coo, X_dok, X_int, X_float]
-        # accept_sparses = [['csr', 'coo'], ['coo', 'dok']]
-        # for X, dtype, accept_sparse, copy in product(Xs, dtypes, accept_sparses,
-        #                                              copys):
-        #     with warnings.catch_warnings(record=True) as w:
-        #         X_checked = check_array(X, dtype=dtype,
-        #                                 accept_sparse=accept_sparse, copy=copy)
-        #     if (dtype is object or sp.isspmatrix_dok(X)) and len(w):
-        #         message = str(w[0].message)
-        #         messages = ["object dtype is not supported by sparse matrices",
-        #                     "Can't check dok sparse matrix for nan or inf."]
-        #         assert message in messages
-        #     else:
-        #         self.assertEqual(len(w), 0)
-        #     if dtype is not None:
-        #         self.assertEqual(X_checked.dtype, dtype)
-        #     else:
-        #         self.assertEqual(X_checked.dtype, X.dtype)
-        #     if X.format in accept_sparse:
-        #         # no change if allowed
-        #         self.assertEqual(X.format, X_checked.format)
-        #     else:
-        #         # got converted
-        #         self.assertEqual(X_checked.format, accept_sparse[0])
-        #     if copy:
-        #         assert X is not X_checked
-        #     else:
-        #         # doesn't copy if it was already good
-        #         if X.dtype == X_checked.dtype and X.format == X_checked.format:
-        #             assert X is X_checked
 
         # other input formats
         # convert lists to arrays
@@ -170,6 +135,11 @@ class Test(unittest.TestCase):
         for X in [X_bytes, mt.array(X_bytes, dtype='V1')]:
             with pytest.warns(FutureWarning, match=expected_warn_regex):
                 check_array(X, dtype="numeric")
+
+        # test finite
+        X = [[1.0, np.nan], [2.0, 3.0]]
+        with self.assertRaises(ValueError):
+            _ = check_array(X).execute()
 
     def test_check_array_pandas_dtype_object_conversion(self):
         # test that data-frame like objects with dtype object

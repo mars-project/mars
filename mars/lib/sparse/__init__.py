@@ -706,6 +706,14 @@ def fill_diagonal(a, val, wrap=False):
     return _call_unary('fill_diagonal', a, val, wrap=wrap)
 
 
+def unique(a, return_index=False, return_inverse=False,
+           return_counts=False, axis=None):
+    return _call_unary('unique', a, return_index=return_index,
+                       return_inverse=return_inverse,
+                       return_counts=return_counts,
+                       axis=axis)
+
+
 def zeros(shape, dtype=float, gpu=False):
     if len(shape) == 2:
         from .matrix import zeros_sparse_matrix

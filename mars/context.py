@@ -23,7 +23,7 @@ from typing import List
 _context_factory = threading.local()
 
 
-def get_context():
+def get_context() -> "ContextBase":
     return getattr(_context_factory, 'current', None)
 
 

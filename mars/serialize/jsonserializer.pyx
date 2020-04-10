@@ -130,6 +130,10 @@ cdef class JsonSerializeProvider(Provider):
                      value['step'])
 
     cdef inline dict _serialize_arr(self, np.ndarray value):
+        # special case for np.unicode and np.bytes_
+        # cuz datadumps may fail due to pyarrow
+        if value.ndim == 0 and value.dtype.kind in ('U', 'S'):
+            value = value.astype(object)
         return {
             'type': _get_name(ValueType.arr),
             'value': self._to_str(base64.b64encode(datadumps(value)))
@@ -578,7 +582,7 @@ cdef class JsonSerializeProvider(Provider):
                 return
             try:
                 obj[tag] = self._serialize_value(val, field.type, weak_ref=field.weak_ref)
-            except TypeError:
+            except (TypeError, ValueError):
                 tp, err, tb = sys.exc_info()
                 raise tp('Fail to serialize field `{}` for {}, reason: {}'.format(
                     tag, model_instance, err)).with_traceback(tb) from err

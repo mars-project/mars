@@ -32,7 +32,7 @@ def convert_to_tensor_or_dataframe(item):
     return item
 
 
-def get_output_types(*objs):
+def get_output_types(*objs, unknown_as=None):
     output_types = []
     for obj in objs:
         if obj is None:
@@ -43,6 +43,8 @@ def get_output_types(*objs):
             output_types.append(OutputType.dataframe)
         elif isinstance(obj, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
             output_types.append(OutputType.series)
+        elif unknown_as is not None:
+            output_types.append(unknown_as)
         else:  # pragma: no cover
             raise TypeError('Output can only be tensor, dataframe or series')
     return output_types
