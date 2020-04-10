@@ -314,6 +314,8 @@ def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
     --------
     make_classification: a more intricate variant
     """
+    from ..utils.checks import AssertAllFinite
+
     generator = check_random_state(random_state)
 
     if isinstance(n_samples, numbers.Integral):
@@ -353,6 +355,8 @@ def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
     # stds: if cluster_std is given as list, it must be consistent
     # with the n_centers
     if (hasattr(cluster_std, "__len__") and len(cluster_std) != n_centers):
+        if isinstance(centers.op, AssertAllFinite):
+            centers = centers.op.inputs[0]
         raise ValueError("Length of `clusters_std` not consistent with "
                          "number of centers. Got centers = {} "
                          "and cluster_std = {}".format(centers, cluster_std))

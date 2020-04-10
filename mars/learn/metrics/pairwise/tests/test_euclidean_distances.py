@@ -27,6 +27,7 @@ from mars import tensor as mt
 from mars.lib.sparse import SparseNDArray
 from mars.tests.core import ExecutorForTest
 from mars.learn.metrics import euclidean_distances
+from mars.learn.utils import check_array
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
@@ -40,7 +41,7 @@ class Test(unittest.TestCase):
         y = mt.random.rand(11, 3)
 
         d = euclidean_distances(x, X_norm_squared=xx)
-        self.assertEqual(d.op.x_norm_squared.key, xx.T.key)
+        self.assertEqual(d.op.x_norm_squared.key, check_array(xx).T.key)
 
         d = euclidean_distances(x, y, X_norm_squared=mt.random.rand(10, 1, dtype=mt.float32),
                                 Y_norm_squared=mt.random.rand(1, 11, dtype=mt.float32))

@@ -205,7 +205,9 @@ class SparseArray(SparseNDArray):
         return self.transpose()
 
     def reshape(self, shape, **_):
-        return SparseNDArray(self.spmatrix.tolil().reshape(shape), shape=shape)
+        sp_shape = shape if len(shape) == 2 else (1, shape[0])
+        spmatrix = self.spmatrix.tolil().reshape(sp_shape)
+        return SparseNDArray(spmatrix, shape=shape)
 
     def broadcast_to(self, shape):
         # TODO(jisheng): implement broadcast_to

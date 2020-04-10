@@ -58,7 +58,7 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if self._y is not None:
+        if isinstance(self._y, (Base, Entity)):
             self._y = self._inputs[0]
         if self._unique_y is not None:
             self._unique_y = self._inputs[-1]
@@ -144,7 +144,7 @@ def is_multilabel(y):
     True
     """
     if not isinstance(y, (Base, Entity)):
-        if hasattr(y, '__array__'):
+        if hasattr(y, '__array__') or isinstance(y, Sequence):
             y = np.asarray(y)
         if hasattr(y, 'shape'):
             yt = y = mt.asarray(y)
@@ -157,8 +157,8 @@ def is_multilabel(y):
         unique_y = mt.unique(y, aggregate_size=1)
     else:
         unique_y = None
-    op = IsMultilabel(y=yt, unique_y=unique_y)
-    return op(y, unique_y)
+    op = IsMultilabel(y=y, unique_y=unique_y)
+    return op(yt, unique_y)
 
 
 class TypeOfTarget(LearnOperand, LearnOperandMixin):

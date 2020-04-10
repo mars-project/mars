@@ -332,7 +332,7 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
     def _execute_map(cls, ctx, op):
         allow_nan = op.allow_nan
         msg_dtype = op.msg_dtype
-        x = ctx[op.x.key]
+        raw = x = ctx[op.x.key]
         xp = get_array_module(x, nosparse=True)
 
         if issparse(x):
@@ -362,7 +362,7 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
         if op.check_only:
             result = np.array(True)
         else:
-            result = x
+            result = raw
         ctx[op.outputs[0].key] = result
 
     @classmethod

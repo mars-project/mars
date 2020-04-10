@@ -44,7 +44,8 @@ class Test(unittest.TestCase):
 
         for raw in raws:
             self.assertEqual(is_multilabel(raw).execute(),
-                             sklearn_is_multilabel(raw))
+                             sklearn_is_multilabel(raw),
+                             'raw: {}'.format(raw))
 
         t = mt.tensor(raws[3], chunk_size=1)
         self.assertEqual(is_multilabel(t).execute(),
