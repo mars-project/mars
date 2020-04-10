@@ -208,6 +208,8 @@ def concatenate(tensors, axis=0):
            [3, 4, 6]])
 
     """
+    if axis is None:
+        axis = 0
     tensors = [astensor(t) for t in tensors]
 
     axis = validate_axis(tensors[0].ndim, axis)
