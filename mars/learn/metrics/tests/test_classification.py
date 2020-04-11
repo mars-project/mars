@@ -22,6 +22,7 @@ try:
 except ImportError:  # pragma: no cover
     sklearn = None
 
+import mars.tensor as mt
 from mars.context import LocalContext
 from mars.learn.metrics import accuracy_score
 from mars.learn.metrics._classification import _check_targets
@@ -154,4 +155,11 @@ class Test(unittest.TestCase):
         score = accuracy_score(y_true, y_pred, sample_weight=sample_weight)
         result = self.executor.execute_tileables([score])[0]
         expected = sklearn_accuracy_score(y_true, y_pred, sample_weight=sample_weight)
+        self.assertAlmostEqual(result, expected)
+
+        score = accuracy_score(mt.tensor(y_true), mt.tensor(y_pred),
+                               sample_weight=mt.tensor(sample_weight), normalize=False)
+        result = self.executor.execute_tileables([score])[0]
+        expected = sklearn_accuracy_score(y_true, y_pred, sample_weight=sample_weight,
+                                          normalize=False)
         self.assertAlmostEqual(result, expected)

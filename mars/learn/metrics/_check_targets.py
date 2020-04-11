@@ -102,7 +102,7 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         y_true, y_pred = op.y_true, op.y_pred
         for y in (op.y_true, op.y_pred):
             if isinstance(y, (Base, Entity)):
-                if np.isnan(y.size):
+                if np.isnan(y.size):  # pragma: no cover
                     raise TilesError('input has unknown shape')
 
         check_consistent_length(y_true, y_pred)
