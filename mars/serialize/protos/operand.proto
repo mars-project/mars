@@ -440,6 +440,7 @@ message OperandDef {
         FAISS_BUILD_INDEX = 2234;
         FAISS_TRAIN_SAMPLED_INDEX = 2235;
         FAISS_QUERY = 2236;
+        KNEIGHBORS_GRAPH = 2237;
 
         // XGBoost
         XGBOOST_TRAIN = 3001;

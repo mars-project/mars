@@ -27,6 +27,7 @@ from ..utils.validation import check_is_fitted
 from ._ball_tree import create_ball_tree, ball_tree_query, SklearnBallTree
 from ._kd_tree import create_kd_tree, kd_tree_query, SklearnKDTree
 from ._faiss import build_faiss_index, faiss_query, METRIC_TO_FAISS_METRIC_TYPE
+from ._kneighbors_graph import KNeighborsGraph
 
 
 VALID_METRICS = dict(ball_tree=SklearnBallTree.valid_metrics,
@@ -236,6 +237,57 @@ class KNeighborsMixin:
 
     def kneighbors(self, X=None, n_neighbors=None, return_distance=True,
                    session=None, run_kwargs=None, **kw):
+        """Finds the K-neighbors of a point.
+        Returns indices of and distances to the neighbors of each point.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_query, n_features), \
+                or (n_query, n_indexed) if metric == 'precomputed'
+            The query point or points.
+            If not provided, neighbors of each indexed point are returned.
+            In this case, the query point is not considered its own neighbor.
+
+        n_neighbors : int
+            Number of neighbors to get (default is the value
+            passed to the constructor).
+
+        return_distance : boolean, optional. Defaults to True.
+            If False, distances will not be returned
+
+        Returns
+        -------
+        dist : Tensor
+            Array representing the lengths to points, only present if
+            return_distance=True
+
+        ind : Tensor
+            Indices of the nearest points in the population matrix.
+
+        Examples
+        --------
+        In the following example, we construct a NeighborsClassifier
+        class from a tensor representing our data set and ask who's
+        the closest point to [1,1,1]
+
+        >>> samples = [[0., 0., 0.], [0., .5, 0.], [1., 1., .5]]
+        >>> from mars.learn.neighbors import NearestNeighbors
+        >>> neigh = NearestNeighbors(n_neighbors=1)
+        >>> neigh.fit(samples) # doctest: +ELLIPSIS
+        NearestNeighbors(algorithm='auto', leaf_size=30, ...)
+        >>> print(neigh.kneighbors([[1., 1., 1.]]).execute()) # doctest: +ELLIPSIS
+        (array([[0.5]]), array([[2]]))
+
+        As you can see, it returns [[0.5]], and [[2]], which means that the
+        element is at distance 0.5 and is the third element of samples
+        (indexes start at 0). You can also query for multiple points:
+
+        >>> X = [[0., 1., 0.], [1., 0., 1.]]
+        >>> neigh.kneighbors(X, return_distance=False).execute() # doctest: +ELLIPSIS
+        array([[1],
+               [2]]...)
+
+        """
         check_is_fitted(self, ["_fit_method", "_fit_X"], all_or_any=any)
 
         if n_neighbors is None:
@@ -348,6 +400,81 @@ class KNeighborsMixin:
             neigh_ind.execute(session=session, fetch=False,
                               **(run_kwargs or dict()))
             return neigh_ind
+
+    def kneighbors_graph(self, X=None, n_neighbors=None,
+                         mode='connectivity', session=None, run_kwargs=None):
+        """Computes the (weighted) graph of k-Neighbors for points in X
+
+        Parameters
+        ----------
+        X : array-like, shape (n_query, n_features), \
+                or (n_query, n_indexed) if metric == 'precomputed'
+            The query point or points.
+            If not provided, neighbors of each indexed point are returned.
+            In this case, the query point is not considered its own neighbor.
+
+        n_neighbors : int
+            Number of neighbors for each sample.
+            (default is value passed to the constructor).
+
+        mode : {'connectivity', 'distance'}, optional
+            Type of returned matrix: 'connectivity' will return the
+            connectivity matrix with ones and zeros, in 'distance' the
+            edges are Euclidean distance between points.
+
+        Returns
+        -------
+        A : SparseTensor, shape = [n_samples, n_samples_fit]
+            n_samples_fit is the number of samples in the fitted data
+            A[i, j] is assigned the weight of edge that connects i to j.
+
+        Examples
+        --------
+        >>> X = [[0], [3], [1]]
+        >>> from mars.learn.neighbors import NearestNeighbors
+        >>> neigh = NearestNeighbors(n_neighbors=2)
+        >>> neigh.fit(X) # doctest: +ELLIPSIS
+        NearestNeighbors(algorithm='auto', leaf_size=30, ...)
+        >>> A = neigh.kneighbors_graph(X)
+        >>> A.fetch().toarray()
+        array([[1., 0., 1.],
+               [0., 1., 1.],
+               [1., 0., 1.]])
+
+        See also
+        --------
+        NearestNeighbors.radius_neighbors_graph
+        """
+        check_is_fitted(self, ['_fit_method', '_fit_X'], all_or_any=any)
+        if n_neighbors is None:
+            n_neighbors = self.n_neighbors
+
+        # kneighbors does the None handling.
+        if X is not None:
+            X = check_array(X, accept_sparse=True)
+            n_samples1 = X.shape[0]
+        else:
+            n_samples1 = self._fit_X.shape[0]
+
+        n_samples2 = self._fit_X.shape[0]
+
+        if mode == 'connectivity':
+            A_data = None
+            A_ind = self.kneighbors(X, n_neighbors, return_distance=False)
+
+        elif mode == 'distance':
+            A_data, A_ind = self.kneighbors(
+                X, n_neighbors, return_distance=True)
+
+        else:
+            raise ValueError('Unsupported mode, must be one of "connectivity" '
+                             'or "distance" but got {} instead'.format(mode))
+
+        op = KNeighborsGraph(a_data=A_data, a_ind=A_ind, n_neighbors=n_neighbors,
+                             sparse=True)
+        graph = op(A_data, A_ind, shape=(n_samples1, n_samples2))
+        graph.execute(session=session, fetch=False, **(run_kwargs or dict()))
+        return graph
 
 
 class UnsupervisedMixin:

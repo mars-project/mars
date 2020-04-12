@@ -185,10 +185,7 @@ def _handle_reduction(chunk):
     if len(ax) == data.ndim:
         _expr = '{}({})'.format(op_str, _wrap_bool(data)(_VAR_FLAG + data.key))
     elif len(ax) == 1:
-        if data.shape[ax[0]] == 1:
-            _expr = _VAR_FLAG + data.key
-        else:
-            _expr = '{}({},axis={})'.format(op_str, _wrap_bool(data)(_VAR_FLAG + data.key), ax[0])
+        _expr = '{}({},axis={})'.format(op_str, _wrap_bool(data)(_VAR_FLAG + data.key), ax[0])
     else:
         raise ValueError("numexpr cannot encode axis")
     return _expr
