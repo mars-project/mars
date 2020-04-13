@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover:
 
 from ... import tensor as mt
 from ...lib.sparse import issparse
+from ...tensor import Tensor
 from .checks import check_non_negative_then_return_value
 
 
@@ -164,7 +165,7 @@ def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
 def check_array(array, accept_sparse=False, accept_large_sparse=True,
                 dtype="numeric", order=None, copy=False, force_all_finite=True,
                 ensure_2d=True, allow_nd=False, ensure_min_samples=1,
-                ensure_min_features=1, estimator=None):
+                ensure_min_features=1, estimator=None) -> Tensor:
 
     """Input validation on a tensor, list, sparse matrix or similar.
 
