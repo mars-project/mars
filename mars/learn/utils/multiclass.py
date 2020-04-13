@@ -32,7 +32,7 @@ from ..utils import assert_all_finite
 
 
 class IsMultilabel(LearnOperand, LearnOperandMixin):
-    _op_type_= OperandDef.IS_MULTILABEL
+    _op_type_ = OperandDef.IS_MULTILABEL
 
     _y = AnyField('y')
     _unique_y = KeyField('unique_y')

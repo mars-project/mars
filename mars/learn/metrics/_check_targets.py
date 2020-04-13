@@ -114,7 +114,7 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
                  op.type_pred.chunks[0].key])
         except KeyError:
             raise TilesError('type_true and type_pred '
-                             'needs to be exected first')
+                             'needs to be executed first')
 
         y_type = {type_true, type_pred}
         if y_type == {"binary", "multiclass"}:

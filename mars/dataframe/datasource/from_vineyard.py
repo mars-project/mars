@@ -178,7 +178,6 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
                 shape = (-1, int(meta['column_size']))
                 chunk_map[chunk_index] = (instance_id, chunk_id, shape, in_chunk)
 
-
         nsplits = calc_nsplits({chunk_index: shape
                                 for chunk_index, (_, _, shape, _) in chunk_map.items()})
 

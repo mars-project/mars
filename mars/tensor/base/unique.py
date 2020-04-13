@@ -276,7 +276,6 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
             inverse_ar = next(results_iter) if op.return_inverse else None
             counts_ar = next(results_iter) if op.return_counts else None
 
-
             if xp is sparse:
                 dense_xp = get_sparse_array_module(unique_ar)
             else:

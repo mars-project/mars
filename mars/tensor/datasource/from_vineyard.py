@@ -27,10 +27,12 @@ try:
 except ImportError:
     vineyard = None
 
+
 # Note [Tensor from vineyard]
 #
 #   step 1: generate a chunk every worker to accumulate all chunks id
 #   step 2: run iterative tiling, to generate real chunks with `expect_worker`
+
 
 class TensorFromVineyard(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_FROM_VINEYARD

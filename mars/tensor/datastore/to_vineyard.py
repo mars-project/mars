@@ -148,7 +148,6 @@ class TensorVineyardDataStoreChunkMap(TensorDataStore):
         return new_op.new_tensors(op.inputs, shape=(len(out_chunks),), chunks=out_chunks,
                                   nsplits=((1,) * len(out_chunks),))
 
-
     @classmethod
     def execute(cls, ctx, op):
         if vineyard is None:
