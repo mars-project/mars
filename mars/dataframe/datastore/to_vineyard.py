@@ -167,7 +167,6 @@ class DataFrameToVineyardChunkMap(DataFrameOperand, DataFrameOperandMixin):
                                      chunks=out_chunks,
                                      nsplits=((1,) * len(out_chunks),))
 
-
     @classmethod
     def execute(cls, ctx, op):
         if vineyard is None:

@@ -255,6 +255,7 @@ class ChunkGraphBuilder(GraphBuilder):
                     if partial_tiled_chunks is not None and \
                             len(partial_tiled_chunks) > 0:
                         self._add_nodes(partial_tiled_chunks, visited)
+                    tiled_op.add(tileable_data.op)
                 else:
                     raise
         if self._compose:

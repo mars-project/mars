@@ -18,8 +18,9 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sps
 
+from mars.config import option_context
 from mars.tests.core import ExecutorForTest
-from mars.learn.utils.checks import check_non_negative_then_return_value
+from mars.learn.utils.checks import check_non_negative_then_return_value, assert_all_finite
 from mars import tensor as mt
 from mars import dataframe as md
 
@@ -74,3 +75,60 @@ class Test(unittest.TestCase):
         r = check_non_negative_then_return_value(c, c, 'sth')
         with self.assertRaises(ValueError):
             _ = self.executor.execute_tileable(r, concat=True)[0]
+
+    def testAssertAllFinite(self):
+        raw = np.array([2.3, np.inf], dtype=np.float64)
+        x = mt.tensor(raw)
+
+        with self.assertRaises(ValueError):
+            r = assert_all_finite(x)
+            _ = self.executor.execute_tensor(r)
+
+        raw = np.array([2.3, np.nan], dtype=np.float64)
+        x = mt.tensor(raw)
+
+        with self.assertRaises(ValueError):
+            r = assert_all_finite(x, allow_nan=False)
+            _ = self.executor.execute_tensor(r)
+
+        max_float32 = np.finfo(np.float32).max
+        raw = [max_float32] * 2
+        self.assertFalse(np.isfinite(np.sum(raw)))
+        x = mt.tensor(raw)
+
+        r = assert_all_finite(x)
+        result = self.executor.execute_tensor(r, concat=True)[0]
+        self.assertTrue(result.item())
+
+        raw = np.array([np.nan, 'a'], dtype=object)
+        x = mt.tensor(raw)
+
+        with self.assertRaises(ValueError):
+            r = assert_all_finite(x)
+            _ = self.executor.execute_tensor(r)
+
+        raw = np.random.rand(10)
+        x = mt.tensor(raw, chunk_size=2)
+
+        r = assert_all_finite(x, check_only=False)
+        result = self.executor.execute_tensor(r, concat=True)[0]
+        np.testing.assert_array_equal(result, raw)
+
+        r = assert_all_finite(x)
+        result = self.executor.execute_tensor(r, concat=True)[0]
+        self.assertTrue(result.item())
+
+        with option_context() as options:
+            options.learn.assume_finite = True
+
+            self.assertIsNone(assert_all_finite(x))
+            self.assertIs(assert_all_finite(x, check_only=False), x)
+
+        # test sparse
+        s = sps.random(10, 3, density=0.1, format='csr',
+                       random_state=np.random.RandomState(0))
+        s[0, 2] = np.nan
+
+        with self.assertRaises(ValueError):
+            r = assert_all_finite(s)
+            _ = self.executor.execute_tensor(r)

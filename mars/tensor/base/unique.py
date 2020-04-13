@@ -19,6 +19,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...config import options
 from ...operands import OperandStage
+from ...lib import sparse
+from ...lib.sparse.core import get_array_module as get_sparse_array_module
 from ...serialize import BoolField, Int32Field, Int64Field
 from ...tiles import TilesError
 from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
@@ -274,9 +276,18 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
             inverse_ar = next(results_iter) if op.return_inverse else None
             counts_ar = next(results_iter) if op.return_counts else None
 
-            unique_index = xp.arange(unique_ar.shape[op.axis]) if inverse_ar is not None else None
-            unique_reducers = xp.asarray(hash_on_axis(unique_ar, op.axis, n_reducer))
-            ind_ar = xp.arange(ar.shape[op.axis])
+            if xp is sparse:
+                dense_xp = get_sparse_array_module(unique_ar)
+            else:
+                dense_xp = xp
+            unique_index = dense_xp.arange(unique_ar.shape[op.axis]) \
+                if inverse_ar is not None else None
+            if unique_ar.size > 0:
+                unique_reducers = dense_xp.asarray(
+                    hash_on_axis(unique_ar, op.axis, n_reducer))
+            else:
+                unique_reducers = dense_xp.empty_like(unique_ar)
+            ind_ar = dense_xp.arange(ar.shape[op.axis])
 
             for reducer in range(n_reducer):
                 res = []
@@ -388,10 +399,13 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
             with device(device_id):
-                results = xp.unique(ar, return_index=op.return_index,
-                                    return_inverse=op.return_inverse,
-                                    return_counts=op.return_counts,
-                                    axis=op.axis)
+                kw = dict(return_index=op.return_index,
+                          return_inverse=op.return_inverse,
+                          return_counts=op.return_counts)
+                if ar.dtype != object:
+                    # axis cannot pass when dtype is object
+                    kw['axis'] = op.axis
+                results = xp.unique(ar, **kw)
                 outs = op.outputs
                 if len(outs) == 1:
                     ctx[outs[0].key] = results

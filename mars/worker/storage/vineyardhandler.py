@@ -63,6 +63,7 @@ class VineyardKeyMapActor(FunctionActor):
         for k in chunk_keys:
             self.delete(session_id, k)
 
+
 class VineyardBytesIO(BytesStorageIO):
     storage_type = DataStorageDevice.VINEYARD
 

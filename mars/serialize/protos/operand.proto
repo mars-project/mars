@@ -454,8 +454,18 @@ message OperandDef {
         // PyTorch
         RUN_PYTORCH = 3011;
 
-        // Check non negative
+        // learn
+        // checks
         CHECK_NON_NEGATIVE = 3300;
+        // classifier check targets
+        CHECK_TARGETS = 3301;
+        ASSERT_ALL_FINITE = 3302;
+        // multilabel
+        IS_MULTILABEL = 3303;
+        // get type
+        TYPE_OF_TARGET = 3304;
+        // classification
+        ACCURACY_SCORE = 3305;
 
         // vineyard
         TENSOR_FROM_VINEYARD_CHUNK = 4001;

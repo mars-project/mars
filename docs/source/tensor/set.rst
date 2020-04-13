@@ -9,3 +9,4 @@ Boolean operations
    :nosignatures:
 
    mars.tensor.isin
+   mars.tensor.union1d

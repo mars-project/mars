@@ -204,8 +204,10 @@ class SparseArray(SparseNDArray):
         assert axis1 == 1 and axis2 == 0
         return self.transpose()
 
-    def reshape(self, shape):
-        return SparseNDArray(self.spmatrix.tolil().reshape(shape), shape=shape)
+    def reshape(self, shape, **_):
+        sp_shape = shape if len(shape) == 2 else (1, shape[0])
+        spmatrix = self.spmatrix.tolil().reshape(sp_shape)
+        return SparseNDArray(spmatrix, shape=shape)
 
     def broadcast_to(self, shape):
         # TODO(jisheng): implement broadcast_to
@@ -1365,3 +1367,13 @@ class SparseArray(SparseNDArray):
             matrix = SparseArray(xps.vstack(sub_matrices, format='csr'))
 
         self.spmatrix = matrix.tocsr()
+
+    def unique(self, return_index=False, return_inverse=False,
+               return_counts=False, axis=None):
+        if return_inverse or return_index:  # pragma: no cover
+            raise NotImplementedError
+        if self.ndim == 2 and axis is not None:  # pragma: no cover
+            raise NotImplementedError
+
+        xp = get_array_module(self.spmatrix)
+        return xp.unique(self.spmatrix.data, return_counts=return_counts)

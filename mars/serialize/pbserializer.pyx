@@ -104,6 +104,10 @@ cdef class ProtobufSerializeProvider(Provider):
         return slice(start, stop, step)
 
     cdef inline void _set_arr(self, np.ndarray value, obj, tp=None):
+        # special case for np.unicode and np.bytes_
+        # cuz datadumps may fail due to pyarrow
+        if value.ndim == 0 and value.dtype.kind in ('U', 'S'):
+            value = value.astype(object)
         obj.arr = datadumps(value)
 
     cdef inline np.ndarray _get_arr(self, obj):

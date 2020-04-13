@@ -180,4 +180,3 @@ def nunique_series(df, dropna=True, combine_size=None):
     op = DataFrameNunique(dropna=dropna, combine_size=combine_size,
                           object_type=ObjectType.scalar)
     return op(df)
-

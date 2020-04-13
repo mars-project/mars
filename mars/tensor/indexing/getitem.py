@@ -81,8 +81,11 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         indexes = tuple(ctx[index.key] if hasattr(index, 'key') else index
                         for index in op.indexes)
         input_ = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = input_[indexes].astype(
-            input_.dtype, order=op.outputs[0].order.value, copy=False)
+        ret = input_[indexes]
+        if hasattr(ret, 'astype'):
+            ret = ret.astype(
+                input_.dtype, order=op.outputs[0].order.value, copy=False)
+        ctx[op.outputs[0].key] = ret
 
     @classmethod
     def estimate_size(cls, ctx, op):
