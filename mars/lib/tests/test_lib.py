@@ -33,45 +33,71 @@ class Test(unittest.TestCase):
 
         grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, level=0).to_tuple())
         assert_groupby_equal(grouped, df.groupby(level=0))
+        self.assertEqual(grouped.shape, (8, 4))
+        self.assertTrue(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, level=0).C.to_tuple())
         assert_groupby_equal(grouped, df.groupby(level=0).C)
+        self.assertEqual(grouped.shape, (8,))
+        self.assertFalse(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, 'B').to_tuple())
         assert_groupby_equal(grouped, df.groupby('B'))
+        self.assertEqual(grouped.shape, (8, 4))
+        self.assertTrue(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, 'B').C.to_tuple(truncate=True))
         assert_groupby_equal(grouped, df.groupby('B').C, with_selection=True)
+        self.assertEqual(grouped.shape, (8,))
+        self.assertFalse(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, 'B')[['C', 'D']].to_tuple(truncate=True))
         assert_groupby_equal(grouped, df.groupby('B')[['C', 'D']], with_selection=True)
+        self.assertEqual(grouped.shape, (8, 2))
+        self.assertTrue(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, ['B', 'C']).to_tuple(truncate=True))
         assert_groupby_equal(grouped, df.groupby(['B', 'C']))
+        self.assertEqual(grouped.shape, (8, 4))
+        self.assertTrue(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(
             wrapped_groupby(df, ['B', 'C']).C.to_tuple(truncate=True))
         assert_groupby_equal(grouped, df.groupby(['B', 'C']).C, with_selection=True)
+        self.assertEqual(grouped.shape, (8,))
+        self.assertFalse(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(
             wrapped_groupby(df, ['B', 'C'])[['A', 'D']].to_tuple(truncate=True))
         assert_groupby_equal(grouped, df.groupby(['B', 'C'])[['A', 'D']], with_selection=True)
+        self.assertEqual(grouped.shape, (8, 2))
+        self.assertTrue(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(
             wrapped_groupby(df, ['B', 'C'])[['C', 'D']].to_tuple(truncate=True))
         assert_groupby_equal(grouped, df.groupby(['B', 'C'])[['C', 'D']], with_selection=True)
+        self.assertEqual(grouped.shape, (8, 2))
+        self.assertTrue(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(
             wrapped_groupby(df, lambda x: x[-1] % 2).to_tuple(pickle_function=True))
         assert_groupby_equal(grouped, df.groupby(lambda x: x[-1] % 2), with_selection=True)
+        self.assertEqual(grouped.shape, (8, 4))
+        self.assertTrue(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(
             wrapped_groupby(df, lambda x: x[-1] % 2).C.to_tuple(pickle_function=True))
         assert_groupby_equal(grouped, df.groupby(lambda x: x[-1] % 2).C, with_selection=True)
+        self.assertEqual(grouped.shape, (8,))
+        self.assertFalse(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(
             wrapped_groupby(df, lambda x: x[-1] % 2)[['C', 'D']].to_tuple(pickle_function=True))
         assert_groupby_equal(grouped, df.groupby(lambda x: x[-1] % 2)[['C', 'D']], with_selection=True)
+        self.assertEqual(grouped.shape, (8, 2))
+        self.assertTrue(grouped.is_frame)
 
         grouped = GroupByWrapper.from_tuple(wrapped_groupby(df.B, lambda x: x[-1] % 2).to_tuple())
         assert_groupby_equal(grouped, df.B.groupby(lambda x: x[-1] % 2), with_selection=True)
+        self.assertEqual(grouped.shape, (8,))
+        self.assertFalse(grouped.is_frame)

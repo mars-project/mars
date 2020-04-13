@@ -54,12 +54,12 @@ class GroupByWrapper:
         else:
             self.groupby_obj = groupby_obj
 
-        self.is_frame = isinstance(self.groupby_obj, DataFrameGroupBy)
-
         if grouper_cache:
             self.groupby_obj.grouper._cache = grouper_cache
         if selection:
             self.groupby_obj = self.groupby_obj[selection]
+
+        self.is_frame = isinstance(self.groupby_obj, DataFrameGroupBy)
 
     def __getitem__(self, item):
         return GroupByWrapper(
@@ -81,6 +81,13 @@ class GroupByWrapper:
     @property
     def empty(self):
         return self.obj.empty
+
+    @property
+    def shape(self):
+        shape = list(self.groupby_obj.obj.shape)
+        if self.is_frame and self.selection:
+            shape[1] = len(self.selection)
+        return tuple(shape)
 
     def to_tuple(self, truncate=False, pickle_function=False):
         if self.selection and truncate:
