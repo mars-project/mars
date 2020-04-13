@@ -554,7 +554,7 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
             raise AssertionError('Operand %r: shape of nsplits %r not consistent with chunk shape %r'
                                  % (tiled.op, nsplit_chunk_shape, tiled.chunk_shape)) from None
 
-        nsplit_shape = tuple(np.sum(s) for s in tiled.nsplits if len(s) > 0)
+        nsplit_shape = tuple(np.sum(s) for s in tiled.nsplits)
         try:
             self.assert_shape_consistent(nsplit_shape, tiled.shape)
         except AssertionError:

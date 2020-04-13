@@ -324,7 +324,7 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
             out_chunks = new_out_chunks
 
         params = out.params
-        params['nsplits'] = ((),)
+        params['nsplits'] = ()
         params['chunks'] = out_chunks
         return new_op.new_tileables(op.inputs, kws=[params])
 

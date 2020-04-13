@@ -156,7 +156,7 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         y_pred = recursive_tile(y_pred)
 
         kws = [out.params for out in op.outputs]
-        kws[0]['nsplits'] = ((),)
+        kws[0]['nsplits'] = ()
         kws[0]['chunks'] = [y_type.chunks[0]]
         kws[1]['nsplits'] = y_true.nsplits
         kws[1]['chunks'] = y_true.chunks
