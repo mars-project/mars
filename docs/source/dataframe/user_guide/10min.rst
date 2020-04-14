@@ -270,6 +270,16 @@ Same operation on the other axis:
    df.mean(1).execute()
 
 
+Operating with objects that have different dimensionality and need alignment.
+In addition, pandas automatically broadcasts along the specified dimension.
+
+.. ipython:: python
+
+   s = md.Series([1, 3, 5, mt.nan, 6, 8], index=dates).shift(2)
+   s.execute()
+   df.sub(s, axis='index').execute()
+
+
 Apply
 ~~~~~
 
@@ -381,6 +391,38 @@ apply the `sum` function.
 
    df.groupby(['A', 'B']).sum().execute()
 
+Plotting
+--------
+
+We use the standard convention for referencing the matplotlib API:
+
+.. ipython:: python
+
+   import matplotlib.pyplot as plt
+   plt.close('all')
+
+.. ipython:: python
+
+   ts = md.Series(mt.random.randn(1000),
+                  index=md.date_range('1/1/2000', periods=1000))
+   ts = ts.cumsum()
+
+   @savefig series_plot_basic.png
+   ts.plot()
+
+On a DataFrame, the :meth:`~DataFrame.plot` method is a convenience to plot all
+of the columns with labels:
+
+.. ipython:: python
+
+   df = md.DataFrame(mt.random.randn(1000, 4), index=ts.index,
+                     columns=['A', 'B', 'C', 'D'])
+   df = df.cumsum()
+
+   plt.figure()
+   df.plot()
+   @savefig frame_plot_basic.png
+   plt.legend(loc='best')
 
 Getting data in/out
 -------------------

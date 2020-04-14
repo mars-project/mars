@@ -15,6 +15,7 @@
 import pandas as pd
 
 from ..core import Base, Entity
+from ..tensor import tensor as astensor
 from ..tensor.core import TENSOR_TYPE
 from .core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DataFrame as _Frame, \
     Series as _Series, Index as _Index
@@ -32,6 +33,9 @@ class DataFrame(_Frame):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
+        elif isinstance(index, INDEX_TYPE):
+            df = dataframe_from_tensor(astensor(data, chunk_size=chunk_size), index=index,
+                                       columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
             if not hasattr(data, 'data'):
                 # DataFrameData
@@ -55,6 +59,9 @@ class Series(_Series):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)
+        elif isinstance(index, INDEX_TYPE):
+            series = series_from_tensor(astensor(data, chunk_size=chunk_size), index=index,
+                                        name=name, gpu=gpu, sparse=sparse)
         elif isinstance(data, SERIES_TYPE):
             if not hasattr(data, 'data'):
                 # SeriesData
