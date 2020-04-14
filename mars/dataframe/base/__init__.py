@@ -25,6 +25,7 @@ from .isin import isin
 from .checkna import isna, notna, isnull, notnull
 from .dropna import df_dropna, series_dropna
 from .cut import cut
+from .shift import shift
 
 
 def _install():
@@ -49,6 +50,7 @@ def _install():
         setattr(t, 'notna', notna)
         setattr(t, 'notnull', notnull)
         setattr(t, 'dropna', df_dropna)
+        setattr(t, 'shift', shift)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -68,6 +70,7 @@ def _install():
         setattr(t, 'notna', notna)
         setattr(t, 'notnull', notnull)
         setattr(t, 'dropna', series_dropna)
+        setattr(t, 'shift', shift)
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
