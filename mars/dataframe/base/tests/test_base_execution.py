@@ -1066,6 +1066,15 @@ class Test(TestBase):
                                 periods, axis, fill_value
                             )) from e
 
+        # test tshift
+        r = df2.tshift(periods=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw2.tshift(periods=1)
+        pd.testing.assert_frame_equal(result, expected)
+
+        with self.assertRaises(ValueError):
+            _ = df.tshift(periods=1)
+
         # test series
         s = raw.iloc[:, 0]
 

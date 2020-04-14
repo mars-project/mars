@@ -157,6 +157,8 @@ Time series-related
 .. autosummary::
    :toctree: api/
 
+   DataFrame.shift
+   DataFrame.tshift
 
 .. _api.dataframe.plotting:
 

@@ -223,7 +223,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
                 res.append(row_df)
         r = pd.concat(res, axis=0)
         if chunk.index_value is not None:
-            r.index.name = chunk.index_value.value._name
+            r.index.name = chunk.index_value.name
         ctx[chunk.key] = r
 
     @classmethod

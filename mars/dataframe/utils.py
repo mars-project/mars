@@ -172,11 +172,8 @@ def decide_series_chunk_size(shape, chunk_size, memory_usage):
 
 
 def parse_index(index_value, *args, store_data=False, key=None):
-    def _extract_property(index, ret_data):
+    def _extract_property(index, tp, ret_data):
         kw = {
-            '_is_monotonic_increasing': index.is_monotonic_increasing,
-            '_is_monotonic_decreasing': index.is_monotonic_decreasing,
-            '_is_unique': index.is_unique,
             '_min_val': _get_index_min(index),
             '_max_val': _get_index_max(index),
             '_min_val_close': True,
@@ -185,6 +182,12 @@ def parse_index(index_value, *args, store_data=False, key=None):
         }
         if ret_data:
             kw['_data'] = index.values
+        for field in tp._FIELDS:
+            if field in kw or field == '_data':
+                continue
+            val = getattr(index, field.lstrip('_'), None)
+            if val is not None:
+                kw[field] = val
         return kw
 
     def _tokenize_index(index, *token_objects):
@@ -206,8 +209,9 @@ def parse_index(index_value, *args, store_data=False, key=None):
             return None
 
     def _serialize_index(index):
-        properties = _extract_property(index, store_data)
-        return getattr(IndexValue, type(index).__name__)(_name=index.name, **properties)
+        tp = getattr(IndexValue, type(index).__name__)
+        properties = _extract_property(index, tp, store_data)
+        return tp(**properties)
 
     def _serialize_range_index(index):
         if is_pd_range_empty(index):
@@ -220,18 +224,19 @@ def parse_index(index_value, *args, store_data=False, key=None):
                 '_min_val_close': True,
                 '_max_val_close': False,
                 '_key': key or _tokenize_index(index, *args),
+                '_name': index.name,
             }
         else:
-            properties = _extract_property(index, False)
+            properties = _extract_property(index, IndexValue.RangeIndex, False)
         return IndexValue.RangeIndex(_slice=slice(_get_range_index_start(index),
                                                   _get_range_index_stop(index),
                                                   _get_range_index_step(index)),
-                                     _name=index.name, **properties)
+                                     **properties)
 
     def _serialize_multi_index(index):
-        kw = _extract_property(index, store_data)
+        kw = _extract_property(index, IndexValue.MultiIndex, store_data)
         kw['_sortorder'] = index.sortorder
-        return IndexValue.MultiIndex(_names=index.names, **kw)
+        return IndexValue.MultiIndex(**kw)
 
     if index_value is None:
         return IndexValue(_index_value=IndexValue.Index(
