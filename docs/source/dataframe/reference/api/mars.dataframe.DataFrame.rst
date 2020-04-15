@@ -79,6 +79,7 @@ mars.dataframe.DataFrame
       ~DataFrame.rtruediv
       ~DataFrame.rxor
       ~DataFrame.set_index
+      ~DataFrame.shift
       ~DataFrame.sort_index
       ~DataFrame.sort_values
       ~DataFrame.std
@@ -93,6 +94,7 @@ mars.dataframe.DataFrame
       ~DataFrame.to_vineyard
       ~DataFrame.transform
       ~DataFrame.truediv
+      ~DataFrame.tshift
       ~DataFrame.var
       ~DataFrame.xor
    
@@ -115,5 +117,5 @@ mars.dataframe.DataFrame
       ~DataFrame.ndim
       ~DataFrame.shape
       ~DataFrame.size
-
+   
    

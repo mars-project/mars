@@ -346,6 +346,7 @@ message OperandDef {
         DROP_NA = 720;
         NUNIQUE = 721;
         CUT = 722;
+        SHIFT = 723;
 
         FUSE = 801;
 

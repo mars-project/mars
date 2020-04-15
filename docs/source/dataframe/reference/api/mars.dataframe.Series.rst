@@ -77,6 +77,7 @@ mars.dataframe.Series
       ~Series.rsub
       ~Series.rtruediv
       ~Series.rxor
+      ~Series.shift
       ~Series.sort_index
       ~Series.sort_values
       ~Series.std
@@ -89,6 +90,7 @@ mars.dataframe.Series
       ~Series.to_tensor
       ~Series.transform
       ~Series.truediv
+      ~Series.tshift
       ~Series.var
       ~Series.xor
    

@@ -1016,3 +1016,97 @@ class Test(TestBase):
             s3[-1] = np.inf
             with self.assertRaises(ValueError):
                 executor.execute_dataframes([cut(s3, 3)])
+
+    def testShiftExecution(self):
+        # test dataframe
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(10, 8)),
+                           columns=['col' + str(i + 1) for i in range(8)])
+
+        df = from_pandas_df(raw, chunk_size=5)
+
+        for periods in (2, -2, 6, -6):
+            for axis in (0, 1):
+                for fill_value in (None, 0, 1.):
+                    r = df.shift(periods=periods, axis=axis,
+                                 fill_value=fill_value)
+
+                    try:
+                        result = self.executor.execute_dataframe(r, concat=True)[0]
+                        expected = raw.shift(periods=periods, axis=axis,
+                                             fill_value=fill_value)
+                        pd.testing.assert_frame_equal(result, expected)
+                    except AssertionError as e:  # pragma: no cover
+                        raise AssertionError(
+                            'Failed when periods: {}, axis: {}, fill_value: {}'.format(
+                                periods, axis, fill_value
+                            )) from e
+
+        raw2 = raw.copy()
+        raw2.index = pd.date_range('2020-1-1', periods=10)
+        raw2.columns = pd.date_range('2020-3-1', periods=8)
+
+        df2 = from_pandas_df(raw2, chunk_size=5)
+
+        # test freq not None
+        for periods in (2, -2):
+            for axis in (0, 1):
+                for fill_value in (None, 0, 1.):
+                    r = df2.shift(periods=periods, freq='D', axis=axis,
+                                  fill_value=fill_value)
+
+                    try:
+                        result = self.executor.execute_dataframe(r, concat=True)[0]
+                        expected = raw2.shift(periods=periods, freq='D', axis=axis,
+                                              fill_value=fill_value)
+                        pd.testing.assert_frame_equal(result, expected)
+                    except AssertionError as e:  # pragma: no cover
+                        raise AssertionError(
+                            'Failed when periods: {}, axis: {}, fill_value: {}'.format(
+                                periods, axis, fill_value
+                            )) from e
+
+        # test tshift
+        r = df2.tshift(periods=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw2.tshift(periods=1)
+        pd.testing.assert_frame_equal(result, expected)
+
+        with self.assertRaises(ValueError):
+            _ = df.tshift(periods=1)
+
+        # test series
+        s = raw.iloc[:, 0]
+
+        series = from_pandas_series(s, chunk_size=5)
+        for periods in (0, 2, -2, 6, -6):
+            for fill_value in (None, 0, 1.):
+                r = series.shift(periods=periods, fill_value=fill_value)
+
+                try:
+                    result = self.executor.execute_dataframe(r, concat=True)[0]
+                    expected = s.shift(periods=periods, fill_value=fill_value)
+                    pd.testing.assert_series_equal(result, expected)
+                except AssertionError as e:  # pragma: no cover
+                    raise AssertionError(
+                        'Failed when periods: {}, fill_value: {}'.format(
+                            periods, fill_value
+                        )) from e
+
+        s2 = raw2.iloc[:, 0]
+
+        # test freq not None
+        series2 = from_pandas_series(s2, chunk_size=5)
+        for periods in (2, -2):
+            for fill_value in (None, 0, 1.):
+                r = series2.shift(periods=periods, freq='D', fill_value=fill_value)
+
+                try:
+                    result = self.executor.execute_dataframe(r, concat=True)[0]
+                    expected = s2.shift(periods=periods, freq='D', fill_value=fill_value)
+                    pd.testing.assert_series_equal(result, expected)
+                except AssertionError as e:  # pragma: no cover
+                    raise AssertionError(
+                        'Failed when periods: {}, fill_value: {}'.format(
+                            periods, fill_value
+                        )) from e

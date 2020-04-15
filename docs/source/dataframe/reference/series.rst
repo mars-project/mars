@@ -333,6 +333,13 @@ strings and apply several methods to it. These can be accessed like
        Series.str
        Series.dt
 
+Time Series-related
+-------------------
+.. autosummary::
+   :toctree: api/
+
+   Series.shift
+   Series.tshift
 
 Plotting
 --------

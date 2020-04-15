@@ -121,7 +121,7 @@ class IndexValue(Serializable):
     class IntervalIndex(IndexBase):
         _name = AnyField('name')
         _data = IntervalArrayField('data')
-        _closed = BoolField('closed')
+        _closed = StringField('closed')
 
     class DatetimeIndex(IndexBase):
         _name = AnyField('name')
