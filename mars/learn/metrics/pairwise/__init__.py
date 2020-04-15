@@ -17,3 +17,4 @@ from .haversine import haversine_distances
 from .manhattan import manhattan_distances
 from .cosine import cosine_distances, cosine_similarity
 from .pairwise import pairwise_distances, PAIRWISE_DISTANCE_FUNCTIONS
+from .rbf_kernel import rbf_kernel
