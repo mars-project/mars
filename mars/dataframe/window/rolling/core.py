@@ -14,14 +14,13 @@
 
 from collections import OrderedDict
 
-from ....serialize import Serializable, AnyField, Int64Field, \
-    BoolField, StringField, Int32Field, KeyField
+from ....serialize import AnyField, Int64Field, BoolField, StringField, Int32Field
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series
+from ..core import Window
 
 
-class Rolling(Serializable):
-    _input = KeyField('input')
+class Rolling(Window):
     _window = AnyField('window')
     _min_periods = Int64Field('min_periods')
     _center = BoolField('center')
@@ -30,15 +29,10 @@ class Rolling(Serializable):
     _axis = Int32Field('axis')
     _closed = StringField('closed')
 
-    def __init__(self, input=None, window=None, min_periods=None, center=None,  # pylint: disable=redefined-builtin
-                 win_type=None, on=None, axis=None, closed=None, **kw):
-        super().__init__(_input=input, _window=window, _min_periods=min_periods,
-                         _center=center, _win_type=win_type, _on=on,
-                         _axis=axis, _closed=closed, **kw)
-
-    @property
-    def input(self):
-        return self._input
+    def __init__(self, window=None, min_periods=None, center=None, win_type=None, on=None,
+                 axis=None, closed=None, **kw):
+        super().__init__(_window=window, _min_periods=min_periods, _center=center,
+                         _win_type=win_type, _on=on, _axis=axis, _closed=closed, **kw)
 
     @property
     def window(self):
@@ -76,10 +70,8 @@ class Rolling(Serializable):
             p[attr] = getattr(self, attr)
         return p
 
-    def __repr__(self):
-        kvs = ['{}={}'.format(k, v) for k, v in self.params.items()
-               if v is not None]
-        return 'Window [{}]'.format(','.join(kvs))
+    def _repr_name(self):
+        return 'Rolling' if self.win_type is None else 'Window'
 
     def validate(self):
         # leverage pandas itself to do validation
@@ -93,19 +85,6 @@ class Rolling(Serializable):
         for k in self.params:
             # update value according to pandas rolling
             setattr(self, '_' + k, getattr(pd_rolling, k))
-
-    def __getitem__(self, item):
-        columns = self._input.dtypes.index
-        if isinstance(item, (list, tuple)):
-            item = list(item)
-            for col in item:
-                if col not in columns:
-                    raise KeyError('Column not found: {}'.format(col))
-        else:
-            if item not in columns:
-                raise KeyError('Column not found: {}'.format(item))
-
-        return Rolling(input=self._input[item], **self.params)
 
     def aggregate(self, func, *args, **kwargs):
         from .aggregation import DataFrameRollingAgg

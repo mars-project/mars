@@ -388,9 +388,6 @@ message OperandDef {
         GROUPBY_AGG = 2033;
         GROUPBY_CONCAT = 2034;
 
-        // rolling
-        ROLLING_AGG = 2060;
-
         // parallel sorting by regular sampling
         PSRS_SORT_REGULAR_SMAPLE = 2040;
         PSRS_CONCAT_PIVOT = 2041;
@@ -403,6 +400,11 @@ message OperandDef {
         // dataframe sort
         SORT_VALUES = 2050;
         SORT_INDEX = 2051;
+
+        // window
+        ROLLING_AGG = 2060;
+        EXPANDING_AGG = 2061;
+        EWM_AGG = 2062;
 
         // store
         READ_CSV = 2100;
