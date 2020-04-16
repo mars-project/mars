@@ -17,10 +17,11 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, ListField, AnyField
 from ...core import Base, Entity
-from ...utils import check_chunks_unknown_shape
+from ...serialize import KeyField, ListField, AnyField
+from ...tensor import tensor as astensor
 from ...tiles import TilesError
+from ...utils import check_chunks_unknown_shape
 from ..core import TENSOR_TYPE
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import filter_inputs, recursive_tile
@@ -94,11 +95,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         if is_value_tensor and value.ndim > 0:
             check_chunks_unknown_shape([op.indexed, op.value], TilesError)
 
-            a = op.input
-            # don't broadcast for tuple when dtype is record type.
-            if not (np.isscalar(value) or (isinstance(value, tuple) and a.dtype.fields)):
-                value = recursive_tile(broadcast_to(value, indexed.shape).astype(a.dtype))
-
+            value = recursive_tile(
+                broadcast_to(value, indexed.shape).astype(op.input.dtype))
             nsplits = indexed.nsplits
             value = value.rechunk(nsplits)._inplace_tile()
 
@@ -110,7 +108,14 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
                 out_chunks.append(chunk)
                 continue
 
-            value_chunk = value.cix[index_chunk.index] if is_value_tensor else value
+            if is_value_tensor:
+                if value.ndim > 0:
+                    value_chunk = value.cix[index_chunk.index]
+                else:
+                    value_chunk = value.chunks[0]
+            else:
+                # non tensor
+                value_chunk = value
             chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse,
                                            indexes=index_chunk.op.indexes, value=value_chunk)
             chunk_inputs = filter_inputs([chunk] + index_chunk.op.indexes + [value_chunk])
@@ -146,6 +151,9 @@ def _check_support(index):
 
 def _setitem(a, item, value):
     index = process_index(a.ndim, item)
+    if not (np.isscalar(value) or (isinstance(value, tuple) and a.dtype.fields)):
+        # do not convert for tuple when dtype is record type.
+        value = astensor(value)
 
     for ix in index:
         _check_support(ix)

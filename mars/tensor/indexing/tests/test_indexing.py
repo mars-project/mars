@@ -272,9 +272,6 @@ class Test(unittest.TestCase):
         self.assertIsInstance(t2.cix[1, 1, 0, 0].op, TensorIndexSetValue)
         self.assertIsInstance(t2.cix[1, 1, 0, 0].op.value.op, TensorConcatenate)
 
-        with self.assertRaises(ValueError):
-            t[0, 0, 0, 0] = ones(2, chunk_size=10)
-
     def testSetItemStructured(self):
         # Check to value is properly broadcast for `setitem` on complex record dtype arrays.
         rec_type = np.dtype([('a', np.int32), ('b', np.double), ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])

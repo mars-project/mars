@@ -366,6 +366,12 @@ class Test(TestBase):
             raw[raw1 < 0.8] = set_data
             np.testing.assert_array_equal(res, raw)
 
+        # test error
+        with self.assertRaises(ValueError):
+            t = tensor(raw, chunk_size=3)
+            t[0, 0, 0, 0] = zeros(2, chunk_size=10)
+            _ = self.executor.execute_tensor(t)
+
     def testSetItemStructuredExecution(self):
         rec_type = np.dtype([('a', np.int32), ('b', np.double),
                              ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])

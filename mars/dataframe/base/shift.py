@@ -236,7 +236,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                 to_concats = [c]
                 left = abs(op.periods)
                 while left > 0 and 0 <= prev_i < inp.chunk_shape[0]:
-                    prev_chunk = inp.cix[prev_i,]
+                    prev_chunk = inp.cix[prev_i, ]
                     size = min(left, prev_chunk.shape[0])
                     left -= size
                     prev_i = prev_i - 1 if inc else prev_i + 1

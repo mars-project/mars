@@ -709,7 +709,7 @@ class MutableTensor(Entity):
            size is guaranteed to less than 2 * chunk_size.
         '''
         from .indexing.core import process_index, calc_shape
-        from .indexing.setitem import TensorIndex
+        from .indexing.getitem import TensorIndex
         from .utils import setitem_as_records
 
         tensor_index = process_index(self.ndim, tensor_index)
