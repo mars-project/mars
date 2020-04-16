@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import unittest
+from collections import OrderedDict
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -63,23 +65,29 @@ class Test(unittest.TestCase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.expanding().agg(agg_dict))
 
-        agg_dict = {'a': ['sum', 'var'], 'b': 'var'}
+        agg_dict = OrderedDict([('a', ['sum', 'var']), ('b', 'var')])
         r = df.expanding().agg(agg_dict)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.expanding().agg(agg_dict))
+
+        r = df.expanding(0).agg(aggs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.expanding(0).agg(aggs))
 
         r = df.expanding(2).agg(aggs)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.expanding(2).agg(aggs))
 
-        agg_dict = {'a': ['min', 'max'], 'b': 'max', 'c': 'sum'}
+        if LooseVersion(pd.__version__) < '1.0.0':
+            r = df.expanding(2).agg(aggs, _count_always_valid=False)
+            raw_r = raw.expanding(2).agg(aggs)
+            raw_r.iloc[0, :] = np.nan
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0], raw_r)
+
+        agg_dict = OrderedDict([('a', ['min', 'max']), ('b', 'max'), ('c', 'sum')])
         r = df.expanding(2).agg(agg_dict)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.expanding(2).agg(agg_dict))
-
-        r = df.expanding(0).agg(aggs)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding(0).agg(aggs))
 
     def testSeriesExpandingAgg(self):
         raw = pd.Series(np.random.rand(10), name='a')

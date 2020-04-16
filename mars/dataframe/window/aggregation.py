@@ -38,6 +38,9 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
     _axis = Int32Field('axis')
     _func = AnyField('func')
 
+    # always treat count as valid. this behavior is cancelled in pandas 1.0
+    _count_always_valid = BoolField('count_always_valid')
+    # True if function name is treated as new index
     _append_index = BoolField('append_index')
 
     # chunk params
@@ -52,15 +55,16 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
 
     _min_periods_func_name = StringField('min_periods_func_name')
 
-    def __init__(self, min_periods=None, axis=None, func=None, append_index=None,
-                 output_agg=False, map_groups=None, map_sources=None, combine_sources=None,
-                 combine_columns=None, combine_funcs=None, key_to_funcs=None,
-                 min_periods_func_name=None, stage=None, **kw):
+    def __init__(self, min_periods=None, axis=None, func=None, count_always_valid=None,
+                 append_index=None, output_agg=False, map_groups=None, map_sources=None,
+                 combine_sources=None, combine_columns=None, combine_funcs=None,
+                 key_to_funcs=None, min_periods_func_name=None, stage=None, **kw):
         super().__init__(_min_periods=min_periods, _axis=axis, _func=func, _stage=stage,
-                         _append_index=append_index, _output_agg=output_agg, _map_groups=map_groups,
-                         _map_sources=map_sources, _combine_sources=combine_sources,
-                         _combine_columns=combine_columns, _combine_funcs=combine_funcs,
-                         _key_to_funcs=key_to_funcs, _min_periods_func_name=min_periods_func_name, **kw)
+                         _count_always_valid=count_always_valid, _append_index=append_index,
+                         _output_agg=output_agg, _map_groups=map_groups, _map_sources=map_sources,
+                         _combine_sources=combine_sources, _combine_columns=combine_columns,
+                         _combine_funcs=combine_funcs, _key_to_funcs=key_to_funcs,
+                         _min_periods_func_name=min_periods_func_name, **kw)
 
     @property
     def min_periods(self) -> int:
@@ -73,6 +77,10 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
     @property
     def func(self):
         return self._func
+
+    @property
+    def count_always_valid(self):
+        return self._count_always_valid
 
     @property
     def append_index(self):
@@ -477,7 +485,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             valid_poses = valid_counts >= op.min_periods
             for func_name in func_to_aggs.keys():
                 if func_name == 'count':
-                    if pred_record_count < op.min_periods - 1:
+                    if not op.count_always_valid and pred_record_count < op.min_periods - 1:
                         func_to_aggs[func_name].iloc[:op.min_periods - pred_record_count - 1] = np.nan
                 else:
                     func_to_aggs[func_name] = func_to_aggs[func_name][valid_poses]
