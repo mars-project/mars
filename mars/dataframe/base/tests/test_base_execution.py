@@ -19,7 +19,6 @@ import pandas as pd
 from collections import OrderedDict
 
 from mars.config import options
-from mars.context import LocalContext
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -985,14 +984,7 @@ class Test(TestBase):
         pd.testing.assert_series_equal(r_result, r_expected)
         np.testing.assert_array_equal(b_result, b_expected)
 
-        this = self
-
-        class MockSession:
-            def __init__(self):
-                self.executor = this.executor
-
-        ctx = LocalContext(MockSession())
-        executor = ExecutorForTest('numpy', storage=ctx)
+        ctx, executor = self._create_test_context(self.executor)
         with ctx:
             # test integer bins
             r = cut(series, 3)

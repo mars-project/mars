@@ -330,6 +330,15 @@ def _calc_order(a, index):
     return TensorOrder.F_ORDER
 
 
+def _getitem_nocheck(a, item):
+    index = process_index(a.ndim, item)
+    shape = calc_shape(a.shape, index)
+    tensor_order = _calc_order(a, index)
+    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index,
+                     create_view=_is_create_view(index))
+    return op(a, index, tuple(shape), order=tensor_order)
+
+
 def _getitem(a, item):
     if isinstance(item, (list, tuple)) and \
             all(isinstance(it, slice) and it == slice(None) for it in item):
@@ -337,10 +346,4 @@ def _getitem(a, item):
         return a
 
     # TODO(jisheng): field access, e.g. t['a'], t[['a', 'b']]
-
-    index = process_index(a.ndim, item)
-    shape = calc_shape(a.shape, index)
-    tensor_order = _calc_order(a, index)
-    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index,
-                     create_view=_is_create_view(index))
-    return op(a, index, tuple(shape), order=tensor_order)
+    return _getitem_nocheck(a, item)

@@ -14,21 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import scipy.sparse as sps
 
 from mars.tiles import get_tiled
-from mars.tensor.datasource import tensor, arange
+from mars.tensor.datasource import tensor, arange, zeros
 from mars.tensor.indexing import take, compress, extract, choose, \
     unravel_index, nonzero, flatnonzero, fill_diagonal
 from mars.tensor import mod, stack, hstack
 from mars.config import options
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import ExecutorForTest, TestBase
 
 
-class Test(unittest.TestCase):
+class Test(TestBase):
     def setUp(self):
         self.executor = ExecutorForTest('numpy')
         self.old_chunk = options.chunk_size
@@ -291,7 +289,9 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(res, raw[-2::-3, raw_cond, ...])
 
     def testSetItemExecution(self):
-        raw = data = np.random.randint(0, 10, size=(11, 8, 12, 13))
+        rs = np.random.RandomState(0)
+
+        raw = data = rs.randint(0, 10, size=(11, 8, 12, 13))
         arr = tensor(raw.copy(), chunk_size=3)
         raw = raw.copy()
 
@@ -310,7 +310,7 @@ class Test(unittest.TestCase):
         arr2 = tensor(raw.copy(), chunk_size=3)
         raw = raw.copy()
 
-        replace = np.random.randint(10, 20, size=shape[:-1] + (1,)).astype('f4')
+        replace = rs.randint(10, 20, size=shape[:-1] + (1,)).astype('f4')
         arr2[idx] = tensor(replace, chunk_size=4)
         res = self.executor.execute_tensor(arr2, concat=True)[0]
 
@@ -329,6 +329,48 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(res, raw)
         self.assertEqual(res.flags['C_CONTIGUOUS'], raw.flags['C_CONTIGUOUS'])
         self.assertEqual(res.flags['F_CONTIGUOUS'], raw.flags['F_CONTIGUOUS'])
+
+        # test bool indexing set
+        raw = data
+
+        arr = tensor(raw.copy(), chunk_size=3)
+        raw1 = rs.rand(11)
+        arr[tensor(raw1, chunk_size=4) < 0.6, 2: 7] = 3
+        res = self.executor.execute_tileable(arr, concat=True)[0]
+
+        raw[raw1 < 0.6, 2: 7] = 3
+        np.testing.assert_array_equal(res, raw)
+
+        raw = np.random.randint(3, size=10).astype(np.int64)
+        raw2 = np.arange(3)
+
+        arr = zeros((10, 3))
+        arr[tensor(raw) == 1, tensor(raw2) == 1] = 1
+        res = self.executor.execute_tileable(arr, concat=True)[0]
+
+        expected = np.zeros((10, 3))
+        expected[raw == 1, raw2 == 1] = 1
+        np.testing.assert_array_equal(res, expected)
+
+        ctx, executor = self._create_test_context(self.executor)
+        with ctx:
+            raw = data
+
+            arr = tensor(raw.copy(), chunk_size=3)
+            raw1 = rs.rand(11)
+            set_data = rs.rand((raw1 < 0.8).sum(), 8, 12, 13)
+            arr[tensor(raw1, chunk_size=4) < 0.8] = tensor(set_data)
+
+            res = self.executor.execute_tileables([arr])[0]
+
+            raw[raw1 < 0.8] = set_data
+            np.testing.assert_array_equal(res, raw)
+
+        # test error
+        with self.assertRaises(ValueError):
+            t = tensor(raw, chunk_size=3)
+            t[0, 0, 0, 0] = zeros(2, chunk_size=10)
+            _ = self.executor.execute_tensor(t)
 
     def testSetItemStructuredExecution(self):
         rec_type = np.dtype([('a', np.int32), ('b', np.double),

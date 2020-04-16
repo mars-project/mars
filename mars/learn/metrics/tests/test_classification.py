@@ -23,25 +23,16 @@ except ImportError:  # pragma: no cover
     sklearn = None
 
 import mars.tensor as mt
-from mars.context import LocalContext
 from mars.learn.metrics import accuracy_score
 from mars.learn.metrics._classification import _check_targets
 from mars.lib.sparse import SparseNDArray
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import TestBase
 
 
-class Test(unittest.TestCase):
+class Test(TestBase):
     def setUp(self) -> None:
-        this = self
-
-        class MockSession:
-            @property
-            def executor(self):
-                return this.executor
-
-        self.ctx = ctx = LocalContext(MockSession())
-        self.executor = ExecutorForTest('numpy', storage=ctx)
-        ctx.__enter__()
+        self.ctx, self.executor = self._create_test_context()
+        self.ctx.__enter__()
 
     def tearDown(self) -> None:
         self.ctx.__exit__(None, None, None)

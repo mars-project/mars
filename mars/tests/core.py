@@ -28,10 +28,11 @@ from weakref import ReferenceType
 import numpy as np
 import pandas as pd
 
+from mars.context import LocalContext
+from mars.executor import Executor, GraphExecution
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
 from mars.utils import lazy_import
-from mars.executor import Executor, GraphExecution
 
 try:
     import pytest
@@ -105,6 +106,20 @@ class TestBase(unittest.TestCase):
             serializes(JsonSerializeProvider(), *args, **kw)
         self.json_deserialize = lambda *args, **kw: \
             deserializes(JsonSerializeProvider(), *args, **kw)
+
+    @classmethod
+    def _create_test_context(cls, executor=None):
+        d = {'executor': executor}
+
+        class MockSession:
+            def __init__(self):
+                self.executor = d['executor']
+
+        ctx = LocalContext(MockSession())
+        new_executor = d['executor'] = \
+            ExecutorForTest('numpy', storage=ctx)
+
+        return ctx, new_executor
 
     @classmethod
     def _serial(cls, obj):

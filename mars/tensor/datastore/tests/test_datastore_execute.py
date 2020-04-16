@@ -35,7 +35,6 @@ except ImportError:  # pragma: no cover
     zarr = None
 
 from mars.config import option_context
-from mars.context import LocalContext
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session
 from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr, \
@@ -129,14 +128,7 @@ class Test(TestBase):
         with self.assertRaises(TypeError):
             tohdf5(object(), t2)
 
-        this = self
-
-        class MockSession:
-            def __init__(self):
-                self.executor = this.executor
-
-        ctx = LocalContext(MockSession())
-        executor = ExecutorForTest('numpy', storage=ctx)
+        ctx, executor = self._create_test_context(self.executor)
         with ctx:
             with tempfile.TemporaryDirectory() as d:
                 filename = os.path.join(d, 'test_store_{}.hdf5'.format(int(time.time())))

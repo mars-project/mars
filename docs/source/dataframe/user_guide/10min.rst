@@ -271,7 +271,7 @@ Same operation on the other axis:
 
 
 Operating with objects that have different dimensionality and need alignment.
-In addition, pandas automatically broadcasts along the specified dimension.
+In addition, Mars DataFrame automatically broadcasts along the specified dimension.
 
 .. ipython:: python
 
