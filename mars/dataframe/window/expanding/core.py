@@ -38,6 +38,9 @@ class Expanding(Window):
     def center(self):
         return self._center
 
+    def __call__(self, df):
+        return df.expanding(**self.params)
+
     @property
     def params(self):
         p = OrderedDict()
@@ -53,8 +56,26 @@ class Expanding(Window):
 
     agg = aggregate
 
-    def __call__(self, df):
-        return df.expanding(**self.params)
+    def sum(self):
+        return self.aggregate('sum')
+
+    def count(self):
+        return self.aggregate('count')
+
+    def min(self):
+        return self.aggregate('min')
+
+    def max(self):
+        return self.aggregate('max')
+
+    def mean(self):
+        return self.aggregate('mean')
+
+    def var(self):
+        return self.aggregate('var')
+
+    def std(self):
+        return self.aggregate('std')
 
 
 def expanding(obj, min_periods=1, center=False, axis=0):

@@ -74,3 +74,8 @@ class Test(unittest.TestCase):
             pd.testing.assert_index_equal(c.columns_value.to_pandas(),
                                           expected.columns)
             pd.testing.assert_series_equal(c.dtypes, expected.dtypes)
+
+        aggs = ['sum', 'count', 'min', 'max', 'mean', 'var', 'std']
+        for a in aggs:
+            r = getattr(df2.expanding(3), a)()
+            self.assertEqual(r.op.func, [a])

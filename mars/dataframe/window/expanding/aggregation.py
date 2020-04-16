@@ -39,7 +39,7 @@ def _add_pred_results(pred_results, local_results, axis=0):
 
     new_locals = []
     combine_axis = pred_results[0].ndim - axis - 1
-    for idx, (pred_result, local_result) in enumerate(zip(pred_results, local_results)):
+    for pred_result, local_result in zip(pred_results, local_results):
         local_result.fillna(df_filler, axis=axis, inplace=True)
         new_locals.append(local_result.add(pred_result.sum(axis=axis), axis=combine_axis))
     return new_locals
