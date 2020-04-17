@@ -89,13 +89,13 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
                 return self.kernel(X, X)
             else:
                 return self.kernel(X, y)
-        else:
+        else:  # pragma: no cover
             raise ValueError("%s is not a valid kernel. Only rbf and knn"
                              " or an explicit function "
                              " are supported at this time." % self.kernel)
 
     @abstractmethod
-    def _build_graph(self):
+    def _build_graph(self):  # pragma: no cover
         raise NotImplementedError("Graph construction must be implemented"
                                   " to fit a label propagation model.")
 
@@ -188,10 +188,11 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
         n_samples, n_classes = len(y), len(classes)
 
         alpha = self.alpha
-        if self._variant == 'spreading' and \
-                (alpha is None or alpha <= 0.0 or alpha >= 1.0):
-            raise ValueError('alpha=%s is invalid: it must be inside '
-                             'the open interval (0, 1)' % alpha)
+        # add check when we support LabelSpreading
+        # if self._variant == 'spreading' and \
+        #         (alpha is None or alpha <= 0.0 or alpha >= 1.0):
+        #     raise ValueError('alpha=%s is invalid: it must be inside '
+        #                      'the open interval (0, 1)' % alpha)
         y = mt.asarray(y)
         unlabeled = y == -1
 
@@ -204,7 +205,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
         if self._variant == 'propagation':
             # LabelPropagation
             y_static[unlabeled] = 0
-        else:
+        else:  # pragma: no cover
             # LabelSpreading
             y_static *= 1 - alpha
 
@@ -234,7 +235,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
                 self.label_distributions_ = mt.where(unlabeled,
                                                      self.label_distributions_,
                                                      y_static)
-            else:
+            else:  # pragma: no cover
                 # clamp
                 self.label_distributions_ = mt.multiply(
                     alpha, self.label_distributions_) + y_static
