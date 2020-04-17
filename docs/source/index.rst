@@ -41,7 +41,7 @@ Mars DataFrame provides a familiar interface like pandas.
 |    import numpy as np                               |    import mars.tensor as mt                         |
 |    import pandas as pd                              |    import mars.dataframe as md                      |
 |    df = pd.DataFrame(np.random.rand(100000000, 4),  |    df = md.DataFrame(mt.random.rand(100000000, 4),  |
-|                      columns=list('abcd')           |                      columns=list('abcd')           |
+|                      columns=list('abcd'))          |                      columns=list('abcd'))          |
 |    print(df.sum())                                  |    print(df.sum().execute())                        |
 |                                                     |                                                     |
 +-----------------------------------------------------+-----------------------------------------------------+
