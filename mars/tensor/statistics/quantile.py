@@ -19,7 +19,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, StringField, BoolField
 from ...core import Base, Entity
-from ...utils import check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape, recursive_tile
 from ...tiles import TilesError
 from ...context import get_context
 from ..datasource import tensor as astensor
@@ -29,7 +29,7 @@ from ..arithmetic import isnan, add
 from ..reduction import any as tensor_any
 from ..operands import TensorOperand, TensorOperandMixin
 from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
-from ..utils import check_out_param, recursive_tile
+from ..utils import check_out_param
 from ..array_utils import as_same_device, device
 from .core import _ureduce
 

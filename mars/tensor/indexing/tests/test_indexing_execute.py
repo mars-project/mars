@@ -265,7 +265,8 @@ class Test(TestBase):
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testMixedIndexingExecution(self):
-        raw = np.random.RandomState(0).random((11, 8, 12, 13))
+        rs = np.random.RandomState(0)
+        raw = rs.random((11, 8, 12, 13))
         arr = tensor(raw, chunk_size=3)
 
         raw_cond = raw[0, :, 0, 0] < .5
@@ -287,6 +288,25 @@ class Test(TestBase):
             res = self.executor.execute_tensor(arr3, concat=True)[0]
 
             np.testing.assert_array_equal(res, raw[-2::-3, raw_cond, ...])
+
+        # test multiple bool index and fancy index
+        cond1 = np.zeros(11, dtype=bool)
+        cond1[rs.permutation(11)[:5]] = True
+        cond2 = np.zeros(12, dtype=bool)
+        cond2[rs.permutation(12)[:5]] = True
+        f3 = np.random.randint(13, size=5)
+
+        expected = raw[cond1, ..., cond2, f3]
+
+        t = arr[cond1, ..., cond2, f3]
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_array_equal(res, expected)
+
+        ctx, executor = self._create_test_context(self.executor)
+        with ctx:
+            t = arr[tensor(cond1), ..., tensor(cond2), tensor(f3)]
+            res = executor.execute_tensors([t])[0]
+            np.testing.assert_array_equal(res, expected)
 
     def testSetItemExecution(self):
         rs = np.random.RandomState(0)

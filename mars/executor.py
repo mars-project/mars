@@ -715,6 +715,17 @@ class Executor(object):
     execute_tensor = execute_tileable
     execute_dataframe = execute_tileable
 
+    @classmethod
+    def _update_chunk_shape(cls, chunk_graph, chunk_result):
+        for c in chunk_graph:
+            if hasattr(c, 'shape') and c.shape is not None and \
+                    any(np.isnan(s) for s in c.shape) and c.key in chunk_result:
+                try:
+                    c._shape = chunk_result[c.key].shape
+                except AttributeError:
+                    # Fuse chunk
+                    pass
+
     def _update_tileable_and_chunk_shape(self, tileable_graph, chunk_result, failed_ops):
         for n in tileable_graph:
             if n.op in failed_ops:
@@ -724,8 +735,6 @@ class Executor(object):
                 if any(c.key not in chunk_result for c in tiled_n.chunks):
                     # some of the chunks has been fused
                     continue
-                for c in tiled_n.chunks:
-                    c.data._shape = chunk_result[c.key].shape
                 new_nsplits = self.get_tileable_nsplits(n, chunk_result=chunk_result)
                 for node in (n, tiled_n):
                     node._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
@@ -825,9 +834,12 @@ class Executor(object):
                                    n_parallel=n_parallel or n_thread,
                                    print_progress=print_progress, mock=mock,
                                    chunk_result=chunk_result)
+
                 # update shape of tileable and its chunks whatever it's successful or not
+                self._update_chunk_shape(chunk_graph, chunk_result)
                 self._update_tileable_and_chunk_shape(
                     tileable_graph, chunk_result, chunk_graph_builder.interrupted_ops)
+
                 if chunk_graph_builder.done:
                     if len(intermediate_result_keys) > 0:
                         # failed before

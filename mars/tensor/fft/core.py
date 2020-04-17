@@ -18,9 +18,9 @@ from collections.abc import Iterable
 
 from ...serialize import ValueType, KeyField, StringField, Int32Field, \
     Int64Field, ListField
-from ...utils import check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape, recursive_tile
 from ...tiles import TilesError
-from ..utils import validate_axis, decide_chunk_sizes, recursive_tile
+from ..utils import validate_axis, decide_chunk_sizes
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..array_utils import get_array_module
 

@@ -330,8 +330,9 @@ def _calc_order(a, index):
     return TensorOrder.F_ORDER
 
 
-def _getitem_nocheck(a, item):
-    index = process_index(a.ndim, item)
+def _getitem_nocheck(a, item, convert_bool_to_fancy=None):
+    index = process_index(a.ndim, item,
+                          convert_bool_to_fancy=convert_bool_to_fancy)
     shape = calc_shape(a.shape, index)
     tensor_order = _calc_order(a, index)
     op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index,

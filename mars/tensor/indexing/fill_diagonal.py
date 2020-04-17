@@ -18,12 +18,12 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, BoolField, Int32Field
 from ...core import Entity, Base
 from ...tiles import TilesError
-from ...utils import check_chunks_unknown_shape, ceildiv
+from ...utils import check_chunks_unknown_shape, ceildiv, recursive_tile
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
 from ..core import Tensor, TENSOR_TYPE
-from ..utils import decide_unify_split, recursive_tile
+from ..utils import decide_unify_split
 
 
 class TensorFillDiagonal(TensorOperand, TensorOperandMixin):

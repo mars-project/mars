@@ -22,7 +22,7 @@ from ...serialize import AnyField, KeyField
 from ...tiles import TilesError
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.operands import TensorOrder
-from ...tensor.utils import recursive_tile
+from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils.multiclass import type_of_target
 from ..utils import get_output_types, check_consistent_length, column_or_1d

@@ -16,11 +16,11 @@
 from abc import ABCMeta, abstractmethod
 
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.utils.validation import check_is_fitted
 
 from ... import tensor as mt
 from ...tensor import linalg
 from ..utils import check_array
+from ..utils.validation import check_is_fitted
 
 
 # -----------------------------------------------------------

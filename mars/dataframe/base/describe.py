@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ... import tensor as mt
 from ...serialize import ValueType, KeyField, ListField
-from ...tensor.utils import recursive_tile
+from ...utils import recursive_tile
 from ..core import SERIES_TYPE
 from ..initializer import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType

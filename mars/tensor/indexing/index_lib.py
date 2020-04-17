@@ -25,11 +25,12 @@ import numpy as np
 from ...core import TileableEntity
 from ...operands import OperandStage
 from ...tiles import TilesError
-from ...utils import check_chunks_unknown_shape, calc_nsplits, merge_chunks
+from ...utils import check_chunks_unknown_shape, calc_nsplits, \
+    merge_chunks, recursive_tile
 from ..core import TENSOR_TYPE, Chunk, TensorOrder
 from ..operands import TensorShuffleProxy
 from ..utils import slice_split, calc_sliced_size, broadcast_shape, unify_chunks, \
-    split_indexes_into_chunks, filter_inputs, calc_pos, recursive_tile
+    split_indexes_into_chunks, filter_inputs, calc_pos
 
 
 class IndexType(Enum):
@@ -388,6 +389,14 @@ class _BoolIndexHandler(IndexHandler):
         context.append(info)
         return info
 
+    @classmethod
+    def _is_first_bool_index(self,
+                             context: IndexHandlerContext,
+                             index_info: IndexInfo) -> bool:
+        bool_index_infos = [info for info in context.parsed_infos
+                            if info.index_type == IndexType.bool_index]
+        return bool_index_infos[0] is index_info
+
 
 class NDArrayBoolIndexHandler(_BoolIndexHandler):
     def accept(self, raw_index):
@@ -404,6 +413,7 @@ class NDArrayBoolIndexHandler(_BoolIndexHandler):
                 context: IndexHandlerContext) -> None:
         tileable = context.tileable
         input_axis = index_info.input_axis
+        is_first_bool_index = self._is_first_bool_index(context, index_info)
 
         axes = list(range(input_axis, input_axis + index_info.raw_index.ndim))
         cum_sizes = []
@@ -420,11 +430,18 @@ class NDArrayBoolIndexHandler(_BoolIndexHandler):
             other_index = chunk_index[:axes[0]] + chunk_index[axes[-1] + 1:]
             if other_index not in other_index_to_iter:
                 other_index_to_iter[other_index] = itertools.count()
-            index = index_info.raw_index[slcs]
+            index = index_info.raw_index[tuple(slcs)]
             output_axis_index = next(other_index_to_iter[other_index])
+
+            # if more than 1 bool index, getitem will rewrite them into fancy
+            # but for now, setitem will keep them, thus we cannot record
+            # index or shape for this one
+            output_axis_index = None if not is_first_bool_index else output_axis_index
+            output_size = None if not is_first_bool_index else index.sum()
+
             self.set_chunk_index_info(context, index_info, chunk_index,
                                       chunk_index_info, output_axis_index,
-                                      index, index.sum())
+                                      index, output_size)
 
 
 class TensorBoolIndexHandler(_BoolIndexHandler):
@@ -447,6 +464,7 @@ class TensorBoolIndexHandler(_BoolIndexHandler):
         # rechunk index into the same chunk size
         nsplits = tileable.nsplits[input_axis: input_axis + index.ndim]
         index = index.rechunk(nsplits)._inplace_tile()
+        is_first_bool_index = self._is_first_bool_index(context, index_info)
 
         other_index_to_iter = dict()
         for chunk_index, chunk_index_info in context.chunk_index_to_info.items():
@@ -455,10 +473,17 @@ class TensorBoolIndexHandler(_BoolIndexHandler):
             if other_index not in other_index_to_iter:
                 other_index_to_iter[other_index] = itertools.count()
             output_axis_index = next(other_index_to_iter[other_index])
+
+            # if more than 1 bool index, getitem will rewrite them into fancy
+            # but for now, setitem will keep them, thus we cannot record
+            # index or shape for this one
+            output_axis_index = None if not is_first_bool_index else output_axis_index
+            output_size = None if not is_first_bool_index else np.nan
+
             self.set_chunk_index_info(context, index_info, chunk_index,
                                       chunk_index_info, output_axis_index,
                                       index.cix[tuple(effected_chunk_index)],
-                                      np.nan)
+                                      output_size)
 
 
 class _FancyIndexHandler(IndexHandler):

@@ -15,10 +15,10 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import KeyField, BoolField
 from .... import tensor as mt
+from ....serialize import KeyField, BoolField
 from ....tensor.core import TensorOrder
-from ....tensor.utils import recursive_tile
+from ....utils import recursive_tile
 from ...utils import check_array
 from ...utils.extmath import row_norms
 from .core import PairwiseDistances

@@ -21,10 +21,10 @@ from ...core import Base, Entity
 from ...serialize import KeyField, ListField, AnyField
 from ...tensor import tensor as astensor
 from ...tiles import TilesError
-from ...utils import check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..core import TENSOR_TYPE
 from ..operands import TensorHasInput, TensorOperandMixin
-from ..utils import filter_inputs, recursive_tile
+from ..utils import filter_inputs
 from .core import process_index
 
 
@@ -68,7 +68,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     def __call__(self, a, index, value):
         from .getitem import _getitem_nocheck
 
-        indexed = _getitem_nocheck(a, index)
+        indexed = _getitem_nocheck(a, index, convert_bool_to_fancy=False)
         inputs = filter_inputs([a] + list(index) + [value] + [indexed])
         self._indexes = index
         self._value = value
@@ -93,7 +93,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         is_value_tensor = isinstance(value, TENSOR_TYPE)
 
         if is_value_tensor and value.ndim > 0:
-            check_chunks_unknown_shape([op.indexed, op.value], TilesError)
+            check_chunks_unknown_shape([indexed, value], TilesError)
 
             value = recursive_tile(
                 broadcast_to(value, indexed.shape).astype(op.input.dtype))
@@ -150,7 +150,7 @@ def _check_support(index):
 
 
 def _setitem(a, item, value):
-    index = process_index(a.ndim, item)
+    index = process_index(a.ndim, item, convert_bool_to_fancy=False)
     if not (np.isscalar(value) or (isinstance(value, tuple) and a.dtype.fields)):
         # do not convert for tuple when dtype is record type.
         value = astensor(value)

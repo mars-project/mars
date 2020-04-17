@@ -874,3 +874,17 @@ def stack_back(flattened, raw):
         return container
 
     return _stack(result, raw)
+
+
+def recursive_tile(tensor):
+    q = [tensor]
+    while q:
+        t = q[-1]
+        cs = [c for c in t.inputs if c.is_coarse()]
+        if cs:
+            q.extend(cs)
+            continue
+        t._inplace_tile()
+        q.pop()
+
+    return tensor

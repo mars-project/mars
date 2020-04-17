@@ -25,7 +25,7 @@ from ...tensor.core import TENSOR_TYPE
 from ...tensor.datasource import empty, tensor as astensor, \
     from_series as tensor_from_series, from_dataframe as tensor_from_dataframe
 from ...tensor.statistics.quantile import quantile as tensor_quantile
-from ...tensor.utils import recursive_tile
+from ...utils import recursive_tile
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..core import DATAFRAME_TYPE
 from ..datasource.from_tensor import series_from_tensor, dataframe_from_tensor

@@ -20,9 +20,8 @@ from numpy.linalg import LinAlgError
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from ...core import ExecutableTuple
-from ...utils import check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape, recursive_tile
 from ...tiles import TilesError
-from ..utils import recursive_tile
 from ..array_utils import device, as_same_device, is_sparse_module
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor

@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import uuid
+
 import numpy as np
 
 from .core import Entity, Base
@@ -30,6 +32,7 @@ except ImportError:  # pragma: no cover
 class LocalSession(object):
     def __init__(self, **kwargs):
         self._endpoint = None
+        self._session_id = uuid.uuid4()
         self._context = LocalContext(self)
         self._executor = Executor(storage=self._context)
 
@@ -46,7 +49,7 @@ class LocalSession(object):
 
     @property
     def session_id(self):
-        return None
+        return self._session_id
 
     @property
     def executor(self):
