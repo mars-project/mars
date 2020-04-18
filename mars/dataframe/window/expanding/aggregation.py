@@ -136,7 +136,8 @@ class DataFrameExpandingAgg(BaseDataFrameExpandingAgg):
         return result, summary
 
     @classmethod
-    def _execute_combine_function(cls, op: "DataFrameExpandingAgg", func, pred_inputs, local_inputs):
+    def _execute_combine_function(cls, op: "DataFrameExpandingAgg", func, pred_inputs,
+                                  local_inputs, func_cols):
         return func(pred_inputs, local_inputs, axis=op.axis)
 
     @classmethod

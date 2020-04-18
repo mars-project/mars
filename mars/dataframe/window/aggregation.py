@@ -439,7 +439,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _execute_combine_function(cls, op: "BaseDataFrameExpandingAgg", func,
-                                  pred_inputs, local_inputs):
+                                  pred_inputs, local_inputs, func_cols):
         raise NotImplementedError
 
     @classmethod
@@ -461,7 +461,8 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                     local_inputs = [local_data_dict[src][func_cols] for src in func_sources]
 
                 func = op.key_to_funcs[func_str]
-                func_to_aggs[func_name] = cls._execute_combine_function(op, func, None, local_inputs)
+                func_to_aggs[func_name] = cls._execute_combine_function(
+                    op, func, None, local_inputs, func_cols)
         else:
             pred_data = ctx[op.inputs[1].key]
             pred_record_count = pred_data[-1].sum()
@@ -478,7 +479,8 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                     pred_inputs = [pred_data_dict[src][func_cols] for src in func_sources]
 
                 func = op.key_to_funcs[func_str]
-                func_to_aggs[func_name] = cls._execute_combine_function(op, func, pred_inputs, local_inputs)
+                func_to_aggs[func_name] = cls._execute_combine_function(
+                    op, func, pred_inputs, local_inputs, func_cols)
 
         if op.min_periods_func_name is not None:
             valid_counts = func_to_aggs.pop(op.min_periods_func_name)
