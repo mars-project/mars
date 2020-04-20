@@ -58,7 +58,7 @@ message IndexValue {
     message IntervalIndex {
         Value name = 1;
         Value data = 2;
-        bool closed = 3;
+        string closed = 3;
         // public fields
         string key = 51;
         bool is_monotonic_increasing = 52;
