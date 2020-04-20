@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import pandas as pd
 
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import ExecutorForTest, TestBase
 from mars.tensor import tensor
 from mars.dataframe import Series, DataFrame
-from mars.context import LocalContext
 
 
-class Test(unittest.TestCase):
+class Test(TestBase):
     def setUp(self):
         self.executor = ExecutorForTest('numpy')
 
@@ -52,14 +49,7 @@ class Test(unittest.TestCase):
 
         pd.testing.assert_series_equal(result, expected)
 
-        this = self
-
-        class MockSession:
-            def __init__(self):
-                self.executor = this.executor
-
-        ctx = LocalContext(MockSession())
-        executor = ExecutorForTest('numpy', storage=ctx)
+        ctx, executor = self._create_test_context(self.executor)
         with ctx:
             q = tensor([0.3, 0.7])
 
@@ -116,14 +106,7 @@ class Test(unittest.TestCase):
 
         pd.testing.assert_frame_equal(result, expected)
 
-        this = self
-
-        class MockSession:
-            def __init__(self):
-                self.executor = this.executor
-
-        ctx = LocalContext(MockSession())
-        executor = ExecutorForTest('numpy', storage=ctx)
+        ctx, executor = self._create_test_context(self.executor)
         with ctx:
             q = tensor([0.3, 0.7])
 
