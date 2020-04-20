@@ -20,6 +20,8 @@ import numpy as np
 import pandas as pd
 try:
     import matplotlib
+
+    matplotlib.use('Agg')
 except ImportError:  # pragma: no cover
     matplotlib = None
 
