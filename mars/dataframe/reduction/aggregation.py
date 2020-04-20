@@ -16,14 +16,13 @@ from collections import namedtuple, OrderedDict
 from collections.abc import Iterable
 from typing import Union, List, Dict
 
-import cloudpickle
 import numpy as np
 import pandas as pd
 
 from ... import opcodes
 from ...config import options
 from ...operands import OperandStage
-from ...serialize import BoolField, BytesField, AnyField, DictField
+from ...serialize import BoolField, AnyField, DictField
 from ...utils import tokenize, ceildiv, lazy_import
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
@@ -52,8 +51,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     _agg_sources = DictField('agg_sources')
     _agg_columns = DictField('agg_columns')
     _agg_funcs = DictField('agg_funcs')
-    _key_to_funcs = BytesField('keys_to_funcs', on_serialize=cloudpickle.dumps,
-                               on_deserialize=cloudpickle.loads)
+    _key_to_funcs = DictField('keys_to_funcs')
 
     def __init__(self, func=None, axis=None, use_inf_as_na=None, map_groups=None, map_sources=None,
                  combine_groups=None, combine_sources=None, agg_sources=None, agg_columns=None,

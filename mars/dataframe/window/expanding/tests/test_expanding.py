@@ -12,22 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 import pandas as pd
 
-from mars import dataframe as md
-from mars.tests.core import TestBase
+import mars.dataframe as md
+from mars.tests.core import ExecutorForTest
 
 
-class Test(TestBase):
-    def testRolling(self):
+class Test(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.executor = ExecutorForTest()
+
+    def testExpanding(self):
         df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
         df2 = md.DataFrame(df)
 
-        r = df2.rolling(3, min_periods=1, center=True,
-                        win_type='triang', closed='both')
-        expected = df.rolling(3, min_periods=1, center=True,
-                              win_type='triang', closed='both')
+        with self.assertRaises(NotImplementedError):
+            _ = df2.expanding(3, center=True)
+
+        with self.assertRaises(NotImplementedError):
+            _ = df2.expanding(3, axis=1)
+
+        r = df2.expanding(3, center=False)
+        expected = df.expanding(3, center=False)
         self.assertEqual(repr(r), repr(expected))
 
         self.assertIn('b', dir(r))
@@ -44,12 +54,12 @@ class Test(TestBase):
         self.assertNotIn('a', dir(r.a))
         self.assertNotIn('c', dir(r['a', 'b']))
 
-    def testRollingAgg(self):
+    def testExpandingAgg(self):
         df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
         df2 = md.DataFrame(df, chunk_size=3)
 
-        r = df2.rolling(3).agg('max')
-        expected = df.rolling(3).agg('max')
+        r = df2.expanding(3).agg('max')
+        expected = df.expanding(3).agg('max')
 
         self.assertEqual(r.shape, df.shape)
         self.assertIs(r.index_value, df2.index_value)
@@ -64,3 +74,8 @@ class Test(TestBase):
             pd.testing.assert_index_equal(c.columns_value.to_pandas(),
                                           expected.columns)
             pd.testing.assert_series_equal(c.dtypes, expected.dtypes)
+
+        aggs = ['sum', 'count', 'min', 'max', 'mean', 'var', 'std']
+        for a in aggs:
+            r = getattr(df2.expanding(3), a)()
+            self.assertEqual(r.op.func, [a])

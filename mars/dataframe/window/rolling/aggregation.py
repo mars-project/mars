@@ -15,7 +15,7 @@
 import numpy as np
 import pandas as pd
 
-from .... import opcodes as OperandDef
+from .... import opcodes
 from ....serialize import ValueType, AnyField, Int64Field, BoolField, \
     StringField, Int32Field, KeyField, TupleField, DictField, ListField
 from ....tiles import TilesError
@@ -28,7 +28,7 @@ cudf = lazy_import('cudf', globals=globals())
 
 
 class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = OperandDef.ROLLING_AGG
+    _op_type_ = opcodes.ROLLING_AGG
 
     _input = KeyField('input')
     _window = AnyField('window')
