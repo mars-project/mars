@@ -96,7 +96,7 @@ if six.PY3:
     import builtins
     from concurrent import futures  # don't remove
 
-    from datetime import timedelta
+    from datetime import timedelta, datetime
     total_seconds = timedelta.total_seconds
 
     import functools as functools32
@@ -179,7 +179,7 @@ else:
 
     dictconfig = lambda config: logging.config.dictConfig(config)
 
-    from datetime import timedelta
+    from datetime import timedelta, datetime
     total_seconds = timedelta.total_seconds
 
     import __builtin__ as builtins  # don't remove
@@ -229,6 +229,7 @@ else:
 Enum = enum.Enum
 DECIMAL_TYPES = tuple(DECIMAL_TYPES)
 Decimal = decimal.Decimal
+strptime = datetime.strptime
 
 if sys.version_info.major < 3:
     # Due to a bug in python 2.7 Queue.get, if a timeout isn't specified then
