@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import scipy.sparse as sps
 
 from mars.tiles import TilesError
-from mars.context import LocalContext
 from mars.utils import ignore_warning
 from mars.tensor.datasource import arange, tensor, empty
 from mars.tensor.statistics import average, cov, corrcoef, ptp, \
@@ -27,10 +24,10 @@ from mars.tensor.statistics.quantile import INTERPOLATION_TYPES
 from mars.tensor.base import sort
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import ExecutorForTest, TestBase
 
 
-class Test(unittest.TestCase):
+class Test(TestBase):
     def setUp(self):
         self.executor = ExecutorForTest('numpy')
 
@@ -166,14 +163,7 @@ class Test(unittest.TestCase):
             expected = np.histogram_bin_edges(raw, range=range_)
             np.testing.assert_array_equal(result, expected)
 
-        this = self
-
-        class MockSession:
-            def __init__(self):
-                self.executor = this.executor
-
-        ctx = LocalContext(MockSession())
-        executor = ExecutorForTest('numpy', storage=ctx)
+        ctx, executor = self._create_test_context(self.executor)
         with ctx:
             raw2 = rs.randint(10, size=(1,))
             b = tensor(raw2)
@@ -233,14 +223,7 @@ class Test(unittest.TestCase):
                     raw, bins=bins, weights=raw_weights, density=density)[0]
                 np.testing.assert_almost_equal(result, expected)
 
-        this = self
-
-        class MockSession:
-            def __init__(self):
-                self.executor = this.executor
-
-        ctx = LocalContext(MockSession())
-        executor = ExecutorForTest('numpy', storage=ctx)
+        ctx, executor = self._create_test_context(self.executor)
         with ctx:
             raw2 = rs.randint(10, size=(1,))
             b = tensor(raw2)
@@ -405,14 +388,7 @@ class Test(unittest.TestCase):
         q_raw = np.random.RandomState(0).rand(5)
         q = tensor(q_raw, chunk_size=3)
 
-        this = self
-
-        class MockSession:
-            def __init__(self):
-                self.executor = this.executor
-
-        ctx = LocalContext(MockSession())
-        executor = ExecutorForTest('numpy', storage=ctx)
+        ctx, executor = self._create_test_context(self.executor)
         with ctx:
             r = quantile(a, q, axis=None)
 
@@ -438,14 +414,7 @@ class Test(unittest.TestCase):
 
         mq = tensor(q)
 
-        this = self
-
-        class MockSession:
-            def __init__(self):
-                self.executor = this.executor
-
-        ctx = LocalContext(MockSession())
-        executor = ExecutorForTest('numpy', storage=ctx)
+        ctx, executor = self._create_test_context(self.executor)
         with ctx:
             r = percentile(a, mq)
             result = executor.execute_tensors([r])[0]

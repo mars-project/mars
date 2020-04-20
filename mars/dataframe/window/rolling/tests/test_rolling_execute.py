@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 
 from mars import dataframe as md
-from mars.context import LocalContext
 from mars.tests.core import TestBase, ExecutorForTest
 
 
@@ -121,14 +120,7 @@ class Test(TestBase):
                         else:
                             pd.testing.assert_frame_equal(result, expected)
 
-        this = self
-
-        class MockSession:
-            def __init__(self):
-                self.executor = this.executor
-
-        ctx = LocalContext(MockSession())
-        executor = ExecutorForTest('numpy', storage=ctx)
+        ctx, executor = self._create_test_context(self.executor)
         with ctx:
             df = md.DataFrame(raw, chunk_size=3)
             df = df[df.a > 0.5]

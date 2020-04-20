@@ -17,15 +17,15 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, ListField, AnyField
 from ...core import Base, Entity
-from ...utils import check_chunks_unknown_shape
+from ...serialize import KeyField, ListField, AnyField
+from ...tensor import tensor as astensor
 from ...tiles import TilesError
+from ...utils import check_chunks_unknown_shape
 from ..core import TENSOR_TYPE
 from ..operands import TensorHasInput, TensorOperandMixin
-from ..utils import filter_inputs
-from .core import process_index, calc_shape
-from .getitem import TensorIndex
+from ..utils import filter_inputs, recursive_tile
+from .core import process_index
 
 
 class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
@@ -34,10 +34,14 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
     _value = AnyField('value')
+    # input[indexes]
+    _indexed = KeyField('indexed')
 
-    def __init__(self, dtype=None, sparse=False, indexes=None, value=None, **kw):
+    def __init__(self, dtype=None, sparse=False, indexes=None, value=None,
+                 indexed=None, **kw):
         super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse,
-                                                  _indexes=indexes, _value=value, **kw)
+                                                  _indexes=indexes,
+                         _value=value, _indexed=indexed, **kw)
 
     @property
     def indexes(self):
@@ -47,18 +51,29 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     def value(self):
         return self._value
 
+    @property
+    def indexed(self):
+        return self._indexed
+
     def _set_inputs(self, inputs):
         super(TensorIndexSetValue, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
-        self._value = next(inputs_iter) if isinstance(self._value, (Base, Entity)) else self._value
+        if isinstance(self._value, (Base, Entity)):
+            self._value = next(inputs_iter)
+        if isinstance(self._indexed, (Base, Entity)):
+            self._indexed = next(inputs_iter)
 
     def __call__(self, a, index, value):
-        inputs = filter_inputs([a] + list(index) + [value])
+        from .getitem import _getitem_nocheck
+
+        indexed = _getitem_nocheck(a, index)
+        inputs = filter_inputs([a] + list(index) + [value] + [indexed])
         self._indexes = index
         self._value = value
+        self._indexed = indexed
         return self.new_tensor(inputs, a.shape, order=a.order)
 
     def on_output_modify(self, new_output):
@@ -71,32 +86,37 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        from ..base import broadcast_to
+
         tensor = op.outputs[0]
         value = op.value
+        indexed = op.indexed
         is_value_tensor = isinstance(value, TENSOR_TYPE)
 
-        index_tensor_op = TensorIndex(dtype=tensor.dtype, sparse=op.sparse, indexes=op.indexes)
-        index_tensor_inputs = filter_inputs([op.input] + op.indexes)
-        index_tensor = index_tensor_op.new_tensor(index_tensor_inputs, tensor.shape)._inplace_tile()
+        if is_value_tensor and value.ndim > 0:
+            check_chunks_unknown_shape([op.indexed, op.value], TilesError)
 
-        to_check_tensors = [index_tensor]
-        if is_value_tensor:
-            to_check_tensors.append(value)
-        check_chunks_unknown_shape(to_check_tensors, TilesError)
-
-        nsplits = index_tensor.nsplits
-        if is_value_tensor:
+            value = recursive_tile(
+                broadcast_to(value, indexed.shape).astype(op.input.dtype))
+            nsplits = indexed.nsplits
             value = value.rechunk(nsplits)._inplace_tile()
 
-        chunk_mapping = {c.op.input.index: c for c in index_tensor.chunks}
+        chunk_mapping = {c.op.input.index: c for c in op.indexed.chunks}
         out_chunks = []
-        for chunk in op.input.chunks:
+        for chunk in indexed.op.input.chunks:
             index_chunk = chunk_mapping.get(chunk.index)
             if index_chunk is None:
                 out_chunks.append(chunk)
                 continue
 
-            value_chunk = value.cix[index_chunk.index] if is_value_tensor else value
+            if is_value_tensor:
+                if value.ndim > 0:
+                    value_chunk = value.cix[index_chunk.index]
+                else:
+                    value_chunk = value.chunks[0]
+            else:
+                # non tensor
+                value_chunk = value
             chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse,
                                            indexes=index_chunk.op.indexes, value=value_chunk)
             chunk_inputs = filter_inputs([chunk] + index_chunk.op.indexes + [value_chunk])
@@ -120,19 +140,24 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         ctx[op.outputs[0].key] = input_
 
 
-def _setitem(a, item, value):
-    from ..base import broadcast_to
+def _check_support(index):
+    if isinstance(index, (slice, Integral)):
+        pass
+    elif isinstance(index, (np.ndarray, TENSOR_TYPE)) and index.dtype == np.bool_:
+        pass
+    else:  # pragma: no cover
+        raise NotImplementedError('Only slice, int, or bool indexing '
+                                  'supported by now, got {0}'.format(type(index)))
 
+
+def _setitem(a, item, value):
     index = process_index(a.ndim, item)
-    shape = calc_shape(a.shape, index)
+    if not (np.isscalar(value) or (isinstance(value, tuple) and a.dtype.fields)):
+        # do not convert for tuple when dtype is record type.
+        value = astensor(value)
 
     for ix in index:
-        if not isinstance(ix, (slice, Integral)):
-            raise NotImplementedError('Only slice or int supported by now, got {0}'.format(type(ix)))
-
-    # don't broadcast for tuple when dtype is record type.
-    if not (np.isscalar(value) or (isinstance(value, tuple) and a.dtype.fields)):
-        value = broadcast_to(value, shape).astype(a.dtype)
+        _check_support(ix)
 
     # __setitem__ on a view should be still a view, see GH #732.
     op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(), indexes=index, value=value, _create_view=a.op.create_view)
