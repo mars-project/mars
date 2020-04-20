@@ -20,7 +20,7 @@ import numpy as np
 import scipy.sparse as sps
 
 from mars.tensor.datasource import tensor, empty
-from mars.tensor.merge import concatenate, stack, hstack, vstack, dstack, column_stack
+from mars.tensor import concatenate, stack, hstack, vstack, dstack, column_stack, union1d
 from mars.tests.core import ExecutorForTest
 
 
@@ -177,3 +177,21 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(c, concat=True)[0]
         expected = np.column_stack((a_data, b_data))
         np.testing.assert_equal(res, expected)
+
+    def testUnion1dExecution(self):
+        rs = np.random.RandomState(0)
+        raw1 = rs.rand(10)
+        raw2 = rs.rand(9)
+
+        t1 = tensor(raw1, chunk_size=3)
+        t2 = tensor(raw2, chunk_size=4)
+
+        t = union1d(t1, t2, aggregate_size=1)
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.union1d(raw1, raw2)
+        np.testing.assert_array_equal(res, expected)
+
+        t = union1d(t1, t2)
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.union1d(raw1, raw2)
+        np.testing.assert_array_equal(res, expected)
