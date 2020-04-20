@@ -529,7 +529,7 @@ class SeriesChunk(Chunk):
 
 
 class SeriesData(HasShapeTileableData):
-    __slots__ = '_cache',
+    __slots__ = '_cache', '_accessors'
 
     # optional field
     _dtype = DataTypeField('dtype')
@@ -544,6 +544,7 @@ class SeriesData(HasShapeTileableData):
         super(SeriesData, self).__init__(_op=op, _shape=shape, _nsplits=nsplits,
                                          _dtype=dtype, _name=name, _index_value=index_value,
                                          _chunks=chunks, **kw)
+        self._accessors = dict()
 
     @classmethod
     def cls(cls, provider):
@@ -717,7 +718,7 @@ class DataFrameChunk(Chunk):
 
 
 class DataFrameData(HasShapeTileableData):
-    __slots__ = ()
+    __slots__ = '_accessors',
 
     # optional fields
     _dtypes = SeriesField('dtypes')
@@ -733,6 +734,7 @@ class DataFrameData(HasShapeTileableData):
                                             _dtypes=dtypes, _index_value=index_value,
                                             _columns_value=columns_value,
                                             _chunks=chunks, **kw)
+        self._accessors = dict()
 
     @classmethod
     def cls(cls, provider):

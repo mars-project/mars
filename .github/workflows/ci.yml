@@ -70,6 +70,9 @@ jobs:
         else
           pip install virtualenv flake8 etcd-gevent
           if [ -z "$NO_COMMON_TESTS" ]; then
+            if [[ $UNAME == "linux" ]]; then
+              pip install matplotlib
+            fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true
               conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
