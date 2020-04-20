@@ -253,7 +253,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             return None, in_df.nsplits
 
         axis = out_df.op.axis
-        out_dtypes_dict = dict()
+        chunk_idx_to_dtypes = dict()
         out_dtypes = out_df.dtypes
         new_dtypes_sizes = []
         for c in in_df.cix[0, :]:
@@ -264,24 +264,24 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                 dtypes = out_dtypes.reindex(columns).dropna()
 
             if len(dtypes):
-                out_dtypes_dict[c.index[1]] = (len(out_dtypes_dict), dtypes)
+                chunk_idx_to_dtypes[c.index[1]] = (len(chunk_idx_to_dtypes), dtypes)
                 new_dtypes_sizes.append(len(dtypes))
         new_nsplits = list(in_df.nsplits)
         new_nsplits[1 - axis] = tuple(new_dtypes_sizes)
-        return out_dtypes_dict, tuple(new_nsplits)
+        return chunk_idx_to_dtypes, tuple(new_nsplits)
 
     @classmethod
     def _tile_single(cls, op: "BaseDataFrameExpandingAgg"):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
 
-        dtypes_mapping, new_nsplits = cls._remap_dtypes(in_df, out_df)
+        chunk_idx_to_dtypes, new_nsplits = cls._remap_dtypes(in_df, out_df)
 
         chunks = []
         for c in in_df.chunks:
             try:
                 if out_df.ndim == 2:
-                    new_axis_idx, new_dtypes = dtypes_mapping[c.index[1] if c.ndim > 1 else 0]
+                    new_axis_idx, new_dtypes = chunk_idx_to_dtypes[c.index[1] if c.ndim > 1 else 0]
                 else:
                     new_axis_idx, new_dtypes = None, None
             except KeyError:
@@ -299,12 +299,12 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                 params['dtype'] = out_df.dtype
                 chunks.append(chunk_op.new_chunk([in_df.chunks[0]], **params))
 
-        tensor_op = op.copy().reset_key()
+        tileable_op = op.copy().reset_key()
         params = out_df.params.copy()
         params['chunks'] = chunks
         if new_nsplits:
             params['nsplits'] = new_nsplits
-        return tensor_op.new_tileables([in_df], **params)
+        return tileable_op.new_tileables([in_df], **params)
 
     @classmethod
     def tile(cls, op: "BaseDataFrameExpandingAgg"):
