@@ -573,7 +573,12 @@ cdef class ProtobufSerializeProvider(Provider):
                 raise TypeError('Failed to set field `{}` for {}, reason: {}'.format(
                     tag, model_instance, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
         else:
-            setattr(obj, tag, value)
+            try:
+                setattr(obj, tag, value)
+            except TypeError:
+                exc_info = sys.exc_info()
+                raise TypeError('Failed to set field `{}` for {}, reason: {}'.format(
+                    tag, model_instance, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
 
     cpdef serialize_attribute_as_dict(self, model_instance, obj=None):
         cdef object id_field

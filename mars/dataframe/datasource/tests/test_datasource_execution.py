@@ -100,15 +100,34 @@ class Test(TestBase):
         pd.testing.assert_index_equal(result, pd.Index(raw))
 
     def testInitializerExecution(self):
-        pdf = pd.DataFrame(np.random.rand(20, 30), index=[np.arange(20), np.arange(20, 0, -1)])
+        arr = np.random.rand(20, 30)
+
+        pdf = pd.DataFrame(arr, index=[np.arange(20), np.arange(20, 0, -1)])
         df = md.DataFrame(pdf, chunk_size=(15, 10))
         result = self.executor.execute_dataframe(df, concat=True)[0]
         pd.testing.assert_frame_equal(pdf, result)
 
-        ps = pd.Series(np.random.rand(20), index=[np.arange(20), np.arange(20, 0, -1)], name='a')
+        df = md.DataFrame(arr, index=md.date_range('2020-1-1', periods=20))
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        pd.testing.assert_frame_equal(
+            result, pd.DataFrame(arr, index=pd.date_range('2020-1-1', periods=20)))
+
+        s = np.random.rand(20)
+
+        ps = pd.Series(s, index=[np.arange(20), np.arange(20, 0, -1)], name='a')
         series = md.Series(ps, chunk_size=7)
         result = self.executor.execute_dataframe(series, concat=True)[0]
         pd.testing.assert_series_equal(ps, result)
+
+        series = md.Series(s, index=md.date_range('2020-1-1', periods=20))
+        result = self.executor.execute_dataframe(series, concat=True)[0]
+        pd.testing.assert_series_equal(
+            result, pd.Series(s, index=pd.date_range('2020-1-1', periods=20)))
+
+        pi = pd.IntervalIndex.from_tuples([(0, 1), (2, 3), (4, 5)])
+        index = md.Index(md.Index(pi))
+        result = self.executor.execute_dataframe(index, concat=True)[0]
+        pd.testing.assert_index_equal(pi, result)
 
     def testSeriesFromTensor(self):
         data = np.random.rand(10)

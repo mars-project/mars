@@ -332,6 +332,7 @@ message OperandDef {
         DATETIME_METHOD = 716;
         CHECK_NA = 719;
         DROP_NA = 720;
+        SHIFT = 723;
 
         FUSE = 801;
 

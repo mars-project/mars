@@ -15,10 +15,13 @@
 import pandas as pd
 
 from ..core import Base, Entity
+from ..tensor import tensor as astensor
 from ..tensor.core import TENSOR_TYPE
-from .core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame as _Frame, Series as _Series
+from .core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DataFrame as _Frame, \
+    Series as _Series, Index as _Index
 from .datasource.dataframe import from_pandas as from_pandas_df
 from .datasource.series import from_pandas as from_pandas_series
+from .datasource.index import from_pandas as from_pandas_index
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
     dataframe_from_1d_tileables
 
@@ -30,6 +33,9 @@ class DataFrame(_Frame):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
+        elif isinstance(index, INDEX_TYPE):
+            df = dataframe_from_tensor(astensor(data, chunk_size=chunk_size), index=index,
+                                       columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
             if not hasattr(data, 'data'):
                 # DataFrameData
@@ -53,6 +59,9 @@ class Series(_Series):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)
+        elif isinstance(index, INDEX_TYPE):
+            series = series_from_tensor(astensor(data, chunk_size=chunk_size), index=index,
+                                        name=name, gpu=gpu, sparse=sparse)
         elif isinstance(data, SERIES_TYPE):
             if not hasattr(data, 'data'):
                 # SeriesData
@@ -63,3 +72,24 @@ class Series(_Series):
             pd_series = pd.Series(data, index=index, dtype=dtype, name=name, copy=copy)
             series = from_pandas_series(pd_series, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
         super(Series, self).__init__(series.data)
+
+
+class Index(_Index):
+    def __new__(cls, data):
+        # just return cls always until we support other Index's initializers
+        return object.__new__(cls)
+
+    def __init__(self, data=None, dtype=None, copy=False, name=None,
+                 tupleize_cols=False, chunk_size=None, gpu=None, sparse=None):
+        if isinstance(data, INDEX_TYPE):
+            if not hasattr(data, 'data'):
+                # IndexData
+                index = _Index(data)
+            else:
+                index = data
+        else:
+            pd_index = pd.Index(data=data, dtype=dtype, copy=copy,
+                                name=name, tupleize_cols=tupleize_cols)
+            index = from_pandas_index(pd_index, chunk_size=chunk_size,
+                                      gpu=gpu, sparse=sparse)
+        super(Index, self).__init__(index.data)

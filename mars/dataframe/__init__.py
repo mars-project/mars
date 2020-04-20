@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initializer import DataFrame, Series
+from .initializer import DataFrame, Series, Index
 # do imports to register operands
 from .base.checkna import isna, isnull, notna, notnull
 from .datasource.from_tensor import dataframe_from_tensor

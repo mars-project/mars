@@ -167,11 +167,8 @@ def decide_series_chunk_size(shape, chunk_size, memory_usage):
 
 
 def parse_index(index_value, *args, **kwargs):
-    def _extract_property(index, ret_data):
+    def _extract_property(index, tp, ret_data):
         kw = {
-            '_is_monotonic_increasing': index.is_monotonic_increasing,
-            '_is_monotonic_decreasing': index.is_monotonic_decreasing,
-            '_is_unique': index.is_unique,
             '_min_val': _get_index_min(index),
             '_max_val': _get_index_max(index),
             '_min_val_close': True,
@@ -180,6 +177,12 @@ def parse_index(index_value, *args, **kwargs):
         }
         if ret_data:
             kw['_data'] = index.values
+        for field in tp._FIELDS:
+            if field in kw or field == '_data':
+                continue
+            val = getattr(index, field.lstrip('_'), None)
+            if val is not None:
+                kw[field] = val
         return kw
 
     def _tokenize_index(index, *token_objects):
@@ -201,8 +204,9 @@ def parse_index(index_value, *args, **kwargs):
             return None
 
     def _serialize_index(index):
-        properties = _extract_property(index, store_data)
-        return getattr(IndexValue, type(index).__name__)(_name=index.name, **properties)
+        tp = getattr(IndexValue, type(index).__name__)
+        properties = _extract_property(index, tp, store_data)
+        return tp(**properties)
 
     def _serialize_range_index(index):
         if is_pd_range_empty(index):
@@ -215,18 +219,19 @@ def parse_index(index_value, *args, **kwargs):
                 '_min_val_close': True,
                 '_max_val_close': False,
                 '_key': key or _tokenize_index(index, *args),
+                '_name': index.name,
             }
         else:
-            properties = _extract_property(index, False)
+            properties = _extract_property(index, IndexValue.RangeIndex, False)
         return IndexValue.RangeIndex(_slice=slice(_get_range_index_start(index),
                                                   _get_range_index_stop(index),
                                                   _get_range_index_step(index)),
-                                     _name=index.name, **properties)
+                                     **properties)
 
     def _serialize_multi_index(index):
-        kw = _extract_property(index, store_data)
+        kw = _extract_property(index, IndexValue.MultiIndex, store_data)
         kw['_sortorder'] = index.sortorder
-        return IndexValue.MultiIndex(_names=index.names, **kw)
+        return IndexValue.MultiIndex(**kw)
 
     store_data = kwargs.pop('store_data', None)
     key = kwargs.pop('key', None)
@@ -394,6 +399,17 @@ def build_split_idx_to_origin_idx(splits, increase=True):
     return res
 
 
+def _generate_value(dtype, fill_value):
+    # special handle for datetime64 and timedelta64
+    dispatch = {
+        np.datetime64: pd.Timestamp,
+        np.timedelta64: pd.Timedelta,
+    }
+    # otherwise, just use dtype.type itself to convert
+    convert = dispatch.get(dtype.type, dtype.type)
+    return convert(fill_value)
+
+
 def build_empty_df(dtypes, index=None):
     columns = dtypes.index
     df = pd.DataFrame(columns=columns, index=index)
@@ -402,8 +418,41 @@ def build_empty_df(dtypes, index=None):
     return df
 
 
+def build_df(df_obj, fill_value=1, size=1):
+    empty_df = build_empty_df(df_obj.dtypes, index=df_obj.index_value.to_pandas()[:0])
+    dtypes = empty_df.dtypes
+    record = [_generate_value(dtype, fill_value) for dtype in empty_df.dtypes]
+    if isinstance(empty_df.index, pd.MultiIndex):
+        index = tuple(_generate_value(level.dtype, fill_value) for level in empty_df.index.levels)
+        empty_df.loc[index, ] = record
+    else:
+        index = _generate_value(empty_df.index.dtype, fill_value)
+        empty_df.loc[index] = record
+
+    empty_df = pd.concat([empty_df] * size)
+    # make sure dtypes correct for MultiIndex
+    empty_df = empty_df.astype(dtypes, copy=False)
+    return empty_df
+
+
 def build_empty_series(dtype, index=None, name=None):
     return pd.Series(dtype=dtype, index=index, name=name)
+
+
+def build_series(series_obj, fill_value=1, size=1):
+    empty_series = build_empty_series(series_obj.dtype, index=series_obj.index_value.to_pandas()[:0])
+    record = _generate_value(series_obj.dtype, fill_value)
+    if isinstance(empty_series.index, pd.MultiIndex):
+        index = tuple(_generate_value(level.dtype, fill_value) for level in empty_series.index.levels)
+        empty_series.loc[index, ] = record
+    else:
+        index = _generate_value(empty_series.index.dtype, fill_value)
+        empty_series.loc[index] = record
+
+    empty_series = pd.concat([empty_series] * size)
+    # make sure dtype correct for MultiIndex
+    empty_series = empty_series.astype(series_obj.dtype, copy=False)
+    return empty_series
 
 
 def concat_index_value(index_values, store_data=False):
