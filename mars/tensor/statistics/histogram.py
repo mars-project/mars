@@ -22,12 +22,12 @@ from ... import tensor as mt
 from ...serialize import AnyField, TupleField, KeyField, BoolField
 from ...tiles import TilesError
 from ...context import get_context
-from ...utils import check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..arithmetic.utils import tree_add
-from ..utils import is_asc_sorted, recursive_tile
+from ..utils import is_asc_sorted
 from ..array_utils import as_same_device, device
 
 # note: some logic of this file were adopted from `numpy/lib/histograms`

@@ -23,7 +23,7 @@ from ....serialize import KeyField, BoolField
 from ....tensor.core import TensorOrder
 from ....tensor.indexing import fill_diagonal
 from ....tensor.array_utils import as_same_device, device
-from ....tensor.utils import recursive_tile
+from ....utils import recursive_tile
 from .core import PairwiseDistances
 
 

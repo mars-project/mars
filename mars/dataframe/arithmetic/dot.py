@@ -18,9 +18,10 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from ...tiles import TilesError
+from ...utils import recursive_tile
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
-from ...tensor.utils import decide_unify_split, validate_axis, recursive_tile
+from ...tensor.utils import decide_unify_split, validate_axis
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, IndexValue
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index

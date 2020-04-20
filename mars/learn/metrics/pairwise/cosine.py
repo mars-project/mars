@@ -17,8 +17,8 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....serialize import KeyField
 from .... import tensor as mt
+from ....utils import recursive_tile
 from ....tensor.core import TensorOrder
-from ....tensor.utils import recursive_tile
 from ...preprocessing import normalize
 from .core import PairwiseDistances
 

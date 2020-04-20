@@ -21,7 +21,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, AnyField, TupleField, BoolField
-from ..utils import recursive_tile
+from ...utils import recursive_tile
 from ..array_utils import device, as_same_device
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..arithmetic import sqrt

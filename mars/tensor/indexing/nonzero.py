@@ -19,7 +19,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from ...core import ExecutableTuple
-from ..utils import recursive_tile
+from ...utils import recursive_tile
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..core import TensorOrder

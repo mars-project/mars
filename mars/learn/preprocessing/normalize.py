@@ -24,7 +24,7 @@ from ...serialize import KeyField, StringField, Int32Field, BoolField
 from ...tensor.operands import TensorOperand, TensorOperandMixin
 from ...tensor.core import TensorOrder
 from ...tensor.array_utils import as_same_device, device, sparse, issparse
-from ...tensor.utils import recursive_tile
+from ...utils import recursive_tile
 from ... import tensor as mt
 from ..utils import check_array
 

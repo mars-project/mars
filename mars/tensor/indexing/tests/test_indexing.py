@@ -48,6 +48,19 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(indexed.shape[0]))
         self.assertEqual(indexed.shape[1], 300)
 
+        t2 = ones((10, 20))
+        rs = np.random.RandomState(0)
+        i1 = np.zeros(10, dtype=bool)
+        i1[rs.permutation(np.arange(10))[:5]] = True
+        i2 = np.zeros(20, dtype=bool)
+        i2[rs.permutation(np.arange(20))[:5]] = True
+        indexed = t2[i1, i2]
+        self.assertEqual(len(indexed.shape), 1)
+        self.assertEqual(indexed.shape[0], 5)
+
+        t2 = indexed.tiles()
+        self.assertEqual(t2.chunks[0].index, (0,))
+
         t3 = ones((101, 200))
         with self.assertRaises(IndexError) as cm:
             _ = t[t3 < 2]  # noqa: F841
@@ -234,20 +247,6 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(t2.shape[-1]))
         self.assertEqual(t2.chunk_shape, (4, 13, 1, 17))
         self.assertEqual(t2.chunks[0].op.indexes, [slice(10, 24, 3), 5, slice(None), None, cmp.cix[0, ].data])
-
-        # multiple tensor type as indexes
-        t3 = ones((100, 200, 300, 400), chunk_size=24)
-        cmp2 = ones((100, 200), chunk_size=24) < 2
-        cmp3 = ones(400, chunk_size=24) < 2
-        t4 = t3[cmp2, 5, None, cmp3]
-        t4 = t4.tiles()
-        cmp2, cmp3 = get_tiled(cmp2), get_tiled(cmp3)
-
-        self.assertEqual(t4.shape[1], 1)
-        self.assertTrue(np.isnan(t4.shape[0]))
-        self.assertTrue(np.isnan(t4.shape[-1]))
-        self.assertEqual(t4.chunk_shape, (45, 1, 17))
-        self.assertEqual(t4.chunks[0].op.indexes, [cmp2.cix[0, 0].data, 5, None, cmp3.cix[0, ].data])
 
     def testSetItem(self):
         shape = (10, 20, 30, 40)

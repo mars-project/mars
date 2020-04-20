@@ -23,10 +23,10 @@ except ImportError:  # pragma: no cover
 from ... import opcodes as OperandDef
 from ... import tensor as mt
 from ...core import Base, Entity
-from ...serialize import KeyField, BoolField, TupleField, DataTypeField, AnyField
+from ...serialize import KeyField, BoolField, TupleField, DataTypeField, AnyField, ListField
 from ...tensor.operands import TensorOrder
-from ...tensor.utils import recursive_tile
 from ...tiles import TilesError
+from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils import assert_all_finite
 
@@ -85,7 +85,8 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
             chunk_op = IsMultilabel(unique_y=unique_y_chunk,
                                     is_y_sparse=y.issparse())
             chunk = chunk_op.new_chunk([unique_y_chunk], dtype=out.dtype,
-                                       order=out.order, index=(0,))
+                                       order=out.order, index=(0,),
+                                       shape=())
 
             new_op = op.copy()
             params = out.params
@@ -174,15 +175,17 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
     _unique_y = KeyField('unique_y')
     _y_shape = TupleField('y_shape')
     _y_dtype = DataTypeField('y_dtype')
+    _checked_targets = ListField('checked_targets')
 
     def __init__(self, y=None, is_multilabel=None, first_value=None,
                  check_float=None, assert_all_finite=None,
-                 unique_y=None, y_shape=None, y_dtype=None, **kw):
+                 unique_y=None, y_shape=None, y_dtype=None,
+                 checked_targets=None, **kw):
         super().__init__(_y=y, _is_multilabel=is_multilabel,
                          _first_value=first_value, _check_float=check_float,
                          _assert_all_finite=assert_all_finite,
                          _unique_y=unique_y, _y_shape=y_shape,
-                         _y_dtype=y_dtype, **kw)
+                         _y_dtype=y_dtype, _checked_targets=checked_targets, **kw)
         self._output_types = [OutputType.tensor]
 
     @property
@@ -216,6 +219,10 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
     @property
     def y_dtype(self):
         return self._y_dtype
+
+    @property
+    def checked_targets(self):
+        return self._checked_targets
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -318,7 +325,11 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        ctx[op.outputs[0].key] = cls._execute(ctx, op)
+        target = cls._execute(ctx, op)
+        if op.checked_targets is not None and len(op.checked_targets) > 0:
+            if target not in op.checked_targets:
+                raise ValueError('Unknown label type: {}'.format(target))
+        ctx[op.outputs[0].key] = target
 
 
 def type_of_target(y):
@@ -403,3 +414,20 @@ def type_of_target(y):
 
     op = TypeOfTarget(y=y)
     return op(y)
+
+
+def check_classification_targets(y):
+    """Ensure that target y is of a non-regression type.
+
+    Only the following target types (as defined in type_of_target) are allowed:
+        'binary', 'multiclass', 'multiclass-multioutput',
+        'multilabel-indicator', 'multilabel-sequences'
+
+    Parameters
+    ----------
+    y : array-like
+    """
+    y_type = type_of_target(y)
+    y_type.op._checked_targets = ['binary', 'multiclass', 'multiclass-multioutput',
+                                  'multilabel-indicator', 'multilabel-sequences']
+    return y_type

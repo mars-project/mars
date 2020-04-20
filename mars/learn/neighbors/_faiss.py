@@ -34,8 +34,8 @@ from ...tensor import tensor as astensor
 from ...tensor.core import TensorOrder
 from ...tensor.random import RandomState
 from ...tensor.array_utils import as_same_device, device
-from ...tensor.utils import recursive_tile, check_random_state, gen_random_seeds
-from ...utils import check_chunks_unknown_shape, require_not_none
+from ...tensor.utils import check_random_state, gen_random_seeds
+from ...utils import check_chunks_unknown_shape, require_not_none, recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 
 

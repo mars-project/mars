@@ -23,11 +23,11 @@ from ... import opcodes as OperandDef
 from ...operands import OperandStage
 from ...serialize import KeyField, TupleField, StringField, ValueType
 from ...tiles import TilesError
-from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
+from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape, recursive_tile
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorMapReduceOperand, TensorShuffleProxy
-from ..utils import get_order, recursive_tile, decide_chunk_sizes
+from ..utils import get_order, decide_chunk_sizes
 
 logger = logging.getLogger(__name__)
 

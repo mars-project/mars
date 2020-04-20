@@ -1532,3 +1532,15 @@ class Test(unittest.TestCase):
 
         r = self.executor.execute_tensor(pa, concat=True)[0]
         np.testing.assert_array_equal(np.sort(raw, axis=0)[-1:-4:-1], raw[r])
+
+    def testCopy(self):
+        x = tensor([1, 2, 3])
+        y = mt.copy(x)
+        z = x
+
+        x[0] = 10
+        y_res = self.executor.execute_tensor(y)[0]
+        np.testing.assert_array_equal(y_res, np.array([1, 2, 3]))
+
+        z_res = self.executor.execute_tensor(z)[0]
+        np.testing.assert_array_equal(z_res, np.array([10, 2, 3]))

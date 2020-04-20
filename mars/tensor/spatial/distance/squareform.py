@@ -22,12 +22,12 @@ from ....serialize import ValueType, KeyField, BoolField, TupleField
 from ....tiles import TilesError
 from ....config import options
 from ....utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes, \
-    require_module
+    require_module, recursive_tile
 from ...core import TensorOrder
 from ...operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ...datasource import ascontiguousarray, array, zeros
 from ...arithmetic import equal
-from ...utils import decide_chunk_sizes, recursive_tile
+from ...utils import decide_chunk_sizes
 from ...array_utils import as_same_device, device, cp
 
 

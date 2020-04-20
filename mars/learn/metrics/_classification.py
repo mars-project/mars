@@ -20,8 +20,8 @@ from ...core import Base, Entity
 from ...context import get_context
 from ...serialize import AnyField, BoolField, KeyField
 from ...tensor.operands import TensorOrder
-from ...tensor.utils import recursive_tile
 from ...tiles import TilesError
+from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ._check_targets import _check_targets
 

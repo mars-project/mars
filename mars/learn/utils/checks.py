@@ -26,8 +26,7 @@ from ...serialize import KeyField, StringField, BoolField, DataTypeField
 from ...operands import OperandStage
 from ...tensor.core import TensorOrder, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ...tensor.array_utils import as_same_device, device, issparse, get_array_module
-from ...tensor.utils import recursive_tile
-from ...utils import ceildiv
+from ...utils import ceildiv, recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from .core import get_output_types
 

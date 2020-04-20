@@ -23,8 +23,8 @@ from ....serialize import KeyField, BoolField
 from ....tensor.core import TensorOrder
 from ....tensor.arithmetic import abs as mt_abs
 from ....tensor.spatial.distance import cdist
-from ....tensor.utils import recursive_tile
 from ....tensor.array_utils import as_same_device, device
+from ....utils import recursive_tile
 from .core import PairwiseDistances
 
 

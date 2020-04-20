@@ -79,7 +79,10 @@ def calc_shape(tensor_shape, index):
 
     if fancy_index is not None:
         try:
-            fancy_index_shape = broadcast_shape(*fancy_index_shapes)
+            if any(np.isnan(np.prod(s)) for s in fancy_index_shapes):
+                fancy_index_shape = (np.nan,) * len(fancy_index_shapes[0])
+            else:
+                fancy_index_shape = broadcast_shape(*fancy_index_shapes)
             shape = shape[:fancy_index] + list(fancy_index_shape) + shape[fancy_index:]
         except ValueError:
             raise IndexError(
@@ -89,11 +92,14 @@ def calc_shape(tensor_shape, index):
     return shape
 
 
-def preprocess_index(index):
+def preprocess_index(index, convert_bool_to_fancy=None):
+    from .nonzero import nonzero
+
     inds = []
-    has_bool_index = False
     fancy_indexes = []
+    bool_indexes = []
     all_fancy_index_ndarray = True
+    all_bool_index_ndarray = True
     for j, ind in enumerate(index):
         if isinstance(ind, (list, np.ndarray) + TENSOR_TYPE):
             if not isinstance(ind, TENSOR_TYPE):
@@ -102,7 +108,9 @@ def preprocess_index(index):
                 raise IndexError(_INDEX_ERROR_MSG)
             if ind.dtype.kind == 'b':
                 # bool indexing
-                has_bool_index = True
+                bool_indexes.append(j)
+                if not isinstance(ind, np.ndarray):
+                    all_bool_index_ndarray = False
             else:
                 # fancy indexing
                 fancy_indexes.append(j)
@@ -113,18 +121,39 @@ def preprocess_index(index):
             raise IndexError(_INDEX_ERROR_MSG)
         inds.append(ind)
 
-    if not all_fancy_index_ndarray:
-        # if not all fancy indexes are ndarray, we will convert all of them to Tensor
+    if convert_bool_to_fancy is None:
+        convert_bool_to_fancy = \
+            (fancy_indexes and len(bool_indexes) > 0) or len(bool_indexes) > 1
+
+    if not all_fancy_index_ndarray or (convert_bool_to_fancy and not all_bool_index_ndarray):
+        # if not all fancy indexes are ndarray,
+        # or bool indexes need to be converted to fancy indexes,
+        # and not all bool indexes are ndarray,
+        # we will convert all of them to Tensor
         for fancy_index in fancy_indexes:
             inds[fancy_index] = astensor(inds[fancy_index])
 
-    if fancy_indexes and has_bool_index:
-        raise NotImplementedError('We do not support index that contains both bool and fancy index yet')
+    # convert bool index to fancy index when any situation bellow meets:
+    # 1. fancy indexes and bool indexes both exists
+    # 2. bool indexes more than 2
+    if convert_bool_to_fancy:
+        default_m = None
+        if len(fancy_indexes) > 0:
+            default_m = np.nonzero \
+                if isinstance(inds[fancy_indexes[0]], np.ndarray) \
+                else nonzero
+        for bool_index in bool_indexes:
+            ind = inds[bool_index]
+            m = default_m
+            if m is None:
+                m = np.nonzero if isinstance(ind, np.ndarray) else nonzero
+            ind = m(ind)[0]
+            inds[bool_index] = ind
 
     return tuple(inds)
 
 
-def process_index(tensor_ndim, item):
+def process_index(tensor_ndim, item, convert_bool_to_fancy=None):
     if isinstance(item, list):
         arr = np.array(item)
         if arr.dtype == np.object_:
@@ -136,7 +165,8 @@ def process_index(tensor_ndim, item):
     elif not isinstance(item, tuple):
         item = (item,)
 
-    index = preprocess_index(item)
+    index = preprocess_index(
+        item, convert_bool_to_fancy=convert_bool_to_fancy)
     index = replace_ellipsis(index, tensor_ndim)
     missing = tensor_ndim - sum(index_ndim(i) for i in index)
     if missing < 0:

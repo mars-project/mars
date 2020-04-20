@@ -22,11 +22,11 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import ValueType, AnyField, KeyField, BoolField, TupleField
 from ...tiles import TilesError
-from ...utils import check_chunks_unknown_shape, ceildiv
+from ...utils import check_chunks_unknown_shape, ceildiv, recursive_tile
 from ..operands import TensorOperandMixin
 from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
 from ..datasource import arange, array
-from ..utils import decide_chunk_sizes, recursive_tile, normalize_chunk_sizes, gen_random_seeds
+from ..utils import decide_chunk_sizes, normalize_chunk_sizes, gen_random_seeds
 from ..array_utils import as_same_device, device
 from .core import TensorRandomOperand, RandomState
 

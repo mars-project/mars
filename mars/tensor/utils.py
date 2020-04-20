@@ -502,20 +502,6 @@ def check_out_param(out, t, casting):
                         "according to the casting rule ''{2}''".format(t.dtype.char, out.dtype.char, casting))
 
 
-def recursive_tile(tensor):
-    q = [tensor]
-    while q:
-        t = q[-1]
-        cs = [c for c in t.inputs if c.is_coarse()]
-        if cs:
-            q.extend(cs)
-            continue
-        t._inplace_tile()
-        q.pop()
-
-    return tensor
-
-
 def dictify_chunk_size(shape, chunk_size):
     """
     Given chunk_size which may be a tuple or dict, return a dict type all the same.

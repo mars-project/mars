@@ -61,8 +61,10 @@ class Test(unittest.TestCase):
         from mars.tensor.random import TensorRandint
         from mars.tensor.arithmetic import TensorTreeAdd
 
-        n1 = TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10))
-        n2 = TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10))
+        n1 = TensorRandint(state=np.random.RandomState(0),
+                           dtype=np.float32()).new_chunk(None, shape=(10, 10))
+        n2 = TensorRandint(state=np.random.RandomState(1),
+                           dtype=np.float32()).new_chunk(None, shape=(10, 10))
 
         n3 = TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10))
         n3.op._inputs = [n1, n2]

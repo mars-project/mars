@@ -191,7 +191,7 @@ class LocalContext(ContextBase, dict):
 
     @property
     def session_id(self):
-        return
+        return self._local_session.session_id
 
     def get_scheduler_addresses(self):
         return
