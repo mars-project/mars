@@ -21,7 +21,7 @@ from ...config import options
 from ...operands import OperandStage
 from ...utils import lazy_import
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
-from ..utils import parse_index, build_empty_df, build_empty_series, validate_axis
+from ..utils import parse_index, build_df, build_empty_df, build_series, validate_axis
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType, DATAFRAME_TYPE
 from ..merge import DataFrameConcat
 
@@ -152,7 +152,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                     concat_dtypes = chks[0].dtypes
                     concat_shape = (sum([c.shape[0] for c in chks]), chks[0].shape[1])
                 else:
-                    concat_index = chks[0].index
+                    concat_index = chks[0].index_value
                     concat_dtypes = pd.Series([c.dtypes[0] for c in chks])
                     concat_shape = (chks[0].shape[0], (sum([c.shape[1] for c in chks])))
                 chk = concat_op.new_chunk(chks, shape=concat_shape, index=(i,),
@@ -175,12 +175,15 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                                                    index_value=index_value))
             chunks = new_chunks
 
+        if op.axis == 0:
+            concat_shape = (sum([c.shape[0] for c in chunks]), chunks[0].shape[1])
+        else:
+            concat_shape = (chunks[0].shape[0], (sum([c.shape[1] for c in chunks])))
         concat_op = DataFrameConcat(axis=op.axis, object_type=ObjectType.dataframe)
-        chk = concat_op.new_chunk(chunks, index=(idx,))
-        empty_df = build_empty_df(chunks[0].dtypes)
-        reduced_df = getattr(empty_df, getattr(cls, '_func_name'))(axis=op.axis, level=op.level,
-                                                                   numeric_only=op.numeric_only)
-        reduced_shape = (np.nan,) if op.axis == 1 else reduced_df.shape
+        chk = concat_op.new_chunk(chunks, index=(idx,), shape=concat_shape)
+        empty_df = build_df(chunks[0])
+        reduced_df = cls._execute_reduction(empty_df, op)
+        reduced_shape = (chk.shape[0],) if op.axis == 1 else reduced_df.shape
         new_op = op.copy().reset_key()
         new_op._stage = OperandStage.agg
         return new_op.new_chunk([chk], shape=reduced_shape, index=(idx,), dtype=reduced_df.dtype,
@@ -416,13 +419,16 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             raise NotImplementedError('Not support specify level now')
 
-        empty_df = build_empty_df(df.dtypes)
+        empty_df = build_df(df)
         func_name = getattr(self, '_func_name')
         if func_name == 'count':
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, numeric_only=numeric_only)
+        elif func_name == 'nunique':
+            reduced_df = getattr(empty_df, func_name)(axis=axis)
         else:
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, skipna=skipna,
                                                       numeric_only=numeric_only)
+
         reduced_shape = (df.shape[0],) if axis == 1 else reduced_df.shape
         return self.new_series([df], shape=reduced_shape, dtype=reduced_df.dtype,
                                index_value=parse_index(reduced_df.index, store_data=axis == 0))
@@ -439,10 +445,12 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             raise NotImplementedError('Not support specified level now')
 
-        empty_series = build_empty_series(series.dtype)
+        empty_series = build_series(series)
         func_name = getattr(self, '_func_name')
         if func_name == 'count':
             reduced_series = empty_series.count(level=level)
+        elif func_name == 'nunique':
+            reduced_series = empty_series.nunique()
         else:
             reduced_series = getattr(empty_series, func_name)(axis=axis, level=level, skipna=skipna,
                                                               numeric_only=numeric_only)
