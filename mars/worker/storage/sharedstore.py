@@ -21,11 +21,19 @@ try:
     import pyarrow
     from pyarrow import plasma
     try:
-        from pyarrow.plasma import PlasmaObjectNonexistent, PlasmaStoreFull
-    except ImportError:
-        from pyarrow.lib import PlasmaObjectNonexistent, PlasmaStoreFull
+        from pyarrow.plasma import PlasmaObjectNotFound
+    except ImportError:  # pragma: no cover
+        try:
+            from pyarrow.plasma import PlasmaObjectNonexistent as PlasmaObjectNotFound
+        except ImportError:
+            from pyarrow.lib import PlasmaObjectNonexistent as PlasmaObjectNotFound
+
+    try:
+        from pyarrow.plasma import PlasmaStoreFull
+    except ImportError:  # pragma: no cover
+        from pyarrow.lib import PlasmaStoreFull
 except ImportError:  # pragma: no cover
-    pyarrow, plasma, PlasmaObjectNonexistent, PlasmaStoreFull = None, None, None, None
+    pyarrow, plasma, PlasmaObjectNotFound, PlasmaStoreFull = None, None, None, None
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +153,7 @@ class PlasmaSharedStore(object):
         obj_id = self._get_object_id(session_id, data_key)
         try:
             self._plasma_client.seal(obj_id)
-        except PlasmaObjectNonexistent:
+        except PlasmaObjectNotFound:
             self._mapper_ref.delete(session_id, data_key)
             raise KeyError((session_id, data_key))
 
