@@ -52,7 +52,7 @@ jobs:
         source ./.github/workflows/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
         if [[ "$PYTHON" =~ "3.8" ]]; then
-          conda install -n test --quiet --yes python=$PYTHON numpy pyarrow
+          conda install -n test --quiet --yes python=$PYTHON numpy
           # remove three lines below once gevent 1.5 is released
           # resolve compatibility issue in tblib inside gevent
           GEVENT_TBLIB_FILE=$(python -c "from gevent import _tblib; print(_tblib.__file__)")
