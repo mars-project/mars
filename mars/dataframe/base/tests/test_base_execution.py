@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import random
+from collections import OrderedDict
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
-from collections import OrderedDict
 
 from mars.config import options
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut
@@ -1109,7 +1110,8 @@ class Test(TestBase):
                            columns=['col' + str(i + 1) for i in range(8)])
 
         raw1 = raw.copy()
-        raw1['col4'] = raw1['col4'] < 400
+        if LooseVersion(pd.__version__) >= '1.0.0':
+            raw1['col4'] = raw1['col4'] < 400
 
         r = from_pandas_df(raw1, chunk_size=(10, 5)).diff(-1)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
@@ -1129,7 +1131,9 @@ class Test(TestBase):
 
         # test series
         s = raw.iloc[:, 0]
-        s1 = s < 400
+        s1 = s.copy()
+        if LooseVersion(pd.__version__) >= '1.0.0':
+            s1 = s1 < 400
 
         r = from_pandas_series(s, chunk_size=10).diff(-1)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
