@@ -56,7 +56,7 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
         else:
             count = in_data.count(axis=op.axis, numeric_only=op.numeric_only)
         r = cls._execute_reduction(in_data, op, reduction_func='sum')
-        avg = cls._keep_dim(r / count, op)
+        avg = cls._keep_dim(r * 1.0 / count, op)
 
         kwargs = dict(axis=op.axis, skipna=op.skipna)
         if op.numeric_only:
@@ -76,8 +76,8 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
 
         count = concat_count.sum(axis=op.axis)
         r = cls._execute_reduction(data, op, reduction_func='sum')
-        avg = cls._keep_dim(r / count, op)
-        avg_diff = data / concat_count - avg
+        avg = cls._keep_dim(r * 1.0 / count, op)
+        avg_diff = data * 1.0 / concat_count - avg
 
         kwargs = dict(axis=op.axis, skipna=op.skipna)
         reduced_var_square = var_square.sum(**kwargs) + (concat_count * avg_diff ** 2).sum(**kwargs)
@@ -92,12 +92,12 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
 
         count = concat_count.sum(axis=op.axis)
         r = cls._execute_reduction(data, op, reduction_func='sum')
-        avg = cls._keep_dim(r / count, op)
-        avg_diff = (data / concat_count).subtract(avg, axis=op.axis)
+        avg = cls._keep_dim(r * 1.0 / count, op)
+        avg_diff = (data * 1.0 / concat_count).subtract(avg, axis=op.axis)
 
         kwargs = dict(axis=op.axis, skipna=op.skipna)
         reduced_var_square = var_square.sum(**kwargs) + (concat_count * avg_diff ** 2).sum(**kwargs)
-        var = reduced_var_square / (count - op.ddof)
+        var = reduced_var_square * 1.0 / (count - op.ddof)
         ctx[op.outputs[0].key] = var
 
 
