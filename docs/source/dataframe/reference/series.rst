@@ -338,6 +338,7 @@ Time Series-related
 .. autosummary::
    :toctree: api/
 
+   Series.diff
    Series.shift
    Series.tshift
 

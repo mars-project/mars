@@ -347,6 +347,7 @@ message OperandDef {
         NUNIQUE = 721;
         CUT = 722;
         SHIFT = 723;
+        DATAFRAME_DIFF = 724;
 
         FUSE = 801;
 
