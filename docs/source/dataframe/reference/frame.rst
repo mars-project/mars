@@ -61,6 +61,7 @@ Binary operator functions
    DataFrame.div
    DataFrame.truediv
    DataFrame.floordiv
+   DataFrame.mod
    DataFrame.pow
    DataFrame.dot
    DataFrame.radd
@@ -69,6 +70,7 @@ Binary operator functions
    DataFrame.rdiv
    DataFrame.rtruediv
    DataFrame.rfloordiv
+   DataFrame.rmod
    DataFrame.rpow
    DataFrame.lt
    DataFrame.gt

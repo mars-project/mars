@@ -24,6 +24,7 @@ from .subtract import subtract, rsubtract, DataFrameSubtract
 from .multiply import mul, rmul, DataFrameMul
 from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
 from .truediv import truediv, rtruediv, DataFrameTrueDiv
+from .mod import mod, rmod, DataFrameMod
 from .power import power, rpower, DataFramePower
 from .equal import eq, DataFrameEqual
 from .not_equal import ne, DataFrameNotEqual
@@ -143,6 +144,11 @@ def _install():
         setattr(entity, 'div', truediv)
         setattr(entity, 'rdiv', rtruediv)
 
+        setattr(entity, '__mod__', wrap_notimplemented_exception(mod))
+        setattr(entity, '__rmod__', wrap_notimplemented_exception(rmod))
+        setattr(entity, 'mod', mod)
+        setattr(entity, 'rmod', rmod)
+
         setattr(entity, '__pow__', wrap_notimplemented_exception(power))
         setattr(entity, '__rpow__', wrap_notimplemented_exception(rpower))
         setattr(entity, 'pow', power)
@@ -166,18 +172,18 @@ def _install():
 
         setattr(entity, '__and__', wrap_notimplemented_exception(logical_and))
         setattr(entity, '__rand__', wrap_notimplemented_exception(logical_rand))
-        setattr(entity, 'and', wrap_notimplemented_exception(logical_and))
-        setattr(entity, 'rand', wrap_notimplemented_exception(logical_rand))
+        setattr(entity, 'and', logical_and)
+        setattr(entity, 'rand', logical_rand)
 
         setattr(entity, '__or__', wrap_notimplemented_exception(logical_or))
         setattr(entity, '__ror__', wrap_notimplemented_exception(logical_ror))
-        setattr(entity, 'or', wrap_notimplemented_exception(logical_or))
-        setattr(entity, 'ror', wrap_notimplemented_exception(logical_ror))
+        setattr(entity, 'or', logical_or)
+        setattr(entity, 'ror', logical_ror)
 
         setattr(entity, '__xor__', wrap_notimplemented_exception(logical_xor))
         setattr(entity, '__rxor__', wrap_notimplemented_exception(logical_rxor))
-        setattr(entity, 'xor', wrap_notimplemented_exception(logical_xor))
-        setattr(entity, 'rxor', wrap_notimplemented_exception(logical_rxor))
+        setattr(entity, 'xor', logical_xor)
+        setattr(entity, 'rxor', logical_rxor)
 
     for entity in INDEX_TYPE:
         setattr(entity, '__eq__', _wrap_eq())

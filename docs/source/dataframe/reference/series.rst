@@ -56,6 +56,7 @@ Binary operator functions
    Series.div
    Series.truediv
    Series.floordiv
+   Series.mod
    Series.pow
    Series.radd
    Series.rsub
@@ -63,6 +64,7 @@ Binary operator functions
    Series.rdiv
    Series.rtruediv
    Series.rfloordiv
+   Series.rmod
    Series.rpow
    Series.round
    Series.lt
