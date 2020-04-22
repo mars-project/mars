@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import random
+from collections import OrderedDict
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
-from collections import OrderedDict
 
 from mars.config import options
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut
@@ -1102,3 +1103,46 @@ class Test(TestBase):
                         'Failed when periods: {}, fill_value: {}'.format(
                             periods, fill_value
                         )) from e
+
+    def testDiffExecution(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(10, 8)),
+                           columns=['col' + str(i + 1) for i in range(8)])
+
+        raw1 = raw.copy()
+        if LooseVersion(pd.__version__) >= '1.0.0':
+            raw1['col4'] = raw1['col4'] < 400
+
+        r = from_pandas_df(raw1, chunk_size=(10, 5)).diff(-1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw1.diff(-1))
+
+        r = from_pandas_df(raw1, chunk_size=5).diff(-1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw1.diff(-1))
+
+        r = from_pandas_df(raw, chunk_size=(5, 8)).diff(1, axis=1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.diff(1, axis=1))
+
+        r = from_pandas_df(raw, chunk_size=5).diff(1, axis=1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.diff(1, axis=1))
+
+        # test series
+        s = raw.iloc[:, 0]
+        s1 = s.copy()
+        if LooseVersion(pd.__version__) >= '1.0.0':
+            s1 = s1 < 400
+
+        r = from_pandas_series(s, chunk_size=10).diff(-1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       s.diff(-1))
+
+        r = from_pandas_series(s, chunk_size=5).diff(-1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       s.diff(-1))
+
+        r = from_pandas_series(s1, chunk_size=5).diff(1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       s1.diff(1))
