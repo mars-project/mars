@@ -334,6 +334,7 @@ message OperandDef {
         DROP_NA = 720;
         NUNIQUE = 721;
         SHIFT = 723;
+        DATAFRAME_DIFF = 724;
 
         FUSE = 801;
 
