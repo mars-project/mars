@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.fmod.rst:2
 msgid "mars.tensor.fmod"
@@ -34,35 +34,19 @@ msgid ""
 "modulus operator ``x1 % x2``."
 msgstr ""
 
-#: mars.tensor.fmod:10 of
-msgid "x1"
+#: mars.tensor.fmod of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.fmod:9 mars.tensor.fmod:11 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.fmod:11 of
+#: mars.tensor.fmod:8 of
 msgid "Dividend."
 msgstr ""
 
-#: mars.tensor.fmod:12 of
-msgid "x2"
-msgstr ""
-
-#: mars.tensor.fmod:13 of
+#: mars.tensor.fmod:10 of
 msgid "Divisor."
 msgstr ""
 
-#: mars.tensor.fmod:17 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.fmod:16 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.fmod:15 of
+#: mars.tensor.fmod:12 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -70,52 +54,56 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.fmod:20 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.fmod:19 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.fmod:20 of
+#: mars.tensor.fmod:17 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
-#: mars.tensor.fmod:24 of
-msgid "**kwargs"
-msgstr ""
-
-#: mars.tensor.fmod:23 of
+#: mars.tensor.fmod:20 of
 msgid ""
 "For other keyword-only arguments, see the :ref:`ufunc docs "
 "<ufuncs.kwargs>`."
 msgstr ""
 
+#: mars.tensor.fmod of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.fmod:23 of
+msgid "**y** -- The remainder of the division of `x1` by `x2`."
+msgstr ""
+
+#: mars.tensor.fmod of
+msgid "Return type"
+msgstr ""
+
 #: mars.tensor.fmod:29 of
-msgid "y"
-msgstr ""
-
-#: mars.tensor.fmod:28 of
-msgid "Tensor_like"
+msgid ":func:`remainder`"
 msgstr ""
 
 #: mars.tensor.fmod:29 of
-msgid "The remainder of the division of `x1` by `x2`."
+msgid "Equivalent to the Python ``%`` operator."
 msgstr ""
 
-#: mars.tensor.fmod:33 of
-msgid "remainder : Equivalent to the Python ``%`` operator. divide"
+#: mars.tensor.fmod:31 of
+msgid ":func:`divide`"
 msgstr ""
 
-#: mars.tensor.fmod:38 of
+#: mars.tensor.fmod:34 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.fmod:35 of
 msgid ""
 "The result of the modulo operation for negative dividend and divisors is "
 "bound by conventions. For `fmod`, the sign of result is the sign of the "
 "dividend, while for `remainder` the sign of the result is the sign of the"
 " divisor. The `fmod` function is equivalent to the Matlab(TM) ``rem`` "
 "function."
+msgstr ""
+
+#: mars.tensor.fmod:42 of
+msgid "Examples"
 msgstr ""
 

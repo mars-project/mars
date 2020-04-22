@@ -88,6 +88,7 @@ Function application, groupby & window
    Series.map
    Series.groupby
    Series.rolling
+   Series.expanding
 
 .. _api.series.stats:
 
@@ -143,11 +144,6 @@ Reshaping, sorting
 
 Combining / joining / merging
 -----------------------------
-.. autosummary::
-   :toctree: api/
-
-Time series-related
--------------------
 .. autosummary::
    :toctree: api/
 

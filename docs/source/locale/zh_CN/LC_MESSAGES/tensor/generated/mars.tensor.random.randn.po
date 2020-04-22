@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.random.randn.rst:2
 msgid "mars.tensor.random.randn"
@@ -41,48 +41,56 @@ msgid ""
 "tuple as the first argument, use `numpy.random.standard_normal` instead."
 msgstr ""
 
-#: mars.tensor.random.randn:18 of
-msgid "d0, d1, ..., dn"
+#: mars.tensor.random.randn of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.random.randn:17 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.random.randn:17 of
+#: mars.tensor.random.randn:14 of
 msgid ""
 "The dimensions of the returned tensor, should be all positive. If no "
 "argument is given a single Python float is returned."
 msgstr ""
 
-#: mars.tensor.random.randn:25 of
-msgid "Z"
+#: mars.tensor.random.randn of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.random.randn:24 of
-msgid "Tensor or float"
-msgstr ""
-
-#: mars.tensor.random.randn:23 of
+#: mars.tensor.random.randn:18 of
 msgid ""
-"A ``(d0, d1, ..., dn)``-shaped array of floating-point samples from the "
-"standard normal distribution, or a single such float if no parameters "
-"were supplied."
+"**Z** -- A ``(d0, d1, ..., dn)``-shaped array of floating-point samples "
+"from the standard normal distribution, or a single such float if no "
+"parameters were supplied."
+msgstr ""
+
+#: mars.tensor.random.randn of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.random.randn:25 of
+msgid ":func:`random.standard_normal`"
+msgstr ""
+
+#: mars.tensor.random.randn:26 of
+msgid "Similar, but takes a tuple as its argument."
 msgstr ""
 
 #: mars.tensor.random.randn:29 of
-msgid "random.standard_normal : Similar, but takes a tuple as its argument."
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.random.randn:33 of
+#: mars.tensor.random.randn:30 of
 msgid "For random samples from :math:`N(\\mu, \\sigma^2)`, use:"
 msgstr ""
 
-#: mars.tensor.random.randn:35 of
+#: mars.tensor.random.randn:32 of
 msgid "``sigma * mt.random.randn(...) + mu``"
 msgstr ""
 
-#: mars.tensor.random.randn:44 of
+#: mars.tensor.random.randn:35 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.randn:41 of
 msgid "Two-by-four tensor of samples from N(3, 6.25):"
 msgstr ""
 

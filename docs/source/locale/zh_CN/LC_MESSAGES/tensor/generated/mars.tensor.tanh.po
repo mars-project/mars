@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.tanh.rst:2
 msgid "mars.tensor.tanh"
@@ -29,27 +29,15 @@ msgstr ""
 msgid "Equivalent to ``mt.sinh(x)/np.cosh(x)`` or ``-1j * mt.tan(1j*x)``."
 msgstr ""
 
-#: mars.tensor.tanh:7 of
-msgid "x"
+#: mars.tensor.tanh of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.tanh:6 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.tanh:8 of
+#: mars.tensor.tanh:5 of
 msgid "Input tensor."
 msgstr ""
 
-#: mars.tensor.tanh:12 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.tanh:11 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.tanh:10 of
+#: mars.tensor.tanh:7 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -57,51 +45,51 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.tanh:15 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.tanh:14 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.tanh:15 of
+#: mars.tensor.tanh:12 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
-#: mars.tensor.tanh:17 of
-msgid "**kwargs"
+#: mars.tensor.tanh of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.tanh:22 of
-msgid "y"
+#: mars.tensor.tanh:17 of
+msgid "**y** -- The corresponding hyperbolic tangent values."
+msgstr ""
+
+#: mars.tensor.tanh of
+msgid "Return type"
 msgstr ""
 
 #: mars.tensor.tanh:21 of
-msgid "Tensor"
+msgid "Notes"
 msgstr ""
 
 #: mars.tensor.tanh:22 of
-msgid "The corresponding hyperbolic tangent values."
-msgstr ""
-
-#: mars.tensor.tanh:26 of
 msgid ""
 "If `out` is provided, the function writes the result into it, and returns"
 " a reference to `out`.  (See Examples)"
 msgstr ""
 
-#: mars.tensor.tanh:31 of
+#: mars.tensor.tanh:26 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.tanh:27 of
 msgid ""
 "M. Abramowitz and I. A. Stegun, Handbook of Mathematical Functions. New "
 "York, NY: Dover, 1972, pg. 83. http://www.math.sfu.ca/~cbm/aands/"
 msgstr ""
 
-#: mars.tensor.tanh:35 of
+#: mars.tensor.tanh:31 of
 msgid ""
 "Wikipedia, \"Hyperbolic function\", "
 "http://en.wikipedia.org/wiki/Hyperbolic_function"
+msgstr ""
+
+#: mars.tensor.tanh:35 of
+msgid "Examples"
 msgstr ""
 

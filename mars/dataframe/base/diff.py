@@ -141,9 +141,9 @@ def df_diff(df, periods=1, axis=0):
 
     See Also
     --------
-    Series.diff: First discrete difference for a Series.
-    DataFrame.pct_change: Percent change over given number of periods.
-    DataFrame.shift: Shift index by desired number of periods with an
+    Series.diff : First discrete difference for a Series.
+    DataFrame.pct_change : Percent change over given number of periods.
+    DataFrame.shift : Shift index by desired number of periods with an
         optional time freq.
 
     Notes
@@ -154,6 +154,7 @@ def df_diff(df, periods=1, axis=0):
     Examples
     --------
     Difference with previous row
+
     >>> import mars.dataframe as md
     >>> df = md.DataFrame({'a': [1, 2, 3, 4, 5, 6],
     ...                    'b': [1, 1, 2, 3, 5, 8],
@@ -166,6 +167,7 @@ def df_diff(df, periods=1, axis=0):
     3  4  3  16
     4  5  5  25
     5  6  8  36
+
     >>> df.diff().execute()
          a    b     c
     0  NaN  NaN   NaN
@@ -176,6 +178,7 @@ def df_diff(df, periods=1, axis=0):
     5  1.0  3.0  11.0
 
     Difference with previous column
+
     >>> df.diff(axis=1).execute()
         a    b     c
     0 NaN  0.0   0.0
@@ -186,6 +189,7 @@ def df_diff(df, periods=1, axis=0):
     5 NaN  2.0  28.0
 
     Difference with 3rd previous row
+
     >>> df.diff(periods=3).execute()
          a    b     c
     0  NaN  NaN   NaN
@@ -196,6 +200,7 @@ def df_diff(df, periods=1, axis=0):
     5  3.0  6.0  27.0
 
     Difference with following row
+
     >>> df.diff(periods=-1).execute()
          a    b     c
     0 -1.0  0.0  -3.0
@@ -229,10 +234,12 @@ def series_diff(series, periods=1):
 
     See Also
     --------
-    Series.pct_change: Percent change over given number of periods.
-    Series.shift: Shift index by desired number of periods with an
-        optional time freq.
-    DataFrame.diff: First discrete difference of object.
+    Series.pct_change :
+        Percent change over given number of periods.
+    Series.shift :
+        Shift index by desired number of periods with an optional time freq.
+    DataFrame.diff :
+        First discrete difference of object.
 
     Notes
     -----
@@ -241,7 +248,9 @@ def series_diff(series, periods=1):
 
     Examples
     --------
+
     Difference with previous row
+
     >>> import mars.dataframe as md
     >>> s = md.Series([1, 1, 2, 3, 5, 8])
     >>> s.diff().execute()
@@ -254,6 +263,7 @@ def series_diff(series, periods=1):
     dtype: float64
 
     Difference with 3rd previous row
+
     >>> s.diff(periods=3).execute()
     0    NaN
     1    NaN
@@ -264,6 +274,7 @@ def series_diff(series, periods=1):
     dtype: float64
 
     Difference with following row
+
     >>> s.diff(periods=-1).execute()
     0    0.0
     1   -1.0

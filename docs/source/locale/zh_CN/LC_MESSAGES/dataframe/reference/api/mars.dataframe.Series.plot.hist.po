@@ -1,0 +1,101 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.plot.hist.rst:2
+msgid "mars.dataframe.Series.plot.hist"
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:1 of
+msgid "Draw one histogram of the DataFrame's columns."
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:3 of
+msgid ""
+"A histogram is a representation of the distribution of data. This "
+"function groups the values of all given Series in the DataFrame into bins"
+" and draws all bins in one :class:`matplotlib.axes.Axes`. This is useful "
+"when the DataFrame's Series are in a similar scale."
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:8 of
+msgid "Column in the DataFrame to group by."
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:10 of
+msgid "Number of histogram bins to be used."
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:12 of
+msgid "Additional keyword arguments are documented in :meth:`DataFrame.plot`."
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:15 of
+msgid "**class** -- Return a histogram plot."
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:16 of
+msgid "`matplotlib.AxesSubplot`"
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:21 of
+msgid ":meth:`DataFrame.hist`"
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:21 of
+msgid "Draw histograms per DataFrame's Series."
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:23 of
+msgid ":meth:`Series.hist`"
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:24 of
+msgid "Draw a histogram with Series' data."
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:27 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.plot.hist:28 of
+msgid ""
+"When we draw a dice 6000 times, we expect to get each value around 1000 "
+"times. But when we draw two dices and sum the result, the distribution is"
+" going to be quite different. A histogram illustrates those "
+"distributions."
+msgstr ""
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.plot.hist.rst:7
+msgid ""
+"(`Source code <../../../dataframe/reference/api/mars-dataframe-Series-"
+"plot-hist-1.py>`__)"
+msgstr ""
+

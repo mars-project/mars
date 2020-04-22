@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.split.rst:2
 msgid "mars.tensor.split"
@@ -25,115 +25,158 @@ msgstr ""
 msgid "Split a tensor into multiple sub-tensors."
 msgstr ""
 
-#: mars.tensor.split:5 of
-msgid "ary"
+#: mars.tensor.split of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.split:4 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.split:6 of
+#: mars.tensor.split:3 of
 msgid "Tensor to be divided into sub-tensors."
 msgstr ""
 
-#: mars.tensor.split:20 of
-msgid "indices_or_sections"
+#: mars.tensor.split:5 of
+msgid ""
+"If `indices_or_sections` is an integer, N, the array will be divided into"
+" N equal tensors along `axis`.  If such a split is not possible, an error"
+" is raised.  If `indices_or_sections` is a 1-D tensor of sorted integers,"
+" the entries indicate where along `axis` the array is split.  For "
+"example, ``[2, 3]`` would, for ``axis=0``, result in    - ary[:2]   - "
+"ary[2:3]   - ary[3:]  If an index exceeds the dimension of the tensor "
+"along `axis`, an empty sub-tensor is returned correspondingly."
 msgstr ""
 
-#: mars.tensor.split:19 of
-msgid "int or 1-D tensor"
-msgstr ""
-
-#: mars.tensor.split:8 of
+#: mars.tensor.split:5 of
 msgid ""
 "If `indices_or_sections` is an integer, N, the array will be divided into"
 " N equal tensors along `axis`.  If such a split is not possible, an error"
 " is raised."
 msgstr ""
 
-#: mars.tensor.split:12 of
+#: mars.tensor.split:9 of
 msgid ""
 "If `indices_or_sections` is a 1-D tensor of sorted integers, the entries "
 "indicate where along `axis` the array is split.  For example, ``[2, 3]`` "
 "would, for ``axis=0``, result in"
 msgstr ""
 
-#: mars.tensor.split:16 of
+#: mars.tensor.split:13 of
 msgid "ary[:2]"
 msgstr ""
 
-#: mars.tensor.split:17 of
+#: mars.tensor.split:14 of
 msgid "ary[2:3]"
 msgstr ""
 
-#: mars.tensor.split:18 of
+#: mars.tensor.split:15 of
 msgid "ary[3:]"
 msgstr ""
 
-#: mars.tensor.split:20 of
+#: mars.tensor.split:17 of
 msgid ""
 "If an index exceeds the dimension of the tensor along `axis`, an empty "
 "sub-tensor is returned correspondingly."
 msgstr ""
 
-#: mars.tensor.split:23 of
-msgid "axis"
-msgstr ""
-
-#: mars.tensor.split:22 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.split:23 of
+#: mars.tensor.split:20 of
 msgid "The axis along which to split, default is 0."
 msgstr ""
 
-#: mars.tensor.split:28 of
-msgid "sub-tensors"
+#: mars.tensor.split of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.split:27 of
-msgid "list of Tensors"
+#: mars.tensor.split:23 of
+msgid "**sub-tensors** -- A list of sub-tensors."
 msgstr ""
 
-#: mars.tensor.split:28 of
-msgid "A list of sub-tensors."
+#: mars.tensor.split of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.split of
+msgid "Raises"
+msgstr ""
+
+#: mars.tensor.split:26 of
+msgid ""
+"If `indices_or_sections` is given as an integer, but     a split does not"
+" result in equal division."
+msgstr ""
+
+#: mars.tensor.split:31 of
+msgid ":func:`array_split`"
+msgstr ""
+
+#: mars.tensor.split:31 of
+msgid ""
+"Split a tensor into multiple sub-tensors of equal or near-equal size.  "
+"Does not raise an exception if an equal division cannot be made."
 msgstr ""
 
 #: mars.tensor.split:34 of
-msgid "ValueError"
+msgid ":func:`hsplit`"
 msgstr ""
 
-#: mars.tensor.split:33 of
-msgid ""
-"If `indices_or_sections` is given as an integer, but a split does not "
-"result in equal division."
+#: mars.tensor.split:34 of
+msgid "Split  into multiple sub-arrays horizontally (column-wise)."
 msgstr ""
 
-#: mars.tensor.split:39 of
-msgid "array_split"
+#: mars.tensor.split:37 of
+msgid ":func:`vsplit`"
 msgstr ""
 
-#: mars.tensor.split:38 of
-msgid "Split a tensor into multiple sub-tensors of equal or"
+#: mars.tensor.split:37 of
+msgid "Split tensor into multiple sub-tensors vertically (row wise)."
 msgstr ""
 
-#: mars.tensor.split:39 of
-msgid ""
-"near-equal size.  Does not raise an exception if an equal division cannot"
-" be made."
+#: mars.tensor.split:40 of
+msgid ":func:`dsplit`"
 msgstr ""
 
-#: mars.tensor.split:41 of
-msgid ""
-"hsplit : Split  into multiple sub-arrays horizontally (column-wise). "
-"vsplit : Split tensor into multiple sub-tensors vertically (row wise). "
-"dsplit : Split tensor into multiple sub-tensors along the 3rd axis "
-"(depth). concatenate : Join a sequence of tensors along an existing axis."
-" stack : Join a sequence of tensors along a new axis. hstack : Stack "
-"tensors in sequence horizontally (column wise). vstack : Stack tensors in"
-" sequence vertically (row wise). dstack : Stack tensors in sequence depth"
-" wise (along third dimension)."
+#: mars.tensor.split:40 of
+msgid "Split tensor into multiple sub-tensors along the 3rd axis (depth)."
+msgstr ""
+
+#: mars.tensor.split:43 of
+msgid ":func:`concatenate`"
+msgstr ""
+
+#: mars.tensor.split:43 of
+msgid "Join a sequence of tensors along an existing axis."
+msgstr ""
+
+#: mars.tensor.split:46 of
+msgid ":func:`stack`"
+msgstr ""
+
+#: mars.tensor.split:46 of
+msgid "Join a sequence of tensors along a new axis."
+msgstr ""
+
+#: mars.tensor.split:49 of
+msgid ":func:`hstack`"
+msgstr ""
+
+#: mars.tensor.split:49 of
+msgid "Stack tensors in sequence horizontally (column wise)."
+msgstr ""
+
+#: mars.tensor.split:52 of
+msgid ":func:`vstack`"
+msgstr ""
+
+#: mars.tensor.split:52 of
+msgid "Stack tensors in sequence vertically (row wise)."
+msgstr ""
+
+#: mars.tensor.split:54 of
+msgid ":func:`dstack`"
+msgstr ""
+
+#: mars.tensor.split:55 of
+msgid "Stack tensors in sequence depth wise (along third dimension)."
+msgstr ""
+
+#: mars.tensor.split:58 of
+msgid "Examples"
 msgstr ""
 

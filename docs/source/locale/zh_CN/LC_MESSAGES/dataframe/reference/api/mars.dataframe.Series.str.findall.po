@@ -1,0 +1,130 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:58+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.str.findall.rst:2
+msgid "mars.dataframe.Series.str.findall"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:1 of
+msgid "Find all occurrences of pattern or regular expression in the Series/Index."
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:3 of
+msgid ""
+"Equivalent to applying :func:`re.findall` to all the elements in the "
+"Series/Index."
+msgstr ""
+
+#: mars.dataframe.Series.str.findall of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:6 of
+msgid "Pattern or regular expression."
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:8 of
+msgid ""
+"Flags from ``re`` module, e.g. `re.IGNORECASE` (default is 0, which means"
+" no flags)."
+msgstr ""
+
+#: mars.dataframe.Series.str.findall of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:12 of
+msgid ""
+"All non-overlapping matches of pattern or regular expression in each "
+"string of this Series/Index."
+msgstr ""
+
+#: mars.dataframe.Series.str.findall of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:19 of
+msgid ":meth:`count`"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:19 of
+msgid ""
+"Count occurrences of pattern or regular expression in each string of the "
+"Series/Index."
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:22 of
+msgid ":meth:`extractall`"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:22 of
+msgid ""
+"For each string in the Series, extract groups from all matches of regular"
+" expression and return a DataFrame with one row for each match and one "
+"column for each group."
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:24 of
+msgid ":meth:`re.findall`"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:25 of
+msgid ""
+"The equivalent ``re`` function to all non-overlapping matches of pattern "
+"or regular expression in string, as a list of strings."
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:28 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:32 of
+msgid "The search for the pattern 'Monkey' returns one match:"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:40 of
+msgid ""
+"On the other hand, the search for the pattern 'MONKEY' doesn't return any"
+" match:"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:49 of
+msgid ""
+"Flags can be added to the pattern or regular expression. For instance, to"
+" find the pattern 'MONKEY' ignoring the case:"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:59 of
+msgid ""
+"When the pattern matches more than one string in the Series, all matches "
+"are returned:"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:68 of
+msgid ""
+"Regular expressions are supported too. For instance, the search for all "
+"the strings ending with the word 'on' is shown next:"
+msgstr ""
+
+#: mars.dataframe.Series.str.findall:77 of
+msgid ""
+"If the pattern is found more than once in the same string, then a list of"
+" multiple strings is returned:"
+msgstr ""
+

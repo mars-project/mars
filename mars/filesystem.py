@@ -137,6 +137,7 @@ class FSMap(MutableMapping):
     """Wrap a FileSystem instance as a mutable wrapping.
     The keys of the mapping become files under the given root, and the
     values (which must be bytes) the contents of those files.
+
     Parameters
     ----------
     root: string

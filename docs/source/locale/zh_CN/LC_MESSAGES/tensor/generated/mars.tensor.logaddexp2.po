@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.logaddexp2.rst:2
 msgid "mars.tensor.logaddexp2"
@@ -34,27 +34,15 @@ msgid ""
 "function allows adding probabilities stored in such a fashion."
 msgstr ""
 
-#: mars.tensor.logaddexp2:11 of
-msgid "x1, x2"
+#: mars.tensor.logaddexp2 of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.logaddexp2:10 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.logaddexp2:12 of
+#: mars.tensor.logaddexp2:9 of
 msgid "Input values."
 msgstr ""
 
-#: mars.tensor.logaddexp2:16 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.logaddexp2:15 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.logaddexp2:14 of
+#: mars.tensor.logaddexp2:11 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -62,37 +50,33 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.logaddexp2:19 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.logaddexp2:18 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.logaddexp2:19 of
+#: mars.tensor.logaddexp2:16 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.logaddexp2 of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.logaddexp2:21 of
-msgid "**kwargs"
+msgid "**result** -- Base-2 logarithm of ``2**x1 + 2**x2``."
+msgstr ""
+
+#: mars.tensor.logaddexp2 of
+msgid "Return type"
 msgstr ""
 
 #: mars.tensor.logaddexp2:26 of
-msgid "result"
+msgid ":func:`logaddexp`"
 msgstr ""
 
-#: mars.tensor.logaddexp2:25 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.logaddexp2:26 of
-msgid "Base-2 logarithm of ``2**x1 + 2**x2``."
+#: mars.tensor.logaddexp2:27 of
+msgid "Logarithm of the sum of exponentiations of the inputs."
 msgstr ""
 
 #: mars.tensor.logaddexp2:30 of
-msgid "logaddexp: Logarithm of the sum of exponentiations of the inputs."
+msgid "Examples"
 msgstr ""
 

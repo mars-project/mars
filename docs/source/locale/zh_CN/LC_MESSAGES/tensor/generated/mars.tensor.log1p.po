@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.log1p.rst:2
 msgid "mars.tensor.log1p"
@@ -29,27 +29,15 @@ msgstr ""
 msgid "Calculates ``log(1 + x)``."
 msgstr ""
 
-#: mars.tensor.log1p:7 of
-msgid "x"
+#: mars.tensor.log1p of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.log1p:6 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.log1p:8 of
+#: mars.tensor.log1p:5 of
 msgid "Input values."
 msgstr ""
 
-#: mars.tensor.log1p:12 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.log1p:11 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.log1p:10 of
+#: mars.tensor.log1p:7 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -57,61 +45,57 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.log1p:15 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.log1p:14 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.log1p:15 of
+#: mars.tensor.log1p:12 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.log1p of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.log1p:17 of
-msgid "**kwargs"
+msgid "**y** -- Natural logarithm of `1 + x`, element-wise."
+msgstr ""
+
+#: mars.tensor.log1p of
+msgid "Return type"
 msgstr ""
 
 #: mars.tensor.log1p:22 of
-msgid "y"
+msgid ":func:`expm1`"
 msgstr ""
 
-#: mars.tensor.log1p:21 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.log1p:22 of
-msgid "Natural logarithm of `1 + x`, element-wise."
+#: mars.tensor.log1p:23 of
+msgid "``exp(x) - 1``, the inverse of `log1p`."
 msgstr ""
 
 #: mars.tensor.log1p:26 of
-msgid "expm1 : ``exp(x) - 1``, the inverse of `log1p`."
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.log1p:30 of
+#: mars.tensor.log1p:27 of
 msgid ""
 "For real-valued input, `log1p` is accurate also for `x` so small that `1 "
 "+ x == 1` in floating-point accuracy."
 msgstr ""
 
-#: mars.tensor.log1p:33 of
+#: mars.tensor.log1p:30 of
 msgid ""
 "Logarithm is a multivalued function: for each `x` there is an infinite "
 "number of `z` such that `exp(z) = 1 + x`. The convention is to return the"
 " `z` whose imaginary part lies in `[-pi, pi]`."
 msgstr ""
 
-#: mars.tensor.log1p:37 of
+#: mars.tensor.log1p:34 of
 msgid ""
 "For real-valued input data types, `log1p` always returns real output. For"
 " each value that cannot be expressed as a real number or infinity, it "
 "yields ``nan`` and sets the `invalid` floating point error flag."
 msgstr ""
 
-#: mars.tensor.log1p:41 of
+#: mars.tensor.log1p:38 of
 msgid ""
 "For complex-valued input, `log1p` is a complex analytical function that "
 "has a branch cut `[-inf, -1]` and is continuous from above on it. `log1p`"
@@ -119,13 +103,21 @@ msgid ""
 "number, conforming to the C99 standard."
 msgstr ""
 
-#: mars.tensor.log1p:48 of
+#: mars.tensor.log1p:44 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.log1p:45 of
 msgid ""
 "M. Abramowitz and I.A. Stegun, \"Handbook of Mathematical Functions\", "
 "10th printing, 1964, pp. 67. http://www.math.sfu.ca/~cbm/aands/"
 msgstr ""
 
-#: mars.tensor.log1p:50 of
+#: mars.tensor.log1p:47 of
 msgid "Wikipedia, \"Logarithm\". http://en.wikipedia.org/wiki/Logarithm"
+msgstr ""
+
+#: mars.tensor.log1p:50 of
+msgid "Examples"
 msgstr ""
 

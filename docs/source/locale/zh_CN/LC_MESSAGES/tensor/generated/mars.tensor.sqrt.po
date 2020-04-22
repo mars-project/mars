@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.sqrt.rst:2
 msgid "mars.tensor.sqrt"
@@ -25,27 +25,15 @@ msgstr ""
 msgid "Return the positive square-root of an tensor, element-wise."
 msgstr ""
 
-#: mars.tensor.sqrt:5 of
-msgid "x"
+#: mars.tensor.sqrt of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.sqrt:4 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.sqrt:6 of
+#: mars.tensor.sqrt:3 of
 msgid "The values whose square-roots are required."
 msgstr ""
 
-#: mars.tensor.sqrt:10 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.sqrt:9 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.sqrt:8 of
+#: mars.tensor.sqrt:5 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -53,47 +41,43 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.sqrt:13 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.sqrt:12 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.sqrt:13 of
+#: mars.tensor.sqrt:10 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.sqrt of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.sqrt:15 of
-msgid "**kwargs"
-msgstr ""
-
-#: mars.tensor.sqrt:25 of
-msgid "y"
-msgstr ""
-
-#: mars.tensor.sqrt:24 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.sqrt:20 of
 msgid ""
-"An tensor of the same shape as `x`, containing the positive square-root "
-"of each element in `x`.  If any element in `x` is complex, a complex "
-"tensor is returned (and the square-roots of negative reals are "
+"**y** -- An tensor of the same shape as `x`, containing the positive "
+"square-root of each element in `x`.  If any element in `x` is complex, a "
+"complex tensor is returned (and the square-roots of negative reals are "
 "calculated).  If all of the elements in `x` are real, so is `y`, with "
 "negative elements returning ``nan``. If `out` was provided, `y` is a "
 "reference to it."
 msgstr ""
 
-#: mars.tensor.sqrt:29 of
+#: mars.tensor.sqrt of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.sqrt:24 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.sqrt:25 of
 msgid ""
 "*sqrt* has--consistent with common convention--as its branch cut the real"
 " \"interval\" [`-inf`, 0), and is continuous from above on it. A branch "
 "cut is a curve in the complex plane across which a given complex function"
 " fails to be continuous."
+msgstr ""
+
+#: mars.tensor.sqrt:31 of
+msgid "Examples"
 msgstr ""
 

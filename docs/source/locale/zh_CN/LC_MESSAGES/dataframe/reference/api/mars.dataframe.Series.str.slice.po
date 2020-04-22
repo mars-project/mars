@@ -1,0 +1,81 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:58+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.str.slice.rst:2
+msgid "mars.dataframe.Series.str.slice"
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:1 of
+msgid "Slice substrings from each element in the Series or Index."
+msgstr ""
+
+#: mars.dataframe.Series.str.slice of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:3 of
+msgid "Start position for slice operation."
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:5 of
+msgid "Stop position for slice operation."
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:7 of
+msgid "Step size for slice operation."
+msgstr ""
+
+#: mars.dataframe.Series.str.slice of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:10 of
+msgid "Series or Index from sliced substring from original string object."
+msgstr ""
+
+#: mars.dataframe.Series.str.slice of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:16 of
+msgid ":meth:`Series.str.slice_replace`"
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:16 of
+msgid "Replace a slice with a string."
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:18 of
+msgid ":meth:`Series.str.get`"
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:19 of
+msgid ""
+"Return element at position. Equivalent to `Series.str.slice(start=i, "
+"stop=i+1)` with `i` being the position."
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:22 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.str.slice:61 of
+msgid "Equivalent behaviour to:"
+msgstr ""
+

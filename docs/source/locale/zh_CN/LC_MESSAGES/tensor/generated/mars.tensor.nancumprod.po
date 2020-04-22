@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.nancumprod.rst:2
 msgid "mars.tensor.nancumprod"
@@ -32,41 +32,21 @@ msgstr ""
 msgid "Ones are returned for slices that are all-NaN or empty."
 msgstr ""
 
-#: mars.tensor.nancumprod:9 of
-msgid "a"
+#: mars.tensor.nancumprod of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.nancumprod:8 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.nancumprod:10 of
+#: mars.tensor.nancumprod:7 of
 msgid "Input tensor."
 msgstr ""
 
-#: mars.tensor.nancumprod:12 of
-msgid "axis"
-msgstr ""
-
-#: mars.tensor.nancumprod:11 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.nancumprod:12 of
+#: mars.tensor.nancumprod:9 of
 msgid ""
 "Axis along which the cumulative product is computed.  By default the "
 "input is flattened."
 msgstr ""
 
-#: mars.tensor.nancumprod:18 of
-msgid "dtype"
-msgstr ""
-
-#: mars.tensor.nancumprod:17 of
-msgid "dtype, optional"
-msgstr ""
-
-#: mars.tensor.nancumprod:15 of
+#: mars.tensor.nancumprod:12 of
 msgid ""
 "Type of the returned tensor, as well as of the accumulator in which the "
 "elements are multiplied.  If *dtype* is not specified, it defaults to the"
@@ -75,38 +55,44 @@ msgid ""
 "platform integer is used instead."
 msgstr ""
 
-#: mars.tensor.nancumprod:23 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.nancumprod:22 of
-msgid "Tensor, optional"
-msgstr ""
-
-#: mars.tensor.nancumprod:21 of
+#: mars.tensor.nancumprod:18 of
 msgid ""
 "Alternative output tensor in which to place the result. It must have the "
 "same shape and buffer length as the expected output but the type of the "
 "resulting values will be cast if necessary."
 msgstr ""
 
-#: mars.tensor.nancumprod:29 of
-msgid "nancumprod"
+#: mars.tensor.nancumprod of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.nancumprod:28 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.nancumprod:28 of
+#: mars.tensor.nancumprod:23 of
 msgid ""
-"A new array holding the result is returned unless `out` is specified, in "
-"which case it is returned."
+"**nancumprod** -- A new array holding the result is returned unless `out`"
+" is specified, in which case it is returned."
+msgstr ""
+
+#: mars.tensor.nancumprod of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.nancumprod:30 of
+msgid ":func:`mt.cumprod`"
+msgstr ""
+
+#: mars.tensor.nancumprod:30 of
+msgid "Cumulative product across array propagating NaNs."
+msgstr ""
+
+#: mars.tensor.nancumprod:32 of
+msgid ":func:`isnan`"
 msgstr ""
 
 #: mars.tensor.nancumprod:33 of
-msgid ""
-"mt.cumprod : Cumulative product across array propagating NaNs. isnan : "
-"Show which elements are NaN."
+msgid "Show which elements are NaN."
+msgstr ""
+
+#: mars.tensor.nancumprod:36 of
+msgid "Examples"
 msgstr ""
 

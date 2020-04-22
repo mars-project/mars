@@ -441,8 +441,148 @@ def iloc(a):
 
 
 def head(a, n=5):
+    """
+    Return the first `n` rows.
+
+    This function returns the first `n` rows for the object based
+    on position. It is useful for quickly testing if your object
+    has the right type of data in it.
+
+    For negative values of `n`, this function returns all rows except
+    the last `n` rows, equivalent to ``df[:-n]``.
+
+    Parameters
+    ----------
+    n : int, default 5
+        Number of rows to select.
+
+    Returns
+    -------
+    same type as caller
+        The first `n` rows of the caller object.
+
+    See Also
+    --------
+    DataFrame.tail: Returns the last `n` rows.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'animal': ['alligator', 'bee', 'falcon', 'lion',
+    ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})
+    >>> df.execute()
+          animal
+    0  alligator
+    1        bee
+    2     falcon
+    3       lion
+    4     monkey
+    5     parrot
+    6      shark
+    7      whale
+    8      zebra
+
+    Viewing the first 5 lines
+
+    >>> df.head().execute()
+          animal
+    0  alligator
+    1        bee
+    2     falcon
+    3       lion
+    4     monkey
+
+    Viewing the first `n` lines (three in this case)
+
+    >>> df.head(3).execute()
+          animal
+    0  alligator
+    1        bee
+    2     falcon
+
+    For negative values of `n`
+
+    >>> df.head(-3).execute()
+          animal
+    0  alligator
+    1        bee
+    2     falcon
+    3       lion
+    4     monkey
+    5     parrot
+    """
     return DataFrameIloc(a)[0:n]
 
 
 def tail(a, n=5):
+    """
+    Return the last `n` rows.
+
+    This function returns last `n` rows from the object based on
+    position. It is useful for quickly verifying data, for example,
+    after sorting or appending rows.
+
+    For negative values of `n`, this function returns all rows except
+    the first `n` rows, equivalent to ``df[n:]``.
+
+    Parameters
+    ----------
+    n : int, default 5
+        Number of rows to select.
+
+    Returns
+    -------
+    type of caller
+        The last `n` rows of the caller object.
+
+    See Also
+    --------
+    DataFrame.head : The first `n` rows of the caller object.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'animal': ['alligator', 'bee', 'falcon', 'lion',
+    ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})
+    >>> df.execute()
+          animal
+    0  alligator
+    1        bee
+    2     falcon
+    3       lion
+    4     monkey
+    5     parrot
+    6      shark
+    7      whale
+    8      zebra
+
+    Viewing the last 5 lines
+
+    >>> df.tail().execute()
+       animal
+    4  monkey
+    5  parrot
+    6   shark
+    7   whale
+    8   zebra
+
+    Viewing the last `n` lines (three in this case)
+
+    >>> df.tail(3).execute()
+      animal
+    6  shark
+    7  whale
+    8  zebra
+
+    For negative values of `n`
+
+    >>> df.tail(-3).execute()
+       animal
+    3    lion
+    4  monkey
+    5  parrot
+    6   shark
+    7   whale
+    8   zebra
+    """
     return DataFrameIloc(a)[-n:]

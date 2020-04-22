@@ -1,0 +1,70 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.str.len.rst:2
+msgid "mars.dataframe.Series.str.len"
+msgstr ""
+
+#: mars.dataframe.Series.str.len:1 of
+msgid ""
+"Compute the length of each element in the Series/Index. The element may "
+"be a sequence (such as a string, tuple or list) or a collection (such as "
+"a dictionary)."
+msgstr ""
+
+#: mars.dataframe.Series.str.len of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.str.len:5 of
+msgid ""
+"A Series or Index of integer values indicating the length of each element"
+" in the Series or Index."
+msgstr ""
+
+#: mars.dataframe.Series.str.len of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.str.len:12 of
+msgid ":meth:`str.len`"
+msgstr ""
+
+#: mars.dataframe.Series.str.len:12 of
+msgid "Python built-in function returning the length of an object."
+msgstr ""
+
+#: mars.dataframe.Series.str.len:14 of
+msgid ":meth:`Series.size`"
+msgstr ""
+
+#: mars.dataframe.Series.str.len:15 of
+msgid "Returns the length of the Series."
+msgstr ""
+
+#: mars.dataframe.Series.str.len:18 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.str.len:19 of
+msgid ""
+"Returns the length (number of characters) in a string. Returns the number"
+" of entries for dictionaries, lists or tuples."
+msgstr ""
+

@@ -1,33 +1,33 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.random.laplace.rst:2
 msgid "mars.tensor.random.laplace"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:1 of
+#: mars.tensor.random.laplace:1 of
 msgid ""
 "Draw samples from the Laplace or double exponential distribution with "
 "specified location (or mean) and scale (decay)."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:4 of
+#: mars.tensor.random.laplace:4 of
 msgid ""
 "The Laplace distribution is similar to the Gaussian/normal distribution, "
 "but is sharper at the peak and has fatter tails. It represents the "
@@ -35,36 +35,19 @@ msgid ""
 "random variables."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:11 of
-msgid "loc"
+#: mars.tensor.random.laplace of
+msgid "Parameters"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:10 mars.tensor.random.laplace:12
-#: of
-msgid "float or array_like of floats, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:12 of
+#: mars.tensor.random.laplace:9 of
 msgid "The position, :math:`\\mu`, of the distribution peak. Default is 0."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:13 of
-msgid "scale"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:14 of
+#: mars.tensor.random.laplace:11 of
 msgid ":math:`\\lambda`, the exponential decay. Default is 1."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:18 of
-msgid "size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:17 of
-msgid "int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:16 of
+#: mars.tensor.random.laplace:13 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -72,65 +55,45 @@ msgid ""
 "``np.broadcast(loc, scale).size`` samples are drawn."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:20 of
-msgid "chunks"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:19 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:21 of
+#: mars.tensor.random.laplace:18 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:22 of
-msgid "gpu"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:21 of
-msgid "bool, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:23 of
+#: mars.tensor.random.laplace:20 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:25 of
-msgid "dtype"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:24 of
-msgid "data-type, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.laplace:25 of
+#: mars.tensor.random.laplace:22 of
 msgid "Data-type of the returned tensor."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:30 of
-msgid "out"
+#: mars.tensor.random.laplace of
+msgid "Returns"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:29 of
-msgid "Tensor or scalar"
+#: mars.tensor.random.laplace:25 of
+msgid "**out** -- Drawn samples from the parameterized Laplace distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:30 of
-msgid "Drawn samples from the parameterized Laplace distribution."
+#: mars.tensor.random.laplace of
+msgid "Return type"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:34 of
+#: mars.tensor.random.laplace:29 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.random.laplace:30 of
 msgid "It has the probability density function"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:36 of
+#: mars.tensor.random.laplace:32 of
 msgid ""
 "f(x; \\mu, \\lambda) = \\frac{1}{2\\lambda} \\exp\\left(-\\frac{|x - "
 "\\mu|}{\\lambda}\\right)."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:39 of
+#: mars.tensor.random.laplace:35 of
 msgid ""
 "The first law of Laplace, from 1774, states that the frequency of an "
 "error can be expressed as an exponential function of the absolute "
@@ -139,42 +102,50 @@ msgid ""
 "model the data better than the standard Gaussian distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:48 of
+#: mars.tensor.random.laplace:43 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.random.laplace:44 of
 msgid ""
 "Abramowitz, M. and Stegun, I. A. (Eds.). \"Handbook of Mathematical "
 "Functions with Formulas, Graphs, and Mathematical Tables, 9th printing,\""
 " New York: Dover, 1972."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:51 of
+#: mars.tensor.random.laplace:47 of
 msgid ""
 "Kotz, Samuel, et. al. \"The Laplace Distribution and Generalizations, \" "
 "Birkhauser, 2001."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:53 of
+#: mars.tensor.random.laplace:49 of
 msgid ""
 "Weisstein, Eric W. \"Laplace Distribution.\" From MathWorld--A Wolfram "
 "Web Resource. http://mathworld.wolfram.com/LaplaceDistribution.html"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:56 of
+#: mars.tensor.random.laplace:52 of
 msgid ""
 "Wikipedia, \"Laplace distribution\", "
 "http://en.wikipedia.org/wiki/Laplace_distribution"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:61 of
+#: mars.tensor.random.laplace:56 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.laplace:57 of
 msgid "Draw samples from the distribution"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:68 of
+#: mars.tensor.random.laplace:64 of
 msgid ""
 "Display the histogram of the samples, along with the probability density "
 "function:"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.laplace:77 of
+#: mars.tensor.random.laplace:73 of
 msgid "Plot Gaussian for comparison:"
 msgstr ""
 

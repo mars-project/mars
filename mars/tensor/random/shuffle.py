@@ -22,15 +22,18 @@ def shuffle(random_state, x, axis=0):
     r"""
     Modify a sequence in-place by shuffling its contents.
     The order of sub-arrays is changed but their contents remains the same.
+
     Parameters
     ----------
     x : array_like
         The array or list to be shuffled.
     axis : int, optional
         The axis which `x` is shuffled along. Default is 0.
+
     Returns
     -------
     None
+
     Examples
     --------
     >>> import mars.tensor as mt
@@ -39,6 +42,7 @@ def shuffle(random_state, x, axis=0):
     >>> rng.shuffle(arr)
     >>> arr.execute()
     array([0, 1, 4, 2, 8, 6, 5, 9, 3, 7]) # random
+
     >>> arr = mt.arange(9).reshape((3, 3))
     >>> rng.shuffle(arr)
     >>> arr.execute()

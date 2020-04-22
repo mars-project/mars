@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.equal.rst:2
 msgid "mars.tensor.equal"
@@ -25,27 +25,15 @@ msgstr ""
 msgid "Return (x1 == x2) element-wise."
 msgstr ""
 
-#: mars.tensor.equal:5 of
-msgid "x1, x2"
+#: mars.tensor.equal of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.equal:4 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.equal:6 of
+#: mars.tensor.equal:3 of
 msgid "Input tensors of the same shape."
 msgstr ""
 
-#: mars.tensor.equal:10 mars.tensor.equal:22 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.equal:9 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.equal:8 of
+#: mars.tensor.equal:5 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -53,43 +41,43 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.equal:13 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.equal:12 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.equal:13 of
+#: mars.tensor.equal:10 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
-#: mars.tensor.equal:17 of
-msgid "**kwargs"
-msgstr ""
-
-#: mars.tensor.equal:16 of
+#: mars.tensor.equal:13 of
 msgid ""
 "For other keyword-only arguments, see the :ref:`ufunc docs "
 "<ufuncs.kwargs>`."
 msgstr ""
 
-#: mars.tensor.equal:21 of
-msgid "Tensor or bool"
+#: mars.tensor.equal of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.equal:16 of
+msgid ""
+"**out** -- Output tensor of bools, or a single bool if x1 and x2 are "
+"scalars."
+msgstr ""
+
+#: mars.tensor.equal of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.equal:19 of
+msgid ""
+":func:`not_equal`, :func:`greater_equal`, :func:`less_equal`, "
+":func:`greater`, :func:`less`"
 msgstr ""
 
 #: mars.tensor.equal:22 of
-msgid "Output tensor of bools, or a single bool if x1 and x2 are scalars."
+msgid "Examples"
 msgstr ""
 
-#: mars.tensor.equal:26 of
-msgid "not_equal, greater_equal, less_equal, greater, less"
-msgstr ""
-
-#: mars.tensor.equal:35 of
+#: mars.tensor.equal:28 of
 msgid ""
 "What is compared are values, not types. So an int (1) and a tensor of "
 "length one can evaluate as True:"

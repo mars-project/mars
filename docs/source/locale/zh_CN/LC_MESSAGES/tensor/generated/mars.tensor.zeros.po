@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 18:48+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.zeros.rst:2
 msgid "mars.tensor.zeros"
@@ -25,82 +25,91 @@ msgstr ""
 msgid "Return a new tensor of given shape and type, filled with zeros."
 msgstr ""
 
-#: mars.tensor.zeros:5 of
-msgid "shape"
+#: mars.tensor.zeros of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.zeros:4 of
-msgid "int or sequence of ints"
-msgstr ""
-
-#: mars.tensor.zeros:6 of
+#: mars.tensor.zeros:3 of
 msgid "Shape of the new tensor, e.g., ``(2, 3)`` or ``2``."
 msgstr ""
 
-#: mars.tensor.zeros:8 of
-msgid "dtype"
-msgstr ""
-
-#: mars.tensor.zeros:7 of
-msgid "data-type, optional"
-msgstr ""
-
-#: mars.tensor.zeros:8 of
+#: mars.tensor.zeros:5 of
 msgid ""
 "The desired data-type for the array, e.g., `mt.int8`.  Default is "
 "`mt.float64`."
 msgstr ""
 
-#: mars.tensor.zeros:10 of
-msgid "chunk_size"
-msgstr ""
-
-#: mars.tensor.zeros:9 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
-
-#: mars.tensor.zeros:11 of
+#: mars.tensor.zeros:8 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.zeros:12 of
-msgid "gpu"
-msgstr ""
-
-#: mars.tensor.zeros:11 of
-msgid "bool, optional"
-msgstr ""
-
-#: mars.tensor.zeros:13 of
+#: mars.tensor.zeros:10 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.zeros:15 of
-msgid "sparse: bool, optional"
-msgstr ""
-
-#: mars.tensor.zeros:15 of
+#: mars.tensor.zeros:12 of
 msgid "Create sparse tensor if True, False as default"
 msgstr ""
 
-#: mars.tensor.zeros:20 of
-msgid "out"
+#: mars.tensor.zeros:14 of
+msgid ""
+"Whether to store multi-dimensional data in row-major (C-style) or column-"
+"major (Fortran-style) order in memory."
+msgstr ""
+
+#: mars.tensor.zeros of
+msgid "Returns"
 msgstr ""
 
 #: mars.tensor.zeros:19 of
-msgid "Tensor"
+msgid "**out** -- Tensor of zeros with the given shape, dtype, and order."
 msgstr ""
 
-#: mars.tensor.zeros:20 of
-msgid "Tensor of zeros with the given shape, dtype, and order."
+#: mars.tensor.zeros of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.zeros:24 of
-msgid ""
-"zeros_like : Return a tensor of zeros with shape and type of input. "
-"ones_like : Return a tensor of ones with shape and type of input. "
-"empty_like : Return a empty tensor with shape and type of input. ones : "
-"Return a new tensor setting values to one. empty : Return a new "
-"uninitialized tensor."
+#: mars.tensor.zeros:25 of
+msgid ":func:`zeros_like`"
+msgstr ""
+
+#: mars.tensor.zeros:25 of
+msgid "Return a tensor of zeros with shape and type of input."
+msgstr ""
+
+#: mars.tensor.zeros:28 of
+msgid ":func:`ones_like`"
+msgstr ""
+
+#: mars.tensor.zeros:28 of
+msgid "Return a tensor of ones with shape and type of input."
+msgstr ""
+
+#: mars.tensor.zeros:31 of
+msgid ":func:`empty_like`"
+msgstr ""
+
+#: mars.tensor.zeros:31 of
+msgid "Return a empty tensor with shape and type of input."
+msgstr ""
+
+#: mars.tensor.zeros:34 of
+msgid ":func:`ones`"
+msgstr ""
+
+#: mars.tensor.zeros:34 of
+msgid "Return a new tensor setting values to one."
+msgstr ""
+
+#: mars.tensor.zeros:36 of
+msgid ":func:`empty`"
+msgstr ""
+
+#: mars.tensor.zeros:37 of
+msgid "Return a new uninitialized tensor."
+msgstr ""
+
+#: mars.tensor.zeros:40 of
+msgid "Examples"
 msgstr ""
 

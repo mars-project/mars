@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.linspace.rst:2
 msgid "mars.tensor.linspace"
@@ -35,23 +35,15 @@ msgstr ""
 msgid "The endpoint of the interval can optionally be excluded."
 msgstr ""
 
-#: mars.tensor.linspace:10 of
-msgid "start"
+#: mars.tensor.linspace of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.linspace:9 mars.tensor.linspace:14 of
-msgid "scalar"
-msgstr ""
-
-#: mars.tensor.linspace:11 of
+#: mars.tensor.linspace:8 of
 msgid "The starting value of the sequence."
 msgstr ""
 
-#: mars.tensor.linspace:15 of
-msgid "stop"
-msgstr ""
-
-#: mars.tensor.linspace:13 of
+#: mars.tensor.linspace:10 of
 msgid ""
 "The end value of the sequence, unless `endpoint` is set to False. In that"
 " case, the sequence consists of all but the last of ``num + 1`` evenly "
@@ -59,124 +51,87 @@ msgid ""
 "changes when `endpoint` is False."
 msgstr ""
 
-#: mars.tensor.linspace:17 of
-msgid "num"
-msgstr ""
-
-#: mars.tensor.linspace:16 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.linspace:18 of
+#: mars.tensor.linspace:15 of
 msgid "Number of samples to generate. Default is 50. Must be non-negative."
 msgstr ""
 
-#: mars.tensor.linspace:20 of
-msgid "endpoint"
-msgstr ""
-
-#: mars.tensor.linspace:19 mars.tensor.linspace:22 mars.tensor.linspace:27 of
-msgid "bool, optional"
-msgstr ""
-
-#: mars.tensor.linspace:20 of
+#: mars.tensor.linspace:17 of
 msgid ""
 "If True, `stop` is the last sample. Otherwise, it is not included. "
 "Default is True."
 msgstr ""
 
-#: mars.tensor.linspace:23 of
-msgid "retstep"
-msgstr ""
-
-#: mars.tensor.linspace:23 of
+#: mars.tensor.linspace:20 of
 msgid ""
 "If True, return (`samples`, `step`), where `step` is the spacing between "
 "samples."
 msgstr ""
 
-#: mars.tensor.linspace:26 of
-msgid "dtype"
-msgstr ""
-
-#: mars.tensor.linspace:25 of
-msgid "dtype, optional"
-msgstr ""
-
-#: mars.tensor.linspace:26 of
+#: mars.tensor.linspace:23 of
 msgid ""
 "The type of the output tensor.  If `dtype` is not given, infer the data "
 "type from the other input arguments."
 msgstr ""
 
-#: mars.tensor.linspace:28 of
-msgid "gpu"
-msgstr ""
-
-#: mars.tensor.linspace:29 of
+#: mars.tensor.linspace:26 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.linspace:31 of
-msgid "chunk_size"
-msgstr ""
-
-#: mars.tensor.linspace:30 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
-
-#: mars.tensor.linspace:31 of
+#: mars.tensor.linspace:28 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.linspace:37 of
-msgid "samples"
+#: mars.tensor.linspace of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.linspace:36 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.linspace:36 of
+#: mars.tensor.linspace:31 of
 msgid ""
-"There are `num` equally spaced samples in the closed interval ``[start, "
-"stop]`` or the half-open interval ``[start, stop)`` (depending on whether"
-" `endpoint` is True or False)."
+"* **samples** (*Tensor*) -- There are `num` equally spaced samples in the"
+" closed interval   ``[start, stop]`` or the half-open interval ``[start, "
+"stop)``   (depending on whether `endpoint` is True or False). * **step** "
+"(*float, optional*) -- Only returned if `retstep` is True    Size of "
+"spacing between samples."
 msgstr ""
 
-#: mars.tensor.linspace:43 of
-msgid "step"
+#: mars.tensor.linspace:31 of
+msgid ""
+"**samples** (*Tensor*) -- There are `num` equally spaced samples in the "
+"closed interval ``[start, stop]`` or the half-open interval ``[start, "
+"stop)`` (depending on whether `endpoint` is True or False)."
 msgstr ""
 
-#: mars.tensor.linspace:42 of
-msgid "float, optional"
+#: mars.tensor.linspace:34 of
+msgid "**step** (*float, optional*) -- Only returned if `retstep` is True"
 msgstr ""
 
-#: mars.tensor.linspace:40 of
-msgid "Only returned if `retstep` is True"
-msgstr ""
-
-#: mars.tensor.linspace:42 of
+#: mars.tensor.linspace:36 of
 msgid "Size of spacing between samples."
 msgstr ""
 
+#: mars.tensor.linspace:41 of
+msgid ":func:`arange`"
+msgstr ""
+
+#: mars.tensor.linspace:41 of
+msgid ""
+"Similar to `linspace`, but uses a step size (instead of the number of "
+"samples)."
+msgstr ""
+
+#: mars.tensor.linspace:43 of
+msgid ":func:`logspace`"
+msgstr ""
+
+#: mars.tensor.linspace:44 of
+msgid "Samples uniformly distributed in log space."
+msgstr ""
+
 #: mars.tensor.linspace:47 of
-msgid "arange : Similar to `linspace`, but uses a step size (instead of the"
+msgid "Examples"
 msgstr ""
 
-#: mars.tensor.linspace:46 of
-msgid "Similar to linspace, but uses a step size (instead of the"
-msgstr ""
-
-#: mars.tensor.linspace:48 of
-msgid "number of samples)."
-msgstr ""
-
-#: mars.tensor.linspace:49 of
-msgid "logspace : Samples uniformly distributed in log space."
-msgstr ""
-
-#: mars.tensor.linspace:65 of
+#: mars.tensor.linspace:60 of
 msgid "Graphical illustration:"
 msgstr ""
 

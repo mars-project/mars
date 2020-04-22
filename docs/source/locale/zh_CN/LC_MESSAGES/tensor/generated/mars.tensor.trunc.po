@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.trunc.rst:2
 msgid "mars.tensor.trunc"
@@ -32,27 +32,15 @@ msgid ""
 "number `x` is discarded."
 msgstr ""
 
-#: mars.tensor.trunc:9 of
-msgid "x"
+#: mars.tensor.trunc of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.trunc:8 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.trunc:10 of
+#: mars.tensor.trunc:7 of
 msgid "Input data."
 msgstr ""
 
-#: mars.tensor.trunc:14 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.trunc:13 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.trunc:12 of
+#: mars.tensor.trunc:9 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -60,37 +48,29 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.trunc:17 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.trunc:16 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.trunc:17 of
+#: mars.tensor.trunc:14 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.trunc of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.trunc:19 of
-msgid "**kwargs"
+msgid "**y** -- The truncated value of each element in `x`."
 msgstr ""
 
-#: mars.tensor.trunc:24 of
-msgid "y"
+#: mars.tensor.trunc of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.trunc:23 of
-msgid "Tensor or scalar"
+#: mars.tensor.trunc:22 of
+msgid ":func:`ceil`, :func:`floor`, :func:`rint`"
 msgstr ""
 
-#: mars.tensor.trunc:24 of
-msgid "The truncated value of each element in `x`."
-msgstr ""
-
-#: mars.tensor.trunc:28 of
-msgid "ceil, floor, rint"
+#: mars.tensor.trunc:25 of
+msgid "Examples"
 msgstr ""
 

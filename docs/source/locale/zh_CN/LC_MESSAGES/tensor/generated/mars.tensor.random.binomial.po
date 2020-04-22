@@ -1,31 +1,31 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.random.binomial.rst:2
 msgid "mars.tensor.random.binomial"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:1 of
+#: mars.tensor.random.binomial:1 of
 msgid "Draw samples from a binomial distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:3 of
+#: mars.tensor.random.binomial:3 of
 msgid ""
 "Samples are drawn from a binomial distribution with specified parameters,"
 " n trials and p probability of success where n an integer >= 0 and p is "
@@ -33,41 +33,21 @@ msgid ""
 " an integer in use)"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:11 of
-msgid "n"
+#: mars.tensor.random.binomial of
+msgid "Parameters"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:10 of
-msgid "int or array_like of ints"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:11 of
+#: mars.tensor.random.binomial:8 of
 msgid ""
 "Parameter of the distribution, >= 0. Floats are also accepted, but they "
 "will be truncated to integers."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:13 of
-msgid "p"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:12 of
-msgid "float or array_like of floats"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:14 of
+#: mars.tensor.random.binomial:11 of
 msgid "Parameter of the distribution, >= 0 and <=1."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:18 of
-msgid "size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:17 of
-msgid "int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:16 of
+#: mars.tensor.random.binomial:13 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -75,83 +55,61 @@ msgid ""
 "``mt.broadcast(n, p).size`` samples are drawn."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:20 of
-msgid "chunk_size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:19 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:21 of
+#: mars.tensor.random.binomial:18 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:22 of
-msgid "gpu"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:21 of
-msgid "bool, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:23 of
+#: mars.tensor.random.binomial:20 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:25 of
-msgid "dtype"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:24 of
-msgid "data-type, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:25 of
+#: mars.tensor.random.binomial:22 of
 msgid "Data-type of the returned tensor."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:31 of
-msgid "out"
+#: mars.tensor.random.binomial of
+msgid "Returns"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:30 of
-msgid "Tensor or scalar"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.binomial:30 of
+#: mars.tensor.random.binomial:25 of
 msgid ""
-"Drawn samples from the parameterized binomial distribution, where each "
-"sample is equal to the number of successes over the n trials."
+"**out** -- Drawn samples from the parameterized binomial distribution, "
+"where each sample is equal to the number of successes over the n trials."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:36 of
-msgid "scipy.stats.binom"
+#: mars.tensor.random.binomial of
+msgid "Return type"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:35 of
-msgid "probability density function, distribution or"
+#: mars.tensor.random.binomial:31 of
+msgid ":func:`scipy.stats.binom`"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:36 of
-msgid "cumulative density function, etc."
+#: mars.tensor.random.binomial:32 of
+msgid ""
+"probability density function, distribution or cumulative density "
+"function, etc."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:40 of
+#: mars.tensor.random.binomial:35 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.random.binomial:36 of
 msgid "The probability density for the binomial distribution is"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:42 of
+#: mars.tensor.random.binomial:38 of
 msgid "P(N) = \\binom{n}{N}p^N(1-p)^{n-N},"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:44 of
+#: mars.tensor.random.binomial:40 of
 msgid ""
 "where :math:`n` is the number of trials, :math:`p` is the probability of "
 "success, and :math:`N` is the number of successes."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:47 of
+#: mars.tensor.random.binomial:43 of
 msgid ""
 "When estimating the standard error of a proportion in a population by "
 "using a random sample, the normal distribution works well unless the "
@@ -162,48 +120,56 @@ msgid ""
 "distribution should be used in this case."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:57 of
+#: mars.tensor.random.binomial:52 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.random.binomial:53 of
 msgid ""
 "Dalgaard, Peter, \"Introductory Statistics with R\", Springer-Verlag, "
 "2002."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:59 of
+#: mars.tensor.random.binomial:55 of
 msgid ""
 "Glantz, Stanton A. \"Primer of Biostatistics.\", McGraw-Hill, Fifth "
 "Edition, 2002."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:61 of
+#: mars.tensor.random.binomial:57 of
 msgid ""
 "Lentner, Marvin, \"Elementary Applied Statistics\", Bogden and Quigley, "
 "1972."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:63 of
+#: mars.tensor.random.binomial:59 of
 msgid ""
 "Weisstein, Eric W. \"Binomial Distribution.\" From MathWorld--A Wolfram "
 "Web Resource. http://mathworld.wolfram.com/BinomialDistribution.html"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:66 of
+#: mars.tensor.random.binomial:62 of
 msgid ""
 "Wikipedia, \"Binomial distribution\", "
 "http://en.wikipedia.org/wiki/Binomial_distribution"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:71 of
+#: mars.tensor.random.binomial:66 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.binomial:67 of
 msgid "Draw samples from the distribution:"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:79 of
+#: mars.tensor.random.binomial:75 of
 msgid ""
 "A real world example. A company drills 9 wild-cat oil exploration wells, "
 "each with an estimated probability of success of 0.1. All nine wells "
 "fail. What is the probability of that happening?"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.binomial:83 of
+#: mars.tensor.random.binomial:79 of
 msgid ""
 "Let's do 20,000 trials of the model, and count the number that generate "
 "zero positive results."

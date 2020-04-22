@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.invert.rst:2
 msgid "mars.tensor.invert"
@@ -42,27 +42,15 @@ msgid ""
 ":math:`+2^{N-1}-1`."
 msgstr ""
 
-#: mars.tensor.invert:16 of
-msgid "x"
+#: mars.tensor.invert of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.invert:15 mars.tensor.invert:30 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.invert:17 of
+#: mars.tensor.invert:14 of
 msgid "Only integer and boolean types are handled."
 msgstr ""
 
-#: mars.tensor.invert:21 mars.tensor.invert:31 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.invert:20 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.invert:19 of
+#: mars.tensor.invert:16 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -70,59 +58,69 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.invert:24 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.invert:23 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.invert:24 of
+#: mars.tensor.invert:21 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.invert of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.invert:26 of
-msgid "**kwargs"
+msgid "**out** -- Result."
 msgstr ""
 
-#: mars.tensor.invert:31 of
-msgid "Result."
+#: mars.tensor.invert of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.invert:35 of
-msgid "bitwise_and, bitwise_or, bitwise_xor logical_not"
+#: mars.tensor.invert:29 of
+msgid ""
+":func:`bitwise_and`, :func:`bitwise_or`, :func:`bitwise_xor`, "
+":func:`logical_not`"
 msgstr ""
 
-#: mars.tensor.invert:40 of
+#: mars.tensor.invert:32 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.invert:33 of
 msgid "`bitwise_not` is an alias for `invert`:"
 msgstr ""
 
-#: mars.tensor.invert:49 of
+#: mars.tensor.invert:41 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.invert:42 of
 msgid ""
 "Wikipedia, \"Two's complement\", "
 "http://en.wikipedia.org/wiki/Two's_complement"
 msgstr ""
 
-#: mars.tensor.invert:54 of
+#: mars.tensor.invert:46 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.invert:47 of
 msgid ""
 "We've seen that 13 is represented by ``00001101``. The invert or bit-wise"
 " NOT of 13 is then:"
 msgstr ""
 
-#: mars.tensor.invert:60 of
+#: mars.tensor.invert:53 of
 msgid "The result depends on the bit-width:"
 msgstr ""
 
-#: mars.tensor.invert:65 of
+#: mars.tensor.invert:58 of
 msgid ""
 "When using signed integer types the result is the two's complement of the"
 " result for the unsigned type:"
 msgstr ""
 
-#: mars.tensor.invert:71 of
+#: mars.tensor.invert:64 of
 msgid "Booleans are accepted as well:"
 msgstr ""
 

@@ -8,14 +8,34 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-03-15 13:09+0800\n"
+"POT-Creation-Date: 2020-04-22 09:59+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.6.0\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/index.rst:57
+msgid "Getting Started"
+msgstr "开始使用 Mars"
+
+#: ../../source/index.rst:65
+msgid "Tensor Interface"
+msgstr "Tensor 接口"
+
+#: ../../source/index.rst:78
+msgid "DataFrame Interface"
+msgstr "DataFrame 接口"
+
+#: ../../source/index.rst:86
+msgid "Distributed Scheduling"
+msgstr "分布式调度"
+
+#: ../../source/index.rst:98
+msgid "Contribution Guide"
+msgstr "贡献指南"
 
 #: ../../source/index.rst:7
 msgid "Mars"
@@ -35,7 +55,7 @@ msgstr ":doc:`文档 <tensor/index>`"
 
 #: ../../source/index.rst:16
 msgid "Mars tensor provides a familiar interface like Numpy."
-msgstr "Mars tensor - 提供类似 Numpy API 的分布式张量库"
+msgstr "Mars tensor - 提供类似 Numpy API 的接口"
 
 #: ../../source/index.rst:19
 msgid "**Numpy**"
@@ -43,13 +63,33 @@ msgstr "**Numpy**"
 
 #: ../../source/index.rst:19
 msgid "**Mars tensor**"
-msgstr "**Mars tensor**"
+msgstr "**Mars Tensor**"
 
 #: ../../source/index.rst:30
+msgid "Mars dataframe"
+msgstr "Mars DataFrame"
+
+#: ../../source/index.rst:32
+msgid ":doc:`documentation <dataframe/index>`"
+msgstr ":doc:`文档 <dataframe/index>`"
+
+#: ../../source/index.rst:34
+msgid "Mars DataFrame provides a familiar interface like pandas."
+msgstr "Mars DataFrame - 提供类似 pandas 的接口"
+
+#: ../../source/index.rst:37
+msgid "**Pandas**"
+msgstr ""
+
+#: ../../source/index.rst:37
+msgid "**Mars DataFrame**"
+msgstr "**Mars DataFrame**"
+
+#: ../../source/index.rst:50
 msgid "Easy to scale in and scale out"
 msgstr "适应各种数据规模"
 
-#: ../../source/index.rst:32
+#: ../../source/index.rst:52
 msgid ""
 "Mars can scale in to a single machine, and scale out to a cluster with "
 "hundreds of machines. Both the local and distributed version share the "
@@ -59,20 +99,4 @@ msgstr ""
 "Mars 可以在单台机器上运行，也可以扩展到上百台机器组成的集群中运行，且在"
 "两种环境下可使用相同的代码。因此，Mars 可以方便地从单台机器迁移到集群，以"
 "适应数据量的增长。"
-
-#: ../../source/index.rst:37
-msgid "Getting Started"
-msgstr "开始使用 Mars"
-
-#: ../../source/index.rst:44
-msgid "Tensor Interface"
-msgstr "张量接口"
-
-#: ../../source/index.rst:57
-msgid "Distributed Scheduling"
-msgstr "分布式调度"
-
-#: ../../source/index.rst:69
-msgid "Contribution Guide"
-msgstr "贡献指南"
 

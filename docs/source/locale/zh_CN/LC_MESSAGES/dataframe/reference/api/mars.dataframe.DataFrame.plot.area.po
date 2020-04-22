@@ -1,0 +1,125 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.plot.area.rst:2
+msgid "mars.dataframe.DataFrame.plot.area"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:1 of
+msgid "Draw a stacked area plot."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:3 of
+msgid ""
+"An area plot displays quantitative data visually. This function wraps the"
+" matplotlib area function."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:6 of
+msgid "Coordinates for the X axis. By default uses the index."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:8 of
+msgid "Column to plot. By default uses all columns."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:10 of
+msgid ""
+"Area plots are stacked by default. Set to False to create a unstacked "
+"plot."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:13 of
+msgid "Additional keyword arguments are documented in :meth:`DataFrame.plot`."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:16 of
+msgid "Area plot, or array of area plots if subplots is True."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:21 of
+msgid ":meth:`DataFrame.plot`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:22 of
+msgid "Make plots of DataFrame using matplotlib / pylab."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:25 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:26 of
+msgid "Draw an area plot based on basic business metrics:"
+msgstr ""
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.plot.area.rst:7
+msgid ""
+"(`Source code <../../../dataframe/reference/api/mars-dataframe-DataFrame-"
+"plot-area-1.py>`__)"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:40 of
+msgid ""
+"Area plots are stacked by default. To produce an unstacked plot, pass "
+"``stacked=False``:"
+msgstr ""
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.plot.area.rst:7
+msgid ""
+"(`Source code <../../../dataframe/reference/api/mars-dataframe-DataFrame-"
+"plot-area-2.py>`__)"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:48 of
+msgid "Draw an area plot for a single column:"
+msgstr ""
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.plot.area.rst:7
+msgid ""
+"(`Source code <../../../dataframe/reference/api/mars-dataframe-DataFrame-"
+"plot-area-3.py>`__)"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.area:55 of
+msgid "Draw with a different `x`:"
+msgstr ""
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.plot.area.rst:7
+msgid ""
+"(`Source code <../../../dataframe/reference/api/mars-dataframe-DataFrame-"
+"plot-area-4.py>`__, `png <../../../dataframe/reference/api/mars-"
+"dataframe-DataFrame-plot-area-4.png>`__, `hires.png "
+"<../../../dataframe/reference/api/mars-dataframe-DataFrame-plot-"
+"area-4.hires.png>`__, `pdf <../../../dataframe/reference/api/mars-"
+"dataframe-DataFrame-plot-area-4.pdf>`__)"
+msgstr ""
+

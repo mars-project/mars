@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.maximum.rst:2
 msgid "mars.tensor.maximum"
@@ -35,29 +35,17 @@ msgid ""
 "that NaNs are propagated."
 msgstr ""
 
-#: mars.tensor.maximum:13 of
-msgid "x1, x2"
+#: mars.tensor.maximum of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.maximum:12 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.maximum:13 of
+#: mars.tensor.maximum:10 of
 msgid ""
 "The tensors holding the elements to be compared. They must have the same "
 "shape, or shapes that can be broadcast to a single shape."
 msgstr ""
 
-#: mars.tensor.maximum:18 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.maximum:17 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.maximum:16 of
+#: mars.tensor.maximum:13 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -65,77 +53,73 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.maximum:21 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.maximum:20 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.maximum:21 of
+#: mars.tensor.maximum:18 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.maximum of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.maximum:23 of
-msgid "**kwargs"
-msgstr ""
-
-#: mars.tensor.maximum:29 of
-msgid "y"
-msgstr ""
-
-#: mars.tensor.maximum:28 of
-msgid "ndarray or scalar"
-msgstr ""
-
-#: mars.tensor.maximum:28 of
 msgid ""
-"The maximum of `x1` and `x2`, element-wise.  Returns scalar if both  `x1`"
-" and `x2` are scalars."
+"**y** -- The maximum of `x1` and `x2`, element-wise.  Returns scalar if "
+"both  `x1` and `x2` are scalars."
 msgstr ""
 
-#: mars.tensor.maximum:33 of
-msgid "minimum :"
+#: mars.tensor.maximum of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.maximum:34 of
+#: mars.tensor.maximum:30 of
+msgid ":func:`minimum`"
+msgstr ""
+
+#: mars.tensor.maximum:30 of
 msgid "Element-wise minimum of two tensors, propagates NaNs."
 msgstr ""
 
-#: mars.tensor.maximum:35 of
-msgid "fmax :"
+#: mars.tensor.maximum:33 of
+msgid ":func:`fmax`"
 msgstr ""
 
-#: mars.tensor.maximum:36 of
+#: mars.tensor.maximum:33 of
 msgid "Element-wise maximum of two tensors, ignores NaNs."
 msgstr ""
 
-#: mars.tensor.maximum:37 of
-msgid "amax :"
+#: mars.tensor.maximum:36 of
+msgid ":func:`amax`"
 msgstr ""
 
-#: mars.tensor.maximum:38 of
+#: mars.tensor.maximum:36 of
 msgid "The maximum value of a tensor along a given axis, propagates NaNs."
 msgstr ""
 
-#: mars.tensor.maximum:40 of
-msgid "nanmax :"
+#: mars.tensor.maximum:39 of
+msgid ":func:`nanmax`"
 msgstr ""
 
-#: mars.tensor.maximum:40 of
+#: mars.tensor.maximum:39 of
 msgid "The maximum value of a tensor along a given axis, ignores NaNs."
 msgstr ""
 
-#: mars.tensor.maximum:42 of
-msgid "fmin, amin, nanmin"
+#: mars.tensor.maximum:41 of
+msgid ":func:`fmin`, :func:`amin`, :func:`nanmin`"
 msgstr ""
 
-#: mars.tensor.maximum:46 of
+#: mars.tensor.maximum:44 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.maximum:45 of
 msgid ""
 "The maximum is equivalent to ``mt.where(x1 >= x2, x1, x2)`` when neither "
 "x1 nor x2 are nans, but it is faster and does proper broadcasting."
+msgstr ""
+
+#: mars.tensor.maximum:50 of
+msgid "Examples"
 msgstr ""
 

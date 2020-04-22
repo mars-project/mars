@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:11+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.dot.rst:2
 msgid "mars.tensor.dot"
@@ -57,35 +57,19 @@ msgid ""
 "`b`::"
 msgstr ""
 
-#: mars.tensor.dot:22 of
-msgid "a"
+#: mars.tensor.dot of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.dot:21 mars.tensor.dot:23 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.dot:23 of
+#: mars.tensor.dot:20 of
 msgid "First argument."
 msgstr ""
 
-#: mars.tensor.dot:24 of
-msgid "b"
-msgstr ""
-
-#: mars.tensor.dot:25 of
+#: mars.tensor.dot:22 of
 msgid "Second argument."
 msgstr ""
 
-#: mars.tensor.dot:32 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.dot:31 of
-msgid "Tensor, optional"
-msgstr ""
-
-#: mars.tensor.dot:27 of
+#: mars.tensor.dot:24 of
 msgid ""
 "Output argument. This must have the exact kind that would be returned if "
 "it was not used. In particular, it must have the right type, must be "
@@ -95,43 +79,72 @@ msgid ""
 "flexible."
 msgstr ""
 
-#: mars.tensor.dot:40 of
-msgid "output"
+#: mars.tensor.dot of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.dot:39 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.dot:37 of
+#: mars.tensor.dot:32 of
 msgid ""
-"Returns the dot product of `a` and `b`.  If `a` and `b` are both scalars "
-"or both 1-D arrays then a scalar is returned; otherwise a tensor is "
-"returned. If `out` is given, then it is returned."
+"**output** -- Returns the dot product of `a` and `b`.  If `a` and `b` are"
+" both scalars or both 1-D arrays then a scalar is returned; otherwise a "
+"tensor is returned. If `out` is given, then it is returned."
+msgstr ""
+
+#: mars.tensor.dot of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.dot of
+msgid "Raises"
+msgstr ""
+
+#: mars.tensor.dot:38 of
+msgid ""
+"If the last dimension of `a` is not the same size as     the second-to-"
+"last dimension of `b`."
+msgstr ""
+
+#: mars.tensor.dot:43 of
+msgid ":func:`vdot`"
+msgstr ""
+
+#: mars.tensor.dot:43 of
+msgid "Complex-conjugating dot product."
 msgstr ""
 
 #: mars.tensor.dot:46 of
-msgid "ValueError"
+msgid ":func:`tensordot`"
 msgstr ""
 
-#: mars.tensor.dot:45 of
-msgid ""
-"If the last dimension of `a` is not the same size as the second-to-last "
-"dimension of `b`."
+#: mars.tensor.dot:46 of
+msgid "Sum products over arbitrary axes."
 msgstr ""
 
-#: mars.tensor.dot:50 of
-msgid ""
-"vdot : Complex-conjugating dot product. tensordot : Sum products over "
-"arbitrary axes. einsum : Einstein summation convention. matmul : '@' "
-"operator as method with out parameter."
+#: mars.tensor.dot:49 of
+msgid ":func:`einsum`"
 msgstr ""
 
-#: mars.tensor.dot:62 of
+#: mars.tensor.dot:49 of
+msgid "Einstein summation convention."
+msgstr ""
+
+#: mars.tensor.dot:51 of
+msgid ":func:`matmul`"
+msgstr ""
+
+#: mars.tensor.dot:52 of
+msgid "'@' operator as method with out parameter."
+msgstr ""
+
+#: mars.tensor.dot:55 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.dot:61 of
 msgid "Neither argument is complex-conjugated:"
 msgstr ""
 
-#: mars.tensor.dot:67 of
+#: mars.tensor.dot:66 of
 msgid "For 2-D arrays it is the matrix product:"
 msgstr ""
 

@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.sum.rst:2
 msgid "mars.tensor.sum"
@@ -25,49 +25,38 @@ msgstr ""
 msgid "Sum of tensor elements over a given axis."
 msgstr ""
 
-#: mars.tensor.sum:5 of
-msgid "a"
+#: mars.tensor.sum of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.sum:4 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.sum:6 of
+#: mars.tensor.sum:3 of
 msgid "Elements to sum."
 msgstr ""
 
-#: mars.tensor.sum:13 of
-msgid "axis"
+#: mars.tensor.sum:5 of
+msgid ""
+"Axis or axes along which a sum is performed.  The default, axis=None, "
+"will sum all of the elements of the input tensor.  If axis is negative it"
+" counts from the last to the first axis.  If axis is a tuple of ints, a "
+"sum is performed on all of the axes specified in the tuple instead of a "
+"single axis or all the axes as before."
 msgstr ""
 
-#: mars.tensor.sum:12 of
-msgid "None or int or tuple of ints, optional"
-msgstr ""
-
-#: mars.tensor.sum:8 of
+#: mars.tensor.sum:5 of
 msgid ""
 "Axis or axes along which a sum is performed.  The default, axis=None, "
 "will sum all of the elements of the input tensor.  If axis is negative it"
 " counts from the last to the first axis."
 msgstr ""
 
-#: mars.tensor.sum:12 of
+#: mars.tensor.sum:9 of
 msgid ""
 "If axis is a tuple of ints, a sum is performed on all of the axes "
 "specified in the tuple instead of a single axis or all the axes as "
 "before."
 msgstr ""
 
-#: mars.tensor.sum:20 of
-msgid "dtype"
-msgstr ""
-
-#: mars.tensor.sum:19 of
-msgid "dtype, optional"
-msgstr ""
-
-#: mars.tensor.sum:16 of
+#: mars.tensor.sum:13 of
 msgid ""
 "The type of the returned tensor and of the accumulator in which the "
 "elements are summed.  The dtype of `a` is used by default unless `a` has "
@@ -77,37 +66,32 @@ msgid ""
 "platform integer is used."
 msgstr ""
 
-#: mars.tensor.sum:24 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.sum:23 of
-msgid "Tensor, optional"
-msgstr ""
-
-#: mars.tensor.sum:23 of
+#: mars.tensor.sum:20 of
 msgid ""
 "Alternative output tensor in which to place the result. It must have the "
 "same shape as the expected output, but the type of the output values will"
 " be cast if necessary."
 msgstr ""
 
-#: mars.tensor.sum:34 of
-msgid "keepdims"
+#: mars.tensor.sum:24 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input tensor.  If the default value is passed, "
+"then `keepdims` will not be passed through to the `sum` method of sub-"
+"classes of `Tensor`, however any non-default value will be.  If the sub-"
+"classes `sum` method does not implement `keepdims` any exceptions will be"
+" raised."
 msgstr ""
 
-#: mars.tensor.sum:33 of
-msgid "bool, optional"
-msgstr ""
-
-#: mars.tensor.sum:27 of
+#: mars.tensor.sum:24 of
 msgid ""
 "If this is set to True, the axes which are reduced are left in the result"
 " as dimensions with size one. With this option, the result will broadcast"
 " correctly against the input tensor."
 msgstr ""
 
-#: mars.tensor.sum:31 of
+#: mars.tensor.sum:28 of
 msgid ""
 "If the default value is passed, then `keepdims` will not be passed "
 "through to the `sum` method of sub-classes of `Tensor`, however any non-"
@@ -115,56 +99,73 @@ msgid ""
 "implement `keepdims` any exceptions will be raised."
 msgstr ""
 
-#: mars.tensor.sum:37 of
-msgid "combine_size: int, optional"
-msgstr ""
-
-#: mars.tensor.sum:37 of
+#: mars.tensor.sum:34 of
 msgid "The number of chunks to combine."
 msgstr ""
 
-#: mars.tensor.sum:45 of
-msgid "sum_along_axis"
+#: mars.tensor.sum of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.sum:44 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.sum:42 of
+#: mars.tensor.sum:37 of
 msgid ""
-"An array with the same shape as `a`, with the specified axis removed.   "
-"If `a` is a 0-d tensor, or if `axis` is None, a scalar is returned.  If "
-"an output array is specified, a reference to `out` is returned."
+"**sum_along_axis** -- An array with the same shape as `a`, with the "
+"specified axis removed.   If `a` is a 0-d tensor, or if `axis` is None, a"
+" scalar is returned.  If an output array is specified, a reference to "
+"`out` is returned."
+msgstr ""
+
+#: mars.tensor.sum of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.sum:46 of
+msgid ":func:`Tensor.sum`"
+msgstr ""
+
+#: mars.tensor.sum:46 of
+msgid "Equivalent method."
 msgstr ""
 
 #: mars.tensor.sum:49 of
-msgid "Tensor.sum : Equivalent method."
+msgid ":func:`cumsum`"
 msgstr ""
 
-#: mars.tensor.sum:51 of
-msgid "cumsum : Cumulative sum of tensor elements."
+#: mars.tensor.sum:49 of
+msgid "Cumulative sum of tensor elements."
 msgstr ""
 
-#: mars.tensor.sum:53 of
-msgid "trapz : Integration of tensor values using the composite trapezoidal rule."
+#: mars.tensor.sum:52 of
+msgid ":func:`trapz`"
 msgstr ""
 
-#: mars.tensor.sum:55 of
-msgid "mean, average"
+#: mars.tensor.sum:52 of
+msgid "Integration of tensor values using the composite trapezoidal rule."
 msgstr ""
 
-#: mars.tensor.sum:59 of
+#: mars.tensor.sum:54 of
+msgid ":func:`mean`, :func:`average`"
+msgstr ""
+
+#: mars.tensor.sum:57 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.sum:58 of
 msgid ""
 "Arithmetic is modular when using integer types, and no error is raised on"
 " overflow."
 msgstr ""
 
-#: mars.tensor.sum:62 of
+#: mars.tensor.sum:61 of
 msgid "The sum of an empty array is the neutral element 0:"
 msgstr ""
 
-#: mars.tensor.sum:82 of
+#: mars.tensor.sum:69 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.sum:81 of
 msgid "If the accumulator is too small, overflow occurs:"
 msgstr ""
 

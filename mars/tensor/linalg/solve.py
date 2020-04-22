@@ -23,15 +23,16 @@ from .solve_triangular import solve_triangular
 def solve(a, b, sym_pos=False, sparse=None):
     """
     Solve the equation ``a x = b`` for ``x``.
+
     Parameters
     ----------
     a : (M, M) array_like
-    A square matrix.
+        A square matrix.
     b : (M,) or (M, N) array_like
-    Right-hand side matrix in ``a x = b``.
+        Right-hand side matrix in ``a x = b``.
     sym_pos : bool
-    Assume `a` is symmetric and positive definite. If ``True``, use Cholesky
-    decomposition.
+        Assume `a` is symmetric and positive definite. If ``True``, use Cholesky
+        decomposition.
     sparse: bool, optional
         Return sparse value or not.
 
@@ -49,12 +50,14 @@ def solve(a, b, sym_pos=False, sparse=None):
     Examples
     --------
     Given `a` and `b`, solve for `x`:
+
     >>> import mars.tensor as mt
     >>> a = mt.array([[3, 2, 0], [1, -1, 0], [0, 5, 1]])
     >>> b = mt.array([2, 4, -1])
     >>> x = mt.linalg.solve(a, b)
     >>> x.execute()
     array([ 2., -2.,  9.])
+
     >>> mt.dot(a, x).execute()  # Check the result
     array([ 2., 4., -1.])
     """

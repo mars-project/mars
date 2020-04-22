@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.fft.ifft2.rst:2
 msgid "mars.tensor.fft.ifft2"
@@ -44,27 +44,15 @@ msgid ""
 " both axes, in order of decreasingly negative frequency."
 msgstr ""
 
-#: mars.tensor.fft.ifft2:18 of
-msgid "a"
+#: mars.tensor.fft.ifft2 of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.fft.ifft2:17 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.fft.ifft2:19 of
+#: mars.tensor.fft.ifft2:16 of
 msgid "Input tensor, can be complex."
 msgstr ""
 
-#: mars.tensor.fft.ifft2:25 of
-msgid "s"
-msgstr ""
-
-#: mars.tensor.fft.ifft2:24 mars.tensor.fft.ifft2:29 of
-msgid "sequence of ints, optional"
-msgstr ""
-
-#: mars.tensor.fft.ifft2:21 of
+#: mars.tensor.fft.ifft2:18 of
 msgid ""
 "Shape (length of each axis) of the output (``s[0]`` refers to axis 0, "
 "``s[1]`` to axis 1, etc.).  This corresponds to `n` for ``ifft(x, n)``. "
@@ -74,11 +62,7 @@ msgid ""
 "`axes` is used.  See notes for issue on `ifft` zero padding."
 msgstr ""
 
-#: mars.tensor.fft.ifft2:30 of
-msgid "axes"
-msgstr ""
-
-#: mars.tensor.fft.ifft2:28 of
+#: mars.tensor.fft.ifft2:25 of
 msgid ""
 "Axes over which to compute the FFT.  If not given, the last two axes are "
 "used.  A repeated index in `axes` means the transform over that axis is "
@@ -86,84 +70,103 @@ msgid ""
 "dimensional FFT is performed."
 msgstr ""
 
-#: mars.tensor.fft.ifft2:33 of
-msgid "norm"
-msgstr ""
-
-#: mars.tensor.fft.ifft2:32 of
-msgid "{None, \"ortho\"}, optional"
-msgstr ""
-
-#: mars.tensor.fft.ifft2:33 of
+#: mars.tensor.fft.ifft2:30 of
 msgid "Normalization mode (see `mt.fft`). Default is None."
 msgstr ""
 
-#: mars.tensor.fft.ifft2:39 of
-msgid "out"
+#: mars.tensor.fft.ifft2 of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.fft.ifft2:33 of
+msgid ""
+"**out** -- The truncated or zero-padded input, transformed along the axes"
+" indicated by `axes`, or the last two axes if `axes` is not given."
+msgstr ""
+
+#: mars.tensor.fft.ifft2 of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.fft.ifft2 of
+msgid "Raises"
+msgstr ""
+
+#: mars.tensor.fft.ifft2:37 of
+msgid ""
+"If `s` and `axes` have different length, or `axes` not given and     "
+"``len(s) != 2``."
 msgstr ""
 
 #: mars.tensor.fft.ifft2:38 of
-msgid "complex Tensor"
-msgstr ""
-
-#: mars.tensor.fft.ifft2:38 of
-msgid ""
-"The truncated or zero-padded input, transformed along the axes indicated "
-"by `axes`, or the last two axes if `axes` is not given."
-msgstr ""
-
-#: mars.tensor.fft.ifft2:44 of
-msgid "ValueError"
-msgstr ""
-
-#: mars.tensor.fft.ifft2:44 of
-msgid ""
-"If `s` and `axes` have different length, or `axes` not given and ``len(s)"
-" != 2``."
-msgstr ""
-
-#: mars.tensor.fft.ifft2:47 of
-msgid "IndexError"
-msgstr ""
-
-#: mars.tensor.fft.ifft2:47 of
 msgid "If an element of `axes` is larger than than the number of axes of `a`."
 msgstr ""
 
-#: mars.tensor.fft.ifft2:51 of
-msgid "mt.fft"
+#: mars.tensor.fft.ifft2:43 of
+msgid ":func:`mt.fft`"
 msgstr ""
 
-#: mars.tensor.fft.ifft2:50 of
-msgid "Overall view of discrete Fourier transforms, with definitions"
+#: mars.tensor.fft.ifft2:43 of
+msgid ""
+"Overall view of discrete Fourier transforms, with definitions and "
+"conventions used."
+msgstr ""
+
+#: mars.tensor.fft.ifft2:46 of
+msgid ":func:`fft2`"
+msgstr ""
+
+#: mars.tensor.fft.ifft2:46 of
+msgid "The forward 2-dimensional FFT, of which `ifft2` is the inverse."
+msgstr ""
+
+#: mars.tensor.fft.ifft2:49 of
+msgid ":func:`ifftn`"
+msgstr ""
+
+#: mars.tensor.fft.ifft2:49 of
+msgid "The inverse of the *n*-dimensional FFT."
 msgstr ""
 
 #: mars.tensor.fft.ifft2:52 of
-msgid "and conventions used."
+msgid ":func:`fft`"
 msgstr ""
 
-#: mars.tensor.fft.ifft2:53 of
-msgid ""
-"fft2 : The forward 2-dimensional FFT, of which `ifft2` is the inverse. "
-"ifftn : The inverse of the *n*-dimensional FFT. fft : The one-dimensional"
-" FFT. ifft : The one-dimensional inverse FFT."
+#: mars.tensor.fft.ifft2:52 of
+msgid "The one-dimensional FFT."
 msgstr ""
 
-#: mars.tensor.fft.ifft2:60 of
+#: mars.tensor.fft.ifft2:54 of
+msgid ":func:`ifft`"
+msgstr ""
+
+#: mars.tensor.fft.ifft2:55 of
+msgid "The one-dimensional inverse FFT."
+msgstr ""
+
+#: mars.tensor.fft.ifft2:58 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.fft.ifft2:59 of
 msgid "`ifft2` is just `ifftn` with a different default for `axes`."
 msgstr ""
 
-#: mars.tensor.fft.ifft2:62 of
+#: mars.tensor.fft.ifft2:61 of
 msgid ""
 "See `ifftn` for details and a plotting example, and `numpy.fft` for "
 "definition and conventions used."
 msgstr ""
 
-#: mars.tensor.fft.ifft2:65 of
+#: mars.tensor.fft.ifft2:64 of
 msgid ""
 "Zero-padding, analogously with `ifft`, is performed by appending zeros to"
 " the input along the specified dimension.  Although this is the common "
 "approach, it might lead to surprising results.  If another form of zero "
 "padding is desired, it must be performed before `ifft2` is called."
+msgstr ""
+
+#: mars.tensor.fft.ifft2:70 of
+msgid "Examples"
 msgstr ""
 

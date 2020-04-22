@@ -4,7 +4,7 @@
 API reference
 =============
 
-This page gives an overview of all public mars DataFrame objects, functions and
+This page gives an overview of all public Mars DataFrame objects, functions and
 methods. All classes and functions exposed in ``mars.dataframe.*`` namespace are public.
 
 .. toctree::

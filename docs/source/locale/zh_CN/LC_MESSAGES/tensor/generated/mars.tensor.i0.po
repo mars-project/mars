@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.i0.rst:2
 msgid "mars.tensor.i0"
@@ -32,43 +32,47 @@ msgid ""
 "float or complex dtype argument (see Raises below)."
 msgstr ""
 
-#: mars.tensor.i0:10 of
-msgid "x"
+#: mars.tensor.i0 of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.i0:9 of
-msgid "array_like, dtype float or complex"
-msgstr ""
-
-#: mars.tensor.i0:10 of
+#: mars.tensor.i0:7 of
 msgid "Argument of the Bessel function."
 msgstr ""
 
+#: mars.tensor.i0 of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.i0:10 of
+msgid ""
+"**out** -- The modified Bessel function evaluated at each of the elements"
+" of `x`."
+msgstr ""
+
+#: mars.tensor.i0 of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.i0 of
+msgid "Raises"
+msgstr ""
+
+#: mars.tensor.i0:13 of
+msgid ""
+"array cannot be safely cast to required type: If argument consists "
+"exclusively of int dtypes."
+msgstr ""
+
 #: mars.tensor.i0:15 of
-msgid "out"
+msgid ":func:`scipy.special.iv`, :func:`scipy.special.ive`"
 msgstr ""
 
-#: mars.tensor.i0:14 of
-msgid "Tensor, shape = x.shape, dtype = x.dtype"
+#: mars.tensor.i0:18 of
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.i0:15 of
-msgid "The modified Bessel function evaluated at each of the elements of `x`."
-msgstr ""
-
-#: mars.tensor.i0:20 of
-msgid "TypeError: array cannot be safely cast to required type"
-msgstr ""
-
-#: mars.tensor.i0:20 of
-msgid "If argument consists exclusively of int dtypes."
-msgstr ""
-
-#: mars.tensor.i0:24 of
-msgid "scipy.special.iv, scipy.special.ive"
-msgstr ""
-
-#: mars.tensor.i0:28 of
+#: mars.tensor.i0:19 of
 msgid ""
 "We use the algorithm published by Clenshaw [1]_ and referenced by "
 "Abramowitz and Stegun [2]_, for which the function domain is partitioned "
@@ -78,21 +82,29 @@ msgid ""
 "5.8e-16 with an rms of 1.4e-16 (n = 30000)."
 msgstr ""
 
-#: mars.tensor.i0:37 of
+#: mars.tensor.i0:27 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.i0:28 of
 msgid ""
 "C. W. Clenshaw, \"Chebyshev series for mathematical functions\", in "
 "*National Physical Laboratory Mathematical Tables*, vol. 5, London: Her "
 "Majesty's Stationery Office, 1962."
 msgstr ""
 
-#: mars.tensor.i0:40 of
+#: mars.tensor.i0:31 of
 msgid ""
 "M. Abramowitz and I. A. Stegun, *Handbook of Mathematical Functions*, "
 "10th printing, New York: Dover, 1964, pp. 379. "
 "http://www.math.sfu.ca/~cbm/aands/page_379.htm"
 msgstr ""
 
-#: mars.tensor.i0:43 of
+#: mars.tensor.i0:34 of
 msgid "http://kobesearch.cpan.org/htdocs/Math-Cephes/Math/Cephes.html"
+msgstr ""
+
+#: mars.tensor.i0:37 of
+msgid "Examples"
 msgstr ""
 

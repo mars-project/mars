@@ -1,31 +1,31 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.random.hypergeometric.rst:2
 msgid "mars.tensor.random.hypergeometric"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:1 of
+#: mars.tensor.random.hypergeometric:1 of
 msgid "Draw samples from a Hypergeometric distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:3 of
+#: mars.tensor.random.hypergeometric:3 of
 msgid ""
 "Samples are drawn from a hypergeometric distribution with specified "
 "parameters, ngood (ways to make a good selection), nbad (ways to make a "
@@ -33,44 +33,23 @@ msgid ""
 " or equal to the sum ngood + nbad."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:10 of
-msgid "ngood"
+#: mars.tensor.random.hypergeometric of
+msgid "Parameters"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:9
-#: mars.tensor.random.hypergeometric:11 mars.tensor.random.hypergeometric:14 of
-msgid "int or array_like of ints"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:11 of
+#: mars.tensor.random.hypergeometric:8 of
 msgid "Number of ways to make a good selection.  Must be nonnegative."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:12 of
-msgid "nbad"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:13 of
+#: mars.tensor.random.hypergeometric:10 of
 msgid "Number of ways to make a bad selection.  Must be nonnegative."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:15 of
-msgid "nsample"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:15 of
+#: mars.tensor.random.hypergeometric:12 of
 msgid "Number of items sampled.  Must be at least 1 and at most ``ngood + nbad``."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:21 of
-msgid "size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:20 of
-msgid "int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:18 of
+#: mars.tensor.random.hypergeometric:15 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -78,85 +57,65 @@ msgid ""
 "Otherwise, ``np.broadcast(ngood, nbad, nsample).size`` samples are drawn."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:23 of
-msgid "chunk_size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:22 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:24 of
+#: mars.tensor.random.hypergeometric:21 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:25 of
-msgid "gpu"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:24 of
-msgid "bool, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:26 of
+#: mars.tensor.random.hypergeometric:23 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:28 of
-msgid "dtype"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:27 of
-msgid "data-type, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.hypergeometric:28 of
+#: mars.tensor.random.hypergeometric:25 of
 msgid "Data-type of the returned tensor."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:33 of
-msgid "out"
+#: mars.tensor.random.hypergeometric of
+msgid "Returns"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:32 of
-msgid "Tensor or scalar"
+#: mars.tensor.random.hypergeometric:28 of
+msgid ""
+"**out** -- Drawn samples from the parameterized hypergeometric "
+"distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:33 of
-msgid "Drawn samples from the parameterized hypergeometric distribution."
+#: mars.tensor.random.hypergeometric of
+msgid "Return type"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:38 of
-msgid "scipy.stats.hypergeom"
+#: mars.tensor.random.hypergeometric:33 of
+msgid ":func:`scipy.stats.hypergeom`"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:37 of
-msgid "probability density function, distribution or"
+#: mars.tensor.random.hypergeometric:34 of
+msgid ""
+"probability density function, distribution or cumulative density "
+"function, etc."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:38 of
-msgid "cumulative density function, etc."
+#: mars.tensor.random.hypergeometric:37 of
+msgid "Notes"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:42 of
+#: mars.tensor.random.hypergeometric:38 of
 msgid "The probability density for the Hypergeometric distribution is"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:44 of
+#: mars.tensor.random.hypergeometric:40 of
 msgid "P(x) = \\frac{\\binom{m}{n}\\binom{N-m}{n-x}}{\\binom{N}{n}},"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:46 of
+#: mars.tensor.random.hypergeometric:42 of
 msgid "where :math:`0 \\le x \\le m` and :math:`n+m-N \\le x \\le n`"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:48 of
+#: mars.tensor.random.hypergeometric:44 of
 msgid ""
 "for P(x) the probability of x successes, n = ngood, m = nbad, and N = "
 "number of samples."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:51 of
+#: mars.tensor.random.hypergeometric:47 of
 msgid ""
 "Consider an urn with black and white marbles in it, ngood of them black "
 "and nbad are white. If you draw nsample balls without replacement, then "
@@ -164,7 +123,7 @@ msgid ""
 " in the drawn sample."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:56 of
+#: mars.tensor.random.hypergeometric:52 of
 msgid ""
 "Note that this distribution is very similar to the binomial distribution,"
 " except that in this case, samples are drawn without replacement, whereas"
@@ -173,30 +132,38 @@ msgid ""
 "approaches the binomial."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:64 of
+#: mars.tensor.random.hypergeometric:59 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.random.hypergeometric:60 of
 msgid ""
 "Lentner, Marvin, \"Elementary Applied Statistics\", Bogden and Quigley, "
 "1972."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:66 of
+#: mars.tensor.random.hypergeometric:62 of
 msgid ""
 "Weisstein, Eric W. \"Hypergeometric Distribution.\" From MathWorld--A "
 "Wolfram Web Resource. "
 "http://mathworld.wolfram.com/HypergeometricDistribution.html"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:69 of
+#: mars.tensor.random.hypergeometric:65 of
 msgid ""
 "Wikipedia, \"Hypergeometric distribution\", "
 "http://en.wikipedia.org/wiki/Hypergeometric_distribution"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:74 of
+#: mars.tensor.random.hypergeometric:69 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.hypergeometric:70 of
 msgid "Draw samples from the distribution:"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.hypergeometric:84 of
+#: mars.tensor.random.hypergeometric:80 of
 msgid ""
 "Suppose you have an urn with 15 white and 15 black marbles. If you pull "
 "15 marbles at random, how likely is it that 12 or more of them are one "

@@ -53,6 +53,7 @@ class TensorZeros(TensorNoInput):
 def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order='C'):
     """
     Return a new tensor of given shape and type, filled with zeros.
+
     Parameters
     ----------
     shape : int or sequence of ints
@@ -75,6 +76,7 @@ def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order='C'
     -------
     out : Tensor
         Tensor of zeros with the given shape, dtype, and order.
+
     See Also
     --------
     zeros_like : Return a tensor of zeros with shape and type of input.
@@ -82,20 +84,25 @@ def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order='C'
     empty_like : Return a empty tensor with shape and type of input.
     ones : Return a new tensor setting values to one.
     empty : Return a new uninitialized tensor.
+
     Examples
     --------
     >>> import mars.tensor as mt
     >>> mt.zeros(5).execute()
     array([ 0.,  0.,  0.,  0.,  0.])
+
     >>> mt.zeros((5,), dtype=int).execute()
     array([0, 0, 0, 0, 0])
+
     >>> mt.zeros((2, 1)).execute()
     array([[ 0.],
            [ 0.]])
+
     >>> s = (2,2)
     >>> mt.zeros(s).execute()
     array([[ 0.,  0.],
            [ 0.,  0.]])
+
     >>> mt.zeros((2,), dtype=[('x', 'i4'), ('y', 'i4')]).execute() # custom dtype
     array([(0, 0), (0, 0)],
           dtype=[('x', '<i4'), ('y', '<i4')])
@@ -139,6 +146,7 @@ class TensorZerosLike(TensorLike):
 def zeros_like(a, dtype=None, gpu=None, order='K'):
     """
     Return a tensor of zeros with the same shape and type as a given tensor.
+
     Parameters
     ----------
     a : array_like
@@ -158,6 +166,7 @@ def zeros_like(a, dtype=None, gpu=None, order='K'):
     -------
     out : Tensor
         tensor of zeros with the same shape and type as `a`.
+
     See Also
     --------
     ones_like : Return an array of ones with shape and type of input.
@@ -165,6 +174,7 @@ def zeros_like(a, dtype=None, gpu=None, order='K'):
     zeros : Return a new array setting values to zero.
     ones : Return a new array setting values to one.
     empty : Return a new uninitialized array.
+
     Examples
     --------
     >>> import mars.tensr as mt
@@ -173,12 +183,15 @@ def zeros_like(a, dtype=None, gpu=None, order='K'):
     >>> x.execute()
     array([[0, 1, 2],
            [3, 4, 5]])
+
     >>> mt.zeros_like(x).execute()
     array([[0, 0, 0],
            [0, 0, 0]])
+
     >>> y = mt.arange(3, dtype=float)
     >>> y.execute()
     array([ 0.,  1.,  2.])
+
     >>> mt.zeros_like(y).execute()
     array([ 0.,  0.,  0.])
     """

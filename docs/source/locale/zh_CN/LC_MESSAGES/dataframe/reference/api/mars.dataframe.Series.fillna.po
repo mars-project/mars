@@ -1,0 +1,127 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.fillna.rst:2
+msgid "mars.dataframe.Series.fillna"
+msgstr ""
+
+#: mars.dataframe.Series.fillna:1 of
+msgid "Fill NA/NaN values using the specified method."
+msgstr ""
+
+#: mars.dataframe.Series.fillna of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.fillna:3 of
+msgid ""
+"Value to use to fill holes (e.g. 0), alternately a dict/Series/DataFrame "
+"of values specifying which value to use for each index (for a Series) or "
+"column (for a DataFrame).  Values not in the dict/Series/DataFrame will "
+"not be filled. This value cannot be a list."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:9 of
+msgid ""
+"Method to use for filling holes in reindexed Series pad / ffill: "
+"propagate last valid observation forward to next valid backfill / bfill: "
+"use next valid observation to fill gap."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:13 of
+msgid "Axis along which to fill missing values."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:15 of
+msgid ""
+"If True, fill in-place. Note: this will modify any other views on this "
+"object (e.g., a no-copy slice for a column in a DataFrame)."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:19 of
+msgid ""
+"If method is specified, this is the maximum number of consecutive NaN "
+"values to forward/backward fill. In other words, if there is a gap with "
+"more than this number of consecutive NaNs, it will only be partially "
+"filled. If method is not specified, this is the maximum number of entries"
+" along the entire axis where NaNs will be filled. Must be greater than 0 "
+"if not None."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:26 of
+msgid ""
+"A dict of item->dtype of what to downcast if possible, or the string "
+"'infer' which will try to downcast to an appropriate equal type (e.g. "
+"float64 to int64 if possible)."
+msgstr ""
+
+#: mars.dataframe.Series.fillna of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.fillna:31 of
+msgid "Object with missing values filled or None if ``inplace=True``."
+msgstr ""
+
+#: mars.dataframe.Series.fillna of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.fillna:37 of
+msgid ":meth:`interpolate`"
+msgstr ""
+
+#: mars.dataframe.Series.fillna:37 of
+msgid "Fill NaN values using interpolation."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:40 of
+msgid ":meth:`reindex`"
+msgstr ""
+
+#: mars.dataframe.Series.fillna:40 of
+msgid "Conform object to new index."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:42 of
+msgid ":meth:`asfreq`"
+msgstr ""
+
+#: mars.dataframe.Series.fillna:43 of
+msgid "Convert TimeSeries to specified frequency."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:46 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.fillna:61 of
+msgid "Replace all NaN elements with 0s."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:70 of
+msgid "We can also propagate non-null values forward or backward."
+msgstr ""
+
+#: mars.dataframe.Series.fillna:79 of
+msgid ""
+"Replace all NaN elements in column 'A', 'B', 'C', and 'D', with 0, 1, 2, "
+"and 3 respectively."
+msgstr ""
+

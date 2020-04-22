@@ -91,6 +91,7 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
 def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     """
     Copy of the tensor, cast to a specified type.
+
     Parameters
     ----------
     dtype : str or dtype
@@ -116,6 +117,7 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
         is set to false, and the `dtype`, `order`, and `subok`
         requirements are satisfied, the input array is returned instead
         of a copy.
+
     Returns
     -------
     arr_t : Tensor
@@ -123,23 +125,27 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
         array are satisfied (see description for `copy` input parameter), `arr_t`
         is a new tensor of the same shape as the input array, with dtype, order
         given by `dtype`, `order`.
+
     Notes
     -----
     astype method returns an error if the string
     dtype to cast to is not long enough in 'safe' casting mode to hold the max
     value of integer/float array that is being casted. Previously the casting
     was allowed even if the result was truncated.
+
     Raises
     ------
     ComplexWarning
         When casting from complex to float or int. To avoid this,
         one should use ``a.real.astype(t)``.
+
     Examples
     --------
     >>> import mars.tensor as mt
     >>> x = mt.array([1, 2, 2.5])
     >>> x.execute()
     array([ 1. ,  2. ,  2.5])
+
     >>> x.astype(int).execute()
     array([1, 2, 2])
     """

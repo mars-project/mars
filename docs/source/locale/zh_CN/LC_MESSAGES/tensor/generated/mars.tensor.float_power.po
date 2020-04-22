@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.float_power.rst:2
 msgid "mars.tensor.float\\_power"
@@ -35,35 +35,19 @@ msgid ""
 "result for negative powers and seldom overflow for positive powers."
 msgstr ""
 
-#: mars.tensor.float_power:14 of
-msgid "x1"
+#: mars.tensor.float_power of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.float_power:13 mars.tensor.float_power:15 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.float_power:15 of
+#: mars.tensor.float_power:10 of
 msgid "The bases."
 msgstr ""
 
-#: mars.tensor.float_power:16 of
-msgid "x2"
-msgstr ""
-
-#: mars.tensor.float_power:17 of
+#: mars.tensor.float_power:12 of
 msgid "The exponents."
 msgstr ""
 
-#: mars.tensor.float_power:21 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.float_power:20 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.float_power:19 of
+#: mars.tensor.float_power:14 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -71,49 +55,45 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.float_power:24 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.float_power:23 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.float_power:24 of
+#: mars.tensor.float_power:19 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
-#: mars.tensor.float_power:26 of
-msgid "**kwargs"
+#: mars.tensor.float_power of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.float_power:31 of
-msgid "y"
+#: mars.tensor.float_power:24 of
+msgid "**y** -- The bases in `x1` raised to the exponents in `x2`."
+msgstr ""
+
+#: mars.tensor.float_power of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.float_power:29 of
+msgid ":func:`power`"
 msgstr ""
 
 #: mars.tensor.float_power:30 of
-msgid "Tensor"
+msgid "power function that preserves type"
 msgstr ""
 
-#: mars.tensor.float_power:31 of
-msgid "The bases in `x1` raised to the exponents in `x2`."
+#: mars.tensor.float_power:33 of
+msgid "Examples"
 msgstr ""
 
-#: mars.tensor.float_power:35 of
-msgid "power : power function that preserves type"
-msgstr ""
-
-#: mars.tensor.float_power:39 of
+#: mars.tensor.float_power:34 of
 msgid "Cube each element in a list."
 msgstr ""
 
-#: mars.tensor.float_power:49 of
+#: mars.tensor.float_power:44 of
 msgid "Raise the bases to different exponents."
 msgstr ""
 
-#: mars.tensor.float_power:55 of
+#: mars.tensor.float_power:50 of
 msgid "The effect of broadcasting."
 msgstr ""
 
