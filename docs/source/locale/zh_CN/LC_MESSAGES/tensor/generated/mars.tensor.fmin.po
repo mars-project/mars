@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.fmin.rst:2
 msgid "mars.tensor.fmin"
@@ -35,29 +35,17 @@ msgid ""
 "The net effect is that NaNs are ignored when possible."
 msgstr ""
 
-#: mars.tensor.fmin:13 of
-msgid "x1, x2"
+#: mars.tensor.fmin of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.fmin:12 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.fmin:13 of
+#: mars.tensor.fmin:10 of
 msgid ""
 "The tensors holding the elements to be compared. They must have the same "
 "shape."
 msgstr ""
 
-#: mars.tensor.fmin:18 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.fmin:17 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.fmin:16 of
+#: mars.tensor.fmin:13 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -65,77 +53,73 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.fmin:21 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.fmin:20 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.fmin:21 of
+#: mars.tensor.fmin:18 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.fmin of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.fmin:23 of
-msgid "**kwargs"
-msgstr ""
-
-#: mars.tensor.fmin:29 of
-msgid "y"
-msgstr ""
-
-#: mars.tensor.fmin:28 of
-msgid "Tensor or scalar"
-msgstr ""
-
-#: mars.tensor.fmin:28 of
 msgid ""
-"The minimum of `x1` and `x2`, element-wise.  Returns scalar if both  `x1`"
-" and `x2` are scalars."
+"**y** -- The minimum of `x1` and `x2`, element-wise.  Returns scalar if "
+"both  `x1` and `x2` are scalars."
 msgstr ""
 
-#: mars.tensor.fmin:33 of
-msgid "fmax :"
+#: mars.tensor.fmin of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.fmin:34 of
+#: mars.tensor.fmin:30 of
+msgid ":func:`fmax`"
+msgstr ""
+
+#: mars.tensor.fmin:30 of
 msgid "Element-wise maximum of two tensors, ignores NaNs."
 msgstr ""
 
-#: mars.tensor.fmin:35 of
-msgid "minimum :"
+#: mars.tensor.fmin:33 of
+msgid ":func:`minimum`"
 msgstr ""
 
-#: mars.tensor.fmin:36 of
+#: mars.tensor.fmin:33 of
 msgid "Element-wise minimum of two tensors, propagates NaNs."
 msgstr ""
 
-#: mars.tensor.fmin:37 of
-msgid "amin :"
+#: mars.tensor.fmin:36 of
+msgid ":func:`amin`"
 msgstr ""
 
-#: mars.tensor.fmin:38 of
+#: mars.tensor.fmin:36 of
 msgid "The minimum value of a tensor along a given axis, propagates NaNs."
 msgstr ""
 
-#: mars.tensor.fmin:40 of
-msgid "nanmin :"
+#: mars.tensor.fmin:39 of
+msgid ":func:`nanmin`"
 msgstr ""
 
-#: mars.tensor.fmin:40 of
+#: mars.tensor.fmin:39 of
 msgid "The minimum value of a tensor along a given axis, ignores NaNs."
 msgstr ""
 
-#: mars.tensor.fmin:42 of
-msgid "maximum, amax, nanmax"
+#: mars.tensor.fmin:41 of
+msgid ":func:`maximum`, :func:`amax`, :func:`nanmax`"
 msgstr ""
 
-#: mars.tensor.fmin:47 of
+#: mars.tensor.fmin:44 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.fmin:45 of
 msgid ""
 "The fmin is equivalent to ``mt.where(x1 <= x2, x1, x2)`` when neither x1 "
 "nor x2 are NaNs, but it is faster and does proper broadcasting."
+msgstr ""
+
+#: mars.tensor.fmin:49 of
+msgid "Examples"
 msgstr ""
 

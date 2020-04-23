@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:40+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.bitwise_and.rst:2
 msgid "mars.tensor.bitwise\\_and"
@@ -32,27 +32,15 @@ msgid ""
 " ``&``."
 msgstr ""
 
-#: mars.tensor.bitwise_and:9 of
-msgid "x1, x2"
+#: mars.tensor.bitwise_and of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.bitwise_and:8 mars.tensor.bitwise_and:23 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.bitwise_and:10 of
+#: mars.tensor.bitwise_and:7 of
 msgid "Only integer and boolean types are handled."
 msgstr ""
 
-#: mars.tensor.bitwise_and:14 mars.tensor.bitwise_and:24 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.bitwise_and:13 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.bitwise_and:12 of
+#: mars.tensor.bitwise_and:9 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -60,33 +48,33 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.bitwise_and:17 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.bitwise_and:16 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.bitwise_and:17 of
+#: mars.tensor.bitwise_and:14 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.bitwise_and of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.bitwise_and:19 of
-msgid "**kwargs"
+msgid "**out** -- Result."
 msgstr ""
 
-#: mars.tensor.bitwise_and:24 of
-msgid "Result."
+#: mars.tensor.bitwise_and of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.bitwise_and:28 of
-msgid "logical_and bitwise_or bitwise_xor"
+#: mars.tensor.bitwise_and:22 of
+msgid ":func:`logical_and`, :func:`bitwise_or`, :func:`bitwise_xor`"
 msgstr ""
 
-#: mars.tensor.bitwise_and:34 of
+#: mars.tensor.bitwise_and:25 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.bitwise_and:26 of
 msgid ""
 "The number 13 is represented by ``00001101``.  Likewise, 17 is "
 "represented by ``00010001``.  The bit-wise AND of 13 and 17 is therefore "

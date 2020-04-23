@@ -1,0 +1,57 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.sort_values.rst:2
+msgid "mars.dataframe.DataFrame.sort\\_values"
+msgstr ""
+
+#: mars.dataframe.DataFrame.sort_values:1 of
+msgid ""
+"Sort by the values along either axis. :param df: input DataFrame. :param "
+"by: Name or list of names to sort by. :param axis: Axis to be sorted. :"
+"param ascending: Sort ascending vs. descending. Specify list for multiple"
+" sort orders. If this is a list of bools, must match the length of the by"
+". :param inplace: If True, perform operation in-place. :param kind: "
+"Choice of sorting algorithm. See also ndarray.np.sort for more "
+"information. mergesort is the only stable algorithm. For DataFrames, this"
+" option is only applied when sorting on a single column or label. :param "
+"na_position: Puts NaNs at the beginning if first; last puts NaNs at the "
+"end. :param ignore_index: If True, the resulting axis will be labeled 0, "
+"1, …, n - 1. :param parallel_kind: {'PSRS'}, optional. Parallel sorting "
+"algorithm, for the details, refer to: http://csweb.cs.wfu.edu/bigiron/"
+"LittleFE-PSRS/build/html/PSRSalgorithm.html :param psrs_kinds: Sorting "
+"algorithms during PSRS algorithm. :return: sorted dataframe."
+msgstr ""
+
+#: mars.dataframe.DataFrame.sort_values:19 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.sort_values:36 of
+msgid "Sort by col1"
+msgstr ""
+
+#: mars.dataframe.DataFrame.sort_values:47 of
+msgid "Sort by multiple columns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.sort_values:58 of
+msgid "Sort Descending"
+msgstr ""
+

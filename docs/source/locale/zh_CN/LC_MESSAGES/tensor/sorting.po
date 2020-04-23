@@ -22,9 +22,8 @@ msgid "Sorting, Searching, and Counting"
 msgstr "排序、搜索和计数"
 
 #: ../../source/tensor/sorting.rst:5
-#, fuzzy
 msgid "Sorting"
-msgstr "计数"
+msgstr "排序"
 
 #: ../../source/tensor/sorting.rst:14:<autosummary>:1
 msgid ":obj:`mars.tensor.sort <mars.tensor.sort>`"

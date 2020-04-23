@@ -1,0 +1,1639 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 20:08+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/series.rst:3
+msgid "Series"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:7
+msgid "Constructor"
+msgstr "构造函数"
+
+#: ../../source/dataframe/reference/series.rst:12:<autosummary>:1
+msgid ""
+":obj:`Series <mars.dataframe.Series>`\\ \\(\\[data\\, index\\, dtype\\, "
+"name\\, copy\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:14
+msgid "Attributes"
+msgstr "属性"
+
+#: ../../source/dataframe/reference/series.rst:15
+msgid "**Axes**"
+msgstr "坐标轴"
+
+#: ../../source/dataframe/reference/series.rst:21:<autosummary>:1
+msgid ":obj:`Series.index <mars.dataframe.Series.index>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:21:<autosummary>:1
+msgid "The index (axis labels) of the Series."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:29:<autosummary>:1
+msgid ":obj:`Series.dtype <mars.dataframe.Series.dtype>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:29:<autosummary>:1
+msgid "Return the dtype object of the underlying data."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:29:<autosummary>:1
+msgid ":obj:`Series.shape <mars.dataframe.Series.shape>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:29:<autosummary>:1
+msgid ":obj:`Series.ndim <mars.dataframe.Series.ndim>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:29:<autosummary>:1
+msgid ":obj:`Series.name <mars.dataframe.Series.name>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:31
+msgid "Conversion"
+msgstr "转换"
+
+#: ../../source/dataframe/reference/series.rst:37:<autosummary>:1
+msgid ":obj:`Series.copy <mars.dataframe.Series.copy>`\\ \\(\\[deep\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:37:<autosummary>:1
+msgid "Make a copy of this object's indices and data."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:37:<autosummary>:1
+msgid ""
+":obj:`Series.to_tensor <mars.dataframe.Series.to_tensor>`\\ "
+"\\(\\[dtype\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:39
+msgid "Indexing, iteration"
+msgstr "索引和迭代"
+
+#: ../../source/dataframe/reference/series.rst:47:<autosummary>:1
+msgid ":obj:`Series.at <mars.dataframe.Series.at>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:47:<autosummary>:1
+msgid "Access a single value for a row/column label pair."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:47:<autosummary>:1
+msgid ":obj:`Series.iat <mars.dataframe.Series.iat>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:47:<autosummary>:1
+msgid ":obj:`Series.loc <mars.dataframe.Series.loc>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:47:<autosummary>:1
+msgid ":obj:`Series.iloc <mars.dataframe.Series.iloc>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:49
+msgid "Binary operator functions"
+msgstr "二元运算函数"
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.add <mars.dataframe.Series.add>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.sub <mars.dataframe.Series.sub>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.mul <mars.dataframe.Series.mul>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.div <mars.dataframe.Series.div>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.truediv <mars.dataframe.Series.truediv>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.floordiv <mars.dataframe.Series.floordiv>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.mod <mars.dataframe.Series.mod>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.pow <mars.dataframe.Series.pow>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.radd <mars.dataframe.Series.radd>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.rsub <mars.dataframe.Series.rsub>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.rmul <mars.dataframe.Series.rmul>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.rdiv <mars.dataframe.Series.rdiv>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.rtruediv <mars.dataframe.Series.rtruediv>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.rfloordiv <mars.dataframe.Series.rfloordiv>`\\ "
+"\\(other\\[\\, axis\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.rmod <mars.dataframe.Series.rmod>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.rpow <mars.dataframe.Series.rpow>`\\ \\(other\\[\\, axis\\, "
+"level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ":obj:`Series.round <mars.dataframe.Series.round>`\\ \\(\\[decimals\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.lt <mars.dataframe.Series.lt>`\\ \\(other\\[\\, axis\\, "
+"level\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.gt <mars.dataframe.Series.gt>`\\ \\(other\\[\\, axis\\, "
+"level\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.le <mars.dataframe.Series.le>`\\ \\(other\\[\\, axis\\, "
+"level\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.ge <mars.dataframe.Series.ge>`\\ \\(other\\[\\, axis\\, "
+"level\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.ne <mars.dataframe.Series.ne>`\\ \\(other\\[\\, axis\\, "
+"level\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.eq <mars.dataframe.Series.eq>`\\ \\(other\\[\\, axis\\, "
+"level\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ""
+":obj:`Series.product <mars.dataframe.Series.product>`\\ \\(\\[axis\\, "
+"skipna\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:78:<autosummary>:1
+msgid ":obj:`Series.dot <mars.dataframe.Series.dot>`\\ \\(other\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:80
+msgid "Function application, groupby & window"
+msgstr "应用函数、分组和窗口"
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid ""
+":obj:`Series.apply <mars.dataframe.Series.apply>`\\ \\(func\\[\\, "
+"convert\\_dtype\\, args\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid ":obj:`Series.agg <mars.dataframe.Series.agg>`\\ \\(func\\[\\, axis\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid ""
+":obj:`Series.aggregate <mars.dataframe.Series.aggregate>`\\ \\(func\\[\\,"
+" axis\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid ""
+":obj:`Series.transform <mars.dataframe.Series.transform>`\\ \\(func\\[\\,"
+" convert\\_dtype\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid ""
+":obj:`Series.map <mars.dataframe.Series.map>`\\ \\(arg\\[\\, "
+"na\\_action\\, dtype\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid ""
+":obj:`Series.groupby <mars.dataframe.Series.groupby>`\\ \\(\\[by\\, "
+"level\\, as\\_index\\, sort\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid ""
+":obj:`Series.rolling <mars.dataframe.Series.rolling>`\\ \\(window\\[\\, "
+"min\\_periods\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid "Provide rolling window calculations."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid ""
+":obj:`Series.expanding <mars.dataframe.Series.expanding>`\\ "
+"\\(\\[min\\_periods\\, center\\, axis\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:92:<autosummary>:1
+msgid "Provide expanding transformations."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:96
+msgid "Computations / descriptive stats"
+msgstr "计算和描述统计"
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ":obj:`Series.abs <mars.dataframe.Series.abs>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.count <mars.dataframe.Series.count>`\\ \\(\\[level\\, "
+"combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.cummax <mars.dataframe.Series.cummax>`\\ \\(\\[axis\\, "
+"skipna\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.cummin <mars.dataframe.Series.cummin>`\\ \\(\\[axis\\, "
+"skipna\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.cumprod <mars.dataframe.Series.cumprod>`\\ \\(\\[axis\\, "
+"skipna\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.cumsum <mars.dataframe.Series.cumsum>`\\ \\(\\[axis\\, "
+"skipna\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.describe <mars.dataframe.Series.describe>`\\ "
+"\\(\\[percentiles\\, include\\, exclude\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.max <mars.dataframe.Series.max>`\\ \\(\\[axis\\, skipna\\, "
+"level\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.mean <mars.dataframe.Series.mean>`\\ \\(\\[axis\\, skipna\\,"
+" level\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.min <mars.dataframe.Series.min>`\\ \\(\\[axis\\, skipna\\, "
+"level\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.prod <mars.dataframe.Series.prod>`\\ \\(\\[axis\\, skipna\\,"
+" level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.quantile <mars.dataframe.Series.quantile>`\\ \\(\\[q\\, "
+"interpolation\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid "Return value at the given quantile."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.std <mars.dataframe.Series.std>`\\ \\(\\[axis\\, skipna\\, "
+"level\\, ddof\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.sum <mars.dataframe.Series.sum>`\\ \\(\\[axis\\, skipna\\, "
+"level\\, min\\_count\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.var <mars.dataframe.Series.var>`\\ \\(\\[axis\\, skipna\\, "
+"level\\, ddof\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid ""
+":obj:`Series.nunique <mars.dataframe.Series.nunique>`\\ \\(\\[dropna\\, "
+"combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:116:<autosummary>:1
+msgid "Return number of unique elements in the object."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:118
+msgid "Reindexing / selection / label manipulation"
+msgstr "重设索引、选择和标签操作"
+
+#: ../../source/dataframe/reference/series.rst:126:<autosummary>:1
+msgid ":obj:`Series.head <mars.dataframe.Series.head>`\\ \\(\\[n\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:126:<autosummary>:1
+msgid "Return the first `n` rows."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:126:<autosummary>:1
+msgid ":obj:`Series.isin <mars.dataframe.Series.isin>`\\ \\(values\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:126:<autosummary>:1
+msgid ""
+":obj:`Series.reset_index <mars.dataframe.Series.reset_index>`\\ "
+"\\(\\[level\\, drop\\, name\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:126:<autosummary>:1
+msgid ":obj:`Series.tail <mars.dataframe.Series.tail>`\\ \\(\\[n\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:126:<autosummary>:1
+msgid "Return the last `n` rows."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:128
+msgid "Missing data handling"
+msgstr "缺失值处理"
+
+#: ../../source/dataframe/reference/series.rst:136:<autosummary>:1
+msgid ":obj:`Series.isna <mars.dataframe.Series.isna>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:136:<autosummary>:1
+msgid "Detect missing values."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:136:<autosummary>:1
+msgid ":obj:`Series.notna <mars.dataframe.Series.notna>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:136:<autosummary>:1
+msgid "Detect existing (non-missing) values."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:136:<autosummary>:1
+msgid ""
+":obj:`Series.dropna <mars.dataframe.Series.dropna>`\\ \\(\\[axis\\, "
+"inplace\\, how\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:136:<autosummary>:1
+msgid "Return a new Series with missing values removed."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:136:<autosummary>:1
+msgid ""
+":obj:`Series.fillna <mars.dataframe.Series.fillna>`\\ \\(\\[value\\, "
+"method\\, axis\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:136:<autosummary>:1
+msgid "Fill NA/NaN values using the specified method."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:138
+msgid "Reshaping, sorting"
+msgstr "形状变换和排序"
+
+#: ../../source/dataframe/reference/series.rst:144:<autosummary>:1
+msgid ""
+":obj:`Series.sort_values <mars.dataframe.Series.sort_values>`\\ "
+"\\(\\[axis\\, ascending\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:144:<autosummary>:1
+msgid "Sort by the values."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:144:<autosummary>:1
+msgid ""
+":obj:`Series.sort_index <mars.dataframe.Series.sort_index>`\\ "
+"\\(\\[axis\\, level\\, ascending\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:144:<autosummary>:1
+msgid "Sort object by labels (along an axis)."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:146
+msgid "Combining / joining / merging"
+msgstr "数据合并"
+
+#: ../../source/dataframe/reference/series.rst:151
+msgid "Accessors"
+msgstr "类型访问器"
+
+#: ../../source/dataframe/reference/series.rst:153
+msgid ""
+"Pandas provides dtype-specific methods under various accessors. These are"
+" separate namespaces within :class:`Series` that only apply to specific "
+"data types."
+msgstr ""
+"Pandas 提供了针对不同数据类型的访问器。下面列出了 :class:`Series` 下只"
+"针对特定类型的独立名称空间。"
+
+#: ../../source/dataframe/reference/series.rst:158
+msgid "Data Type"
+msgstr "数据类型"
+
+#: ../../source/dataframe/reference/series.rst:158
+msgid "Accessor"
+msgstr "访问器"
+
+#: ../../source/dataframe/reference/series.rst:160
+msgid "Datetime, Timedelta, Period"
+msgstr "日期时间、时间差和时间段"
+
+#: ../../source/dataframe/reference/series.rst:160
+msgid ":ref:`dt <api.series.dt>`"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:161
+msgid "String"
+msgstr "字符串"
+
+#: ../../source/dataframe/reference/series.rst:161
+msgid ":ref:`str <api.series.str>`"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:167
+msgid "Datetimelike properties"
+msgstr "日期时间类属性"
+
+#: ../../source/dataframe/reference/series.rst:169
+msgid ""
+"``Series.dt`` can be used to access the values of the series as "
+"datetimelike and return several properties. These can be accessed like "
+"``Series.dt.<property>``."
+msgstr ""
+"``Series.dt`` 可被用于访问日期时间类型的 Series，返回若干个属性值。这些"
+"属性值可通过 ``Series.dt.<property>`` 来调用。"
+
+#: ../../source/dataframe/reference/series.rst:174
+msgid "Datetime properties"
+msgstr "日期时间属性"
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.date <mars.dataframe.Series.dt.date>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ""
+"Returns numpy array of python datetime.date objects (namely, the date "
+"part of Timestamps without timezone information)."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.time <mars.dataframe.Series.dt.time>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Returns numpy array of datetime.time."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.timetz <mars.dataframe.Series.dt.timetz>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Returns numpy array of datetime.time also containing timezone information."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.year <mars.dataframe.Series.dt.year>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The year of the datetime."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.month <mars.dataframe.Series.dt.month>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The month as January=1, December=12."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.day <mars.dataframe.Series.dt.day>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.hour <mars.dataframe.Series.dt.hour>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The hours of the datetime."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.minute <mars.dataframe.Series.dt.minute>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The minutes of the datetime."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.second <mars.dataframe.Series.dt.second>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The seconds of the datetime."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.microsecond <mars.dataframe.Series.dt.microsecond>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The microseconds of the datetime."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.nanosecond <mars.dataframe.Series.dt.nanosecond>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The nanoseconds of the datetime."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.week <mars.dataframe.Series.dt.week>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The week ordinal of the year."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.weekofyear <mars.dataframe.Series.dt.weekofyear>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.dayofweek <mars.dataframe.Series.dt.dayofweek>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The day of the week with Monday=0, Sunday=6."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.weekday <mars.dataframe.Series.dt.weekday>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.dayofyear <mars.dataframe.Series.dt.dayofyear>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The ordinal day of the year."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.quarter <mars.dataframe.Series.dt.quarter>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The quarter of the date."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ""
+":obj:`Series.dt.is_month_start "
+"<mars.dataframe.Series.dt.is_month_start>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Indicates whether the date is the first day of the month."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.is_month_end <mars.dataframe.Series.dt.is_month_end>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Indicates whether the date is the last day of the month."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ""
+":obj:`Series.dt.is_quarter_start "
+"<mars.dataframe.Series.dt.is_quarter_start>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Indicator for whether the date is the first day of a quarter."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ""
+":obj:`Series.dt.is_quarter_end "
+"<mars.dataframe.Series.dt.is_quarter_end>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Indicator for whether the date is the last day of a quarter."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.is_year_start <mars.dataframe.Series.dt.is_year_start>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Indicate whether the date is the first day of a year."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.is_year_end <mars.dataframe.Series.dt.is_year_end>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Indicate whether the date is the last day of the year."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.is_leap_year <mars.dataframe.Series.dt.is_leap_year>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Boolean indicator if the date belongs to a leap year."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.daysinmonth <mars.dataframe.Series.dt.daysinmonth>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "The number of days in the month."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.days_in_month <mars.dataframe.Series.dt.days_in_month>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.tz <mars.dataframe.Series.dt.tz>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid "Return timezone, if any."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:207:<autosummary>:1
+msgid ":obj:`Series.dt.freq <mars.dataframe.Series.dt.freq>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:209
+msgid "Datetime methods"
+msgstr "日期时间方法"
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.to_period <mars.dataframe.Series.dt.to_period>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Cast to PeriodArray/Index at a particular frequency."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.to_pydatetime <mars.dataframe.Series.dt.to_pydatetime>`\\"
+" \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Return the data as an array of native Python datetime objects."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.tz_localize <mars.dataframe.Series.dt.tz_localize>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Localize tz-naive Datetime Array/Index to tz-aware Datetime Array/Index."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.tz_convert <mars.dataframe.Series.dt.tz_convert>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Convert tz-aware Datetime Array/Index from one time zone to another."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.normalize <mars.dataframe.Series.dt.normalize>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Convert times to midnight."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.strftime <mars.dataframe.Series.dt.strftime>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Convert to Index using specified date_format."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.round <mars.dataframe.Series.dt.round>`\\ \\(\\*args\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Perform round operation on the data to the specified `freq`."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.floor <mars.dataframe.Series.dt.floor>`\\ \\(\\*args\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Perform floor operation on the data to the specified `freq`."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.ceil <mars.dataframe.Series.dt.ceil>`\\ \\(\\*args\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Perform ceil operation on the data to the specified `freq`."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.month_name <mars.dataframe.Series.dt.month_name>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Return the month names of the DateTimeIndex with specified locale."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid ""
+":obj:`Series.dt.day_name <mars.dataframe.Series.dt.day_name>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:225:<autosummary>:1
+msgid "Return the day names of the DateTimeIndex with specified locale."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:227
+msgid "Period properties"
+msgstr "时间段属性"
+
+#: ../../source/dataframe/reference/series.rst:235:<autosummary>:1
+msgid ":obj:`Series.dt.qyear <mars.dataframe.Series.dt.qyear>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:235:<autosummary>:1
+msgid ":obj:`Series.dt.start_time <mars.dataframe.Series.dt.start_time>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:235:<autosummary>:1
+msgid ":obj:`Series.dt.end_time <mars.dataframe.Series.dt.end_time>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:237
+msgid "Timedelta properties"
+msgstr "时间差属性"
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid ":obj:`Series.dt.days <mars.dataframe.Series.dt.days>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid "Number of days for each element."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid ":obj:`Series.dt.seconds <mars.dataframe.Series.dt.seconds>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid "Number of seconds (>= 0 and less than 1 day) for each element."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid ":obj:`Series.dt.microseconds <mars.dataframe.Series.dt.microseconds>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid "Number of microseconds (>= 0 and less than 1 second) for each element."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid ":obj:`Series.dt.nanoseconds <mars.dataframe.Series.dt.nanoseconds>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid "Number of nanoseconds (>= 0 and less than 1 microsecond) for each element."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid ":obj:`Series.dt.components <mars.dataframe.Series.dt.components>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:247:<autosummary>:1
+msgid "Return a Dataframe of the components of the Timedeltas."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:249
+msgid "Timedelta methods"
+msgstr "时间差方法"
+
+#: ../../source/dataframe/reference/series.rst:257:<autosummary>:1
+msgid ""
+":obj:`Series.dt.to_pytimedelta "
+"<mars.dataframe.Series.dt.to_pytimedelta>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:257:<autosummary>:1
+msgid "Return an array of native `datetime.timedelta` objects."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:257:<autosummary>:1
+msgid ""
+":obj:`Series.dt.total_seconds <mars.dataframe.Series.dt.total_seconds>`\\"
+" \\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:257:<autosummary>:1
+msgid "Return total duration of each element expressed in seconds."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:261
+msgid "String handling"
+msgstr "处理字符串"
+
+#: ../../source/dataframe/reference/series.rst:263
+msgid ""
+"``Series.str`` can be used to access the values of the series as strings "
+"and apply several methods to it. These can be accessed like "
+"``Series.str.<function/property>``."
+msgstr ""
+"``Series.str`` 可被用于以字符串方式访问 Series，并应用若干方法。这些功能"
+"可通过 ``Series.str.<function/property>`` 来调用。"
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.capitalize <mars.dataframe.Series.str.capitalize>`\\ "
+"\\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Convert strings in the Series/Index to be capitalized."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.casefold <mars.dataframe.Series.str.casefold>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Convert strings in the Series/Index to be casefolded."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.cat <mars.dataframe.Series.str.cat>`\\ \\(\\[others\\, "
+"sep\\, na\\_rep\\, join\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Concatenate strings in the Series/Index with given separator."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.center <mars.dataframe.Series.str.center>`\\ "
+"\\(width\\[\\, fillchar\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Filling left and right side of strings in the Series/Index with an "
+"additional character."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.contains <mars.dataframe.Series.str.contains>`\\ "
+"\\(pat\\[\\, case\\, flags\\, na\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Test if pattern or regex is contained within a string of a Series or "
+"Index."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.count <mars.dataframe.Series.str.count>`\\ \\(pat\\[\\, "
+"flags\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Count occurrences of pattern in each string of the Series/Index."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.decode <mars.dataframe.Series.str.decode>`\\ "
+"\\(encoding\\[\\, errors\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Decode character string in the Series/Index using indicated encoding."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.encode <mars.dataframe.Series.str.encode>`\\ "
+"\\(encoding\\[\\, errors\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Encode character string in the Series/Index using indicated encoding."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.endswith <mars.dataframe.Series.str.endswith>`\\ "
+"\\(pat\\[\\, na\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Test if the end of each string element matches a pattern."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.extract <mars.dataframe.Series.str.extract>`\\ "
+"\\(pat\\[\\, flags\\, expand\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Extract capture groups in the regex `pat` as columns in a DataFrame."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.extractall <mars.dataframe.Series.str.extractall>`\\ "
+"\\(pat\\[\\, flags\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"For each subject string in the Series, extract groups from all matches of"
+" regular expression pat."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.find <mars.dataframe.Series.str.find>`\\ \\(sub\\[\\, "
+"start\\, end\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Return lowest indexes in each strings in the Series/Index where the "
+"substring is fully contained between [start:end]."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.findall <mars.dataframe.Series.str.findall>`\\ "
+"\\(pat\\[\\, flags\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Find all occurrences of pattern or regular expression in the Series/Index."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.get <mars.dataframe.Series.str.get>`\\ \\(i\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Extract element from each component at specified position."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.index <mars.dataframe.Series.str.index>`\\ \\(sub\\[\\, "
+"start\\, end\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Return lowest indexes in each strings where the substring is fully "
+"contained between [start:end]."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.join <mars.dataframe.Series.str.join>`\\ \\(sep\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Join lists contained as elements in the Series/Index with passed "
+"delimiter."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.len <mars.dataframe.Series.str.len>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Compute the length of each element in the Series/Index."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.ljust <mars.dataframe.Series.str.ljust>`\\ "
+"\\(width\\[\\, fillchar\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Filling right side of strings in the Series/Index with an additional "
+"character."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.lower <mars.dataframe.Series.str.lower>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Convert strings in the Series/Index to lowercase."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.lstrip <mars.dataframe.Series.str.lstrip>`\\ "
+"\\(\\[to\\_strip\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Remove leading and trailing characters."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.match <mars.dataframe.Series.str.match>`\\ \\(pat\\[\\, "
+"case\\, flags\\, na\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Determine if each string matches a regular expression."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.normalize <mars.dataframe.Series.str.normalize>`\\ "
+"\\(form\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Return the Unicode normal form for the strings in the Series/Index."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.pad <mars.dataframe.Series.str.pad>`\\ \\(width\\[\\, "
+"side\\, fillchar\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Pad strings in the Series/Index up to width."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.partition <mars.dataframe.Series.str.partition>`\\ "
+"\\(\\[sep\\, expand\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Split the string at the first occurrence of `sep`."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.repeat <mars.dataframe.Series.str.repeat>`\\ "
+"\\(repeats\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Duplicate each string in the Series or Index."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.replace <mars.dataframe.Series.str.replace>`\\ \\(pat\\,"
+" repl\\[\\, n\\, case\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Replace occurrences of pattern/regex in the Series/Index with some other "
+"string."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.rfind <mars.dataframe.Series.str.rfind>`\\ \\(sub\\[\\, "
+"start\\, end\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Return highest indexes in each strings in the Series/Index where the "
+"substring is fully contained between [start:end]."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.rindex <mars.dataframe.Series.str.rindex>`\\ "
+"\\(sub\\[\\, start\\, end\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Return highest indexes in each strings where the substring is fully "
+"contained between [start:end]."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.rjust <mars.dataframe.Series.str.rjust>`\\ "
+"\\(width\\[\\, fillchar\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Filling left side of strings in the Series/Index with an additional "
+"character."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.rpartition <mars.dataframe.Series.str.rpartition>`\\ "
+"\\(\\[sep\\, expand\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Split the string at the last occurrence of `sep`."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.rstrip <mars.dataframe.Series.str.rstrip>`\\ "
+"\\(\\[to\\_strip\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.slice <mars.dataframe.Series.str.slice>`\\ "
+"\\(\\[start\\, stop\\, step\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Slice substrings from each element in the Series or Index."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.slice_replace "
+"<mars.dataframe.Series.str.slice_replace>`\\ \\(\\[start\\, stop\\, "
+"repl\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Replace a positional slice of a string with another value."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.split <mars.dataframe.Series.str.split>`\\ \\(\\[pat\\, "
+"n\\, expand\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Split strings around given separator/delimiter."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.rsplit <mars.dataframe.Series.str.rsplit>`\\ "
+"\\(\\[pat\\, n\\, expand\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.startswith <mars.dataframe.Series.str.startswith>`\\ "
+"\\(pat\\[\\, na\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Test if the start of each string element matches a pattern."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.strip <mars.dataframe.Series.str.strip>`\\ "
+"\\(\\[to\\_strip\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.swapcase <mars.dataframe.Series.str.swapcase>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Convert strings in the Series/Index to be swapcased."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.title <mars.dataframe.Series.str.title>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Convert strings in the Series/Index to titlecase."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.translate <mars.dataframe.Series.str.translate>`\\ "
+"\\(table\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Map all characters in the string through the given mapping table."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.upper <mars.dataframe.Series.str.upper>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Convert strings in the Series/Index to uppercase."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+":obj:`Series.str.wrap <mars.dataframe.Series.str.wrap>`\\ \\(width\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ""
+"Wrap long strings in the Series/Index to be formatted in paragraphs with "
+"length less than a given width."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.zfill <mars.dataframe.Series.str.zfill>`\\ \\(width\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Pad strings in the Series/Index by prepending '0' characters."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.isalnum <mars.dataframe.Series.str.isalnum>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Check whether all characters in each string are alphanumeric."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.isalpha <mars.dataframe.Series.str.isalpha>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Check whether all characters in each string are alphabetic."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.isdigit <mars.dataframe.Series.str.isdigit>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Check whether all characters in each string are digits."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.isspace <mars.dataframe.Series.str.isspace>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Check whether all characters in each string are whitespace."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.islower <mars.dataframe.Series.str.islower>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Check whether all characters in each string are lowercase."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.isupper <mars.dataframe.Series.str.isupper>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Check whether all characters in each string are uppercase."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.istitle <mars.dataframe.Series.str.istitle>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Check whether all characters in each string are titlecase."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.isnumeric <mars.dataframe.Series.str.isnumeric>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Check whether all characters in each string are numeric."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid ":obj:`Series.str.isdecimal <mars.dataframe.Series.str.isdecimal>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:322:<autosummary>:1
+msgid "Check whether all characters in each string are decimal."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:335
+msgid "Time Series-related"
+msgstr "时间序列相关"
+
+#: ../../source/dataframe/reference/series.rst:342:<autosummary>:1
+msgid ":obj:`Series.diff <mars.dataframe.Series.diff>`\\ \\(\\[periods\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:342:<autosummary>:1
+msgid "First discrete difference of element."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:342:<autosummary>:1
+msgid ""
+":obj:`Series.shift <mars.dataframe.Series.shift>`\\ \\(\\[periods\\, "
+"freq\\, axis\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:342:<autosummary>:1
+msgid "Shift index by desired number of periods with an optional time `freq`."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:342:<autosummary>:1
+msgid ""
+":obj:`Series.tshift <mars.dataframe.Series.tshift>`\\ \\(\\[periods\\, "
+"freq\\, axis\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:342:<autosummary>:1
+msgid "Shift the time index, using the index's frequency if available."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:344
+msgid "Plotting"
+msgstr "绘图"
+
+#: ../../source/dataframe/reference/series.rst:345
+msgid ""
+"``Series.plot`` is both a callable method and a namespace attribute for "
+"specific plotting methods of the form ``Series.plot.<kind>``."
+msgstr ""
+"``Series.plot`` 既是一个可被调用的方法，也是一个通过 ``Series.plot.<kind>"
+"`` 提供特定画图方法的属性。"
+
+#: ../../source/dataframe/reference/series.rst:352:<autosummary>:1
+msgid ":obj:`Series.plot <mars.dataframe.Series.plot>`\\"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:352:<autosummary>:1
+msgid "alias of :class:`mars.dataframe.plotting.core.PlotAccessor`"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid ""
+":obj:`Series.plot.area <mars.dataframe.Series.plot.area>`\\ \\(\\*args\\,"
+" \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid "Draw a stacked area plot."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid ""
+":obj:`Series.plot.bar <mars.dataframe.Series.plot.bar>`\\ \\(\\*args\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid "Vertical bar plot."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid ""
+":obj:`Series.plot.barh <mars.dataframe.Series.plot.barh>`\\ \\(\\*args\\,"
+" \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid "Make a horizontal bar plot."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid ""
+":obj:`Series.plot.box <mars.dataframe.Series.plot.box>`\\ \\(\\*args\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid "Make a box plot of the DataFrame columns."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid ""
+":obj:`Series.plot.density <mars.dataframe.Series.plot.density>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid "Generate Kernel Density Estimate plot using Gaussian kernels."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid ""
+":obj:`Series.plot.hist <mars.dataframe.Series.plot.hist>`\\ \\(\\*args\\,"
+" \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid "Draw one histogram of the DataFrame's columns."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid ""
+":obj:`Series.plot.kde <mars.dataframe.Series.plot.kde>`\\ \\(\\*args\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid ""
+":obj:`Series.plot.line <mars.dataframe.Series.plot.line>`\\ \\(\\*args\\,"
+" \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid "Plot Series or DataFrame as lines."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid ""
+":obj:`Series.plot.pie <mars.dataframe.Series.plot.pie>`\\ \\(\\*args\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:365:<autosummary>:1
+msgid "Generate a pie plot."
+msgstr ""
+
+#: ../../source/dataframe/reference/series.rst:369:<autosummary>:1
+msgid ":obj:`Series.hist <Series.hist>`\\"
+msgstr ""
+

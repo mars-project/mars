@@ -68,6 +68,7 @@ class TensorEmpty(TensorEmptyBase, TensorNoInput):
 def empty(shape, dtype=None, chunk_size=None, gpu=False, order='C'):
     """
     Return a new tensor of given shape and type, without initializing entries.
+
     Parameters
     ----------
     shape : int or tuple of int
@@ -88,15 +89,18 @@ def empty(shape, dtype=None, chunk_size=None, gpu=False, order='C'):
     out : Tensor
         Tensor of uninitialized (arbitrary) data of the given shape, dtype, and
         order.  Object arrays will be initialized to None.
+
     See Also
     --------
     empty_like, zeros, ones
+
     Notes
     -----
     `empty`, unlike `zeros`, does not set the array values to zero,
     and may therefore be marginally faster.  On the other hand, it requires
     the user to manually set all the values in the array, and should be
     used with caution.
+
     Examples
     --------
     >>> import mars.tensor as mt
@@ -147,6 +151,7 @@ class TensorEmptyLike(TensorEmptyBase, TensorLike):
 def empty_like(a, dtype=None, gpu=None, order='K'):
     """
     Return a new tensor with the same shape and type as a given tensor.
+
     Parameters
     ----------
     a : array_like

@@ -150,6 +150,7 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
 def solve_triangular(a, b, lower=False, sparse=None):
     """
     Solve the equation `a x = b` for `x`, assuming a is a triangular matrix.
+
     Parameters
     ----------
     a : (M, M) array_like
@@ -174,12 +175,14 @@ def solve_triangular(a, b, lower=False, sparse=None):
         a =  [2  1  0  0]   b = [2]
              [1  0  1  0]       [4]
              [1  1  1  1]       [2]
+
     >>> import mars.tensor as mt
     >>> a = mt.array([[3, 0, 0, 0], [2, 1, 0, 0], [1, 0, 1, 0], [1, 1, 1, 1]])
     >>> b = mt.array([4, 2, 4, 2])
     >>> x = mt.linalg.solve_triangular(a, b, lower=True)
     >>> x.execute()
     array([ 1.33333333, -0.66666667,  2.66666667, -1.33333333])
+
     >>> a.dot(x).execute()  # Check the result
     array([ 4.,  2.,  4.,  2.])
     """

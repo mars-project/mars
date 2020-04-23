@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:35+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.amax.rst:2
 msgid "mars.tensor.amax"
@@ -25,67 +25,57 @@ msgstr ""
 msgid "Return the maximum of an array or maximum along an axis."
 msgstr ""
 
-#: mars.tensor.amax:5 of
-msgid "a"
+#: mars.tensor.amax of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.amax:4 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.amax:6 of
+#: mars.tensor.amax:3 of
 msgid "Input data."
 msgstr ""
 
-#: mars.tensor.amax:11 of
-msgid "axis"
+#: mars.tensor.amax:5 of
+msgid ""
+"Axis or axes along which to operate.  By default, flattened input is "
+"used.  If this is a tuple of ints, the maximum is selected over multiple "
+"axes, instead of a single axis or all the axes as before."
 msgstr ""
 
-#: mars.tensor.amax:10 of
-msgid "None or int or tuple of ints, optional"
-msgstr ""
-
-#: mars.tensor.amax:8 of
+#: mars.tensor.amax:5 of
 msgid "Axis or axes along which to operate.  By default, flattened input is used."
 msgstr ""
 
-#: mars.tensor.amax:11 of
+#: mars.tensor.amax:8 of
 msgid ""
 "If this is a tuple of ints, the maximum is selected over multiple axes, "
 "instead of a single axis or all the axes as before."
 msgstr ""
 
-#: mars.tensor.amax:16 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.amax:15 of
-msgid "Tensor, optional"
-msgstr ""
-
-#: mars.tensor.amax:14 of
+#: mars.tensor.amax:11 of
 msgid ""
 "Alternative output tensor in which to place the result.  Must be of the "
 "same shape and buffer length as the expected output. See `doc.ufuncs` "
 "(Section \"Output arguments\") for more details."
 msgstr ""
 
-#: mars.tensor.amax:26 of
-msgid "keepdims"
+#: mars.tensor.amax:15 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input array.  If the default value is passed, then"
+" `keepdims` will not be passed through to the `amax` method of sub-"
+"classes of `ndarray`, however any non-default value will be.  If the sub-"
+"classes `sum` method does not implement `keepdims` any exceptions will be"
+" raised."
 msgstr ""
 
-#: mars.tensor.amax:25 of
-msgid "bool, optional"
-msgstr ""
-
-#: mars.tensor.amax:19 of
+#: mars.tensor.amax:15 of
 msgid ""
 "If this is set to True, the axes which are reduced are left in the result"
 " as dimensions with size one. With this option, the result will broadcast"
 " correctly against the input array."
 msgstr ""
 
-#: mars.tensor.amax:23 of
+#: mars.tensor.amax:19 of
 msgid ""
 "If the default value is passed, then `keepdims` will not be passed "
 "through to the `amax` method of sub-classes of `ndarray`, however any "
@@ -93,83 +83,88 @@ msgid ""
 "implement `keepdims` any exceptions will be raised."
 msgstr ""
 
-#: mars.tensor.amax:29 of
-msgid "combine_size: int, optional"
-msgstr ""
-
-#: mars.tensor.amax:29 of
+#: mars.tensor.amax:25 of
 msgid "The number of chunks to combine."
 msgstr ""
 
-#: mars.tensor.amax:36 of
-msgid "amax"
+#: mars.tensor.amax of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.amax:35 of
-msgid "Tensor or scalar"
-msgstr ""
-
-#: mars.tensor.amax:34 of
+#: mars.tensor.amax:28 of
 msgid ""
-"Maximum of `a`. If `axis` is None, the result is a scalar value. If "
-"`axis` is given, the result is a tensor of dimension ``a.ndim - 1``."
+"**amax** -- Maximum of `a`. If `axis` is None, the result is a scalar "
+"value. If `axis` is given, the result is a tensor of dimension ``a.ndim -"
+" 1``."
 msgstr ""
 
-#: mars.tensor.amax:40 of
-msgid "amin :"
+#: mars.tensor.amax of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.amax:41 of
+#: mars.tensor.amax:36 of
+msgid ":func:`amin`"
+msgstr ""
+
+#: mars.tensor.amax:36 of
 msgid "The minimum value of a tensor along a given axis, propagating any NaNs."
 msgstr ""
 
-#: mars.tensor.amax:42 of
-msgid "nanmax :"
+#: mars.tensor.amax:39 of
+msgid ":func:`nanmax`"
 msgstr ""
 
-#: mars.tensor.amax:43 of
+#: mars.tensor.amax:39 of
 msgid "The maximum value of a tensor along a given axis, ignoring any NaNs."
 msgstr ""
 
-#: mars.tensor.amax:44 of
-msgid "maximum :"
+#: mars.tensor.amax:42 of
+msgid ":func:`maximum`"
 msgstr ""
 
-#: mars.tensor.amax:45 of
+#: mars.tensor.amax:42 of
 msgid "Element-wise maximum of two tensors, propagating any NaNs."
 msgstr ""
 
-#: mars.tensor.amax:46 of
-msgid "fmax :"
+#: mars.tensor.amax:45 of
+msgid ":func:`fmax`"
 msgstr ""
 
-#: mars.tensor.amax:47 of
+#: mars.tensor.amax:45 of
 msgid "Element-wise maximum of two tensors, ignoring any NaNs."
 msgstr ""
 
-#: mars.tensor.amax:49 of
-msgid "argmax :"
+#: mars.tensor.amax:48 of
+msgid ":func:`argmax`"
 msgstr ""
 
-#: mars.tensor.amax:49 of
+#: mars.tensor.amax:48 of
 msgid "Return the indices of the maximum values."
 msgstr ""
 
-#: mars.tensor.amax:51 of
-msgid "nanmin, minimum, fmin"
+#: mars.tensor.amax:50 of
+msgid ":func:`nanmin`, :func:`minimum`, :func:`fmin`"
 msgstr ""
 
-#: mars.tensor.amax:55 of
+#: mars.tensor.amax:53 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.amax:54 of
 msgid ""
 "NaN values are propagated, that is if at least one item is NaN, the "
 "corresponding max value will be NaN as well. To ignore NaN values (MATLAB"
 " behavior), please use nanmax."
 msgstr ""
 
-#: mars.tensor.amax:59 of
+#: mars.tensor.amax:58 of
 msgid ""
 "Don't use `amax` for element-wise comparison of 2 arrays; when "
 "``a.shape[0]`` is 2, ``maximum(a[0], a[1])`` is faster than ``amax(a, "
 "axis=0)``."
+msgstr ""
+
+#: mars.tensor.amax:63 of
+msgid "Examples"
 msgstr ""
 

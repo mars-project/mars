@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:11+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.linalg.svd.rst:2
 msgid "mars.tensor.linalg.svd"
@@ -33,84 +33,93 @@ msgid ""
 "applied in stacked mode as explained below."
 msgstr ""
 
-#: mars.tensor.linalg.svd:10 of
-msgid "a"
+#: mars.tensor.linalg.svd of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.linalg.svd:9 of
-msgid "(..., M, N) array_like"
-msgstr ""
-
-#: mars.tensor.linalg.svd:11 of
+#: mars.tensor.linalg.svd:8 of
 msgid "A real or complex tensor with ``a.ndim >= 2``."
 msgstr ""
 
-#: mars.tensor.linalg.svd:22 of
-msgid "method: {'tsqr'}, optional"
+#: mars.tensor.linalg.svd:10 of
+msgid ""
+"method to calculate qr factorization, tsqr as default  TSQR is presented "
+"in:      A. Benson, D. Gleich, and J. Demmel.     Direct QR "
+"factorizations for tall-and-skinny matrices in     MapReduce "
+"architectures.     IEEE International Conference on Big Data, 2013.     "
+"http://arxiv.org/abs/1301.1071"
 msgstr ""
 
-#: mars.tensor.linalg.svd:13 of
+#: mars.tensor.linalg.svd:10 of
 msgid "method to calculate qr factorization, tsqr as default"
 msgstr ""
 
-#: mars.tensor.linalg.svd:15 of
+#: mars.tensor.linalg.svd:12 of
 msgid "TSQR is presented in:"
 msgstr ""
 
-#: mars.tensor.linalg.svd:17 of
+#: mars.tensor.linalg.svd:14 of
 msgid ""
 "A. Benson, D. Gleich, and J. Demmel. Direct QR factorizations for tall-"
 "and-skinny matrices in MapReduce architectures. IEEE International "
 "Conference on Big Data, 2013. http://arxiv.org/abs/1301.1071"
 msgstr ""
 
-#: mars.tensor.linalg.svd:29 of
-msgid "u"
+#: mars.tensor.linalg.svd of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.linalg.svd:21 of
+msgid ""
+"* **u** (*{ (..., M, M), (..., M, K) } tensor*) -- Unitary tensor(s). The"
+" first ``a.ndim - 2`` dimensions have the same   size as those of the "
+"input `a`. The size of the last two dimensions   depends on the value of "
+"`full_matrices`. Only returned when   `compute_uv` is True. * **s** "
+"(*(..., K) tensor*) -- Vector(s) with the singular values, within each "
+"vector sorted in   descending order. The first ``a.ndim - 2`` dimensions "
+"have the same   size as those of the input `a`. * **vh** (*{ (..., N, N),"
+" (..., K, N) } tensor*) -- Unitary tensor(s). The first ``a.ndim - 2`` "
+"dimensions have the same   size as those of the input `a`. The size of "
+"the last two dimensions   depends on the value of `full_matrices`. Only "
+"returned when   `compute_uv` is True."
+msgstr ""
+
+#: mars.tensor.linalg.svd:21 of
+msgid ""
+"**u** (*{ (..., M, M), (..., M, K) } tensor*) -- Unitary tensor(s). The "
+"first ``a.ndim - 2`` dimensions have the same size as those of the input "
+"`a`. The size of the last two dimensions depends on the value of "
+"`full_matrices`. Only returned when `compute_uv` is True."
+msgstr ""
+
+#: mars.tensor.linalg.svd:25 of
+msgid ""
+"**s** (*(..., K) tensor*) -- Vector(s) with the singular values, within "
+"each vector sorted in descending order. The first ``a.ndim - 2`` "
+"dimensions have the same size as those of the input `a`."
 msgstr ""
 
 #: mars.tensor.linalg.svd:28 of
-msgid "{ (..., M, M), (..., M, K) } tensor"
+msgid ""
+"**vh** (*{ (..., N, N), (..., K, N) } tensor*) -- Unitary tensor(s). The "
+"first ``a.ndim - 2`` dimensions have the same size as those of the input "
+"`a`. The size of the last two dimensions depends on the value of "
+"`full_matrices`. Only returned when `compute_uv` is True."
 msgstr ""
 
-#: mars.tensor.linalg.svd:27 mars.tensor.linalg.svd:36 of
-msgid ""
-"Unitary tensor(s). The first ``a.ndim - 2`` dimensions have the same size"
-" as those of the input `a`. The size of the last two dimensions depends "
-"on the value of `full_matrices`. Only returned when `compute_uv` is True."
+#: mars.tensor.linalg.svd of
+msgid "Raises"
 msgstr ""
 
 #: mars.tensor.linalg.svd:33 of
-msgid "s"
-msgstr ""
-
-#: mars.tensor.linalg.svd:32 of
-msgid "(..., K) tensor"
-msgstr ""
-
-#: mars.tensor.linalg.svd:32 of
-msgid ""
-"Vector(s) with the singular values, within each vector sorted in "
-"descending order. The first ``a.ndim - 2`` dimensions have the same size "
-"as those of the input `a`."
-msgstr ""
-
-#: mars.tensor.linalg.svd:39 of
-msgid "vh"
-msgstr ""
-
-#: mars.tensor.linalg.svd:38 of
-msgid "{ (..., N, N), (..., K, N) } tensor"
-msgstr ""
-
-#: mars.tensor.linalg.svd:44 of
-msgid "LinAlgError"
-msgstr ""
-
-#: mars.tensor.linalg.svd:44 of
 msgid "If SVD computation does not converge."
 msgstr ""
 
-#: mars.tensor.linalg.svd:49 of
+#: mars.tensor.linalg.svd:36 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.linalg.svd:37 of
 msgid ""
 "SVD is usually described for the factorization of a 2D matrix :math:`A`. "
 "The higher-dimensional case will be discussed below. In the 2D case, SVD "
@@ -122,7 +131,7 @@ msgid ""
 "(possibly non-zero) eigenvalues are given by ``s**2``."
 msgstr ""
 
-#: mars.tensor.linalg.svd:58 of
+#: mars.tensor.linalg.svd:46 of
 msgid ""
 "If `a` has more than two dimensions, then broadcasting rules apply, as "
 "explained in :ref:`routines.linalg-broadcasting`. This means that SVD is "
@@ -134,7 +143,11 @@ msgid ""
 "``mt.matmul`` for python versions below 3.5.)"
 msgstr ""
 
-#: mars.tensor.linalg.svd:73 of
+#: mars.tensor.linalg.svd:56 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.linalg.svd:61 of
 msgid "Reconstruction based on reduced SVD, 2D case:"
 msgstr ""
 

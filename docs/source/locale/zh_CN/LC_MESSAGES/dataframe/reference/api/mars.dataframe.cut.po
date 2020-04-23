@@ -1,0 +1,250 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.cut.rst:2
+msgid "mars.dataframe.cut"
+msgstr ""
+
+#: mars.dataframe.cut:1 of
+msgid "Bin values into discrete intervals."
+msgstr ""
+
+#: mars.dataframe.cut:3 of
+msgid ""
+"Use `cut` when you need to segment and sort data values into bins. This "
+"function is also useful for going from a continuous variable to a "
+"categorical variable. For example, `cut` could convert ages to groups of "
+"age ranges. Supports binning into an equal number of bins, or a pre-"
+"specified array of bins."
+msgstr ""
+
+#: mars.dataframe.cut of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.cut:9 of
+msgid "The input array to be binned. Must be 1-dimensional."
+msgstr ""
+
+#: mars.dataframe.cut:11 of
+#, python-format
+msgid ""
+"The criteria to bin by.  * int : Defines the number of equal-width bins "
+"in the range of `x`. The   range of `x` is extended by .1% on each side "
+"to include the minimum   and maximum values of `x`. * sequence of scalars"
+" : Defines the bin edges allowing for non-uniform   width. No extension "
+"of the range of `x` is done. * IntervalIndex : Defines the exact bins to "
+"be used. Note that   IntervalIndex for `bins` must be non-overlapping."
+msgstr ""
+
+#: mars.dataframe.cut:11 of
+msgid "The criteria to bin by."
+msgstr ""
+
+#: mars.dataframe.cut:13 of
+#, python-format
+msgid ""
+"int : Defines the number of equal-width bins in the range of `x`. The "
+"range of `x` is extended by .1% on each side to include the minimum and "
+"maximum values of `x`."
+msgstr ""
+
+#: mars.dataframe.cut:16 of
+msgid ""
+"sequence of scalars : Defines the bin edges allowing for non-uniform "
+"width. No extension of the range of `x` is done."
+msgstr ""
+
+#: mars.dataframe.cut:18 of
+msgid ""
+"IntervalIndex : Defines the exact bins to be used. Note that "
+"IntervalIndex for `bins` must be non-overlapping."
+msgstr ""
+
+#: mars.dataframe.cut:21 of
+msgid ""
+"Indicates whether `bins` includes the rightmost edge or not. If ``right "
+"== True`` (the default), then the `bins` ``[1, 2, 3, 4]`` indicate (1,2],"
+" (2,3], (3,4]. This argument is ignored when `bins` is an IntervalIndex."
+msgstr ""
+
+#: mars.dataframe.cut:26 of
+msgid ""
+"Specifies the labels for the returned bins. Must be the same length as "
+"the resulting bins. If False, returns only integer indicators of the "
+"bins. This affects the type of the output container (see below). This "
+"argument is ignored when `bins` is an IntervalIndex. If True, raises an "
+"error."
+msgstr ""
+
+#: mars.dataframe.cut:32 of
+msgid ""
+"Whether to return the bins or not. Useful when bins is provided as a "
+"scalar."
+msgstr ""
+
+#: mars.dataframe.cut:35 of
+msgid "The precision at which to store and display the bins labels."
+msgstr ""
+
+#: mars.dataframe.cut:37 of
+msgid "Whether the first interval should be left-inclusive or not."
+msgstr ""
+
+#: mars.dataframe.cut:39 of
+msgid "If bin edges are not unique, raise ValueError or drop non-uniques."
+msgstr ""
+
+#: mars.dataframe.cut of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.cut:42 of
+msgid ""
+"* **out** (*Categorical, Series, or Tensor*) -- An array-like object "
+"representing the respective bin for each value   of `x`. The type depends"
+" on the value of `labels`.    * True (default) : returns a Series for "
+"Series `x` or a     Categorical for all other inputs. The values stored "
+"within     are Interval dtype.    * sequence of scalars : returns a "
+"Series for Series `x` or a     Categorical for all other inputs. The "
+"values stored within     are whatever the type in the sequence is.    * "
+"False : returns a tensor of integers. * **bins** (*Tensor or "
+"IntervalIndex.*) -- The computed or specified bins. Only returned when "
+"`retbins=True`.   For scalar or sequence `bins`, this is a tensor with "
+"the computed   bins. If set `duplicates=drop`, `bins` will drop non-"
+"unique bin. For   an IntervalIndex `bins`, this is equal to `bins`."
+msgstr ""
+
+#: mars.dataframe.cut:42 of
+msgid ""
+"**out** (*Categorical, Series, or Tensor*) -- An array-like object "
+"representing the respective bin for each value of `x`. The type depends "
+"on the value of `labels`."
+msgstr ""
+
+#: mars.dataframe.cut:45 of
+msgid ""
+"True (default) : returns a Series for Series `x` or a Categorical for all"
+" other inputs. The values stored within are Interval dtype."
+msgstr ""
+
+#: mars.dataframe.cut:49 of
+msgid ""
+"sequence of scalars : returns a Series for Series `x` or a Categorical "
+"for all other inputs. The values stored within are whatever the type in "
+"the sequence is."
+msgstr ""
+
+#: mars.dataframe.cut:53 of
+msgid "False : returns a tensor of integers."
+msgstr ""
+
+#: mars.dataframe.cut:54 of
+msgid ""
+"**bins** (*Tensor or IntervalIndex.*) -- The computed or specified bins. "
+"Only returned when `retbins=True`. For scalar or sequence `bins`, this is"
+" a tensor with the computed bins. If set `duplicates=drop`, `bins` will "
+"drop non-unique bin. For an IntervalIndex `bins`, this is equal to "
+"`bins`."
+msgstr ""
+
+#: mars.dataframe.cut:62 of
+msgid ":func:`qcut`"
+msgstr ""
+
+#: mars.dataframe.cut:62 of
+msgid ""
+"Discretize variable into equal-sized buckets based on rank or based on "
+"sample quantiles."
+msgstr ""
+
+#: mars.dataframe.cut:65 of
+msgid ":func:`Categorical`"
+msgstr ""
+
+#: mars.dataframe.cut:65 of
+msgid "Array type for storing data that come from a fixed set of values."
+msgstr ""
+
+#: mars.dataframe.cut:68 of
+msgid ":func:`Series`"
+msgstr ""
+
+#: mars.dataframe.cut:68 of
+msgid "One-dimensional array with axis labels (including time series)."
+msgstr ""
+
+#: mars.dataframe.cut:70 of
+msgid ":func:`IntervalIndex`"
+msgstr ""
+
+#: mars.dataframe.cut:71 of
+msgid "Immutable Index implementing an ordered, sliceable set."
+msgstr ""
+
+#: mars.dataframe.cut:74 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.cut:75 of
+msgid ""
+"Any NA values will be NA in the result. Out of bounds values will be NA "
+"in the resulting Series or Categorical object."
+msgstr ""
+
+#: mars.dataframe.cut:79 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.cut:80 of
+msgid "Discretize into three equal-sized bins."
+msgstr ""
+
+#: mars.dataframe.cut:96 of
+msgid ""
+"Discovers the same bins, but assign them specific labels. Notice that the"
+" returned Categorical's categories are `labels` and is ordered."
+msgstr ""
+
+#: mars.dataframe.cut:104 of
+msgid "``labels=False`` implies you just want the bins back."
+msgstr ""
+
+#: mars.dataframe.cut:109 of
+msgid "Passing a Series as an input returns a Series with categorical dtype:"
+msgstr ""
+
+#: mars.dataframe.cut:123 of
+msgid ""
+"Passing a Series as an input returns a Series with mapping value. It is "
+"used to map numerically to intervals based on bins."
+msgstr ""
+
+#: mars.dataframe.cut:137 of
+msgid "Use `drop` optional when bins is not unique"
+msgstr ""
+
+#: mars.dataframe.cut:149 of
+msgid ""
+"Passing an IntervalIndex for `bins` results in those categories exactly. "
+"Notice that values not covered by the IntervalIndex are set to NaN. 0 is "
+"to the left of the first bin (which is closed on the right), and 1.5 "
+"falls between two bins."
+msgstr ""
+

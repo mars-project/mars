@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.hstack.rst:2
 msgid "mars.tensor.hstack"
@@ -40,38 +40,77 @@ msgid ""
 "and `block` provide more general stacking and concatenation operations."
 msgstr ""
 
-#: mars.tensor.hstack:16 of
-msgid "tup"
+#: mars.tensor.hstack of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.hstack:15 of
-msgid "sequence of tensors"
-msgstr ""
-
-#: mars.tensor.hstack:15 of
+#: mars.tensor.hstack:12 of
 msgid ""
 "The tensors must have the same shape along all but the second axis, "
 "except 1-D tensors which can be any length."
 msgstr ""
 
-#: mars.tensor.hstack:21 of
-msgid "stacked"
+#: mars.tensor.hstack of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.hstack:20 of
-msgid "Tensor"
+#: mars.tensor.hstack:16 of
+msgid "**stacked** -- The tensor formed by stacking the given tensors."
 msgstr ""
 
-#: mars.tensor.hstack:21 of
-msgid "The tensor formed by stacking the given tensors."
+#: mars.tensor.hstack of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.hstack:22 of
+msgid ":func:`stack`"
+msgstr ""
+
+#: mars.tensor.hstack:22 of
+msgid "Join a sequence of tensors along a new axis."
 msgstr ""
 
 #: mars.tensor.hstack:25 of
-msgid ""
-"stack : Join a sequence of tensors along a new axis. vstack : Stack "
-"tensors in sequence vertically (row wise). dstack : Stack tensors in "
-"sequence depth wise (along third axis). concatenate : Join a sequence of "
-"tensors along an existing axis. hsplit : Split tensor along second axis. "
-"block : Assemble tensors from blocks."
+msgid ":func:`vstack`"
+msgstr ""
+
+#: mars.tensor.hstack:25 of
+msgid "Stack tensors in sequence vertically (row wise)."
+msgstr ""
+
+#: mars.tensor.hstack:28 of
+msgid ":func:`dstack`"
+msgstr ""
+
+#: mars.tensor.hstack:28 of
+msgid "Stack tensors in sequence depth wise (along third axis)."
+msgstr ""
+
+#: mars.tensor.hstack:31 of
+msgid ":func:`concatenate`"
+msgstr ""
+
+#: mars.tensor.hstack:31 of
+msgid "Join a sequence of tensors along an existing axis."
+msgstr ""
+
+#: mars.tensor.hstack:34 of
+msgid ":func:`hsplit`"
+msgstr ""
+
+#: mars.tensor.hstack:34 of
+msgid "Split tensor along second axis."
+msgstr ""
+
+#: mars.tensor.hstack:36 of
+msgid ":func:`block`"
+msgstr ""
+
+#: mars.tensor.hstack:37 of
+msgid "Assemble tensors from blocks."
+msgstr ""
+
+#: mars.tensor.hstack:40 of
+msgid "Examples"
 msgstr ""
 

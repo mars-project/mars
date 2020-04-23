@@ -1,0 +1,98 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.isna.rst:2
+msgid "mars.dataframe.isna"
+msgstr ""
+
+#: mars.dataframe.isna:1 of
+msgid "Detect missing values."
+msgstr ""
+
+#: mars.dataframe.isna:3 of
+msgid ""
+"Return a boolean same-sized object indicating if the values are NA. NA "
+"values, such as None or :attr:`numpy.NaN`, gets mapped to True values."
+msgstr ""
+
+#: mars.dataframe.isna:7 of
+msgid ""
+"Everything else gets mapped to False values. Characters such as empty "
+"strings ``''`` or :attr:`numpy.inf` are not considered NA values (unless "
+"you set ``pandas.options.mode.use_inf_as_na = True``)."
+msgstr ""
+
+#: mars.dataframe.isna of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.isna:11 of
+msgid ""
+"Mask of bool values for each element in DataFrame that indicates whether "
+"an element is not an NA value."
+msgstr ""
+
+#: mars.dataframe.isna of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.isna:18 of
+msgid ":func:`DataFrame.isnull`"
+msgstr ""
+
+#: mars.dataframe.isna:18 of
+msgid "Alias of isna."
+msgstr ""
+
+#: mars.dataframe.isna:21 of
+msgid ":func:`DataFrame.notna`"
+msgstr ""
+
+#: mars.dataframe.isna:21 of
+msgid "Boolean inverse of isna."
+msgstr ""
+
+#: mars.dataframe.isna:24 of
+msgid ":func:`DataFrame.dropna`"
+msgstr ""
+
+#: mars.dataframe.isna:24 of
+msgid "Omit axes labels with missing values."
+msgstr ""
+
+#: mars.dataframe.isna:26 of
+msgid ":func:`isna`"
+msgstr ""
+
+#: mars.dataframe.isna:27 of
+msgid "Top-level isna."
+msgstr ""
+
+#: mars.dataframe.isna:30 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.isna:31 of
+msgid "Show which entries in a DataFrame are NA."
+msgstr ""
+
+#: mars.dataframe.isna:52 of
+msgid "Show which entries in a Series are NA."
+msgstr ""
+

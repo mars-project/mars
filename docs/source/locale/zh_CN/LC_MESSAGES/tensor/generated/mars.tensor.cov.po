@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:35+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.cov.rst:2
 msgid "mars.tensor.cov"
@@ -38,55 +38,31 @@ msgstr ""
 msgid "See the notes for an outline of the algorithm."
 msgstr ""
 
-#: mars.tensor.cov:15 of
-msgid "m"
+#: mars.tensor.cov of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.cov:14 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.cov:14 of
+#: mars.tensor.cov:11 of
 msgid ""
 "A 1-D or 2-D array containing multiple variables and observations. Each "
 "row of `m` represents a variable, and each column a single observation of"
 " all those variables. Also see `rowvar` below."
 msgstr ""
 
-#: mars.tensor.cov:18 of
-msgid "y"
-msgstr ""
-
-#: mars.tensor.cov:17 mars.tensor.cov:42 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.cov:18 of
+#: mars.tensor.cov:15 of
 msgid ""
 "An additional set of variables and observations. `y` has the same form as"
 " that of `m`."
 msgstr ""
 
-#: mars.tensor.cov:23 of
-msgid "rowvar"
-msgstr ""
-
-#: mars.tensor.cov:22 mars.tensor.cov:27 of
-msgid "bool, optional"
-msgstr ""
-
-#: mars.tensor.cov:21 of
+#: mars.tensor.cov:18 of
 msgid ""
 "If `rowvar` is True (default), then each row represents a variable, with "
 "observations in the columns. Otherwise, the relationship is transposed: "
 "each column represents a variable, while the rows contain observations."
 msgstr ""
 
-#: mars.tensor.cov:28 of
-msgid "bias"
-msgstr ""
-
-#: mars.tensor.cov:26 of
+#: mars.tensor.cov:23 of
 msgid ""
 "Default normalization (False) is by ``(N - 1)``, where ``N`` is the "
 "number of observations given (unbiased estimate). If `bias` is True, then"
@@ -94,15 +70,7 @@ msgid ""
 "keyword ``ddof`` in numpy versions >= 1.5."
 msgstr ""
 
-#: mars.tensor.cov:34 of
-msgid "ddof"
-msgstr ""
-
-#: mars.tensor.cov:33 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.cov:31 of
+#: mars.tensor.cov:28 of
 msgid ""
 "If not ``None`` the default value implied by `bias` is overridden. Note "
 "that ``ddof=1`` will return the unbiased estimate, even if both "
@@ -111,25 +79,13 @@ msgid ""
 "``None``."
 msgstr ""
 
-#: mars.tensor.cov:37 of
-msgid "fweights"
-msgstr ""
-
-#: mars.tensor.cov:36 of
-msgid "array_like, int, optional"
-msgstr ""
-
-#: mars.tensor.cov:37 of
+#: mars.tensor.cov:34 of
 msgid ""
 "1-D tensor of integer freguency weights; the number of times each "
 "observation vector should be repeated."
 msgstr ""
 
-#: mars.tensor.cov:43 of
-msgid "aweights"
-msgstr ""
-
-#: mars.tensor.cov:40 of
+#: mars.tensor.cov:37 of
 msgid ""
 "1-D tensor of observation vector weights. These relative weights are "
 "typically large for observations considered \"important\" and smaller for"
@@ -137,54 +93,66 @@ msgid ""
 "weights can be used to assign probabilities to observation vectors."
 msgstr ""
 
-#: mars.tensor.cov:48 of
-msgid "out"
+#: mars.tensor.cov of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.cov:47 of
-msgid "Tensor"
+#: mars.tensor.cov:43 of
+msgid "**out** -- The covariance matrix of the variables."
+msgstr ""
+
+#: mars.tensor.cov of
+msgid "Return type"
 msgstr ""
 
 #: mars.tensor.cov:48 of
-msgid "The covariance matrix of the variables."
+msgid ":func:`corrcoef`"
+msgstr ""
+
+#: mars.tensor.cov:49 of
+msgid "Normalized covariance matrix"
 msgstr ""
 
 #: mars.tensor.cov:52 of
-msgid "corrcoef : Normalized covariance matrix"
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.cov:56 of
+#: mars.tensor.cov:53 of
 msgid ""
 "Assume that the observations are in the columns of the observation array "
 "`m` and let ``f = fweights`` and ``a = aweights`` for brevity. The steps "
 "to compute the weighted covariance are as follows::"
 msgstr ""
 
-#: mars.tensor.cov:66 of
+#: mars.tensor.cov:63 of
 msgid ""
 "Note that when ``a == 1``, the normalization factor ``v1 / (v1**2 - ddof "
 "* v2)`` goes over to ``1 / (np.sum(f) - ddof)`` as it should."
 msgstr ""
 
-#: mars.tensor.cov:72 of
+#: mars.tensor.cov:68 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.cov:69 of
 msgid ""
 "Consider two variables, :math:`x_0` and :math:`x_1`, which correlate "
 "perfectly, but in opposite directions:"
 msgstr ""
 
-#: mars.tensor.cov:82 of
+#: mars.tensor.cov:79 of
 msgid ""
 "Note how :math:`x_0` increases while :math:`x_1` decreases. The "
 "covariance matrix shows this clearly:"
 msgstr ""
 
-#: mars.tensor.cov:89 of
+#: mars.tensor.cov:86 of
 msgid ""
 "Note that element :math:`C_{0,1}`, which shows the correlation between "
 ":math:`x_0` and :math:`x_1`, is negative."
 msgstr ""
 
-#: mars.tensor.cov:92 of
+#: mars.tensor.cov:89 of
 msgid "Further, note how `x` and `y` are combined:"
 msgstr ""
 

@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 11:23+0800\n"
+"POT-Creation-Date: 2020-04-22 18:48+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.zeros_like.rst:2
 msgid "mars.tensor.zeros\\_like"
@@ -25,61 +25,84 @@ msgstr ""
 msgid "Return a tensor of zeros with the same shape and type as a given tensor."
 msgstr ""
 
-#: mars.tensor.zeros_like:6 of
-msgid "a"
+#: mars.tensor.zeros_like of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.zeros_like:5 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.zeros_like:6 of
+#: mars.tensor.zeros_like:3 of
 msgid ""
 "The shape and data-type of `a` define these same attributes of the "
 "returned array."
 msgstr ""
 
-#: mars.tensor.zeros_like:8 of
-msgid "dtype"
-msgstr ""
-
-#: mars.tensor.zeros_like:7 of
-msgid "data-type, optional"
-msgstr ""
-
-#: mars.tensor.zeros_like:9 of
+#: mars.tensor.zeros_like:6 of
 msgid "Overrides the data type of the result."
 msgstr ""
 
-#: mars.tensor.zeros_like:11 of
-msgid "gpu"
+#: mars.tensor.zeros_like:8 of
+msgid "Allocate the tensor on GPU if True, None as default"
 msgstr ""
 
 #: mars.tensor.zeros_like:10 of
-msgid "bool, optional"
-msgstr ""
-
-#: mars.tensor.zeros_like:11 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
-
-#: mars.tensor.zeros_like:16 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.zeros_like:15 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.zeros_like:16 of
-msgid "tensor of zeros with the same shape and type as `a`."
-msgstr ""
-
-#: mars.tensor.zeros_like:20 of
 msgid ""
-"ones_like : Return an array of ones with shape and type of input. "
-"empty_like : Return an empty array with shape and type of input. zeros : "
-"Return a new array setting values to zero. ones : Return a new array "
-"setting values to one. empty : Return a new uninitialized array."
+"Overrides the memory layout of the result. 'C' means C-order, 'F' means "
+"F-order, 'A' means 'F' if `a` is Fortran contiguous, 'C' otherwise. 'K' "
+"means match the layout of `a` as closely as possible."
+msgstr ""
+
+#: mars.tensor.zeros_like of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.zeros_like:16 of
+msgid "**out** -- tensor of zeros with the same shape and type as `a`."
+msgstr ""
+
+#: mars.tensor.zeros_like of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.zeros_like:22 of
+msgid ":func:`ones_like`"
+msgstr ""
+
+#: mars.tensor.zeros_like:22 of
+msgid "Return an array of ones with shape and type of input."
+msgstr ""
+
+#: mars.tensor.zeros_like:25 of
+msgid ":func:`empty_like`"
+msgstr ""
+
+#: mars.tensor.zeros_like:25 of
+msgid "Return an empty array with shape and type of input."
+msgstr ""
+
+#: mars.tensor.zeros_like:28 of
+msgid ":func:`zeros`"
+msgstr ""
+
+#: mars.tensor.zeros_like:28 of
+msgid "Return a new array setting values to zero."
+msgstr ""
+
+#: mars.tensor.zeros_like:31 of
+msgid ":func:`ones`"
+msgstr ""
+
+#: mars.tensor.zeros_like:31 of
+msgid "Return a new array setting values to one."
+msgstr ""
+
+#: mars.tensor.zeros_like:33 of
+msgid ":func:`empty`"
+msgstr ""
+
+#: mars.tensor.zeros_like:34 of
+msgid "Return a new uninitialized array."
+msgstr ""
+
+#: mars.tensor.zeros_like:37 of
+msgid "Examples"
 msgstr ""
 

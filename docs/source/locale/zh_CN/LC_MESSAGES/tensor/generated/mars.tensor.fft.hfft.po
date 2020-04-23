@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.fft.hfft.rst:2
 msgid "mars.tensor.fft.hfft"
@@ -27,27 +27,15 @@ msgid ""
 "spectrum."
 msgstr ""
 
-#: mars.tensor.fft.hfft:6 of
-msgid "a"
+#: mars.tensor.fft.hfft of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.fft.hfft:5 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.fft.hfft:7 of
+#: mars.tensor.fft.hfft:4 of
 msgid "The input tensor."
 msgstr ""
 
-#: mars.tensor.fft.hfft:12 of
-msgid "n"
-msgstr ""
-
-#: mars.tensor.fft.hfft:11 mars.tensor.fft.hfft:14 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.fft.hfft:9 of
+#: mars.tensor.fft.hfft:6 of
 msgid ""
 "Length of the transformed axis of the output. For `n` output points, "
 "``n//2 + 1`` input points are necessary.  If the input is longer than "
@@ -56,59 +44,61 @@ msgid ""
 "input along the axis specified by `axis`."
 msgstr ""
 
-#: mars.tensor.fft.hfft:15 of
-msgid "axis"
-msgstr ""
-
-#: mars.tensor.fft.hfft:15 of
+#: mars.tensor.fft.hfft:12 of
 msgid "Axis over which to compute the FFT. If not given, the last axis is used."
 msgstr ""
 
-#: mars.tensor.fft.hfft:18 of
-msgid "norm"
-msgstr ""
-
-#: mars.tensor.fft.hfft:17 of
-msgid "{None, \"ortho\"}, optional"
-msgstr ""
-
-#: mars.tensor.fft.hfft:18 of
+#: mars.tensor.fft.hfft:15 of
 msgid "Normalization mode (see `mt.fft`). Default is None."
 msgstr ""
 
-#: mars.tensor.fft.hfft:28 of
-msgid "out"
+#: mars.tensor.fft.hfft of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.fft.hfft:27 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.fft.hfft:23 of
+#: mars.tensor.fft.hfft:18 of
 msgid ""
-"The truncated or zero-padded input, transformed along the axis indicated "
-"by `axis`, or the last one if `axis` is not specified. The length of the "
-"transformed axis is `n`, or, if `n` is not given, ``2*m - 2`` where ``m``"
-" is the length of the transformed axis of the input. To get an odd number"
-" of output points, `n` must be specified, for instance as ``2*m - 1`` in "
-"the typical case,"
+"**out** -- The truncated or zero-padded input, transformed along the axis"
+" indicated by `axis`, or the last one if `axis` is not specified. The "
+"length of the transformed axis is `n`, or, if `n` is not given, ``2*m - "
+"2`` where ``m`` is the length of the transformed axis of the input. To "
+"get an odd number of output points, `n` must be specified, for instance "
+"as ``2*m - 1`` in the typical case,"
 msgstr ""
 
-#: mars.tensor.fft.hfft:33 of
-msgid "IndexError"
+#: mars.tensor.fft.hfft of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.fft.hfft:33 of
+#: mars.tensor.fft.hfft of
+msgid "Raises"
+msgstr ""
+
+#: mars.tensor.fft.hfft:26 of
 msgid "If `axis` is larger than the last axis of `a`."
 msgstr ""
 
-#: mars.tensor.fft.hfft:37 of
-msgid ""
-"rfft : Compute the one-dimensional FFT for real input. ihfft : The "
-"inverse of `hfft`."
+#: mars.tensor.fft.hfft:31 of
+msgid ":func:`rfft`"
 msgstr ""
 
-#: mars.tensor.fft.hfft:42 of
+#: mars.tensor.fft.hfft:31 of
+msgid "Compute the one-dimensional FFT for real input."
+msgstr ""
+
+#: mars.tensor.fft.hfft:33 of
+msgid ":func:`ihfft`"
+msgstr ""
+
+#: mars.tensor.fft.hfft:34 of
+msgid "The inverse of `hfft`."
+msgstr ""
+
+#: mars.tensor.fft.hfft:37 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.fft.hfft:38 of
 msgid ""
 "`hfft`/`ihfft` are a pair analogous to `rfft`/`irfft`, but for the "
 "opposite case: here the signal has Hermitian symmetry in the time domain "
@@ -116,11 +106,15 @@ msgid ""
 "must supply the length of the result if it is to be odd."
 msgstr ""
 
-#: mars.tensor.fft.hfft:47 of
+#: mars.tensor.fft.hfft:43 of
 msgid "even: ``ihfft(hfft(a, 2*len(a) - 2) == a``, within roundoff error,"
 msgstr ""
 
-#: mars.tensor.fft.hfft:48 of
+#: mars.tensor.fft.hfft:44 of
 msgid "odd: ``ihfft(hfft(a, 2*len(a) - 1) == a``, within roundoff error."
+msgstr ""
+
+#: mars.tensor.fft.hfft:47 of
+msgid "Examples"
 msgstr ""
 

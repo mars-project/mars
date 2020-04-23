@@ -17,6 +17,7 @@ from collections import OrderedDict
 import pandas as pd
 
 from ...core import Entity, Base, ExecutableTuple
+from ...utils import adapt_mars_docstring
 
 
 class PlotAccessor:
@@ -56,5 +57,5 @@ class PlotAccessor:
     @classmethod
     def _register(cls, method):
         doc = getattr(pd.DataFrame.plot, method).__doc__
-        new_doc = doc.replace('pd.', 'md.')
+        new_doc = adapt_mars_docstring(doc)
         setattr(cls, method, cls._gen_func(method, new_doc))

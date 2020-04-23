@@ -1,0 +1,158 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 20:08+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.rolling.rst:2
+msgid "mars.dataframe.Series.rolling"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:1 of
+msgid "Provide rolling window calculations."
+msgstr ""
+
+#: mars.dataframe.Series.rolling of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:3 of
+msgid ""
+"Size of the moving window. This is the number of observations used for "
+"calculating the statistic. Each window will be a fixed size. If its an "
+"offset then this will be the time period of each window. Each window will"
+" be a variable sized based on the observations included in the time-"
+"period. This is only valid for datetimelike indexes. This is new in "
+"0.19.0"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:10 of
+msgid ""
+"Minimum number of observations in window required to have a value "
+"(otherwise result is NA). For a window that is specified by an offset, "
+"`min_periods` will default to 1. Otherwise, `min_periods` will default to"
+" the size of the window."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:15 of
+msgid "Set the labels at the center of the window."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:17 of
+msgid ""
+"Provide a window type. If ``None``, all points are evenly weighted. See "
+"the notes below for further information."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:20 of
+msgid ""
+"For a DataFrame, a datetime-like column on which to calculate the rolling"
+" window, rather than the DataFrame's index. Provided integer column is "
+"ignored and excluded from result since an integer index is not used to "
+"calculate the rolling window."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:27 of
+msgid ""
+"Make the interval closed on the 'right', 'left', 'both' or 'neither' "
+"endpoints. For offset-based windows, it defaults to 'right'. For fixed "
+"windows, defaults to 'both'. Remaining cases not implemented for fixed "
+"windows."
+msgstr ""
+
+#: mars.dataframe.Series.rolling of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.rolling of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:40 of
+msgid ":meth:`expanding`"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:40 of
+msgid "Provides expanding transformations."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:42 of
+msgid ":meth:`ewm`"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:43 of
+msgid "Provides exponential weighted functions."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:46 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:47 of
+msgid ""
+"By default, the result is set to the right edge of the window. This can "
+"be changed to the center of the window by setting ``center=True``. To "
+"learn more about the offsets & frequency strings, please see `this link "
+"<http://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html"
+"#offset-aliases>`__."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:52 of
+msgid ""
+"The recognized win_types are: * ``boxcar`` * ``triang`` * ``blackman`` * "
+"``hamming`` * ``bartlett`` * ``parzen`` * ``bohman`` * ``blackmanharris``"
+" * ``nuttall`` * ``barthann`` * ``kaiser`` (needs beta) * ``gaussian`` "
+"(needs std) * ``general_gaussian`` (needs power, width) * ``slepian`` "
+"(needs width) * ``exponential`` (needs tau), center is set to None."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:69 of
+msgid ""
+"If ``win_type=None`` all points are evenly weighted. To learn more about "
+"different window types see `scipy.signal window functions "
+"<https://docs.scipy.org/doc/scipy/reference/signal.html#window-"
+"functions>`__."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:74 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:86 of
+msgid "Rolling sum with a window length of 2, using the 'triang' window type."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:97 of
+msgid ""
+"Rolling sum with a window length of 2, min_periods defaults to the window"
+" length."
+msgstr ""
+
+#: mars.dataframe.Series.rolling:108 of
+msgid "Same as above, but explicitly set the min_periods"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:118 of
+msgid "A ragged (meaning not-a-regular frequency), time-indexed DataFrame"
+msgstr ""
+
+#: mars.dataframe.Series.rolling:134 of
+msgid ""
+"Contrasting to an integer rolling window, this will roll a variable "
+"length window corresponding to the time period. The default for "
+"min_periods is 1."
+msgstr ""
+

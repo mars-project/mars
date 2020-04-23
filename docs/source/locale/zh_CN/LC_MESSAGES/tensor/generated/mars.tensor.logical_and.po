@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.logical_and.rst:2
 msgid "mars.tensor.logical\\_and"
@@ -25,27 +25,15 @@ msgstr ""
 msgid "Compute the truth value of x1 AND x2 element-wise."
 msgstr ""
 
-#: mars.tensor.logical_and:5 of
-msgid "x1, x2"
+#: mars.tensor.logical_and of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.logical_and:4 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.logical_and:6 of
+#: mars.tensor.logical_and:3 of
 msgid "Input tensors. `x1` and `x2` must be of the same shape."
 msgstr ""
 
-#: mars.tensor.logical_and:10 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.logical_and:9 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.logical_and:8 of
+#: mars.tensor.logical_and:5 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -53,39 +41,33 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.logical_and:13 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.logical_and:12 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.logical_and:13 of
+#: mars.tensor.logical_and:10 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.logical_and of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.logical_and:15 of
-msgid "**kwargs"
-msgstr ""
-
-#: mars.tensor.logical_and:21 of
-msgid "y"
-msgstr ""
-
-#: mars.tensor.logical_and:20 of
-msgid "Tensor or bool"
-msgstr ""
-
-#: mars.tensor.logical_and:20 of
 msgid ""
-"Boolean result with the same shape as `x1` and `x2` of the logical AND "
-"operation on corresponding elements of `x1` and `x2`."
+"**y** -- Boolean result with the same shape as `x1` and `x2` of the "
+"logical AND operation on corresponding elements of `x1` and `x2`."
 msgstr ""
 
-#: mars.tensor.logical_and:25 of
-msgid "logical_or, logical_not, logical_xor bitwise_and"
+#: mars.tensor.logical_and of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.logical_and:19 of
+msgid ""
+":func:`logical_or`, :func:`logical_not`, :func:`logical_xor`, "
+":func:`bitwise_and`"
+msgstr ""
+
+#: mars.tensor.logical_and:22 of
+msgid "Examples"
 msgstr ""
 

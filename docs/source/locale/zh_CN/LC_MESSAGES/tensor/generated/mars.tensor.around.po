@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.around.rst:2
 msgid "mars.tensor.around"
@@ -25,78 +25,75 @@ msgstr ""
 msgid "Evenly round to the given number of decimals."
 msgstr ""
 
-#: mars.tensor.around:5 of
-msgid "a"
+#: mars.tensor.around of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.around:4 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.around:6 of
+#: mars.tensor.around:3 of
 msgid "Input data."
 msgstr ""
 
-#: mars.tensor.around:9 of
-msgid "decimals"
-msgstr ""
-
-#: mars.tensor.around:8 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.around:8 of
+#: mars.tensor.around:5 of
 msgid ""
 "Number of decimal places to round to (default: 0).  If decimals is "
 "negative, it specifies the number of positions to the left of the decimal"
 " point."
 msgstr ""
 
-#: mars.tensor.around:14 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.around:13 of
-msgid "Tensor, optional"
-msgstr ""
-
-#: mars.tensor.around:12 of
+#: mars.tensor.around:9 of
 msgid ""
 "Alternative output tensor in which to place the result. It must have the "
 "same shape as the expected output, but the type of the output values will"
 " be cast if necessary."
 msgstr ""
 
-#: mars.tensor.around:24 of
-msgid "rounded_array"
+#: mars.tensor.around of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.around:23 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.around:19 of
+#: mars.tensor.around:14 of
 msgid ""
-"An tensor of the same type as `a`, containing the rounded values. Unless "
-"`out` was specified, a new tensor is created.  A reference to the result "
-"is returned."
+"**rounded_array** -- An tensor of the same type as `a`, containing the "
+"rounded values. Unless `out` was specified, a new tensor is created.  A "
+"reference to the result is returned.  The real and imaginary parts of "
+"complex numbers are rounded separately.  The result of rounding a float "
+"is a float."
 msgstr ""
 
-#: mars.tensor.around:23 of
+#: mars.tensor.around:14 of
+msgid ""
+"**rounded_array** -- An tensor of the same type as `a`, containing the "
+"rounded values. Unless `out` was specified, a new tensor is created.  A "
+"reference to the result is returned."
+msgstr ""
+
+#: mars.tensor.around:18 of
 msgid ""
 "The real and imaginary parts of complex numbers are rounded separately.  "
 "The result of rounding a float is a float."
 msgstr ""
 
-#: mars.tensor.around:28 of
-msgid "Tensor.round : equivalent method"
+#: mars.tensor.around of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.around:25 of
+msgid ":func:`Tensor.round`"
+msgstr ""
+
+#: mars.tensor.around:25 of
+msgid "equivalent method"
+msgstr ""
+
+#: mars.tensor.around:27 of
+msgid ":func:`ceil`, :func:`fix`, :func:`floor`, :func:`rint`, :func:`trunc`"
 msgstr ""
 
 #: mars.tensor.around:30 of
-msgid "ceil, fix, floor, rint, trunc"
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.around:35 of
+#: mars.tensor.around:31 of
 msgid ""
 "For values exactly halfway between rounded decimal values, NumPy rounds "
 "to the nearest even value. Thus 1.5 and 2.5 round to 2.0, -0.5 and 0.5 "
@@ -105,16 +102,24 @@ msgid ""
 "[1]_ and errors introduced when scaling by powers of ten."
 msgstr ""
 
-#: mars.tensor.around:44 of
+#: mars.tensor.around:39 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.around:40 of
 msgid ""
 "\"Lecture Notes on the Status of  IEEE 754\", William Kahan, "
 "http://www.cs.berkeley.edu/~wkahan/ieee754status/IEEE754.PDF"
 msgstr ""
 
-#: mars.tensor.around:46 of
+#: mars.tensor.around:42 of
 msgid ""
 "\"How Futile are Mindless Assessments of Roundoff in Floating-Point "
 "Computation?\", William Kahan, "
 "http://www.cs.berkeley.edu/~wkahan/Mindless.pdf"
+msgstr ""
+
+#: mars.tensor.around:47 of
+msgid "Examples"
 msgstr ""
 

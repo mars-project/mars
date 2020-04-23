@@ -1,31 +1,31 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.random.random_integers.rst:2
 msgid "mars.tensor.random.random\\_integers"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:1 of
+#: mars.tensor.random.random_integers:1 of
 msgid "Random integers of type mt.int between `low` and `high`, inclusive."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:3 of
+#: mars.tensor.random.random_integers:3 of
 msgid ""
 "Return random integers of type mt.int from the \"discrete uniform\" "
 "distribution in the closed interval [`low`, `high`].  If `high` is None "
@@ -34,122 +34,92 @@ msgid ""
 " its precision is platform dependent."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:9 of
+#: mars.tensor.random.random_integers:9 of
 msgid "This function has been deprecated. Use randint instead."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:15 of
-msgid "low"
+#: mars.tensor.random.random_integers of
+msgid "Parameters"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:14 of
-msgid "int"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:14 of
+#: mars.tensor.random.random_integers:11 of
 msgid ""
 "Lowest (signed) integer to be drawn from the distribution (unless "
 "``high=None``, in which case this parameter is the *highest* such "
 "integer)."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:18 of
-msgid "high"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:17 of
-msgid "int, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:18 of
+#: mars.tensor.random.random_integers:15 of
 msgid ""
 "If provided, the largest (signed) integer to be drawn from the "
 "distribution (see above for behavior if ``high=None``)."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:22 of
-msgid "size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:21 of
-msgid "int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:21 of
+#: mars.tensor.random.random_integers:18 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  Default is None, in which case a single value is"
 " returned."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:24 of
-msgid "chunk_size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:23 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:25 of
+#: mars.tensor.random.random_integers:22 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:27 of
-msgid "gpu"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:26 of
-msgid "bool, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:27 of
+#: mars.tensor.random.random_integers:24 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:33 of
-msgid "out"
+#: mars.tensor.random.random_integers of
+msgid "Returns"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:32 of
-msgid "int or Tensor of ints"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random_integers:32 of
+#: mars.tensor.random.random_integers:27 of
 msgid ""
-"`size`-shaped array of random integers from the appropriate distribution,"
-" or a single such random int if `size` not provided."
+"**out** -- `size`-shaped array of random integers from the appropriate "
+"distribution, or a single such random int if `size` not provided."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:39 of
-msgid "random.randint : Similar to `random_integers`, only for the half-open"
+#: mars.tensor.random.random_integers of
+msgid "Return type"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:38 of
-msgid "Similar to random_integers, only for the half-open"
+#: mars.tensor.random.random_integers:33 of
+msgid ":func:`random.randint`"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:38 of
-msgid "interval [`low`, `high`), and 0 is the lowest value if `high` is omitted."
+#: mars.tensor.random.random_integers:34 of
+msgid ""
+"Similar to `random_integers`, only for the half-open interval [`low`, "
+"`high`), and 0 is the lowest value if `high` is omitted."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:43 of
+#: mars.tensor.random.random_integers:37 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.random.random_integers:38 of
 msgid ""
 "To sample from N evenly spaced floating-point numbers between a and b, "
 "use::"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:61 of
+#: mars.tensor.random.random_integers:44 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.random_integers:56 of
 msgid ""
 "Choose five random numbers from the set of five evenly-spaced numbers "
 "between 0 and 2.5, inclusive (*i.e.*, from the set :math:`{0, 5/8, 10/8, "
 "15/8, 20/8}`):"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:68 of
+#: mars.tensor.random.random_integers:63 of
 msgid "Roll two six sided dice 1000 times and sum the results:"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random_integers:74 of
+#: mars.tensor.random.random_integers:69 of
 msgid "Display results as a histogram:"
 msgstr ""
 

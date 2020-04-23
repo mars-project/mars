@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.exp2.rst:2
 msgid "mars.tensor.exp2"
@@ -25,27 +25,15 @@ msgstr ""
 msgid "Calculate `2**p` for all `p` in the input tensor."
 msgstr ""
 
-#: mars.tensor.exp2:5 of
-msgid "x"
+#: mars.tensor.exp2 of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.exp2:4 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.exp2:6 of
+#: mars.tensor.exp2:3 of
 msgid "Input values."
 msgstr ""
 
-#: mars.tensor.exp2:10 mars.tensor.exp2:20 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.exp2:9 of
-msgid "Tensor, None, or tuple of tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.exp2:8 of
+#: mars.tensor.exp2:5 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -53,33 +41,29 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.exp2:13 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.exp2:12 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.exp2:13 of
+#: mars.tensor.exp2:10 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.exp2 of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.exp2:15 of
-msgid "**kwargs"
+msgid "**out** -- Element-wise 2 to the power `x`."
 msgstr ""
 
-#: mars.tensor.exp2:19 of
-msgid "Tensor"
+#: mars.tensor.exp2 of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.exp2:20 of
-msgid "Element-wise 2 to the power `x`."
+#: mars.tensor.exp2:18 of
+msgid ":func:`power`"
 msgstr ""
 
-#: mars.tensor.exp2:24 of
-msgid "power"
+#: mars.tensor.exp2:21 of
+msgid "Examples"
 msgstr ""
 

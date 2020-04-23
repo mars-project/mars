@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.linalg.qr.rst:2
 msgid "mars.tensor.linalg.qr"
@@ -31,81 +31,97 @@ msgid ""
 "triangular."
 msgstr ""
 
-#: mars.tensor.linalg.qr:8 of
-msgid "a"
+#: mars.tensor.linalg.qr of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.linalg.qr:7 of
-msgid "array_like, shape (M, N)"
-msgstr ""
-
-#: mars.tensor.linalg.qr:9 of
+#: mars.tensor.linalg.qr:6 of
 msgid "Matrix to be factored."
 msgstr ""
 
-#: mars.tensor.linalg.qr:23 of
-msgid "method: {'tsqr', 'sfqr'}, optional"
+#: mars.tensor.linalg.qr:8 of
+msgid ""
+"method to calculate qr factorization, tsqr as default  TSQR is presented "
+"in:      A. Benson, D. Gleich, and J. Demmel.     Direct QR "
+"factorizations for tall-and-skinny matrices in     MapReduce "
+"architectures.     IEEE International Conference on Big Data, 2013.     "
+"http://arxiv.org/abs/1301.1071  FSQR is a QR decomposition for fat and "
+"short matrix:     A = [A1, A2, A3, ...], A1 may be decomposed as A1 = Q1 "
+"* R1,     for A = Q * R, Q = Q1, R = [R1, R2, R3, ...] where A2 = Q1 * "
+"R2, A3 = Q1 * R3, ..."
 msgstr ""
 
-#: mars.tensor.linalg.qr:11 of
+#: mars.tensor.linalg.qr:8 of
 msgid "method to calculate qr factorization, tsqr as default"
 msgstr ""
 
-#: mars.tensor.linalg.qr:13 of
+#: mars.tensor.linalg.qr:10 of
 msgid "TSQR is presented in:"
 msgstr ""
 
-#: mars.tensor.linalg.qr:15 of
+#: mars.tensor.linalg.qr:12 of
 msgid ""
 "A. Benson, D. Gleich, and J. Demmel. Direct QR factorizations for tall-"
 "and-skinny matrices in MapReduce architectures. IEEE International "
 "Conference on Big Data, 2013. http://arxiv.org/abs/1301.1071"
 msgstr ""
 
-#: mars.tensor.linalg.qr:23 of
+#: mars.tensor.linalg.qr:19 of
 msgid "FSQR is a QR decomposition for fat and short matrix:"
 msgstr ""
 
-#: mars.tensor.linalg.qr:22 of
+#: mars.tensor.linalg.qr:19 of
 msgid ""
 "A = [A1, A2, A3, ...], A1 may be decomposed as A1 = Q1 * R1, for A = Q * "
 "R, Q = Q1, R = [R1, R2, R3, ...] where A2 = Q1 * R2, A3 = Q1 * R3, ..."
 msgstr ""
 
-#: mars.tensor.linalg.qr:30 of
-msgid "q"
+#: mars.tensor.linalg.qr of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.linalg.qr:29 mars.tensor.linalg.qr:32 of
-msgid "Tensor of float or complex, optional"
-msgstr ""
-
-#: mars.tensor.linalg.qr:28 of
+#: mars.tensor.linalg.qr:23 of
 msgid ""
-"A matrix with orthonormal columns. When mode = 'complete' the result is "
-"an orthogonal/unitary matrix depending on whether or not a is "
-"real/complex. The determinant may be either +/- 1 in that case."
+"* **q** (*Tensor of float or complex, optional*) -- A matrix with "
+"orthonormal columns. When mode = 'complete' the   result is an "
+"orthogonal/unitary matrix depending on whether or not   a is "
+"real/complex. The determinant may be either +/- 1 in that   case. * **r**"
+" (*Tensor of float or complex, optional*) -- The upper-triangular matrix."
 msgstr ""
 
-#: mars.tensor.linalg.qr:33 of
-msgid "r"
+#: mars.tensor.linalg.qr:23 of
+msgid ""
+"**q** (*Tensor of float or complex, optional*) -- A matrix with "
+"orthonormal columns. When mode = 'complete' the result is an "
+"orthogonal/unitary matrix depending on whether or not a is real/complex. "
+"The determinant may be either +/- 1 in that case."
 msgstr ""
 
-#: mars.tensor.linalg.qr:33 of
-msgid "The upper-triangular matrix."
+#: mars.tensor.linalg.qr:27 of
+msgid ""
+"**r** (*Tensor of float or complex, optional*) -- The upper-triangular "
+"matrix."
 msgstr ""
 
-#: mars.tensor.linalg.qr:38 of
-msgid "LinAlgError"
+#: mars.tensor.linalg.qr of
+msgid "Raises"
 msgstr ""
 
-#: mars.tensor.linalg.qr:38 of
+#: mars.tensor.linalg.qr:29 of
 msgid "If factoring fails."
 msgstr ""
 
-#: mars.tensor.linalg.qr:42 of
+#: mars.tensor.linalg.qr:32 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.linalg.qr:33 of
 msgid ""
 "For more information on the qr factorization, see for example: "
 "http://en.wikipedia.org/wiki/QR_factorization"
+msgstr ""
+
+#: mars.tensor.linalg.qr:37 of
+msgid "Examples"
 msgstr ""
 

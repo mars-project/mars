@@ -1,57 +1,45 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.random.logseries.rst:2
 msgid "mars.tensor.random.logseries"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:1 of
+#: mars.tensor.random.logseries:1 of
 msgid "Draw samples from a logarithmic series distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:3 of
+#: mars.tensor.random.logseries:3 of
 msgid ""
 "Samples are drawn from a log series distribution with specified shape "
 "parameter, 0 < ``p`` < 1."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:8 of
-msgid "p"
+#: mars.tensor.random.logseries of
+msgid "Parameters"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:7 of
-msgid "float or array_like of floats"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.logseries:9 of
+#: mars.tensor.random.logseries:6 of
 msgid "Shape parameter for the distribution.  Must be in the range (0, 1)."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:13 of
-msgid "size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.logseries:12 of
-msgid "int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.logseries:11 of
+#: mars.tensor.random.logseries:8 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -59,79 +47,59 @@ msgid ""
 "are drawn."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:15 of
-msgid "chunk_size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.logseries:14 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.logseries:16 of
+#: mars.tensor.random.logseries:13 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:17 of
-msgid "gpu"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.logseries:16 of
-msgid "bool, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.logseries:18 of
+#: mars.tensor.random.logseries:15 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:20 of
-msgid "dtype"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.logseries:19 of
-msgid "data-type, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.logseries:20 of
+#: mars.tensor.random.logseries:17 of
 msgid "Data-type of the returned tensor."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:25 of
-msgid "out"
+#: mars.tensor.random.logseries of
+msgid "Returns"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:24 of
-msgid "Tensor or scalar"
+#: mars.tensor.random.logseries:20 of
+msgid ""
+"**out** -- Drawn samples from the parameterized logarithmic series "
+"distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:25 of
-msgid "Drawn samples from the parameterized logarithmic series distribution."
+#: mars.tensor.random.logseries of
+msgid "Return type"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:30 of
-msgid "scipy.stats.logser"
+#: mars.tensor.random.logseries:25 of
+msgid ":func:`scipy.stats.logser`"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:29 of
-msgid "probability density function, distribution or"
+#: mars.tensor.random.logseries:26 of
+msgid ""
+"probability density function, distribution or cumulative density "
+"function, etc."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:30 of
-msgid "cumulative density function, etc."
+#: mars.tensor.random.logseries:29 of
+msgid "Notes"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:34 of
+#: mars.tensor.random.logseries:30 of
 msgid "The probability density for the Log Series distribution is"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:36 of
+#: mars.tensor.random.logseries:32 of
 msgid "P(k) = \\frac{-p^k}{k \\ln(1-p)},"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:38 of
+#: mars.tensor.random.logseries:34 of
 msgid "where p = probability."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:40 of
+#: mars.tensor.random.logseries:36 of
 msgid ""
 "The log series distribution is frequently used to represent species "
 "richness and occurrence, first proposed by Fisher, Corbet, and Williams "
@@ -139,7 +107,11 @@ msgid ""
 "in cars [3]."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:47 of
+#: mars.tensor.random.logseries:42 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.random.logseries:43 of
 msgid ""
 "Buzas, Martin A.; Culver, Stephen J.,  Understanding regional species "
 "diversity through the log series distribution of occurrences: "
@@ -147,30 +119,34 @@ msgid ""
 "September 1999 , pp. 187-195(9)."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:51 of
+#: mars.tensor.random.logseries:47 of
 msgid ""
 "Fisher, R.A,, A.S. Corbet, and C.B. Williams. 1943. The relation between "
 "the number of species and the number of individuals in a random sample of"
 " an animal population. Journal of Animal Ecology, 12:42-58."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:55 of
+#: mars.tensor.random.logseries:51 of
 msgid ""
 "D. J. Hand, F. Daly, D. Lunn, E. Ostrowski, A Handbook of Small Data "
 "Sets, CRC Press, 1994."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:57 of
+#: mars.tensor.random.logseries:53 of
 msgid ""
 "Wikipedia, \"Logarithmic distribution\", "
 "http://en.wikipedia.org/wiki/Logarithmic_distribution"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:62 of
+#: mars.tensor.random.logseries:57 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.logseries:58 of
 msgid "Draw samples from the distribution:"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.logseries:71 of
+#: mars.tensor.random.logseries:67 of
 msgid "#   plot against distribution"
 msgstr ""
 

@@ -888,3 +888,39 @@ def recursive_tile(tensor):
         q.pop()
 
     return tensor
+
+
+def adapt_mars_docstring(doc):
+    """
+    Adapt numpy-style docstrings to Mars docstring.
+
+    This util function will add Mars imports, replace object references
+    and add execute calls. Note that check is needed after replacement.
+    """
+    if doc is None:
+        return None
+
+    lines = []
+    first_prompt = True
+    prev_prompt = False
+    has_numpy = 'np.' in doc
+    has_pandas = 'pd.' in doc
+
+    for line in doc.splitlines():
+        sp = line.strip()
+        if sp.startswith('>>>') or sp.startswith('...'):
+            prev_prompt = True
+            if first_prompt:
+                first_prompt = False
+                indent = ''.join(itertools.takewhile(lambda x: x in (' ', '\t'), line))
+                if has_numpy:
+                    lines.extend([indent + '>>> import mars.tensor as mt'])
+                if has_pandas:
+                    lines.extend([indent + '>>> import mars.dataframe as md'])
+            line = line.replace('np.', 'mt.').replace('pd.', 'md.')
+        elif prev_prompt:
+            prev_prompt = False
+            if sp:
+                lines[-1] += '.execute()'
+        lines.append(line)
+    return '\n'.join(lines)

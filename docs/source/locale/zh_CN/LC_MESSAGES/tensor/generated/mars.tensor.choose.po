@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:10+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.choose.rst:2
 msgid "mars.tensor.choose"
@@ -78,30 +78,18 @@ msgid ""
 " mapped to `n-1`; and then the new tensor is constructed as above."
 msgstr ""
 
-#: mars.tensor.choose:38 of
-msgid "a"
+#: mars.tensor.choose of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.choose:37 of
-msgid "int tensor"
-msgstr ""
-
-#: mars.tensor.choose:37 of
+#: mars.tensor.choose:34 of
 msgid ""
 "This tensor must contain integers in `[0, n-1]`, where `n` is the number "
 "of choices, unless ``mode=wrap`` or ``mode=clip``, in which cases any "
 "integers are permissible."
 msgstr ""
 
-#: mars.tensor.choose:43 of
-msgid "choices"
-msgstr ""
-
-#: mars.tensor.choose:42 of
-msgid "sequence of tensors"
-msgstr ""
-
-#: mars.tensor.choose:41 of
+#: mars.tensor.choose:38 of
 msgid ""
 "Choice tensors. `a` and all of the choices must be broadcastable to the "
 "same shape.  If `choices` is itself a tensor (not recommended), then its "
@@ -109,69 +97,70 @@ msgid ""
 " is taken as defining the \"sequence\"."
 msgstr ""
 
-#: mars.tensor.choose:46 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.choose:45 of
-msgid "tensor, optional"
-msgstr ""
-
-#: mars.tensor.choose:46 of
+#: mars.tensor.choose:43 of
 msgid ""
 "If provided, the result will be inserted into this tensor. It should be "
 "of the appropriate shape and dtype."
 msgstr ""
 
-#: mars.tensor.choose:53 of
-msgid "mode"
+#: mars.tensor.choose:46 of
+msgid ""
+"Specifies how indices outside `[0, n-1]` will be treated:    * 'raise' : "
+"an exception is raised   * 'wrap' : value becomes value mod `n`   * "
+"'clip' : values < 0 are mapped to 0, values > n-1 are mapped to n-1"
 msgstr ""
 
-#: mars.tensor.choose:52 of
-msgid "{'raise' (default), 'wrap', 'clip'}, optional"
-msgstr ""
-
-#: mars.tensor.choose:49 of
+#: mars.tensor.choose:47 of
 msgid "Specifies how indices outside `[0, n-1]` will be treated:"
 msgstr ""
 
-#: mars.tensor.choose:51 of
+#: mars.tensor.choose:49 of
 msgid "'raise' : an exception is raised"
 msgstr ""
 
-#: mars.tensor.choose:52 of
+#: mars.tensor.choose:50 of
 msgid "'wrap' : value becomes value mod `n`"
 msgstr ""
 
-#: mars.tensor.choose:53 of
+#: mars.tensor.choose:51 of
 msgid "'clip' : values < 0 are mapped to 0, values > n-1 are mapped to n-1"
 msgstr ""
 
-#: mars.tensor.choose:58 of
-msgid "merged_array"
+#: mars.tensor.choose of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.choose:54 of
+msgid "**merged_array** -- The merged result."
+msgstr ""
+
+#: mars.tensor.choose of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.choose of
+msgid "Raises"
 msgstr ""
 
 #: mars.tensor.choose:57 of
-msgid "Tensor"
+msgid ""
+"shape mismatch: If `a` and each choice tensor are not all broadcastable "
+"to the same     shape."
 msgstr ""
 
-#: mars.tensor.choose:58 of
-msgid "The merged result."
+#: mars.tensor.choose:61 of
+msgid ":func:`Tensor.choose`"
 msgstr ""
 
-#: mars.tensor.choose:64 of
-msgid "ValueError: shape mismatch"
+#: mars.tensor.choose:62 of
+msgid "equivalent method"
 msgstr ""
 
-#: mars.tensor.choose:63 of
-msgid "If `a` and each choice tensor are not all broadcastable to the same shape."
+#: mars.tensor.choose:65 of
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.choose:68 of
-msgid "Tensor.choose : equivalent method"
-msgstr ""
-
-#: mars.tensor.choose:72 of
+#: mars.tensor.choose:66 of
 msgid ""
 "To reduce the chance of misinterpretation, even though the following "
 "\"abuse\" is nominally supported, `choices` should neither be, nor be "
@@ -179,7 +168,11 @@ msgid ""
 "container should be either a list or a tuple."
 msgstr ""
 
-#: mars.tensor.choose:98 of
+#: mars.tensor.choose:72 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.choose:91 of
 msgid "A couple examples illustrating how choose broadcasts:"
 msgstr ""
 

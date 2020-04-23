@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.fft.rfftn.rst:2
 msgid "mars.tensor.fft.rfftn"
@@ -34,27 +34,15 @@ msgid ""
 "transforms are complex."
 msgstr ""
 
-#: mars.tensor.fft.rfftn:11 of
-msgid "a"
+#: mars.tensor.fft.rfftn of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.fft.rfftn:10 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.fft.rfftn:12 of
+#: mars.tensor.fft.rfftn:9 of
 msgid "Input tensor, taken to be real."
 msgstr ""
 
-#: mars.tensor.fft.rfftn:20 of
-msgid "s"
-msgstr ""
-
-#: mars.tensor.fft.rfftn:19 mars.tensor.fft.rfftn:22 of
-msgid "sequence of ints, optional"
-msgstr ""
-
-#: mars.tensor.fft.rfftn:14 of
+#: mars.tensor.fft.rfftn:11 of
 msgid ""
 "Shape (length along each transformed axis) to use from the input. "
 "(``s[0]`` refers to axis 0, ``s[1]`` to axis 1, etc.). The final element "
@@ -65,78 +53,89 @@ msgid ""
 "shape of the input along the axes specified by `axes` is used."
 msgstr ""
 
-#: mars.tensor.fft.rfftn:23 of
-msgid "axes"
-msgstr ""
-
-#: mars.tensor.fft.rfftn:23 of
+#: mars.tensor.fft.rfftn:20 of
 msgid ""
 "Axes over which to compute the FFT.  If not given, the last ``len(s)`` "
 "axes are used, or all axes if `s` is also not specified."
 msgstr ""
 
-#: mars.tensor.fft.rfftn:26 of
-msgid "norm"
-msgstr ""
-
-#: mars.tensor.fft.rfftn:25 of
-msgid "{None, \"ortho\"}, optional"
-msgstr ""
-
-#: mars.tensor.fft.rfftn:26 of
+#: mars.tensor.fft.rfftn:23 of
 msgid "Normalization mode (see `mt.fft`). Default is None."
 msgstr ""
 
-#: mars.tensor.fft.rfftn:36 of
-msgid "out"
+#: mars.tensor.fft.rfftn of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.fft.rfftn:35 of
-msgid "complex Tensor"
-msgstr ""
-
-#: mars.tensor.fft.rfftn:31 of
+#: mars.tensor.fft.rfftn:26 of
 msgid ""
-"The truncated or zero-padded input, transformed along the axes indicated "
-"by `axes`, or by a combination of `s` and `a`, as explained in the "
-"parameters section above. The length of the last axis transformed will be"
-" ``s[-1]//2+1``, while the remaining transformed axes will have lengths "
-"according to `s`, or unchanged from the input."
+"**out** -- The truncated or zero-padded input, transformed along the axes"
+" indicated by `axes`, or by a combination of `s` and `a`, as explained in"
+" the parameters section above. The length of the last axis transformed "
+"will be ``s[-1]//2+1``, while the remaining transformed axes will have "
+"lengths according to `s`, or unchanged from the input."
 msgstr ""
 
-#: mars.tensor.fft.rfftn:40 of
-msgid "ValueError"
+#: mars.tensor.fft.rfftn of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.fft.rfftn:41 of
+#: mars.tensor.fft.rfftn of
+msgid "Raises"
+msgstr ""
+
+#: mars.tensor.fft.rfftn:34 of
 msgid "If `s` and `axes` have different length."
 msgstr ""
 
-#: mars.tensor.fft.rfftn:43 of
-msgid "IndexError"
-msgstr ""
-
-#: mars.tensor.fft.rfftn:43 of
+#: mars.tensor.fft.rfftn:35 of
 msgid "If an element of `axes` is larger than than the number of axes of `a`."
 msgstr ""
 
-#: mars.tensor.fft.rfftn:47 of
-msgid "irfftn : The inverse of `rfftn`, i.e. the inverse of the n-dimensional FFT"
+#: mars.tensor.fft.rfftn:40 of
+msgid ":func:`irfftn`"
+msgstr ""
+
+#: mars.tensor.fft.rfftn:40 of
+msgid ""
+"The inverse of `rfftn`, i.e. the inverse of the n-dimensional FFT of real"
+" input."
+msgstr ""
+
+#: mars.tensor.fft.rfftn:43 of
+msgid ":func:`fft`"
+msgstr ""
+
+#: mars.tensor.fft.rfftn:43 of
+msgid "The one-dimensional FFT, with definitions and conventions used."
 msgstr ""
 
 #: mars.tensor.fft.rfftn:46 of
-msgid "The inverse of rfftn, i.e. the inverse of the n-dimensional FFT"
+msgid ":func:`rfft`"
 msgstr ""
 
-#: mars.tensor.fft.rfftn:48 of
-msgid "of real input."
+#: mars.tensor.fft.rfftn:46 of
+msgid "The one-dimensional FFT of real input."
 msgstr ""
 
 #: mars.tensor.fft.rfftn:49 of
-msgid ""
-"fft : The one-dimensional FFT, with definitions and conventions used. "
-"rfft : The one-dimensional FFT of real input. fftn : The n-dimensional "
-"FFT. rfft2 : The two-dimensional FFT of real input."
+msgid ":func:`fftn`"
+msgstr ""
+
+#: mars.tensor.fft.rfftn:49 of
+msgid "The n-dimensional FFT."
+msgstr ""
+
+#: mars.tensor.fft.rfftn:51 of
+msgid ":func:`rfft2`"
+msgstr ""
+
+#: mars.tensor.fft.rfftn:52 of
+msgid "The two-dimensional FFT of real input."
+msgstr ""
+
+#: mars.tensor.fft.rfftn:55 of
+msgid "Notes"
 msgstr ""
 
 #: mars.tensor.fft.rfftn:56 of
@@ -150,5 +149,9 @@ msgstr ""
 
 #: mars.tensor.fft.rfftn:62 of
 msgid "See `fft` for details, definitions and conventions used."
+msgstr ""
+
+#: mars.tensor.fft.rfftn:65 of
+msgid "Examples"
 msgstr ""
 

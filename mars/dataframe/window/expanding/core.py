@@ -18,6 +18,7 @@ from distutils.version import LooseVersion
 import pandas as pd
 
 from ....serialize import Int64Field, BoolField, Int32Field
+from ...utils import validate_axis
 from ..core import Window
 
 
@@ -84,6 +85,54 @@ class Expanding(Window):
 
 
 def expanding(obj, min_periods=1, center=False, axis=0):
+    """
+    Provide expanding transformations.
+
+    Parameters
+    ----------
+    min_periods : int, default 1
+    Minimum number of observations in window required to have a value
+    (otherwise result is NA).
+    center : bool, default False
+    Set the labels at the center of the window.
+    axis : int or str, default 0
+
+    Returns
+    -------
+    a Window sub-classed for the particular operation
+
+    See Also
+    --------
+    rolling : Provides rolling window calculations.
+    ewm : Provides exponential weighted functions.
+
+    Notes
+    -----
+    By default, the result is set to the right edge of the window. This can be
+    changed to the center of the window by setting ``center=True``.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'B': [0, 1, 2, np.nan, 4]})
+    >>> df.execute()
+         B
+    0  0.0
+    1  1.0
+    2  2.0
+    3  NaN
+    4  4.0
+    >>> df.expanding(2).sum().execute()
+         B
+    0  NaN
+    1  1.0
+    2  3.0
+    3  3.0
+    4  7.0
+    """
+    axis = validate_axis(axis, obj)
+
     if center:
         raise NotImplementedError('center == True is not supported')
     if axis == 1:

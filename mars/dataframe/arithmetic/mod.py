@@ -27,7 +27,7 @@ class DataFrameMod(DataFrameBinOp, DataFrameBinOpMixin):
 
     @classproperty
     def _operator(self):
-        return operator.mul
+        return operator.mod
 
 
 def mod(df, other, axis='columns', level=None, fill_value=None):

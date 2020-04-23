@@ -90,6 +90,7 @@ Function application, GroupBy & window
    DataFrame.transform
    DataFrame.groupby
    DataFrame.rolling
+   DataFrame.expanding
 
 .. _api.dataframe.stats:
 

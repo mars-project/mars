@@ -1,66 +1,49 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.random.noncentral_chisquare.rst:2
 msgid "mars.tensor.random.noncentral\\_chisquare"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:1 of
+#: mars.tensor.random.noncentral_chisquare:1 of
 msgid "Draw samples from a noncentral chi-square distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:3 of
+#: mars.tensor.random.noncentral_chisquare:3 of
 msgid ""
 "The noncentral :math:`\\chi^2` distribution is a generalisation of the "
 ":math:`\\chi^2` distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:8 of
-msgid "df"
+#: mars.tensor.random.noncentral_chisquare of
+msgid "Parameters"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:7
-#: mars.tensor.random.noncentral_chisquare:9 of
-msgid "float or array_like of floats"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:9 of
+#: mars.tensor.random.noncentral_chisquare:6 of
 msgid "Degrees of freedom, should be > 0."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:10 of
-msgid "nonc"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:11 of
+#: mars.tensor.random.noncentral_chisquare:8 of
 msgid "Non-centrality, should be non-negative."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:15 of
-msgid "size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:14 of
-msgid "int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:13 of
+#: mars.tensor.random.noncentral_chisquare:10 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -68,101 +51,91 @@ msgid ""
 "``mt.broadcast(df, nonc).size`` samples are drawn."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:17 of
-msgid "chunk_size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:16 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:18 of
+#: mars.tensor.random.noncentral_chisquare:15 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:19 of
-msgid "gpu"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:18 of
-msgid "bool, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:20 of
+#: mars.tensor.random.noncentral_chisquare:17 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:22 of
-msgid "dtype"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:21 of
-msgid "data-type, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.noncentral_chisquare:22 of
+#: mars.tensor.random.noncentral_chisquare:19 of
 msgid "Data-type of the returned tensor."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:27 of
-msgid "out"
+#: mars.tensor.random.noncentral_chisquare of
+msgid "Returns"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:26 of
-msgid "Tensor or scalar"
+#: mars.tensor.random.noncentral_chisquare:22 of
+msgid ""
+"**out** -- Drawn samples from the parameterized noncentral chi-square "
+"distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:27 of
-msgid "Drawn samples from the parameterized noncentral chi-square distribution."
+#: mars.tensor.random.noncentral_chisquare of
+msgid "Return type"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:31 of
+#: mars.tensor.random.noncentral_chisquare:26 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.random.noncentral_chisquare:27 of
 msgid ""
 "The probability density function for the noncentral Chi-square "
 "distribution is"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:34 of
+#: mars.tensor.random.noncentral_chisquare:30 of
 msgid ""
 "P(x;df,nonc) = \\sum^{\\infty}_{i=0} \\frac{e^{-nonc/2}(nonc/2)^{i}}{i!} "
 "\\P_{Y_{df+2i}}(x),"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:38 of
+#: mars.tensor.random.noncentral_chisquare:34 of
 msgid "where :math:`Y_{q}` is the Chi-square with q degrees of freedom."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:40 of
+#: mars.tensor.random.noncentral_chisquare:36 of
 msgid ""
 "In Delhi (2007), it is noted that the noncentral chi-square is useful in "
 "bombing and coverage problems, the probability of killing the point "
 "target given by the noncentral chi-squared distribution."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:47 of
+#: mars.tensor.random.noncentral_chisquare:42 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.random.noncentral_chisquare:43 of
 msgid ""
 "Delhi, M.S. Holla, \"On a noncentral chi-square distribution in the "
 "analysis of weapon systems effectiveness\", Metrika, Volume 15, Number 1 "
 "/ December, 1970."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:50 of
+#: mars.tensor.random.noncentral_chisquare:46 of
 msgid ""
 "Wikipedia, \"Noncentral chi-square distribution\" "
 "http://en.wikipedia.org/wiki/Noncentral_chi-square_distribution"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:55 of
+#: mars.tensor.random.noncentral_chisquare:50 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.noncentral_chisquare:51 of
 msgid "Draw values from the distribution and plot the histogram"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:63 of
+#: mars.tensor.random.noncentral_chisquare:59 of
 msgid ""
 "Draw values from a noncentral chisquare with very small noncentrality, "
 "and compare to a chisquare."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.noncentral_chisquare:74 of
+#: mars.tensor.random.noncentral_chisquare:70 of
 msgid ""
 "Demonstrate how large values of non-centrality lead to a more symmetric "
 "distribution."

@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.concatenate.rst:2
 msgid "mars.tensor.concatenate"
@@ -25,65 +25,105 @@ msgstr ""
 msgid "Join a sequence of arrays along an existing axis."
 msgstr ""
 
-#: mars.tensor.concatenate:6 of
-msgid "a1, a2, ..."
+#: mars.tensor.concatenate of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.concatenate:5 of
-msgid "sequence of array_like"
-msgstr ""
-
-#: mars.tensor.concatenate:6 of
+#: mars.tensor.concatenate:3 of
 msgid ""
 "The tensors must have the same shape, except in the dimension "
 "corresponding to `axis` (the first, by default)."
 msgstr ""
 
-#: mars.tensor.concatenate:9 of
-msgid "axis"
-msgstr ""
-
-#: mars.tensor.concatenate:8 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.concatenate:9 of
+#: mars.tensor.concatenate:6 of
 msgid "The axis along which the tensors will be joined.  Default is 0."
 msgstr ""
 
-#: mars.tensor.concatenate:14 of
-msgid "res"
+#: mars.tensor.concatenate of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.concatenate:13 of
-msgid "Tensor"
+#: mars.tensor.concatenate:9 of
+msgid "**res** -- The concatenated tensor."
 msgstr ""
 
-#: mars.tensor.concatenate:14 of
-msgid "The concatenated tensor."
+#: mars.tensor.concatenate of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.concatenate:15 of
+msgid ":func:`array_split`"
+msgstr ""
+
+#: mars.tensor.concatenate:15 of
+msgid "Split a tensor into multiple sub-arrays of equal or near-equal size."
 msgstr ""
 
 #: mars.tensor.concatenate:18 of
-msgid "array_split"
+msgid ":func:`split`"
 msgstr ""
 
-#: mars.tensor.concatenate:17 of
-msgid "Split a tensor into multiple sub-arrays of equal or"
+#: mars.tensor.concatenate:18 of
+msgid "Split tensor into a list of multiple sub-tensors of equal size."
 msgstr ""
 
-#: mars.tensor.concatenate:19 of
-msgid "near-equal size."
+#: mars.tensor.concatenate:21 of
+msgid ":func:`hsplit`"
 msgstr ""
 
-#: mars.tensor.concatenate:20 of
-msgid ""
-"split : Split tensor into a list of multiple sub-tensors of equal size. "
-"hsplit : Split tensor into multiple sub-tensors horizontally (column "
-"wise) vsplit : Split tensor into multiple sub-tensors vertically (row "
-"wise) dsplit : Split tensor into multiple sub-tensors along the 3rd axis "
-"(depth). stack : Stack a sequence of tensors along a new axis. hstack : "
-"Stack tensors in sequence horizontally (column wise) vstack : Stack "
-"tensors in sequence vertically (row wise) dstack : Stack tensors in "
-"sequence depth wise (along third dimension)"
+#: mars.tensor.concatenate:21 of
+msgid "Split tensor into multiple sub-tensors horizontally (column wise)"
+msgstr ""
+
+#: mars.tensor.concatenate:24 of
+msgid ":func:`vsplit`"
+msgstr ""
+
+#: mars.tensor.concatenate:24 of
+msgid "Split tensor into multiple sub-tensors vertically (row wise)"
+msgstr ""
+
+#: mars.tensor.concatenate:27 of
+msgid ":func:`dsplit`"
+msgstr ""
+
+#: mars.tensor.concatenate:27 of
+msgid "Split tensor into multiple sub-tensors along the 3rd axis (depth)."
+msgstr ""
+
+#: mars.tensor.concatenate:30 of
+msgid ":func:`stack`"
+msgstr ""
+
+#: mars.tensor.concatenate:30 of
+msgid "Stack a sequence of tensors along a new axis."
+msgstr ""
+
+#: mars.tensor.concatenate:33 of
+msgid ":func:`hstack`"
+msgstr ""
+
+#: mars.tensor.concatenate:33 of
+msgid "Stack tensors in sequence horizontally (column wise)"
+msgstr ""
+
+#: mars.tensor.concatenate:36 of
+msgid ":func:`vstack`"
+msgstr ""
+
+#: mars.tensor.concatenate:36 of
+msgid "Stack tensors in sequence vertically (row wise)"
+msgstr ""
+
+#: mars.tensor.concatenate:38 of
+msgid ":func:`dstack`"
+msgstr ""
+
+#: mars.tensor.concatenate:39 of
+msgid "Stack tensors in sequence depth wise (along third dimension)"
+msgstr ""
+
+#: mars.tensor.concatenate:42 of
+msgid "Examples"
 msgstr ""
 

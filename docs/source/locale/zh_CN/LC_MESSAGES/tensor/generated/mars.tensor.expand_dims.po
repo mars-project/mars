@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.expand_dims.rst:2
 msgid "mars.tensor.expand\\_dims"
@@ -31,49 +31,56 @@ msgid ""
 " array shape."
 msgstr ""
 
-#: mars.tensor.expand_dims:8 of
-msgid "a"
+#: mars.tensor.expand_dims of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.expand_dims:7 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.expand_dims:9 of
+#: mars.tensor.expand_dims:6 of
 msgid "Input tensor."
 msgstr ""
 
-#: mars.tensor.expand_dims:11 of
-msgid "axis"
-msgstr ""
-
-#: mars.tensor.expand_dims:10 of
-msgid "int"
-msgstr ""
-
-#: mars.tensor.expand_dims:11 of
+#: mars.tensor.expand_dims:8 of
 msgid "Position in the expanded axes where the new axis is placed."
 msgstr ""
 
-#: mars.tensor.expand_dims:17 of
-msgid "res"
+#: mars.tensor.expand_dims of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.expand_dims:16 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.expand_dims:16 of
+#: mars.tensor.expand_dims:11 of
 msgid ""
-"Output tensor. The number of dimensions is one greater than that of the "
-"input tensor."
+"**res** -- Output tensor. The number of dimensions is one greater than "
+"that of the input tensor."
+msgstr ""
+
+#: mars.tensor.expand_dims of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.expand_dims:18 of
+msgid ":func:`squeeze`"
+msgstr ""
+
+#: mars.tensor.expand_dims:18 of
+msgid "The inverse operation, removing singleton dimensions"
 msgstr ""
 
 #: mars.tensor.expand_dims:21 of
+msgid ":func:`reshape`"
+msgstr ""
+
+#: mars.tensor.expand_dims:21 of
+msgid "Insert, remove, and combine dimensions, and resize existing ones"
+msgstr ""
+
+#: mars.tensor.expand_dims:23 of
 msgid ""
-"squeeze : The inverse operation, removing singleton dimensions reshape : "
-"Insert, remove, and combine dimensions, and resize existing ones "
-"doc.indexing, atleast_1d, atleast_2d, atleast_3d"
+":func:`doc.indexing`, :func:`atleast_1d`, :func:`atleast_2d`, "
+":func:`atleast_3d`"
+msgstr ""
+
+#: mars.tensor.expand_dims:26 of
+msgid "Examples"
 msgstr ""
 
 #: mars.tensor.expand_dims:33 of

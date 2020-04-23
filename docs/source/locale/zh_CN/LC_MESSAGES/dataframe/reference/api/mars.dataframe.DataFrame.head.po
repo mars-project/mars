@@ -1,0 +1,84 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.head.rst:2
+msgid "mars.dataframe.DataFrame.head"
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:1 of
+msgid "Return the first `n` rows."
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:3 of
+msgid ""
+"This function returns the first `n` rows for the object based on "
+"position. It is useful for quickly testing if your object has the right "
+"type of data in it."
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:7 of
+msgid ""
+"For negative values of `n`, this function returns all rows except the "
+"last `n` rows, equivalent to ``df[:-n]``."
+msgstr ""
+
+#: mars.dataframe.DataFrame.head of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:10 of
+msgid "Number of rows to select."
+msgstr ""
+
+#: mars.dataframe.DataFrame.head of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:13 of
+msgid "The first `n` rows of the caller object."
+msgstr ""
+
+#: mars.dataframe.DataFrame.head of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:18 of
+msgid ":meth:`DataFrame.tail`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:19 of
+msgid "Returns the last `n` rows."
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:22 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:38 of
+msgid "Viewing the first 5 lines"
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:48 of
+msgid "Viewing the first `n` lines (three in this case)"
+msgstr ""
+
+#: mars.dataframe.DataFrame.head:56 of
+msgid "For negative values of `n`"
+msgstr ""
+

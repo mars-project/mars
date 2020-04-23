@@ -1,0 +1,59 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.dt.is_year_end.rst:2
+msgid "mars.dataframe.Series.dt.is\\_year\\_end"
+msgstr ""
+
+#: mars.dataframe.Series.dt.is_year_end:1 of
+msgid "Indicate whether the date is the last day of the year."
+msgstr ""
+
+#: mars.dataframe.Series.dt.is_year_end of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.dt.is_year_end:3 of
+msgid ""
+"The same type as the original data with boolean values. Series will have "
+"the same name and index. DatetimeIndex will have the same name."
+msgstr ""
+
+#: mars.dataframe.Series.dt.is_year_end of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.dt.is_year_end:10 of
+msgid ":obj:`is_year_start`"
+msgstr ""
+
+#: mars.dataframe.Series.dt.is_year_end:11 of
+msgid "Similar property indicating the start of the year."
+msgstr ""
+
+#: mars.dataframe.Series.dt.is_year_end:14 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.dt.is_year_end:15 of
+msgid ""
+"This method is available on Series with datetime values under the ``.dt``"
+" accessor, and directly on DatetimeIndex."
+msgstr ""
+

@@ -320,6 +320,7 @@ def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
                        interpolation='linear'):
     """
     Return values at the given quantile over requested axis.
+
     Parameters
     ----------
     q : float or array-like, default 0.5 (50% quantile)
@@ -347,10 +348,12 @@ def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
           values are the quantiles.
         If ``q`` is a float, a Series will be returned where the
           index is the columns of self and the values are the quantiles.
+
     See Also
     --------
     core.window.Rolling.quantile: Rolling quantile.
     numpy.percentile: Numpy function to compute the percentile.
+
     Examples
     --------
     >>> import mars.dataframe as md
@@ -360,10 +363,12 @@ def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
     a    1.3
     b    3.7
     Name: 0.1, dtype: float64
+
     >>> df.quantile([.1, .5]).execute()
            a     b
     0.1  1.3   3.7
     0.5  2.5  55.0
+
     Specifying `numeric_only=False` will also compute the quantile of
     datetime and timedelta data.
     >>> df = md.DataFrame({'A': [1, 2],

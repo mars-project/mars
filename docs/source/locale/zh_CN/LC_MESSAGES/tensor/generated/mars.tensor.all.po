@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:23+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.all.rst:2
 msgid "mars.tensor.all"
@@ -25,27 +25,25 @@ msgstr ""
 msgid "Test whether all array elements along a given axis evaluate to True."
 msgstr ""
 
-#: mars.tensor.all:5 of
-msgid "a"
+#: mars.tensor.all of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.all:4 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.all:6 of
+#: mars.tensor.all:3 of
 msgid "Input tensor or object that can be converted to a tensor."
 msgstr ""
 
-#: mars.tensor.all:13 of
-msgid "axis"
+#: mars.tensor.all:5 of
+msgid ""
+"Axis or axes along which a logical AND reduction is performed. The "
+"default (`axis` = `None`) is to perform a logical AND over all the "
+"dimensions of the input array. `axis` may be negative, in which case it "
+"counts from the last to the first axis.  If this is a tuple of ints, a "
+"reduction is performed on multiple axes, instead of a single axis or all "
+"the axes as before."
 msgstr ""
 
-#: mars.tensor.all:12 of
-msgid "None or int or tuple of ints, optional"
-msgstr ""
-
-#: mars.tensor.all:8 of
+#: mars.tensor.all:5 of
 msgid ""
 "Axis or axes along which a logical AND reduction is performed. The "
 "default (`axis` = `None`) is to perform a logical AND over all the "
@@ -53,21 +51,13 @@ msgid ""
 "counts from the last to the first axis."
 msgstr ""
 
-#: mars.tensor.all:13 of
+#: mars.tensor.all:10 of
 msgid ""
 "If this is a tuple of ints, a reduction is performed on multiple axes, "
 "instead of a single axis or all the axes as before."
 msgstr ""
 
-#: mars.tensor.all:20 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.all:19 of
-msgid "Tensor, optional"
-msgstr ""
-
-#: mars.tensor.all:16 of
+#: mars.tensor.all:13 of
 msgid ""
 "Alternate output tensor in which to place the result. It must have the "
 "same shape as the expected output and its type is preserved (e.g., if "
@@ -75,22 +65,25 @@ msgid ""
 "See `doc.ufuncs` (Section \"Output arguments\") for more details."
 msgstr ""
 
-#: mars.tensor.all:30 of
-msgid "keepdims"
+#: mars.tensor.all:19 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input tensor.  If the default value is passed, "
+"then `keepdims` will not be passed through to the `all` method of sub-"
+"classes of `ndarray`, however any non-default value will be.  If the sub-"
+"classes `sum` method does not implement `keepdims` any exceptions will be"
+" raised."
 msgstr ""
 
-#: mars.tensor.all:29 of
-msgid "bool, optional"
-msgstr ""
-
-#: mars.tensor.all:23 of
+#: mars.tensor.all:19 of
 msgid ""
 "If this is set to True, the axes which are reduced are left in the result"
 " as dimensions with size one. With this option, the result will broadcast"
 " correctly against the input tensor."
 msgstr ""
 
-#: mars.tensor.all:27 of
+#: mars.tensor.all:23 of
 msgid ""
 "If the default value is passed, then `keepdims` will not be passed "
 "through to the `all` method of sub-classes of `ndarray`, however any non-"
@@ -98,39 +91,51 @@ msgid ""
 "implement `keepdims` any exceptions will be raised."
 msgstr ""
 
-#: mars.tensor.all:33 of
-msgid "combine_size: int, optional"
-msgstr ""
-
-#: mars.tensor.all:33 of
+#: mars.tensor.all:29 of
 msgid "The number of chunks to combine."
 msgstr ""
 
-#: mars.tensor.all:39 of
-msgid "all"
+#: mars.tensor.all of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.all:38 of
-msgid "Tensor, bool"
-msgstr ""
-
-#: mars.tensor.all:38 of
+#: mars.tensor.all:32 of
 msgid ""
-"A new boolean or tensor is returned unless `out` is specified, in which "
-"case a reference to `out` is returned."
+"**all** -- A new boolean or tensor is returned unless `out` is specified,"
+" in which case a reference to `out` is returned."
 msgstr ""
 
-#: mars.tensor.all:43 of
-msgid "Tensor.all : equivalent method"
+#: mars.tensor.all of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.all:39 of
+msgid ":func:`Tensor.all`"
+msgstr ""
+
+#: mars.tensor.all:39 of
+msgid "equivalent method"
+msgstr ""
+
+#: mars.tensor.all:41 of
+msgid ":func:`any`"
+msgstr ""
+
+#: mars.tensor.all:42 of
+msgid "Test whether any element along a given axis evaluates to True."
 msgstr ""
 
 #: mars.tensor.all:45 of
-msgid "any : Test whether any element along a given axis evaluates to True."
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.all:49 of
+#: mars.tensor.all:46 of
 msgid ""
 "Not a Number (NaN), positive infinity and negative infinity evaluate to "
 "`True` because these are not equal to zero."
+msgstr ""
+
+#: mars.tensor.all:50 of
+msgid "Examples"
 msgstr ""
 

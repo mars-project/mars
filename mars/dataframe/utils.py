@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import itertools
-from numbers import Integral
 import operator
 import functools
+from numbers import Integral
 
 import numpy as np
 import pandas as pd
@@ -272,9 +272,9 @@ def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, ri
     :return: nested list in which each item indicates how min_max is split
 
     >>> left_min_max = [(0, True, 3, True), (4, True, 8, True), (12, True, 18, True),
-    >>>                 (20, True, 22, True)]
+    ...                 (20, True, 22, True)]
     >>> right_min_max = [(2, True, 6, True), (7, True, 9, True), (10, True, 14, True),
-    >>>                  (18, True, 19, True)]
+    ...                  (18, True, 19, True)]
     >>> l, r = split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
     >>> l
     [[(0, True, 2, False), (2, True, 3, True)], [(3, False, 4, False), (4, True, 6, True), (6, False, 7, False),

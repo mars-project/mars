@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.floor.rst:2
 msgid "mars.tensor.floor"
@@ -31,27 +31,15 @@ msgid ""
 "x`.  It is often denoted as :math:`\\lfloor x \\rfloor`."
 msgstr ""
 
-#: mars.tensor.floor:8 of
-msgid "x"
+#: mars.tensor.floor of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.floor:7 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.floor:9 of
+#: mars.tensor.floor:6 of
 msgid "Input data."
 msgstr ""
 
-#: mars.tensor.floor:13 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.floor:12 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.floor:11 of
+#: mars.tensor.floor:8 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -59,44 +47,40 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.floor:16 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.floor:15 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.floor:16 of
+#: mars.tensor.floor:13 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.floor of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.floor:18 of
-msgid "**kwargs"
+msgid "**y** -- The floor of each element in `x`."
 msgstr ""
 
-#: mars.tensor.floor:23 of
-msgid "y"
+#: mars.tensor.floor of
+msgid "Return type"
 msgstr ""
 
-#: mars.tensor.floor:22 of
-msgid "Tensor or scalar"
+#: mars.tensor.floor:21 of
+msgid ":func:`ceil`, :func:`trunc`, :func:`rint`"
 msgstr ""
 
-#: mars.tensor.floor:23 of
-msgid "The floor of each element in `x`."
+#: mars.tensor.floor:24 of
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.floor:27 of
-msgid "ceil, trunc, rint"
-msgstr ""
-
-#: mars.tensor.floor:31 of
+#: mars.tensor.floor:25 of
 msgid ""
 "Some spreadsheet programs calculate the \"floor-towards-zero\", in other "
 "words ``floor(-2.5) == -2``.  NumPy instead uses the definition of "
 "`floor` where `floor(-2.5) == -3`."
+msgstr ""
+
+#: mars.tensor.floor:30 of
+msgid "Examples"
 msgstr ""
 

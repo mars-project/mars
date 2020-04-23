@@ -31,10 +31,12 @@ mars.dataframe.Series
       ~Series.cumprod
       ~Series.cumsum
       ~Series.describe
+      ~Series.diff
       ~Series.div
       ~Series.dot
       ~Series.dropna
       ~Series.eq
+      ~Series.expanding
       ~Series.ffill
       ~Series.fillna
       ~Series.floordiv
@@ -52,6 +54,7 @@ mars.dataframe.Series
       ~Series.max
       ~Series.mean
       ~Series.min
+      ~Series.mod
       ~Series.mul
       ~Series.multiply
       ~Series.ne
@@ -69,6 +72,7 @@ mars.dataframe.Series
       ~Series.rechunk
       ~Series.reset_index
       ~Series.rfloordiv
+      ~Series.rmod
       ~Series.rmul
       ~Series.rolling
       ~Series.ror

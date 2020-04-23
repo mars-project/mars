@@ -1,0 +1,119 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.dropna.rst:2
+msgid "mars.dataframe.Series.dropna"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:1 of
+msgid "Return a new Series with missing values removed."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:3 of
+msgid ""
+"See the :ref:`User Guide <missing_data>` for more on which values are "
+"considered missing, and how to work with missing data."
+msgstr ""
+
+#: mars.dataframe.Series.dropna of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:6 of
+msgid "There is only one axis to drop values from."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:8 of
+msgid "If True, do operation inplace and return None."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:10 of
+msgid "Not in use. Kept for compatibility."
+msgstr ""
+
+#: mars.dataframe.Series.dropna of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:13 of
+msgid "Series with NA entries dropped from it."
+msgstr ""
+
+#: mars.dataframe.Series.dropna of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:19 of
+msgid ":meth:`Series.isna`"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:19 of
+msgid "Indicate missing values."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:22 of
+msgid ":meth:`Series.notna`"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:22 of
+msgid "Indicate existing (non-missing) values."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:25 of
+msgid ":meth:`Series.fillna`"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:25 of
+msgid "Replace missing values."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:28 of
+msgid ":meth:`DataFrame.dropna`"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:28 of
+msgid "Drop rows or columns which contain NA values."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:30 of
+msgid ":meth:`Index.dropna`"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:31 of
+msgid "Drop missing indices."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:34 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.dropna:43 of
+msgid "Drop NA values from a Series."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:50 of
+msgid "Keep the Series with valid entries in the same variable."
+msgstr ""
+
+#: mars.dataframe.Series.dropna:58 of
+msgid ""
+"Empty strings are not considered NA values. ``None`` is considered an NA "
+"value."
+msgstr ""
+

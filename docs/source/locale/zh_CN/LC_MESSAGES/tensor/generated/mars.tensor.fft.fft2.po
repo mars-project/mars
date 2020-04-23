@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.fft.fft2.rst:2
 msgid "mars.tensor.fft.fft2"
@@ -33,27 +33,15 @@ msgid ""
 " axes of the input array, i.e., a 2-dimensional FFT."
 msgstr ""
 
-#: mars.tensor.fft.fft2:10 of
-msgid "a"
+#: mars.tensor.fft.fft2 of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.fft.fft2:9 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.fft.fft2:11 of
+#: mars.tensor.fft.fft2:8 of
 msgid "Input tensor, can be complex"
 msgstr ""
 
-#: mars.tensor.fft.fft2:18 of
-msgid "s"
-msgstr ""
-
-#: mars.tensor.fft.fft2:17 mars.tensor.fft.fft2:22 of
-msgid "sequence of ints, optional"
-msgstr ""
-
-#: mars.tensor.fft.fft2:13 of
+#: mars.tensor.fft.fft2:10 of
 msgid ""
 "Shape (length of each transformed axis) of the output (``s[0]`` refers to"
 " axis 0, ``s[1]`` to axis 1, etc.). This corresponds to ``n`` for "
@@ -63,11 +51,7 @@ msgid ""
 "specified by `axes` is used."
 msgstr ""
 
-#: mars.tensor.fft.fft2:23 of
-msgid "axes"
-msgstr ""
-
-#: mars.tensor.fft.fft2:21 of
+#: mars.tensor.fft.fft2:18 of
 msgid ""
 "Axes over which to compute the FFT.  If not given, the last two axes are "
 "used.  A repeated index in `axes` means the transform over that axis is "
@@ -75,80 +59,92 @@ msgid ""
 "dimensional FFT is performed."
 msgstr ""
 
-#: mars.tensor.fft.fft2:26 of
-msgid "norm"
-msgstr ""
-
-#: mars.tensor.fft.fft2:25 of
-msgid "{None, \"ortho\"}, optional"
-msgstr ""
-
-#: mars.tensor.fft.fft2:26 of
+#: mars.tensor.fft.fft2:23 of
 msgid "Normalization mode (see `mt.fft`). Default is None."
 msgstr ""
 
-#: mars.tensor.fft.fft2:32 of
-msgid "out"
+#: mars.tensor.fft.fft2 of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.fft.fft2:26 of
+msgid ""
+"**out** -- The truncated or zero-padded input, transformed along the axes"
+" indicated by `axes`, or the last two axes if `axes` is not given."
+msgstr ""
+
+#: mars.tensor.fft.fft2 of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.fft.fft2 of
+msgid "Raises"
+msgstr ""
+
+#: mars.tensor.fft.fft2:30 of
+msgid ""
+"If `s` and `axes` have different length, or `axes` not given and     "
+"``len(s) != 2``."
 msgstr ""
 
 #: mars.tensor.fft.fft2:31 of
-msgid "complex Tensor"
-msgstr ""
-
-#: mars.tensor.fft.fft2:31 of
-msgid ""
-"The truncated or zero-padded input, transformed along the axes indicated "
-"by `axes`, or the last two axes if `axes` is not given."
-msgstr ""
-
-#: mars.tensor.fft.fft2:37 of
-msgid "ValueError"
-msgstr ""
-
-#: mars.tensor.fft.fft2:37 of
-msgid ""
-"If `s` and `axes` have different length, or `axes` not given and ``len(s)"
-" != 2``."
-msgstr ""
-
-#: mars.tensor.fft.fft2:40 of
-msgid "IndexError"
-msgstr ""
-
-#: mars.tensor.fft.fft2:40 of
 msgid "If an element of `axes` is larger than than the number of axes of `a`."
 msgstr ""
 
-#: mars.tensor.fft.fft2:44 of
-msgid "mt.fft"
+#: mars.tensor.fft.fft2:36 of
+msgid ":func:`mt.fft`"
 msgstr ""
 
-#: mars.tensor.fft.fft2:43 of
-msgid "Overall view of discrete Fourier transforms, with definitions"
+#: mars.tensor.fft.fft2:36 of
+msgid ""
+"Overall view of discrete Fourier transforms, with definitions and "
+"conventions used."
+msgstr ""
+
+#: mars.tensor.fft.fft2:39 of
+msgid ":func:`ifft2`"
+msgstr ""
+
+#: mars.tensor.fft.fft2:39 of
+msgid "The inverse two-dimensional FFT."
+msgstr ""
+
+#: mars.tensor.fft.fft2:42 of
+msgid ":func:`fft`"
+msgstr ""
+
+#: mars.tensor.fft.fft2:42 of
+msgid "The one-dimensional FFT."
 msgstr ""
 
 #: mars.tensor.fft.fft2:45 of
-msgid "and conventions used."
+msgid ":func:`fftn`"
 msgstr ""
 
-#: mars.tensor.fft.fft2:46 of
+#: mars.tensor.fft.fft2:45 of
+msgid "The *n*-dimensional FFT."
+msgstr ""
+
+#: mars.tensor.fft.fft2:47 of
+msgid ":func:`fftshift`"
+msgstr ""
+
+#: mars.tensor.fft.fft2:48 of
 msgid ""
-"ifft2 : The inverse two-dimensional FFT. fft : The one-dimensional FFT. "
-"fftn : The *n*-dimensional FFT. fftshift : Shifts zero-frequency terms to"
-" the center of the array."
+"Shifts zero-frequency terms to the center of the array. For two-"
+"dimensional input, swaps first and third quadrants, and second and fourth"
+" quadrants."
 msgstr ""
 
-#: mars.tensor.fft.fft2:50 of
-msgid ""
-"For two-dimensional input, swaps first and third quadrants, and second "
-"and fourth quadrants."
+#: mars.tensor.fft.fft2:51 of
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.fft.fft2:55 of
+#: mars.tensor.fft.fft2:52 of
 msgid "`fft2` is just `fftn` with a different default for `axes`."
 msgstr ""
 
-#: mars.tensor.fft.fft2:57 of
+#: mars.tensor.fft.fft2:54 of
 msgid ""
 "The output, analogously to `fft`, contains the term for zero frequency in"
 " the low-order corner of the transformed axes, the positive frequency "
@@ -157,9 +153,13 @@ msgid ""
 " half of the axes, in order of decreasingly negative frequency."
 msgstr ""
 
-#: mars.tensor.fft.fft2:63 of
+#: mars.tensor.fft.fft2:60 of
 msgid ""
 "See `fftn` for details and a plotting example, and `mt.fft` for "
 "definitions and conventions used."
+msgstr ""
+
+#: mars.tensor.fft.fft2:64 of
+msgid "Examples"
 msgstr ""
 

@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.frexp.rst:2
 msgid "mars.tensor.frexp"
@@ -32,47 +32,23 @@ msgid ""
 " is a signed integer."
 msgstr ""
 
-#: mars.tensor.frexp:9 of
-msgid "x"
+#: mars.tensor.frexp of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.frexp:8 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.frexp:10 of
+#: mars.tensor.frexp:7 of
 msgid "Tensor of numbers to be decomposed."
 msgstr ""
 
-#: mars.tensor.frexp:11 of
-msgid "out1"
-msgstr ""
-
-#: mars.tensor.frexp:10 mars.tensor.frexp:12 of
-msgid "Tensor, optional"
-msgstr ""
-
-#: mars.tensor.frexp:12 of
+#: mars.tensor.frexp:9 of
 msgid "Output tensor for the mantissa. Must have the same shape as `x`."
 msgstr ""
 
-#: mars.tensor.frexp:13 of
-msgid "out2"
-msgstr ""
-
-#: mars.tensor.frexp:14 of
+#: mars.tensor.frexp:11 of
 msgid "Output tensor for the exponent. Must have the same shape as `x`."
 msgstr ""
 
-#: mars.tensor.frexp:18 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.frexp:17 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.frexp:16 of
+#: mars.tensor.frexp:13 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -80,43 +56,44 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.frexp:21 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.frexp:20 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.frexp:21 of
+#: mars.tensor.frexp:18 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.frexp of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.frexp:23 of
-msgid "**kwargs"
+msgid ""
+"**(mantissa, exponent)** -- `mantissa` is a float array with values "
+"between -1 and 1. `exponent` is an int array which represents the "
+"exponent of 2."
+msgstr ""
+
+#: mars.tensor.frexp of
+msgid "Return type"
 msgstr ""
 
 #: mars.tensor.frexp:29 of
-msgid "(mantissa, exponent)"
+msgid ":func:`ldexp`"
 msgstr ""
 
-#: mars.tensor.frexp:28 of
-msgid "tuple of tensors, (float, int)"
-msgstr ""
-
-#: mars.tensor.frexp:28 of
-msgid ""
-"`mantissa` is a float array with values between -1 and 1. `exponent` is "
-"an int array which represents the exponent of 2."
+#: mars.tensor.frexp:30 of
+msgid "Compute ``y = x1 * 2**x2``, the inverse of `frexp`."
 msgstr ""
 
 #: mars.tensor.frexp:33 of
-msgid "ldexp : Compute ``y = x1 * 2**x2``, the inverse of `frexp`."
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.frexp:34 of
+msgid "Complex dtypes are not supported, they will raise a TypeError."
 msgstr ""
 
 #: mars.tensor.frexp:37 of
-msgid "Complex dtypes are not supported, they will raise a TypeError."
+msgid "Examples"
 msgstr ""
 

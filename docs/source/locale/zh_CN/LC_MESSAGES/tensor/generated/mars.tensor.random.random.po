@@ -1,103 +1,79 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.random.random.rst:2
 msgid "mars.tensor.random.random"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:1 of
+#: mars.tensor.random.random:1 of
 msgid "Return random floats in the half-open interval [0.0, 1.0)."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:3 of
+#: mars.tensor.random.random:3 of
 msgid ""
 "Results are from the \"continuous uniform\" distribution over the stated "
 "interval.  To sample :math:`Unif[a, b), b > a` multiply the output of "
 "`random_sample` by `(b-a)` and add `a`::"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:13 of
-msgid "size"
+#: mars.tensor.random.random of
+msgid "Parameters"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:12 of
-msgid "int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random:12 of
+#: mars.tensor.random.random:9 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  Default is None, in which case a single value is"
 " returned."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:15 of
-msgid "chunk_size"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random:14 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random:16 of
+#: mars.tensor.random.random:13 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:17 of
-msgid "gpu"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random:16 of
-msgid "bool, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random:18 of
+#: mars.tensor.random.random:15 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:20 of
-msgid "dtype"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random:19 of
-msgid "data-type, optional"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random:20 of
+#: mars.tensor.random.random:17 of
 msgid "Data-type of the returned tensor."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:26 of
-msgid "out"
+#: mars.tensor.random.random of
+msgid "Returns"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:25 of
-msgid "float or Tensor of floats"
-msgstr ""
-
-#: ../../docstring mars.tensor.random.random:25 of
+#: mars.tensor.random.random:20 of
 msgid ""
-"Array of random floats of shape `size` (unless ``size=None``, in which "
-"case a single float is returned)."
+"**out** -- Array of random floats of shape `size` (unless ``size=None``, "
+"in which case a single float is returned)."
 msgstr ""
 
-#: ../../docstring mars.tensor.random.random:39 of
+#: mars.tensor.random.random of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.random.random:25 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.random:35 of
 msgid "Three-by-two array of random numbers from [-5, 0):"
 msgstr ""
 

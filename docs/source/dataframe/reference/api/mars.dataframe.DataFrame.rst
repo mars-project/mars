@@ -31,10 +31,12 @@ mars.dataframe.DataFrame
       ~DataFrame.cumprod
       ~DataFrame.cumsum
       ~DataFrame.describe
+      ~DataFrame.diff
       ~DataFrame.div
       ~DataFrame.dot
       ~DataFrame.dropna
       ~DataFrame.eq
+      ~DataFrame.expanding
       ~DataFrame.ffill
       ~DataFrame.fillna
       ~DataFrame.floordiv
@@ -53,6 +55,7 @@ mars.dataframe.DataFrame
       ~DataFrame.mean
       ~DataFrame.merge
       ~DataFrame.min
+      ~DataFrame.mod
       ~DataFrame.mul
       ~DataFrame.multiply
       ~DataFrame.ne
@@ -70,6 +73,7 @@ mars.dataframe.DataFrame
       ~DataFrame.rechunk
       ~DataFrame.reset_index
       ~DataFrame.rfloordiv
+      ~DataFrame.rmod
       ~DataFrame.rmul
       ~DataFrame.rolling
       ~DataFrame.ror

@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.tile.rst:2
 msgid "mars.tensor.tile"
@@ -53,41 +53,47 @@ msgid ""
 "recommended to use Mars' broadcasting operations and functions."
 msgstr ""
 
-#: mars.tensor.tile:21 of
-msgid "A"
+#: mars.tensor.tile of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.tile:20 mars.tensor.tile:23 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.tile:22 of
+#: mars.tensor.tile:19 of
 msgid "The input tensor."
 msgstr ""
 
-#: mars.tensor.tile:24 of
-msgid "reps"
-msgstr ""
-
-#: mars.tensor.tile:24 of
+#: mars.tensor.tile:21 of
 msgid "The number of repetitions of `A` along each axis."
 msgstr ""
 
-#: mars.tensor.tile:29 of
-msgid "c"
+#: mars.tensor.tile of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.tile:28 of
-msgid "Tensor"
+#: mars.tensor.tile:24 of
+msgid "**c** -- The tiled output tensor."
 msgstr ""
 
-#: mars.tensor.tile:29 of
-msgid "The tiled output tensor."
+#: mars.tensor.tile of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.tile:30 of
+msgid ":func:`repeat`"
+msgstr ""
+
+#: mars.tensor.tile:30 of
+msgid "Repeat elements of a tensor."
+msgstr ""
+
+#: mars.tensor.tile:32 of
+msgid ":func:`broadcast_to`"
 msgstr ""
 
 #: mars.tensor.tile:33 of
-msgid ""
-"repeat : Repeat elements of a tensor. broadcast_to : Broadcast a tensor "
-"to a new shape"
+msgid "Broadcast a tensor to a new shape"
+msgstr ""
+
+#: mars.tensor.tile:36 of
+msgid "Examples"
 msgstr ""
 

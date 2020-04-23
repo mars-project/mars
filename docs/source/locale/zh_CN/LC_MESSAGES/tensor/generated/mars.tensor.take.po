@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:10+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.take.rst:2
 msgid "mars.tensor.take"
@@ -41,125 +41,124 @@ msgid ""
 "of indices::"
 msgstr ""
 
-#: mars.tensor.take:22 of
-msgid "a"
+#: mars.tensor.take of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.take:21 of
-msgid "array_like (Ni..., M, Nk...)"
-msgstr ""
-
-#: mars.tensor.take:23 of
+#: mars.tensor.take:20 of
 msgid "The source tensor."
 msgstr ""
 
-#: mars.tensor.take:26 of
-msgid "indices"
+#: mars.tensor.take:22 of
+msgid "The indices of the values to extract.  Also allow scalars for indices."
 msgstr ""
 
-#: mars.tensor.take:25 of
-msgid "array_like (Nj...)"
-msgstr ""
-
-#: mars.tensor.take:25 of
+#: mars.tensor.take:22 of
 msgid "The indices of the values to extract."
 msgstr ""
 
-#: mars.tensor.take:27 of
+#: mars.tensor.take:24 of
 msgid "Also allow scalars for indices."
 msgstr ""
 
-#: mars.tensor.take:29 of
-msgid "axis"
-msgstr ""
-
-#: mars.tensor.take:28 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.take:29 of
+#: mars.tensor.take:26 of
 msgid ""
 "The axis over which to select values. By default, the flattened input "
 "tensor is used."
 msgstr ""
 
-#: mars.tensor.take:32 mars.tensor.take:48 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.take:31 of
-msgid "Tensor, optional (Ni..., Nj..., Nk...)"
-msgstr ""
-
-#: mars.tensor.take:32 of
+#: mars.tensor.take:29 of
 msgid ""
 "If provided, the result will be placed in this tensor. It should be of "
 "the appropriate shape and dtype."
 msgstr ""
 
-#: mars.tensor.take:43 of
-msgid "mode"
+#: mars.tensor.take:32 of
+msgid ""
+"Specifies how out-of-bounds indices will behave.  * 'raise' -- raise an "
+"error (default) * 'wrap' -- wrap around * 'clip' -- clip to the range  "
+"'clip' mode means that all indices that are too large are replaced by the"
+" index that addresses the last element along that axis. Note that this "
+"disables indexing with negative numbers."
 msgstr ""
 
-#: mars.tensor.take:42 of
-msgid "{'raise', 'wrap', 'clip'}, optional"
-msgstr ""
-
-#: mars.tensor.take:35 of
+#: mars.tensor.take:32 of
 msgid "Specifies how out-of-bounds indices will behave."
 msgstr ""
 
-#: mars.tensor.take:37 of
+#: mars.tensor.take:34 of
 msgid "'raise' -- raise an error (default)"
 msgstr ""
 
-#: mars.tensor.take:38 of
+#: mars.tensor.take:35 of
 msgid "'wrap' -- wrap around"
 msgstr ""
 
-#: mars.tensor.take:39 of
+#: mars.tensor.take:36 of
 msgid "'clip' -- clip to the range"
 msgstr ""
 
-#: mars.tensor.take:41 of
+#: mars.tensor.take:38 of
 msgid ""
 "'clip' mode means that all indices that are too large are replaced by the"
 " index that addresses the last element along that axis. Note that this "
 "disables indexing with negative numbers."
 msgstr ""
 
-#: mars.tensor.take:47 of
-msgid "Tensor (Ni..., Nj..., Nk...)"
+#: mars.tensor.take of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.take:48 of
-msgid "The returned tensor has the same type as `a`."
+#: mars.tensor.take:43 of
+msgid "**out** -- The returned tensor has the same type as `a`."
+msgstr ""
+
+#: mars.tensor.take of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.take:49 of
+msgid ":func:`compress`"
+msgstr ""
+
+#: mars.tensor.take:49 of
+msgid "Take elements using a boolean mask"
+msgstr ""
+
+#: mars.tensor.take:51 of
+msgid ":func:`Tensor.take`"
 msgstr ""
 
 #: mars.tensor.take:52 of
-msgid ""
-"compress : Take elements using a boolean mask Tensor.take : equivalent "
-"method"
+msgid "equivalent method"
 msgstr ""
 
-#: mars.tensor.take:58 of
+#: mars.tensor.take:55 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.take:56 of
 msgid ""
 "By eliminating the inner loop in the description above, and using `s_` to"
 " build simple slice objects, `take` can be expressed  in terms of "
 "applying fancy indexing to each 1-d slice::"
 msgstr ""
 
-#: mars.tensor.take:67 of
+#: mars.tensor.take:65 of
 msgid ""
 "For this reason, it is equivalent to (but faster than) the following use "
 "of `apply_along_axis`::"
 msgstr ""
 
-#: mars.tensor.take:80 of
+#: mars.tensor.take:71 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.take:78 of
 msgid "In this example if `a` is a tensor, \"fancy\" indexing can be used."
 msgstr ""
 
-#: mars.tensor.take:86 of
+#: mars.tensor.take:84 of
 msgid "If `indices` is not one dimensional, the output also has these dimensions."
 msgstr ""
 

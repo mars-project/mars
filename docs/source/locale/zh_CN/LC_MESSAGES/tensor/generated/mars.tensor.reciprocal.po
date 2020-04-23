@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.reciprocal.rst:2
 msgid "mars.tensor.reciprocal"
@@ -29,27 +29,15 @@ msgstr ""
 msgid "Calculates ``1/x``."
 msgstr ""
 
-#: mars.tensor.reciprocal:7 of
-msgid "x"
+#: mars.tensor.reciprocal of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.reciprocal:6 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.reciprocal:8 of
+#: mars.tensor.reciprocal:5 of
 msgid "Input tensor."
 msgstr ""
 
-#: mars.tensor.reciprocal:12 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.reciprocal:11 of
-msgid "Tensor, None, or tuple of Tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.reciprocal:10 of
+#: mars.tensor.reciprocal:7 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -57,44 +45,40 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.reciprocal:15 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.reciprocal:14 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.reciprocal:15 of
+#: mars.tensor.reciprocal:12 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
-#: mars.tensor.reciprocal:17 of
-msgid "**kwargs"
+#: mars.tensor.reciprocal of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.reciprocal:22 of
-msgid "y"
+#: mars.tensor.reciprocal:17 of
+msgid "**y** -- Return tensor."
+msgstr ""
+
+#: mars.tensor.reciprocal of
+msgid "Return type"
 msgstr ""
 
 #: mars.tensor.reciprocal:21 of
-msgid "Tensor"
+msgid "Notes"
 msgstr ""
 
-#: mars.tensor.reciprocal:22 of
-msgid "Return tensor."
-msgstr ""
-
-#: mars.tensor.reciprocal:27 of
+#: mars.tensor.reciprocal:23 of
 msgid "This function is not designed to work with integers."
 msgstr ""
 
-#: mars.tensor.reciprocal:29 of
+#: mars.tensor.reciprocal:25 of
 msgid ""
 "For integer arguments with absolute value larger than 1 the result is "
 "always zero because of the way Python handles integer division.  For "
 "integer zero the result is an overflow."
+msgstr ""
+
+#: mars.tensor.reciprocal:30 of
+msgid "Examples"
 msgstr ""
 

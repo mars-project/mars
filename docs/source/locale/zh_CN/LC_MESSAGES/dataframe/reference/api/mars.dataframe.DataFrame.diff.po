@@ -1,0 +1,104 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-22 19:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.diff.rst:2
+msgid "mars.dataframe.DataFrame.diff"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:1 of
+msgid ""
+"First discrete difference of element. Calculates the difference of a "
+"DataFrame element compared with another element in the DataFrame (default"
+" is the element in the same column of the previous row)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:6 of
+msgid "Periods to shift for calculating difference, accepts negative values."
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:9 of
+msgid "Take difference over rows (0) or columns (1)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:18 of
+msgid ":meth:`Series.diff`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:18 of
+msgid "First discrete difference for a Series."
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:21 of
+msgid ":meth:`DataFrame.pct_change`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:21 of
+msgid "Percent change over given number of periods."
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:23 of
+msgid ":meth:`DataFrame.shift`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:24 of
+msgid "Shift index by desired number of periods with an optional time freq."
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:27 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:28 of
+msgid ""
+"For boolean dtypes, this uses :meth:`operator.xor` rather than "
+":meth:`operator.sub`."
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:32 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:33 of
+msgid "Difference with previous row"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:57 of
+msgid "Difference with previous column"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:68 of
+msgid "Difference with 3rd previous row"
+msgstr ""
+
+#: mars.dataframe.DataFrame.diff:79 of
+msgid "Difference with following row"
+msgstr ""
+

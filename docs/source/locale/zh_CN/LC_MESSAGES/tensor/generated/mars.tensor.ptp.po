@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:35+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.ptp.rst:2
 msgid "mars.tensor.ptp"
@@ -29,52 +29,65 @@ msgstr ""
 msgid "The name of the function comes from the acronym for 'peak to peak'."
 msgstr ""
 
-#: mars.tensor.ptp:7 of
-msgid "a"
+#: mars.tensor.ptp of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.ptp:6 mars.tensor.ptp:14 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.ptp:8 of
+#: mars.tensor.ptp:5 of
 msgid "Input values."
 msgstr ""
 
-#: mars.tensor.ptp:10 of
-msgid "axis"
-msgstr ""
-
-#: mars.tensor.ptp:9 of
-msgid "int, optional"
-msgstr ""
-
-#: mars.tensor.ptp:10 of
+#: mars.tensor.ptp:7 of
 msgid "Axis along which to find the peaks.  By default, flatten the array."
 msgstr ""
 
-#: mars.tensor.ptp:15 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.ptp:13 of
+#: mars.tensor.ptp:10 of
 msgid ""
 "Alternative output tensor in which to place the result. It must have the "
 "same shape and buffer length as the expected output, but the type of the "
 "output values will be cast if necessary."
 msgstr ""
 
-#: mars.tensor.ptp:21 of
-msgid "ptp"
-msgstr ""
-
-#: mars.tensor.ptp:20 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.ptp:20 of
+#: mars.tensor.ptp:14 of
 msgid ""
-"A new tensor holding the result, unless `out` was specified, in which "
-"case a reference to `out` is returned."
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input array.  If the default value is passed, then"
+" `keepdims` will not be passed through to the `ptp` method of sub-classes"
+" of `Tensor`, however any non-default value will be.  If the sub-class' "
+"method does not implement `keepdims` any exceptions will be raised."
+msgstr ""
+
+#: mars.tensor.ptp:14 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input array."
+msgstr ""
+
+#: mars.tensor.ptp:18 of
+msgid ""
+"If the default value is passed, then `keepdims` will not be passed "
+"through to the `ptp` method of sub-classes of `Tensor`, however any non-"
+"default value will be.  If the sub-class' method does not implement "
+"`keepdims` any exceptions will be raised."
+msgstr ""
+
+#: mars.tensor.ptp of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.ptp:25 of
+msgid ""
+"**ptp** -- A new tensor holding the result, unless `out` was specified, "
+"in which case a reference to `out` is returned."
+msgstr ""
+
+#: mars.tensor.ptp of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.ptp:30 of
+msgid "Examples"
 msgstr ""
 

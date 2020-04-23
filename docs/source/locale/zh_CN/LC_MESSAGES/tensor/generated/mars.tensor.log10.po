@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.log10.rst:2
 msgid "mars.tensor.log10"
@@ -25,27 +25,15 @@ msgstr ""
 msgid "Return the base 10 logarithm of the input tensor, element-wise."
 msgstr ""
 
-#: mars.tensor.log10:5 of
-msgid "x"
+#: mars.tensor.log10 of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.log10:4 of
-msgid "array_like"
-msgstr ""
-
-#: mars.tensor.log10:6 of
+#: mars.tensor.log10:3 of
 msgid "Input values."
 msgstr ""
 
-#: mars.tensor.log10:10 of
-msgid "out"
-msgstr ""
-
-#: mars.tensor.log10:9 of
-msgid "Tensor, None, or tuple of tensor and None, optional"
-msgstr ""
-
-#: mars.tensor.log10:8 of
+#: mars.tensor.log10:5 of
 msgid ""
 "A location into which the result is stored. If provided, it must have a "
 "shape that the inputs broadcast to. If not provided or `None`, a freshly-"
@@ -53,53 +41,45 @@ msgid ""
 "argument) must have length equal to the number of outputs."
 msgstr ""
 
-#: mars.tensor.log10:13 of
-msgid "where"
-msgstr ""
-
-#: mars.tensor.log10:12 of
-msgid "array_like, optional"
-msgstr ""
-
-#: mars.tensor.log10:13 of
+#: mars.tensor.log10:10 of
 msgid ""
 "Values of True indicate to calculate the ufunc at that position, values "
 "of False indicate to leave the value in the output alone."
 msgstr ""
 
+#: mars.tensor.log10 of
+msgid "Returns"
+msgstr ""
+
 #: mars.tensor.log10:15 of
-msgid "**kwargs"
+msgid ""
+"**y** -- The logarithm to the base 10 of `x`, element-wise. NaNs are "
+"returned where x is negative."
+msgstr ""
+
+#: mars.tensor.log10 of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.log10:20 of
+msgid "Notes"
 msgstr ""
 
 #: mars.tensor.log10:21 of
-msgid "y"
-msgstr ""
-
-#: mars.tensor.log10:20 of
-msgid "Tensor"
-msgstr ""
-
-#: mars.tensor.log10:20 of
-msgid ""
-"The logarithm to the base 10 of `x`, element-wise. NaNs are returned "
-"where x is negative."
-msgstr ""
-
-#: mars.tensor.log10:25 of
 msgid ""
 "Logarithm is a multivalued function: for each `x` there is an infinite "
 "number of `z` such that `10**z = x`. The convention is to return the `z` "
 "whose imaginary part lies in `[-pi, pi]`."
 msgstr ""
 
-#: mars.tensor.log10:29 of
+#: mars.tensor.log10:25 of
 msgid ""
 "For real-valued input data types, `log10` always returns real output. For"
 " each value that cannot be expressed as a real number or infinity, it "
 "yields ``nan`` and sets the `invalid` floating point error flag."
 msgstr ""
 
-#: mars.tensor.log10:33 of
+#: mars.tensor.log10:29 of
 msgid ""
 "For complex-valued input, `log10` is a complex analytical function that "
 "has a branch cut `[-inf, 0]` and is continuous from above on it. `log10` "
@@ -107,13 +87,21 @@ msgid ""
 "number, conforming to the C99 standard."
 msgstr ""
 
-#: mars.tensor.log10:40 of
+#: mars.tensor.log10:35 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.log10:36 of
 msgid ""
 "M. Abramowitz and I.A. Stegun, \"Handbook of Mathematical Functions\", "
 "10th printing, 1964, pp. 67. http://www.math.sfu.ca/~cbm/aands/"
 msgstr ""
 
-#: mars.tensor.log10:42 of
+#: mars.tensor.log10:38 of
 msgid "Wikipedia, \"Logarithm\". http://en.wikipedia.org/wiki/Logarithm"
+msgstr ""
+
+#: mars.tensor.log10:41 of
+msgid "Examples"
 msgstr ""
 

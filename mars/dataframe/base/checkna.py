@@ -89,11 +89,134 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
 
 
 def isna(df):
+    """
+    Detect missing values.
+
+    Return a boolean same-sized object indicating if the values are NA.
+    NA values, such as None or :attr:`numpy.NaN`, gets mapped to True
+    values.
+
+    Everything else gets mapped to False values. Characters such as empty
+    strings ``''`` or :attr:`numpy.inf` are not considered NA values
+    (unless you set ``pandas.options.mode.use_inf_as_na = True``).
+
+    Returns
+    -------
+    DataFrame
+        Mask of bool values for each element in DataFrame that
+        indicates whether an element is not an NA value.
+
+    See Also
+    --------
+    DataFrame.isnull : Alias of isna.
+    DataFrame.notna : Boolean inverse of isna.
+    DataFrame.dropna : Omit axes labels with missing values.
+    isna : Top-level isna.
+
+    Examples
+    --------
+    Show which entries in a DataFrame are NA.
+
+    >>> import numpy as np
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'age': [5, 6, np.NaN],
+    ...                    'born': [md.NaT, md.Timestamp('1939-05-27'),
+    ...                             md.Timestamp('1940-04-25')],
+    ...                    'name': ['Alfred', 'Batman', ''],
+    ...                    'toy': [None, 'Batmobile', 'Joker']})
+    >>> df.execute()
+       age       born    name        toy
+    0  5.0        NaT  Alfred       None
+    1  6.0 1939-05-27  Batman  Batmobile
+    2  NaN 1940-04-25              Joker
+
+    >>> df.isna().execute()
+         age   born   name    toy
+    0  False   True  False   True
+    1  False  False  False  False
+    2   True  False  False  False
+
+    Show which entries in a Series are NA.
+
+    >>> ser = md.Series([5, 6, np.NaN])
+    >>> ser.execute()
+    0    5.0
+    1    6.0
+    2    NaN
+    dtype: float64
+
+    >>> ser.isna().execute()
+    0    False
+    1    False
+    2     True
+    dtype: bool
+    """
     op = DataFrameCheckNA(positive=True, use_inf_as_na=options.dataframe.mode.use_inf_as_na)
     return op(df)
 
 
 def notna(df):
+    """
+    Detect existing (non-missing) values.
+
+    Return a boolean same-sized object indicating if the values are not NA.
+    Non-missing values get mapped to True. Characters such as empty
+    strings ``''`` or :attr:`numpy.inf` are not considered NA values
+    (unless you set ``pandas.options.mode.use_inf_as_na = True``).
+    NA values, such as None or :attr:`numpy.NaN`, get mapped to False
+    values.
+
+    Returns
+    -------
+    DataFrame
+        Mask of bool values for each element in DataFrame that
+        indicates whether an element is not an NA value.
+
+    See Also
+    --------
+    DataFrame.notnull : Alias of notna.
+    DataFrame.isna : Boolean inverse of notna.
+    DataFrame.dropna : Omit axes labels with missing values.
+    notna : Top-level notna.
+
+    Examples
+    --------
+    Show which entries in a DataFrame are not NA.
+
+    >>> import numpy as np
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'age': [5, 6, np.NaN],
+    ...                    'born': [md.NaT, md.Timestamp('1939-05-27'),
+    ...                             md.Timestamp('1940-04-25')],
+    ...                    'name': ['Alfred', 'Batman', ''],
+    ...                    'toy': [None, 'Batmobile', 'Joker']})
+    >>> df.execute()
+       age       born    name        toy
+    0  5.0        NaT  Alfred       None
+    1  6.0 1939-05-27  Batman  Batmobile
+    2  NaN 1940-04-25              Joker
+
+    >>> df.notna().execute()
+         age   born  name    toy
+    0   True  False  True  False
+    1   True   True  True   True
+    2  False   True  True   True
+
+    Show which entries in a Series are not NA.
+
+    >>> ser = md.Series([5, 6, np.NaN])
+    >>> ser.execute()
+    0    5.0
+    1    6.0
+    2    NaN
+    dtype: float64
+
+    >>> ser.notna().execute()
+    0     True
+    1     True
+    2    False
+    dtype: bool
+    """
     op = DataFrameCheckNA(positive=False, use_inf_as_na=options.dataframe.mode.use_inf_as_na)
     return op(df)
 

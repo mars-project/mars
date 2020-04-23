@@ -1,21 +1,21 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars \n"
+"Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 11:23+0800\n"
+"POT-Creation-Date: 2020-04-22 17:45+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.arange.rst:2
 msgid "mars.tensor.arange"
@@ -40,40 +40,24 @@ msgid ""
 " consistent.  It is better to use ``linspace`` for these cases."
 msgstr ""
 
-#: mars.tensor.arange:15 of
-msgid "start"
+#: mars.tensor.arange of
+msgid "Parameters"
 msgstr ""
 
-#: mars.tensor.arange:14 mars.tensor.arange:23 of
-msgid "number, optional"
-msgstr ""
-
-#: mars.tensor.arange:15 of
+#: mars.tensor.arange:12 of
 msgid ""
 "Start of interval.  The interval includes this value.  The default start "
 "value is 0."
 msgstr ""
 
-#: mars.tensor.arange:19 of
-msgid "stop"
-msgstr ""
-
-#: mars.tensor.arange:18 of
-msgid "number"
-msgstr ""
-
-#: mars.tensor.arange:18 of
+#: mars.tensor.arange:15 of
 msgid ""
 "End of interval.  The interval does not include this value, except in "
 "some cases where `step` is not an integer and floating point round-off "
 "affects the length of `out`."
 msgstr ""
 
-#: mars.tensor.arange:24 of
-msgid "step"
-msgstr ""
-
-#: mars.tensor.arange:22 of
+#: mars.tensor.arange:19 of
 msgid ""
 "Spacing between values.  For any output `out`, this is the distance "
 "between two adjacent values, ``out[i+1] - out[i]``.  The default step "
@@ -81,51 +65,68 @@ msgid ""
 "also be given."
 msgstr ""
 
-#: mars.tensor.arange:26 mars.tensor.arange:27 of
-msgid "dtype"
-msgstr ""
-
-#: mars.tensor.arange:27 of
+#: mars.tensor.arange:24 of
 msgid ""
 "The type of the output tensor.  If `dtype` is not given, infer the data "
 "type from the other input arguments."
 msgstr ""
 
-#: mars.tensor.arange:30 of
-msgid "gpu"
-msgstr ""
-
-#: mars.tensor.arange:29 of
-msgid "bool, optional"
-msgstr ""
-
-#: mars.tensor.arange:30 of
+#: mars.tensor.arange:27 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.arange:40 of
-msgid "arange"
+#: mars.tensor.arange of
+msgid "Returns"
 msgstr ""
 
-#: mars.tensor.arange:39 of
-msgid "Tensor"
+#: mars.tensor.arange:30 of
+msgid ""
+"**arange** -- Tensor of evenly spaced values.  For floating point "
+"arguments, the length of the result is ``ceil((stop - start)/step)``.  "
+"Because of floating point overflow, this rule may result in the last "
+"element of `out` being greater than `stop`."
 msgstr ""
 
-#: mars.tensor.arange:35 of
-msgid "Tensor of evenly spaced values."
+#: mars.tensor.arange:30 of
+msgid "**arange** -- Tensor of evenly spaced values."
 msgstr ""
 
-#: mars.tensor.arange:37 of
+#: mars.tensor.arange:32 of
 msgid ""
 "For floating point arguments, the length of the result is ``ceil((stop - "
 "start)/step)``.  Because of floating point overflow, this rule may result"
 " in the last element of `out` being greater than `stop`."
 msgstr ""
 
+#: mars.tensor.arange of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.arange:41 of
+msgid ":func:`linspace`"
+msgstr ""
+
+#: mars.tensor.arange:41 of
+msgid "Evenly spaced numbers with careful handling of endpoints."
+msgstr ""
+
 #: mars.tensor.arange:44 of
-msgid ""
-"linspace : Evenly spaced numbers with careful handling of endpoints. "
-"ogrid: Tensors of evenly spaced numbers in N-dimensions. mgrid: Grid-"
-"shaped tensors of evenly spaced numbers in N-dimensions."
+msgid ":func:`ogrid`"
+msgstr ""
+
+#: mars.tensor.arange:44 of
+msgid "Tensors of evenly spaced numbers in N-dimensions."
+msgstr ""
+
+#: mars.tensor.arange:46 of
+msgid ":func:`mgrid`"
+msgstr ""
+
+#: mars.tensor.arange:47 of
+msgid "Grid-shaped tensors of evenly spaced numbers in N-dimensions."
+msgstr ""
+
+#: mars.tensor.arange:50 of
+msgid "Examples"
 msgstr ""
 
