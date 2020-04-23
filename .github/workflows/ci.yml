@@ -77,12 +77,13 @@ jobs:
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost
             fi
+            if [[ $UNAME == "linux" ]] && [[ "$PYTHON" =~ "3.6" ]]; then
+              pip install torch==1.4.0 torchvision==0.5.0
+              conda install -n test --quiet --yes -c pytorch python=$PYTHON faiss-cpu
+            fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               pip install tensorflow
               pip install torch torchvision
-            fi
-            if [[ $UNAME == "linux" ]] && [[ "$PYTHON" =~ "3.6" ]]; then
-              conda install -n test --quiet --yes -c pytorch python=$PYTHON faiss-cpu
             fi
             virtualenv testenv && source testenv/bin/activate
             pip install -r requirements.txt && pip install pytest pytest-timeout
