@@ -86,3 +86,6 @@ mars/worker/*.c*
 # files built from protobuf files
 mars/opcodes.py
 mars/**/*_pb2.py
+
+# docs
+docs/source/savefig/
