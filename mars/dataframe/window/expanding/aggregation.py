@@ -108,7 +108,9 @@ class DataFrameExpandingAgg(BaseDataFrameExpandingAgg):
 
     @classmethod
     def _get_stage_functions(cls, op: "DataFrameExpandingAgg", func):
-        if func in ('sum', 'prod', 'count'):
+        if func == '_data_count':
+            return ['count'], _combine_arithmetic
+        elif func in ('sum', 'prod', 'count'):
             return [func], _combine_arithmetic
         elif func in ('min', 'max'):
             return [func], partial(_combine_minmax, fun_name=func)

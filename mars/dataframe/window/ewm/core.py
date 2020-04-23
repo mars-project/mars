@@ -14,6 +14,9 @@
 
 import math
 from collections import OrderedDict
+from distutils.version import LooseVersion
+
+import pandas as pd
 
 from ....serialize import Int64Field, BoolField, Int32Field, Float64Field
 from ...utils import validate_axis
@@ -74,6 +77,7 @@ class EWM(Window):
 
         params = self.params
         params['alpha_ignore_na'] = params.pop('ignore_na', False)
+        params['validate_columns'] = LooseVersion(pd.__version__) < '1.0.0'
         op = DataFrameEwmAgg(func=func, **params)
         return op(self)
 
@@ -135,22 +139,29 @@ def ewm(obj, com=None, span=None, halflife=None, alpha=None, min_periods=0, adju
     Notes
     -----
     Exactly one of center of mass, span, half-life, and alpha must be provided.
+
     Allowed values and relationship between the parameters are specified in the
     parameter descriptions above; see the link at the end of this section for
     a detailed explanation.
+
     When adjust is True (default), weighted averages are calculated using
     weights (1-alpha)**(n-1), (1-alpha)**(n-2), ..., 1-alpha, 1.
+
     When adjust is False, weighted averages are calculated recursively as:
+
        weighted_average[0] = arg[0];
        weighted_average[i] = (1-alpha)*weighted_average[i-1] + alpha*arg[i].
+
     When ignore_na is False (default), weights are based on absolute positions.
     For example, the weights of x and y used in calculating the final weighted
     average of [x, None, y] are (1-alpha)**2 and 1 (if adjust is True), and
     (1-alpha)**2 and alpha (if adjust is False).
+
     When ignore_na is True (reproducing pre-0.15.0 behavior), weights are based
     on relative positions. For example, the weights of x and y used in
     calculating the final weighted average of [x, None, y] are 1-alpha and 1
     (if adjust is True), and 1-alpha and alpha (if adjust is False).
+
     More details can be found at
     https://pandas.pydata.org/pandas-docs/stable/user_guide/computation.html#exponentially-weighted-windows
 

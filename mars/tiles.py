@@ -113,13 +113,14 @@ class OperandTilesHandler(object):
             return self._handlers[op_cls](op)
         try:
             return op_cls.tile(op)
-        except NotImplementedError:
+        except NotImplementedError as ex:
+            cause = ex
             for registered_op_cls in self._handlers:
                 if issubclass(op_cls, registered_op_cls):
                     self._handlers[op_cls] = self._handlers[registered_op_cls]
                     return self._handlers[op_cls][op]
 
-        raise NotImplementedError('{} does not support tile'.format(type(op)))
+        raise NotImplementedError('{} does not support tile'.format(type(op))) from cause
 
     def inplace_tile(self, to_tile):
         if not to_tile.is_coarse():

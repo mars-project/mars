@@ -14,7 +14,6 @@
 
 import unittest
 from collections import OrderedDict
-from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -62,38 +61,32 @@ class Test(unittest.TestCase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.ewm(alpha=0.3).agg(['mean']))
 
-        r = df.expanding().agg(aggs)
+        r = df.ewm(alpha=0.3).agg(aggs)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(aggs))
+                                      raw.ewm(alpha=0.3).agg(aggs))
 
         agg_dict = {'c': 'mean'}
-        r = df.expanding().agg(agg_dict)
+        r = df.ewm(alpha=0.3).agg(agg_dict)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(agg_dict))
+                                      raw.ewm(alpha=0.3).agg(agg_dict))
 
-        agg_dict = OrderedDict([('a', ['sum', 'var']), ('b', 'var')])
-        r = df.expanding().agg(agg_dict)
+        agg_dict = OrderedDict([('a', ['mean', 'var']), ('b', 'var')])
+        r = df.ewm(alpha=0.3).agg(agg_dict)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(agg_dict))
+                                      raw.ewm(alpha=0.3).agg(agg_dict))
 
-        r = df.expanding(0).agg(aggs)
+        r = df.ewm(alpha=0.3, min_periods=0).agg(aggs)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding(0).agg(aggs))
+                                      raw.ewm(alpha=0.3, min_periods=0).agg(aggs))
 
-        r = df.expanding(2).agg(aggs)
+        r = df.ewm(alpha=0.3, min_periods=2).agg(aggs)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding(2).agg(aggs))
+                                      raw.ewm(alpha=0.3, min_periods=2).agg(aggs))
 
-        if LooseVersion(pd.__version__) < '1.0.0':
-            r = df.expanding(2).agg(aggs, _count_always_valid=False)
-            raw_r = raw.expanding(2).agg(aggs)
-            raw_r.iloc[0, :] = np.nan
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0], raw_r)
-
-        agg_dict = OrderedDict([('a', ['min', 'max']), ('b', 'max'), ('c', 'sum')])
-        r = df.expanding(2).agg(agg_dict)
+        agg_dict = OrderedDict([('a', ['mean', 'var']), ('b', 'var'), ('c', 'mean')])
+        r = df.ewm(alpha=0.3, min_periods=2).agg(agg_dict)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding(2).agg(agg_dict))
+                                      raw.ewm(alpha=0.3, min_periods=2).agg(agg_dict))
 
     def testSeriesExpandingAgg(self):
         raw = pd.Series(np.random.rand(10), name='a')
@@ -131,10 +124,10 @@ class Test(unittest.TestCase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.ewm(alpha=0.3).agg(aggs))
 
-        r = series.ewm(alpha=0.3).agg(aggs)
+        r = series.ewm(alpha=0.3, min_periods=0).agg(aggs)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.ewm(alpha=0.3).agg(aggs))
+                                      raw.ewm(alpha=0.3, min_periods=0).agg(aggs))
 
-        r = series.ewm(alpha=0.3).agg(aggs)
+        r = series.ewm(alpha=0.3, min_periods=2).agg(aggs)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.ewm(alpha=0.3).agg(aggs))
+                                      raw.ewm(alpha=0.3, min_periods=2).agg(aggs))
