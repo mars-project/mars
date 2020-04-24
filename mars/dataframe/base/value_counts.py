@@ -18,7 +18,8 @@ import pandas as pd
 from ... import opcodes
 from ...operands import OperandStage
 from ...serialize import KeyField, BoolField, Int64Field, StringField
-from ...utils import recursive_tile
+from ...tiles import TilesError
+from ...utils import recursive_tile, check_chunks_unknown_shape
 from ..core import Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import build_series, parse_index
@@ -34,11 +35,14 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
     _bins = Int64Field('bins')
     _dropna = BoolField('dropna')
     _method = StringField('method')
+    _convert_index_to_interval = BoolField('convert_index_to_interval')
 
     def __init__(self, normalize=None, sort=None, ascending=None,
-                 bins=None, dropna=None, method=None, stage=None, **kw):
+                 bins=None, dropna=None, method=None,
+                 convert_index_to_interval=None, stage=None, **kw):
         super().__init__(_normalize=normalize, _sort=sort, _ascending=ascending,
                          _bins=bins, _dropna=dropna, _method=method,
+                         _convert_index_to_interval=convert_index_to_interval,
                          _stage=stage, **kw)
         self._object_type = ObjectType.series
 
@@ -70,6 +74,10 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
     def method(self):
         return self._method
 
+    @property
+    def convert_index_to_interval(self):
+        return self._convert_index_to_interval
+
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
@@ -86,6 +94,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
                 raise TypeError("bins argument only works with numeric data.")
 
             self._bins = None
+            self._convert_index_to_interval = True
             return self.new_series([inp], shape=(np.nan,),
                                    index_value=parse_index(pd.CategoricalIndex([]),
                                                            inp, store_data=False),
@@ -97,12 +106,10 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        from .cut import DataFrameCut
-
+        inp = op.input
         out = op.outputs[0]
 
-        if np.prod(op.input.chunk_shape) == 1:
-            inp = op.input
+        if len(inp.chunks) == 1:
             chunk_op = op.copy().reset_key()
             chunk_param = out.params
             chunk_param['index'] = (0,)
@@ -114,7 +121,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
             param['nsplits'] = ((np.nan,),)
             return new_op.new_seriess(op.inputs, kws=[param])
 
-        inp = Series(op.input)
+        inp = Series(inp)
 
         if op.dropna:
             inp = inp.dropna()
@@ -122,18 +129,23 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
         inp = inp.groupby(inp).count(method=op.method)
 
         if op.normalize:
-            inp = inp.truediv(inp.sum(), axis=0)
+            if op.convert_index_to_interval:
+                check_chunks_unknown_shape([op.input], TilesError)
+                inp = inp.truediv(op.input.shape[0], axis=0)
+            else:
+                inp = inp.truediv(inp.sum(), axis=0)
 
         if op.sort:
             inp = inp.sort_values(ascending=op.ascending)
 
         ret = recursive_tile(inp)
 
-        if isinstance(op.input.op, DataFrameCut):
+        if op.convert_index_to_interval:
             # convert index to IntervalDtype
             chunks = []
             for c in ret.chunks:
-                chunk_op = DataFrameValueCounts(stage=OperandStage.map)
+                chunk_op = DataFrameValueCounts(convert_index_to_interval=True,
+                                                stage=OperandStage.map)
                 chunk_params = c.params
                 chunk_params['index_value'] = parse_index(pd.IntervalIndex([]),
                                                           c, store_data=False)
@@ -150,19 +162,112 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op: "DataFrameValueCounts"):
         if op.stage != OperandStage.map:
-            result = ctx[op.input.key].value_counts(
-                normalize=op.normalize, sort=op.sort, ascending=op.ascending,
-                bins=op.bins, dropna=op.dropna)
+            if op.convert_index_to_interval:
+                data = ctx[op.input.key]
+                result = data.value_counts(
+                    normalize=False, sort=op.sort, ascending=op.ascending,
+                    bins=op.bins, dropna=op.dropna)
+                if op.normalize:
+                    result /= data.shape[0]
+            else:
+                result = ctx[op.input.key].value_counts(
+                    normalize=op.normalize, sort=op.sort, ascending=op.ascending,
+                    bins=op.bins, dropna=op.dropna)
         else:
             result = ctx[op.input.key]
-        # convert CategoricalDtype which generated in `cut`
-        # to IntervalDtype
-        result.index = result.index.astype('interval')
+        if op.convert_index_to_interval:
+            # convert CategoricalDtype which generated in `cut`
+            # to IntervalDtype
+            result.index = result.index.astype('interval')
         ctx[op.outputs[0].key] = result
 
 
 def value_counts(series, normalize=False, sort=True, ascending=False,
                  bins=None, dropna=True, method='tree'):
+    """
+    Return a Series containing counts of unique values.
+
+    The resulting object will be in descending order so that the
+    first element is the most frequently-occurring element.
+    Excludes NA values by default.
+
+    Parameters
+    ----------
+    normalize : bool, default False
+        If True then the object returned will contain the relative
+        frequencies of the unique values.
+    sort : bool, default True
+        Sort by frequencies.
+    ascending : bool, default False
+        Sort in ascending order.
+    bins : int, optional
+        Rather than count values, group them into half-open bins,
+        a convenience for ``pd.cut``, only works with numeric data.
+    dropna : bool, default True
+        Don't include counts of NaN.
+    method : str, default 'tree'
+        'shuffle' or 'tree',
+        'tree' method provide a better performance,
+        while 'shuffle' is recommended if aggregated result is very large.
+
+    Returns
+    -------
+    Series
+
+    See Also
+    --------
+    Series.count: Number of non-NA elements in a Series.
+    DataFrame.count: Number of non-NA elements in a DataFrame.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> import mars.tensor as mt
+
+    >>> s = md.Series([3, 1, 2, 3, 4, mt.nan])
+    >>> s.value_counts().execute()
+    3.0    2
+    4.0    1
+    2.0    1
+    1.0    1
+    dtype: int64
+
+    With `normalize` set to `True`, returns the relative frequency by
+    dividing all values by the sum of values.
+
+    >>> s = md.Series([3, 1, 2, 3, 4, mt.nan])
+    >>> s.value_counts(normalize=True).execute()
+    3.0    0.4
+    4.0    0.2
+    2.0    0.2
+    1.0    0.2
+    dtype: float64
+
+    **bins**
+
+    Bins can be useful for going from a continuous variable to a
+    categorical variable; instead of counting unique
+    apparitions of values, divide the index in the specified
+    number of half-open bins.
+
+    >>> s.value_counts(bins=3).execute()
+    (2.0, 3.0]      2
+    (0.996, 2.0]    2
+    (3.0, 4.0]      1
+    dtype: int64
+
+    **dropna**
+
+    With `dropna` set to `False` we can also see NaN index values.
+
+    >>> s.value_counts(dropna=False).execute()
+    3.0    2
+    NaN    1
+    4.0    1
+    2.0    1
+    1.0    1
+    dtype: int64
+    """
     op = DataFrameValueCounts(normalize=normalize, sort=sort,
                               ascending=ascending, bins=bins,
                               dropna=dropna, method=method)

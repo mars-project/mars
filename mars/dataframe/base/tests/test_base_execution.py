@@ -1150,22 +1150,32 @@ class Test(TestBase):
     def testValueCountsExecution(self):
         rs = np.random.RandomState(0)
         s = pd.Series(rs.randint(5, size=100))
+        s[rs.randint(100)] = np.nan
 
         ctx, executor = self._create_test_context(self.executor)
 
         # test 1 chunk
         series = from_pandas_series(s, chunk_size=100)
 
+        r = series.value_counts()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       s.value_counts())
+
         r = series.value_counts(bins=5, normalize=True)
         with ctx:
             pd.testing.assert_series_equal(executor.execute_dataframes([r])[0],
                                            s.value_counts(bins=5, normalize=True))
 
+        # test multi chunks
         series = from_pandas_series(s, chunk_size=30)
 
         r = series.value_counts()
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                        s.value_counts())
+
+        r = series.value_counts(normalize=True)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       s.value_counts(normalize=True))
 
         with ctx:
             # test bins and normalize
