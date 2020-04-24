@@ -27,6 +27,7 @@ from .dropna import df_dropna, series_dropna
 from .cut import cut
 from .shift import shift, tshift
 from .diff import df_diff, series_diff
+from .value_counts import value_counts
 
 
 def _install():
@@ -76,6 +77,7 @@ def _install():
         setattr(t, 'shift', shift)
         setattr(t, 'tshift', tshift)
         setattr(t, 'diff', series_diff)
+        setattr(t, 'value_counts', value_counts)
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)

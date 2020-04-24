@@ -214,7 +214,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         else:
             # shape differs only when dataframe add 1-d tensor, we need rechunk on columns axis.
             rechunk_size = other.nsplits[1] if op.axis == 'columns' or op.axis == 1 else other.nsplits[0]
-            tensor = tensor.rechunk((rechunk_size,))._inplace_tile()
+            if tensor.ndim > 0:
+                tensor = tensor.rechunk((rechunk_size,))._inplace_tile()
 
         out_chunks = []
         for out_index in itertools.product(*(map(range, other.chunk_shape))):

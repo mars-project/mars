@@ -44,6 +44,16 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              df2.groupby('b'))
 
+        # test groupby series
+        grouped = mdf.groupby(mdf['b'])
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             df2.groupby(df2['b']))
+
+        # test groupby multiple series
+        grouped = mdf.groupby(by=[mdf['b'], mdf['c']])
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             df2.groupby(by=[df2['b'], df2['c']]))
+
         df3 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                             'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
                             'c': list('aabaaddce')},
@@ -58,6 +68,11 @@ class Test(TestBase):
         grouped = ms1.groupby(lambda x: x % 3)
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              series1.groupby(lambda x: x % 3))
+
+        # test groupby series
+        grouped = ms1.groupby(ms1)
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             series1.groupby(series1))
 
         series2 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3],
                             index=['i' + str(i) for i in range(9)])
@@ -198,6 +213,11 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                           df2.groupby('c2').agg({'c1': 'min'}))
 
+            # test groupby series
+            r3 = mdf2.groupby(mdf2['c2']).sum(method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
+                                          df2.groupby(df2['c2']).sum())
+
         r4 = mdf2.groupby('c2').sum()
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r4, concat=True)[0],
                                       df2.groupby('c2').sum())
@@ -282,6 +302,11 @@ class Test(TestBase):
             r3 = ms1.groupby(lambda x: x % 2).agg(agg, method=method)
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                           series1.groupby(lambda x: x % 2).agg(agg))
+
+            # test groupby series
+            r3 = ms1.groupby(ms1).sum(method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r3, concat=True)[0],
+                                           series1.groupby(series1).sum())
 
         r4 = ms1.groupby(lambda x: x % 2).sum()
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r4, concat=True)[0],

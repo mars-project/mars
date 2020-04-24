@@ -19,17 +19,17 @@ from functools import reduce
 
 import pandas as pd
 
-from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
-    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE, \
-    DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE, \
-    CATEGORICAL_CHUNK_TYPE, CATEGORICAL_TYPE
-from ..core import FuseChunkData, FuseChunk
+from ..core import FuseChunkData, FuseChunk, Base, Entity
 from ..operands import Operand, TileableOperandMixin, MapReduceOperand, Fuse
 from ..operands import ShuffleProxy, FuseChunkMixin
 from ..serialize import Int8Field, AnyField
 from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, TensorOrder
 from ..tensor.operands import TensorOperandMixin
 from ..utils import calc_nsplits
+from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
+    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE, \
+    DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE, \
+    CATEGORICAL_CHUNK_TYPE, CATEGORICAL_TYPE
 from .utils import parse_index
 
 
@@ -171,6 +171,30 @@ class DataFrameOperandMixin(TileableOperandMixin):
                                      categories_value=categories_value, **kw)[0]
 
     @classmethod
+    def _process_groupby_params(cls, groupby_params):
+        new_groupby_params = groupby_params.copy()
+        if isinstance(groupby_params['by'], list):
+            by = []
+            for v in groupby_params['by']:
+                if isinstance(v, (Base, Entity)):
+                    by.append(cls.concat_tileable_chunks(v).chunks[0])
+                else:
+                    by.append(v)
+            new_groupby_params['by'] = by
+        return new_groupby_params
+
+    @classmethod
+    def _get_groupby_inputs(cls, groupby, groupby_params):
+        inputs = [groupby]
+        chunk_inputs = list(groupby.chunks)
+        if isinstance(groupby_params['by'], list):
+            for chunk_v, v in zip(groupby_params['by'], groupby.op.groupby_params['by']):
+                if isinstance(v, (Base, Entity)):
+                    inputs.append(v)
+                    chunk_inputs.append(chunk_v)
+        return inputs, chunk_inputs
+
+    @classmethod
     def concat_tileable_chunks(cls, tileable):
         from .merge.concat import DataFrameConcat, GroupByConcat
 
@@ -201,20 +225,17 @@ class DataFrameOperandMixin(TileableOperandMixin):
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
-        elif isinstance(df, DATAFRAME_GROUPBY_TYPE):
-            chunk = GroupByConcat(groupby_params=df.op.groupby_params,
-                                  object_type=ObjectType.dataframe_groupby).new_chunk(
-                df.chunks, **df.params)
-            return GroupByConcat(groupby_params=df.op.groupby_params,
-                                 object_type=ObjectType.dataframe_groupby).new_dataframe(
-                [df], chunks=[chunk], **df.params)
-        elif isinstance(df, SERIES_GROUPBY_TYPE):
-            chunk = GroupByConcat(groupby_params=df.op.groupby_params,
-                                  object_type=ObjectType.series_groupby).new_chunk(
-                df.chunks, **df.params)
-            return GroupByConcat(groupby_params=df.op.groupby_params,
-                                 object_type=ObjectType.series_groupby).new_dataframe(
-                [df], chunks=[chunk], **df.params)
+        elif isinstance(df, (DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE)):
+            object_type = ObjectType.dataframe_groupby \
+                if isinstance(df, DATAFRAME_GROUPBY_TYPE) else ObjectType.series_groupby
+            groupby_params = cls._process_groupby_params(df.op.groupby_params)
+            inputs, chunk_inputs = cls._get_groupby_inputs(df, groupby_params)
+            chunk = GroupByConcat(groups=df.chunks, groupby_params=groupby_params,
+                                  object_type=object_type).new_chunk(
+                chunk_inputs, **df.params)
+            return GroupByConcat(groups=[df], groupby_params=df.op.groupby_params,
+                                 object_type=object_type).new_dataframe(
+                inputs, chunks=[chunk], **df.params)
         elif isinstance(df, CATEGORICAL_TYPE):
             chunk = DataFrameConcat(object_type=ObjectType.categorical).new_chunk(
                 df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,

@@ -15,7 +15,8 @@
 import pandas as pd
 import numpy as np
 
-from ...serialize import ListField, StringField, BoolField, AnyField
+from ...core import Base, Entity
+from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
 from ... import opcodes as OperandDef
 from ...utils import lazy_import
 from ..utils import parse_index, build_empty_df, standardize_range_index, validate_axis
@@ -378,21 +379,53 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_CONCAT
 
+    _groups = ListField('groups', ValueType.key)
     _groupby_params = AnyField('groupby_params')
 
-    def __init__(self, groupby_params=None, object_type=None, **kw):
-        super().__init__(_groupby_params=groupby_params, _object_type=object_type, **kw)
+    def __init__(self, groups=None, groupby_params=None, object_type=None, **kw):
+        super().__init__(_groups=groups, _groupby_params=groupby_params,
+                         _object_type=object_type, **kw)
+
+    @property
+    def groups(self):
+        return self._groups
 
     @property
     def groupby_params(self):
         return self._groupby_params
 
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        new_groups = []
+        for _ in self._groups:
+            new_groups.append(next(inputs_iter))
+        self._groups = new_groups
+
+        if isinstance(self._groupby_params['by'], list):
+            by = []
+            for v in self._groupby_params['by']:
+                if isinstance(v, (Base, Entity)):
+                    by.append(next(inputs_iter))
+                else:
+                    by.append(v)
+            self._groupby_params['by'] = by
+
     @classmethod
     def execute(cls, ctx, op):
-        input_data = [ctx[input.key] for input in op.inputs]
+        input_data = [ctx[input.key] for input in op.groups]
         obj = pd.concat([d.obj for d in input_data])
 
         params = op.groupby_params.copy()
+        if isinstance(params['by'], list):
+            by = []
+            for v in params['by']:
+                if isinstance(v, Base):
+                    by.append(ctx[v.key])
+                else:
+                    by.append(v)
+            params['by'] = by
         selection = params.pop('selection', None)
 
         result = obj.groupby(**params)

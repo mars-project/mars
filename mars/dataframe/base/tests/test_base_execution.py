@@ -1146,3 +1146,29 @@ class Test(TestBase):
         r = from_pandas_series(s1, chunk_size=5).diff(1)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                        s1.diff(1))
+
+    def testValueCountsExecution(self):
+        rs = np.random.RandomState(0)
+        s = pd.Series(rs.randint(5, size=100))
+
+        ctx, executor = self._create_test_context(self.executor)
+
+        # test 1 chunk
+        series = from_pandas_series(s, chunk_size=100)
+
+        r = series.value_counts(bins=5, normalize=True)
+        with ctx:
+            pd.testing.assert_series_equal(executor.execute_dataframes([r])[0],
+                                           s.value_counts(bins=5, normalize=True))
+
+        series = from_pandas_series(s, chunk_size=30)
+
+        r = series.value_counts()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       s.value_counts())
+
+        with ctx:
+            # test bins and normalize
+            r = series.value_counts(bins=5, normalize=True)
+            pd.testing.assert_series_equal(executor.execute_dataframes([r])[0],
+                                           s.value_counts(bins=5, normalize=True))

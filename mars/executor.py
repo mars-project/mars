@@ -724,7 +724,7 @@ class Executor(object):
                     c._shape = chunk_result[c.key].shape
                 except AttributeError:
                     # Fuse chunk
-                    pass
+                    c._composed[-1]._shape = chunk_result[c.key].shape
 
     def _update_tileable_and_chunk_shape(self, tileable_graph, chunk_result, failed_ops):
         for n in tileable_graph:
