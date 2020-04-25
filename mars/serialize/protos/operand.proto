@@ -348,6 +348,7 @@ message OperandDef {
         CUT = 722;
         SHIFT = 723;
         DATAFRAME_DIFF = 724;
+        VALUE_COUNTS = 725;
 
         FUSE = 801;
 

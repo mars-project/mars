@@ -23,6 +23,7 @@ from pandas.core.groupby import SeriesGroupBy
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import Base, Entity
 from ...operands import OperandStage
 from ...serialize import ValueType, AnyField, StringField, ListField, DictField
 from ..merge import DataFrameConcat
@@ -90,6 +91,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     def output_column_to_func(self):
         return self._output_column_to_func
 
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        inputs_iter = iter(self._inputs[1:])
+        if len(self._inputs) > 1:
+            by = []
+            for v in self._groupby_params['by']:
+                if isinstance(v, (Base, Entity)):
+                    by.append(next(inputs_iter))
+                else:
+                    by.append(v)
+            self._groupby_params['by'] = by
+
     def _normalize_keyword_aggregations(self, groupby):
         raw_func = self._raw_func
         if isinstance(raw_func, dict):
@@ -122,6 +135,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                         self._safe_append(func, c, f)
                     self._func = func
 
+    def _get_inputs(self, inputs):
+        if isinstance(self._groupby_params['by'], list):
+            for v in self._groupby_params['by']:
+                if isinstance(v, (Base, Entity)):
+                    inputs.append(v)
+        return inputs
+
     def _call_dataframe(self, groupby, input_df):
         grouped = groupby.op.build_mock_groupby()
         agg_df = grouped.aggregate(self.func)
@@ -144,7 +164,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 # means as_index=False takes no effect
                 self.groupby_params['as_index'] = True
 
-        return self.new_dataframe([input_df], shape=shape, dtypes=agg_df.dtypes,
+        inputs = self._get_inputs([input_df])
+        return self.new_dataframe(inputs, shape=shape, dtypes=agg_df.dtypes,
                                   index_value=index_value,
                                   columns_value=parse_index(agg_df.columns, store_data=True))
 
@@ -157,15 +178,16 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         # convert func to dict always
         self._normalize_keyword_aggregations(groupby)
 
+        inputs = self._get_inputs([in_series])
         # update value type
         if isinstance(agg_result, pd.DataFrame):
             self._object_type = ObjectType.dataframe
-            return self.new_dataframe([in_series], shape=(np.nan, len(agg_result.columns)),
+            return self.new_dataframe(inputs, shape=(np.nan, len(agg_result.columns)),
                                       dtypes=agg_result.dtypes, index_value=index_value,
                                       columns_value=parse_index(agg_result.columns, store_data=True))
         else:
             self._object_type = ObjectType.series
-            return self.new_series([in_series], shape=(np.nan,), dtype=agg_result.dtype,
+            return self.new_series(inputs, shape=(np.nan,), dtype=agg_result.dtype,
                                    name=groupby.name, index_value=index_value)
 
     def __call__(self, groupby):
@@ -297,22 +319,33 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     def _gen_map_chunks(cls, op, in_df, out_df, stage_infos: _stage_infos):
         agg_chunks = []
         for chunk in in_df.chunks:
+            chunk_inputs = [chunk]
             agg_op = op.copy().reset_key()
             # force as_index=True for map phase
             agg_op._object_type = ObjectType.dataframe
             agg_op._groupby_params = agg_op.groupby_params.copy()
             agg_op._groupby_params['as_index'] = True
+            if isinstance(agg_op._groupby_params['by'], list):
+                by = []
+                for v in agg_op._groupby_params['by']:
+                    if isinstance(v, (Base, Entity)):
+                        by_chunk = v.cix[chunk.index[0], ]
+                        chunk_inputs.append(by_chunk)
+                        by.append(by_chunk)
+                    else:
+                        by.append(v)
+                agg_op._groupby_params['by'] = by
             agg_op._stage = OperandStage.map
             agg_op._func = stage_infos.map_func
             agg_op._output_column_to_func = stage_infos.map_output_column_to_func
             columns_value = parse_index(pd.Index(stage_infos.intermediate_cols), store_data=True)
             new_index = chunk.index if len(chunk.index) == 2 else (chunk.index[0], 0)
             if op.object_type == ObjectType.dataframe:
-                agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=new_index,
+                agg_chunk = agg_op.new_chunk(chunk_inputs, shape=out_df.shape, index=new_index,
                                              index_value=out_df.index_value,
                                              columns_value=columns_value)
             else:
-                agg_chunk = agg_op.new_chunk([chunk], shape=(out_df.shape[0], 1), index=new_index,
+                agg_chunk = agg_op.new_chunk(chunk_inputs, shape=(out_df.shape[0], 1), index=new_index,
                                              index_value=out_df.index_value, columns_value=columns_value)
             agg_chunks.append(agg_chunk)
         return agg_chunks
@@ -323,6 +356,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         if len(in_df.shape) > 1:
             in_df = build_concatenated_rows_frame(in_df)
         out_df = op.outputs[0]
+
+        index = out_df.index_value.to_pandas()
+        level = 0 if not isinstance(index, pd.MultiIndex) else list(range(len(index.levels)))
 
         stage_infos = cls._gen_stages_columns_and_funcs(op.func)
 
@@ -338,6 +374,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_op = op.copy().reset_key()
             agg_op._groupby_params = agg_op.groupby_params.copy()
             agg_op._groupby_params.pop('selection', None)
+            # use levels instead of by for reducer
+            agg_op._groupby_params.pop('by', None)
+            agg_op._groupby_params['level'] = level
             agg_op._stage = OperandStage.agg
             agg_op._func = stage_infos.agg_func
             agg_op._output_column_to_func = stage_infos.agg_output_column_to_func
@@ -368,6 +407,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             in_df = build_concatenated_rows_frame(in_df)
         out_df = op.outputs[0]
 
+        index = out_df.index_value.to_pandas()
+        level = 0 if not isinstance(index, pd.MultiIndex) else list(range(len(index.levels)))
+
         stage_infos = cls._gen_stages_columns_and_funcs(op.func)
         combine_size = options.combine_size
         chunks = cls._gen_map_chunks(op, in_df, out_df, stage_infos)
@@ -388,6 +430,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._stage = OperandStage.combine
                 chunk_op._groupby_params = chunk_op.groupby_params.copy()
                 chunk_op._groupby_params.pop('selection', None)
+                # use levels instead of by for agg
+                chunk_op._groupby_params.pop('by', None)
+                chunk_op._groupby_params['level'] = level
                 chunk_op._func = stage_infos.combine_func
                 chunk_op._output_column_to_func = stage_infos.combine_output_column_to_func
                 columns_value = parse_index(pd.Index(stage_infos.intermediate_cols), store_data=True)
@@ -402,6 +447,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         chunk_op._stage = OperandStage.agg
         chunk_op._groupby_params = chunk_op.groupby_params.copy()
         chunk_op._groupby_params.pop('selection', None)
+        # use levels instead of by for agg
+        chunk_op._groupby_params.pop('by', None)
+        chunk_op._groupby_params['level'] = level
         chunk_op._func = stage_infos.agg_func
         chunk_op._output_column_to_func = stage_infos.agg_output_column_to_func
         chunk_op._agg_columns = stage_infos.agg_cols
@@ -428,13 +476,22 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             raise NotImplementedError
 
     @classmethod
-    def _get_grouped(cls, op: "DataFrameGroupByAgg", df, copy=False):
+    def _get_grouped(cls, op: "DataFrameGroupByAgg", df, ctx, copy=False):
         if copy:
             df = df.copy()
 
         params = op.groupby_params.copy()
         params.pop('as_index', None)
         selection = params.pop('selection', None)
+
+        if isinstance(params.get('by'), list):
+            new_by = []
+            for v in params['by']:
+                if isinstance(v, Base):
+                    new_by.append(ctx[v.key])
+                else:
+                    new_by.append(v)
+            params['by'] = new_by
 
         if op.stage == OperandStage.agg:
             grouped = df.groupby(**params)
@@ -467,7 +524,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(df, pd.Series) and op.object_type == ObjectType.dataframe:
             df = pd.DataFrame(df, columns=[df.name or _series_col_name])
 
-        grouped = cls._get_grouped(op, df)
+        grouped = cls._get_grouped(op, df, ctx)
         if op.stage == OperandStage.agg:
             # use intermediate columns
             columns = op.agg_columns
@@ -495,7 +552,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             except ValueError:
                 # fail due to buffer read-only
                 # force to get grouped again by copy
-                grouped = cls._get_grouped(op, df, copy=True)
+                grouped = cls._get_grouped(op, df, ctx, copy=True)
                 result = grouped.agg(func)
         else:
             # SeriesGroupBy does not support aggregating with dicts
@@ -507,7 +564,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             except ValueError:  # pragma: no cover
                 # fail due to buffer read-only
                 # force to get grouped again by copy
-                grouped = cls._get_grouped(op, df, copy=True)
+                grouped = cls._get_grouped(op, df, ctx, copy=True)
                 result = grouped.agg(func)
         result.columns = processed_cols
         if len(op.output_column_to_func) > 0:

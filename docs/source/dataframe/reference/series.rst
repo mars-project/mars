@@ -113,6 +113,7 @@ Computations / descriptive stats
    Series.sum
    Series.var
    Series.nunique
+   Series.value_counts
 
 Reindexing / selection / label manipulation
 -------------------------------------------
@@ -146,6 +147,17 @@ Combining / joining / merging
 -----------------------------
 .. autosummary::
    :toctree: api/
+
+   Series.append
+
+Time Series-related
+-------------------
+.. autosummary::
+   :toctree: api/
+
+   Series.diff
+   Series.shift
+   Series.tshift
 
 Accessors
 ---------
@@ -330,15 +342,6 @@ strings and apply several methods to it. These can be accessed like
 
        Series.str
        Series.dt
-
-Time Series-related
--------------------
-.. autosummary::
-   :toctree: api/
-
-   Series.diff
-   Series.shift
-   Series.tshift
 
 Plotting
 --------

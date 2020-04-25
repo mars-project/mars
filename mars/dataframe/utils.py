@@ -47,7 +47,17 @@ def hash_dataframe_on(df, on, size, level=None):
         # todo optimization can be added, if ``on`` is a numpy ufunc or sth can be vectorized
         hashed_label = pd.util.hash_pandas_object(df.index.map(on), categorize=False)
     else:
-        hashed_label = pd.util.hash_pandas_object(df[on], index=False, categorize=False)
+        if isinstance(on, list):
+            to_concat = []
+            for v in on:
+                if isinstance(v, pd.Series):
+                    to_concat.append(v)
+                else:
+                    to_concat.append(df[v])
+            data = pd.concat(to_concat, axis=1)
+        else:
+            data = df[on]
+        hashed_label = pd.util.hash_pandas_object(data, index=False, categorize=False)
     idx_to_grouped = df.index.groupby(hashed_label % size)
     return [idx_to_grouped.get(i, pd.Index([])).unique() for i in range(size)]
 
@@ -445,7 +455,10 @@ def build_series(series_obj, fill_value=1, size=1):
         index = tuple(_generate_value(level.dtype, fill_value) for level in empty_series.index.levels)
         empty_series.loc[index, ] = record
     else:
-        index = _generate_value(empty_series.index.dtype, fill_value)
+        if isinstance(empty_series.index.dtype, pd.CategoricalDtype):
+            index = None
+        else:
+            index = _generate_value(empty_series.index.dtype, fill_value)
         empty_series.loc[index] = record
 
     empty_series = pd.concat([empty_series] * size)
