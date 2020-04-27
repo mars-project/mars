@@ -64,6 +64,8 @@ Then start a local cluster by run
     session2.run(a * 2)
 
 
+.. _deploy:
+
 Run on Clusters
 ===============
 

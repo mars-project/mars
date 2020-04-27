@@ -161,7 +161,7 @@ Utilities
    utils.validation.check_is_fitted
    utils.validation.column_or_1d
 
-.. _xgboost_ref:
+.. _tensorflow_ref:
 
 TensorFlow Integration
 ======================
@@ -176,6 +176,8 @@ TensorFlow Integration
    :toctree: generated/
 
    contrib.tensorflow.run_tensorflow_script
+
+.. _pytorch_ref:
 
 PyTorch Integration
 ======================
@@ -193,6 +195,8 @@ PyTorch Integration
    contrib.pytorch.MarsDataset
    contrib.pytorch.MarsDistributedSampler
    contrib.pytorch.MarsRandomSampler
+
+.. _xgboost_ref:
 
 XGBoost Integration
 ===================
