@@ -15,5 +15,5 @@
 
 from .core import convert_to_tensor_or_dataframe, get_output_types
 from .validation import check_array, assert_all_finite, \
-    check_consistent_length, column_or_1d
+    check_consistent_length, column_or_1d, check_X_y
 from .shuffle import shuffle

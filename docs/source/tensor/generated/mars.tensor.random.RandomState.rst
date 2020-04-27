@@ -5,14 +5,14 @@ mars.tensor.random.RandomState
 
 .. autoclass:: RandomState
 
-
+   
    .. automethod:: __init__
 
-
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~RandomState.__init__
       ~RandomState.beta
       ~RandomState.binomial
@@ -22,6 +22,7 @@ mars.tensor.random.RandomState
       ~RandomState.dirichlet
       ~RandomState.exponential
       ~RandomState.f
+      ~RandomState.from_numpy
       ~RandomState.gamma
       ~RandomState.geometric
       ~RandomState.gumbel
@@ -56,14 +57,16 @@ mars.tensor.random.RandomState
       ~RandomState.standard_gamma
       ~RandomState.standard_normal
       ~RandomState.standard_t
+      ~RandomState.to_numpy
       ~RandomState.triangular
       ~RandomState.uniform
       ~RandomState.vonmises
       ~RandomState.wald
       ~RandomState.weibull
       ~RandomState.zipf
+   
+   
 
-
-
-
-
+   
+   
+   

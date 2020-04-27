@@ -95,6 +95,7 @@ mars.dataframe.Series
       ~Series.transform
       ~Series.truediv
       ~Series.tshift
+      ~Series.value_counts
       ~Series.var
       ~Series.xor
    
