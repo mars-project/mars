@@ -115,6 +115,7 @@ it's fairly simple to migrate from a single machine to a cluster due to the incr
    :caption: Learn Interface
    :hidden:
 
+   learn/tensorflow
    learn/xgboost
    learn/reference
 

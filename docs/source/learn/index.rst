@@ -8,6 +8,7 @@ Mars Learn - distributed machine learning
    :caption: User Guide
    :maxdepth: 2
 
+   tensorflow
    xgboost
 
 .. toctree::

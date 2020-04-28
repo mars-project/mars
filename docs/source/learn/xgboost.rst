@@ -11,7 +11,7 @@ This is an introduction about how to use XGBoost for training and prediction in 
 Installation
 ------------
 
-If you are trying to use Mars on a single machine e.g. your laptop,
+If you are trying to use Mars on a single machine e.g. on your laptop,
 make sure XGBoost is installed.
 
 You can install XGBoost via pip:
@@ -24,7 +24,7 @@ Visit `installation guide for XGBoost <https://xgboost.readthedocs.io/en/latest/
 for more information.
 
 On the other hand, if you are using Mars on a cluster, make sure
-XGBoost is installed on every worker.
+XGBoost is installed on each worker.
 
 Prepare data
 ------------
@@ -101,7 +101,7 @@ Training
 
 We can train data in two ways:
 
-1. Call :meth:`train` which accept a :class:`MarsDMatrix`.
+1. Call :meth:`train` which accepts a :class:`MarsDMatrix`.
 2. Use scikit-learn API including :class:`XGBClassifier` and :class:`XGBRegressor`.
 
 For :meth:`train`, you can run the snippet.
@@ -173,7 +173,7 @@ Take :meth:`XGBRegressor.fit` as an example.
 
    reg = xgb.XGBRegressor()
 
-   # training will submitted to cluster
+   # training will submitted to cluster by default
    reg.fit(X_train)
 
    # Or, session could be specified as well
