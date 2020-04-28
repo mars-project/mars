@@ -31,7 +31,7 @@ class Test(unittest.TestCase):
         df2 = md.DataFrame(df)
 
         with self.assertRaises(NotImplementedError):
-            _ = df2.ewm(2, adjust=False)
+            _ = df2.ewm(2, adjust=False, ignore_na=False)
 
         with self.assertRaises(ValueError):
             _ = df2.ewm()

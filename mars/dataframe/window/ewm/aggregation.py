@@ -69,13 +69,11 @@ def _add_pred_results(pred_results, local_results, axis=0, alpha=None, order=1,
 def _combine_mean(pred_results, local_results, axis=0, alpha=None, alpha_ignore_na=False,
                   pred_exponent=None):
     if pred_results is None:
-        return local_results[0]
+        return (local_results[0] / local_results[1]).ffill()
 
     alpha_data = local_results[1]
+    local_results[0].ffill(inplace=True)
     local_results[1] = alpha_data.ffill()
-    local_results[0] = local_results[0] * local_results[1]
-    if pred_results is not None:
-        pred_results[0] = pred_results[0] * pred_results[1]
 
     local_sum_data, local_count_data = local_results
 
@@ -89,24 +87,20 @@ def _combine_mean(pred_results, local_results, axis=0, alpha=None, alpha_ignore_
 
 def _combine_var(pred_results, local_results, axis=0, alpha=None, alpha_ignore_na=False,
                  pred_exponent=None):
+    local_results[0].ffill(inplace=True)
     alpha_data = local_results[1]
     local_results[1] = alpha_data.ffill()
 
+    local_results[2].ffill(inplace=True)
     alpha2_data = local_results[3]
     local_results[3] = alpha2_data.ffill()
 
-    local_results[0] = local_results[0] * local_results[1]
-    if pred_results is not None:
-        pred_results[0] = pred_results[0] * pred_results[1]
-
-    local_sum_data, local_count_data, local_var_data, local_count2_data = local_results
+    local_sum_data, local_count_data, local_sum_square, local_count2_data = local_results
     if pred_results is None:
-        return local_var_data / (1 - local_count2_data / local_count_data ** 2)
+        return (local_sum_square - local_sum_data ** 2 / local_count_data) \
+               / (local_count_data - local_count2_data / local_count_data)
 
-    pred_sum_data, pred_count_data, pred_var_data, pred_count2_data = pred_results
-
-    local_sum_square = local_count_data * local_var_data + local_sum_data ** 2 / local_count_data
-    pred_sum_square = pred_count_data * pred_var_data + pred_sum_data ** 2 / pred_count_data
+    pred_sum_data, pred_count_data, pred_sum_square, pred_count2_data = pred_results
 
     local_count2_data, = _add_pred_results(
         [pred_count2_data], [local_count2_data], axis=axis, alpha=alpha, order=2,
@@ -126,8 +120,9 @@ def _combine_var(pred_results, local_results, axis=0, alpha=None, alpha_ignore_n
 
 def _combine_std(pred_results, local_results, axis=0, alpha=None, alpha_ignore_na=False,
                  pred_exponent=None):
-    return np.sqrt(_combine_var(pred_results, local_results, axis=axis, alpha=alpha,
-                                alpha_ignore_na=alpha_ignore_na, pred_exponent=pred_exponent))
+    return np.sqrt(_combine_var(
+        pred_results, local_results, axis=axis, alpha=alpha, alpha_ignore_na=alpha_ignore_na,
+        pred_exponent=pred_exponent))
 
 
 def _combine_data_count(pred_results, local_results, axis=0, **__):
@@ -172,12 +167,98 @@ class DataFrameEwmAgg(BaseDataFrameExpandingAgg):
         if func == '_data_count':
             return ['_data_count'], _combine_data_count
         elif func == 'mean':
-            return ['mean', _cum_alpha_coeff_func], _combine_mean
+            return ['cumsum', _cum_alpha_coeff_func], _combine_mean
         elif func in {'var', 'std'}:
-            return ['mean', _cum_alpha_coeff_func, 'var', _cum_square_alpha_coeff_func], \
+            return ['cumsum', _cum_alpha_coeff_func, 'cumsum2', _cum_square_alpha_coeff_func], \
                    _combine_var if func == 'var' else _combine_std
         else:  # pragma: no cover
             raise NotImplementedError
+
+    @classmethod
+    def _calc_data_alphas(cls, op: "DataFrameEwmAgg", in_data, order):
+        exec_cache = cls._exec_cache[op.key]
+        cache_key = ('_calc_data_alphas', order, id(in_data))
+        try:
+            return exec_cache[cache_key]
+        except KeyError:
+            pass
+
+        cum_df = in_data.copy()
+        cum_df[cum_df.notna()] = 1
+        if not op.alpha_ignore_na:
+            cum_df.ffill(inplace=True)
+        cum_df = cum_df.cumsum(axis=op.axis) - 1
+        if not op.alpha_ignore_na:
+            cum_df[in_data.isna()] = np.nan
+
+        result = exec_cache[cache_key] = (1 - op.alpha) ** (order * cum_df)
+        return result
+
+    @classmethod
+    def _execute_cum_alpha_coeff(cls, op: "DataFrameEwmAgg", in_data, order, final=True):
+        exec_cache = cls._exec_cache[op.key]
+        cache_key = ('cum_alpha_coeff', order, id(in_data))
+        summary = None
+
+        try:
+            result = exec_cache[cache_key]
+        except KeyError:
+            alphas = cls._calc_data_alphas(op, in_data, order)
+            result = alphas.cumsum()
+            exec_cache[cache_key] = result
+
+        if final:
+            if op.output_agg:
+                summary = result.ffill()[-1:]
+        return result, summary
+
+    @classmethod
+    def _execute_cumsum(cls, op: "DataFrameEwmAgg", in_data):
+        exec_cache = cls._exec_cache[op.key]
+        cache_key = ('cumsum', id(in_data))
+        summary = None
+
+        try:
+            result = exec_cache[cache_key]
+        except KeyError:
+            min_periods = 1 if op.min_periods > 0 else 0
+
+            try:
+                data = in_data.ewm(alpha=op.alpha, ignore_na=op.alpha_ignore_na, adjust=op.adjust,
+                                   min_periods=min_periods).mean()
+            except ValueError:
+                in_data = in_data.copy()
+                data = in_data.ewm(alpha=op.alpha, ignore_na=op.alpha_ignore_na, adjust=op.adjust,
+                                   min_periods=min_periods).mean()
+
+            alpha_sum, _ = op._execute_cum_alpha_coeff(op, in_data, 1, final=False)
+            result = exec_cache[cache_key] = data * alpha_sum
+
+        if op.output_agg:
+            summary = result.ffill()[-1:]
+        return result, summary
+
+    @classmethod
+    def _execute_cumsum2(cls, op: "DataFrameEwmAgg", in_data):
+        summary = None
+        min_periods = 1 if op.min_periods > 0 else 0
+
+        try:
+            data = in_data.ewm(alpha=op.alpha, ignore_na=op.alpha_ignore_na, adjust=op.adjust,
+                               min_periods=min_periods).var(bias=True)
+        except ValueError:
+            in_data = in_data.copy()
+            data = in_data.ewm(alpha=op.alpha, ignore_na=op.alpha_ignore_na, adjust=op.adjust,
+                               min_periods=min_periods).var(bias=True)
+
+        alpha_sum, _ = op._execute_cum_alpha_coeff(op, in_data, 1)
+        cumsum, _ = op._execute_cumsum(op, in_data)
+        result = alpha_sum * data + cumsum ** 2 / alpha_sum
+
+        if op.output_agg:
+            summary = result.ffill()[-1:]
+
+        return result, summary
 
     @classmethod
     def _execute_map_function(cls, op: "DataFrameEwmAgg", func, in_data):
@@ -188,33 +269,14 @@ class DataFrameEwmAgg(BaseDataFrameExpandingAgg):
         if func == '_data_count':
             result = in_data.expanding(min_periods=min_periods).count()
         elif func in (_cum_alpha_coeff_func, _cum_square_alpha_coeff_func):
-            alpha_order = 1 if func == _cum_alpha_coeff_func else 2
-            cum_df = in_data.copy()
-            cum_df[cum_df.notna()] = 1
-            if not op.alpha_ignore_na:
-                cum_df.ffill(inplace=True)
-            cum_df = cum_df.cumsum(axis=op.axis) - 1
-            if not op.alpha_ignore_na:
-                cum_df[in_data.isna()] = np.nan
-
-            result = ((1 - op.alpha) ** (alpha_order * cum_df)).cumsum()
-
-            if op.output_agg:
-                summary = result.ffill()[-1:]
-        else:
-            for _ in range(2):
-                ewm = in_data.ewm(alpha=op.alpha, min_periods=min_periods, adjust=op.adjust,
-                                  ignore_na=op.alpha_ignore_na)
-                try:
-                    if func == 'var':
-                        result = ewm.var(bias=True)
-                    else:
-                        result = ewm.agg(func)
-                    break
-                except ValueError:
-                    in_data = in_data.copy()
-            else:  # pragma: no cover
-                raise ValueError
+            order = 1 if func == _cum_alpha_coeff_func else 2
+            result, summary = cls._execute_cum_alpha_coeff(op, in_data, order)
+        elif func == 'cumsum':
+            result, summary = cls._execute_cumsum(op, in_data)
+        elif func == 'cumsum2':
+            result, summary = cls._execute_cumsum2(op, in_data)
+        else:  # pragma: no cover
+            raise ValueError('Map function %s not supported')
 
         if op.output_agg:
             summary = summary if summary is not None else result.iloc[-1:]
@@ -224,27 +286,34 @@ class DataFrameEwmAgg(BaseDataFrameExpandingAgg):
 
     @classmethod
     def _execute_map(cls, ctx, op: "DataFrameEwmAgg"):
-        super()._execute_map(ctx, op)
-        if op.output_agg:
-            in_data = ctx[op.inputs[0].key]
-            summaries = list(ctx[op.outputs[1].key])
+        try:
+            cls._exec_cache[op.key] = dict()
 
-            if op.alpha_ignore_na:
-                in_count = in_data.count()
-                if not isinstance(in_count, pd.Series):
-                    in_count = pd.Series([in_count])
-                summary = in_count.to_frame().T
-                summary.index = summaries[-1].index
-            else:
-                remain_counts = in_data.notna()[::-1].to_numpy().argmax(axis=0)
-                if in_data.ndim > 1:
-                    remain_counts = remain_counts.reshape((1, len(in_data.columns)))
-                    summary = pd.DataFrame(remain_counts, columns=in_data.columns, index=summaries[-1].index)
+            super()._execute_map(ctx, op)
+            if op.output_agg:
+                in_data = ctx[op.inputs[0].key]
+                summaries = list(ctx[op.outputs[1].key])
+
+                if op.alpha_ignore_na:
+                    in_count = in_data.count()
+                    if not isinstance(in_count, pd.Series):
+                        in_count = pd.Series([in_count])
+                    summary = in_count
+                    if in_data.ndim == 2:
+                        summary = in_count.to_frame().T
+                    summary.index = summaries[-1].index
                 else:
-                    summary = pd.Series(remain_counts, index=summaries[-1].index)
-            summaries.insert(-1, summary)
+                    remain_counts = in_data.notna()[::-1].to_numpy().argmax(axis=0)
+                    if in_data.ndim > 1:
+                        remain_counts = remain_counts.reshape((1, len(in_data.columns)))
+                        summary = pd.DataFrame(remain_counts, columns=in_data.columns, index=summaries[-1].index)
+                    else:
+                        summary = pd.Series(remain_counts, index=summaries[-1].index)
+                summaries.insert(-1, summary)
 
-            ctx[op.outputs[1].key] = tuple(summaries)
+                ctx[op.outputs[1].key] = tuple(summaries)
+        finally:
+            cls._exec_cache.pop(op.key, None)
 
     @classmethod
     def _execute_combine_function(cls, op: "DataFrameEwmAgg", func, prev_inputs, local_inputs,
@@ -252,7 +321,7 @@ class DataFrameEwmAgg(BaseDataFrameExpandingAgg):
         exec_cache = cls._exec_cache[op.key]
         pred_exponent = exec_cache.get('pred_exponent')
         if func_cols and pred_exponent is not None:
-            pred_exponent = pred_exponent[func_cols]
+            pred_exponent = pred_exponent[func_cols] if pred_exponent is not None else None
         return func(prev_inputs, local_inputs, axis=op.axis, alpha=op.alpha,
                     alpha_ignore_na=op.alpha_ignore_na, pred_exponent=pred_exponent)
 
@@ -263,6 +332,7 @@ class DataFrameEwmAgg(BaseDataFrameExpandingAgg):
 
             if len(op.inputs) != 1:
                 pred_data = ctx[op.inputs[1].key]
+
                 if op.alpha_ignore_na:
                     pred_exponent = pred_data[-2].shift(-1)[::-1].cumsum()[::-1].fillna(0)
                 else:

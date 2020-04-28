@@ -57,6 +57,10 @@ msgstr ""
 
 #: ../../source/dataframe/reference/general_functions.rst:26:<autosummary>:1
 msgid "Detect missing values."
+msgstr ""
+
+#: ../../source/dataframe/reference/general_functions.rst:26:<autosummary>:1
+msgid "Detect missing values."
 msgstr "检测缺失值"
 
 #: ../../source/dataframe/reference/general_functions.rst:26:<autosummary>:1

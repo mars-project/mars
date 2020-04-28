@@ -450,6 +450,16 @@ msgstr ""
 msgid "Provide expanding transformations."
 msgstr ""
 
+#: ../../source/dataframe/reference/frame.rst:95:<autosummary>:1
+msgid ""
+":obj:`DataFrame.ewm <mars.dataframe.DataFrame.ewm>`\\ \\(\\[com\\, "
+"span\\, halflife\\, alpha\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:95:<autosummary>:1
+msgid "Provide exponential weighted functions."
+msgstr ""
+
 #: ../../source/dataframe/reference/frame.rst:99
 msgid "Computations / descriptive stats"
 msgstr "计算和描述统计"

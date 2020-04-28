@@ -35,8 +35,9 @@ class Test(unittest.TestCase):
                             'c': np.random.randint(100, size=(10,)),
                             'd': ['c' * i for i in np.random.randint(4, size=10)]
                             })
-        raw.b[:3] = np.nan
-        raw.b[5:10:2] = np.nan
+        raw.b[0:3] = np.nan
+        raw.b[5:7] = np.nan
+        raw.b[9] = np.nan
 
         df = md.DataFrame(raw, chunk_size=(10, 3))
 
@@ -112,9 +113,9 @@ class Test(unittest.TestCase):
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                            raw.ewm(alpha=0.3).agg(fun_name))
 
-            r = series.ewm(alpha=0.3).agg(fun_name)
+            r = series.ewm(alpha=0.3, ignore_na=True).agg(fun_name)
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                           raw.ewm(alpha=0.3).agg(fun_name))
+                                           raw.ewm(alpha=0.3, ignore_na=True).agg(fun_name))
 
         r = series.ewm(alpha=0.3).agg(['mean'])
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],

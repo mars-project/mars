@@ -212,8 +212,8 @@ def ewm(obj, com=None, span=None, halflife=None, alpha=None, min_periods=0, adju
     if alpha <= 0 or alpha > 1:
         raise ValueError('alpha must satisfy: 0 < alpha <= 1')
 
-    if not adjust:
-        raise NotImplementedError('adjust == False not implemented')
+    if not adjust and not ignore_na:
+        raise NotImplementedError('adjust == False when ignore_na == False not implemented')
     if axis == 1:
         raise NotImplementedError('axis other than 0 is not supported')
 
