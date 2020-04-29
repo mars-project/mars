@@ -9,7 +9,6 @@ Mars Learn - distributed machine learning
    :maxdepth: 2
 
    tensorflow
-   pytorch
    xgboost
 
 .. toctree::
