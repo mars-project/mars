@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import pandas as pd
 
@@ -22,9 +20,13 @@ import mars.dataframe as md
 from mars.learn.utils import shuffle
 from mars.learn.utils.shuffle import LearnShuffle
 from mars.tiles import get_tiled
+from mars.tests.core import TestBase, ExecutorForTest
 
 
-class Test(unittest.TestCase):
+class Test(TestBase):
+    def setUp(self):
+        self.executor = ExecutorForTest('numpy')
+
     def testShuffleExpr(self):
         a = mt.random.rand(10, 3, chunk_size=2)
         b = md.DataFrame(mt.random.rand(10, 5), chunk_size=2)
@@ -100,7 +102,7 @@ class Test(unittest.TestCase):
         ts2 = mt.array(s2, chunk_size=2)
 
         ret = shuffle(ts1, ts2, axes=[0, 1], random_state=0)
-        res1, res2 = ret.execute()
+        res1, res2 = self.executor.execute_tileables(ret)
 
         # calc row index
         s1_col_0 = s1[:, 0].tolist()
@@ -120,7 +122,7 @@ class Test(unittest.TestCase):
 
         for axes in [(0,), (0, 1), (0, 2), (1, 2), (0, 1, 2)]:
             ret = shuffle(t1, t2, axes=axes, random_state=0)
-            res1, res2 = ret.execute()
+            res1, res2 = self.executor.execute_tileables(ret)
 
             self.assertEqual(res1.shape, raw1.shape)
             self.assertEqual(res2.shape, raw2.shape)
@@ -135,7 +137,7 @@ class Test(unittest.TestCase):
 
         for axes in [(1,), (0, 1), (1, 2)]:
             ret = shuffle(t3, t4, axes=axes, random_state=0)
-            res3, res4 = ret.execute()
+            res3, res4 = self.executor.execute_tileables(ret)
 
             self.assertEqual(res3.shape, raw3.shape)
             self.assertEqual(res4.shape, raw4.shape)
@@ -152,7 +154,8 @@ class Test(unittest.TestCase):
 
         for axes in [(0,), (1,), (0, 1), (1, 2), [0, 1, 2]]:
             ret = shuffle(t5, df, series, axes=axes, random_state=0)
-            res5, res_df, res_series = ret.execute()
+            # skip check nsplits because it's updated
+            res5, res_df, res_series = self.executor.execute_tileables(ret, check_nsplits=False)
 
             self.assertEqual(res5.shape, raw5.shape)
             self.assertEqual(res_df.shape, df.shape)

@@ -131,26 +131,32 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
             return tileable
 
     @classmethod
-    def _calc_chunk_params(cls, in_chunk, axes, output, output_type, chunk_op):
+    def _calc_chunk_params(cls, in_chunk, axes, output, output_type,
+                           chunk_op, no_shuffle: bool):
         params = {'index': in_chunk.index}
         if output_type == OutputType.tensor:
             chunk_shape = list(in_chunk.shape)
             for ax in axes:
-                chunk_shape[ax] = np.nan
+                if not no_shuffle:
+                    chunk_shape[ax] = np.nan
             params['shape'] = tuple(chunk_shape)
             params['dtype'] = in_chunk.dtype
             params['order'] = output.order
         elif output_type == OutputType.dataframe:
             chunk_shape = list(in_chunk.shape)
             if 0 in axes:
-                chunk_shape[0] = np.nan
+                if not no_shuffle:
+                    chunk_shape[0] = np.nan
             params['shape'] = tuple(chunk_shape)
             params['dtypes'] = output.dtypes
             params['columns_value'] = output.columns_value
             params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value)
         else:
             assert output_type == OutputType.series
-            params['shape'] = (np.nan,)
+            if no_shuffle:
+                params['shape'] = in_chunk.shape
+            else:
+                params['shape'] = (np.nan,)
             params['name'] = in_chunk.name
             params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value)
             params['dtype'] = in_chunk.dtype
@@ -208,7 +214,7 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
                 for c in inp.chunks:
                     chunk_op = LearnShuffle(axes=inp_axes, seeds=op.seeds[:len(inp_axes)],
                                             output_types=output_types)
-                    params = cls._calc_chunk_params(c, inp_axes, oup, output_type, chunk_op)
+                    params = cls._calc_chunk_params(c, inp_axes, oup, output_type, chunk_op, True)
                     out_chunk = chunk_op.new_chunk([c], kws=[params])
                     chunks.append(out_chunk)
                 out_chunks.append(chunks)
@@ -233,8 +239,8 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
                     map_chunk_op = LearnShuffle(
                         stage=OperandStage.map,
                         output_types=output_types, axes=inp_axes,
-                        seeds=[mapper_seeds[j][in_chunk.index[ax]]
-                               for j, ax in enumerate(inp_axes)],
+                        seeds=tuple(mapper_seeds[j][in_chunk.index[ax]]
+                                    for j, ax in enumerate(inp_axes)),
                         reduce_sizes=reduce_sizes
                     )
                     map_chunk = map_chunk_op.new_chunk([in_chunk], **params)
@@ -249,11 +255,11 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
                     chunk_op = LearnShuffle(
                         stage=OperandStage.reduce,
                         output_types=output_types, axes=reduce_axes,
-                        seeds=[reducer_seeds[j][c.index[ax]] for j, ax in enumerate(inp_axes)
-                               if reduce_sizes[j] > 1],
+                        seeds=tuple(reducer_seeds[j][c.index[ax]] for j, ax in enumerate(inp_axes)
+                                    if reduce_sizes[j] > 1),
                         reduce_sizes=reduce_sizes_,
                         shuffle_key=shuffle_key)
-                    params = cls._calc_chunk_params(c, inp_axes, oup, output_type, chunk_op)
+                    params = cls._calc_chunk_params(c, inp_axes, oup, output_type, chunk_op, False)
                     reduce_chunk = chunk_op.new_chunk([proxy_chunk], kws=[params])
                     reduce_chunks.append(reduce_chunk)
 
@@ -266,9 +272,10 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
                     out_chunks.insert(i, inp.chunks)
                     out_nsplits.insert(i, inp.nsplits)
             assert len(out_chunks) == len(op.outputs)
-        for param, chunks, ns in zip(params, out_chunks, out_nsplits):
+        for i, param, chunks, ns in zip(itertools.count(), params, out_chunks, out_nsplits):
             param['chunks'] = chunks
             param['nsplits'] = ns
+            param['_position_'] = i
         return new_op.new_tileables(op.inputs, kws=params)
 
     @classmethod
@@ -410,7 +417,7 @@ def shuffle(*arrays, **options):
         if len(shapes) > 1:
             raise ValueError('arrays do not have same shape on axis {0}'.format(ax))
 
-    op = LearnShuffle(axes=axes, seeds=seeds,
+    op = LearnShuffle(axes=axes, seeds=tuple(seeds),
                       output_types=get_output_types(*arrays))
     shuffled_arrays = op(arrays)
     if len(arrays) == 1:
