@@ -1,0 +1,203 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 11:50+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:2
+msgid "mars.learn.contrib.xgboost.XGBClassifier"
+msgstr ""
+
+#: mars.learn.contrib.xgboost.XGBClassifier:1 of
+msgid "Implementation of the scikit-learn API for XGBoost classification."
+msgstr ""
+
+#: mars.learn.contrib.xgboost.XGBClassifier.__init__:1 of
+msgid "Initialize self.  See help(type(self)) for accurate signature."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:13
+msgid "Methods"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`__init__ <mars.learn.contrib.xgboost.XGBClassifier.__init__>`\\ "
+"\\(\\[max\\_depth\\, learning\\_rate\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Initialize self."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`apply <mars.learn.contrib.xgboost.XGBClassifier.apply>`\\ "
+"\\(X\\[\\, ntree\\_limit\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Return the predicted leaf every tree for each sample."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`evals_result "
+"<mars.learn.contrib.xgboost.XGBClassifier.evals_result>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Return the evaluation results."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`fit <mars.learn.contrib.xgboost.XGBClassifier.fit>`\\ \\(X\\, "
+"y\\[\\, sample\\_weights\\, eval\\_set\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Fit the regressor."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`get_booster "
+"<mars.learn.contrib.xgboost.XGBClassifier.get_booster>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Get the underlying xgboost Booster of this model."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`get_num_boosting_rounds "
+"<mars.learn.contrib.xgboost.XGBClassifier.get_num_boosting_rounds>`\\ "
+"\\(\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Gets the number of xgboost boosting rounds."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`get_params <mars.learn.contrib.xgboost.XGBClassifier.get_params>`\\"
+" \\(\\[deep\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Get parameters."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`get_xgb_params "
+"<mars.learn.contrib.xgboost.XGBClassifier.get_xgb_params>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Get xgboost type parameters."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`load_model <mars.learn.contrib.xgboost.XGBClassifier.load_model>`\\"
+" \\(fname\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Load the model from a file."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`predict <mars.learn.contrib.xgboost.XGBClassifier.predict>`\\ "
+"\\(data\\, \\*\\*kw\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Predict with `data`."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`predict_proba "
+"<mars.learn.contrib.xgboost.XGBClassifier.predict_proba>`\\ \\(data\\[\\,"
+" ntree\\_limit\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`save_model <mars.learn.contrib.xgboost.XGBClassifier.save_model>`\\"
+" \\(fname\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Save the model to a file."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`score <mars.learn.contrib.xgboost.XGBClassifier.score>`\\ \\(X\\, "
+"y\\[\\, sample\\_weight\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Return the mean accuracy on the given test data and labels."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid ""
+":obj:`set_params <mars.learn.contrib.xgboost.XGBClassifier.set_params>`\\"
+" \\(\\*\\*params\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
+msgid "Set the parameters of this estimator."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:36
+msgid "Attributes"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:41:<autosummary>:1
+msgid ":obj:`coef_ <mars.learn.contrib.xgboost.XGBClassifier.coef_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:41:<autosummary>:1
+msgid "Coefficients property"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:41:<autosummary>:1
+msgid ""
+":obj:`feature_importances_ "
+"<mars.learn.contrib.xgboost.XGBClassifier.feature_importances_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:41:<autosummary>:1
+msgid "Feature importances property"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:41:<autosummary>:1
+msgid ":obj:`intercept_ <mars.learn.contrib.xgboost.XGBClassifier.intercept_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:41:<autosummary>:1
+msgid "Intercept (bias) property"
+msgstr ""
+

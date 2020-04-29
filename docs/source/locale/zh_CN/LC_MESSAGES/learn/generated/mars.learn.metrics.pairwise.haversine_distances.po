@@ -1,0 +1,79 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 11:50+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/learn/generated/mars.learn.metrics.pairwise.haversine_distances.rst:2
+msgid "mars.learn.metrics.pairwise.haversine\\_distances"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances:1 of
+msgid "Compute the Haversine distance between samples in X and Y"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances:3 of
+msgid ""
+"The Haversine (or great circle) distance is the angular distance between "
+"two points on the surface of a sphere. The first distance of each point "
+"is assumed to be the latitude, the second is the longitude, given in "
+"radians. The dimension of the data must be 2."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances:8 of
+msgid ""
+"D(x, y) = 2\\arcsin[\\sqrt{\\sin^2((x1 - y1) / 2)"
+"                          + \\cos(x1)\\cos(y1)\\sin^2((x2 - y2) / 2)}]"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances:17 of
+msgid "**distance**"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances of
+msgid "Return type"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances:21 of
+msgid "Notes"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances:22 of
+#, python-format
+msgid ""
+"As the Earth is nearly spherical, the haversine formula provides a good "
+"approximation of the distance between two points of the Earth surface, "
+"with a less than 1% error on average."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances:27 of
+msgid "Examples"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.haversine_distances:28 of
+msgid ""
+"We want to calculate the distance between the Ezeiza Airport (Buenos "
+"Aires, Argentina) and the Charles de Gaulle Airport (Paris, France)"
+msgstr ""
+

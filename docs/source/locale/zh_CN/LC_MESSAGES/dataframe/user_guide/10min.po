@@ -368,7 +368,7 @@ msgstr "分组，然后在结果上执行 :meth:`~mars.dataframe.groupby.GroupBy
 msgid ""
 "Grouping by multiple columns forms a hierarchical index, and again we can"
 " apply the `sum` function."
-msgstr ""
+msgstr "按多个列分组会组成一个分层层索引，我们接着再执行 `sum` 函数。"
 
 #: ../../source/dataframe/user_guide/10min.rst:395
 msgid "Plotting"

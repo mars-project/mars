@@ -1,0 +1,110 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 11:50+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/learn/generated/mars.learn.datasets.make_blobs.rst:2
+msgid "mars.learn.datasets.make\\_blobs"
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:1 of
+msgid "Generate isotropic Gaussian blobs for clustering."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:3 of
+msgid "Read more in the :ref:`User Guide <sample_generators>`."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:5 of
+msgid ""
+"If int, it is the total number of points equally divided among clusters. "
+"If array-like, each element of the sequence indicates the number of "
+"samples per cluster."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:10 of
+msgid "The number of features for each sample."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:12 of
+msgid ""
+"(default=None) The number of centers to generate, or the fixed center "
+"locations. If n_samples is an int and centers is None, 3 centers are "
+"generated. If n_samples is array-like, centers must be either None or an "
+"array of length equal to the length of n_samples."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:18 of
+msgid "The standard deviation of the clusters."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:20 of
+msgid ""
+"The bounding box for each cluster center when centers are generated at "
+"random."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:23 of
+msgid "Shuffle the samples."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:25 of
+msgid ""
+"Determines random number generation for dataset creation. Pass an int for"
+" reproducible output across multiple function calls. See :term:`Glossary "
+"<random_state>`."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:30 of
+msgid ""
+"* **X** (*tensor of shape [n_samples, n_features]*) -- The generated "
+"samples. * **y** (*tensor of shape [n_samples]*) -- The integer labels "
+"for cluster membership of each sample."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:30 of
+msgid ""
+"**X** (*tensor of shape [n_samples, n_features]*) -- The generated "
+"samples."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:31 of
+msgid ""
+"**y** (*tensor of shape [n_samples]*) -- The integer labels for cluster "
+"membership of each sample."
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:34 of
+msgid "Examples"
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:51 of
+msgid ":func:`make_classification`"
+msgstr ""
+
+#: mars.learn.datasets.make_blobs:52 of
+msgid "a more intricate variant"
+msgstr ""
+
