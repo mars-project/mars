@@ -144,14 +144,9 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
 def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False, named=None):
     if named is not None:
         from ...context import get_context
-        from ...session import Session
-        from ..fetch import TensorFetch
 
-        context = get_context() or Session.default_or_local().context
-        tileable_key = context.get_tileable_key_by_name(named)
-        nsplits = context.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
-        shape = tuple(sum(s) for s in nsplits)
-        return TensorFetch().new_tensor([], shape=shape, _key=tileable_key)
+        context = get_context()
+        return context.build_named_tileable(named=named, rtype='tensor')
 
     order = order or 'K'
     if isinstance(data, TENSOR_TYPE):

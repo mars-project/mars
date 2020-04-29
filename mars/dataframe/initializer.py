@@ -31,16 +31,9 @@ class DataFrame(_Frame):
                  chunk_size=None, gpu=None, sparse=None, named=None):
         if named is not None:
             from ..context import get_context
-            from ..session import Session
-            from .operands import ObjectType
-            from .fetch import DataFrameFetch
 
-            context = get_context() or Session.default_or_local().context
-            tileable_key = context.get_tileable_key_by_name(named)
-            nsplits = context.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
-            shape = tuple(sum(s) for s in nsplits)
-            df = DataFrameFetch(object_type=ObjectType.dataframe).new_dataframe(
-                [], shape=shape, _key=tileable_key)
+            context = get_context()
+            df = context.build_named_tileable(named=named, rtype='dataframe')
         elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
@@ -69,16 +62,9 @@ class Series(_Series):
                  chunk_size=None, gpu=None, sparse=None, named=None):
         if named is not None:
             from ..context import get_context
-            from ..session import Session
-            from .operands import ObjectType
-            from .fetch import DataFrameFetch
 
-            context = get_context() or Session.default_or_local().context
-            tileable_key = context.get_tileable_key_by_name(named)
-            nsplits = context.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
-            shape = tuple(sum(s) for s in nsplits)
-            series = DataFrameFetch(object_type=ObjectType.series).new_series(
-                [], shape=shape, _key=tileable_key)
+            context = get_context()
+            series = context.build_named_tileable(named=named, rtype='series')
         elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
