@@ -28,8 +28,20 @@ from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
 
 class DataFrame(_Frame):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
-                 chunk_size=None, gpu=None, sparse=None):
-        if isinstance(data, TENSOR_TYPE):
+                 chunk_size=None, gpu=None, sparse=None, named=None):
+        if named is not None:
+            from ..context import get_context
+            from ..session import Session
+            from .operands import ObjectType
+            from .fetch import DataFrameFetch
+
+            context = get_context() or Session.default_or_local().context
+            tileable_key = context.get_tileable_key_by_name(named)
+            nsplits = context.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+            shape = tuple(sum(s) for s in nsplits)
+            df = DataFrameFetch(object_type=ObjectType.dataframe).new_dataframe(
+                [], shape=shape, _key=tileable_key)
+        elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
@@ -54,8 +66,20 @@ class DataFrame(_Frame):
 
 class Series(_Series):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False,
-                 chunk_size=None, gpu=None, sparse=None):
-        if isinstance(data, TENSOR_TYPE):
+                 chunk_size=None, gpu=None, sparse=None, named=None):
+        if named is not None:
+            from ..context import get_context
+            from ..session import Session
+            from .operands import ObjectType
+            from .fetch import DataFrameFetch
+
+            context = get_context() or Session.default_or_local().context
+            tileable_key = context.get_tileable_key_by_name(named)
+            nsplits = context.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+            shape = tuple(sum(s) for s in nsplits)
+            series = DataFrameFetch(object_type=ObjectType.series).new_series(
+                [], shape=shape, _key=tileable_key)
+        elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)

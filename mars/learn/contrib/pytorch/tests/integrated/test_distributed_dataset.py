@@ -27,7 +27,8 @@ class Test(LearnIntegrationTestBase):
             data.execute(name='data', session=sess)
 
             with DistributedContext(scheduler_address=scheduler_ep, session_id=sess.session_id):
-                dataset = MarsDataset('data')
+                t = mt.tensor(named='data')
+                dataset = MarsDataset(t)
                 self.assertEqual(len(dataset), 100)
 
                 sample = np.random.randint(0, 100, (10,))
@@ -52,7 +53,9 @@ class Test(LearnIntegrationTestBase):
             data2.execute(name='data2', session=sess)
 
             with DistributedContext(scheduler_address=scheduler_ep, session_id=sess.session_id):
-                dataset = MarsDataset('data1', 'data2')
+                t1 = mt.tensor(named='data1')
+                t2 = mt.tensor(named='data2')
+                dataset = MarsDataset(t1, t2)
                 self.assertEqual(len(dataset), 100)
 
                 sampler = MarsDistributedSampler(dataset, num_replicas=1, rank=0)
