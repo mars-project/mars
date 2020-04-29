@@ -30,9 +30,8 @@ msgid "DataFrame Interface"
 msgstr "DataFrame 接口"
 
 #: ../../source/index.rst:113
-#, fuzzy
 msgid "Learn Interface"
-msgstr "Tensor 接口"
+msgstr "机器学习接口"
 
 #: ../../source/index.rst:122
 msgid "Distributed Scheduling"
@@ -95,21 +94,18 @@ msgid "Mars learn"
 msgstr ""
 
 #: ../../source/index.rst:52
-#, fuzzy
 msgid ":doc:`documentation <learn/index>`"
-msgstr ":doc:`文档 <tensor/index>`"
+msgstr ":doc:`文档 <learn/index>`"
 
 #: ../../source/index.rst:54
-#, fuzzy
 msgid "Mars learn provides a familiar interface like scikit-learn."
-msgstr "Mars DataFrame - 提供类似 pandas 的接口"
+msgstr "Mars learn - 提供类似 scikit-learn 的接口"
 
 #: ../../source/index.rst:57
 msgid "**Scikit-learn**"
 msgstr ""
 
 #: ../../source/index.rst:57
-#, fuzzy
 msgid "**Mars learn**"
 msgstr "**Mars learn**"
 

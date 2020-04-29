@@ -15,6 +15,7 @@
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_compare_doc
 
 
 class DataFrameLessEqual(DataFrameBinOp, DataFrameBinOpMixin):
@@ -28,6 +29,19 @@ class DataFrameLessEqual(DataFrameBinOp, DataFrameBinOpMixin):
         return lambda lhs, rhs: lhs.le(rhs)
 
 
+_le_example = """
+>>> a.le(b, fill_value=0).execute()
+a    False
+b     True
+c     True
+d    False
+e    False
+f     True
+dtype: bool
+"""
+
+
+@bin_compare_doc('Less than or equal to', equiv='<=', series_example=_le_example)
 def le(df, other, axis='columns', level=None):
     op = DataFrameLessEqual(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

@@ -15,6 +15,7 @@
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_compare_doc
 
 
 class DataFrameGreater(DataFrameBinOp, DataFrameBinOpMixin):
@@ -28,6 +29,19 @@ class DataFrameGreater(DataFrameBinOp, DataFrameBinOpMixin):
         return lambda lhs, rhs: lhs.gt(rhs)
 
 
+_gt_example = """
+>>> a.gt(b, fill_value=0).execute()
+a     True
+b    False
+c    False
+d    False
+e     True
+f    False
+dtype: bool
+"""
+
+
+@bin_compare_doc('Greater than', equiv='>', series_example=_gt_example)
 def gt(df, other, axis='columns', level=None):
     op = DataFrameGreater(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

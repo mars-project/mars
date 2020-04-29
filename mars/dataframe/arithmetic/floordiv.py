@@ -17,6 +17,7 @@ import operator
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_arithmetic_doc
 
 
 class DataFrameFloorDiv(DataFrameBinOp, DataFrameBinOpMixin):
@@ -30,11 +31,24 @@ class DataFrameFloorDiv(DataFrameBinOp, DataFrameBinOpMixin):
         return operator.floordiv
 
 
+_floordiv_example = """
+>>> a.floordiv(b, fill_value=0).execute()
+a    1.0
+b    NaN
+c    NaN
+d    0.0
+e    NaN
+dtype: float64
+"""
+
+
+@bin_arithmetic_doc('Integer division', equiv='//', series_example=_floordiv_example)
 def floordiv(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameFloorDiv(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
+@bin_arithmetic_doc('Integer division', equiv='//', series_example=_floordiv_example)
 def rfloordiv(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameFloorDiv(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

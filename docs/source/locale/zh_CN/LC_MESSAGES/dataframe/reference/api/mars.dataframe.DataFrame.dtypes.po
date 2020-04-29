@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 17:45+0800\n"
+"POT-Creation-Date: 2020-04-29 13:48+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,5 +19,33 @@ msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.dtypes.rst:2
 msgid "mars.dataframe.DataFrame.dtypes"
+msgstr ""
+
+#: mars.dataframe.DataFrame.dtypes:1 of
+msgid "Return the dtypes in the DataFrame."
+msgstr ""
+
+#: mars.dataframe.DataFrame.dtypes:3 of
+msgid ""
+"This returns a Series with the data type of each column. The result's "
+"index is the original DataFrame's columns. Columns with mixed types are "
+"stored with the ``object`` dtype. See :ref:`the User Guide "
+"<basics.dtypes>` for more."
+msgstr ""
+
+#: mars.dataframe.DataFrame.dtypes of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.dtypes:8 of
+msgid "The data type of each column."
+msgstr ""
+
+#: mars.dataframe.DataFrame.dtypes of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.dtypes:12 of
+msgid "Examples"
 msgstr ""
 

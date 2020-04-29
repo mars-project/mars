@@ -17,6 +17,7 @@ import operator
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_arithmetic_doc
 
 
 class DataFramePower(DataFrameBinOp, DataFrameBinOpMixin):
@@ -30,11 +31,24 @@ class DataFramePower(DataFrameBinOp, DataFrameBinOpMixin):
         return operator.pow
 
 
+_pow_example = """
+>>> a.pow(b, fill_value=0).execute()
+a    1.0
+b    1.0
+c    1.0
+d    0.0
+e    NaN
+dtype: float64
+"""
+
+
+@bin_arithmetic_doc('Exponential power', op_name='pow', equiv='**', series_example=_pow_example)
 def power(df, other, axis='columns', level=None, fill_value=None):
     op = DataFramePower(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
+@bin_arithmetic_doc('Exponential power', op_name='rpow', equiv='**', series_example=_pow_example)
 def rpower(df, other, axis='columns', level=None, fill_value=None):
     op = DataFramePower(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

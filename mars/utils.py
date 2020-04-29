@@ -17,6 +17,7 @@
 import functools
 import importlib
 import inspect
+import itertools
 import json
 import logging
 import numbers
@@ -27,12 +28,11 @@ import shutil
 import socket
 import struct
 import sys
-import time
-import zlib
 import threading
-import itertools
-import weakref
+import time
 import warnings
+import weakref
+import zlib
 from typing import List
 
 import numpy as np

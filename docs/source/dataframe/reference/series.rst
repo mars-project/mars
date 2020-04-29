@@ -66,14 +66,12 @@ Binary operator functions
    Series.rfloordiv
    Series.rmod
    Series.rpow
-   Series.round
    Series.lt
    Series.gt
    Series.le
    Series.ge
    Series.ne
    Series.eq
-   Series.product
    Series.dot
 
 Function application, groupby & window
@@ -108,7 +106,9 @@ Computations / descriptive stats
    Series.mean
    Series.min
    Series.prod
+   Series.product
    Series.quantile
+   Series.round
    Series.std
    Series.sum
    Series.var

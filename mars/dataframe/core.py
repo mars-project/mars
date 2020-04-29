@@ -622,6 +622,30 @@ class Series(HasShapeTileableEnity):
         return self._data.from_tensor(in_tensor, index=index, name=name)
 
     @property
+    def ndim(self):
+        """
+        Return an int representing the number of axes / array dimensions.
+
+        Return 1 if Series. Otherwise return 2 if DataFrame.
+
+        See Also
+        --------
+        ndarray.ndim : Number of array dimensions.
+
+        Examples
+        --------
+        >>> import mars.dataframe as md
+        >>> s = md.Series({'a': 1, 'b': 2, 'c': 3})
+        >>> s.ndim.execute()
+        1
+
+        >>> df = md.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+        >>> df.ndim.execute()
+        2
+        """
+        return super().ndim
+
+    @property
     def index(self):
         """
         The index (axis labels) of the Series.
@@ -878,6 +902,30 @@ class DataFrame(HasShapeTileableEnity):
         return sorted(result + [k for k in self.dtypes.index if isinstance(k, str) and k.isidentifier()])
 
     @property
+    def ndim(self):
+        """
+        Return an int representing the number of axes / array dimensions.
+
+        Return 1 if Series. Otherwise return 2 if DataFrame.
+
+        See Also
+        --------
+        ndarray.ndim : Number of array dimensions.
+
+        Examples
+        --------
+        >>> import mars.dataframe as md
+        >>> s = md.Series({'a': 1, 'b': 2, 'c': 3})
+        >>> s.ndim.execute()
+        1
+
+        >>> df = md.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+        >>> df.ndim.execute()
+        2
+        """
+        return super().ndim
+
+    @property
     def index(self):
         return self._data.index
 
@@ -887,6 +935,33 @@ class DataFrame(HasShapeTileableEnity):
 
     @property
     def dtypes(self):
+        """
+        Return the dtypes in the DataFrame.
+
+        This returns a Series with the data type of each column.
+        The result's index is the original DataFrame's columns. Columns
+        with mixed types are stored with the ``object`` dtype. See
+        :ref:`the User Guide <basics.dtypes>` for more.
+
+        Returns
+        -------
+        pandas.Series
+            The data type of each column.
+
+        Examples
+        --------
+        >>> import mars.dataframe as md
+        >>> df = md.DataFrame({'float': [1.0],
+        ...                    'int': [1],
+        ...                    'datetime': [md.Timestamp('20180310')],
+        ...                    'string': ['foo']})
+        >>> df.dtypes
+        float              float64
+        int                  int64
+        datetime    datetime64[ns]
+        string              object
+        dtype: object
+        """
         return self._data.dtypes
 
 

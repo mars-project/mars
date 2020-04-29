@@ -17,6 +17,7 @@ import operator
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_arithmetic_doc
 
 
 class DataFrameMod(DataFrameBinOp, DataFrameBinOpMixin):
@@ -30,11 +31,24 @@ class DataFrameMod(DataFrameBinOp, DataFrameBinOpMixin):
         return operator.mod
 
 
+_mod_example = """
+>>> a.mod(b, fill_value=0).execute()
+a    0.0
+b    NaN
+c    NaN
+d    0.0
+e    NaN
+dtype: float64
+"""
+
+
+@bin_arithmetic_doc('Modulo', equiv='%', series_example=_mod_example)
 def mod(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameMod(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
+@bin_arithmetic_doc('Modulo', equiv='%', series_example=_mod_example)
 def rmod(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameMod(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)
