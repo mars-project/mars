@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 17:45+0800\n"
+"POT-Creation-Date: 2020-04-29 16:21+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,5 +19,146 @@ msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.mul.rst:2
 msgid "mars.dataframe.DataFrame.mul"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:1 of
+msgid ""
+"Get Multiplication of dataframe and other, element-wise (binary operator "
+"`mul`). Equivalent to ``*``, but with support to substitute a fill_value "
+"for missing data in one of the inputs. With reverse version, `rmul`. "
+"Among flexible wrappers (`add`, `sub`, `mul`, `div`, `mod`, `pow`) to "
+"arithmetic operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:7 of
+msgid "Any single or multiple element data structure, or list-like object."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:9 of
+msgid ""
+"Whether to compare by the index (0 or 'index') or columns (1 or "
+"'columns'). For Series input, axis to match Series index on."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:12 of
+msgid ""
+"Broadcast across a level, matching Index values on the passed MultiIndex "
+"level."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:15 of
+msgid ""
+"Fill existing missing (NaN) values, and any new element needed for "
+"successful DataFrame alignment, with this value before computation. If "
+"data in both corresponding DataFrame locations is missing the result will"
+" be missing."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:21 of
+msgid "Result of the arithmetic operation."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:27 of
+msgid ":meth:`DataFrame.add`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:27 of
+msgid "Add DataFrames."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:30 of
+msgid ":meth:`DataFrame.sub`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:30 of
+msgid "Subtract DataFrames."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:33 of
+msgid ":meth:`DataFrame.mul`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:33 of
+msgid "Multiply DataFrames."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:36 of
+msgid ":meth:`DataFrame.div`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:36 mars.dataframe.DataFrame.mul:39 of
+msgid "Divide DataFrames (float division)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:39 of
+msgid ":meth:`DataFrame.truediv`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:42 of
+msgid ":meth:`DataFrame.floordiv`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:42 of
+msgid "Divide DataFrames (integer division)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:45 of
+msgid ":meth:`DataFrame.mod`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:45 of
+msgid "Calculate modulo (remainder after division)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:47 of
+msgid ":meth:`DataFrame.pow`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:48 of
+msgid "Calculate exponential power."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:51 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:52 of
+msgid "Mismatched indices will be unioned together."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:55 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:66 of
+msgid "Add a scalar with operator version which return the same results."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:81 of
+msgid "Divide by constant with reverse version."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:95 of
+msgid "Subtract a list and Series by axis with operator version."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:116 of
+msgid "Multiply a DataFrame of different shape with operator version."
+msgstr ""
+
+#: mars.dataframe.DataFrame.mul:138 of
+msgid "Divide by a MultiIndex by level."
 msgstr ""
 

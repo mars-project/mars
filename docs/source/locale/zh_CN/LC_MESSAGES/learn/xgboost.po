@@ -147,7 +147,7 @@ msgstr ""
 
 #: ../../source/learn/xgboost.rst:142
 msgid "For :meth:`predict`, we call it with trained model."
-msgstr "对于 :meth:`predict`，。我们可以用训练过的模型来调用。"
+msgstr "对于 :meth:`predict`，我们可以用训练过的模型来调用。"
 
 #: ../../source/learn/xgboost.rst:149
 msgid "For :meth:`XGBRegressor.predict`, you can run the snippet."

@@ -17,6 +17,7 @@ import operator
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_arithmetic_doc
 
 
 class DataFrameAdd(DataFrameBinOp, DataFrameBinOpMixin):
@@ -30,11 +31,24 @@ class DataFrameAdd(DataFrameBinOp, DataFrameBinOpMixin):
         return operator.add
 
 
+_add_example = """
+>>> a.add(b, fill_value=0).execute()
+a    2.0
+b    1.0
+c    1.0
+d    1.0
+e    NaN
+dtype: float64
+"""
+
+
+@bin_arithmetic_doc('Addition', equiv='+', series_example=_add_example)
 def add(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
+@bin_arithmetic_doc('Addition', equiv='+', series_example=_add_example)
 def radd(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

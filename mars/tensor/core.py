@@ -322,6 +322,23 @@ class Tensor(HasShapeTileableEnity):
     def view(self):
         return self._view()
 
+    @property
+    def ndim(self):
+        """
+        Number of array dimensions.
+
+        Examples
+        --------
+        >>> import mars.tensor as mt
+        >>> x = mt.array([1, 2, 3])
+        >>> x.ndim
+        1
+        >>> y = mt.zeros((2, 3, 4))
+        >>> y.ndim
+        3
+        """
+        return super().ndim
+
     def transpose(self, *axes):
         """
         Returns a view of the tensor with axes transposed.

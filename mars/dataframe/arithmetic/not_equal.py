@@ -15,6 +15,7 @@
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_compare_doc
 
 
 class DataFrameNotEqual(DataFrameBinOp, DataFrameBinOpMixin):
@@ -28,6 +29,18 @@ class DataFrameNotEqual(DataFrameBinOp, DataFrameBinOpMixin):
         return lambda lhs, rhs: lhs.ne(rhs)
 
 
+_ne_example = """
+>>> a.ne(b, fill_value=0).execute()
+a    False
+b     True
+c     True
+d     True
+e     True
+dtype: bool
+"""
+
+
+@bin_compare_doc('Not equal to', equiv='!=', series_example=_ne_example)
 def ne(df, other, axis='columns', level=None):
     op = DataFrameNotEqual(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

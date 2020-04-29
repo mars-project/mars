@@ -17,6 +17,7 @@ import operator
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_arithmetic_doc
 
 
 class DataFrameSubtract(DataFrameBinOp, DataFrameBinOpMixin):
@@ -30,11 +31,24 @@ class DataFrameSubtract(DataFrameBinOp, DataFrameBinOpMixin):
         return operator.sub
 
 
+_sub_example = """
+>>> a.subtract(b, fill_value=0).execute()
+a    0.0
+b    1.0
+c    1.0
+d   -1.0
+e    NaN
+dtype: float64
+"""
+
+
+@bin_arithmetic_doc('Subtraction', equiv='-', series_example=_sub_example)
 def subtract(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameSubtract(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
+@bin_arithmetic_doc('Subtraction', equiv='-', series_example=_sub_example)
 def rsubtract(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameSubtract(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

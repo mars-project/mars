@@ -15,6 +15,7 @@
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_compare_doc
 
 
 class DataFrameEqual(DataFrameBinOp, DataFrameBinOpMixin):
@@ -28,6 +29,18 @@ class DataFrameEqual(DataFrameBinOp, DataFrameBinOpMixin):
         return lambda lhs, rhs: lhs.eq(rhs)
 
 
+_eq_example = """
+>>> a.eq(b, fill_value=0).execute()
+a     True
+b    False
+c    False
+d    False
+e    False
+dtype: bool
+"""
+
+
+@bin_compare_doc('Equal to', equiv='==', series_example=_eq_example)
 def eq(df, other, axis='columns', level=None):
     op = DataFrameEqual(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

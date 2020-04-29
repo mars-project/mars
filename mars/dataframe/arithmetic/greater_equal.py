@@ -15,6 +15,7 @@
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_compare_doc
 
 
 class DataFrameGreaterEqual(DataFrameBinOp, DataFrameBinOpMixin):
@@ -28,6 +29,19 @@ class DataFrameGreaterEqual(DataFrameBinOp, DataFrameBinOpMixin):
         return lambda lhs, rhs: lhs.ge(rhs)
 
 
+_ge_example = """
+>>> a.ge(b, fill_value=0).execute()
+a     True
+b     True
+c    False
+d    False
+e     True
+f    False
+dtype: bool
+"""
+
+
+@bin_compare_doc('Greater than or equal to', equiv='>=', series_example=_ge_example)
 def ge(df, other, axis='columns', level=None):
     op = DataFrameGreaterEqual(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

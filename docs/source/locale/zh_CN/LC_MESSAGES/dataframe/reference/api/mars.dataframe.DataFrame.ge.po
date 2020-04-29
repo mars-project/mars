@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 17:45+0800\n"
+"POT-Creation-Date: 2020-04-29 16:21+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,5 +19,144 @@ msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.ge.rst:2
 msgid "mars.dataframe.DataFrame.ge"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:1 of
+msgid ""
+"Get Greater than or equal to of dataframe and other, element-wise (binary"
+" operator `ge`). Among flexible wrappers (`eq`, `ne`, `le`, `lt`, `ge`, "
+"`gt`) to comparison operators."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:5 of
+msgid ""
+"Equivalent to `dataframe >= other` with support to choose axis (rows or "
+"columns) and level for comparison."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:8 of
+msgid "Any single or multiple element data structure, or list-like object."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:10 of
+msgid ""
+"Whether to compare by the index (0 or 'index') or columns (1 or "
+"'columns')."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:13 of
+msgid ""
+"Broadcast across a level, matching Index values on the passed MultiIndex "
+"level."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:17 of
+msgid "Result of the comparison."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:23 of
+msgid ":meth:`DataFrame.eq`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:23 of
+msgid "Compare DataFrames for equality elementwise."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:26 of
+msgid ":meth:`DataFrame.ne`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:26 of
+msgid "Compare DataFrames for inequality elementwise."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:29 of
+msgid ":meth:`DataFrame.le`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:29 of
+msgid "Compare DataFrames for less than inequality or equality elementwise."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:32 of
+msgid ":meth:`DataFrame.lt`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:32 of
+msgid "Compare DataFrames for strictly less than inequality elementwise."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:35 of
+msgid ":meth:`DataFrame.ge`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:35 of
+msgid "Compare DataFrames for greater than inequality or equality elementwise."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:37 of
+msgid ":meth:`DataFrame.gt`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:38 of
+msgid "Compare DataFrames for strictly greater than inequality elementwise."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:41 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:42 of
+msgid ""
+"Mismatched indices will be unioned together. `NaN` values are considered "
+"different (i.e. `NaN` != `NaN`)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:46 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:56 of
+msgid "Comparison with a scalar, using either the operator or method:"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:70 of
+msgid ""
+"When `other` is a :class:`Series`, the columns of a DataFrame are aligned"
+" with the index of `other` and broadcast:"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:79 of
+msgid "Use the method to control the broadcast axis:"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:88 of
+msgid ""
+"When comparing to an arbitrary sequence, the number of columns must match"
+" the number elements in `other`:"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:97 of
+msgid "Use the method to control the axis:"
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:105 of
+msgid "Compare to a DataFrame of different shape."
+msgstr ""
+
+#: mars.dataframe.DataFrame.ge:123 of
+msgid "Compare to a MultiIndex by level."
 msgstr ""
 

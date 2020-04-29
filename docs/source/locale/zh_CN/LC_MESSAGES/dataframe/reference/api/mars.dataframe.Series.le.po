@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 17:45+0800\n"
+"POT-Creation-Date: 2020-04-29 16:21+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,5 +19,51 @@ msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.le.rst:2
 msgid "mars.dataframe.Series.le"
+msgstr ""
+
+#: mars.dataframe.Series.le:1 of
+msgid ""
+"Return Less than or equal to of series and other, element-wise (binary "
+"operator `le`)."
+msgstr ""
+
+#: mars.dataframe.Series.le:3 of
+msgid ""
+"Equivalent to ``series <= other``, but with support to substitute a "
+"fill_value for missing data in one of the inputs."
+msgstr ""
+
+#: mars.dataframe.Series.le of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.le:8 of
+msgid ""
+"Fill existing missing (NaN) values, and any new element needed for "
+"successful Series alignment, with this value before computation. If data "
+"in both corresponding Series locations is missing the result will be "
+"missing."
+msgstr ""
+
+#: mars.dataframe.Series.le:13 of
+msgid ""
+"Broadcast across a level, matching Index values on the passed MultiIndex "
+"level."
+msgstr ""
+
+#: mars.dataframe.Series.le of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.le:17 of
+msgid "The result of the operation."
+msgstr ""
+
+#: mars.dataframe.Series.le of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.le:21 of
+msgid "Examples"
 msgstr ""
 

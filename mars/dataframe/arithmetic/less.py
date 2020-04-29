@@ -16,6 +16,7 @@
 from ... import opcodes as OperandDef
 from ...utils import classproperty
 from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .docstring import bin_compare_doc
 
 
 class DataFrameLess(DataFrameBinOp, DataFrameBinOpMixin):
@@ -29,6 +30,19 @@ class DataFrameLess(DataFrameBinOp, DataFrameBinOpMixin):
         return lambda lhs, rhs: lhs.lt(rhs)
 
 
+_lt_example = """
+>>> a.lt(b, fill_value=0).execute()
+a    False
+b    False
+c     True
+d    False
+e    False
+f     True
+dtype: bool
+"""
+
+
+@bin_compare_doc('Less than', equiv='<', series_example=_lt_example)
 def lt(df, other, axis='columns', level=None):
     op = DataFrameLess(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

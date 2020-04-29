@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 17:45+0800\n"
+"POT-Creation-Date: 2020-04-29 13:48+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,5 +19,25 @@ msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.ndim.rst:2
 msgid "mars.dataframe.Series.ndim"
+msgstr ""
+
+#: mars.dataframe.Series.ndim:1 of
+msgid "Return an int representing the number of axes / array dimensions."
+msgstr ""
+
+#: mars.dataframe.Series.ndim:3 of
+msgid "Return 1 if Series. Otherwise return 2 if DataFrame."
+msgstr ""
+
+#: mars.dataframe.Series.ndim:7 of
+msgid ":obj:`ndarray.ndim`"
+msgstr ""
+
+#: mars.dataframe.Series.ndim:8 of
+msgid "Number of array dimensions."
+msgstr ""
+
+#: mars.dataframe.Series.ndim:11 of
+msgid "Examples"
 msgstr ""
 

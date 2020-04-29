@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 17:45+0800\n"
+"POT-Creation-Date: 2020-04-29 16:21+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,5 +19,74 @@ msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.dot.rst:2
 msgid "mars.dataframe.Series.dot"
+msgstr ""
+
+#: mars.dataframe.Series.dot:1 of
+msgid "Compute the dot product between the Series and the columns of other."
+msgstr ""
+
+#: mars.dataframe.Series.dot:3 of
+msgid ""
+"This method computes the dot product between the Series and another one, "
+"or the Series and each columns of a DataFrame, or the Series and each "
+"columns of an array."
+msgstr ""
+
+#: mars.dataframe.Series.dot:7 of
+msgid "It can also be called using `self @ other` in Python >= 3.5."
+msgstr ""
+
+#: mars.dataframe.Series.dot of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.dot:9 of
+msgid "The other object to compute the dot product with its columns."
+msgstr ""
+
+#: mars.dataframe.Series.dot of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.dot:12 of
+msgid ""
+"Return the dot product of the Series and other if other is a Series, the "
+"Series of the dot product of Series and each rows of other if other is a "
+"DataFrame or a numpy.ndarray between the Series and each columns of the "
+"numpy array."
+msgstr ""
+
+#: mars.dataframe.Series.dot of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.dot:21 of
+msgid ":meth:`DataFrame.dot`"
+msgstr ""
+
+#: mars.dataframe.Series.dot:21 of
+msgid "Compute the matrix product with the DataFrame."
+msgstr ""
+
+#: mars.dataframe.Series.dot:23 of
+msgid ":meth:`Series.mul`"
+msgstr ""
+
+#: mars.dataframe.Series.dot:24 of
+msgid "Multiplication of series and other, element-wise."
+msgstr ""
+
+#: mars.dataframe.Series.dot:27 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.Series.dot:28 of
+msgid ""
+"The Series and other has to share the same index if other is a Series or "
+"a DataFrame."
+msgstr ""
+
+#: mars.dataframe.Series.dot:32 of
+msgid "Examples"
 msgstr ""
 
