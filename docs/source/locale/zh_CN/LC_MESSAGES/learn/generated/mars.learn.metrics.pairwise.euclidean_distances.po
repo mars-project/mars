@@ -1,0 +1,108 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 11:50+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/learn/generated/mars.learn.metrics.pairwise.euclidean_distances.rst:2
+msgid "mars.learn.metrics.pairwise.euclidean\\_distances"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:1 of
+msgid ""
+"Considering the rows of X (and Y=X) as vectors, compute the distance "
+"matrix between each pair of vectors."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:4 of
+msgid ""
+"For efficiency reasons, the euclidean distance between a pair of row "
+"vector x and y is computed as::"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:9 of
+msgid ""
+"This formulation has two advantages over other ways of computing "
+"distances. First, it is computationally efficient when dealing with "
+"sparse data. Second, if one argument varies but the other remains "
+"unchanged, then `dot(x, x)` and/or `dot(y, y)` can be pre-computed."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:14 of
+msgid ""
+"However, this is not the most precise way of doing this computation, and "
+"the distance matrix returned by this function may not be exactly "
+"symmetric as required by, e.g., ``scipy.spatial.distance`` functions."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:18 of
+msgid "Read more in the :ref:`User Guide <metrics>`."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:24 of
+msgid ""
+"Pre-computed dot-products of vectors in Y (e.g., ``(Y**2).sum(axis=1)``) "
+"May be ignored in some cases, see the note below."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:28 of
+msgid "Return squared Euclidean distances."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:30 of
+msgid ""
+"Pre-computed dot-products of vectors in X (e.g., ``(X**2).sum(axis=1)``) "
+"May be ignored in some cases, see the note below."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:36 of
+msgid "Notes"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:37 of
+msgid ""
+"To achieve better accuracy, `X_norm_squared` and `Y_norm_squared` may be "
+"unused if they are passed as ``float32``."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:40 of
+msgid "**distances**"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances of
+msgid "Return type"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:44 of
+msgid "Examples"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:58 of
+msgid ":func:`paired_distances`"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.euclidean_distances:59 of
+msgid "distances betweens pairs of elements of X and Y."
+msgstr ""
+

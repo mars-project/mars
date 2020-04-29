@@ -1,0 +1,71 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 11:50+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/learn/generated/mars.learn.metrics.pairwise.cosine_distances.rst:2
+msgid "mars.learn.metrics.pairwise.cosine\\_distances"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances:1 of
+msgid "Compute cosine distance between samples in X and Y."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances:3 of
+msgid "Cosine distance is defined as 1.0 minus the cosine similarity."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances:5 of
+msgid "Read more in the :ref:`User Guide <metrics>`."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances:7 of
+msgid "with shape (n_samples_X, n_features)."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances:9 of
+msgid "with shape (n_samples_Y, n_features)."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances:12 of
+msgid "**distance matrix** -- A tensor with shape (n_samples_X, n_samples_Y)."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances of
+msgid "Return type"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances:17 of
+msgid ":func:`mars.learn.metrics.pairwise.cosine_similarity`"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances:19 of
+msgid ":func:`mars.tensor.spatial.distance.cosine`"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_distances:20 of
+msgid "dense matrices only"
+msgstr ""
+

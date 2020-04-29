@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 19:36+0800\n"
+"POT-Creation-Date: 2020-04-29 11:50+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.8.0\n"
+"Generated-By: Babel 2.7.0\n"
 
 #: ../../source/dataframe/reference/frame.rst:5
 msgid "DataFrame"
@@ -72,7 +72,15 @@ msgid ":obj:`DataFrame.isna <mars.dataframe.DataFrame.isna>`\\ \\(\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:40:<autosummary>:1
+msgid "Detect missing values."
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:40:<autosummary>:1
 msgid ":obj:`DataFrame.notna <mars.dataframe.DataFrame.notna>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:40:<autosummary>:1
+msgid "Detect existing (non-missing) values."
 msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:42
@@ -82,6 +90,11 @@ msgstr "索引和迭代"
 #: ../../source/dataframe/reference/frame.rst:130:<autosummary>:1
 #: ../../source/dataframe/reference/frame.rst:52:<autosummary>:1
 msgid ":obj:`DataFrame.head <mars.dataframe.DataFrame.head>`\\ \\(\\[n\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:130:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:52:<autosummary>:1
+msgid "Return the first `n` rows."
 msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:52:<autosummary>:1
@@ -107,6 +120,11 @@ msgstr ""
 #: ../../source/dataframe/reference/frame.rst:130:<autosummary>:1
 #: ../../source/dataframe/reference/frame.rst:52:<autosummary>:1
 msgid ":obj:`DataFrame.tail <mars.dataframe.DataFrame.tail>`\\ \\(\\[n\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:130:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:52:<autosummary>:1
+msgid "Return the last `n` rows."
 msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:54
@@ -290,9 +308,17 @@ msgid ""
 msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:94:<autosummary>:1
+msgid "Provide rolling window calculations."
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:94:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.expanding <mars.dataframe.DataFrame.expanding>`\\ "
 "\\(\\[min\\_periods\\, center\\, axis\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:94:<autosummary>:1
+msgid "Provide expanding transformations."
 msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:98
