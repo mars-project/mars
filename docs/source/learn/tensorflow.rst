@@ -104,7 +104,7 @@ Now we create a Python file called `tf_demo.py` which contains the logic of Tens
         else:
             train()
 
-Mars libraries including DataFrame and so foth could be used directly
+Mars libraries including DataFrame and so forth could be used directly
 to process massive data and accelerate preprocess.
 
 Run TensorFlow script via Mars
@@ -137,8 +137,29 @@ The TensorFlow script can be submitted via :meth:`run_tensorflow_script` now.
 Distributed training or inference
 ---------------------------------
 
-As you can tell from `tf_demo.py`, Mars will set environment `TF_CONFIG` automatically.
+Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for running Mars on Kubernetes.
+
+As you can tell from `tf_demo.py`, Mars will set environment variable `TF_CONFIG` automatically.
 `TF_CONFIG` contains cluster and task information.
-Thus you don't need to bother the distributed setting,
-which you need do is to
+Thus you don't need to worry about the distributed setting,
+what you need do is to
 choose a proper `distributed strategy <https://www.tensorflow.org/guide/distributed_training#types_of_strategies>`_.
+
+Once a cluster exists, you can either set the session as default,
+the training and prediction shown above will be submitted to the cluster,
+or you can specify `session=***` explicitly as well.
+
+.. code-block:: python
+
+   # A cluster has been configured, and web UI is started on <web_ip>:<web_port>
+   from mars.session import new_session
+   # set the session as the default one
+   sess = new_session('http://<web_ip>:<web_port>').as_default()
+
+   # submitted to cluster by default
+   run_tensorflow_script('tf_demo.py', n_workers=1)
+
+   # Or, session could be specified as well
+   run_tensorflow_script('tf_demo.py', n_workers=1, session=sess)
+
+
