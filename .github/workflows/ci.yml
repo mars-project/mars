@@ -102,7 +102,7 @@ jobs:
             ./.github/workflows/install-hdfs.sh
           fi
         fi
-        conda list
+        conda list -n test
 
     - name: Lint with flake8
       shell: bash

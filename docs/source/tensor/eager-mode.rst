@@ -1,3 +1,5 @@
+.. _eager_mode:
+
 Eager Mode
 ===========
 
