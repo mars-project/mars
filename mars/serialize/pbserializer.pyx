@@ -862,8 +862,9 @@ cdef class ProtobufSerializeProvider(Provider):
                     field.type.type.model, it_obj, callbacks, key_to_instance) for it_obj in field_obj]
                 setattr(model_instance, field.attr, self._on_deserial(field, value))
             else:
+                value = self._get_list(field_obj, field.type, callbacks, field.weak_ref)
                 setattr(model_instance, field.attr,
-                        self._get_list(field_obj, field.type, callbacks, field.weak_ref))
+                        self._on_deserial(field, value))
         elif isinstance(field_obj, Value):
             val = self._get_value(field_obj, field.type, callbacks, field.weak_ref)
             setattr(model_instance, field.attr, self._on_deserial(field, val))
