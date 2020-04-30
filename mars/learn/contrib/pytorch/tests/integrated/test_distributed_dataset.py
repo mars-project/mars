@@ -5,8 +5,10 @@
 import unittest
 
 import numpy as np
+import pandas as pd
 
 import mars.tensor as mt
+import mars.dataframe as md
 from mars.learn.tests.integrated.base import LearnIntegrationTestBase
 from mars.learn.contrib.pytorch import MarsDataset, MarsDistributedSampler
 from mars.context import DistributedContext
@@ -27,7 +29,8 @@ class Test(LearnIntegrationTestBase):
             data.execute(name='data', session=sess)
 
             with DistributedContext(scheduler_address=scheduler_ep, session_id=sess.session_id):
-                dataset = MarsDataset('data')
+                t = mt.tensor(named='data')
+                dataset = MarsDataset(t)
                 self.assertEqual(len(dataset), 100)
 
                 sample = np.random.randint(0, 100, (10,))
@@ -52,7 +55,9 @@ class Test(LearnIntegrationTestBase):
             data2.execute(name='data2', session=sess)
 
             with DistributedContext(scheduler_address=scheduler_ep, session_id=sess.session_id):
-                dataset = MarsDataset('data1', 'data2')
+                t1 = mt.tensor(named='data1')
+                t2 = mt.tensor(named='data2')
+                dataset = MarsDataset(t1, t2)
                 self.assertEqual(len(dataset), 100)
 
                 sampler = MarsDistributedSampler(dataset, num_replicas=1, rank=0)
@@ -69,3 +74,31 @@ class Test(LearnIntegrationTestBase):
 
                 sampler.set_epoch(1)
                 self.assertEqual(sampler.epoch, 1)
+
+    def testDataFrameSeries(self, *_):
+        service_ep = 'http://127.0.0.1:' + self.web_port
+        scheduler_ep = '127.0.0.1:' + self.scheduler_port
+        with new_session(service_ep) as sess:
+            raw1 = pd.Series(np.random.rand(100,))
+            data1 = md.Series(raw1, chunk_size=40)
+            data1.execute(name='series', session=sess)
+
+            raw2 = pd.DataFrame(np.random.rand(100, 10))
+            data2 = mt.tensor(raw2, chunk_size=60)
+            data2.execute(name='dataframe', session=sess)
+
+            with DistributedContext(scheduler_address=scheduler_ep, session_id=sess.session_id):
+                t1 = md.Series(named='series')
+                t2 = md.DataFrame(named='dataframe')
+                dataset = MarsDataset(t1, t2)
+                self.assertEqual(len(dataset), 100)
+
+                sampler = MarsDistributedSampler(dataset, num_replicas=1, rank=0)
+                indices = sampler.generate_indices()
+                r1 = np.array(dataset._get_data(indices)[0])
+                r2 = np.array([dataset[ind][0] for ind in sampler])
+                np.testing.assert_array_equal(r1, r2)
+
+                r1 = np.array(dataset._get_data(indices)[1])
+                r2 = np.array([dataset[ind][1] for ind in sampler])
+                np.testing.assert_array_equal(r1, r2)

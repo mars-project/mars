@@ -54,18 +54,19 @@ def process_iloc_indexes(inp, indexes):
             # so don't treat a tuple as a valid indexer
             raise IndexingError("Too many indexers")
         elif isinstance(index, slice):
-            pd_index = (inp.index_value if ax == 0 else inp.columns_value).to_pandas()
-            for val in [index.start, index.stop, index.step]:
-                if val is not None:
-                    try:
-                        pd_index[val]  # check on the pandas
-                    except IndexError:
-                        pass
-                    except TypeError:
-                        raise TypeError(
-                            'cannot do slice indexing on {} '
-                            'with these indexers [{}] '
-                            'of {}'.format(type(pd_index), val, type(val)))
+            if any(v is not None for v in [index.start, index.stop, index.step]):
+                pd_index = (inp.index_value if ax == 0 else inp.columns_value).to_pandas()
+                for val in [index.start, index.stop, index.step]:
+                    if val is not None:
+                        try:
+                            pd_index[val]  # check on the pandas
+                        except IndexError:
+                            pass
+                        except TypeError:
+                            raise TypeError(
+                                'cannot do slice indexing on {} '
+                                'with these indexers [{}] '
+                                'of {}'.format(type(pd_index), val, type(val)))
             new_indexes.append(index)
         elif isinstance(index, (list, np.ndarray, pd.Series, Base, Entity)):
             if not isinstance(index, (Base, Entity)):

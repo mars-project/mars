@@ -33,6 +33,7 @@ def main():
     import torch.distributed as dist
     import torch.optim as optim
     import torch.utils.data
+    import mars.tensor as mt
     from mars.learn.contrib.pytorch import MarsDataset, MarsDistributedSampler
     from mars.learn.contrib.pytorch.dataset import enter_mars_context
 
@@ -40,7 +41,9 @@ def main():
     torch.manual_seed(42)
 
     with enter_mars_context():
-        train_dataset = MarsDataset('data', 'labels')
+        data = mt.tensor(named='data')
+        labels = mt.tensor(named='labels')
+        train_dataset = MarsDataset(data, labels)
         train_sampler = MarsDistributedSampler(train_dataset)
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                    batch_size=32,

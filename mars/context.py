@@ -167,6 +167,9 @@ class ContextBase(object):
     def create_lock(self):
         raise NotImplementedError
 
+    def build_named_tileable(self, named, rtype):
+        raise NotImplementedError
+
 
 ChunkMeta = namedtuple('ChunkMeta', ['chunk_size', 'chunk_shape', 'workers'])
 
@@ -392,6 +395,25 @@ class DistributedContext(ContextBase):
 
     def create_lock(self):
         return self._actor_ctx.lock()
+
+    def build_named_tileable(self, named, rtype):
+        from .tensor.fetch import TensorFetch
+        from .dataframe.fetch import DataFrameFetch
+        from .dataframe.operands import ObjectType
+
+        tileable_key = self.get_tileable_key_by_name(named)
+        nsplits = self.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+        shape = tuple(sum(s) for s in nsplits)
+        if rtype == 'tensor':
+            return TensorFetch().new_tensor([], shape=shape, _key=tileable_key)
+        elif rtype == 'series':
+            return DataFrameFetch(object_type=ObjectType.series).new_series(
+                [], shape=shape,  _key=tileable_key)
+        elif rtype == 'dataframe':
+            return DataFrameFetch(object_type=ObjectType.dataframe).new_dataframe(
+                [], shape=shape,  _key=tileable_key)
+        else:
+            raise TypeError('Unknown type {}'.format(rtype))
 
 
 class DistributedDictContext(DistributedContext, dict):
