@@ -968,8 +968,12 @@ class NDArrayIndexesHandler(IndexesHandler):
         raw_positions = \
             calc_pos(fancy_index_shape, fancy_index_infos[0].split_info[1])
         # reorder the result as the order of fancy indexes
-        return result[
-            (slice(None,),) * fancy_index_infos[0].output_axis + (raw_positions,)]
+        if isinstance(result, np.ndarray):
+            return result[
+                (slice(None,),) * fancy_index_infos[0].output_axis + (raw_positions,)]
+        else:
+            return result.iloc[
+                (slice(None,),) * fancy_index_infos[0].output_axis + (raw_positions,)]
 
 
 class TensorIndexesHandler(IndexesHandler):

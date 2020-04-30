@@ -28,8 +28,13 @@ from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
 
 class DataFrame(_Frame):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
-                 chunk_size=None, gpu=None, sparse=None):
-        if isinstance(data, TENSOR_TYPE):
+                 chunk_size=None, gpu=None, sparse=None, named=None):
+        if named is not None:
+            from ..context import get_context
+
+            context = get_context()
+            df = context.build_named_tileable(named=named, rtype='dataframe')
+        elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
@@ -54,8 +59,13 @@ class DataFrame(_Frame):
 
 class Series(_Series):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False,
-                 chunk_size=None, gpu=None, sparse=None):
-        if isinstance(data, TENSOR_TYPE):
+                 chunk_size=None, gpu=None, sparse=None, named=None):
+        if named is not None:
+            from ..context import get_context
+
+            context = get_context()
+            series = context.build_named_tileable(named=named, rtype='series')
+        elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)

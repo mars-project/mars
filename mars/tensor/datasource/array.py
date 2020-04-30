@@ -141,7 +141,13 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
     return op(spmatrix.shape, chunk_size=chunk_size)
 
 
-def tensor(data, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False):
+def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False, named=None):
+    if named is not None:
+        from ...context import get_context
+
+        context = get_context()
+        return context.build_named_tileable(named=named, rtype='tensor')
+
     order = order or 'K'
     if isinstance(data, TENSOR_TYPE):
         if isinstance(data, TensorData):

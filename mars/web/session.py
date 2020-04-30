@@ -162,9 +162,6 @@ class Session(object):
         graph_key = resp_json['graph_key']
         graph_url = '%s/graph/%s' % (session_url, graph_key)
 
-        for t in tileables:
-            self._set_tileable_graph_key(t, graph_key)
-
         exec_start_time = time.time()
         time_elapsed = 0
         check_interval = options.check_interval
@@ -184,6 +181,9 @@ class Session(object):
 
         if 0 < timeout < time.time() - exec_start_time:
             raise TimeoutError
+
+        for t in tileables:
+            self._set_tileable_graph_key(t, graph_key)
 
         if not fetch:
             return

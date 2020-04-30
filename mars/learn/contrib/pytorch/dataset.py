@@ -14,6 +14,7 @@
 
 import os
 
+import numpy as np
 try:
     import torch
     from torch.utils.data import Dataset
@@ -22,19 +23,20 @@ except ImportError:  # pragma: no cover
     Dataset = object
 
 from ....context import get_context, DistributedContext, RunningMode
-from ....tensor.fetch import TensorFetch
+from ....tensor.core import TENSOR_TYPE
 from ....tensor.indexing.core import process_index
+from ....dataframe.indexing.iloc import process_iloc_indexes
 from ....utils import require_not_none
 
 
 @require_not_none(torch)
 class MarsDataset(Dataset):
-    def __init__(self, *tensors):
+    def __init__(self, *tileables):
         from ....session import Session
 
         self._context = get_context() or Session.default_or_local().context
 
-        self.tensors = [self._tensor_from_name(t) if isinstance(t, str) else t for t in tensors]
+        self.tileables = tileables
         self._datas = None
         self._offset = 0
 
@@ -42,25 +44,31 @@ class MarsDataset(Dataset):
         self._datas = self._get_data(indices)
         self._offset = 0
 
-    def _tensor_from_name(self, name):
-        tileable_key = self._context.get_tileable_key_by_name(name)
-        nsplits = self._context.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
-        shape = tuple(sum(s) for s in nsplits)
-        return TensorFetch().new_tensor([], shape=shape, _key=tileable_key)
+    @staticmethod
+    def _process_index(t, index):
+        if isinstance(t, TENSOR_TYPE):
+            return process_index(t.ndim, index)
+        else:
+            return process_iloc_indexes(t, index)
 
     def _get_data(self, item):
         if self._context.running_mode != RunningMode.distributed:
-            return tuple(t[item].fetch() for t in self.tensors)
+            return tuple(t[item].fetch() for t in self.tileables)
         else:
             return tuple(self._context.get_tileable_data(
-                t.key, process_index(t.ndim, item)) for t in self.tensors)
+                t.key, self._process_index(t, item)) for t in self.tileables)
 
     def __len__(self):
-        return self.tensors[0].shape[0]
+        return self.tileables[0].shape[0]
 
     def __getitem__(self, item):
         if self._datas is not None:
-            ret = tuple(data[self._offset] for data in self._datas)
+            ret = []
+            for data in self._datas:
+                if isinstance(data, np.ndarray):
+                    ret.append(data[self._offset])
+                else:
+                    ret.append(data.iloc[self._offset])
             self._offset += 1
             return ret
         else:
