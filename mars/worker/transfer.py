@@ -834,9 +834,9 @@ class ResultSenderActor(WorkerActor):
                     value = dataserializer.deserialize(pool.submit(reader.read).result())
 
             try:
-                sliced_value = value.iloc[index_obj]
+                sliced_value = value.iloc[tuple(index_obj)]
             except AttributeError:
-                sliced_value = value[index_obj]
+                sliced_value = value[tuple(index_obj)]
 
             return self._serialize_pool.submit(
                 dataserializer.dumps, sliced_value, compression_type).result()

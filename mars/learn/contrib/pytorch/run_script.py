@@ -118,7 +118,7 @@ class RunPyTorch(LearnMergeDictOperand):
             f.write(op.code)
 
         try:
-            env = {}
+            env = os.environ.copy()
             if op.master_port is not None:
                 env['MASTER_PORT'] = str(op.master_port)
             if op.master_addr is not None:

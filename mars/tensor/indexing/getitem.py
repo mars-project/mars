@@ -84,7 +84,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         ret = input_[indexes]
         if hasattr(ret, 'astype'):
             ret = ret.astype(
-                input_.dtype, order=op.outputs[0].order.value, copy=False)
+                ret.dtype, order=op.outputs[0].order.value, copy=False)
         ctx[op.outputs[0].key] = ret
 
     @classmethod
