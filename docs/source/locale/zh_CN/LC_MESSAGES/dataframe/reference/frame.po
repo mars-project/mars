@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-29 16:21+0800\n"
+"POT-Creation-Date: 2020-04-29 18:27+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -139,264 +139,257 @@ msgstr ""
 msgid "Binary operator functions"
 msgstr "二元运算函数"
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.add <mars.dataframe.DataFrame.add>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid "Get Addition of dataframe and other, element-wise (binary operator `add`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.sub <mars.dataframe.DataFrame.sub>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Subtraction of dataframe and other, element-wise (binary operator "
 "`subtract`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.mul <mars.dataframe.DataFrame.mul>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Multiplication of dataframe and other, element-wise (binary operator "
 "`mul`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.div <mars.dataframe.DataFrame.div>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Floating division of dataframe and other, element-wise (binary "
 "operator `truediv`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.truediv <mars.dataframe.DataFrame.truediv>`\\ "
 "\\(other\\[\\, axis\\, level\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.floordiv <mars.dataframe.DataFrame.floordiv>`\\ "
 "\\(other\\[\\, axis\\, level\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Integer division of dataframe and other, element-wise (binary "
 "operator `floordiv`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.mod <mars.dataframe.DataFrame.mod>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid "Get Modulo of dataframe and other, element-wise (binary operator `mod`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.pow <mars.dataframe.DataFrame.pow>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Exponential power of dataframe and other, element-wise (binary "
 "operator `pow`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ":obj:`DataFrame.dot <mars.dataframe.DataFrame.dot>`\\ \\(other\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid "Compute the matrix multiplication between the DataFrame and other."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.radd <mars.dataframe.DataFrame.radd>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Addition of dataframe and other, element-wise (binary operator "
 "`radd`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.rsub <mars.dataframe.DataFrame.rsub>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Subtraction of dataframe and other, element-wise (binary operator "
 "`rsubtract`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.rmul <mars.dataframe.DataFrame.rmul>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Multiplication of dataframe and other, element-wise (binary operator "
 "`rmul`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.rdiv <mars.dataframe.DataFrame.rdiv>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Floating division of dataframe and other, element-wise (binary "
 "operator `rtruediv`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.rtruediv <mars.dataframe.DataFrame.rtruediv>`\\ "
 "\\(other\\[\\, axis\\, level\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.rfloordiv <mars.dataframe.DataFrame.rfloordiv>`\\ "
 "\\(other\\[\\, axis\\, level\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Integer division of dataframe and other, element-wise (binary "
 "operator `rfloordiv`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.rmod <mars.dataframe.DataFrame.rmod>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid "Get Modulo of dataframe and other, element-wise (binary operator `rmod`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.rpow <mars.dataframe.DataFrame.rpow>`\\ \\(other\\[\\, "
 "axis\\, level\\, fill\\_value\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Exponential power of dataframe and other, element-wise (binary "
 "operator `rpow`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:121:<autosummary>:1
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
-msgid ""
-":obj:`DataFrame.round <mars.dataframe.DataFrame.round>`\\ "
-"\\(\\[decimals\\]\\)"
-msgstr ""
-
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.lt <mars.dataframe.DataFrame.lt>`\\ \\(other\\[\\, "
 "axis\\, level\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid "Get Less than of dataframe and other, element-wise (binary operator `lt`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.gt <mars.dataframe.DataFrame.gt>`\\ \\(other\\[\\, "
 "axis\\, level\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Greater than of dataframe and other, element-wise (binary operator "
 "`gt`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.le <mars.dataframe.DataFrame.le>`\\ \\(other\\[\\, "
 "axis\\, level\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Less than or equal to of dataframe and other, element-wise (binary "
 "operator `le`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.ge <mars.dataframe.DataFrame.ge>`\\ \\(other\\[\\, "
 "axis\\, level\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Greater than or equal to of dataframe and other, element-wise (binary"
 " operator `ge`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.ne <mars.dataframe.DataFrame.ne>`\\ \\(other\\[\\, "
 "axis\\, level\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 "Get Not equal to of dataframe and other, element-wise (binary operator "
 "`ne`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid ""
 ":obj:`DataFrame.eq <mars.dataframe.DataFrame.eq>`\\ \\(other\\[\\, "
 "axis\\, level\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:82:<autosummary>:1
+#: ../../source/dataframe/reference/frame.rst:81:<autosummary>:1
 msgid "Get Equal to of dataframe and other, element-wise (binary operator `eq`)."
 msgstr ""
 
-#: ../../source/dataframe/reference/frame.rst:84
+#: ../../source/dataframe/reference/frame.rst:83
 msgid "Function application, GroupBy & window"
 msgstr "应用函数、分组和窗口"
 
@@ -448,6 +441,16 @@ msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:95:<autosummary>:1
 msgid "Provide expanding transformations."
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:95:<autosummary>:1
+msgid ""
+":obj:`DataFrame.ewm <mars.dataframe.DataFrame.ewm>`\\ \\(\\[com\\, "
+"span\\, halflife\\, alpha\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:95:<autosummary>:1
+msgid "Provide exponential weighted functions."
 msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:99
@@ -532,6 +535,16 @@ msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:121:<autosummary>:1
 msgid "Return values at the given quantile over requested axis."
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:121:<autosummary>:1
+msgid ""
+":obj:`DataFrame.round <mars.dataframe.DataFrame.round>`\\ "
+"\\(\\[decimals\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/frame.rst:121:<autosummary>:1
+msgid "Round a DataFrame to a variable number of decimal places."
 msgstr ""
 
 #: ../../source/dataframe/reference/frame.rst:121:<autosummary>:1

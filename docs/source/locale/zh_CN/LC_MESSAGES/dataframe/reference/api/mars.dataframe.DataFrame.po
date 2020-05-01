@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-29 16:21+0800\n"
+"POT-Creation-Date: 2020-04-29 18:27+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -526,6 +526,10 @@ msgid ":obj:`round <mars.dataframe.DataFrame.round>`\\ \\(\\[decimals\\]\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.rst:108:<autosummary>:1
+msgid "Round a DataFrame to a variable number of decimal places."
+msgstr ""
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.rst:108:<autosummary>:1
 msgid ""
 ":obj:`rpow <mars.dataframe.DataFrame.rpow>`\\ \\(other\\[\\, axis\\, "
 "level\\, fill\\_value\\]\\)"
@@ -750,34 +754,4 @@ msgstr ""
 #: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.rst:123:<autosummary>:1
 msgid ":obj:`size <mars.dataframe.DataFrame.size>`\\"
 msgstr ""
-
-#~ msgid ""
-#~ ":obj:`and <mars.dataframe.DataFrame.and>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`or <mars.dataframe.DataFrame.or>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rand <mars.dataframe.DataFrame.rand>`\\ "
-#~ "\\(other\\[\\, axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`ror <mars.dataframe.DataFrame.ror>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rxor <mars.dataframe.DataFrame.rxor>`\\ "
-#~ "\\(other\\[\\, axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`xor <mars.dataframe.DataFrame.xor>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
 

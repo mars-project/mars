@@ -11,22 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-def _install():
-    from ..core import DATAFRAME_TYPE, SERIES_TYPE
-    from .rolling.aggregation import DataFrameRollingAgg
-    from .rolling.core import rolling
-    from .expanding.aggregation import DataFrameExpandingAgg
-    from .expanding.core import expanding
-    from .ewm.aggregation import DataFrameEwmAgg
-    from .ewm.core import ewm
-
-    for t in DATAFRAME_TYPE + SERIES_TYPE:
-        t.rolling = rolling
-        t.expanding = expanding
-        t.ewm = ewm
-
-
-_install()
-del _install

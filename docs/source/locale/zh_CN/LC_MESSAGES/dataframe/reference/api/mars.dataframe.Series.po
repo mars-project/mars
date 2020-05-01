@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-29 16:21+0800\n"
+"POT-Creation-Date: 2020-04-29 18:27+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -170,9 +170,7 @@ msgid "Return a new Series with missing values removed."
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
-msgid ""
-":obj:`eq <mars.dataframe.Series.eq>`\\ \\(other\\[\\, level\\, "
-"fill\\_value\\, axis\\]\\)"
+msgid ":obj:`eq <mars.dataframe.Series.eq>`\\ \\(other\\[\\, level\\, axis\\]\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
@@ -224,9 +222,7 @@ msgid ""
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
-msgid ""
-":obj:`ge <mars.dataframe.Series.ge>`\\ \\(other\\[\\, level\\, "
-"fill\\_value\\, axis\\]\\)"
+msgid ":obj:`ge <mars.dataframe.Series.ge>`\\ \\(other\\[\\, level\\, axis\\]\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
@@ -242,9 +238,7 @@ msgid ""
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
-msgid ""
-":obj:`gt <mars.dataframe.Series.gt>`\\ \\(other\\[\\, level\\, "
-"fill\\_value\\, axis\\]\\)"
+msgid ":obj:`gt <mars.dataframe.Series.gt>`\\ \\(other\\[\\, level\\, axis\\]\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
@@ -278,9 +272,7 @@ msgid ":obj:`isnull <mars.dataframe.Series.isnull>`\\ \\(\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
-msgid ""
-":obj:`le <mars.dataframe.Series.le>`\\ \\(other\\[\\, level\\, "
-"fill\\_value\\, axis\\]\\)"
+msgid ":obj:`le <mars.dataframe.Series.le>`\\ \\(other\\[\\, level\\, axis\\]\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
@@ -290,9 +282,7 @@ msgid ""
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
-msgid ""
-":obj:`lt <mars.dataframe.Series.lt>`\\ \\(other\\[\\, level\\, "
-"fill\\_value\\, axis\\]\\)"
+msgid ":obj:`lt <mars.dataframe.Series.lt>`\\ \\(other\\[\\, level\\, axis\\]\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
@@ -352,9 +342,7 @@ msgid ""
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
-msgid ""
-":obj:`ne <mars.dataframe.Series.ne>`\\ \\(other\\[\\, level\\, "
-"fill\\_value\\, axis\\]\\)"
+msgid ":obj:`ne <mars.dataframe.Series.ne>`\\ \\(other\\[\\, level\\, axis\\]\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
@@ -513,6 +501,10 @@ msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
 msgid ":obj:`round <mars.dataframe.Series.round>`\\ \\(\\[decimals\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
+msgid "Round each value in a Series to the given number of decimals."
 msgstr ""
 
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:105:<autosummary>:1
@@ -732,149 +724,4 @@ msgstr ""
 #: ../../source/dataframe/reference/api/mars.dataframe.Series.rst:120:<autosummary>:1
 msgid ":obj:`size <mars.dataframe.Series.size>`\\"
 msgstr ""
-
-#~ msgid ""
-#~ ":obj:`add <mars.dataframe.Series.add>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`and <mars.dataframe.Series.and>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`div <mars.dataframe.Series.div>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`eq <mars.dataframe.Series.eq>`\\ \\(other\\[\\, "
-#~ "axis\\, level\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`floordiv <mars.dataframe.Series.floordiv>`\\ "
-#~ "\\(other\\[\\, axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`ge <mars.dataframe.Series.ge>`\\ \\(other\\[\\, "
-#~ "axis\\, level\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`gt <mars.dataframe.Series.gt>`\\ \\(other\\[\\, "
-#~ "axis\\, level\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`le <mars.dataframe.Series.le>`\\ \\(other\\[\\, "
-#~ "axis\\, level\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`lt <mars.dataframe.Series.lt>`\\ \\(other\\[\\, "
-#~ "axis\\, level\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`mod <mars.dataframe.Series.mod>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`mul <mars.dataframe.Series.mul>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`multiply <mars.dataframe.Series.multiply>`\\ "
-#~ "\\(other\\[\\, axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`ne <mars.dataframe.Series.ne>`\\ \\(other\\[\\, "
-#~ "axis\\, level\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`or <mars.dataframe.Series.or>`\\ \\(other\\[\\, "
-#~ "axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`pow <mars.dataframe.Series.pow>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`radd <mars.dataframe.Series.radd>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rand <mars.dataframe.Series.rand>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rdiv <mars.dataframe.Series.rdiv>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rfloordiv <mars.dataframe.Series.rfloordiv>`\\ "
-#~ "\\(other\\[\\, axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rmod <mars.dataframe.Series.rmod>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rmul <mars.dataframe.Series.rmul>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`ror <mars.dataframe.Series.ror>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rpow <mars.dataframe.Series.rpow>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rsub <mars.dataframe.Series.rsub>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rtruediv <mars.dataframe.Series.rtruediv>`\\ "
-#~ "\\(other\\[\\, axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rxor <mars.dataframe.Series.rxor>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`sub <mars.dataframe.Series.sub>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`truediv <mars.dataframe.Series.truediv>`\\ "
-#~ "\\(other\\[\\, axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`xor <mars.dataframe.Series.xor>`\\ \\(other\\[\\,"
-#~ " axis\\, level\\, fill\\_value\\]\\)"
-#~ msgstr ""
 
