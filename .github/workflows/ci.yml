@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hdfs, 3.8-cython]
+        python-version: [3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hadoop, 3.8-cython]
         include:
           - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m" }
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
@@ -17,17 +17,17 @@ jobs:
           - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38" }
           - { os: ubuntu-16.04, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
-          - { os: ubuntu-16.04, python-version: 3.8-hdfs, no-common-tests: 1,
-              no-deploy: 1, with-hdfs: "with hdfs" }
+          - { os: ubuntu-16.04, python-version: 3.8-hadoop, no-common-tests: 1,
+              no-deploy: 1, with-hadoop: "with hadoop" }
           - { os: ubuntu-16.04, python-version: 3.8-cython, no-common-tests: 1,
               no-deploy: 1, with-cython: "with Cython" }
           - { os: windows-latest, python-version: 3.8, build-static: 1 }
         exclude:
           - { os: macOS-latest, python-version: 3.8-kubernetes }
-          - { os: macOS-latest, python-version: 3.8-hdfs }
+          - { os: macOS-latest, python-version: 3.8-hadoop }
           - { os: macOS-latest, python-version: 3.8-cython }
           - { os: windows-latest, python-version: 3.8-kubernetes }
-          - { os: windows-latest, python-version: 3.8-hdfs }
+          - { os: windows-latest, python-version: 3.8-hadoop }
           - { os: windows-latest, python-version: 3.8-cython }
 
     steps:
@@ -44,13 +44,17 @@ jobs:
 
     - name: Install dependencies
       env:
-        WITH_HDFS: ${{ matrix.with-hdfs }}
+        WITH_HADOOP: ${{ matrix.with-hadoop }}
         WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
         NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
       shell: bash
       run: |
         source ./.github/workflows/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
+        if [[ $UNAME == "darwin" ]] && [[ "$PYTHON" =~ "3.7" ]]; then
+          # workaround of https://issues.apache.org/jira/browse/ARROW-8684
+          pip install pyarrow==0.15.1
+        fi
         if [[ "$PYTHON" =~ "3.8" ]]; then
           conda install -n test --quiet --yes python=$PYTHON numpy
           # remove three lines below once gevent 1.5 is released
@@ -66,12 +70,11 @@ jobs:
           pip install virtualenv flake8 etcd-gevent
           if [ -z "$NO_COMMON_TESTS" ]; then
             if [[ $UNAME == "linux" ]]; then
-              pip install h5py
-              pip install zarr
+              pip install h5py zarr
               pip install matplotlib
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
-              conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true
+              conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
               conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
@@ -86,6 +89,10 @@ jobs:
               pip install torch torchvision
             fi
             virtualenv testenv && source testenv/bin/activate
+            if [[ $UNAME == "darwin" ]] && [[ "$PYTHON" =~ "3.7" ]]; then
+              # workaround of https://issues.apache.org/jira/browse/ARROW-8684
+              pip install pyarrow==0.15.1
+            fi
             pip install -r requirements.txt && pip install pytest pytest-timeout
             if [ -z "$DEFAULT_VENV" ]; then
               deactivate
@@ -98,8 +105,9 @@ jobs:
             ./.github/workflows/install-minikube.sh
             pip install kubernetes
           fi
-          if [ -n "$WITH_HDFS" ]; then
-            ./.github/workflows/install-hdfs.sh
+          if [ -n "$WITH_HADOOP" ]; then
+            ./.github/workflows/install-hadoop.sh
+            conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein
           fi
         fi
         conda list -n test
@@ -138,7 +146,7 @@ jobs:
 
     - name: Test with pytest
       env:
-        WITH_HDFS: ${{ matrix.with-hdfs }}
+        WITH_HADOOP: ${{ matrix.with-hadoop }}
         WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
         WITH_CYTHON: ${{ matrix.with-cython }}
         NO_COMMON_TESTS: ${{ matrix.no-common-tests }}

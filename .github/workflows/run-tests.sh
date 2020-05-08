@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning"
-if [ -n "$WITH_HDFS" ]; then
+if [ -n "$WITH_HADOOP" ]; then
   pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datasource/tests/test_hdfs.py
   coverage report
 fi

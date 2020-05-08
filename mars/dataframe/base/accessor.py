@@ -50,7 +50,7 @@ class StringAccessor:
         setattr(cls, method, cls._gen_func(method))
 
     def split(self, pat=None, n=-1, expand=False):
-        """
+        r"""
         Split strings around given separator/delimiter.
 
         Splits the string in the Series/Index from the beginning,

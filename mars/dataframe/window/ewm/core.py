@@ -95,7 +95,7 @@ class EWM(Window):
 
 def ewm(obj, com=None, span=None, halflife=None, alpha=None, min_periods=0, adjust=True,
         ignore_na=False, axis=0):
-    """
+    r"""
     Provide exponential weighted functions.
 
     Parameters
