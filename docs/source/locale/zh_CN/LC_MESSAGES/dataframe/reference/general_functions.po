@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 09:59+0800\n"
+"POT-Creation-Date: 2020-04-29 18:27+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -56,11 +56,19 @@ msgid ":obj:`isna <mars.dataframe.isna>`\\ \\(df\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/general_functions.rst:26:<autosummary>:1
+msgid "Detect missing values."
+msgstr ""
+
+#: ../../source/dataframe/reference/general_functions.rst:26:<autosummary>:1
 msgid ":obj:`isnull <mars.dataframe.isnull>`\\ \\(df\\)"
 msgstr ""
 
 #: ../../source/dataframe/reference/general_functions.rst:26:<autosummary>:1
 msgid ":obj:`notna <mars.dataframe.notna>`\\ \\(df\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/general_functions.rst:26:<autosummary>:1
+msgid "Detect existing (non-missing) values."
 msgstr ""
 
 #: ../../source/dataframe/reference/general_functions.rst:26:<autosummary>:1

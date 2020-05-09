@@ -1,0 +1,118 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 18:27+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/learn/tensorflow.rst:5
+msgid "Integrate with TensorFlow"
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:9
+msgid ""
+"This introduction will give a brief tour about how to integrate "
+"TensorFlow in Mars."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:12
+msgid "Installation"
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:14
+msgid ""
+"If you are trying to use Mars on a single machine, e.g. on your laptop, "
+"make sure TensorFlow is installed."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:17
+msgid "You can install TensorFlow via pip:"
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:23
+msgid ""
+"Visit `installation guide for TensorFlow "
+"<https://www.tensorflow.org/install>`_ for more information."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:26
+msgid ""
+"On the other hand, if you are about to use Mars on a cluster, maker sure "
+"TensorFlow is installed on each worker."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:30
+msgid "Prepare data"
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:32
+msgid ""
+"The dataset here we used is `ionosphere dataset "
+"<http://archive.ics.uci.edu/ml/machine-learning-databases/ionosphere/>`_,"
+" click link to download data."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:36
+msgid "Prepare TensorFlow script"
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:38
+msgid ""
+"Now we create a Python file called `tf_demo.py` which contains the logic "
+"of TensorFlow."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:107
+msgid ""
+"Mars libraries including DataFrame and so forth could be used directly to"
+" process massive data and accelerate preprocess."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:111
+msgid "Run TensorFlow script via Mars"
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:113
+msgid ""
+"The TensorFlow script can be submitted via :meth:`run_tensorflow_script` "
+"now."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:138
+msgid "Distributed training or inference"
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:140
+msgid ""
+"Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for "
+"running Mars on Kubernetes."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:142
+msgid ""
+"As you can tell from `tf_demo.py`, Mars will set environment variable "
+"`TF_CONFIG` automatically. `TF_CONFIG` contains cluster and task "
+"information. Thus you don't need to worry about the distributed setting, "
+"what you need do is to choose a proper `distributed strategy "
+"<https://www.tensorflow.org/guide/distributed_training#types_of_strategies>`_."
+msgstr ""
+
+#: ../../source/learn/tensorflow.rst:148
+msgid ""
+"Once a cluster exists, you can either set the session as default, the "
+"training and prediction shown above will be submitted to the cluster, or "
+"you can specify `session=***` explicitly as well."
+msgstr ""
+

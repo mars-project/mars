@@ -19,10 +19,13 @@ def _install():
     from .rolling.core import rolling
     from .expanding.aggregation import DataFrameExpandingAgg
     from .expanding.core import expanding
+    from .ewm.aggregation import DataFrameEwmAgg
+    from .ewm.core import ewm
 
     for t in DATAFRAME_TYPE + SERIES_TYPE:
         t.rolling = rolling
         t.expanding = expanding
+        t.ewm = ewm
 
 
 _install()

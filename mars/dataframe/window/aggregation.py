@@ -234,7 +234,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             if min_periods > 1:
                 min_periods_func_name = tokenize(chunk_cols, 'min_periods')
                 _add_column_to_functions(col, min_periods_func_name,
-                                         *cls._get_stage_functions(op, 'count'))
+                                         *cls._get_stage_functions(op, '_data_count'))
 
             for func in funcs:
                 mapper_funcs, combine_func = cls._get_stage_functions(op, func)
@@ -439,7 +439,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _execute_combine_function(cls, op: "BaseDataFrameExpandingAgg", func,
-                                  pred_inputs, local_inputs):
+                                  pred_inputs, local_inputs, func_cols):
         raise NotImplementedError
 
     @classmethod
@@ -461,7 +461,8 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                     local_inputs = [local_data_dict[src][func_cols] for src in func_sources]
 
                 func = op.key_to_funcs[func_str]
-                func_to_aggs[func_name] = cls._execute_combine_function(op, func, None, local_inputs)
+                func_to_aggs[func_name] = cls._execute_combine_function(
+                    op, func, None, local_inputs, func_cols)
         else:
             pred_data = ctx[op.inputs[1].key]
             pred_record_count = pred_data[-1].sum()
@@ -478,17 +479,18 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                     pred_inputs = [pred_data_dict[src][func_cols] for src in func_sources]
 
                 func = op.key_to_funcs[func_str]
-                func_to_aggs[func_name] = cls._execute_combine_function(op, func, pred_inputs, local_inputs)
+                func_to_aggs[func_name] = cls._execute_combine_function(
+                    op, func, pred_inputs, local_inputs, func_cols)
 
         if op.min_periods_func_name is not None:
             valid_counts = func_to_aggs.pop(op.min_periods_func_name)
-            valid_poses = valid_counts >= op.min_periods
+            invalid_poses = valid_counts < op.min_periods
             for func_name in func_to_aggs.keys():
                 if func_name == 'count':
                     if not op.count_always_valid and pred_record_count < op.min_periods - 1:
                         func_to_aggs[func_name].iloc[:op.min_periods - pred_record_count - 1] = np.nan
                 else:
-                    func_to_aggs[func_name] = func_to_aggs[func_name][valid_poses]
+                    func_to_aggs[func_name][invalid_poses] = np.nan
 
         for func_name, agg_df in func_to_aggs.items():
             if out_df.ndim == 2 and agg_df.ndim == 1:

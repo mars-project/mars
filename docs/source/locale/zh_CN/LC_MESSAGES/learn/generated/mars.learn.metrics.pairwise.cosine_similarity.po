@@ -1,0 +1,77 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 18:27+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/learn/generated/mars.learn.metrics.pairwise.cosine_similarity.rst:2
+msgid "mars.learn.metrics.pairwise.cosine\\_similarity"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity:1 of
+msgid "Compute cosine similarity between samples in X and Y."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity:3 of
+msgid ""
+"Cosine similarity, or the cosine kernel, computes similarity as the "
+"normalized dot product of X and Y:"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity:6 of
+msgid "K(X, Y) = <X, Y> / (||X||*||Y||)"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity:8 of
+msgid "On L2-normalized data, this function is equivalent to linear_kernel."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity:10 of
+msgid "Read more in the :ref:`User Guide <cosine_similarity>`."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity:12 of
+msgid "Input data."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity:14 of
+msgid ""
+"Input data. If ``None``, the output will be the pairwise similarities "
+"between all samples in ``X``."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity:17 of
+msgid ""
+"Whether to return dense output even when the input is sparse. If "
+"``False``, the output is sparse if both input tensors are sparse."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity:21 of
+msgid "**kernel matrix** -- A tensor with shape (n_samples_X, n_samples_Y)."
+msgstr ""
+
+#: mars.learn.metrics.pairwise.cosine_similarity of
+msgid "Return type"
+msgstr ""
+
