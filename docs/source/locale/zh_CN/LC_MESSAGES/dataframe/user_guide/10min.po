@@ -369,6 +369,8 @@ msgid ""
 "Grouping by multiple columns forms a hierarchical index, and again we can"
 " apply the `sum` function."
 msgstr ""
+"我们也可以利用多列进行分组，这将形成一个多重索引。在此结果上，我们也可以"
+"执行 `sum` 函数。"
 
 #: ../../source/dataframe/user_guide/10min.rst:395
 msgid "Plotting"

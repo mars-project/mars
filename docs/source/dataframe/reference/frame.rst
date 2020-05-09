@@ -91,6 +91,7 @@ Function application, GroupBy & window
    DataFrame.groupby
    DataFrame.rolling
    DataFrame.expanding
+   DataFrame.ewm
 
 .. _api.dataframe.stats:
 

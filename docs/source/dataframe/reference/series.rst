@@ -89,6 +89,7 @@ Function application, groupby & window
    Series.groupby
    Series.rolling
    Series.expanding
+   Series.ewm
 
 .. _api.series.stats:
 

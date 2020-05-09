@@ -1,0 +1,167 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 18:27+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/learn/generated/mars.learn.utils.check_X_y.rst:2
+msgid "mars.learn.utils.check\\_X\\_y"
+msgstr ""
+
+#: mars.learn.utils.check_X_y:1 of
+msgid "Input validation for standard estimators."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:3 of
+msgid ""
+"Checks X and y for consistent length, enforces X to be 2D and y 1D. By "
+"default, X is checked to be non-empty and containing only finite values. "
+"Standard input checks are also applied to y, such as checking that y does"
+" not have np.nan or np.inf targets. For multi-label y, set "
+"multi_output=True to allow 2D and sparse y. If the dtype of X is object, "
+"attempt converting to float, raising on failure."
+msgstr ""
+
+#: mars.learn.utils.check_X_y of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.utils.check_X_y:10 of
+msgid "Input data."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:12 of
+msgid "Labels."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:14 of
+msgid ""
+"String[s] representing allowed sparse matrix formats, such as 'csc', "
+"'csr', etc. If the input is sparse but not in the allowed format, it will"
+" be converted to the first listed format. True allows the input to be any"
+" format. False means that a sparse matrix input will raise an error."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:20 of
+msgid ""
+"If a CSR, CSC, COO or BSR sparse matrix is supplied and accepted by "
+"accept_sparse, accept_large_sparse will cause it to be accepted only if "
+"its indices are stored with a 32-bit dtype."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:24 of
+msgid ""
+"Data type of result. If None, the dtype of the input is preserved. If "
+"\"numeric\", dtype is preserved unless array.dtype is object. If dtype is"
+" a list of types, conversion on the first type is only performed if the "
+"dtype of the input is not in the list."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:29 of
+msgid "Whether an array will be forced to be fortran or c-style."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:31 of
+msgid ""
+"Whether a forced copy will be triggered. If copy=False, a copy might be "
+"triggered by a conversion."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:34 of
+msgid ""
+"Whether to raise an error on np.inf and np.nan in X. This parameter does "
+"not influence whether y can have np.inf or np.nan values. The "
+"possibilities are:  - True: Force all values of X to be finite. - False: "
+"accept both np.inf and np.nan in X. - 'allow-nan': accept only np.nan "
+"values in X. Values cannot be   infinite."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:34 of
+msgid ""
+"Whether to raise an error on np.inf and np.nan in X. This parameter does "
+"not influence whether y can have np.inf or np.nan values. The "
+"possibilities are:"
+msgstr ""
+
+#: mars.learn.utils.check_X_y:38 of
+msgid "True: Force all values of X to be finite."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:39 of
+msgid "False: accept both np.inf and np.nan in X."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:40 of
+msgid "'allow-nan': accept only np.nan values in X. Values cannot be infinite."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:43 of
+msgid "Whether to raise a value error if X is not 2D."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:45 of
+msgid "Whether to allow X.ndim > 2."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:47 of
+msgid ""
+"Whether to allow 2D y (array or sparse matrix). If false, y will be "
+"validated as a vector. y cannot have np.nan or np.inf values if "
+"multi_output=True."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:51 of
+msgid ""
+"Make sure that X has a minimum number of samples in its first axis (rows "
+"for a 2D array)."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:54 of
+msgid ""
+"Make sure that the 2D array has some minimum number of features "
+"(columns). The default value of 1 rejects empty datasets. This check is "
+"only enforced when X has effectively 2 dimensions or is originally 1D and"
+" ``ensure_2d`` is True. Setting to 0 disables this check."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:60 of
+msgid ""
+"Whether to ensure that y has a numeric type. If dtype of y is object, it "
+"is converted to float64. Should only be used for regression algorithms."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:64 of
+msgid "If passed, include the name of the estimator in warning messages."
+msgstr ""
+
+#: mars.learn.utils.check_X_y of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.utils.check_X_y:67 of
+msgid ""
+"* **X_converted** (*object*) -- The converted and validated X. * "
+"**y_converted** (*object*) -- The converted and validated y."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:67 of
+msgid "**X_converted** (*object*) -- The converted and validated X."
+msgstr ""
+
+#: mars.learn.utils.check_X_y:68 of
+msgid "**y_converted** (*object*) -- The converted and validated y."
+msgstr ""
+

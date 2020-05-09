@@ -55,7 +55,7 @@ class Window(Serializable):
 
     def __getattr__(self, item):
         try:
-            return super().__getattr__(item)
+            return super().__getattribute__(item)
         except AttributeError:
             if self.input.ndim == 2 and item in self.input.dtypes:
                 return self[item]

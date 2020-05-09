@@ -1,0 +1,51 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 18:27+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/learn/generated/mars.learn.contrib.pytorch.MarsRandomSampler.rst:2
+msgid "mars.learn.contrib.pytorch.MarsRandomSampler"
+msgstr ""
+
+#: mars.learn.contrib.pytorch.MarsRandomSampler.__init__:1 of
+msgid "Initialize self.  See help(type(self)) for accurate signature."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.pytorch.MarsRandomSampler.rst:13
+msgid "Methods"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.pytorch.MarsRandomSampler.rst:21:<autosummary>:1
+msgid ""
+":obj:`__init__ <mars.learn.contrib.pytorch.MarsRandomSampler.__init__>`\\"
+" \\(data\\_source\\[\\, replacement\\, num\\_samples\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.pytorch.MarsRandomSampler.rst:21:<autosummary>:1
+msgid "Initialize self."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.pytorch.MarsRandomSampler.rst:23
+msgid "Attributes"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.pytorch.MarsRandomSampler.rst:26:<autosummary>:1
+msgid ""
+":obj:`num_samples "
+"<mars.learn.contrib.pytorch.MarsRandomSampler.num_samples>`\\"
+msgstr ""
+

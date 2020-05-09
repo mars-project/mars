@@ -1,0 +1,111 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.4.0rc1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-29 18:27+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/learn/generated/mars.learn.metrics.accuracy_score.rst:2
+msgid "mars.learn.metrics.accuracy\\_score"
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:1 of
+msgid "Accuracy classification score."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:3 of
+msgid ""
+"In multilabel classification, this function computes subset accuracy: the"
+" set of labels predicted for a sample must *exactly* match the "
+"corresponding set of labels in y_true."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:7 of
+msgid "Read more in the :ref:`User Guide <accuracy_score>`."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:9 of
+msgid "Ground truth (correct) labels."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:11 of
+msgid "Predicted labels, as returned by a classifier."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:13 of
+msgid ""
+"If ``False``, return the number of correctly classified samples. "
+"Otherwise, return the fraction of correctly classified samples."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:16 of
+msgid "Sample weights."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:19 of
+msgid ""
+"**score** -- If ``normalize == True``, return the fraction of correctly "
+"classified samples (float), else returns the number of correctly "
+"classified samples (int).  The best performance is 1 with ``normalize == "
+"True`` and the number of samples with ``normalize == False``."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:19 of
+msgid ""
+"**score** -- If ``normalize == True``, return the fraction of correctly "
+"classified samples (float), else returns the number of correctly "
+"classified samples (int)."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:23 of
+msgid ""
+"The best performance is 1 with ``normalize == True`` and the number of "
+"samples with ``normalize == False``."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score of
+msgid "Return type"
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:27 of
+msgid ":func:`jaccard_score`, :func:`hamming_loss`, :func:`zero_one_loss`"
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:30 of
+msgid "Notes"
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:31 of
+msgid ""
+"In binary and multiclass classification, this function is equal to the "
+"``jaccard_score`` function."
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:35 of
+msgid "Examples"
+msgstr ""
+
+#: mars.learn.metrics.accuracy_score:44 of
+msgid "In the multilabel case with binary label indicators:"
+msgstr ""
+
