@@ -263,7 +263,7 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
             return self.new_tileable([x], kws=[x.params])
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         from .extmath import _safe_accumulator_op
 
         x = op.x
@@ -273,11 +273,10 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
 
         is_finite_chunk = check_nan_chunk = None
         if is_float:
-            is_finite_chunk = recursive_tile(
-                mt.isfinite(_safe_accumulator_op(mt.sum, x))).chunks[0]
+            is_finite_chunk = (await recursive_tile(
+                mt.isfinite(_safe_accumulator_op(mt.sum, x)))).chunks[0]
         elif x.dtype == np.dtype(object) and not op.allow_nan:
-            check_nan_chunk = recursive_tile(
-                (x != x).any()).chunks[0]
+            check_nan_chunk = (await recursive_tile((x != x).any())).chunks[0]
 
         map_chunks = []
         for c in x.chunks:

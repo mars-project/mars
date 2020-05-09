@@ -102,10 +102,8 @@ class Test(WorkerCase):
                     session_id, data_key1, ser_data1.total_bytes) as writer:
                 ser_data1.write_to(writer)
 
-            (await handler.load_from_bytes_io(session_id, [data_key1], disk_handler)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp((await handler.load_from_bytes_io(session_id, [data_key1], disk_handler))
+                             .then(lambda: None))
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.DISK)])
 
@@ -121,10 +119,8 @@ class Test(WorkerCase):
             shared_handler = await storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
             await shared_handler.put_objects(session_id, [data_key2], [data2])
 
-            (await handler.load_from_object_io(session_id, [data_key2], shared_handler)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp((await handler.load_from_object_io(session_id, [data_key2], shared_handler))
+                             .then(lambda *_: None))
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key2]))[0]),
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.SHARED_MEMORY)])
 

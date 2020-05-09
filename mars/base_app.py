@@ -209,6 +209,7 @@ class BaseApplication(object):
         return create_actor_pool(*args, **kwargs)
 
     async def main_loop(self):
+        import psutil
         try:
             async with self.pool:
                 try:
@@ -218,10 +219,16 @@ class BaseApplication(object):
                         await self.pool.join(1)
                         stopped = []
                         for idx, proc in enumerate(self.pool.processes):
-                            if not proc.is_alive():
+                            try:
+                                p = psutil.Process(proc.pid)
+                                if p.status() == psutil.STATUS_ZOMBIE:
+                                    stopped.append(idx)
+                            except psutil.NoSuchProcess:
                                 stopped.append(idx)
                         if stopped:
                             await self.handle_process_down(stopped)
+                except KeyboardInterrupt:
+                    pass
                 finally:
                     await self.stop()
         finally:

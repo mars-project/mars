@@ -66,11 +66,10 @@ class Test(WorkerCase):
                 async with writer:
                     ser.write_to(writer)
 
-            (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True)) \
-                .then(functools.partial(_write_data, ser_data1)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp(
+                (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True))
+                    .then(functools.partial(_write_data, ser_data1))
+            )
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
             await handler.delete(session_id, [data_key1])
@@ -80,11 +79,10 @@ class Test(WorkerCase):
                     for start in range(0, len(ser), io_size):
                         writer.write(ser[start:start + io_size])
 
-            (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True)) \
-                .then(functools.partial(_write_data, ser_data1.to_buffer())) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp(
+                (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True))
+                    .then(functools.partial(_write_data, ser_data1.to_buffer()))
+            )
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
 
@@ -92,11 +90,9 @@ class Test(WorkerCase):
                 async with reader:
                     return dataserializer.deserialize(reader.read())
 
-            (await handler.create_bytes_reader(session_id, data_key1, _promise=True)) \
-                .then(_read_data_all) \
-                .then(functools.partial(test_actor.set_result),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            assert_allclose(await self.get_result(5), data1)
+            result = await self.waitp(
+                (await handler.create_bytes_reader(session_id, data_key1, _promise=True)).then(_read_data_all))
+            assert_allclose(result, data1)
 
             async def _read_data_batch(reader):
                 bio = BytesIO()
@@ -109,11 +105,9 @@ class Test(WorkerCase):
                             break
                 return dataserializer.deserialize(bio.getvalue())
 
-            (await handler.create_bytes_reader(session_id, data_key1, _promise=True)) \
-                .then(_read_data_batch) \
-                .then(functools.partial(test_actor.set_result),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            assert_allclose(await self.get_result(5), data1)
+            result = await self.waitp(
+                (await handler.create_bytes_reader(session_id, data_key1, _promise=True)).then(_read_data_batch))
+            assert_allclose(result, data1)
             await handler.delete(session_id, [data_key1])
 
     async def testSharedReadAndWritePacked(self, *_):
@@ -142,12 +136,10 @@ class Test(WorkerCase):
                 async with writer:
                     writer.write(ser)
 
-            (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes,
-                                               packed=True, _promise=True)) \
-                .then(functools.partial(_write_data, block_data1)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp(
+                (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes,
+                                                   packed=True, _promise=True))
+                    .then(functools.partial(_write_data, block_data1)))
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
             await handler.delete(session_id, [data_key1])
@@ -160,12 +152,10 @@ class Test(WorkerCase):
                     for start in range(0, len(ser), io_size):
                         writer.write(ser[start:start + io_size])
 
-            (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes,
-                                               packed=True, _promise=True)) \
-                .then(functools.partial(_write_data, block_data1)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp(
+                (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes,
+                                                   packed=True, _promise=True))
+                    .then(functools.partial(_write_data, block_data1)))
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
 
@@ -173,11 +163,10 @@ class Test(WorkerCase):
                 async with reader:
                     return dataserializer.loads(reader.read())
 
-            (await handler.create_bytes_reader(session_id, data_key1, packed=True, _promise=True)) \
-                .then(_read_data_all) \
-                .then(functools.partial(test_actor.set_result),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            assert_allclose(await self.get_result(5), data1)
+            result = await self.waitp(
+                (await handler.create_bytes_reader(session_id, data_key1, packed=True, _promise=True)) \
+                    .then(_read_data_all))
+            assert_allclose(result, data1)
 
             async def _read_data_batch(reader):
                 bio = BytesIO()
@@ -190,11 +179,10 @@ class Test(WorkerCase):
                             break
                 return dataserializer.loads(bio.getvalue())
 
-            (await handler.create_bytes_reader(session_id, data_key1, packed=True, _promise=True)) \
-                .then(_read_data_batch) \
-                .then(functools.partial(test_actor.set_result),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            assert_allclose(await self.get_result(5), data1)
+            result = await self.waitp(
+                (await handler.create_bytes_reader(session_id, data_key1, packed=True, _promise=True))
+                    .then(_read_data_batch))
+            assert_allclose(result, data1)
             await handler.delete(session_id, [data_key1])
 
     async def testSharedPutAndGet(self, *_):
@@ -267,10 +255,8 @@ class Test(WorkerCase):
                     session_id, data_key1, ser_data1.total_bytes) as writer:
                 ser_data1.write_to(writer)
 
-            (await handler.load_from_bytes_io(session_id, [data_key1], disk_handler)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp((await handler.load_from_bytes_io(session_id, [data_key1], disk_handler))
+                             .then(lambda *_: None))
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)])
 
@@ -287,13 +273,11 @@ class Test(WorkerCase):
                         session_id, key, ser_data.total_bytes) as writer:
                     ser_data.write_to(writer)
 
-            (await handler.load_from_bytes_io(session_id, data_keys, disk_handler)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-
             affected_keys = set()
             try:
-                await self.get_result(5)
+                await self.waitp(
+                    (await handler.load_from_bytes_io(session_id, data_keys, disk_handler))
+                    .then(lambda *_: None))
             except StorageFull as ex:
                 affected_keys.update(ex.affected_keys)
 
@@ -336,10 +320,8 @@ class Test(WorkerCase):
             await proc_handler.put_objects(session_id, [data_key1], [data1])
             del data1
 
-            (await handler.load_from_object_io(session_id, [data_key1], proc_handler)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp((await handler.load_from_object_io(session_id, [data_key1], proc_handler))
+                             .then(lambda *_: None))
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.SHARED_MEMORY)])
 
@@ -379,10 +361,9 @@ class Test(WorkerCase):
 
             async def _do_spill():
                 data_size = (await storage_manager_ref.get_data_sizes(session_id, [data_keys[0]]))[0]
-                (await handler.spill_size(2 * data_size)) \
-                    .then(lambda *_: test_actor.set_result(None),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                await self.get_result(5)
+                await self.waitp(
+                    (await handler.spill_size(2 * data_size)).then(lambda *_: None)
+                )
 
             # test lift data key
             idx = await _fill_data()

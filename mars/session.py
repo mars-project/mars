@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import uuid
 
 import numpy as np
@@ -103,11 +104,8 @@ class LocalSession(object):
         tiled.nsplits = new_nsplits
 
     def fetch(self, *tileables, **kw):
-        if self._executor is None:
-            raise RuntimeError('Session has closed')
-        if 'n_parallel' not in kw:
-            kw['n_parallel'] = cpu_count()
-        return self._executor.fetch_tileables(tileables, **kw)
+        return asyncio.get_event_loop().run_until_complete(
+            self.fetch_async(*tileables, **kw))
 
     async def fetch_async(self, *tileables, **kw):
         if self._executor is None:
@@ -117,7 +115,7 @@ class LocalSession(object):
             kw['n_parallel'] = cpu_count()
         return await self._executor.fetch_tileables(tileables, **kw)
 
-    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
+    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *_, **__):
         from .tensor.core import MutableTensor, MutableTensorData
         if name in self._mut_tensor:
             raise ValueError("The mutable tensor named '%s' already exists." % name)
@@ -212,24 +210,8 @@ class Session(object):
             return ret[0]
 
     def fetch(self, *tileables, **kw):
-        ret_list = False
-        if len(tileables) == 1 and isinstance(tileables[0], (tuple, list)):
-            ret_list = True
-            tileables = tileables[0]
-        elif len(tileables) > 1:
-            ret_list = True
-
-        result = self._sess.fetch(*tileables, **kw)
-
-        ret = []
-        for r, t in zip(result, tileables):
-            if hasattr(t, 'isscalar') and t.isscalar() and hasattr(r, 'item'):
-                ret.append(r.item())
-            else:
-                ret.append(r)
-        if ret_list:
-            return ret
-        return ret[0]
+        return asyncio.get_event_loop().run_until_complete(
+            self.fetch_async(*tileables, **kw))
 
     async def fetch_async(self, *tileables, **kw):
         ret_list = False

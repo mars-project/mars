@@ -86,11 +86,10 @@ class Test(WorkerCase):
                         .then(lambda *_: _dispatch_ref.get_free_slot('g2', _promise=True)) \
                         .then(partial(_call_on_dispatched, key='%d_2' % idx))
 
-                p.then(lambda *_: _dispatch_ref.get_free_slot('g3', _promise=True)) \
-                    .then(partial(_call_on_dispatched, key='N_1')) \
-                    .then(lambda *_: test_actor.set_result(None))
-
-                await self.get_result(20)
+                await self.waitp(
+                    p.then(lambda *_: _dispatch_ref.get_free_slot('g3', _promise=True))
+                        .then(partial(_call_on_dispatched, key='N_1'))
+                )
 
             self.assertEqual(call_records['N_1'], 'NoneUID')
             self.assertLess(sum(abs(call_records['%d_1' % idx] - call_records['0_1'])

@@ -72,9 +72,9 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         return self.new_tensor(filter_inputs([a] + list(index)), shape, order=order)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         handler = TensorIndexesHandler()
-        return [handler.handle(op)]
+        return [await handler.handle(op)]
 
     @classmethod
     def execute(cls, ctx, op):

@@ -240,12 +240,12 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
                                  dtype=np.dtype(object))
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         out = op.outputs[0]
         y = op.y
 
         chunk_inputs = []
-        is_multilabel_chunk = recursive_tile(is_multilabel(y)).chunks[0]
+        is_multilabel_chunk = (await recursive_tile(is_multilabel(y))).chunks[0]
         chunk_inputs.append(is_multilabel_chunk)
 
         if not isinstance(y, (Base, Entity)):
@@ -259,21 +259,21 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
                                 y_shape=y.shape, y_dtype=y.dtype)
 
         if y.ndim <= 2 and y.size > 0 and y.dtype == object:
-            first_value_chunk = recursive_tile(y[(0,) * y.ndim]).chunks[0]
+            first_value_chunk = (await recursive_tile(y[(0,) * y.ndim])).chunks[0]
             chunk_inputs.append(first_value_chunk)
             chunk_op._first_value = first_value_chunk
 
         if y.dtype.kind == 'f':
-            check_float_chunk = recursive_tile(mt.any(y != y.astype(int))).chunks[0]
+            check_float_chunk = (await recursive_tile(mt.any(y != y.astype(int)))).chunks[0]
             chunk_inputs.append(check_float_chunk)
             chunk_op._check_float = check_float_chunk
 
-            assert_all_finite_chunk = recursive_tile(assert_all_finite(y)).chunks[0]
+            assert_all_finite_chunk = (await recursive_tile(assert_all_finite(y))).chunks[0]
             chunk_inputs.append(assert_all_finite_chunk)
             chunk_op._assert_all_finite = assert_all_finite_chunk
 
         if y.size > 0:
-            unique_y_chunk = recursive_tile(mt.unique(y, aggregate_size=1)).chunks[0]
+            unique_y_chunk = (await recursive_tile(mt.unique(y, aggregate_size=1))).chunks[0]
             chunk_inputs.append(unique_y_chunk)
             chunk_op._unique_y = unique_y_chunk
 

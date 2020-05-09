@@ -1217,7 +1217,10 @@ cdef class Dispatcher(AsyncHandler):
         for idx, pipe in enumerate(self.pipes):
             task = asyncio.ensure_future(self._check_pipe(idx))
             pipe_checkers.append(task)
-        await asyncio.wait([c for c in pipe_checkers], return_when=asyncio.FIRST_EXCEPTION)
+        try:
+            await asyncio.wait([c for c in pipe_checkers], return_when=asyncio.FIRST_EXCEPTION)
+        except asyncio.CancelledError:
+            [task.cancel() for task in pipe_checkers]
 
 
 cdef class ActorServer(object):
@@ -1311,8 +1314,8 @@ async def async_start_local_pool(int index, ClusterInfo cluster_info,
     if join:
         await comm.run()
     else:
-        asyncio.ensure_future(comm.run())
-        return comm
+        task = asyncio.ensure_future(comm.run())
+        return comm, task
 
 
 def start_local_pool(int index, ClusterInfo cluster_info,
@@ -1426,8 +1429,9 @@ cdef class ActorPool:
 
         if not self._multi_process:
             # only start local pool
-            self._dispatcher = await async_start_local_pool(
+            self._dispatcher, task = await async_start_local_pool(
                 0, self.cluster_info, distributor=self.distributor, parallel=self._parallel)
+            self._stop_funcs.append(task.cancel)
         else:
             self._processes, self._comm_pipes, self._pool_pipes = [list(tp) for tp in zip(
                 *(self._start_process(idx) for idx in range(self.cluster_info.n_process))
@@ -1459,7 +1463,8 @@ cdef class ActorPool:
             # start dispatcher
             self._dispatcher = Dispatcher(self.cluster_info, self._pool_pipes,
                                           self.distributor)
-            asyncio.ensure_future(self._dispatcher.run())
+            task = asyncio.ensure_future(self._dispatcher.run())
+            self._stop_funcs.append(task.cancel)
 
         if not self.cluster_info.standalone:
             # start stream server to handle remote message
@@ -1481,9 +1486,14 @@ cdef class ActorPool:
 
     async def stop(self):
         try:
+            stop_coros = []
             if self._stop_funcs:
-                await asyncio.wait([stop_func() for stop_func in self._stop_funcs],
-                                    return_when=asyncio.ALL_COMPLETED)
+                for stop_func in self._stop_funcs:
+                    r = stop_func()
+                    if asyncio.iscoroutine(r):
+                        stop_coros.append(r)
+            if stop_coros:
+                await asyncio.wait(stop_coros)
         finally:
             self._stopped.set()
             self._started = False

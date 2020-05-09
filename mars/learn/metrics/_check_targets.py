@@ -98,7 +98,7 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         return ExecutableTuple(self.new_tileables(inputs, kws=kws))
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         y_true, y_pred = op.y_true, op.y_pred
         for y in (op.y_true, op.y_pred):
             if isinstance(y, (Base, Entity)):
@@ -109,7 +109,7 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
 
         ctx = get_context()
         try:
-            type_true, type_pred = ctx.get_chunk_results(
+            type_true, type_pred = await ctx.get_chunk_results(
                 [op.type_true.chunks[0].key,
                  op.type_pred.chunks[0].key])
         except KeyError:
@@ -151,9 +151,9 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         if not isinstance(y_type, TENSOR_TYPE):
             y_type = mt.tensor(y_type, dtype=object)
 
-        y_type = recursive_tile(y_type)
-        y_true = recursive_tile(y_true)
-        y_pred = recursive_tile(y_pred)
+        y_type = await recursive_tile(y_type)
+        y_true = await recursive_tile(y_true)
+        y_pred = await recursive_tile(y_pred)
 
         kws = [out.params for out in op.outputs]
         kws[0]['nsplits'] = ()

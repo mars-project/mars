@@ -105,7 +105,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
                                    name=inp.name, dtype=test_series.dtype)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         inp = op.input
         out = op.outputs[0]
 
@@ -138,7 +138,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
         if op.sort:
             inp = inp.sort_values(ascending=op.ascending)
 
-        ret = recursive_tile(inp)
+        ret = await recursive_tile(inp)
 
         if op.convert_index_to_interval:
             # convert index to IntervalDtype

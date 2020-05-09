@@ -43,9 +43,11 @@ class WorkerTestActor(WorkerActor):
             kw['_tell'] = True
             await self.ref().run_later(fun, *args, **kw)
 
-    def set_result(self, result, accept=True):
-        self.test_obj._result_store = (result, accept)
-        self.test_obj._result_event.set()
+    def set_result(self, result, result_future: asyncio.Future, accept=True):
+        if accept:
+            result_future.set_result(result[0])
+        else:
+            result_future.set_exception(result[1])
 
 
 class StorageClientActor(WorkerActor):
@@ -110,12 +112,8 @@ class WorkerCase(unittest.TestCase):
         self._test_actor = None
         self._test_actor_ref = None
 
-        self._result_store = None
-        self._result_event = None
-
     def run_actor_test(self, pool):
         this = self
-        self._result_event = asyncio.locks.Event()
 
         class _AsyncContextManager:
             async def __aenter__(self):
@@ -127,33 +125,20 @@ class WorkerCase(unittest.TestCase):
 
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 if exc_type is not None:
-                    this._result_store = ((exc_type, exc_val, exc_tb), False)
-                    this._result_event.set()
                     raise exc_val.with_traceback(exc_tb) from None
 
         return _AsyncContextManager()
 
     async def waitp(self, *promises, **kw):
         timeout = kw.pop('timeout', 10)
+        future = asyncio.Future()
         if len(promises) > 1:
             p = promise.all_(promises)
         else:
             p = promises[0]
-        p.then(lambda *s: self._test_actor_ref.set_result(s, _tell=True),
-               lambda *exc: self._test_actor_ref.set_result(exc, accept=False, _tell=True))
-        return await self.get_result(timeout)
-
-    async def get_result(self, timeout=None):
-        try:
-            await asyncio.wait_for(self._result_event.wait(), timeout=timeout)
-            self._result_event.clear()
-        except asyncio.TimeoutError:
-            raise TimeoutError from None
-        r, accept = self._result_store
-        if accept:
-            return r
-        else:
-            raise r[1].with_traceback(r[2]) from None
+        p.then(lambda *s: self._test_actor_ref.set_result(s, future, _tell=True),
+               lambda *exc: self._test_actor_ref.set_result(exc, future, accept=False, _tell=True))
+        return await asyncio.wait_for(future, timeout=timeout)
 
     @staticmethod
     def rm_spill_dirs(spill_dirs=None):

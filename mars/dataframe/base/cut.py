@@ -215,7 +215,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
         return ExecutableTuple(self.new_tileables(inputs, kws=kws))
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         if isinstance(op.bins, (Base, Entity)):
             # check op.bins chunk shapes
             check_chunks_unknown_shape([op.bins], TilesError)
@@ -236,13 +236,13 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             input_max_chunk = op.input_max.chunks[0]
             ctx = get_context()
             keys = [input_min_chunk.key, input_max_chunk.key]
-            metas = ctx.get_chunk_metas(keys)
+            metas = await ctx.get_chunk_metas(keys)
             if any(meta is None for meta in metas):
                 # not executed before
                 raise TilesError('min and max of x have not been executed yet')
 
             # get min and max of x
-            min_val, max_val = ctx.get_chunk_results(keys)
+            min_val, max_val = await ctx.get_chunk_results(keys)
             # calculate bins
             if np.isinf(min_val) or np.isinf(max_val):
                 raise ValueError('cannot specify integer `bins` '

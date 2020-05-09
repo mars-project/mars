@@ -170,7 +170,7 @@ class ContextBase(object):
     # Others
     # ------
 
-    def build_named_tileable(self, named, rtype):
+    async def build_named_tileable(self, named, rtype):
         raise NotImplementedError
 
 
@@ -366,7 +366,7 @@ class DistributedContext(ContextBase):
             indexed = empty_tileable[tuple(indexes)]
             indexes_handler = NDArrayIndexesHandler()
             try:
-                context = indexes_handler.handle(indexed.op, return_context=True)
+                context = await indexes_handler.handle(indexed.op, return_context=True)
             except TypeError:
                 raise TypeError("Doesn't support indexing by tensors")
 
@@ -397,13 +397,13 @@ class DistributedContext(ContextBase):
             chunk_results = [(k, v) for k, v in chunk_results.items()]
             return indexes_handler.aggregate_result(context, chunk_results)
 
-    def build_named_tileable(self, named, rtype):
+    async def build_named_tileable(self, named, rtype):
         from .tensor.fetch import TensorFetch
         from .dataframe.fetch import DataFrameFetch
         from .dataframe.operands import ObjectType
 
-        tileable_key = self.get_tileable_key_by_name(named)
-        nsplits = self.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+        tileable_key = await self.get_tileable_key_by_name(named)
+        nsplits = (await self.get_tileable_metas([tileable_key], filter_fields=['nsplits']))[0][0]
         shape = tuple(sum(s) for s in nsplits)
         if rtype == 'tensor':
             return TensorFetch().new_tensor([], shape=shape, _key=tileable_key)

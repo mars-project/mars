@@ -65,9 +65,7 @@ class Test(WorkerCase):
             async with self.run_actor_test(pool) as test_actor:
                 ref = test_actor.promise_ref(QuotaActor.default_uid())
 
-                ref.request_quota('1', 150, _promise=True) \
-                    .then(lambda *_: test_actor.set_result(True)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+                future = asyncio.ensure_future(self.waitp(ref.request_quota('1', 150, _promise=True)))
                 await asyncio.sleep(0.5)
 
                 self.assertFalse(await quota_ref.request_quota('2', 50))
@@ -79,20 +77,17 @@ class Test(WorkerCase):
 
                 await ref.cancel_requests(('1',), reject_exc=build_exc_info(OSError))
                 with self.assertRaises(OSError):
-                    await self.get_result(5)
+                    await future
 
                 with patch_method(QuotaActor._request_quota, new=_raiser):
-                    ref.request_quota('err_raise', 1, _promise=True) \
-                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-
                     with self.assertRaises(ValueError):
-                        await self.get_result(5)
+                        await self.waitp(ref.request_quota('err_raise', 1, _promise=True))
 
                     ref.request_batch_quota({'err_raise': 1}, _promise=True) \
                         .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                     with self.assertRaises(ValueError):
-                        await self.get_result(5)
+                        await self.waitp(ref.request_batch_quota({'err_raise': 1}, _promise=True))
 
                 self.assertNotIn('1', (await quota_ref.dump_data()).requests)
                 self.assertIn('2', (await quota_ref.dump_data()).allocations)
@@ -107,14 +102,13 @@ class Test(WorkerCase):
 
             async with self.run_actor_test(pool) as test_actor:
                 ref = test_actor.promise_ref(QuotaActor.default_uid())
-                ref.request_quota('5', 50, _promise=True) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+                future = asyncio.ensure_future(self.waitp(ref.request_quota('5', 50, _promise=True)))
 
                 with patch_method(QuotaActor.alter_allocation, new=_raiser):
                     await quota_ref.release_quotas(['2'])
 
                     with self.assertRaises(ValueError):
-                        await self.get_result(5)
+                        await future
 
     async def testQuotaAllocation(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
@@ -126,19 +120,21 @@ class Test(WorkerCase):
             async with self.run_actor_test(pool) as test_actor:
                 ref = test_actor.promise_ref(QuotaActor.default_uid())
 
+                future = asyncio.Future()
+
                 async def actual_exec(x):
                     await ref.release_quotas([x])
                     end_time.append(time.time())
                     finished.add(x)
                     if len(finished) == 5:
-                        test_actor.set_result(None)
+                        future.set_result(None)
 
                 for idx in range(5):
                     x = str(idx)
 
                     ref.request_quota(x, 100, _promise=True) \
                         .then(functools.partial(test_actor.run_later, actual_exec, x, _delay=0.5))
-                await self.get_result(10)
+                await asyncio.wait_for(future, timeout=10)
 
             self.assertLess(abs(end_time[0] - end_time[1]), 0.1)
             self.assertLess(abs(end_time[0] - end_time[2]), 0.1)
@@ -154,6 +150,8 @@ class Test(WorkerCase):
             end_time = []
 
             async with self.run_actor_test(pool) as test_actor:
+                future = asyncio.Future()
+
                 for idx in (0, 1):
                     x = str(idx)
                     ref = test_actor.promise_ref(QuotaActor.default_uid())
@@ -164,16 +162,16 @@ class Test(WorkerCase):
                         await ref.release_quotas(list(b.keys()))
                         end_time.append(time.time())
                         if set_result:
-                            test_actor.set_result(None)
+                            future.set_result(None)
 
                     keys = [x + '_0', x + '_1']
                     batch = dict((k, 100) for k in keys)
                     ref.request_batch_quota(batch, _promise=True) \
                         .then(functools.partial(test_actor.run_later, actual_exec, batch,
                                                 set_result=(idx == 1), _delay=0.5),
-                              lambda *exc: test_actor.set_result(exc, accept=False))
+                              lambda *exc: future.set_exception(exc[1]))
 
-                await self.get_result(10)
+                await future
 
             self.assertGreater(abs(end_time[0] - end_time[1]), 0.4)
             self.assertEqual(await quota_ref.get_allocated_size(), 0)
@@ -199,11 +197,12 @@ class Test(WorkerCase):
                 async with self.run_actor_test(pool) as test_actor:
                     ref = test_actor.promise_ref(quota_ref)
                     time_recs.append(time.time())
+                    future = asyncio.Future()
 
                     async def actual_exec(x):
                         await ref.release_quotas([x])
                         time_recs.append(time.time())
-                        test_actor.set_result(None)
+                        future.set_result(None)
 
                     ref.request_quota('req', 100, _promise=True) \
                         .then(functools.partial(actual_exec, 'req'))
@@ -212,6 +211,6 @@ class Test(WorkerCase):
                     mock_mem_stat['available'] = 150
                     mock_mem_stat['free'] = 150
 
-                    await self.get_result(2)
+                    await asyncio.wait_for(future, timeout=10)
 
                 self.assertGreater(abs(time_recs[0] - time_recs[1]), 0.4)

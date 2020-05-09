@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import unittest
 
 import numpy as np
 
-from mars.tiles import get_tiled
 from mars.tensor import tensor
 from mars.tensor.indexing.index_lib import NDArrayIndexesHandler
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import ExecutorForTest, aio_case
+from mars.tiles import get_tiled
 
 
+@aio_case
 class Test(unittest.TestCase):
     def setUp(self) -> None:
         self.executor = ExecutorForTest('numpy')
@@ -39,23 +41,32 @@ class Test(unittest.TestCase):
         result = t[indexes].tiles()
 
         handler = NDArrayIndexesHandler()
+        chunk_results = None
 
-        context = handler.handle(result.op, return_context=True)
-        self.assertGreater(context.op.outputs[0].chunk_shape[-1], 1)
-        chunk_results = self.executor.execute_tensor(result)
-        chunk_results = \
-            [(c.index, r) for c, r in zip(get_tiled(result).chunks, chunk_results)]
-        expected = self.executor.execute_tensor(result, concat=True)[0]
-        res = handler.aggregate_result(context, chunk_results)
-        np.testing.assert_array_equal(res, expected)
+        async def test_exec():
+            nonlocal chunk_results
+            context = await handler.handle(result.op, return_context=True)
+            self.assertGreater(context.op.outputs[0].chunk_shape[-1], 1)
+            chunk_results = await self.executor.execute_tensor(result, _async=True)
+            chunk_results = \
+                [(c.index, r) for c, r in zip(get_tiled(result).chunks, chunk_results)]
+            expected = (await self.executor.execute_tensor(result, concat=True, _async=True))[0]
+            res = handler.aggregate_result(context, chunk_results)
+            np.testing.assert_array_equal(res, expected)
+
+        asyncio.get_event_loop().run_until_complete(test_exec())
 
         # test fancy index that requires reordering
         fancy_index = np.array([6, 7, 3])
         indexes = [slc, fancy_index]
         test = t[indexes].tiles()
 
-        context = handler.handle(test.op, return_context=True)
-        self.assertEqual(context.op.outputs[0].chunk_shape[-1], 1)
-        res = handler.aggregate_result(context, chunk_results)
-        expected = self.executor.execute_tensor(test, concat=True)[0]
-        np.testing.assert_array_equal(res, expected)
+        async def test_exec():
+            nonlocal chunk_results
+            context = await handler.handle(test.op, return_context=True)
+            self.assertEqual(context.op.outputs[0].chunk_shape[-1], 1)
+            res = handler.aggregate_result(context, chunk_results)
+            expected = (await self.executor.execute_tensor(test, concat=True, _async=True))[0]
+            np.testing.assert_array_equal(res, expected)
+
+        asyncio.get_event_loop().run_until_complete(test_exec())

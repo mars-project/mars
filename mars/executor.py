@@ -81,7 +81,7 @@ class EventQueue(list):
 
     async def wait(self, timeout=None):
         if self._has_value is not None:
-            await asyncio.wait_for(self._has_value, timeout=timeout)
+            await asyncio.wait_for(self._has_value.wait(), timeout=timeout)
 
     def errored(self):
         if self._has_value is not None:
@@ -383,7 +383,7 @@ class GraphExecution(object):
 
                 # clean the predecessors' results if ref counts equals 0
                 for dep_key in output.op.get_dependent_data_keys():
-                    with self._lock:
+                    async with self._lock:
                         if dep_key in ref_counts:
                             ref_counts[dep_key] -= 1
                             if ref_counts[dep_key] == 0:
@@ -393,7 +393,7 @@ class GraphExecution(object):
                 # add successors' operands to queue
                 for succ_chunk in self._graph.iter_successors(output):
                     preds = self._graph.predecessors(succ_chunk)
-                    with self._lock:
+                    async with self._lock:
                         succ_op_key = succ_chunk.op.key
                         if succ_op_key not in self._add_queue_op_keys and \
                                 (len(preds) == 0 or all(pred.op.key in op_keys for pred in preds)):
@@ -435,14 +435,14 @@ class GraphExecution(object):
         for chunk in chunks:
             async with self._lock:
                 self._prefetch_executor.submit(fetch, chunk)
+
+    async def _submit_operand_to_execute(self):
+        await self._semaphore.acquire()
         await self._queue.wait()
 
         if self._has_error.is_set():
             # error happens, ignore
             return
-
-    async def _submit_operand_to_execute(self):
-        await self._semaphore.acquire()
 
         async with self._lock:
             to_submit_op = self._queue.pop(0)
@@ -750,6 +750,7 @@ class Executor(object):
                 self._update_chunk_shape(chunk_graph, chunk_result)
                 self._update_tileable_and_chunk_shape(
                     tileable_graph, chunk_result, chunk_graph_builder.interrupted_ops)
+
                 if chunk_graph_builder.done:
                     if len(intermediate_result_keys) > 0:
                         # failed before

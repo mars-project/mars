@@ -84,7 +84,7 @@ class OperandActor(BaseOperandActor):
             self._kv_store_ref.write(
                 '%s/retry_timestamp' % self._op_path, str(value), _tell=True, _wait=False)
 
-    def append_graph(self, graph_key, op_info):
+    async def append_graph(self, graph_key, op_info):
         from ..graph import GraphActor
 
         if not self._is_terminal:
@@ -96,7 +96,7 @@ class OperandActor(BaseOperandActor):
         if self._state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
             self._state = op_info['state']
         if self._state not in OperandState.TERMINATED_STATES:
-            self.start_operand()
+            await self.start_operand()
 
     async def start_operand(self, state=None, **kwargs):
         target_worker = kwargs.get('target_worker')
@@ -475,7 +475,7 @@ class OperandActor(BaseOperandActor):
         # require more chunks to execute if the completion caused no successors to run
         if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
-            pred_futures.extend(self._add_finished_terminal())
+            pred_futures.extend(await self._add_finished_terminal())
         if pred_futures:
             await asyncio.wait(pred_futures)
 
@@ -490,7 +490,7 @@ class OperandActor(BaseOperandActor):
         futures = []
         if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
-            futures.extend(self._add_finished_terminal(final_state=GraphState.FAILED, exc=self._exc))
+            futures.extend(await self._add_finished_terminal(final_state=GraphState.FAILED, exc=self._exc))
         # set successors to FATAL
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(
@@ -524,7 +524,7 @@ class OperandActor(BaseOperandActor):
     async def _on_cancelled(self):
         futures = []
         if self._is_terminal:
-            futures.extend(self._add_finished_terminal(final_state=GraphState.CANCELLED))
+            futures.extend(await self._add_finished_terminal(final_state=GraphState.CANCELLED))
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(
                 OperandState.CANCELLING, _tell=True, _wait=False))
@@ -533,10 +533,10 @@ class OperandActor(BaseOperandActor):
     async def _on_unscheduled(self):
         self.worker = None
 
-    def _add_finished_terminal(self, final_state=None, exc=None):
+    async def _add_finished_terminal(self, final_state=None, exc=None):
         futures = []
         for graph_ref in self._graph_refs:
-            if graph_ref.reload_state() in (GraphState.RUNNING, GraphState.CANCELLING):
+            if await graph_ref.reload_state() in (GraphState.RUNNING, GraphState.CANCELLING):
                 futures.append(graph_ref.add_finished_terminal(
                     self._op_key, final_state=final_state, exc=exc, _tell=True, _wait=False
                 ))

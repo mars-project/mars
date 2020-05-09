@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 
 import numpy as np
 
@@ -146,7 +147,8 @@ def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None, sparse=F
         from ...context import get_context
 
         context = get_context()
-        return context.build_named_tileable(named=named, rtype='tensor')
+        return asyncio.get_event_loop().run_until_complete(
+            context.build_named_tileable(named=named, rtype='tensor'))
 
     order = order or 'K'
     if isinstance(data, TENSOR_TYPE):

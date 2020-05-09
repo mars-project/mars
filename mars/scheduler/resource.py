@@ -24,8 +24,9 @@ import numpy as np
 from .kvstore import KVStoreActor
 from .session import SessionManagerActor, SessionActor
 from .utils import SchedulerActor
+from ..actors import ActorNotExist
 from ..config import options
-from ..utils import BlacklistSet, wait_results
+from ..utils import BlacklistSet
 
 
 logger = logging.getLogger(__name__)
@@ -186,7 +187,11 @@ class ResourceActor(SchedulerActor):
         for ep in self.get_schedulers():
             ref = self.ctx.actor_ref(SessionManagerActor.default_uid(), address=ep)
             futures.append(asyncio.ensure_future(ref.broadcast_sessions(handler, *args, **kwargs)))
-        await wait_results(futures)
+        for future in futures:
+            try:
+                await future
+            except ActorNotExist:
+                pass
 
     async def _broadcast_workers(self, handler, *args, **kwargs):
         from ..worker.execution import ExecutionActor

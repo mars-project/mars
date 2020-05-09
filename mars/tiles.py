@@ -141,8 +141,9 @@ class OperandTilesHandler(object):
             return to_tile
 
     @classmethod
-    def tiles(cls, to_tile):
-        to_tile.build_graph(tiled=True, compose=False)
+    @wrap_async_method
+    async def tiles(cls, to_tile):
+        await to_tile.build_graph(tiled=True, compose=False, _async=True)
         return get_tiled(to_tile)
 
 

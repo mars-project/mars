@@ -64,7 +64,7 @@ class MarsDataset(Dataset):
             return process_iloc_indexes(t, index)
 
     async def _get_data_async(self, item):
-        if self._context.running_mode != RunningMode.distributed:
+        if self._context.running_mode == RunningMode.local:
             coros = [t[item].fetch_async() for t in self.tileables]
         else:
             coros = [self._context.get_tileable_data(

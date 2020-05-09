@@ -23,6 +23,7 @@ themselves (as long as they don't override `__new__`.)
 import functools
 import inspect
 
+
 def asyncinit(obj):
     """
     Add async `__init__` functionality to the given class.
@@ -49,6 +50,7 @@ def asyncinit(obj):
 
     return obj
 
+
 # Force the given function to be `await`-able.
 def _force_async(fn):
     if inspect.iscoroutinefunction(fn):
@@ -58,6 +60,7 @@ def _force_async(fn):
         return fn(*args, **kwargs)
 
     return wrapped
+
 
 # Wraps `object.__new__` in a coroutine, only passing it the class object. This kludge is
 # required because that function throws `TypeError: object() takes no parameters` if

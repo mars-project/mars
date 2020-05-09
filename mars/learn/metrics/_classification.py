@@ -86,10 +86,10 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
                                  shape=(), order=TensorOrder.C_ORDER)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         ctx = get_context()
         try:
-            type_true = ctx.get_chunk_results([op.type_true.chunks[0].key])[0]
+            type_true = (await ctx.get_chunk_results([op.type_true.chunks[0].key]))[0]
         except KeyError:
             raise TilesError('type_true needed to be executed first')
 
@@ -101,7 +101,7 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
             score = mt.equal(y_true, y_pred)
 
         result = _weighted_sum(score, op.sample_weight, op.normalize)
-        return [recursive_tile(result)]
+        return [await recursive_tile(result)]
 
 
 def _weighted_sum(sample_score, sample_weight, normalize=False):

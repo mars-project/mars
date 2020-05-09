@@ -235,9 +235,9 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     # 1  1000  1000
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         handler = DataFrameIlocIndexesHandler()
-        return [handler.handle(op)]
+        return [await handler.handle(op)]
 
     @classmethod
     def execute(cls, ctx, op):
@@ -351,9 +351,9 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         self._indexes = tuple(indexes)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         handler = DataFrameIlocIndexesHandler()
-        return [handler.handle(op)]
+        return [await handler.handle(op)]
 
     @classmethod
     def execute(cls, ctx, op):

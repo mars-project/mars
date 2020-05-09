@@ -56,11 +56,7 @@ jobs:
           pip install pyarrow==0.15.1
         fi
         if [[ "$PYTHON" =~ "3.8" ]]; then
-          conda install -n test --quiet --yes python=$PYTHON numpy
-          # remove three lines below once gevent 1.5 is released
-          # resolve compatibility issue in tblib inside gevent
-          GEVENT_TBLIB_FILE=$(python -c "from gevent import _tblib; print(_tblib.__file__)")
-          curl https://raw.githubusercontent.com/gevent/gevent/1.5a2/src/gevent/_tblib.py -o "$GEVENT_TBLIB_FILE"
+          conda install -n test --quiet --yes python=$PYTHON numpy pyarrow
         fi
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
@@ -199,7 +195,7 @@ jobs:
 
       - name: Collect coverage data
         run: |
-          pip install numpy cython gevent coverage
+          pip install numpy cython coverage
           pip install codecov
           CYTHON_TRACE=1 python setup.py sdist
           export DEFAULT_VENV=$VIRTUAL_ENV

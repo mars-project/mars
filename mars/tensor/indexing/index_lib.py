@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import itertools
 from abc import ABC, abstractmethod
 from collections import OrderedDict, namedtuple
@@ -520,9 +521,9 @@ class _FancyIndexHandler(IndexHandler):
         else:
             return True
 
-    def preprocess(self,
-                   index_info: IndexInfo,
-                   context: IndexHandlerContext) -> None:
+    async def preprocess(self,
+                         index_info: IndexInfo,
+                         context: IndexHandlerContext) -> None:
         fancy_indexe_infos = context.get_indexes(index_info.index_type)
         # check all fancy indexes are all ndarrays
         for fancy_index_info in fancy_indexe_infos:
@@ -535,15 +536,15 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
         return isinstance(raw_index, np.ndarray) and \
                raw_index.dtype != np.bool_
 
-    def preprocess(self,
-                   index_info: IndexInfo,
-                   context: IndexHandlerContext) -> None:
+    async def preprocess(self,
+                         index_info: IndexInfo,
+                         context: IndexHandlerContext) -> None:
         is_first = self.is_first(index_info, context)
         if not is_first:
             return
 
         # check if all ndarrays
-        super().preprocess(index_info, context)
+        await super().preprocess(index_info, context)
         check_chunks_unknown_shape([context.tileable], TilesError)
 
         fancy_index_infos = context.get_indexes(index_info.index_type)
@@ -667,9 +668,9 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         return isinstance(raw_index, TENSOR_TYPE) and \
                raw_index.dtype != np.bool_
 
-    def preprocess(self,
-                   index_info: IndexInfo,
-                   context: IndexHandlerContext) -> None:
+    async def preprocess(self,
+                         index_info: IndexInfo,
+                         context: IndexHandlerContext) -> None:
         from ..base import broadcast_to
         from ..merge import stack
 
@@ -680,7 +681,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         fancy_index_infos = context.get_indexes(index_info.index_type)
 
         # check if all tensors
-        super().preprocess(index_info, context)
+        await super().preprocess(index_info, context)
         to_check = [context.tileable] + \
             list(info.raw_index for info in fancy_index_infos)
         check_chunks_unknown_shape(to_check, TilesError)
@@ -700,8 +701,8 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         fancy_index_axes = tuple(info.input_axis for info in fancy_index_infos)
 
         # stack fancy indexes into one
-        concat_fancy_index = recursive_tile(stack([fancy_index_info.shape_unified_index
-                                                   for fancy_index_info in fancy_index_infos]))
+        concat_fancy_index = (await recursive_tile(stack([fancy_index_info.shape_unified_index
+                                                   for fancy_index_info in fancy_index_infos])))
         concat_fancy_index = \
             concat_fancy_index.rechunk({0: len(fancy_index_infos)})._inplace_tile()
 
@@ -874,7 +875,7 @@ class IndexesHandler(ABC):
     def create_context(self, op):
         pass
 
-    def handle(self, op, return_context: bool = False):
+    async def handle(self, op, return_context: bool = False):
         indexes = op.indexes
         # create context
         context = self.create_context(op)
@@ -892,7 +893,7 @@ class IndexesHandler(ABC):
             if not parsed:
                 raise TypeError('unable to parse index {}'.format(index))
 
-        self._preprocess(context, index_infos)
+        await self._preprocess(context, index_infos)
         self._process(context, index_infos)
         self._postprocess(context, index_infos)
 
@@ -902,12 +903,14 @@ class IndexesHandler(ABC):
             return context.create_tileable()
 
     @classmethod
-    def _preprocess(cls,
-                    context: IndexHandlerContext,
-                    index_infos: List[IndexInfo]):
+    async def _preprocess(cls,
+                          context: IndexHandlerContext,
+                          index_infos: List[IndexInfo]):
         # preprocess
         for index_info in index_infos:
-            index_info.handler.preprocess(index_info, context)
+            ret = index_info.handler.preprocess(index_info, context)
+            if asyncio.iscoroutine(ret):
+                await ret
 
     @classmethod
     def _process(cls, context, index_infos):

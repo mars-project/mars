@@ -293,9 +293,9 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
                                       index_value=index_value, columns_value=columns_value)
 
     @classmethod
-    def tile(cls, op):
+    async def tile(cls, op):
         handler = DataFrameLocIndexesHandler()
-        return [handler.handle(op)]
+        return [await handler.handle(op)]
 
     @classmethod
     def execute(cls, ctx, op):

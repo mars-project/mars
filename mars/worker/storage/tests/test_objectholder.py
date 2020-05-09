@@ -197,9 +197,8 @@ class Test(WorkerCase):
             expect_spills = key_list[2:4]
 
             await shared_holder_ref.lift_data_keys(session_id, [key_list[0]])
-            (await shared_handler.spill_size(data_size * 1.5)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
+            future = asyncio.ensure_future(self.waitp(
+                (await shared_handler.spill_size(data_size * 1.5)).then(lambda: None)))
 
             await asyncio.sleep(0.5)
             # when the key is in spill (here we trigger it manually in mock),
@@ -209,7 +208,7 @@ class Test(WorkerCase):
 
             for k in key_list[2:6]:
                 await mock_runner_ref.submit_item(session_id, k)
-            await self.get_result(5)
+            await future
 
             await shared_holder_ref.unpin_data_keys(session_id, key_list[1:2], pin_token)
             keys_after = [tp[1] for tp in await shared_holder_ref.dump_keys()]
@@ -218,10 +217,7 @@ class Test(WorkerCase):
             # spill size of a single chunk, should return immediately
             keys_before = [tp[1] for tp in await shared_holder_ref.dump_keys()]
 
-            (await shared_handler.spill_size(data_size)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp((await shared_handler.spill_size(data_size)).then(lambda: None))
 
             keys_after = [tp[1] for tp in await shared_holder_ref.dump_keys()]
             self.assertSetEqual(set(keys_before), set(keys_after))
@@ -231,12 +227,8 @@ class Test(WorkerCase):
             pin_token = str(uuid.uuid4())
             await shared_holder_ref.pin_data_keys(session_id, key_list, pin_token)
 
-            (await shared_handler.spill_size(data_size * 3)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-
             with self.assertRaises(NoDataToSpill):
-                await self.get_result(5)
+                await self.waitp((await shared_handler.spill_size(data_size * 3)).then(lambda: None))
 
             await shared_holder_ref.unpin_data_keys(session_id, key_list, pin_token)
 
@@ -244,9 +236,8 @@ class Test(WorkerCase):
             # spill_size() should report it
 
             await mock_runner_ref.clear_submissions()
-            (await shared_handler.spill_size(data_size * 3)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
+            future = asyncio.ensure_future(self.waitp(
+                (await shared_handler.spill_size(data_size * 3)).then(lambda: None)))
 
             await asyncio.sleep(0.5)
             spill_keys = await mock_runner_ref.get_request_keys()
@@ -256,4 +247,4 @@ class Test(WorkerCase):
                 await mock_runner_ref.submit_item(session_id, k)
 
             with self.assertRaises(SystemError):
-                await self.get_result(5)
+                await future

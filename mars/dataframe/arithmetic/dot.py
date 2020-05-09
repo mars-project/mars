@@ -18,7 +18,6 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from ...tiles import TilesError
-from ...utils import recursive_tile
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.utils import decide_unify_split, validate_axis
@@ -120,7 +119,7 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
         return lhs, rhs
 
     @classmethod
-    async def tile(cls, op):
+    def tile(cls, op):
         from ..datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 
         lhs, rhs = op.lhs, op.rhs
@@ -138,9 +137,9 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
         rhs = rhs.rechunk({0: nsplit})._inplace_tile()
 
         # delegate computation to tensor
-        lhs_tensor = lhs if isinstance(lhs, TENSOR_TYPE) else lhs.to_tensor()
-        rhs_tensor = rhs if isinstance(rhs, TENSOR_TYPE) else rhs.to_tensor()
-        ret = lhs_tensor.dot(rhs_tensor)
+        lhs_tensor = lhs if isinstance(lhs, TENSOR_TYPE) else lhs.to_tensor()._inplace_tile()
+        rhs_tensor = rhs if isinstance(rhs, TENSOR_TYPE) else rhs.to_tensor()._inplace_tile()
+        ret = lhs_tensor.dot(rhs_tensor)._inplace_tile()
 
         if isinstance(out, TENSOR_TYPE):
             pass
@@ -152,14 +151,16 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
             elif isinstance(rhs, DATAFRAME_TYPE):
                 # lhs Series, rhs DataFrame
                 ret._index_value = rhs.columns_value
+            ret = ret._inplace_tile()
         elif ret.ndim == 2:
             ret = dataframe_from_tensor(ret)
             ret._index_value = lhs.index_value
             if isinstance(rhs, DATAFRAME_TYPE):
                 ret._columns_value = rhs.columns_value
                 ret._dtypes = rhs.dtypes
+            ret = ret._inplace_tile()
 
-        return [await recursive_tile(ret)]
+        return [ret]
 
 
 def dot(df_or_seris, other):

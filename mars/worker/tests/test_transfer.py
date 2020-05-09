@@ -17,6 +17,7 @@ import logging
 import multiprocessing
 import os
 import signal
+import sys
 import tempfile
 import time
 import uuid
@@ -337,6 +338,12 @@ class Test(WorkerCase):
                     await self.waitp(sender_ref_p.send_data(
                         session_id, [chunk_key6], [recv_pool_addr2], _promise=True))
 
+                if sys.version_info[:2] < (3, 6):
+                    from asyncio.tasks import Task
+                    for task in Task.all_tasks():
+                        if task is not Task.current_task():
+                            task.cancel()
+
     async def testReceiverManager(self):
         pool_addr = 'localhost:%d' % get_next_port()
         session_id = str(uuid.uuid4())
@@ -370,14 +377,14 @@ class Test(WorkerCase):
                           .then(lambda *_: writer.close()))
             )
             result = await self.waitp(receiver_manager_ref.create_data_writers(
-                    session_id, [chunk_key1], [data_size], test_actor, _promise=True))
+                    session_id, [chunk_key1], [data_size], test_actor, _promise=True).then(lambda *args: args)
+            )
             self.assertEqual(result[0].uid, mock_receiver_ref.uid)
             self.assertEqual(result[1][0], ReceiveStatus.RECEIVED)
 
             # test adding callback for transferred key (should return immediately)
-            result = await self.waitp(receiver_manager_ref.add_keys_callback(
-                session_id, [chunk_key1], _promise=True))
-            self.assertTupleEqual(result, ())
+            await self.waitp(receiver_manager_ref.add_keys_callback(
+                session_id, [chunk_key1], _promise=True).then(lambda: None))
 
             await receiver_manager_ref.register_pending_keys(session_id, [chunk_key1, chunk_key2])
             self.assertEqual(await receiver_manager_ref.filter_receiving_keys(
@@ -385,50 +392,54 @@ class Test(WorkerCase):
 
             logger.warning('SCENARIO 2: test transferring new keys and wait on listeners')
             result = await self.waitp(receiver_manager_ref.create_data_writers(
-                session_id, [chunk_key2, chunk_key3], [data_size] * 2, test_actor, _promise=True))
+                session_id, [chunk_key2, chunk_key3], [data_size] * 2, test_actor, _promise=True)
+                .then(lambda *args: args))
             self.assertEqual(result[0].uid, mock_receiver_ref.uid)
             self.assertIsNone(result[1][0])
 
             # transfer with transferring keys will report RECEIVING
             result = await self.waitp(receiver_manager_ref.create_data_writers(
-                session_id, [chunk_key2], [data_size], test_actor, _promise=True))
+                session_id, [chunk_key2], [data_size], test_actor, _promise=True).then(lambda *args: args))
             self.assertEqual(result[1][0], ReceiveStatus.RECEIVING)
 
             # add listener and finish transfer
-            receiver_manager_ref.add_keys_callback(session_id, [chunk_key1, chunk_key2], _promise=True) \
-                .then(lambda *s: test_actor.set_result(s))
+            future = asyncio.ensure_future(self.waitp(
+                receiver_manager_ref.add_keys_callback(session_id, [chunk_key1, chunk_key2], _promise=True)
+                .then(lambda: None)
+            ))
             await mock_receiver_ref.receive_data_part(
                 session_id, [chunk_key2], [True], serialized_mock_data)
             await mock_receiver_ref.receive_data_part(
                 session_id, [chunk_key3], [True], serialized_mock_data)
-            await self.get_result(5)
+            await future
 
             logger.warning('SCENARIO 3: test listening on multiple transfers')
-            receiver_manager_ref.create_data_writers(
-                session_id, [chunk_key4, chunk_key5], [data_size] * 2, test_actor, _promise=True) \
-                .then(lambda *s: test_actor.set_result(s))
-            await self.get_result(5)
+            await self.waitp(
+                receiver_manager_ref.create_data_writers(
+                    session_id, [chunk_key4, chunk_key5], [data_size] * 2, test_actor, _promise=True))
+
             # add listener
-            receiver_manager_ref.add_keys_callback(session_id, [chunk_key4, chunk_key5], _promise=True) \
-                .then(lambda *s: test_actor.set_result(s))
+            event = asyncio.Event()
+            future = asyncio.ensure_future(self.waitp(
+                receiver_manager_ref.add_keys_callback(session_id, [chunk_key4, chunk_key5], _promise=True)
+                .then(lambda: event.set())))
             await mock_receiver_ref.receive_data_part(
                 session_id, [chunk_key4], [True], serialized_mock_data)
             # when some chunks are not transferred, promise will not return
-            with self.assertRaises(TimeoutError):
-                await self.get_result(0.5)
+            with self.assertRaises(asyncio.TimeoutError):
+                await asyncio.wait_for(event.wait(), timeout=0.5)
             await mock_receiver_ref.receive_data_part(
                 session_id, [chunk_key5], [True], serialized_mock_data)
-            await self.get_result(5)
+            await future
 
             logger.warning('SCENARIO 4: test listening on transfer with errors')
             await self.waitp(receiver_manager_ref.create_data_writers(
                 session_id, [chunk_key6], [data_size], test_actor, _promise=True))
-            receiver_manager_ref.add_keys_callback(session_id, [chunk_key6], _promise=True) \
-                .then(lambda *s: test_actor.set_result(s)) \
-                .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+            future = asyncio.ensure_future(self.waitp(
+                receiver_manager_ref.add_keys_callback(session_id, [chunk_key6], _promise=True)))
             await mock_receiver_ref.cancel_receive(session_id, [chunk_key6])
             with self.assertRaises(ExecutionInterrupted):
-                await self.get_result(5)
+                await future
 
             logger.warning('SCENARIO 5: test creating writers without promise')
             ref, statuses = await receiver_manager_ref.create_data_writers(
@@ -466,7 +477,8 @@ class Test(WorkerCase):
 
             logger.warning('SCENARIO 1: create two writers and write with chunks')
             await self.waitp(receiver_ref.create_data_writers(
-                session_id, [chunk_key1, chunk_key2], [data_size] * 2, test_actor, _promise=True))
+                session_id, [chunk_key1, chunk_key2], [data_size] * 2, test_actor, _promise=True)
+                .then(lambda *_: None))
             await receiver_ref.receive_data_part(
                 session_id, [chunk_key1, chunk_key2], [True, False],
                 dumped_mock_data, dumped_mock_data[:len(dumped_mock_data) // 2])
@@ -500,7 +512,7 @@ class Test(WorkerCase):
                 fail_key = chunk_key4
                 await self.waitp(receiver_ref.create_data_writers(
                     session_id, [chunk_key3, chunk_key4, chunk_key5],
-                    [data_size] * 3, test_actor, ensure_cached=False, _promise=True))
+                    [data_size] * 3, test_actor, ensure_cached=False, _promise=True).then(lambda *_: None))
             self.assertEqual(await receiver_ref.check_status(session_id, chunk_key3),
                              ReceiveStatus.NOT_STARTED)
             self.assertEqual(await receiver_ref.check_status(session_id, chunk_key4),
@@ -512,12 +524,12 @@ class Test(WorkerCase):
                 fail_key = chunk_key2
                 await self.waitp(receiver_ref.create_data_writers(
                     session_id, [chunk_key2, chunk_key3], [data_size] * 2, test_actor,
-                    ensure_cached=False, _promise=True))
+                    ensure_cached=False, _promise=True).then(lambda *_: None))
 
             logger.warning('SCENARIO 3: transfer timeout')
             await receiver_manager_ref.register_pending_keys(session_id, [chunk_key6])
             await self.waitp(receiver_ref.create_data_writers(
-                session_id, [chunk_key6], [data_size], test_actor, timeout=1, _promise=True))
+                session_id, [chunk_key6], [data_size], test_actor, timeout=1, _promise=True).then(lambda *_: None))
             with self.assertRaises(TimeoutError):
                 await self.waitp(receiver_manager_ref.add_keys_callback(
                     session_id, [chunk_key6], _promise=True))
@@ -525,7 +537,7 @@ class Test(WorkerCase):
             logger.warning('SCENARIO 4: cancelled transfer (both before and during transfer)')
             await receiver_manager_ref.register_pending_keys(session_id, [chunk_key7])
             await self.waitp(receiver_ref.create_data_writers(
-                session_id, [chunk_key7], [data_size], test_actor, timeout=1, _promise=True))
+                session_id, [chunk_key7], [data_size], test_actor, timeout=1, _promise=True).then(lambda *_: None))
             await receiver_ref.cancel_receive(session_id, [chunk_key2, chunk_key7])
             with self.assertRaises(ExecutionInterrupted):
                 await receiver_ref.receive_data_part(session_id, [chunk_key7], [False],
@@ -538,7 +550,7 @@ class Test(WorkerCase):
             await receiver_manager_ref.register_pending_keys(session_id, [chunk_key7])
             mock_ref = pool.actor_ref(test_actor.uid, address='MOCK_ADDR')
             await self.waitp(receiver_ref.create_data_writers(
-                session_id, [chunk_key7], [data_size], mock_ref, timeout=1, _promise=True))
+                session_id, [chunk_key7], [data_size], mock_ref, timeout=1, _promise=True).then(lambda *_: None))
             receiver_ref.notify_dead_senders(['MOCK_ADDR'], _tell=True, _wait=False)
             with self.assertRaises(WorkerDead):
                 await self.waitp(receiver_manager_ref.add_keys_callback(
@@ -620,14 +632,8 @@ class Test(WorkerCase):
                             return local_client_ref.get_object(session_id, chunk_key, targets, _promise=True) \
                                 .then(_get)
 
-                        remote_dispatch_ref.get_free_slot('sender', _promise=True) \
-                            .then(_call_send_data) \
-                            .then(_test_data_exist) \
-                            .then(
-                            lambda *_: test_actor.set_result(chunk_key),
-                            lambda *exc: test_actor.set_result(exc, False),
-                        )
-                        self.assertEqual(await self.get_result(60), chunk_key)
+                        await self.waitp(remote_dispatch_ref.get_free_slot('sender', _promise=True)
+                            .then(_call_send_data).then(_test_data_exist), timeout=60)
 
                 msg_queue.put(1)
             finally:

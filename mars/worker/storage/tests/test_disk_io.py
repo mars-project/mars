@@ -82,30 +82,25 @@ class Test(WorkerCase):
                         return dataserializer.deserialize(reader.read())
 
                 # test normal file write
-                (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True)) \
-                    .then(functools.partial(_write_data, ser_data1)) \
-                    .then(test_actor.set_result,
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                file_name = await self.get_result(5)
+                file_name = await self.waitp(
+                    (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True))
+                    .then(functools.partial(_write_data, ser_data1)))
                 self.assertTrue(os.path.exists(file_name))
                 self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                                  [(0, DataStorageDevice.DISK)])
 
                 # test write existing (this should produce an error)
-                (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True)) \
-                    .then(functools.partial(_write_data, ser_data1)) \
-                    .then(test_actor.set_result,
-                          lambda *exc: test_actor.set_result(exc, accept=False))
                 with self.assertRaises(StorageDataExists):
-                    await self.get_result(5)
+                    await self.waitp(
+                        (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True))
+                        .then(functools.partial(_write_data, ser_data1))
+                    )
 
                 # test writing with unreferenced file
                 await storage_manager_ref.unregister_data(session_id, [data_key1], (0, DataStorageDevice.DISK))
-                (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True)) \
-                    .then(functools.partial(_write_data, ser_data1)) \
-                    .then(test_actor.set_result,
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                file_name = await self.get_result(5)
+                file_name = await self.waitp(
+                    (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes, _promise=True))
+                        .then(functools.partial(_write_data, ser_data1)))
                 self.assertTrue(os.path.exists(file_name))
                 self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                                  [(0, DataStorageDevice.DISK)])
@@ -115,7 +110,9 @@ class Test(WorkerCase):
                     .then(_read_data) \
                     .then(test_actor.set_result,
                           lambda *exc: test_actor.set_result(exc, accept=False))
-                assert_allclose(await self.get_result(5), data1)
+                result = await self.waitp(
+                    (await handler.create_bytes_reader(session_id, data_key1, _promise=True)).then(_read_data))
+                assert_allclose(result, data1)
 
                 # test unregistering data
                 await handler.delete(session_id, [data_key1])
@@ -124,19 +121,18 @@ class Test(WorkerCase):
                 self.assertFalse(os.path.exists(file_name))
 
                 # test reading and writing with tuple keys
-                (await handler.create_bytes_writer(session_id, data_key2, ser_data2.total_bytes, _promise=True)) \
-                    .then(functools.partial(_write_data, ser_data2)) \
-                    .then(test_actor.set_result,
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                await self.get_result(5)
+                await self.waitp(
+                    (await handler.create_bytes_writer(session_id, data_key2, ser_data2.total_bytes, _promise=True))
+                        .then(functools.partial(_write_data, ser_data2))
+                )
                 self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key2]))[0]),
                                  [(0, DataStorageDevice.DISK)])
 
-                (await handler.create_bytes_reader(session_id, data_key2, _promise=True)) \
-                    .then(_read_data) \
-                    .then(functools.partial(test_actor.set_result),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                assert_allclose(await self.get_result(5), data2)
+                result = await self.waitp(
+                    (await handler.create_bytes_reader(session_id, data_key2, _promise=True))
+                        .then(_read_data)
+                )
+                assert_allclose(result, data2)
 
     async def testDiskReadAndWritePacked(self, *_):
         test_addr = '127.0.0.1:%d' % get_next_port()
@@ -171,12 +167,11 @@ class Test(WorkerCase):
                         writer.write(ser)
                     return writer.filename
 
-                (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes,
-                                                   packed=True, _promise=True)) \
-                    .then(functools.partial(_write_data, block_data1)) \
-                    .then(test_actor.set_result,
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                file_name = await self.get_result(5)
+                file_name = await self.waitp(
+                    (await handler.create_bytes_writer(session_id, data_key1, ser_data1.total_bytes,
+                                                       packed=True, _promise=True))
+                        .then(functools.partial(_write_data, block_data1))
+                )
                 self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                                  [(0, DataStorageDevice.DISK)])
                 self.assertTrue(os.path.exists(file_name))
@@ -185,11 +180,11 @@ class Test(WorkerCase):
                     async with reader:
                         return dataserializer.loads(reader.read())
 
-                (await handler.create_bytes_reader(session_id, data_key1, packed=True, _promise=True)) \
-                    .then(_read_data) \
-                    .then(functools.partial(test_actor.set_result),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                assert_allclose(await self.get_result(5), data1)
+                result = await self.waitp(
+                    (await handler.create_bytes_reader(session_id, data_key1, packed=True, _promise=True))
+                    .then(_read_data)
+                )
+                assert_allclose(result, data1)
 
     async def testDiskLoad(self, *_):
         test_addr = '127.0.0.1:%d' % get_next_port()
@@ -222,10 +217,8 @@ class Test(WorkerCase):
                     session_id, data_key1, ser_data1.total_bytes) as writer:
                 ser_data1.write_to(writer)
 
-            (await handler.load_from_bytes_io(session_id, [data_key1], shared_handler)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp((await handler.load_from_bytes_io(session_id, [data_key1], shared_handler))
+                             .then(lambda *_: None))
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key1]))[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)])
 
@@ -238,10 +231,8 @@ class Test(WorkerCase):
             await proc_handler.put_objects(session_id, [data_key2], [data2])
             del data2
 
-            (await handler.load_from_object_io(session_id, [data_key2], proc_handler)) \
-                .then(lambda *_: test_actor.set_result(None),
-                      lambda *exc: test_actor.set_result(exc, accept=False))
-            await self.get_result(5)
+            await self.waitp((await handler.load_from_object_io(session_id, [data_key2], proc_handler))
+                             .then(lambda *_: None))
             self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_key2]))[0]),
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.DISK)])
 

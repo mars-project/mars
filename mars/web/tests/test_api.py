@@ -58,35 +58,7 @@ class Test(unittest.TestCase):
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
 
-    async def wait_scheduler_worker_start(self):
-        actor_client = new_client()
-        time.sleep(1)
-        check_time = time.time()
-        while True:
-            try:
-                resource_ref = actor_client.actor_ref(
-                    ResourceActor.default_uid(), address='127.0.0.1:' + self.scheduler_port)
-                if await actor_client.has_actor(resource_ref):
-                    break
-                else:
-                    raise SystemError('Check meta_timestamp timeout')
-            except:  # noqa: E722
-                if time.time() - check_time > 10:
-                    raise
-                await asyncio.sleep(0.1)
-
-        check_time = time.time()
-        while not await resource_ref.get_worker_count():
-            if self.proc_scheduler.poll() is not None:
-                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
-            if self.proc_worker.poll() is not None:
-                raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
-            if time.time() - check_time > 30:
-                raise SystemError('Check meta_timestamp timeout')
-
-            await asyncio.sleep(0.1)
-
-    def setUp(self):
+    async def _start_service(self):
         worker_port = self.worker_port = str(get_next_port())
         scheduler_port = self.scheduler_port = str(get_next_port())
         proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
@@ -109,7 +81,32 @@ class Test(unittest.TestCase):
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
 
-        aio_run(self.wait_scheduler_worker_start())
+        actor_client = new_client()
+        time.sleep(1)
+        check_time = time.time()
+        while True:
+            try:
+                resource_ref = actor_client.actor_ref(
+                    ResourceActor.default_uid(), address='127.0.0.1:' + self.scheduler_port)
+                if await actor_client.has_actor(resource_ref):
+                    break
+                else:
+                    raise SystemError('Check meta_timestamp timeout')
+            except:  # noqa: E722
+                if time.time() - check_time > 30:
+                    raise
+                await asyncio.sleep(0.1)
+
+        check_time = time.time()
+        while not await resource_ref.get_worker_count():
+            if self.proc_scheduler.poll() is not None:
+                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+            if self.proc_worker.poll() is not None:
+                raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
+            if time.time() - check_time > 30:
+                raise SystemError('Check meta_timestamp timeout')
+
+            await asyncio.sleep(0.1)
 
         web_port = self.web_port = str(get_next_port())
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
@@ -150,6 +147,20 @@ class Test(unittest.TestCase):
         for p in procs:
             if p.poll() is None:
                 p.kill()
+
+    def setUp(self):
+        self.proc_scheduler = self.proc_worker = self.proc_web = None
+        for attempt in range(3):
+            try:
+                aio_run(self._start_service())
+                break
+            except:  # noqa: E722
+                self._stop_service()
+                if attempt == 2:
+                    raise
+
+    def tearDown(self):
+        self._stop_service()
 
     def testWebApi(self):
         service_ep = 'http://127.0.0.1:' + self.web_port

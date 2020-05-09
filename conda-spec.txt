@@ -14,6 +14,5 @@ numexpr
 psutil
 lz4
 protobuf
-gevent
 bokeh
 jinja2

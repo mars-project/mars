@@ -129,8 +129,7 @@ class Test(WorkerCase):
                     [(0, DataStorageDevice.DISK)])
 
             await self.waitp(
-                quota_ref.request_batch_quota(quota_batch, _promise=True),
-            )
+                quota_ref.request_batch_quota(quota_batch, _promise=True).then(lambda *_: None))
 
             o_create = PlasmaSharedStore.create
 
@@ -154,6 +153,7 @@ class Test(WorkerCase):
                         .then(_extract_value_ref)
                         .then(lambda *_: calc_ref.store_results(
                             session_id, add_chunk.op.key, [add_chunk.key], None, _promise=True))
+                        .then(lambda *_: None)
                 )
 
             self.assertIsNone(ref_store[-1]())

@@ -214,13 +214,11 @@ class Test(WorkerCase):
                     assert_array_equal(data, 2 * np.ones((10, 8)))
 
                 graph_key = str(uuid.uuid4())
-                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[arr2.chunks[0].key]), metas, _promise=True) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            await self.get_result()
+                await self.waitp(
+                    execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                                dict(chunks=[arr2.chunks[0].key]), metas, _promise=True)
+                        .then(_validate)
+                )
 
             async with self.run_actor_test(pool) as test_actor:
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
@@ -229,12 +227,10 @@ class Test(WorkerCase):
                     data = await test_actor.shared_store.get(session_id, arr2.chunks[0].key)
                     assert_array_equal(data, 2 * np.ones((10, 8)))
 
-                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            await self.get_result()
+                await self.waitp(
+                    execution_ref.add_finish_callback(session_id, graph_key, _promise=True)
+                        .then(_validate)
+                )
 
     async def testPrepareQuota(self, *_):
         pinned = True
@@ -284,9 +280,10 @@ class Test(WorkerCase):
                     session_id, graph_key, serialize_graph(graph),
                     dict(chunks=[result_tensor.chunks[0].key]), metas, _tell=True)
 
-                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
-                    .then(lambda *_: test_actor.set_result(time.time())) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
+                future = asyncio.ensure_future(self.waitp(
+                    execution_ref.add_finish_callback(session_id, graph_key, _promise=True)
+                    .then(lambda *_: time.time())
+                ))
 
                 def _delay_fun():
                     nonlocal pinned
@@ -295,7 +292,7 @@ class Test(WorkerCase):
 
                 threading.Thread(target=_delay_fun).start()
 
-            finish_time = await self.get_result()
+            finish_time = await future
             self.assertGreaterEqual(finish_time, start_time + 0.5)
 
     async def testPrepareSpilled(self):
@@ -330,13 +327,13 @@ class Test(WorkerCase):
             async with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
 
-            with self.assertRaises(DependencyMissing):
-                await self.get_result()
+                with self.assertRaises(DependencyMissing):
+                    await self.waitp(
+                        execution_ref.execute_graph(
+                            session_id, graph_key, serialize_graph(graph),
+                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True)
+                    )
 
             metas = {modified_chunk.key: WorkerMeta(
                 mock_data.nbytes, mock_data.shape, ('0.0.0.0:1234', pool_address))}
@@ -345,9 +342,10 @@ class Test(WorkerCase):
             async with self.run_actor_test(pool) as test_actor:
                 await self.waitp(
                     (await test_actor.storage_client.put_objects(
-                        session_id, [modified_chunk.key], [mock_data], [DataStorageDevice.PROC_MEMORY])) \
+                        session_id, [modified_chunk.key], [mock_data], [DataStorageDevice.PROC_MEMORY]))
                         .then(lambda *_: test_actor.storage_client.copy_to(
                             session_id, [modified_chunk.key], [DataStorageDevice.DISK]))
+                        .then(lambda *_: None)
                 )
                 await test_actor.storage_client.delete(session_id, [modified_chunk.key],
                                                        [DataStorageDevice.PROC_MEMORY])
@@ -358,13 +356,11 @@ class Test(WorkerCase):
 
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), metas, _promise=True) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            await self.get_result()
+                await self.waitp(
+                    execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                                dict(chunks=[result_tensor.chunks[0].key]), metas, _promise=True)
+                        .then(_validate)
+                )
 
     @patch_method(ResourceActor.allocate_resource, new=lambda *_, **__: True)
     async def testEstimateGraphFinishTime(self):
@@ -490,12 +486,8 @@ class Test(WorkerCase):
                 await execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
                                                   dict(chunks=[result_tensor.chunks[0].key]), None, _tell=True)
 
-                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            with self.assertRaises(DependencyMissing):
-                await self.get_result()
+                with self.assertRaises(DependencyMissing):
+                    await self.waitp(execution_ref.add_finish_callback(session_id, graph_key, _promise=True))
 
             metas = {modified_chunk.key: WorkerMeta(mock_data.nbytes, mock_data.shape, ('0.0.0.0:1234',))}
             async with self.run_actor_test(pool) as test_actor:
@@ -504,12 +496,8 @@ class Test(WorkerCase):
                 await execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
                                                   dict(chunks=[result_tensor.chunks[0].key]), metas, _tell=True)
 
-                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            with self.assertRaises(DependencyMissing):
-                await self.get_result()
+                with self.assertRaises(DependencyMissing):
+                    await self.waitp(execution_ref.add_finish_callback(session_id, graph_key, _promise=True))
 
             metas[modified_chunk.key] = WorkerMeta(
                 mock_data.nbytes, mock_data.shape,
@@ -525,12 +513,10 @@ class Test(WorkerCase):
                     session_id, graph_key, serialize_graph(graph),
                     dict(chunks=[result_tensor.chunks[0].key]), metas, _tell=True)
 
-                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            await self.get_result()
+                await self.waitp(
+                    execution_ref.add_finish_callback(session_id, graph_key, _promise=True)
+                        .then(_validate)
+                )
 
     async def testSendTargets(self):
         pool_address = '127.0.0.1:%d' % get_next_port()
@@ -564,12 +550,10 @@ class Test(WorkerCase):
                 await execution_ref.send_data_to_workers(
                     session_id, graph_key, {result_key: (pool_address,)}, _tell=True)
 
-                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            await self.get_result()
+                await self.waitp(
+                    execution_ref.add_finish_callback(session_id, graph_key, _promise=True)
+                        .then(_validate)
+                )
 
     async def testReExecuteExisting(self):
         pool_address = '127.0.0.1:%d' % get_next_port()
@@ -596,20 +580,16 @@ class Test(WorkerCase):
             async with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            await self.get_result()
+                await self.waitp(
+                    execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                                dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True)
+                        .then(_validate)
+                )
 
             async with self.run_actor_test(pool) as test_actor:
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            await self.get_result()
+                await self.waitp(
+                    execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                                dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True)
+                        .then(_validate)
+                )

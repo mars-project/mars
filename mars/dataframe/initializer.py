@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+
 import pandas as pd
 
 from ..core import Base, Entity
@@ -33,7 +35,8 @@ class DataFrame(_Frame):
             from ..context import get_context
 
             context = get_context()
-            df = context.build_named_tileable(named=named, rtype='dataframe')
+            df = asyncio.get_event_loop().run_until_complete(
+                context.build_named_tileable(named=named, rtype='dataframe'))
         elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
@@ -64,7 +67,8 @@ class Series(_Series):
             from ..context import get_context
 
             context = get_context()
-            series = context.build_named_tileable(named=named, rtype='series')
+            series = asyncio.get_event_loop().run_until_complete(
+                context.build_named_tileable(named=named, rtype='series'))
         elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)

@@ -6,7 +6,6 @@ COPY retry.sh /srv/retry.sh
 RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
     bokeh \
     cython \
-    gevent \
     jinja2 \
     lz4 \
     mkl \

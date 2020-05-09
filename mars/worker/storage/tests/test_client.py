@@ -151,7 +151,7 @@ class Test(WorkerCase):
                 # test creating reader when data exist in location
                 result = (await self.waitp(
                     (await storage_client.create_reader(session_id, data_key2, (DataStorageDevice.DISK,)))
-                    .then(_read_data)))[0]
+                    .then(_read_data)))
                 assert_allclose(result, data1)
 
                 # test creating reader when no data in location (should raise)
@@ -195,12 +195,11 @@ class Test(WorkerCase):
                 storage_client = test_actor.storage_client
 
                 # check batch object put with size exceeds
-                (await storage_client.put_objects(
-                    session_id, data_keys, data_list,
-                    [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY])) \
-                    .then(functools.partial(test_actor.set_result),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                await self.get_result(5)
+                await self.waitp(
+                    await storage_client.put_objects(
+                        session_id, data_keys, data_list,
+                        [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY]
+                    ))
                 locations = await storage_client.get_data_locations(session_id, data_keys)
                 loc_to_keys = defaultdict(list)
                 for key, location in zip(data_keys, locations):
@@ -220,11 +219,10 @@ class Test(WorkerCase):
                 self.assertEqual(len(shared_objs), 1)
                 assert_allclose(shared_objs[0], data_dict[first_shared_key])
 
-                (await storage_client.get_object(session_id, first_shared_key,
-                                                 [DataStorageDevice.PROC_MEMORY], _promise=True)) \
-                    .then(functools.partial(test_actor.set_result),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                assert_allclose(await self.get_result(5), data_dict[first_shared_key])
+                result = await self.waitp(
+                    await storage_client.get_object(
+                        session_id, first_shared_key, [DataStorageDevice.PROC_MEMORY], _promise=True))
+                assert_allclose(result, data_dict[first_shared_key])
 
                 await storage_client.delete(session_id, data_keys)
                 ref = weakref.ref(data_dict[data_keys[0]])
@@ -315,17 +313,13 @@ class Test(WorkerCase):
                 idx = await _fill_data()
 
                 # test copying non-existing keys
-                (await storage_client.copy_to(session_id, ['non-exist-key'], [DataStorageDevice.SHARED_MEMORY])) \
-                    .then(lambda *_: test_actor.set_result(None),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
                 with self.assertRaises(KeyError):
-                    await self.get_result(5)
+                    await self.waitp(await storage_client.copy_to(
+                        session_id, ['non-exist-key'], [DataStorageDevice.SHARED_MEMORY]))
 
                 # test copying into containing locations
-                (await storage_client.copy_to(session_id, [data_keys[0]], [DataStorageDevice.SHARED_MEMORY])) \
-                    .then(lambda *_: test_actor.set_result(None),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                await self.get_result(5)
+                await self.waitp((await storage_client.copy_to(
+                    session_id, [data_keys[0]], [DataStorageDevice.SHARED_MEMORY])).then(lambda *_: None))
 
                 self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_keys[0]]))[0]),
                                  [(0, DataStorageDevice.SHARED_MEMORY)])
@@ -336,10 +330,8 @@ class Test(WorkerCase):
 
                 with patch_method(StorageHandler.load_from, _mock_load_from), \
                         self.assertRaises(SystemError):
-                    (await storage_client.copy_to(session_id, [data_keys[0]], [DataStorageDevice.DISK])) \
-                        .then(lambda *_: test_actor.set_result(None),
-                              lambda *exc: test_actor.set_result(exc, accept=False))
-                    await self.get_result(5)
+                    await self.waitp((await storage_client.copy_to(
+                        session_id, [data_keys[0]], [DataStorageDevice.DISK])).then(lambda *_: None))
 
                 # test successful copy for multiple objects
                 await storage_client.delete(session_id, [data_keys[idx - 1]])
@@ -348,11 +340,9 @@ class Test(WorkerCase):
                 await proc_handler.put_objects(session_id, data_keys[idx:idx + 2], data_list[idx:idx + 2])
                 data_list[idx:idx + 2] = [None, None]
 
-                (await storage_client.copy_to(session_id, data_keys[idx:idx + 2],
-                                              [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK])) \
-                    .then(lambda *_: test_actor.set_result(None),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                await self.get_result(5)
+                await self.waitp((await storage_client.copy_to(
+                    session_id, data_keys[idx:idx + 2], [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]))
+                    .then(lambda *_: None))
 
                 await proc_handler.delete(session_id, data_keys[idx:idx + 2])
 
@@ -364,11 +354,9 @@ class Test(WorkerCase):
                 # test copy with spill
                 idx += 2
                 await proc_handler.put_objects(session_id, [data_keys[idx]], [data_list[idx]])
+                await self.waitp((await storage_client.copy_to(
+                    session_id, [data_keys[idx]], [DataStorageDevice.SHARED_MEMORY])).then(lambda *_: None))
 
-                (await storage_client.copy_to(session_id, [data_keys[idx]], [DataStorageDevice.SHARED_MEMORY])) \
-                    .then(lambda *_: test_actor.set_result(None),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                await self.get_result(5)
-
-                self.assertEqual(sorted((await storage_manager_ref.get_data_locations(session_id, [data_keys[idx]]))[0]),
-                                 [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.SHARED_MEMORY)])
+                self.assertEqual(sorted((await storage_manager_ref.get_data_locations(
+                    session_id, [data_keys[idx]]))[0]),
+                    [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.SHARED_MEMORY)])

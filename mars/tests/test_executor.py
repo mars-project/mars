@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import sys
-import threading
 import unittest
 
 import numpy as np

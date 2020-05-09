@@ -33,7 +33,7 @@ import pandas as pd
 from mars.context import LocalContext
 from mars.executor import Executor, GraphExecution
 from mars.serialize import serializes, deserializes, JsonSerializeProvider
-from mars.utils import lazy_import, to_async_context_manager
+from mars.utils import lazy_import, to_async_context_manager, wrap_async_method
 
 try:
     from mars.serialize import ProtobufSerializeProvider
@@ -589,8 +589,8 @@ class MarsObjectCheckMixin:
 
 
 class GraphExecutionWithChunkCheck(MarsObjectCheckMixin, GraphExecution):
-    def _execute_operand(self, op):
-        super()._execute_operand(op)
+    async def _execute_operand(self, op):
+        await super()._execute_operand(op)
         if self._mock:
             return
         for o in op.outputs:
@@ -649,17 +649,21 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                     raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
                                          % (tiled.chunks[cid].op, shape, tiled.chunks[cid].shape))
 
-    def execute_graph(self, graph, keys, **kw):
+    @wrap_async_method
+    async def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
             graph = type(graph).from_json(graph.to_json())
             graph = type(graph).from_pb(graph.to_pb())
-        return super().execute_graph(graph, keys, **kw)
+        kw['_async'] = True
+        return await super().execute_graph(graph, keys, **kw)
 
-    def execute_tileable(self, tileable, *args, **kwargs):
+    @wrap_async_method
+    async def execute_tileable(self, tileable, *args, **kwargs):
         from mars.core import OBJECT_TYPE
         self._extract_check_options(kwargs)
 
-        result = super().execute_tileable(tileable, *args, **kwargs)
+        kwargs['_async'] = True
+        result = await super().execute_tileable(tileable, *args, **kwargs)
 
         if not isinstance(tileable, OBJECT_TYPE):
             if _check_options['check_nsplits']:
@@ -673,10 +677,12 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     execute_tensor = execute_tileable
     execute_dataframe = execute_tileable
 
-    def execute_tileables(self, tileables, *args, **kwargs):
+    @wrap_async_method
+    async def execute_tileables(self, tileables, *args, **kwargs):
         self._extract_check_options(kwargs)
 
-        results = super().execute_tileables(tileables, *args, **kwargs)
+        kwargs['_async'] = True
+        results = await super().execute_tileables(tileables, *args, **kwargs)
         for tileable, result in zip(tileables, results):
             if _check_options['check_nsplits']:
                 self._check_nsplits(tileable)
