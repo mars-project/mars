@@ -85,7 +85,7 @@ class Series(_Series):
 
 
 class Index(_Index):
-    def __new__(cls, data):
+    def __new__(cls, data, **_):
         # just return cls always until we support other Index's initializers
         return object.__new__(cls)
 

@@ -184,16 +184,13 @@ def split(ary, indices_or_sections, axis=0):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> x = mt.arange(9.0)
-    >>> sess.run(mt.split(x, 3))
+    >>> mt.split(x, 3).execute()
     [array([ 0.,  1.,  2.]), array([ 3.,  4.,  5.]), array([ 6.,  7.,  8.])]
 
     >>> x = mt.arange(8.0)
-    >>> sess.run(mt.split(x, [3, 5, 6, 10]))
+    >>> mt.split(x, [3, 5, 6, 10]).execute()
     [array([ 0.,  1.,  2.]),
      array([ 3.,  4.]),
      array([ 5.]),

@@ -36,7 +36,7 @@ msgid ""
 "If you are trying to use Mars on a single machine e.g. on your laptop, "
 "make sure XGBoost is installed."
 msgstr ""
-"如果你试图在单机比如你的笔记本上使用 Mars，确保 XBoost 已经安装。"
+"如果你试图在单机比如你的笔记本上使用 Mars，确保 XGBoost 已经安装。"
 
 #: ../../source/learn/xgboost.rst:17
 msgid "You can install XGBoost via pip:"

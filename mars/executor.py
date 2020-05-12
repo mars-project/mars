@@ -900,12 +900,12 @@ class Executor(object):
     @kernel_mode
     def fetch_tileables(self, tileables, **kw):
         from .tensor.indexing import TensorIndex
-        from .dataframe.indexing.iloc import DataFrameIlocGetItem
+        from .dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 
         to_release_tileables = []
         for tileable in tileables:
             if tileable.key not in self.stored_tileables and \
-                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
+                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem, SeriesIlocGetItem)):
                 key = tileable.inputs[0].key
                 to_release_tileables.append(tileable)
             else:

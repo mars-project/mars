@@ -166,5 +166,5 @@ def predict(model, data, session=None, run_kwargs=None, run=True):
     op = XGBPredict(data=data, model=model, gpu=data.op.gpu, output_types=output_types)
     result = op()
     if run:
-        result.execute(session=session, fetch=False, **(run_kwargs or dict()))
+        result.execute(session=session, **(run_kwargs or dict()))
     return result

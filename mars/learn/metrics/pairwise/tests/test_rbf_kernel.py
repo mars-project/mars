@@ -33,7 +33,7 @@ class Test(unittest.TestCase):
         raw_Y = rs.rand(11, 4)
 
         r = rbf_kernel(raw_X, raw_Y)
-        result = r.execute()
+        result = r.to_numpy()
         expected = sklearn_rbf_kernel(raw_X, raw_Y)
 
         np.testing.assert_almost_equal(result, expected)

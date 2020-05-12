@@ -43,17 +43,17 @@ class Test(unittest.TestCase):
         self.assertEqual(weights, [0.1, 0.25])
         self.assertEqual(X.shape, (100, 20), "X shape mismatch")
         self.assertEqual(y.shape, (100,), "y shape mismatch")
-        self.assertEqual(mt.unique(y).execute().shape, (3,), "Unexpected number of classes")
-        self.assertEqual((y == 0).sum().execute(), 10, "Unexpected number of samples in class #0")
-        self.assertEqual((y == 1).sum().execute(), 25, "Unexpected number of samples in class #1")
-        self.assertEqual((y == 2).sum().execute(), 65, "Unexpected number of samples in class #2")
+        self.assertEqual(mt.unique(y).to_numpy().shape, (3,), "Unexpected number of classes")
+        self.assertEqual((y == 0).sum().to_numpy(), 10, "Unexpected number of samples in class #0")
+        self.assertEqual((y == 1).sum().to_numpy(), 25, "Unexpected number of samples in class #1")
+        self.assertEqual((y == 2).sum().to_numpy(), 65, "Unexpected number of samples in class #2")
 
         # Test for n_features > 30
         X, y = make_classification(n_samples=2000, n_features=31, n_informative=31,
                                    n_redundant=0, n_repeated=0, hypercube=True,
                                    scale=0.5, random_state=0)
 
-        X = X.execute()
+        X = X.to_numpy()
         self.assertEqual(X.shape, (2000, 31), "X shape mismatch")
         self.assertEqual(y.shape, (2000,), "y shape mismatch")
         self.assertEqual(np.unique(X.view([('', X.dtype)]*X.shape[1])).view(X.dtype)
@@ -92,7 +92,7 @@ class Test(unittest.TestCase):
                                  n_clusters_per_class=n_clusters_per_class,
                                  hypercube=hypercube, random_state=0)
 
-                X, y = mt.ExecutableTuple(generated).execute()
+                X, y = mt.ExecutableTuple(generated).execute().fetch()
                 self.assertEqual(X.shape, (n_samples, n_informative))
                 self.assertEqual(y.shape, (n_samples,))
 
@@ -150,7 +150,7 @@ class Test(unittest.TestCase):
         cluster_centers = np.array([[0.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
         X, y = make_blobs(random_state=0, n_samples=50, n_features=2,
                           centers=cluster_centers, cluster_std=cluster_stds)
-        X, y = mt.ExecutableTuple((X, y)).execute()
+        X, y = mt.ExecutableTuple((X, y)).execute().fetch()
         self.assertEqual(X.shape, (50, 2), "X shape mismatch")
         self.assertEqual(y.shape, (50,), "y shape mismatch")
         self.assertEqual(np.unique(y).shape, (3,), "Unexpected number of blobs")
@@ -160,7 +160,7 @@ class Test(unittest.TestCase):
     def testMakeBlobsNSamplesList(self):
         n_samples = [50, 30, 20]
         X, y = make_blobs(n_samples=n_samples, n_features=2, random_state=0)
-        X, y = mt.ExecutableTuple((X, y)).execute()
+        X, y = mt.ExecutableTuple((X, y)).execute().fetch()
 
         self.assertEqual(X.shape, (sum(n_samples), 2), "X shape mismatch")
         self.assertTrue(all(np.bincount(y, minlength=len(n_samples)) == n_samples),
@@ -173,7 +173,7 @@ class Test(unittest.TestCase):
         cluster_stds = np.array([0.05, 0.2, 0.4])
         X, y = make_blobs(n_samples=n_samples, centers=centers,
                           cluster_std=cluster_stds, random_state=0)
-        X, y = mt.ExecutableTuple((X, y)).execute()
+        X, y = mt.ExecutableTuple((X, y)).execute().fetch()
 
         self.assertEqual(X.shape, (sum(n_samples), 2), "X shape mismatch")
         self.assertTrue(all(np.bincount(y, minlength=len(n_samples)) == n_samples),
@@ -185,7 +185,7 @@ class Test(unittest.TestCase):
         for n_samples in [[5, 3, 0], np.array([5, 3, 0]), tuple([5, 3, 0])]:
             centers = None
             X, y = make_blobs(n_samples=n_samples, centers=centers, random_state=0)
-            X, y = mt.ExecutableTuple((X, y)).execute()
+            X, y = mt.ExecutableTuple((X, y)).execute().fetch()
 
             self.assertEqual(X.shape, (sum(n_samples), 2), "X shape mismatch")
             self.assertTrue(all(np.bincount(y, minlength=len(n_samples)) == n_samples),
@@ -219,4 +219,4 @@ class Test(unittest.TestCase):
         self.assertEqual(X.shape, (50, 25), "X shape mismatch")
 
         _, s, _ = svd(X)
-        self.assertLess((s.sum() - 5).execute(n_parallel=1), 0.1, "X rank is not approximately 5")
+        self.assertLess((s.sum() - 5).to_numpy(n_parallel=1), 0.1, "X rank is not approximately 5")

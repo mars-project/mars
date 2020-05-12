@@ -272,18 +272,18 @@ class PCA(_BasePCA):
     >>> pca.fit(X)  # doctest: +NORMALIZE_WHITESPACE
     PCA(copy=True, iterated_power='auto', n_components=2, random_state=None,
       svd_solver='auto', tol=0.0, whiten=False)
-    >>> print(pca.explained_variance_ratio_.execute())  # doctest: +ELLIPSIS
+    >>> print(pca.explained_variance_ratio_)  # doctest: +ELLIPSIS
     [0.9924... 0.0075...]
-    >>> print(pca.singular_values_.execute())  # doctest: +ELLIPSIS
+    >>> print(pca.singular_values_)  # doctest: +ELLIPSIS
     [6.30061... 0.54980...]
 
     >>> pca = PCA(n_components=2, svd_solver='full')
     >>> pca.fit(X)                 # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     PCA(copy=True, iterated_power='auto', n_components=2, random_state=None,
       svd_solver='full', tol=0.0, whiten=False)
-    >>> print(pca.explained_variance_ratio_.execute())  # doctest: +ELLIPSIS
+    >>> print(pca.explained_variance_ratio_)  # doctest: +ELLIPSIS
     [0.9924... 0.00755...]
-    >>> print(pca.singular_values_.execute())  # doctest: +ELLIPSIS
+    >>> print(pca.singular_values_)  # doctest: +ELLIPSIS
     [6.30061... 0.54980...]
 
     See also
@@ -362,7 +362,7 @@ class PCA(_BasePCA):
         to_run_tensors.append(self.explained_variance_ratio_)
         to_run_tensors.append(self.singular_values_)
 
-        ExecutableTuple(to_run_tensors).execute(session=session, fetch=False, **(run_kwargs or {}))
+        ExecutableTuple(to_run_tensors).execute(session=session, **(run_kwargs or {}))
 
     def _fit(self, X, session=None, run=True, run_kwargs=None):
         """Dispatch to the right submethod depending on the chosen solver."""
@@ -450,14 +450,14 @@ class PCA(_BasePCA):
         if n_components == 'mle':
             n_components = \
                 _infer_dimension_(explained_variance_, n_samples, n_features)\
-                    .execute(session=session)
+                    .to_numpy(session=session)
         elif 0 < n_components < 1.0:
             # number of components for which the cumulated explained
             # variance percentage is superior to the desired threshold
             # ratio_cumsum = stable_cumsum(explained_variance_ratio_)
             ratio_cumsum = explained_variance_ratio_.cumsum()
             n_components = (mt.searchsorted(ratio_cumsum, n_components) + 1)\
-                .execute(session=session)
+                .to_numpy(session=session)
 
         # Compute noise covariance using Probabilistic PCA model
         # The sigma2 maximum likelihood (cf. eq. 12.46)
@@ -578,7 +578,7 @@ class PCA(_BasePCA):
             Log-likelihood of each sample under the current model
         """
         log_like = self._score_samples(X)
-        log_like.execute(session=session, fetch=False)
+        log_like.execute(session=session)
         return log_like
 
     def score(self, X, y=None, session=None):
@@ -601,5 +601,5 @@ class PCA(_BasePCA):
             Average log-likelihood of the samples under the current model
         """
         ret = mt.mean(self._score_samples(X))
-        ret.execute(session=session, fetch=False)
+        ret.execute(session=session)
         return ret

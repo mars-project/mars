@@ -16,6 +16,7 @@
 
 import numpy as np
 
+from ...core import ExecutableTuple
 from ..datasource import tensor as astensor
 
 
@@ -46,9 +47,6 @@ def atleast_3d(*tensors):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session()
 
     >>> mt.atleast_3d(3.0).execute()
     array([[[ 3.]]])
@@ -61,7 +59,7 @@ def atleast_3d(*tensors):
     >>> mt.atleast_3d(x).shape
     (4, 3, 1)
 
-    >>> for arr in sess.run(mt.atleast_3d([1, 2], [[1, 2]], [[[1, 2]]])):
+    >>> for arr in mt.atleast_3d([1, 2], [[1, 2]], [[[1, 2]]]).execute():
     ...     print(arr, arr.shape)
     ...
     [[[1]
@@ -85,4 +83,4 @@ def atleast_3d(*tensors):
 
     if len(new_tensors) == 1:
         return new_tensors[0]
-    return new_tensors
+    return ExecutableTuple(new_tensors)

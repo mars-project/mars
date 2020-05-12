@@ -17,6 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import ExecutableTuple
 from ...serialize import Int64Field, BoolField, AnyField
 from ...config import options
 from ..utils import decide_chunk_sizes
@@ -156,15 +157,12 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False,
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> mt.linspace(2.0, 3.0, num=5).execute()
     array([ 2.  ,  2.25,  2.5 ,  2.75,  3.  ])
     >>> mt.linspace(2.0, 3.0, num=5, endpoint=False).execute()
     array([ 2. ,  2.2,  2.4,  2.6,  2.8])
-    >>> sess.run(mt.linspace(2.0, 3.0, num=5, retstep=True).execute())
+    >>> mt.linspace(2.0, 3.0, num=5, retstep=True).execute()
     (array([ 2.  ,  2.25,  2.5 ,  2.75,  3.  ]), 0.25)
 
     Graphical illustration:
@@ -197,4 +195,4 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False,
     else:
         step = np.nan
 
-    return ret, step
+    return ExecutableTuple([ret, step])

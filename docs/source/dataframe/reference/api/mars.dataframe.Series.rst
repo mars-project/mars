@@ -18,7 +18,6 @@ mars.dataframe.Series
       ~Series.add
       ~Series.agg
       ~Series.aggregate
-      ~Series.and
       ~Series.append
       ~Series.apply
       ~Series.bfill
@@ -36,6 +35,8 @@ mars.dataframe.Series
       ~Series.dot
       ~Series.dropna
       ~Series.eq
+      ~Series.ewm
+      ~Series.execute
       ~Series.expanding
       ~Series.ffill
       ~Series.fillna
@@ -61,13 +62,11 @@ mars.dataframe.Series
       ~Series.notna
       ~Series.notnull
       ~Series.nunique
-      ~Series.or
       ~Series.pow
       ~Series.prod
       ~Series.product
       ~Series.quantile
       ~Series.radd
-      ~Series.rand
       ~Series.rdiv
       ~Series.rechunk
       ~Series.reset_index
@@ -75,12 +74,10 @@ mars.dataframe.Series
       ~Series.rmod
       ~Series.rmul
       ~Series.rolling
-      ~Series.ror
       ~Series.round
       ~Series.rpow
       ~Series.rsub
       ~Series.rtruediv
-      ~Series.rxor
       ~Series.shift
       ~Series.sort_index
       ~Series.sort_values
@@ -91,13 +88,13 @@ mars.dataframe.Series
       ~Series.tiles
       ~Series.to_cpu
       ~Series.to_gpu
+      ~Series.to_pandas
       ~Series.to_tensor
       ~Series.transform
       ~Series.truediv
       ~Series.tshift
       ~Series.value_counts
       ~Series.var
-      ~Series.xor
    
    
 

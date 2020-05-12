@@ -113,7 +113,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
         """
         probas = self.predict_proba(X, session=session, run_kwargs=run_kwargs)
         result = mt.tensor(self.classes_)[mt.argmax(probas, axis=1)].ravel()
-        result.execute(session=session, fetch=False, **(run_kwargs or dict()))
+        result.execute(session=session, **(run_kwargs or dict()))
         return result
 
     def predict_proba(self, X, session=None, run_kwargs=None):
@@ -147,8 +147,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             probabilities = mt.dot(weight_matrices, self.label_distributions_)
         normalizer = mt.atleast_2d(mt.sum(probabilities, axis=1)).T
         probabilities /= normalizer
-        probabilities.execute(session=session, fetch=False,
-                              **(run_kwargs or dict()))
+        probabilities.execute(session=session, **(run_kwargs or dict()))
         return probabilities
 
     def fit(self, X, y, session=None, run_kwargs=None):
@@ -180,7 +179,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
 
         # label construction
         # construct a categorical distribution for classification only
-        classes = mt.unique(y, aggregate_size=1).execute(
+        classes = mt.unique(y, aggregate_size=1).to_numpy(
             session=session, **(run_kwargs or dict()))
         classes = (classes[classes != -1])
         self.classes_ = classes
@@ -218,7 +217,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
 
             to_run.append(cond)
             ExecutableTuple(to_run).execute(
-                session=session, fetch=False, **(run_kwargs or dict()))
+                session=session, **(run_kwargs or dict()))
             # clear
             to_run = []
 
@@ -256,7 +255,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
                                                           axis=1)]
         self.transduction_ = transduction.ravel()
         ExecutableTuple([self.label_distributions_, self.transduction_]).execute(
-            session=session, fetch=False, **(run_kwargs or dict()))
+            session=session, **(run_kwargs or dict()))
         return self
 
 

@@ -172,4 +172,4 @@ def run_pytorch_script(script, n_workers, gpu=None, command_argv=None,
     port = 29500 if port is None else port
     op = RunPyTorch(code=to_binary(code), world_size=int(n_workers),
                     gpu=gpu, master_port=port, command_args=command_argv)
-    return op().execute(session=session, **(run_kwargs or {}))
+    return op().execute(session=session, **(run_kwargs or {})).fetch(session=session)

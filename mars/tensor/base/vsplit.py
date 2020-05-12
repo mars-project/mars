@@ -34,9 +34,6 @@ def vsplit(a, indices_or_sections):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session()
 
     >>> x = mt.arange(16.0).reshape(4, 4)
     >>> x.execute()
@@ -44,12 +41,12 @@ def vsplit(a, indices_or_sections):
            [  4.,   5.,   6.,   7.],
            [  8.,   9.,  10.,  11.],
            [ 12.,  13.,  14.,  15.]])
-    >>> sess.run(mt.vsplit(x, 2))
+    >>> mt.vsplit(x, 2).execute()
     [array([[ 0.,  1.,  2.,  3.],
            [ 4.,  5.,  6.,  7.]]),
      array([[  8.,   9.,  10.,  11.],
            [ 12.,  13.,  14.,  15.]])]
-    >>> sess.run(mt.vsplit(x, mt.array([3, 6])))
+    >>> mt.vsplit(x, mt.array([3, 6])).execute()
     [array([[  0.,   1.,   2.,   3.],
            [  4.,   5.,   6.,   7.],
            [  8.,   9.,  10.,  11.]]),
@@ -64,7 +61,7 @@ def vsplit(a, indices_or_sections):
             [ 2.,  3.]],
            [[ 4.,  5.],
             [ 6.,  7.]]])
-    >>> sess.run(mt.vsplit(x, 2))
+    >>> mt.vsplit(x, 2).execute()
     [array([[[ 0.,  1.],
             [ 2.,  3.]]]),
      array([[[ 4.,  5.],
