@@ -26,7 +26,7 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, flip, flipud, fliplr, repeat, tile, \
-    isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, to_gpu, to_cpu
+    isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, trapz, to_gpu, to_cpu
 from mars.tests.core import require_cupy, ExecutorForTest
 
 
@@ -1544,3 +1544,39 @@ class Test(unittest.TestCase):
 
         z_res = self.executor.execute_tensor(z)[0]
         np.testing.assert_array_equal(z_res, np.array([10, 2, 3]))
+
+    def testTrapzExecution(self):
+        raws = [
+            np.random.rand(10),
+            np.random.rand(10, 3)
+        ]
+
+        for raw in raws:
+            for chunk_size in (4, 10):
+                for dx in (1.0, 2.0):
+                    t = tensor(raw, chunk_size=chunk_size)
+                    r = trapz(t, dx=dx)
+
+                    result = self.executor.execute_tensor(r, concat=True)[0]
+                    expected = np.trapz(raw, dx=dx)
+                    np.testing.assert_almost_equal(result, expected,
+                                                   err_msg='failed when raw={}, chunk_size={}, '
+                                                           'dx={}'.format(raw, chunk_size, dx))
+
+        # test x not None
+        raw_ys = [np.random.rand(10),
+                  np.random.rand(10, 3)]
+        raw_xs = [np.random.rand(10),
+                  np.random.rand(10, 3)]
+
+        for raw_y, raw_x in zip(raw_ys, raw_xs):
+            ys = [tensor(raw_y, chunk_size=5),
+                  tensor(raw_y, chunk_size=10)]
+            x = tensor(raw_x, chunk_size=4)
+
+            for y in ys:
+                r = trapz(y, x=x)
+
+                result = self.executor.execute_tensor(r, concat=True)[0]
+                expected = np.trapz(raw_y, x=raw_x)
+                np.testing.assert_almost_equal(result, expected)

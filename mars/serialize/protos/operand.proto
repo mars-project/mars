@@ -205,6 +205,7 @@ message OperandDef {
         ANGLE = 195;
         SET_REAL = 196;
         SET_IMAG = 197;
+        TRAPZ = 198;
 
         // special
         GAMMALN = 200;
