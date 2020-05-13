@@ -40,7 +40,7 @@ class Test(TestBase):
 
             mdf = md.read_csv(file_path).groupby('c').agg({'a': 'sum'})
             expected = df.groupby('c').agg({'a': 'sum'})
-            pd.testing.assert_frame_equal(mdf.execute(), expected)
+            pd.testing.assert_frame_equal(mdf.to_pandas(), expected)
             pd.testing.assert_frame_equal(mdf.fetch(), expected)
 
             optimized_df = tileable_optimized[mdf.data]
@@ -48,7 +48,7 @@ class Test(TestBase):
 
             mdf = md.read_csv(file_path).groupby('c').agg({'b': 'sum'})
             expected = df.groupby('c').agg({'b': 'sum'})
-            pd.testing.assert_frame_equal(mdf.execute(), expected)
+            pd.testing.assert_frame_equal(mdf.to_pandas(), expected)
             pd.testing.assert_frame_equal(mdf.fetch(), expected)
 
             optimized_df = tileable_optimized[mdf.data]
@@ -56,12 +56,12 @@ class Test(TestBase):
 
             mdf = md.read_csv(file_path).groupby('c').agg({'b': 'sum'}) + 1
             expected = df.groupby('c').agg({'b': 'sum'}) + 1
-            pd.testing.assert_frame_equal(mdf.execute(), expected)
+            pd.testing.assert_frame_equal(mdf.to_pandas(), expected)
             pd.testing.assert_frame_equal(mdf.fetch(), expected)
 
             mdf = md.read_csv(file_path, usecols=['a', 'b', 'c']).groupby('c').agg({'b': 'sum'})
             expected = df.groupby('c').agg({'b': 'sum'})
-            pd.testing.assert_frame_equal(mdf.execute(), expected)
+            pd.testing.assert_frame_equal(mdf.to_pandas(), expected)
             pd.testing.assert_frame_equal(mdf.fetch(), expected)
             optimized_df = tileable_optimized[mdf.data]
             self.assertEqual(optimized_df.inputs[0].op.usecols, ['b', 'c'])
@@ -71,7 +71,7 @@ class Test(TestBase):
             df2 = in_df.groupby('b').agg({'a': 'sum'})
 
             dfs = ExecutableTuple((df1, df2))
-            results = dfs.execute()
+            results = dfs.execute().fetch()
             expected1 = df.groupby('c').agg({'b': 'sum'})
             expected2 = df.groupby('b').agg({'a': 'sum'})
             pd.testing.assert_frame_equal(results[0], expected1)
@@ -81,7 +81,7 @@ class Test(TestBase):
             df1 = in_df.groupby('c').agg({'b': 'sum'})
 
             dfs = ExecutableTuple((in_df, df1))
-            results = dfs.execute()
+            results = dfs.execute().fetch()
             expected1 = df.groupby('c').agg({'b': 'sum'})
             pd.testing.assert_frame_equal(results[0], df)
             pd.testing.assert_frame_equal(results[1], expected1)
@@ -89,7 +89,7 @@ class Test(TestBase):
             with option_context({'optimize_tileable_graph': False}):
                 mdf = md.read_csv(file_path).groupby('c').agg({'b': 'sum'})
                 expected = df.groupby('c').agg({'b': 'sum'})
-                pd.testing.assert_frame_equal(mdf.execute(), expected)
+                pd.testing.assert_frame_equal(mdf.to_pandas(), expected)
                 pd.testing.assert_frame_equal(mdf.fetch(), expected)
 
                 tileable_graph = mdf.build_graph()

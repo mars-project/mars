@@ -2,8 +2,7 @@ Local Execution
 ===============
 
 When :doc:`eager mode <eager-mode>` is not enabled, which is the default
-behavior, Mars tensor will not be executed unless users call ``execute`` or
-``session.run`` methods.
+behavior, Mars tensor will not be executed unless users call ``execute`` methods.
 
 If no session is created explicitly, the ``execute`` will create a local
 session, and mark it as a default session.
@@ -30,7 +29,7 @@ default session.
     >>> sess.as_default()
 
 
-More than one mars tensors can be passed to ``session.run``, and calculate the
+For more than one mars tensors, `mt.ExecutableTuple` can be used, `.execute()` will calculate the
 results for each tensor.
 
 .. code-block:: python
@@ -38,7 +37,7 @@ results for each tensor.
    >>> a = mt.ones((5, 5), chunk_size=3)
    >>> b = a + 1
    >>> c = a * 4
-   >>> sess.run(b, c)
+   >>> mt.ExecutableTuple([b, c]).execute(session=sess)
    (array([[2., 2., 2., 2., 2.],
         [2., 2., 2., 2., 2.],
         [2., 2., 2., 2., 2.],

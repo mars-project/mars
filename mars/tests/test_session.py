@@ -28,7 +28,7 @@ from mars.session import new_session, Session
 class Test(unittest.TestCase):
     def testSessionExecute(self):
         a = mt.random.rand(10, 20)
-        res = a.sum().execute()
+        res = a.sum().to_numpy()
         self.assertTrue(np.isscalar(res))
         self.assertLess(res, 200)
 
@@ -37,7 +37,7 @@ class Test(unittest.TestCase):
 
         # test multiple outputs
         arr1 = mt.tensor(data.copy(), chunk_size=3)
-        result = mt.modf(arr1).execute()
+        result = mt.modf(arr1).execute().fetch()
         expected = np.modf(data)
 
         np.testing.assert_array_equal(result[0], expected[0])
@@ -45,7 +45,7 @@ class Test(unittest.TestCase):
 
         # test 1 output
         arr2 = mt.tensor(data.copy(), chunk_size=3)
-        result = ((arr2 + 1) * 2).execute()
+        result = ((arr2 + 1) * 2).to_numpy()
         expected = (data + 1) * 2
 
         np.testing.assert_array_equal(result, expected)
@@ -53,7 +53,7 @@ class Test(unittest.TestCase):
         # test multiple outputs, but only execute 1
         arr3 = mt.tensor(data.copy(), chunk_size=3)
         arrs = mt.split(arr3, 3, axis=1)
-        result = arrs[0].execute()
+        result = arrs[0].to_numpy()
         expected = np.split(data, 3, axis=1)[0]
 
         np.testing.assert_array_equal(result, expected)
@@ -62,12 +62,12 @@ class Test(unittest.TestCase):
         data = np.random.randint(0, 10, (5, 5))
         arr3 = (mt.tensor(data) + 1) * 2
         arrs = mt.linalg.qr(arr3)
-        result = (arrs[0] + 1).execute()
+        result = (arrs[0] + 1).to_numpy()
         expected = np.linalg.qr((data + 1) * 2)[0] + 1
 
         np.testing.assert_array_almost_equal(result, expected)
 
-        result = (arrs[0] + 2).execute()
+        result = (arrs[0] + 2).to_numpy()
         expected = np.linalg.qr((data + 1) * 2)[0] + 2
 
         np.testing.assert_array_almost_equal(result, expected)
@@ -77,23 +77,23 @@ class Test(unittest.TestCase):
 
         # test run the same tensor
         arr4 = mt.tensor(data.copy(), chunk_size=3) + 1
-        result1 = arr4.execute()
+        result1 = arr4.to_numpy()
         expected = data + 1
 
         np.testing.assert_array_equal(result1, expected)
 
-        result2 = arr4.execute()
+        result2 = arr4.to_numpy()
 
         np.testing.assert_array_equal(result1, result2)
 
         # test run the same tensor with single chunk
         arr4 = mt.tensor(data.copy())
-        result1 = arr4.execute()
+        result1 = arr4.to_numpy()
         expected = data
 
         np.testing.assert_array_equal(result1, expected)
 
-        result2 = arr4.execute()
+        result2 = arr4.to_numpy()
         np.testing.assert_array_equal(result1, result2)
 
         # modify result
@@ -101,16 +101,16 @@ class Test(unittest.TestCase):
         executor = sess._sess._executor
         executor.chunk_result[get_tiled(arr4).chunks[0].key] = data + 2
 
-        result3 = arr4.execute()
+        result3 = arr4.to_numpy()
         np.testing.assert_array_equal(result3, data + 2)
 
         # test run same key tensor
         arr5 = mt.ones((10, 10), chunk_size=3)
-        result1 = arr5.execute()
+        result1 = arr5.to_numpy()
 
         del arr5
         arr6 = mt.ones((10, 10), chunk_size=3)
-        result2 = arr6.execute()
+        result2 = arr6.to_numpy()
 
         np.testing.assert_array_equal(result1, result2)
 
@@ -120,7 +120,7 @@ class Test(unittest.TestCase):
         arr1 = mt.tensor(data, chunk_size=4) * 2
         arr2 = mt.tensor(data) + 1
 
-        np.testing.assert_array_equal(arr2.execute(), data + 1)
+        np.testing.assert_array_equal(arr2.to_numpy(), data + 1)
 
         # modify result
         sess = Session.default_or_local()
@@ -140,7 +140,7 @@ class Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             sess.fetch(arr1)
 
-        self.assertIsNone(arr1.execute(fetch=False))
+        self.assertIs(arr1.execute(), arr1)
 
         # modify result
         executor = sess._sess._executor
@@ -149,7 +149,7 @@ class Test(unittest.TestCase):
         expected = data * 2
         expected[:2, :2] = data[:2, :2] * 3
 
-        np.testing.assert_array_equal(arr1.execute(), expected)
+        np.testing.assert_array_equal(arr1.to_numpy(), expected)
 
     def testDataFrameExecuteNotFetch(self):
         data1 = pd.DataFrame(np.random.random((5, 4)), columns=list('abcd'))
@@ -160,7 +160,7 @@ class Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             sess.fetch(df1)
 
-        self.assertIsNone(df1.execute(fetch=False))
+        self.assertIs(df1.execute(), df1)
 
         # modify result
         executor = sess._sess._executor
@@ -169,7 +169,7 @@ class Test(unittest.TestCase):
         expected = data1
         expected.iloc[:2, :2] = data1.iloc[:2, :2] * 3
 
-        pd.testing.assert_frame_equal(df1.execute(), expected)
+        pd.testing.assert_frame_equal(df1.to_pandas(), expected)
 
     def testClosedSession(self):
         session = new_session()
@@ -198,7 +198,7 @@ class Test(unittest.TestCase):
 
         arr3 = arr2.reshape((5, 5))
         expected = np.ones((5, 5))
-        np.testing.assert_array_equal(arr3.execute(), expected)
+        np.testing.assert_array_equal(arr3.to_numpy(), expected)
 
     def testArrayProtocol(self):
         arr = mt.ones((10, 20))
@@ -450,3 +450,46 @@ class Test(unittest.TestCase):
         expected = np.histogram(np.sort(raw), bins='stone')
         np.testing.assert_almost_equal(res[0], expected[0])
         np.testing.assert_almost_equal(res[1], expected[1])
+
+    def testRepr(self):
+        # test tensor repr
+        with np.printoptions(threshold=100):
+            arr = np.random.randint(1000, size=(11, 4, 13))
+
+            t = mt.tensor(arr, chunk_size=3)
+
+            result = repr(t.execute())
+            expected = repr(arr)
+            self.assertEqual(result, expected)
+
+        for size in (5, 58, 60, 62, 64):
+            pdf = pd.DataFrame(np.random.randint(1000, size=(size, 10)))
+
+            # test DataFrame repr
+            df = md.DataFrame(pdf, chunk_size=size//2)
+
+            result = repr(df.execute())
+            expected = repr(pdf)
+            self.assertEqual(result, expected,
+                             'failed repr for DataFrame when size = {}'.format(size))
+
+            # test DataFrame _repr_html_
+            result = df.execute()._repr_html_()
+            expected = pdf._repr_html_()
+            self.assertEqual(result, expected,
+                             'failed repr html for DataFrame when size = {}'.format(size))
+
+            # test Series repr
+            ps = pdf[0]
+            s = md.Series(ps, chunk_size=size//2)
+
+            result = repr(s.execute())
+            expected = repr(ps)
+            self.assertEqual(result, expected,
+                             'failed repr for Series when size = {}'.format(size))
+
+        # test Index repr
+        pind = pd.date_range('2020-1-1', periods=10)
+        ind = md.Index(pind, chunk_size=5)
+
+        self.assertIn('DatetimeIndex', repr(ind.execute()))

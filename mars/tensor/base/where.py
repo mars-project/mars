@@ -135,9 +135,6 @@ def where(condition, x=None, y=None):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> mt.where([[True, False], [True, True]],
     ...          [[1, 2], [3, 4]],
@@ -145,11 +142,11 @@ def where(condition, x=None, y=None):
     array([[1, 8],
            [3, 4]])
 
-    >>> sess.run(mt.where([[0, 1], [1, 0]]))
+    >>> mt.where([[0, 1], [1, 0]]).execute()
     (array([0, 1]), array([1, 0]))
 
     >>> x = mt.arange(9.).reshape(3, 3)
-    >>> sess.run(mt.where( x > 5 ))
+    >>> mt.where( x > 5 ).execute()
     (array([2, 2, 2]), array([0, 1, 2]))
     >>> mt.where(x < 5, x, -1).execute()               # Note: broadcasting.
     array([[ 0.,  1.,  2.],
@@ -164,7 +161,7 @@ def where(condition, x=None, y=None):
     array([[False, False, False],
            [ True,  True, False],
            [False,  True, False]])
-    >>> sess.run(mt.where(ix))
+    >>> mt.where(ix).execute()
     (array([1, 1, 2]), array([0, 1, 1]))
     """
     if (x is None) != (y is None):

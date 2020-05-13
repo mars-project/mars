@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...core import ExecutableTuple
 from ..utils import broadcast_shape
 from ..datasource import tensor as astensor
 from .broadcast_to import broadcast_to
@@ -35,12 +36,10 @@ def broadcast_arrays(*args, **kwargs):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
 
-    >>> sess = new_session().as_default()
     >>> x = mt.array([[1,2,3]])
     >>> y = mt.array([[1],[2],[3]])
-    >>> sess.run(mt.broadcast_arrays(x, y))
+    >>> mt.broadcast_arrays(x, y).execute()
     [array([[1, 2, 3],
            [1, 2, 3],
            [1, 2, 3]]), array([[1, 1, 1],
@@ -55,4 +54,4 @@ def broadcast_arrays(*args, **kwargs):
     args = [astensor(arg) for arg in args]
 
     shape = broadcast_shape(*[arg.shape for arg in args])
-    return [broadcast_to(a, shape) for a in args]
+    return ExecutableTuple([broadcast_to(a, shape) for a in args])

@@ -19,7 +19,7 @@ procedure can be seen in the graph below.
 Job Submission
 --------------
 Jobs are submitted into Mars via RESTful APIs. Users type tensor operations and
-run a tensor by calling ``session.run(tensor)``, which builds a tensor graph
+run a tensor by calling ``tensor.execute(session=session)``, which builds a tensor graph
 given the operations created by the user. This graph is sent to the web api and
 a GraphActor is created given consistent hashing in the cluster to handle the
 tensor graph. After that the web client begins querying the state of the graph

@@ -28,7 +28,7 @@ from ..core import Entity, HasShapeTileableEnity, ChunkData, Chunk, HasShapeTile
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape, is_eager_mode
-from .utils import get_chunk_slices
+from .utils import get_chunk_slices, fetch_corner_data
 
 import logging
 logger = logging.getLogger(__name__)
@@ -134,21 +134,33 @@ class TensorData(HasShapeTileableData):
             return TensorDef
         return super().cls(provider)
 
-    def __str__(self):
-        if is_eager_mode():
-            return 'Tensor(op={0}, shape={1}, data=\n{2})'.format(self.op.__class__.__name__,
-                                                                  self.shape, str(self.fetch()))
+    def _to_str(self, representation=False):
+        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+            # in build mode, or not executed, just return representation
+            if representation:
+                return 'Tensor <op={}, shape={}, key={}'.format(self._op.__class__.__name__,
+                                                                self._shape,
+                                                                self._key)
+            else:
+                return 'Tensor(op={}, shape={})'.format(self._op.__class__.__name__,
+                                                        self._shape)
         else:
-            return 'Tensor(op={0}, shape={1})'.format(self.op.__class__.__name__, self.shape)
+            print_options = np.get_printoptions()
+            threshold = print_options['threshold']
+
+            corner_data = fetch_corner_data(self, session=self._executed_sessions[-1])
+            # if less than default threshold, just set it as default,
+            # if not, set to corner_data.size - 1 make sure ... exists in repr
+            threshold = threshold if self.size <= threshold else corner_data.size - 1
+            with np.printoptions(threshold=threshold):
+                corner_str = repr(corner_data) if representation else str(corner_data)
+            return corner_str
+
+    def __str__(self):
+        return self._to_str(representation=False)
 
     def __repr__(self):
-        if is_eager_mode():
-            return 'Tensor <op={0}, shape={1}, key={2}, data=\n{3}>'.format(self.op.__class__.__name__,
-                                                                            self.shape, self.key,
-                                                                            repr(self.fetch()))
-        else:
-            return 'Tensor <op={0}, shape={1}, key={2}>'.format(self.op.__class__.__name__,
-                                                                self.shape, self.key)
+        return self._to_str(representation=True)
 
     @property
     def params(self):
@@ -258,6 +270,9 @@ class TensorData(HasShapeTileableData):
     def flat(self):
         return flatiter(self)
 
+    def to_numpy(self, session=None, **kw):
+        return self.execute(session=session, **kw).fetch(session=session)
+
 
 class Tensor(HasShapeTileableEnity):
     __slots__ = ()
@@ -301,7 +316,7 @@ class Tensor(HasShapeTileableEnity):
         if is_eager_mode():
             return np.asarray(self.fetch(), dtype=dtype)
         else:
-            return np.asarray(self.execute(), dtype=dtype)
+            return np.asarray(self.execute().fetch(), dtype=dtype)
 
     def __array_function__(self, func, types, args, kwargs):
         from .. import tensor as module
@@ -560,8 +575,8 @@ class Tensor(HasShapeTileableEnity):
     def to_dataframe(self, *args, **kwargs):
         return self._data.to_dataframe(*args, **kwargs)
 
-    def execute(self, session=None, **kw):
-        return self._data.execute(session, **kw)
+    def to_numpy(self, session=None, **kw):
+        return self._data.to_numpy(session, **kw)
 
 
 class SparseTensor(Tensor):

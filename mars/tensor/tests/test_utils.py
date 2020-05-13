@@ -17,7 +17,9 @@ import numpy as np
 import unittest
 
 from mars.lib.mmh3 import hash_from_buffer as mmh3_hash_from_buffer
-from mars.tensor.utils import hash_on_axis, normalize_axis_tuple
+from mars.session import new_session
+from mars import tensor as mt
+from mars.tensor.utils import hash_on_axis, normalize_axis_tuple, fetch_corner_data
 
 
 class Test(unittest.TestCase):
@@ -66,3 +68,28 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             normalize_axis_tuple((1, -2), 3)
+
+    def testFetchTensorCornerData(self):
+        sess = new_session()
+        print_options = np.get_printoptions()
+
+        # make sure numpy default option
+        self.assertEqual(print_options['edgeitems'], 3)
+        self.assertEqual(print_options['threshold'], 1000)
+
+        size = 12
+        for i in (2, 4, size - 3, size, size + 3):
+            arr = np.random.rand(i, i, i)
+            t = mt.tensor(arr, chunk_size=size // 2)
+            sess.run(t, fetch=False)
+
+            corner_data = fetch_corner_data(t, session=sess)
+            corner_threshold = 1000 if t.size < 1000 else corner_data.size - 1
+            with np.printoptions(threshold=corner_threshold, suppress=True):
+                # when we repr corner data, we need to limit threshold that
+                # it's exactly less than the size
+                repr_corner_data = repr(corner_data)
+            with np.printoptions(suppress=True):
+                repr_result = repr(arr)
+            self.assertEqual(repr_corner_data, repr_result,
+                             'failed when size == {}'.format(i))

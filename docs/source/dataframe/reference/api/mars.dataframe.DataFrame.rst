@@ -18,7 +18,6 @@ mars.dataframe.DataFrame
       ~DataFrame.add
       ~DataFrame.agg
       ~DataFrame.aggregate
-      ~DataFrame.and
       ~DataFrame.append
       ~DataFrame.apply
       ~DataFrame.bfill
@@ -36,6 +35,8 @@ mars.dataframe.DataFrame
       ~DataFrame.dot
       ~DataFrame.dropna
       ~DataFrame.eq
+      ~DataFrame.ewm
+      ~DataFrame.execute
       ~DataFrame.expanding
       ~DataFrame.ffill
       ~DataFrame.fillna
@@ -62,13 +63,11 @@ mars.dataframe.DataFrame
       ~DataFrame.notna
       ~DataFrame.notnull
       ~DataFrame.nunique
-      ~DataFrame.or
       ~DataFrame.pow
       ~DataFrame.prod
       ~DataFrame.product
       ~DataFrame.quantile
       ~DataFrame.radd
-      ~DataFrame.rand
       ~DataFrame.rdiv
       ~DataFrame.rechunk
       ~DataFrame.reset_index
@@ -76,12 +75,10 @@ mars.dataframe.DataFrame
       ~DataFrame.rmod
       ~DataFrame.rmul
       ~DataFrame.rolling
-      ~DataFrame.ror
       ~DataFrame.round
       ~DataFrame.rpow
       ~DataFrame.rsub
       ~DataFrame.rtruediv
-      ~DataFrame.rxor
       ~DataFrame.set_index
       ~DataFrame.shift
       ~DataFrame.sort_index
@@ -94,13 +91,13 @@ mars.dataframe.DataFrame
       ~DataFrame.to_cpu
       ~DataFrame.to_csv
       ~DataFrame.to_gpu
+      ~DataFrame.to_pandas
       ~DataFrame.to_tensor
       ~DataFrame.to_vineyard
       ~DataFrame.transform
       ~DataFrame.truediv
       ~DataFrame.tshift
       ~DataFrame.var
-      ~DataFrame.xor
    
    
 

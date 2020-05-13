@@ -110,40 +110,40 @@ class Test(unittest.TestCase):
         # Assert the 1st component is equal
         for svd_10, svd_20 in svds_10_v_20:
             assert_array_almost_equal(
-                svd_10.explained_variance_ratio_.execute(),
-                svd_20.explained_variance_ratio_[:10].execute(),
+                svd_10.explained_variance_ratio_.to_numpy(),
+                svd_20.explained_variance_ratio_[:10].to_numpy(),
                 decimal=4,
             )
 
         # Assert that 20 components has higher explained variance than 10
         for svd_10, svd_20 in svds_10_v_20:
             self.assertGreater(
-                svd_20.explained_variance_ratio_.sum().execute(),
-                svd_10.explained_variance_ratio_.sum().execute(),
+                svd_20.explained_variance_ratio_.sum().to_numpy(),
+                svd_10.explained_variance_ratio_.sum().to_numpy(),
             )
 
         # Assert that all the values are greater than 0
         for svd in svds:
-            assert_array_less(0.0, svd.explained_variance_ratio_.execute())
+            assert_array_less(0.0, svd.explained_variance_ratio_.to_numpy())
 
         # Assert that total explained variance is less than 1
         for svd in svds:
-            assert_array_less(svd.explained_variance_ratio_.sum().execute(), 1.0)
+            assert_array_less(svd.explained_variance_ratio_.sum().to_numpy(), 1.0)
 
         # Compare sparse vs. dense
         for svd_sparse, svd_dense in svds_sparse_v_dense:
-            assert_array_almost_equal(svd_sparse.explained_variance_ratio_.execute(),
-                                      svd_dense.explained_variance_ratio_.execute())
+            assert_array_almost_equal(svd_sparse.explained_variance_ratio_.to_numpy(),
+                                      svd_dense.explained_variance_ratio_.to_numpy())
 
         # Test that explained_variance is correct
         for svd, transformed in svds_trans:
-            total_variance = mt.var(self.X.toarray(), axis=0).sum().execute()
+            total_variance = mt.var(self.X.toarray(), axis=0).sum().to_numpy()
             variances = mt.var(transformed, axis=0)
             true_explained_variance_ratio = variances / total_variance
 
             assert_array_almost_equal(
-                svd.explained_variance_ratio_.execute(),
-                true_explained_variance_ratio.execute(),
+                svd.explained_variance_ratio_.to_numpy(),
+                true_explained_variance_ratio.to_numpy(),
             )
 
     def test_singular_values(self):
@@ -166,4 +166,4 @@ class Test(unittest.TestCase):
 
         X_hat_rpca = mt.dot(X_rpca, rpca.components_)
         rpca.fit(X_hat_rpca)
-        assert_array_almost_equal(rpca.singular_values_.execute(), [3.142, 2.718, 1.0], 14)
+        assert_array_almost_equal(rpca.singular_values_.to_numpy(), [3.142, 2.718, 1.0], 14)

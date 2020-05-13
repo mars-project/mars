@@ -58,7 +58,7 @@ class TestHDFS(TestBase):
 
         df = md.read_csv('hdfs://localhost:8020{}/simple_test.csv'.format(TEST_DIR))
         expected = pd.read_csv(BytesIO(b'name,amount,id\nAlice,100,1\nBob,200,2'))
-        res = df.execute()
+        res = df.to_pandas()
         pd.testing.assert_frame_equal(expected, res)
 
         with self.hdfs.open("{}/chunk_test.csv".format(TEST_DIR), "wb", replication=1) as f:
@@ -66,5 +66,5 @@ class TestHDFS(TestBase):
 
         df = md.read_csv('hdfs://localhost:8020{}/chunk_test.csv'.format(TEST_DIR), chunk_bytes=50)
         expected = pd.read_csv(BytesIO(csv_content))
-        res = df.execute()
+        res = df.to_pandas()
         pd.testing.assert_frame_equal(expected.reset_index(drop=True), res.reset_index(drop=True))

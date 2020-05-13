@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ..array_utils import as_same_device, device
+from ..datasource import tensor as astensor
 from .core import TensorOutBinOp
 
 
@@ -112,13 +113,12 @@ def modf(x, out1=None, out2=None, out=None, where=None, **kwargs):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
 
-    >>> sess = new_session().as_default()
-    >>> sess.run(mt.modf([0, 3.5]))
+    >>> mt.modf([0, 3.5]).execute()
     (array([ 0. ,  0.5]), array([ 0.,  3.]))
-    >>> sess.run(mt.modf(-0.5))
+    >>> mt.modf(-0.5).execute()
     (-0.5, -0)
     """
+    x = astensor(x)
     op = TensorModf(**kwargs)
     return op(x, out1=out1, out2=out2, out=out, where=where)

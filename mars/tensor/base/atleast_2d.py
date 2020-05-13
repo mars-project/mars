@@ -16,6 +16,7 @@
 
 import numpy as np
 
+from ...core import ExecutableTuple
 from ..datasource import tensor as astensor
 
 
@@ -44,9 +45,6 @@ def atleast_2d(*tensors):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> mt.atleast_2d(3.0).execute()
     array([[ 3.]])
@@ -55,7 +53,7 @@ def atleast_2d(*tensors):
     >>> mt.atleast_2d(x).execute()
     array([[ 0.,  1.,  2.]])
 
-    >>> sess.run(mt.atleast_2d(1, [1, 2], [[1, 2]]))
+    >>> mt.atleast_2d(1, [1, 2], [[1, 2]]).execute()
     [array([[1]]), array([[1, 2]]), array([[1, 2]])]
 
     """
@@ -71,4 +69,4 @@ def atleast_2d(*tensors):
 
     if len(new_tensors) == 1:
         return new_tensors[0]
-    return new_tensors
+    return ExecutableTuple(new_tensors)

@@ -33,9 +33,6 @@ def dsplit(a, indices_or_sections):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> x = mt.arange(16.0).reshape(2, 2, 4)
     >>> x.execute()
@@ -43,7 +40,7 @@ def dsplit(a, indices_or_sections):
             [  4.,   5.,   6.,   7.]],
            [[  8.,   9.,  10.,  11.],
             [ 12.,  13.,  14.,  15.]]])
-    >>> sess.run(mt.dsplit(x, 2))
+    >>> mt.dsplit(x, 2).execute()
     [array([[[  0.,   1.],
             [  4.,   5.]],
            [[  8.,   9.],
@@ -52,7 +49,7 @@ def dsplit(a, indices_or_sections):
             [  6.,   7.]],
            [[ 10.,  11.],
             [ 14.,  15.]]])]
-    >>> sess.run(mt.dsplit(x, mt.array([3, 6])))
+    >>> mt.dsplit(x, mt.array([3, 6])).execute()
     [array([[[  0.,   1.,   2.],
             [  4.,   5.,   6.]],
            [[  8.,   9.,  10.],

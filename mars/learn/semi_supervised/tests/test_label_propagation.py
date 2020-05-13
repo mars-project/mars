@@ -88,7 +88,7 @@ class Test(unittest.TestCase):
         clf = LabelPropagation(max_iter=10000, gamma=0.1)
         clf.fit(X, y)
         # adopting notation from Zhu et al 2002
-        T_bar = clf._build_graph().execute()
+        T_bar = clf._build_graph().to_numpy()
         Tuu = T_bar[tuple(np.meshgrid(unlabelled_idx, unlabelled_idx,
                                       indexing='ij'))]
         Tul = T_bar[tuple(np.meshgrid(unlabelled_idx, labelled_idx,

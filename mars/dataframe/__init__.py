@@ -45,6 +45,9 @@ del reduction, statistics, arithmetic, indexing, merge_, \
 del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences
+from ..core import ExecutableTuple
+
+# noinspection PyUnresolvedReferences
 from pandas import Timedelta, Timestamp, offsets, NaT, Interval
 try:
     from pandas import NA

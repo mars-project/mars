@@ -179,13 +179,13 @@ class Test(unittest.TestCase):
         a = mt.ones((10, 10), chunk_size=3)
         self.assertIn(a.key, repr(a))
 
-        with option_context({'eager_mode': True}):
-            a = mt.ones((10, 10))
-            self.assertIn(repr(np.ones((10, 10))), repr(a))
-            self.assertIn(str(np.ones((10, 10))), str(a))
-
         self.assertNotIn(repr(np.ones((10, 10))), repr(a))
         self.assertNotIn(str(np.ones((10, 10))), str(a))
+
+        with option_context({'eager_mode': True}):
+            a = mt.ones((10, 10))
+            self.assertEqual(repr(np.ones((10, 10))), repr(a))
+            self.assertEqual(str(np.ones((10, 10))), str(a))
 
     def testReprDataFrame(self):
         x = pd.DataFrame(np.ones((10, 10)))

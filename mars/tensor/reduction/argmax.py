@@ -81,9 +81,6 @@ def argmax(a, axis=None, out=None, combine_size=None):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> a = mt.arange(6).reshape(2,3)
     >>> a.execute()
@@ -99,7 +96,7 @@ def argmax(a, axis=None, out=None, combine_size=None):
     Indexes of the maximal elements of a N-dimensional tensor:
 
     >>> ind = mt.unravel_index(mt.argmax(a, axis=None), a.shape)
-    >>> sess.run(ind)
+    >>> ind.execute()
     (1, 2)
     >>> a[ind].execute()  # TODO(jisheng): accomplish when fancy index on tensor is supported
 

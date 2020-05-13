@@ -104,16 +104,13 @@ def nonzero(a):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> x = mt.array([[1,0,0], [0,2,0], [1,1,0]])
     >>> x.execute()
     array([[1, 0, 0],
            [0, 2, 0],
            [1, 1, 0]])
-    >>> sess.run(mt.nonzero(x))
+    >>> mt.nonzero(x).execute()
     (array([0, 1, 2, 2]), array([0, 1, 0, 1]))
 
     >>> x[mt.nonzero(x)].execute()  # TODO(jisheng): accomplish this after fancy indexing is supported
@@ -130,12 +127,12 @@ def nonzero(a):
     array([[False, False, False],
            [ True,  True,  True],
            [ True,  True,  True]])
-    >>> sess.run(mt.nonzero(a > 3))
+    >>> mt.nonzero(a > 3).execute()
     (array([1, 1, 1, 2, 2, 2]), array([0, 1, 2, 0, 1, 2]))
 
     The ``nonzero`` method of the boolean array can also be called.
 
-    >>> sess.run((a > 3).nonzero())
+    >>> (a > 3).nonzero().execute()
     (array([1, 1, 1, 2, 2, 2]), array([0, 1, 2, 0, 1, 2]))
 
     """
