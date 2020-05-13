@@ -324,7 +324,7 @@ def to_dmatrix(data, label=None, missing=None, weight=None,
                    output_types=get_output_types(data, label, weight))
     outs = ExecutableTuple(op())
     # Execute first, to make sure the counterpart chunks of data, label and weight are co-allocated
-    outs.execute(session=session, fetch=False, **(run_kwargs or dict()))
+    outs.execute(session=session, **(run_kwargs or dict()))
 
     data = outs[0]
     label = None if op.label is None else outs[1]

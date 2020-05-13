@@ -68,8 +68,8 @@ Mars learn provides a familiar interface like scikit-learn.
 |        random_state=9)                      |        random_state=9)                             |
 |    pca = PCA(n_components=3)                |    pca = PCA(n_components=3)                       |
 |    pca.fit(X)                               |    pca.fit(X)                                      |
-|    print(pca.explained_variance_ratio_)     |    print(pca.explained_variance_ratio_.execute())  |
-|    print(pca.explained_variance_)           |    print(pca.explained_variance_.execute())        |
+|    print(pca.explained_variance_ratio_)     |    print(pca.explained_variance_ratio_)            |
+|    print(pca.explained_variance_)           |    print(pca.explained_variance_)                  |
 |                                             |                                                    |
 +---------------------------------------------+----------------------------------------------------+
 

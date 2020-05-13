@@ -24,7 +24,8 @@ from mars.dataframe.initializer import DataFrame
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
     split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
-    infer_dtypes, infer_index_value, validate_axis
+    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data
+from mars.session import new_session
 
 
 class Test(unittest.TestCase):
@@ -385,3 +386,29 @@ class Test(unittest.TestCase):
         dir_result = set(dir(df))
         for c in df.dtypes.index:
             self.assertIn(c, dir_result)
+
+    def testFetchDataFrameCornerData(self):
+        max_rows = pd.get_option('display.max_rows')
+        try:
+            min_rows = pd.get_option('display.min_rows')
+        except KeyError:  # pragma: no cover
+            min_rows = max_rows
+        sess = new_session()
+
+        for row in (5,
+                    max_rows - 2,
+                    max_rows - 1,
+                    max_rows,
+                    max_rows + 1,
+                    max_rows + 2,
+                    max_rows + 3):
+            pdf = pd.DataFrame(np.random.rand(row, 5))
+            df = DataFrame(pdf, chunk_size=max_rows // 2)
+            sess.run(df, fetch=False)
+
+            corner = fetch_corner_data(df, session=sess)
+            self.assertLessEqual(corner.shape[0], max_rows + 2)
+            corner_max_rows = max_rows if row <= max_rows else corner.shape[0] - 1
+            self.assertEqual(corner.to_string(max_rows=corner_max_rows, min_rows=min_rows),
+                             pdf.to_string(max_rows=max_rows, min_rows=min_rows),
+                             'failed when row == {}'.format(row))

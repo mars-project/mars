@@ -116,19 +116,17 @@ def frexp(x, out1=None, out2=None, out=None, where=None, **kwargs):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
 
     >>> x = mt.arange(9)
     >>> y1, y2 = mt.frexp(x)
 
-    >>> sess = new_session().as_default()
-    >>> y1_result, y2_result = sess.run(y1, y2)
+    >>> y1_result, y2_result = mt.ExecutableTuple([y1, y2]).execute()
     >>> y1_result
     array([ 0.   ,  0.5  ,  0.5  ,  0.75 ,  0.5  ,  0.625,  0.75 ,  0.875,
             0.5  ])
     >>> y2_result
     array([0, 1, 2, 2, 3, 3, 3, 3, 4])
-    >>> (y1 * 2**y2).execute(session=sess)
+    >>> (y1 * 2**y2).execute()
     array([ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.])
     """
     op = TensorFrexp(**kwargs)

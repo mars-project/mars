@@ -53,7 +53,7 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
         exp_var_diff = mt.maximum(exp_var - self.noise_variance_, 0.)
         cov = mt.dot(components_.T * exp_var_diff, components_)
         cov.flat[::len(cov) + 1] += self.noise_variance_  # modify diag inplace
-        cov.execute(session=session, fetch=False)
+        cov.execute(session=session)
         return cov
 
     def get_precision(self, session=None):
@@ -72,11 +72,11 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
         # handle corner cases first
         if self.n_components_ == 0:
             precision = mt.eye(n_features) / self.noise_variance_
-            precision.execute(session=session, fetch=False)
+            precision.execute(session=session)
             return precision
         if self.n_components_ == n_features:
             precision = linalg.inv(self.get_covariance())
-            precision.execute(session=session, fetch=False)
+            precision.execute(session=session)
             return precision
 
         # Get precision using matrix inversion lemma
@@ -91,7 +91,7 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
                            mt.dot(linalg.inv(precision), components_))
         precision /= -(self.noise_variance_ ** 2)
         precision.flat[::len(precision) + 1] += 1. / self.noise_variance_
-        precision.execute(session=session, fetch=False)
+        precision.execute(session=session)
         return precision
 
     @abstractmethod
@@ -148,7 +148,7 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
         X_transformed = mt.dot(X, self.components_.T)
         if self.whiten:
             X_transformed /= mt.sqrt(self.explained_variance_)
-        X_transformed.execute(session=session, fetch=False)
+        X_transformed.execute(session=session)
         return X_transformed
 
     def inverse_transform(self, X, session=None):
@@ -177,5 +177,5 @@ class _BasePCA(BaseEstimator, TransformerMixin, metaclass=ABCMeta):
                           self.components_) + self.mean_)
         else:
             ret = (mt.dot(X, self.components_) + self.mean_)
-        ret.execute(session=session, fetch=False)
+        ret.execute(session=session)
         return ret

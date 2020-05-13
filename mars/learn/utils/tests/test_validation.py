@@ -116,10 +116,10 @@ class Test(unittest.TestCase):
         assert isinstance(X_dense, Tensor)
         # raise on too deep lists
         with self.assertRaises(ValueError):
-            check_array(X_ndim.execute().tolist())
-        check_array(X_ndim.execute().tolist(), allow_nd=True)  # doesn't raise
+            check_array(X_ndim.to_numpy().tolist())
+        check_array(X_ndim.to_numpy().tolist(), allow_nd=True)  # doesn't raise
         # convert weird stuff to arrays
-        X_no_array = NotAnArray(X_dense.execute())
+        X_no_array = NotAnArray(X_dense.to_numpy())
         result = check_array(X_no_array)
         assert isinstance(result, Tensor)
 

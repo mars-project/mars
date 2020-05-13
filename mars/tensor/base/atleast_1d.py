@@ -16,6 +16,7 @@
 
 import numpy as np
 
+from ...core import ExecutableTuple
 from ..datasource import tensor as astensor
 
 
@@ -44,9 +45,6 @@ def atleast_1d(*tensors):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> mt.atleast_1d(1.0).execute()
     array([ 1.])
@@ -59,7 +57,7 @@ def atleast_1d(*tensors):
     >>> mt.atleast_1d(x) is x
     True
 
-    >>> sess.run(mt.atleast_1d(1, [3, 4]))
+    >>> mt.atleast_1d(1, [3, 4]).execute()
     [array([1]), array([3, 4])]
 
     """
@@ -73,4 +71,4 @@ def atleast_1d(*tensors):
 
     if len(new_tensors) == 1:
         return new_tensors[0]
-    return new_tensors
+    return ExecutableTuple(new_tensors)

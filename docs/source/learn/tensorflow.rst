@@ -57,7 +57,7 @@ Now we create a Python file called `tf_demo.py` which contains the logic of Tens
         y = df.iloc[:, -1].to_tensor()
 
         # convert Mars tensor to numpy ndarray
-        X, y = X.execute(), y.execute()
+        X, y = X.to_numpy(), y.to_numpy()
 
         # encode string to integer
         y = LabelEncoder().fit_transform(y)

@@ -33,7 +33,8 @@ class PlotAccessor:
                 to_executes[k] = v
 
         result = dict()
-        executed = ExecutableTuple(to_executes.values()).execute()
+        executed = ExecutableTuple(
+            to_executes.values()).execute().fetch()
         for p, v in zip(to_executes, executed):
             result[p] = v
 

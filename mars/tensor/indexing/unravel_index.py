@@ -122,14 +122,11 @@ def unravel_index(indices, dims, order='C'):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
 
-    >>> sess = new_session().as_default()
-
-    >>> sess.run(mt.unravel_index([22, 41, 37], (7,6)))
+    >>> mt.unravel_index([22, 41, 37], (7,6)).execute()
     (array([3, 6, 6]), array([4, 5, 1]))
 
-    >>> sess.run(mt.unravel_index(1621, (6,7,8,9)))
+    >>> mt.unravel_index(1621, (6,7,8,9)).execute()
     (3, 1, 4, 1)
     """
     indices = astensor(indices)

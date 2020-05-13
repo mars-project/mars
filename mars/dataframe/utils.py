@@ -25,7 +25,6 @@ from ..core import Entity
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..utils import tokenize, sbytes
-from .core import IndexValue
 
 
 def hash_index(index, size):
@@ -182,6 +181,8 @@ def decide_series_chunk_size(shape, chunk_size, memory_usage):
 
 
 def parse_index(index_value, *args, store_data=False, key=None):
+    from .core import IndexValue
+
     def _extract_property(index, tp, ret_data):
         kw = {
             '_min_val': _get_index_min(index),
@@ -533,6 +534,8 @@ def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val
 
 
 def infer_index_value(left_index_value, right_index_value):
+    from .core import IndexValue
+
     if isinstance(left_index_value.value, IndexValue.RangeIndex) and \
             isinstance(right_index_value.value, IndexValue.RangeIndex):
         if left_index_value.value.slice == right_index_value.value.slice:
@@ -552,6 +555,8 @@ def infer_index_value(left_index_value, right_index_value):
 
 
 def filter_index_value(index_value, min_max, store_data=False):
+    from .core import IndexValue
+
     min_val, min_val_close, max_val, max_val_close = min_max
 
     pd_index = index_value.to_pandas()
@@ -714,3 +719,48 @@ def standardize_range_index(chunks, axis=0):
         out_chunks.append(op.new_chunk(inputs, **c.params.copy()))
 
     return out_chunks
+
+
+def fetch_corner_data(df_or_series, session=None) -> pd.DataFrame:
+    """
+    Fetch corner DataFrame or Series for repr usage.
+
+    :param df_or_series: DataFrame or Series
+    :return: corner DataFrame
+    """
+    from .indexing.iloc import iloc
+
+    max_rows = pd.get_option('display.max_rows')
+    try:
+        min_rows = pd.get_option('display.min_rows')
+        min_rows = min(min_rows, max_rows)
+    except KeyError:  # pragma: no cover
+        # display.min_rows is introduced in pandas 0.25
+        min_rows = max_rows
+
+    index_size = None
+    if df_or_series.shape[0] > max_rows and \
+            df_or_series.shape[0] > min_rows // 2 * 2 + 2:
+        # for pandas, greater than max_rows
+        # will display min_rows
+        # thus we fetch min_rows + 2 lines
+        index_size = min_rows // 2 + 1
+
+    if index_size is None:
+        return df_or_series.fetch(session=session)
+    else:
+        head_data = iloc(df_or_series)[:index_size].fetch(session=session)
+        tail_data = iloc(df_or_series)[-index_size:].fetch(session=session)
+        return pd.concat([head_data, tail_data], axis='index')
+
+
+class ReprSeries(pd.Series):
+    def __init__(self, corner_data, real_shape):
+        super().__init__(corner_data)
+        self._real_shape = real_shape
+
+    def __len__(self):
+        # As we only fetch corner data to repr,
+        # the length would be wrong and we have no way to control,
+        # thus we just overwrite the length to show the real one
+        return self._real_shape[0]

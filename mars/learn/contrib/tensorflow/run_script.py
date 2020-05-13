@@ -196,4 +196,4 @@ def run_tensorflow_script(script, n_workers, n_ps=0, gpu=None, command_argv=None
 
     op = RunTensorFlow(code=to_binary(code), n_workers=int(n_workers), n_ps=int(n_ps),
                        gpu=gpu, port=port, command_args=command_argv)
-    return op().execute(session=session, **(run_kwargs or {}))
+    return op().execute(session=session, **(run_kwargs or {})).fetch(session=session)

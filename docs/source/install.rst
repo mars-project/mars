@@ -25,7 +25,7 @@ After installation, you can simply open a Python console and run
 
     # or create a session explicitly
     sess = new_session()
-    sess.run(b)  # run b
+    b.execute(session=sess)  # run b
 
 
 Local cluster
@@ -56,12 +56,12 @@ Then start a local cluster by run
     a.dot(a.T).execute()
 
     # cluster.session is the session created
-    cluster.session.run(a + 1)
+    (a + 1).execute(session=cluster.session)
 
     # users can also create a session explicitly
     # cluster.endpoint needs to be passed to new_session
     session2 = new_session(cluster.endpoint)
-    session2.run(a * 2)
+    (a * 2).execute(session=session2)
 
 
 .. _deploy:
@@ -108,7 +108,7 @@ After all Mars processes are started, you can open a Python console and run
     sess = new_session('http://<web_ip>:<web_port>')
     a = mt.ones((2000, 2000), chunk_size=200)
     b = mt.inner(a, a)
-    sess.run(b)
+    b.execute(session=sess)
 
 You can open a web browser and type ``http://<web_ip>:<web_port>`` to open Mars
 UI to look up resource usage of workers and execution progress of the task
