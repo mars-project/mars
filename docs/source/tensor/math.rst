@@ -70,6 +70,7 @@ Sums, products, differences
    mars.tensor.nancumsum
    mars.tensor.diff
    mars.tensor.ediff1d
+   mars.tensor.trapz
 
 
 Exponential and logarithms
