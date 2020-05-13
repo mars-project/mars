@@ -54,6 +54,7 @@ from .argpartition import argpartition
 from .topk import topk
 from .argtopk import argtopk
 from .copy import copy
+from .trapz import trapz
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 
