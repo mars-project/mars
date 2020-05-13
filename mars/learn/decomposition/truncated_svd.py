@@ -98,11 +98,11 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
     >>> svd.fit(X)  # doctest: +NORMALIZE_WHITESPACE
     TruncatedSVD(algorithm='randomized', n_components=5, n_iter=7,
             random_state=42, tol=0.0)
-    >>> print(svd.explained_variance_ratio_.execute())  # doctest: +ELLIPSIS
+    >>> print(svd.explained_variance_ratio_)  # doctest: +ELLIPSIS
     [0.0606... 0.0584... 0.0497... 0.0434... 0.0372...]
-    >>> print(svd.explained_variance_ratio_.sum().execute())  # doctest: +ELLIPSIS
+    >>> print(svd.explained_variance_ratio_.sum())  # doctest: +ELLIPSIS
     0.249...
-    >>> print(svd.singular_values_.execute())  # doctest: +ELLIPSIS
+    >>> print(svd.singular_values_)  # doctest: +ELLIPSIS
     [2.5841... 2.5245... 2.3201... 2.1753... 2.0443...]
 
     See also
@@ -202,7 +202,7 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
         to_run_tensors = [X_transformed, self.components_, self.explained_variance_,
                           self.explained_variance_ratio_, self.singular_values_]
 
-        ExecutableTuple(to_run_tensors).execute(session=session, fetch=False)
+        ExecutableTuple(to_run_tensors).execute(session=session)
         return X_transformed
 
     def transform(self, X, session=None):
@@ -221,7 +221,7 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
         """
         X = check_array(X, accept_sparse='csr')
         ret = mt.dot(X, self.components_.T)
-        ret.execute(session=session, fetch=False)
+        ret.execute(session=session)
         return ret
 
     def inverse_transform(self, X, session=None):
@@ -242,5 +242,5 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
         """
         X = check_array(X)
         ret = mt.dot(X, self.components_)
-        ret.execute(session=session, fetch=False)
+        ret.execute(session=session)
         return ret

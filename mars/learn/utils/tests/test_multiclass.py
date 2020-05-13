@@ -43,12 +43,12 @@ class Test(unittest.TestCase):
         ]
 
         for raw in raws:
-            self.assertEqual(is_multilabel(raw).execute(),
+            self.assertEqual(is_multilabel(raw).to_numpy(),
                              sklearn_is_multilabel(raw),
                              'raw: {}'.format(raw))
 
         t = mt.tensor(raws[3], chunk_size=1)
-        self.assertEqual(is_multilabel(t).execute(),
+        self.assertEqual(is_multilabel(t).to_numpy(),
                          sklearn_is_multilabel(raws[3]))
 
     def testTypeOfTarget(self):
@@ -70,11 +70,11 @@ class Test(unittest.TestCase):
         ]
 
         for raw in raws:
-            self.assertEqual(type_of_target(raw).execute(),
+            self.assertEqual(type_of_target(raw).to_numpy(),
                              sklearn_type_of_target(raw))
 
         t = mt.tensor(raws[0], chunk_size=1)
-        self.assertEqual(type_of_target(t).execute(),
+        self.assertEqual(type_of_target(t).to_numpy(),
                          sklearn_type_of_target(raws[0]))
 
         with self.assertRaises(ValueError):

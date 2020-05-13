@@ -59,13 +59,13 @@ class Test(unittest.TestCase):
             # Test get_covariance and get_precision
             cov = pca.get_covariance()
             precision = pca.get_precision()
-            assert_array_almost_equal(mt.dot(cov, precision).execute(),
+            assert_array_almost_equal(mt.dot(cov, precision).to_numpy(),
                                       np.eye(X.shape[1]), 12)
 
         # test explained_variance_ratio_ == 1 with all components
         pca = PCA(svd_solver='full')
         pca.fit(X)
-        np.testing.assert_allclose(pca.explained_variance_ratio_.sum().execute(), 1.0, 3)
+        np.testing.assert_allclose(pca.explained_variance_ratio_.sum().to_numpy(), 1.0, 3)
 
     def testPCARandomizedSolver(self):
         # PCA on dense arrays
@@ -87,8 +87,8 @@ class Test(unittest.TestCase):
             # Test get_covariance and get_precision
             cov = pca.get_covariance()
             precision = pca.get_precision()
-            assert_array_almost_equal(mt.dot(cov, precision).execute(),
-                                      mt.eye(X.shape[1]).execute(), 12)
+            assert_array_almost_equal(mt.dot(cov, precision).to_numpy(),
+                                      mt.eye(X.shape[1]).to_numpy(), 12)
 
         pca = PCA(n_components=0, svd_solver='randomized', random_state=0)
         with self.assertRaises(ValueError):
@@ -124,7 +124,7 @@ class Test(unittest.TestCase):
         self.assertEqual(X.shape, (n_samples, n_features))
 
         # the component-wise variance is thus highly varying:
-        self.assertGreater(X.std(axis=0).std().execute(), 43.8)
+        self.assertGreater(X.std(axis=0).std().to_numpy(), 43.8)
 
         for solver, copy in product(self.solver_list, (True, False)):
             # whiten the data while projecting to the lower dim subspace
@@ -137,10 +137,10 @@ class Test(unittest.TestCase):
             X_whitened2 = pca.transform(X_)
             assert_array_almost_equal(X_whitened.fetch(), X_whitened2.fetch())
 
-            assert_almost_equal(X_whitened.std(ddof=1, axis=0).execute(),
+            assert_almost_equal(X_whitened.std(ddof=1, axis=0).to_numpy(),
                                 np.ones(n_components),
                                 decimal=6)
-            assert_almost_equal(X_whitened.mean(axis=0).execute(), np.zeros(n_components))
+            assert_almost_equal(X_whitened.mean(axis=0).to_numpy(), np.zeros(n_components))
 
             X_ = X.copy()
             pca = PCA(n_components=n_components, whiten=False, copy=copy,
@@ -149,7 +149,7 @@ class Test(unittest.TestCase):
             self.assertEqual(X_unwhitened.shape, (n_samples, n_components))
 
             # in that case the output components still have varying variances
-            assert_almost_equal(X_unwhitened.std(axis=0).std().execute(), 74.1, 1)
+            assert_almost_equal(X_unwhitened.std(axis=0).std().to_numpy(), 74.1, 1)
             # we always center, so no test for non-centering.
 
     def testExplainedVariance(self):
@@ -162,25 +162,25 @@ class Test(unittest.TestCase):
 
         pca = PCA(n_components=2, svd_solver='full').fit(X)
         rpca = PCA(n_components=2, svd_solver='randomized', random_state=42).fit(X)
-        assert_array_almost_equal(pca.explained_variance_.execute(),
-                                  rpca.explained_variance_.execute(), 1)
-        assert_array_almost_equal(pca.explained_variance_ratio_.execute(),
-                                  rpca.explained_variance_ratio_.execute(), 1)
+        assert_array_almost_equal(pca.explained_variance_.to_numpy(),
+                                  rpca.explained_variance_.to_numpy(), 1)
+        assert_array_almost_equal(pca.explained_variance_ratio_.to_numpy(),
+                                  rpca.explained_variance_ratio_.to_numpy(), 1)
 
         # compare to empirical variances
-        expected_result = np.linalg.eig(np.cov(X.execute(), rowvar=False))[0]
+        expected_result = np.linalg.eig(np.cov(X.to_numpy(), rowvar=False))[0]
         expected_result = sorted(expected_result, reverse=True)[:2]
 
         X_pca = pca.transform(X)
-        assert_array_almost_equal(pca.explained_variance_.execute(),
-                                  mt.var(X_pca, ddof=1, axis=0).execute())
-        assert_array_almost_equal(pca.explained_variance_.execute(), expected_result)
+        assert_array_almost_equal(pca.explained_variance_.to_numpy(),
+                                  mt.var(X_pca, ddof=1, axis=0).to_numpy())
+        assert_array_almost_equal(pca.explained_variance_.to_numpy(), expected_result)
 
         X_rpca = rpca.transform(X)
-        assert_array_almost_equal(rpca.explained_variance_.execute(),
-                                  mt.var(X_rpca, ddof=1, axis=0).execute(),
+        assert_array_almost_equal(rpca.explained_variance_.to_numpy(),
+                                  mt.var(X_rpca, ddof=1, axis=0).to_numpy(),
                                   decimal=1)
-        assert_array_almost_equal(rpca.explained_variance_.execute(),
+        assert_array_almost_equal(rpca.explained_variance_.to_numpy(),
                                   expected_result, decimal=1)
 
         # Same with correlated data
@@ -192,8 +192,8 @@ class Test(unittest.TestCase):
         pca = PCA(n_components=2).fit(X)
         rpca = PCA(n_components=2, svd_solver='randomized',
                    random_state=rng).fit(X)
-        assert_array_almost_equal(pca.explained_variance_ratio_.execute(),
-                                  rpca.explained_variance_ratio_.execute(), 5)
+        assert_array_almost_equal(pca.explained_variance_ratio_.to_numpy(),
+                                  rpca.explained_variance_ratio_.to_numpy(), 5)
 
     def test_singular_values(self):
         # Check that the PCA output has the correct singular values
@@ -213,16 +213,16 @@ class Test(unittest.TestCase):
         # Compare to the Frobenius norm
         X_pca = pca.transform(X)
         X_rpca = rpca.transform(X)
-        assert_array_almost_equal(mt.sum(pca.singular_values_**2.0).execute(),
-                                  (mt.linalg.norm(X_pca, "fro")**2.0).execute(), 12)
-        assert_array_almost_equal(mt.sum(rpca.singular_values_**2.0).execute(),
-                                  (mt.linalg.norm(X_rpca, "fro")**2.0).execute(), 0)
+        assert_array_almost_equal(mt.sum(pca.singular_values_**2.0).to_numpy(),
+                                  (mt.linalg.norm(X_pca, "fro")**2.0).to_numpy(), 12)
+        assert_array_almost_equal(mt.sum(rpca.singular_values_**2.0).to_numpy(),
+                                  (mt.linalg.norm(X_rpca, "fro")**2.0).to_numpy(), 0)
 
         # Compare to the 2-norms of the score vectors
         assert_array_almost_equal(pca.singular_values_.fetch(),
-                                  mt.sqrt(mt.sum(X_pca**2.0, axis=0)).execute(), 12)
+                                  mt.sqrt(mt.sum(X_pca**2.0, axis=0)).to_numpy(), 12)
         assert_array_almost_equal(rpca.singular_values_.fetch(),
-                                  mt.sqrt(mt.sum(X_rpca**2.0, axis=0)).execute(), 2)
+                                  mt.sqrt(mt.sum(X_rpca**2.0, axis=0)).to_numpy(), 2)
 
         # Set the singular values and see what we get back
         rng = np.random.RandomState(0)
@@ -257,7 +257,7 @@ class Test(unittest.TestCase):
             Yt = PCA(n_components=2, svd_solver=solver).fit(X).transform(Xt)
             Yt /= mt.sqrt((Yt ** 2).sum())
 
-            assert_almost_equal(mt.abs(Yt[0][0]).execute(), 1., 1)
+            assert_almost_equal(mt.abs(Yt[0][0]).to_numpy(), 1., 1)
 
     def test_pca_inverse(self):
         # Test that the projection of data can be inverted
@@ -272,7 +272,7 @@ class Test(unittest.TestCase):
         pca = PCA(n_components=2, svd_solver='full').fit(X)
         Y = pca.transform(X)
         Y_inverse = pca.inverse_transform(Y)
-        assert_almost_equal(X.execute(), Y_inverse.execute(), decimal=3)
+        assert_almost_equal(X.to_numpy(), Y_inverse.to_numpy(), decimal=3)
 
         # same as above with whitening (approximate reconstruction)
         for solver in self.solver_list:
@@ -280,7 +280,7 @@ class Test(unittest.TestCase):
             pca.fit(X)
             Y = pca.transform(X)
             Y_inverse = pca.inverse_transform(Y)
-            assert_almost_equal(X.execute(), Y_inverse.execute(), decimal=3)
+            assert_almost_equal(X.to_numpy(), Y_inverse.to_numpy(), decimal=3)
 
     def test_pca_validation(self):
         for solver in self.solver_list:
@@ -340,7 +340,7 @@ class Test(unittest.TestCase):
                  random_state=0).fit(X).transform(Xt)
         Yt /= np.sqrt((Yt ** 2).sum())
 
-        assert_almost_equal(mt.abs(Yt[0][0]).execute(), 1., 1)
+        assert_almost_equal(mt.abs(Yt[0][0]).to_numpy(), 1., 1)
 
     def test_randomized_pca_check_list(self):
         # Test that the projection by randomized PCA on list data is correct
@@ -348,8 +348,8 @@ class Test(unittest.TestCase):
         X_transformed = PCA(n_components=1, svd_solver='randomized',
                             random_state=0).fit(X).transform(X)
         self.assertEqual(X_transformed.shape, (2, 1))
-        assert_almost_equal(X_transformed.mean().execute(), 0.00, 2)
-        assert_almost_equal(X_transformed.std().execute(), 0.71, 2)
+        assert_almost_equal(X_transformed.mean().to_numpy(), 0.00, 2)
+        assert_almost_equal(X_transformed.std().to_numpy(), 0.71, 2)
 
     def test_randomized_pca_inverse(self):
         # Test that randomized PCA is inversible on dense data
@@ -364,7 +364,7 @@ class Test(unittest.TestCase):
         pca = PCA(n_components=2, svd_solver='randomized', random_state=0).fit(X)
         Y = pca.transform(X)
         Y_inverse = pca.inverse_transform(Y)
-        assert_almost_equal(X.execute(), Y_inverse.execute(), decimal=2)
+        assert_almost_equal(X.to_numpy(), Y_inverse.to_numpy(), decimal=2)
 
         # same as above with whitening (approximate reconstruction)
         pca = PCA(n_components=2, whiten=True, svd_solver='randomized',
@@ -372,7 +372,7 @@ class Test(unittest.TestCase):
         Y = pca.transform(X)
         Y_inverse = pca.inverse_transform(Y)
         relative_max_delta = (mt.abs(X - Y_inverse) / mt.abs(X).mean()).max()
-        self.assertLess(relative_max_delta.execute(), 1e-5)
+        self.assertLess(relative_max_delta.to_numpy(), 1e-5)
 
     def test_n_components_mle(self):
         # Ensure that n_components == 'mle' doesn't raise error for auto/full
@@ -413,7 +413,7 @@ class Test(unittest.TestCase):
         pca = PCA(n_components=p, svd_solver='full')
         pca.fit(X)
         spect = pca.explained_variance_
-        ll = mt.array([_assess_dimension_(spect, k, n, p) for k in range(p)]).execute()
+        ll = mt.array([_assess_dimension_(spect, k, n, p) for k in range(p)]).to_numpy()
         self.assertGreater(ll[1], ll.max() - .01 * n)
 
     def test_infer_dim_2(self):
@@ -427,7 +427,7 @@ class Test(unittest.TestCase):
         pca = PCA(n_components=p, svd_solver='full')
         pca.fit(X)
         spect = pca.explained_variance_
-        self.assertGreater(_infer_dimension_(spect, n, p).execute(), 1)
+        self.assertGreater(_infer_dimension_(spect, n, p).to_numpy(), 1)
 
     def test_infer_dim_3(self):
         n, p = 100, 5
@@ -439,7 +439,7 @@ class Test(unittest.TestCase):
         pca = PCA(n_components=p, svd_solver='full')
         pca.fit(X)
         spect = pca.explained_variance_
-        self.assertGreater(_infer_dimension_(spect, n, p).execute(), 2)
+        self.assertGreater(_infer_dimension_(spect, n, p).to_numpy(), 2)
 
     def test_infer_dim_by_explained_variance(self):
         X = self.iris
@@ -470,7 +470,7 @@ class Test(unittest.TestCase):
             pca.fit(X)
             ll1 = pca.score(X)
             h = -0.5 * mt.log(2 * mt.pi * mt.exp(1) * 0.1 ** 2) * p
-            np.testing.assert_almost_equal((ll1 / h).execute(), 1, 0)
+            np.testing.assert_almost_equal((ll1 / h).to_numpy(), 1, 0)
 
     def test_pca_score2(self):
         # Test that probabilistic PCA correctly separated different datasets
@@ -504,7 +504,7 @@ class Test(unittest.TestCase):
             pca.fit(Xl)
             ll[k] = pca.score(Xt)
 
-        assert ll.argmax().execute() == 1
+        assert ll.argmax().to_numpy() == 1
 
     def test_pca_score_with_different_solvers(self):
         digits = datasets.load_digits()
@@ -520,10 +520,10 @@ class Test(unittest.TestCase):
             # https://github.com/scikit-learn/scikit-learn/issues/7568
             # https://github.com/scikit-learn/scikit-learn/issues/8541
             # https://github.com/scikit-learn/scikit-learn/issues/8544
-            assert mt.all((pca.explained_variance_ - pca.noise_variance_) >= 0).execute()
+            assert mt.all((pca.explained_variance_ - pca.noise_variance_) >= 0).to_numpy()
 
         # Compare scores with different svd_solvers
-        score_dict = {svd_solver: pca.score(X_digits).execute()
+        score_dict = {svd_solver: pca.score(X_digits).to_numpy()
                       for svd_solver, pca in pca_dict.items()}
         assert_almost_equal(score_dict['full'], score_dict['randomized'],
                             decimal=3)
@@ -556,7 +556,7 @@ class Test(unittest.TestCase):
         pca.fit(X)
         pca_test = PCA(n_components=.5, svd_solver='full')
         pca_test.fit(X)
-        assert_array_almost_equal(pca.components_.execute(), pca_test.components_.execute())
+        assert_array_almost_equal(pca.components_.to_numpy(), pca_test.components_.to_numpy())
 
         # case: max(X.shape) <= 500 => 'full'
         pca = PCA(n_components=5, random_state=0)
@@ -564,21 +564,21 @@ class Test(unittest.TestCase):
         pca.fit(Y)
         pca_test = PCA(n_components=5, svd_solver='full', random_state=0)
         pca_test.fit(Y)
-        assert_array_almost_equal(pca.components_.execute(), pca_test.components_.execute())
+        assert_array_almost_equal(pca.components_.to_numpy(), pca_test.components_.to_numpy())
 
         # case: n_components >= .8 * min(X.shape) => 'full'
         pca = PCA(n_components=50)
         pca.fit(X)
         pca_test = PCA(n_components=50, svd_solver='full')
         pca_test.fit(X)
-        assert_array_almost_equal(pca.components_.execute(), pca_test.components_.execute())
+        assert_array_almost_equal(pca.components_.to_numpy(), pca_test.components_.to_numpy())
 
         # n_components >= 1 and n_components < .8 * min(X.shape) => 'randomized'
         pca = PCA(n_components=10, random_state=0)
         pca.fit(X)
         pca_test = PCA(n_components=10, svd_solver='randomized', random_state=0)
         pca_test.fit(X)
-        assert_array_almost_equal(pca.components_.execute(), pca_test.components_.execute())
+        assert_array_almost_equal(pca.components_.to_numpy(), pca_test.components_.to_numpy())
 
     def test_pca_sparse_input(self):
         for svd_solver in self.solver_list:
@@ -618,7 +618,7 @@ class Test(unittest.TestCase):
         self.assertEqual(pca_32.transform(X_32).dtype, np.float32)
 
         # decimal=5 fails on mac with scipy = 1.1.0
-        assert_array_almost_equal(pca_64.components_.execute(), pca_32.components_.execute(),
+        assert_array_almost_equal(pca_64.components_.to_numpy(), pca_32.components_.to_numpy(),
                                   decimal=4)
 
     def _check_pca_int_dtype_upcast_to_double(self, svd_solver):
@@ -637,7 +637,7 @@ class Test(unittest.TestCase):
         self.assertEqual(pca_64.transform(X_i64).dtype, np.float64)
         self.assertEqual(pca_32.transform(X_i32).dtype, np.float64)
 
-        assert_array_almost_equal(pca_64.components_.execute(), pca_32.components_.execute(),
+        assert_array_almost_equal(pca_64.components_.to_numpy(), pca_32.components_.to_numpy(),
                                   decimal=5)
 
     def test_pca_deterministic_output(self):
@@ -650,4 +650,4 @@ class Test(unittest.TestCase):
                 pca = PCA(n_components=2, svd_solver=solver, random_state=rng)
                 transformed_X[i, :] = pca.fit_transform(X)[0]
             np.testing.assert_allclose(
-                transformed_X.execute(), mt.tile(transformed_X[0, :], 20).reshape(20, 2).execute())
+                transformed_X.to_numpy(), mt.tile(transformed_X[0, :], 20).reshape(20, 2).to_numpy())

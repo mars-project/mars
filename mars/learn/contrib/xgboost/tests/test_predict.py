@@ -48,7 +48,7 @@ class Test(unittest.TestCase):
         self.assertIsInstance(booster, Booster)
 
         prediction = predict(booster, self.X)
-        self.assertIsInstance(prediction.execute(), np.ndarray)
+        self.assertIsInstance(prediction.to_numpy(), np.ndarray)
 
         prediction = predict(booster, dtrain)
         self.assertIsInstance(prediction.fetch(), np.ndarray)
@@ -63,4 +63,4 @@ class Test(unittest.TestCase):
         self.assertIsInstance(booster, Booster)
 
         prediction = predict(booster, self.X_df)
-        self.assertIsInstance(prediction.execute(), pd.Series)
+        self.assertIsInstance(prediction.to_pandas(), pd.Series)

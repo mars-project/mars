@@ -35,16 +35,13 @@ def array_split(a, indices_or_sections, axis=0):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> x = mt.arange(8.0)
-    >>> sess.run(mt.array_split(x, 3))
+    >>> mt.array_split(x, 3).execute()
         [array([ 0.,  1.,  2.]), array([ 3.,  4.,  5.]), array([ 6.,  7.])]
 
     >>> x = mt.arange(7.0)
-    >>> sess.run(mt.array_split(x, 3))
+    >>> mt.array_split(x, 3).execute()
         [array([ 0.,  1.,  2.]), array([ 3.,  4.]), array([ 5.,  6.])]
 
     """

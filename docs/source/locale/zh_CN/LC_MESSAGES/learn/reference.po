@@ -8,30 +8,30 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-05-06 13:13+0800\n"
+"POT-Creation-Date: 2020-04-29 11:50+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.8.0\n"
+"Generated-By: Babel 2.7.0\n"
 
 #: ../../source/learn/reference.rst:5
 msgid "API Reference"
-msgstr ""
+msgstr "API 参考"
 
 #: ../../source/learn/reference.rst:7
 msgid "This is the class and function reference of Mars learn."
-msgstr ""
+msgstr "这是 Mars learn 的类和函参考。"
 
 #: ../../source/learn/reference.rst:17
 msgid "Datasets"
-msgstr ""
+msgstr "数据集"
 
 #: ../../source/learn/reference.rst:24
 msgid "Samples generator"
-msgstr ""
+msgstr "样本生成器"
 
 #: ../../source/learn/reference.rst:34:<autosummary>:1
 msgid ""
@@ -67,7 +67,7 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:38
 msgid "Matrix Decomposition"
-msgstr ""
+msgstr "矩阵分解"
 
 #: ../../source/learn/reference.rst:52:<autosummary>:1
 msgid ""
@@ -92,11 +92,11 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:56
 msgid "Metrics"
-msgstr ""
+msgstr "评估"
 
 #: ../../source/learn/reference.rst:65
 msgid "Classification metrics"
-msgstr ""
+msgstr "分类评估"
 
 #: ../../source/learn/reference.rst:71:<autosummary>:1
 msgid ""
@@ -110,7 +110,7 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:73
 msgid "Pairwise metrics"
-msgstr ""
+msgstr "Pairwise 评估"
 
 #: ../../source/learn/reference.rst:91:<autosummary>:1
 msgid ""
@@ -185,7 +185,7 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:95
 msgid "Nearest Neighbors"
-msgstr ""
+msgstr "最邻近"
 
 #: ../../source/learn/reference.rst:107:<autosummary>:1
 msgid ""
@@ -196,7 +196,7 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:111
 msgid "Preprocessing and Normalization"
-msgstr ""
+msgstr "预处理和标准化"
 
 #: ../../source/learn/reference.rst:123:<autosummary>:1
 msgid ""
@@ -210,7 +210,7 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:127
 msgid "Semi-Supervised Learning"
-msgstr ""
+msgstr "半监督学习"
 
 #: ../../source/learn/reference.rst:139:<autosummary>:1
 msgid ""
@@ -225,7 +225,7 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:143
 msgid "Utilities"
-msgstr ""
+msgstr "工具"
 
 #: ../../source/learn/reference.rst:163:<autosummary>:1
 msgid ""
@@ -311,7 +311,7 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:167
 msgid "TensorFlow Integration"
-msgstr ""
+msgstr "TensorFlow 集成"
 
 #: ../../source/learn/reference.rst:179:<autosummary>:1
 msgid ""
@@ -325,7 +325,7 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:183
 msgid "PyTorch Integration"
-msgstr ""
+msgstr "PyTorch 集成"
 
 #: ../../source/learn/reference.rst:198:<autosummary>:1
 msgid ""
@@ -340,13 +340,13 @@ msgstr ""
 #: ../../source/learn/reference.rst:198:<autosummary>:1
 msgid ""
 ":obj:`contrib.pytorch.MarsDataset "
-"<mars.learn.contrib.pytorch.MarsDataset>`\\ \\(\\*tileables\\)"
+"<mars.learn.contrib.pytorch.MarsDataset>`\\"
 msgstr ""
 
 #: ../../source/learn/reference.rst:198:<autosummary>:1
 msgid ""
 ":obj:`contrib.pytorch.MarsDistributedSampler "
-"<mars.learn.contrib.pytorch.MarsDistributedSampler>`\\ \\(dataset\\)"
+"<mars.learn.contrib.pytorch.MarsDistributedSampler>`\\"
 msgstr ""
 
 #: ../../source/learn/reference.rst:198:<autosummary>:1
@@ -357,7 +357,7 @@ msgstr ""
 
 #: ../../source/learn/reference.rst:202
 msgid "XGBoost Integration"
-msgstr ""
+msgstr "XGBoost 集成"
 
 #: ../../source/learn/reference.rst:217:<autosummary>:1
 msgid ""
@@ -403,4 +403,15 @@ msgstr ""
 #: ../../source/learn/reference.rst:217:<autosummary>:1
 msgid "Implementation of the scikit-learn API for XGBoost regressor."
 msgstr ""
+
+#~ msgid ""
+#~ ":obj:`contrib.pytorch.MarsDataset "
+#~ "<mars.learn.contrib.pytorch.MarsDataset>`\\ \\(\\*tensors\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`contrib.pytorch.MarsDistributedSampler "
+#~ "<mars.learn.contrib.pytorch.MarsDistributedSampler>`\\ "
+#~ "\\(dataset\\)"
+#~ msgstr ""
 

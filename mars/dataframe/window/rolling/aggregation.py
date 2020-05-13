@@ -184,7 +184,7 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
                     index_value = chunk.index_value
                 else:
                     index_value = chunk.columns_value
-                if pd.isnull(index_value.min_val)or pd.isnull(index_value.max_val):
+                if pd.isnull(index_value.min_val) or pd.isnull(index_value.max_val):
                     raise TilesError('input DataFrame or Series '
                                      'has unknown index meta {}'.format(op.axis))
 

@@ -37,7 +37,7 @@ for development:
     pip install -e ".[dev]"
 
 More details about installing Mars can be found at
-`getting started <https://docs.mars-project.io//en/latest/install.html>`_ section in
+`getting started <https://docs.pymars.org/en/latest/install.html>`_ section in
 Mars document.
 
 
@@ -124,8 +124,8 @@ Mars learn provides a familiar interface like scikit-learn.
 |        random_state=9)                      |        random_state=9)                             |
 |    pca = PCA(n_components=3)                |    pca = PCA(n_components=3)                       |
 |    pca.fit(X)                               |    pca.fit(X)                                      |
-|    print(pca.explained_variance_ratio_)     |    print(pca.explained_variance_ratio_.execute())  |
-|    print(pca.explained_variance_)           |    print(pca.explained_variance_.execute())        |
+|    print(pca.explained_variance_ratio_)     |    print(pca.explained_variance_ratio_)            |
+|    print(pca.explained_variance_)           |    print(pca.explained_variance_)                  |
 |                                             |                                                    |
 +---------------------------------------------+----------------------------------------------------+
 
@@ -195,11 +195,10 @@ Users can create a session explicitly.
 
     >>> from mars.session import new_session
     >>> session = new_session()
-    >>> session.run(a + 1)
     >>> (a * 2).execute(session=session)
     >>> # session will be released when out of with statement
     >>> with new_session() as session2:
-    >>>     session2.run(a / 3)
+    >>>     (a / 3).execute(session=session2)
 
 
 Local cluster
@@ -220,7 +219,7 @@ Local cluster mode requires mars distributed version.
 
     >>> # create a session explicitly by specifying the cluster's endpoint
     >>> session = new_session(cluster.endpoint)
-    >>> session.run(a * 3)
+    >>> (a * 3).execute(session=session)
 
 
 Distributed
@@ -253,13 +252,13 @@ After all mars processes are started, users can run
     >>> sess = new_session('http://<web_ip>:<ui_port>')
     >>> a = mt.ones((2000, 2000), chunk_size=200)
     >>> b = mt.inner(a, a)
-    >>> sess.run(b)
+    >>> b.execute(session=sess)
 
 
 Getting involved
 ----------------
 
-- Read `contribution guide <https://docs.mars-project.io/en/latest/contributing.html>`_.
+- Read `contribution guide <https://docs.pymars.org/en/latest/contributing.html>`_.
 - Join the mailing list: send an email to `mars-dev@googlegroups.com`_.
 - Please report bugs by submitting a `GitHub issue`_.
 - Submit contributions using `pull requests`_.
@@ -282,4 +281,4 @@ Thank you in advance for your contributions!
 .. _`mars-dev@googlegroups.com`: https://groups.google.com/forum/#!forum/mars-dev
 .. _`GitHub issue`: https://github.com/mars-project/mars/issues
 .. _`pull requests`: https://github.com/mars-project/mars/pulls
-.. _`Documentation`: https://docs.mars-project.io
+.. _`Documentation`: https://docs.pymars.org

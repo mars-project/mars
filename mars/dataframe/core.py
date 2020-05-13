@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from io import StringIO
 from typing import Union
 
 import numpy as np
@@ -26,6 +27,7 @@ from ..core import ChunkData, Chunk, TileableEntity, \
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
+from .utils import fetch_corner_data, ReprSeries
 
 
 class IndexValue(Serializable):
@@ -349,7 +351,14 @@ def _on_deserialize_index_value(index_value):
         return
 
 
-class IndexData(HasShapeTileableData):
+class _ToPandasMixin:
+    __slots__ = ()
+
+    def to_pandas(self, session=None, **kw):
+        return self.execute(session=session, **kw).fetch(session=session)
+
+
+class IndexData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = ()
 
     # optional field
@@ -382,21 +391,23 @@ class IndexData(HasShapeTileableData):
             'index_value': self.index_value,
         }
 
-    def __str__(self):
-        if is_eager_mode():
-            return 'Index(op={0}, data=\n{1})'.format(self.op.__class__.__name__,
-                                                      str(self.fetch()))
+    def _to_str(self, representation=False):
+        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+            # in build mode, or not executed, just return representation
+            if representation:
+                return 'Index <op={}, key={}'.format(self._op.__class__.__name__,
+                                                     self.key)
+            else:
+                return 'Index(op={})'.format(self._op.__class__.__name__)
         else:
-            return 'Index(op={0})'.format(self.op.__class__.__name__)
+            data = self.fetch(session=self._executed_sessions[-1])
+            return repr(data) if repr(data) else str(data)
+
+    def __str__(self):
+        return self._to_str(representation=False)
 
     def __repr__(self):
-        if is_eager_mode():
-            return 'Index <op={0}, key={1}, data=\n{2}>'.format(self.op.__class__.__name__,
-                                                                self.key,
-                                                                repr(self.fetch()))
-        else:
-            return 'Index <op={0}, key={1}>'.format(self.op.__class__.__name__,
-                                                    self.key)
+        return self._to_str(representation=True)
 
     @property
     def dtype(self):
@@ -411,11 +422,11 @@ class IndexData(HasShapeTileableData):
         return self._index_value
 
 
-class Index(HasShapeTileableEnity):
+class Index(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = ()
     _allow_data_type_ = (IndexData,)
 
-    def __new__(cls, data: Union[pd.Index, IndexData]):
+    def __new__(cls, data: Union[pd.Index, IndexData], **_):
         if not isinstance(data, pd.Index):
             # create corresponding Index class
             # according to type of index_value
@@ -530,7 +541,7 @@ class SeriesChunk(Chunk):
     _allow_data_type_ = (SeriesChunkData,)
 
 
-class BaseSeriesData(HasShapeTileableData):
+class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = '_cache', '_accessors'
     _type_name = None
 
@@ -558,19 +569,39 @@ class BaseSeriesData(HasShapeTileableData):
             'index_value': self.index_value,
         }
 
-    def __str__(self):
-        if is_eager_mode():
-            return '{0}(op={1}, data=\n{2})'.format(self._type_name, self.op.__class__.__name__,
-                                                    str(self.fetch()))
+    def _to_str(self, representation=False):
+        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+            # in build mode, or not executed, just return representation
+            if representation:
+                return '{} <op={}, key={}>'.format(self._type_name,
+                                                   self._op.__class__.__name__,
+                                                   self.key)
+            else:
+                return '{}(op={})'.format(self._type_name,
+                                          self._op.__class__.__name__)
         else:
-            return '{0}(op={1})'.format(self._type_name, self.op.__class__.__name__)
+            corner_data = fetch_corner_data(
+                self, session=self._executed_sessions[-1])
+
+            buf = StringIO()
+            max_rows = pd.get_option('display.max_rows')
+            corner_max_rows = max_rows if self.shape[0] <= max_rows else \
+                corner_data.shape[0] - 1  # make sure max_rows < corner_data
+
+            with pd.option_context('display.max_rows', corner_max_rows):
+                if self.shape[0] <= max_rows:
+                    corner_series = corner_data
+                else:
+                    corner_series = ReprSeries(corner_data, self.shape)
+                buf.write(repr(corner_series) if representation else str(corner_series))
+
+            return buf.getvalue()
+
+    def __str__(self):
+        return self._to_str(representation=False)
 
     def __repr__(self):
-        if is_eager_mode():
-            return '{0} <op={1}, key={2}, data=\n{3}>'.format(self._type_name, self.op.__class__.__name__,
-                                                              self.key, repr(self.fetch()))
-        else:
-            return '{0} <op={1}, key={2}>'.format(self._type_name, self.op.__class__.__name__, self.key)
+        return self._to_str(representation=False)
 
     @property
     def dtype(self):
@@ -611,7 +642,7 @@ class SeriesData(BaseSeriesData):
         return super().cls(provider)
 
 
-class Series(HasShapeTileableEnity):
+class Series(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = '_cache',
     _allow_data_type_ = (SeriesData,)
 
@@ -749,7 +780,7 @@ class DataFrameChunk(Chunk):
         return len(self._data)
 
 
-class BaseDataFrameData(HasShapeTileableData):
+class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = '_accessors',
     _type_name = None
 
@@ -768,19 +799,75 @@ class BaseDataFrameData(HasShapeTileableData):
                          _chunks=chunks, **kw)
         self._accessors = dict()
 
-    def __str__(self):
-        if is_eager_mode():
-            return '{0}(op={1}, data=\n{2})'.format(self._type_name, self.op.__class__.__name__,
-                                                    str(self.fetch()))
+    def _to_str(self, representation=False):
+        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+            # in build mode, or not executed, just return representation
+            if representation:
+                return '{} <op={}, key={}>'.format(self._type_name,
+                                                   self._op.__class__.__name__,
+                                                   self.key)
+            else:
+                return '{}(op={})'.format(self._type_name,
+                                          self._op.__class__.__name__)
         else:
-            return '{0}(op={1})'.format(self._type_name, self.op.__class__.__name__)
+            corner_data = fetch_corner_data(
+                self, session=self._executed_sessions[-1])
+
+            buf = StringIO()
+            max_rows = pd.get_option('display.max_rows')
+
+            if self.shape[0] <= max_rows:
+                buf.write(repr(corner_data) if representation else str(corner_data))
+            else:
+                # remember we cannot directly call repr(df),
+                # because the [... rows x ... columns] may show wrong rows
+                with pd.option_context('display.show_dimensions', False,
+                                       'display.max_rows', corner_data.shape[0] - 1):
+                    if representation:
+                        s = repr(corner_data)
+                    else:
+                        s = str(corner_data)
+                    buf.write(s)
+                if pd.get_option('display.show_dimensions'):
+                    n_rows, n_cols = self.shape
+                    buf.write(
+                        "\n\n[{nrows} rows x {ncols} columns]".format(
+                            nrows=n_rows, ncols=n_cols)
+                        )
+
+            return buf.getvalue()
+
+    def __str__(self):
+        return self._to_str(representation=False)
 
     def __repr__(self):
-        if is_eager_mode():
-            return '{0} <op={1}, key={2}, data=\n{3}>'.format(self._type_name, self.op.__class__.__name__,
-                                                              self.key, repr(self.fetch()))
+        return self._to_str(representation=True)
+
+    def _repr_html_(self):
+        if len(self._executed_sessions) == 0:
+            # not executed before, fall back to normal repr
+            raise NotImplementedError
+
+        corner_data = fetch_corner_data(
+            self, session=self._executed_sessions[-1])
+
+        buf = StringIO()
+        max_rows = pd.get_option('display.max_rows')
+        if self.shape[0] <= max_rows:
+            buf.write(corner_data._repr_html_())
         else:
-            return '{0} <op={1}, key={2}>'.format(self._type_name, self.op.__class__.__name__, self.key)
+            with pd.option_context('display.show_dimensions', False,
+                                   'display.max_rows', corner_data.shape[0] - 1):
+                buf.write(corner_data._repr_html_().rstrip().rstrip('</div>'))
+            if pd.get_option('display.show_dimensions'):
+                n_rows, n_cols = self.shape
+                buf.write(
+                    "<p>{nrows} rows × {ncols} columns</p>\n".format(
+                        nrows=n_rows, ncols=n_cols)
+                )
+            buf.write('</div>')
+
+        return buf.getvalue()
 
     @property
     def params(self):
@@ -845,7 +932,7 @@ class DataFrameData(BaseDataFrameData):
         return super().cls(provider)
 
 
-class DataFrame(HasShapeTileableEnity):
+class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = '_cache',
     _allow_data_type_ = (DataFrameData,)
 
@@ -1036,7 +1123,7 @@ class SeriesGroupByData(BaseSeriesData):
             return self == o
 
 
-class GroupBy(TileableEntity):
+class GroupBy(TileableEntity, _ToPandasMixin):
     __slots__ = ()
 
 
@@ -1132,7 +1219,7 @@ class CategoricalChunk(Chunk):
     _allow_data_type_ = (CategoricalChunkData,)
 
 
-class CategoricalData(HasShapeTileableData):
+class CategoricalData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = '_cache',
     _type_name = 'Categorical'
 
@@ -1201,7 +1288,7 @@ class CategoricalData(HasShapeTileableData):
         return super().__hash__()
 
 
-class Categorical(HasShapeTileableEnity):
+class Categorical(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = ()
     _allow_data_type_ = (CategoricalData,)
 

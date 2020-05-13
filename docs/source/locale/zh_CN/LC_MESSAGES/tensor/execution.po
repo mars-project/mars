@@ -8,30 +8,31 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-03-13 13:07+0800\n"
+"POT-Creation-Date: 2020-05-12 16:52+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.6.0\n"
+"Generated-By: Babel 2.7.0\n"
 
 #: ../../source/tensor/execution.rst:2
 msgid "Local Execution"
 msgstr "本地执行"
 
 #: ../../source/tensor/execution.rst:4
+#, fuzzy
 msgid ""
 "When :doc:`eager mode <eager-mode>` is not enabled, which is the default "
 "behavior, Mars tensor will not be executed unless users call ``execute`` "
-"or ``session.run`` methods."
+"methods."
 msgstr ""
 "默认情况下，Mars 的 :doc:`Eager 模式 <eager-mode>` 处于关闭状态。此时，"
-"除非用户显示调用 ``execute`` 或使用 ``session.run`` 方法，Mars 张量不会"
+"除非用户显示调用 ``execute`` 方法，Mars 张量不会"
 "执行。"
 
-#: ../../source/tensor/execution.rst:8
+#: ../../source/tensor/execution.rst:7
 msgid ""
 "If no session is created explicitly, the ``execute`` will create a local "
 "session, and mark it as a default session."
@@ -39,11 +40,11 @@ msgstr ""
 "如果没有显式创建会话， ``execute`` 方法会创建一个本地会话，并将其标记为"
 "默认会话。"
 
-#: ../../source/tensor/execution.rst:12
+#: ../../source/tensor/execution.rst:11
 msgid "Session"
 msgstr "会话"
 
-#: ../../source/tensor/execution.rst:14
+#: ../../source/tensor/execution.rst:13
 msgid ""
 "Users can create a new session by ``new_session`` method, if no argument "
 "is provided, a local session will be generated."
@@ -51,27 +52,30 @@ msgstr ""
 "用户可以通过 ``new_session`` 方法创建新会话，如果未提供参数，则将生成本地"
 "会话。"
 
-#: ../../source/tensor/execution.rst:24
+#: ../../source/tensor/execution.rst:23
 msgid ""
 "By calling ``as_default`` of a session, the session will be marked as the"
 " default session."
 msgstr "通过调用会话的 ``as_default`` 方法，该会话将被标记为默认会话。"
 
-#: ../../source/tensor/execution.rst:33
+#: ../../source/tensor/execution.rst:32
+#, fuzzy
 msgid ""
-"More than one mars tensors can be passed to ``session.run``, and "
-"calculate the results for each tensor."
-msgstr "可以传递多个mars张量给 ``session.run`` ，并计算每个张量的结果。"
+"For more than one mars tensors, `mt.ExecutableTuple` can be used, "
+"`.execute()` will calculate the results for each tensor."
+msgstr ""
+"对于多个mars张量，可以创建 `mt.ExecutableTuple`, "
+"调用它的 `.execute()` 方法会计算每个张量的结果。"
 
-#: ../../source/tensor/execution.rst:54
+#: ../../source/tensor/execution.rst:53
 msgid "Execute a tensor"
 msgstr "执行张量"
 
-#: ../../source/tensor/execution.rst:56
+#: ../../source/tensor/execution.rst:55
 msgid "For a single tensor, ``execute`` can be called."
 msgstr "可以调用张量的 ``execute`` 方法来执行单个张量。"
 
-#: ../../source/tensor/execution.rst:64
+#: ../../source/tensor/execution.rst:63
 msgid "Session can be specified by the argument ``session``."
 msgstr "会话可以由参数 ``session`` 指定。"
 

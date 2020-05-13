@@ -192,14 +192,14 @@ class Test(unittest.TestCase):
             t = mt.random.rand(10)
             r = t.sum()
 
-            res = r.execute()
+            res = r.to_numpy()
             self.assertTrue(np.isscalar(res))
             self.assertLess(res, 10)
 
             t = mt.random.rand(10)
             r = t.sum() * 4 - 1
 
-            res = r.execute()
+            res = r.to_numpy()
             self.assertLess(res, 39)
 
     def testMultipleOutputTensorExecute(self, *_):
@@ -222,7 +222,7 @@ class Test(unittest.TestCase):
             U, s, V = mt.linalg.svd(t)
             r = U.dot(mt.diag(s).dot(V))
 
-            res = r.execute()
+            res = r.to_numpy()
             np.testing.assert_allclose(raw, res)
 
             # test submit part of svd outputs
@@ -344,7 +344,7 @@ class Test(unittest.TestCase):
                          shared_memory='20M', web=True) as cluster:
             with new_session('http://' + cluster._web_endpoint).as_default():
                 a = mt.ones((20, 10), chunk_size=10)
-                u, s, v = (mt.linalg.svd(a)).execute()
+                u, s, v = (mt.linalg.svd(a)).execute().fetch()
                 np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
     def testRerunTensor(self, *_):
@@ -373,7 +373,7 @@ class Test(unittest.TestCase):
 
             a = mt.ones((10, 20)) + 1
             self.assertIsNone(session.run(a, fetch=False, timeout=_exec_timeout))
-            np.testing.assert_array_equal(a.execute(session=session), np.ones((10, 20)) + 1)
+            np.testing.assert_array_equal(a.to_numpy(session=session), np.ones((10, 20)) + 1)
 
     def testGraphFail(self, *_):
         op = SerializeMustFailOperand(f=3)
@@ -514,7 +514,7 @@ class Test(unittest.TestCase):
                 a.fetch()
 
             r = a.dot(a)
-            np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
+            np.testing.assert_array_equal(r.to_numpy(), np.ones((10, 10)) * 10)
 
             with new_session('http://' + cluster._web_endpoint).as_default():
                 self.assertIsInstance(Session.default_or_local()._sess, WebSession)
@@ -541,7 +541,7 @@ class Test(unittest.TestCase):
                     a.fetch()
 
                 r = a.dot(a)
-                np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
+                np.testing.assert_array_equal(r.to_numpy(), np.ones((10, 10)) * 10)
 
             with new_session('http://' + cluster._web_endpoint).as_default():
                 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
@@ -664,6 +664,13 @@ class Test(unittest.TestCase):
             r_slice5 = session.fetch(a[0])
             np.testing.assert_array_equal(r[0], r_slice5)
 
+            # test repr
+            with np.printoptions(threshold=100):
+                raw = np.random.randint(1000, size=(3, 4, 6))
+                b = mt.tensor(raw, chunk_size=3)
+                self.assertEqual(repr(b.execute(session=session)),
+                                 repr(raw))
+
             web_session = new_session('http://' + cluster._web_endpoint)
             r = web_session.run(a)
 
@@ -708,6 +715,15 @@ class Test(unittest.TestCase):
 
             r_slice6 = session.fetch(df.iloc[6:9])
             pd.testing.assert_frame_equal(r.iloc[6:9], r_slice6)
+
+            # test repr
+            pdf = pd.DataFrame(np.random.randint(1000, size=(80, 10)))
+            df2 = md.DataFrame(pdf, chunk_size=41)
+            self.assertEqual(repr(df2.execute(session=session)), repr(pdf))
+
+            ps = pdf[0]
+            s = md.Series(ps, chunk_size=41)
+            self.assertEqual(repr(s.execute(session=session)), repr(ps))
 
             web_session = new_session('http://' + cluster._web_endpoint)
             r = web_session.run(df)
@@ -805,15 +821,15 @@ class Test(unittest.TestCase):
                 df.to_csv(file_path)
 
                 mdf1 = md.read_csv(file_path, index_col=0, chunk_bytes=10)
-                r1 = mdf1.iloc[:3].execute()
+                r1 = mdf1.iloc[:3].to_pandas()
                 pd.testing.assert_frame_equal(df[:3], r1)
 
                 mdf2 = md.read_csv(file_path, index_col=0, chunk_bytes=10)
-                r2 = mdf2.iloc[:3].execute()
+                r2 = mdf2.iloc[:3].to_pandas()
                 pd.testing.assert_frame_equal(df[:3], r2)
 
                 f = mdf1[mdf1.a > mdf2.a]
-                r3 = f.iloc[:3].execute()
+                r3 = f.iloc[:3].to_pandas()
                 pd.testing.assert_frame_equal(r3, df[df.a > df.a])
 
     def testDataFrameShuffle(self, *_):

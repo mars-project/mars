@@ -157,7 +157,7 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
 
         if np.isnan(X.size):
             # if X has unknown shape, execute it first
-            X.execute(fetch=False, session=session, **(run_kwargs or dict()))
+            X.execute(session=session, **(run_kwargs or dict()))
 
         if X.issparse():
             if self.algorithm not in ('auto', 'brute'):
@@ -210,7 +210,7 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
         elif self._fit_method == 'faiss':
             faiss_index = build_faiss_index(X, metric=self.effective_metric_,
                                             **self.effective_metric_params_)
-            faiss_index.execute(session=session, fetch=False, **(run_kwargs or dict()))
+            faiss_index.execute(session=session, **(run_kwargs or dict()))
             self._faiss_index = faiss_index
         else:  # pragma: no cover
             raise ValueError("algorithm = '%s' not recognized"
@@ -275,7 +275,7 @@ class KNeighborsMixin:
         >>> neigh = NearestNeighbors(n_neighbors=1)
         >>> neigh.fit(samples) # doctest: +ELLIPSIS
         NearestNeighbors(algorithm='auto', leaf_size=30, ...)
-        >>> print(neigh.kneighbors([[1., 1., 1.]]).execute()) # doctest: +ELLIPSIS
+        >>> print(neigh.kneighbors([[1., 1., 1.]])) # doctest: +ELLIPSIS
         (array([[0.5]]), array([[2]]))
 
         As you can see, it returns [[0.5]], and [[2]], which means that the
@@ -283,7 +283,7 @@ class KNeighborsMixin:
         (indexes start at 0). You can also query for multiple points:
 
         >>> X = [[0., 1., 0.], [1., 0., 1.]]
-        >>> neigh.kneighbors(X, return_distance=False).execute() # doctest: +ELLIPSIS
+        >>> neigh.kneighbors(X, return_distance=False) # doctest: +ELLIPSIS
         array([[1],
                [2]]...)
 
@@ -318,7 +318,7 @@ class KNeighborsMixin:
             X = self._fit_X
         if np.isnan(X.size):
             # has unknown size, execute first
-            X.execute(fetch=False, session=session, **(run_kwargs or dict()))
+            X.execute(session=session, **(run_kwargs or dict()))
 
         train_size = self._fit_X.shape[0]
         if n_neighbors > train_size:
@@ -366,8 +366,7 @@ class KNeighborsMixin:
         if not query_is_train:
             if isinstance(result, (tuple, list)):
                 result = mt.ExecutableTuple(result)
-            result.execute(session=session, fetch=False,
-                           **(run_kwargs or dict()))
+            result.execute(session=session, **(run_kwargs or dict()))
             return result
         else:
             # If the query data is the same as the indexed data, we would like
@@ -394,11 +393,9 @@ class KNeighborsMixin:
                 dist = reshape_unchecked(
                     dist[sample_mask], (n_samples, n_neighbors - 1))
                 ret = mt.ExecutableTuple([dist, neigh_ind])
-                ret.execute(session=session, fetch=False,
-                            **(run_kwargs or dict()))
+                ret.execute(session=session, **(run_kwargs or dict()))
                 return ret
-            neigh_ind.execute(session=session, fetch=False,
-                              **(run_kwargs or dict()))
+            neigh_ind.execute(session=session, **(run_kwargs or dict()))
             return neigh_ind
 
     def kneighbors_graph(self, X=None, n_neighbors=None,
@@ -473,7 +470,7 @@ class KNeighborsMixin:
         op = KNeighborsGraph(a_data=A_data, a_ind=A_ind, n_neighbors=n_neighbors,
                              sparse=True)
         graph = op(A_data, A_ind, shape=(n_samples1, n_samples2))
-        graph.execute(session=session, fetch=False, **(run_kwargs or dict()))
+        graph.execute(session=session, **(run_kwargs or dict()))
         return graph
 
 

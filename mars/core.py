@@ -351,8 +351,40 @@ class FuseChunk(Chunk):
 FUSE_CHUNK_TYPE = (FuseChunkData, FuseChunk)
 
 
-class TileableData(EntityData, Tileable):
-    __slots__ = '_cix', '_entities'
+class _ExecutableMixin:
+    __slots__ = ()
+
+    def execute(self, session=None, **kw):
+        from .session import Session
+
+        if 'fetch' in kw and kw['fetch']:
+            raise ValueError('Does not support fetch=True for `.execute()`,'
+                             'please use `.fetch()` instead')
+        else:
+            kw['fetch'] = False
+
+        if session is None:
+            session = Session.default_or_local()
+
+        # no more fetch, thus just fire run
+        session.run(self, **kw)
+        # return Tileable or ExecutableTuple itself
+        return self
+
+    def fetch(self, session=None, **kw):
+        from .session import Session
+
+        if session is None:
+            session = Session.default_or_local()
+        return session.fetch(self, **kw)
+
+    def _attach_session(self, session):
+        _cleaner.register(self, session)
+        self._executed_sessions.append(session)
+
+
+class TileableData(EntityData, Tileable, _ExecutableMixin):
+    __slots__ = '_cix', '_entities', '_executed_sessions'
     _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
 
     # optional fields
@@ -370,6 +402,7 @@ class TileableData(EntityData, Tileable):
             self._chunks = sorted(self._chunks, key=attrgetter('index'))
 
         self._entities = WeakSet()
+        self._executed_sessions = []
 
     @property
     def chunk_shape(self):
@@ -419,25 +452,6 @@ class TileableData(EntityData, Tileable):
     @enter_build_mode
     def detach(self, entity):
         self._entities.discard(entity)
-
-    def execute(self, session=None, **kw):
-        from .session import Session
-
-        if session is None:
-            session = Session.default_or_local()
-        return session.run(self, **kw)
-
-    def fetch(self, session=None, **kw):
-        from .session import Session
-
-        if session is None:
-            session = Session.default_or_local()
-        return session.fetch(self, **kw)
-
-    def _set_execute_session(self, session):
-        _cleaner.register(self, session)
-
-    _execute_session = property(fset=_set_execute_session)
 
 
 class TileableEntity(Entity):
@@ -543,6 +557,10 @@ class HasShapeTileableEnity(TileableEntity):
     def size(self):
         return self._data.size
 
+    def execute(self, session=None, **kw):
+        self._data.execute(session, **kw)
+        return self
+
 
 class ObjectData(TileableData):
     __slots__ = ()
@@ -619,20 +637,16 @@ class ChunksIndexer(object):
         raise ValueError('Cannot get {0} chunk by {1}'.format(type(self._tileable).__name__, item))
 
 
-class ExecutableTuple(tuple):
-    def execute(self, session=None, **kw):
-        from .session import Session
+class ExecutableTuple(tuple, _ExecutableMixin):
+    def __init__(self, *_):
+        super().__init__()
+        self._executed_sessions = []
 
-        if session is None:
-            session = Session.default_or_local()
-        return session.run(self, **kw)
-
-    def fetch(self, session=None, **kw):
-        from .session import Session
-
-        if session is None:
-            session = Session.default_or_local()
-        return session.fetch(*self, **kw)
+    def _attach_session(self, session):
+        super()._attach_session(session)
+        for t in self:
+            if hasattr(t, '_attach_session'):
+                t._attatch_session(session)
 
 
 class _TileableSession(object):

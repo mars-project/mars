@@ -159,13 +159,13 @@ class LocalClusterSession(object):
 
     def fetch(self, *tileables):
         from ...tensor.indexing import TensorIndex
-        from ...dataframe.indexing.iloc import DataFrameIlocGetItem
+        from ...dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 
         tileable_results = []
         for tileable in tileables:
             # TODO: support DataFrame getitem
             if tileable.key not in self._executed_tileables and \
-                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
+                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem, SeriesIlocGetItem)):
                 key = tileable.inputs[0].key
                 indexes = tileable.op.indexes
                 if not all(isinstance(ind, (slice, Integral)) for ind in indexes):

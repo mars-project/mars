@@ -102,10 +102,10 @@ class LocalSession(object):
             t._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
         tiled.nsplits = new_nsplits
 
-    def fetch(self, *tileables, **kw):
+    def fetch(self, *tileables, n_parallel: int = None, **kw):
         if self._executor is None:
             raise RuntimeError('Session has closed')
-        if 'n_parallel' not in kw:
+        if n_parallel is None:
             kw['n_parallel'] = cpu_count()
         return self._executor.fetch_tileables(tileables, **kw)
 
@@ -186,7 +186,7 @@ class Session(object):
         result = self._sess.run(*tileables, **kw)
 
         for t in tileables:
-            t._execute_session = self
+            t._attach_session(self)
 
         for t in tileables:
             if getattr(t, 'shape', None) is not None and np.nan in t.shape:

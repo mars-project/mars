@@ -623,6 +623,9 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         self._extract_check_options(kwargs)
 
         results = super().execute_tileables(tileables, *args, **kwargs)
+        if results is None:
+            # fetch = False
+            results = super().fetch_tileables(tileables)
         for tileable, result in zip(tileables, results):
             if _check_options['check_nsplits']:
                 self._check_nsplits(tileable)

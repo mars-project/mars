@@ -81,9 +81,6 @@ def argmin(a, axis=None, out=None, combine_size=None):
     Examples
     --------
     >>> import mars.tensor as mt
-    >>> from mars.session import new_session
-
-    >>> sess = new_session().as_default()
 
     >>> a = mt.arange(6).reshape(2,3)
     >>> a.execute()
@@ -99,7 +96,7 @@ def argmin(a, axis=None, out=None, combine_size=None):
     Indices of the minimum elements of a N-dimensional tensor:
 
     >>> ind = mt.unravel_index(mt.argmin(a, axis=None), a.shape)
-    >>> sess.run(ind)
+    >>> ind.execute()
     (0, 0)
     >>> a[ind]  # TODO(jisheng): accomplish when fancy index on tensor is supported
 

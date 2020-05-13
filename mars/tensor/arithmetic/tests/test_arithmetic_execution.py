@@ -341,6 +341,13 @@ class Test(unittest.TestCase):
         expected = sum(np.modf(data1))
         self.assertTrue(np.allclose(res, expected))
 
+        o1, o2 = modf([0, 3.5])
+        o = o1 + o2
+
+        res = self.executor.execute_tensor(o, concat=True)[0]
+        expected = sum(np.modf([0, 3.5]))
+        self.assertTrue(np.allclose(res, expected))
+
         arr1 = tensor(data1.copy(), chunk_size=3)
         o1 = zeros(data1.shape, chunk_size=3)
         o2 = zeros(data1.shape, chunk_size=3)

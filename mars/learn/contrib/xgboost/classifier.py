@@ -40,7 +40,7 @@ if xgboost:
                                  session=session, run_kwargs=run_kwargs)
             params = self.get_xgb_params()
 
-            self.classes_ = mt.unique(y, aggregate_size=1).execute(session=session, **run_kwargs)
+            self.classes_ = mt.unique(y, aggregate_size=1).to_numpy(session=session, **run_kwargs)
             self.n_classes_ = len(self.classes_)
 
             if self.n_classes_ > 2:
@@ -69,7 +69,7 @@ if xgboost:
                 prediction = mt.argmax(prob, axis=1)
             else:
                 prediction = (prob > 0.5).astype(mt.int64)
-            prediction.execute(session=session, fetch=False, **run_kwargs)
+            prediction.execute(session=session, **run_kwargs)
             return prediction
 
         def predict_proba(self, data, ntree_limit=None, **kw):
