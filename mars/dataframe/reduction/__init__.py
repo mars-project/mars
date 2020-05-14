@@ -26,6 +26,8 @@ from .cumprod import DataFrameCumprod
 from .cumsum import DataFrameCumsum
 
 from .nunique import DataFrameNunique
+from .unique import DataFrameUnique, unique
+
 
 def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE
@@ -64,6 +66,10 @@ def _install():
         setattr(t, 'product', prod_dataframe)
     for t in SERIES_TYPE:
         setattr(t, 'product', prod_series)
+
+    # unique only for Series
+    for t in SERIES_TYPE:
+        setattr(t, 'unique', unique)
 
 
 _install()
