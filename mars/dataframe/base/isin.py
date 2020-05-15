@@ -20,7 +20,7 @@ from ...serialize import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
-from ..core import SERIES_TYPE
+from ..core import SERIES_TYPE, INDEX_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 
 
@@ -51,7 +51,7 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, elements):
         inputs = [elements]
-        if isinstance(self._values, (SERIES_TYPE, TENSOR_TYPE)):
+        if isinstance(self._values, (SERIES_TYPE, TENSOR_TYPE, INDEX_TYPE)):
             inputs.append(self._values)
         return self.new_series(inputs, shape=elements.shape, dtype=np.dtype('bool'),
                                index_value=elements.index_value, name=elements.name)
@@ -104,7 +104,7 @@ def isin(elements, values):
     # TODO(hetao): support more type combinations, for example, DataFrame.isin.
     if is_list_like(values):
         values = list(values)
-    elif not isinstance(values, (SERIES_TYPE, TENSOR_TYPE)):
+    elif not isinstance(values, (SERIES_TYPE, TENSOR_TYPE, INDEX_TYPE)):
         raise TypeError('only list-like objects are allowed to be passed to isin(), '
                         'you passed a [{}]'.format(type(values)))
     if not isinstance(elements, SERIES_TYPE):  # pragma: no cover
