@@ -299,6 +299,32 @@ class TestCount(TestBase):
         expected = data1.nunique(axis=1)
         pd.testing.assert_series_equal(result, expected)
 
+    def testUnique(self):
+        data1 = pd.Series(np.random.randint(0, 5, size=(20,)))
+
+        series = from_pandas_series(data1)
+        result = self.executor.execute_dataframe(series.unique(), concat=True)[0]
+        expected = data1.unique()
+        np.testing.assert_array_equal(result, expected)
+
+        series = from_pandas_series(data1, chunk_size=6)
+        result = self.executor.execute_dataframe(series.unique(), concat=True)[0]
+        expected = data1.unique()
+        np.testing.assert_array_equal(result, expected)
+
+        data2 = pd.Series([pd.Timestamp('20200101'), ] * 5 +
+                          [pd.Timestamp('20200202')] +
+                          [pd.Timestamp('20020101')] * 9)
+        series = from_pandas_series(data2)
+        result = self.executor.execute_dataframe(series.unique(), concat=True)[0]
+        expected = data2.unique()
+        np.testing.assert_array_equal(result, expected)
+
+        series = from_pandas_series(data2, chunk_size=6)
+        result = self.executor.execute_dataframe(series.unique(), concat=True)[0]
+        expected = data2.unique()
+        np.testing.assert_array_equal(result, expected)
+
 
 cum_reduction_functions = dict(
     cummax=dict(func_name='cummax'),
