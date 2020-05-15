@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from ...utils import copy_tileables
+from ...dataframe.utils import parse_index
 from ...dataframe.groupby.aggregation import DataFrameGroupByAgg
 from ...dataframe.datasource.read_csv import DataFrameReadCSV
 from .core import TileableOptimizeRule, register
@@ -55,7 +56,7 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
 
         new_input._shape = (input_node.shape[0], len(selected_columns))
         new_input._dtypes = input_node.dtypes[selected_columns]
-        new_input._columns_value = new_input._dtypes.index
+        new_input._columns_value = parse_index(new_input._dtypes.index, store_data=True)
         new_input.op._usecols = selected_columns
         new_node = copy_tileables([node], inputs=[new_input])[0].data
 
