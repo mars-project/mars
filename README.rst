@@ -1,5 +1,4 @@
-Mars
-====
+.. image:: https://raw.githubusercontent.com/mars-project/mars/master/docs/source/images/mars-logo-title.png
 
 |PyPI version| |Docs| |Build| |Coverage| |Quality| |License|
 
