@@ -58,7 +58,7 @@ from .rechunk import rechunk
 from .einsum import einsum
 from .images import imread
 # noinspection PyUnresolvedReferences
-from .lib.index_tricks import mgrid, ogrid, ndindex
+from .lib.index_tricks import mgrid, ogrid, ndindex, r_, c_
 from .core import mutable_tensor
 
 from . import random
