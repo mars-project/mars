@@ -14,6 +14,7 @@ if [[ $UNAME == "mingw"* ]] || [[ $UNAME == "msys"* ]]; then
   export PATH="$CONDA/Library:$CONDA/Library/bin:$CONDA/Scripts:$CONDA:$PATH"
   export PATH="$CONDA/envs/test/Library:$CONDA/envs/test/Library/bin:$CONDA/envs/test/Scripts:$CONDA/envs/test:$PATH"
 else
+  export CONDA="$HOME/miniconda"
   export PATH="$HOME/miniconda/envs/test/bin:$HOME/miniconda/bin:$PATH"
 fi
 

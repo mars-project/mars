@@ -40,10 +40,18 @@ cudf = lazy_import('cudf', globals=globals())
 
 logger = logging.getLogger(__name__)
 
+_is_initial = True
+
 
 def gather_node_info():
     from .lib.mkl_interface import mkl_get_version
     from .lib.nvutils import NVError
+    global _is_initial
+
+    if _is_initial:
+        _is_initial = False
+        resource.cpu_percent()
+
     mem_stats = resource.virtual_memory()
 
     node_info = {
@@ -56,8 +64,12 @@ def gather_node_info():
         'memory_used': mem_stats.used,
         'memory_total': mem_stats.total,
         'update_time': time.time(),
-        'k8s_pod_name': os.environ.get('MARS_K8S_POD_NAME'),
     }
+
+    if 'MARS_K8S_POD_NAME' in os.environ:
+        node_info['k8s_pod_name'] = os.environ['MARS_K8S_POD_NAME']
+    if 'CONTAINER_ID' in os.environ:
+        node_info['yarn_container_id'] = os.environ['CONTAINER_ID']
 
     try:
         cuda_info = resource.cuda_info()

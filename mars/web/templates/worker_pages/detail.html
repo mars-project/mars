@@ -40,6 +40,12 @@
                             <td>{{ worker_details['k8s_pod_name'] }}</td>
                         </tr>
                     {% endif %}
+                    {% if worker_details['yarn_container_id'] is defined %}
+                        <tr>
+                            <td>Yarn Container ID</td>
+                            <td>{{ worker_details['yarn_container_id'] }}</td>
+                        </tr>
+                    {% endif %}
                     <tr>
                         <td>Platform</td>
                         <td><pre class="plain-pre">{{ worker_details['platform'] }}</pre></td>

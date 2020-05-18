@@ -219,6 +219,7 @@ Apache Software Foundation License 2.0
 - Cython:0.29
 - requests:2.19.1
 - cudf:0.6.0
+- kubernetes-client:11.0.0
 
 
 BSD 3-Clause
@@ -237,6 +238,7 @@ BSD 3-Clause
 - psutil:5.4.7
 - protobuf:3.6.0
 - uhashring:1.1
+- skein:0.8.0
 
 
 BSD 2-Clause

@@ -206,7 +206,7 @@ def _start_web(scheduler_address, ui_port, event):
 
     from ...web import MarsWeb
 
-    web = MarsWeb(ui_port, scheduler_address)
+    web = MarsWeb(None, ui_port, scheduler_address)
     try:
         web.start(event=event, block=True)
     finally:

@@ -20,6 +20,7 @@ import uuid
 from urllib.parse import urlparse
 
 from ...session import new_session
+from ..utils import wait_services_ready
 from .config import NamespaceConfig, RoleConfig, RoleBindingConfig, ServiceConfig, \
     MarsSchedulersConfig, MarsWorkersConfig, MarsWebsConfig
 
@@ -31,7 +32,7 @@ except ImportError:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-class KubernetesClusterClient(object):
+class KubernetesClusterClient:
     def __init__(self, kube_api_client, namespace, endpoint):
         self._kube_api_client = kube_api_client
         self._namespace = namespace
@@ -132,7 +133,7 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
                 scheduler_mem=None, worker_num=1, worker_cpu=None, worker_mem=None,
                 worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
                 web_num=1, web_cpu=None, web_mem=None, service_type=None,
-                timeout=None, log_when_fail=False, **kwargs):
+                timeout=None, **kwargs):
     """
     :param kube_api_client: Kubernetes API client, can be created with ``new_client_from_config``
     :param image: Docker image to use, ``marsproject/mars:<mars version>`` by default
@@ -164,11 +165,13 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
     service_type = service_type or 'NodePort'
     extra_volumes = kwargs.pop('extra_volumes', ())
     pre_stop_command = kwargs.pop('pre_stop_command', None)
+    log_when_fail = kwargs.pop('log_when_fail', False)
+
     scheduler_extra_modules = kwargs.pop('scheduler_extra_modules', None)
     worker_extra_modules = kwargs.pop('worker_extra_modules', None)
     web_extra_modules = kwargs.pop('web_extra_modules', None)
 
-    extra_envs = kwargs.pop('extra_volumes', dict())
+    extra_envs = kwargs.pop('extra_env', dict())
     scheduler_extra_env = _override_envs(extra_envs, kwargs.pop('scheduler_extra_env', dict()))
     worker_extra_env = _override_envs(extra_envs, kwargs.pop('worker_extra_env', dict()))
     web_extra_env = _override_envs(extra_envs, kwargs.pop('web_extra_env', dict()))
@@ -222,27 +225,15 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
 
         # wait until schedulers and expected num of workers are ready
         min_worker_num = int(min_worker_num or worker_num)
-        readies = [0, 0, 0]
         limits = [scheduler_num, min_worker_num, web_num]
         selectors = [
             'name=' + MarsSchedulersConfig.rc_name,
             'name=' + MarsWorkersConfig.rc_name,
             'name=' + MarsWebsConfig.rc_name,
         ]
-        start_time = time.time()
-        while True:
-            all_satisfy = True
-            for idx, selector in enumerate(selectors):
-                if readies[idx] < limits[idx]:
-                    all_satisfy = False
-                    readies[idx] = _get_ready_pod_count(core_api, selector, namespace)
-                    break
-            if all_satisfy:
-                break
-            if timeout and timeout + start_time < time.time():
-                raise TimeoutError('Wait kubernetes cluster start timeout')
-            time.sleep(1)
-
+        wait_services_ready(selectors, limits,
+                            lambda sel: _get_ready_pod_count(core_api, sel, namespace),
+                            timeout=timeout)
         web_ep = _create_node_port_service(core_api, namespace)
         return KubernetesClusterClient(kube_api_client, namespace, web_ep)
     except:  # noqa: E722

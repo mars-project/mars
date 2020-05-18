@@ -45,8 +45,11 @@ class WebApplication(BaseApplication):
     def main_loop(self):
         try:
             self.start()
-            while True:
+            self._running = True
+            while self._running:
                 time.sleep(0.1)
+        except KeyboardInterrupt:
+            pass
         finally:
             self.stop()
 
@@ -56,6 +59,7 @@ class WebApplication(BaseApplication):
             self.mars_web = None
             logger.warning('Mars UI cannot be loaded. Please check if necessary components are installed.')
         else:
+            host = self.args.host
             port_arg = self.args.ui_port or self.args.port
             ui_port = int(port_arg) if port_arg else None
 
@@ -64,8 +68,12 @@ class WebApplication(BaseApplication):
             if not schedulers:
                 raise KeyError('No scheduler is available')
             scheduler_ep = random.choice(schedulers)
-            self.mars_web = MarsWeb(port=ui_port, scheduler_ip=scheduler_ep)
+            self.mars_web = MarsWeb(host=host, port=ui_port, scheduler_ip=scheduler_ep)
             self.mars_web.start()
+            if self.args.advertise is not None:
+                self.advertise_endpoint = self.args.advertise.split(':', 1)[0] + ':' + str(self.mars_web.port)
+            else:
+                self.advertise_endpoint = host + ':' + str(self.mars_web.port)
 
     def stop(self):
         if self.mars_web:

@@ -4,8 +4,8 @@ cd /mnt/mars
 /opt/conda/bin/pip install -r requirements.txt
 /opt/conda/bin/pip install -r requirements-extra.txt
 
-mkdir -p .kube-coverage
-export COVERAGE_FILE=.kube-coverage/.coverage
+mkdir -p .dist-coverage
+export COVERAGE_FILE=.dist-coverage/.coverage
 
 cp /mnt/mars/.coveragerc /tmp/coveragerc
 export COVERAGE_PROCESS_START=/tmp/coveragerc

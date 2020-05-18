@@ -107,7 +107,9 @@ jobs:
           fi
           if [ -n "$WITH_HADOOP" ]; then
             ./.github/workflows/install-hadoop.sh
-            conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein
+            echo "import coverage; coverage.process_startup()" > \
+              $(python -c "import site; print(site.getsitepackages()[-1])")/coverage.pth
+            conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
           fi
         fi
         conda list -n test
