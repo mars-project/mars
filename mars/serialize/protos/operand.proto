@@ -205,7 +205,6 @@ message OperandDef {
         ANGLE = 195;
         SET_REAL = 196;
         SET_IMAG = 197;
-        TRAPZ = 198;
 
         // special
         GAMMALN = 200;
@@ -286,6 +285,7 @@ message OperandDef {
         FILL_DIAGONAL = 441;
         NORMALIZE = 442;
         TOPK = 443;
+        TRAPZ = 444;
         // fancy index, distributed phase is a shuffle operation that
         // the fancy indexes will be distributed to the left chunks
         // the concat phase will concat back the indexed left chunks and index
@@ -350,6 +350,7 @@ message OperandDef {
         SHIFT = 723;
         DATAFRAME_DIFF = 724;
         VALUE_COUNTS = 725;
+        TO_DATETIME = 726;
 
         FUSE = 801;
 

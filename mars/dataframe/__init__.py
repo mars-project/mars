@@ -24,6 +24,7 @@ from .datasource.from_vineyard import from_vineyard
 from .datasource.read_csv import read_csv
 from .datasource.read_sql_table import read_sql_table
 from .datasource.date_range import date_range
+from .tseries.to_datetime import to_datetime
 from .merge import concat, merge
 from .reduction import unique
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
