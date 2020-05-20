@@ -81,7 +81,7 @@ def broadcast_shape(*shapes):
 
     out_shapes = []
     for ss in itertools.zip_longest(*[reversed(s) for s in shapes], fillvalue=-1):
-        shape = max(ss)
+        shape = max(s for s in ss if s != -1)
         if any(i != -1 and i != 1 and i != shape and not np.isnan(i) for i in ss):
             raise ValueError('Operands could not be broadcast together '
                              'with shape {0}'.format(' '.join(map(str, shapes))))
