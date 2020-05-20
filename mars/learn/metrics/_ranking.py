@@ -15,7 +15,6 @@
 import warnings
 
 import numpy as np
-from sklearn.exceptions import UndefinedMetricWarning
 
 from ... import tensor as mt
 from ..utils.checks import assert_all_finite
@@ -271,6 +270,8 @@ def roc_curve(y_true, y_score, pos_label=None, sample_weight=None,
     array([1.8 , 0.8 , 0.4 , 0.35, 0.1 ])
 
     """
+    from sklearn.exceptions import UndefinedMetricWarning
+
     fps, tps, thresholds = _binary_clf_curve(
         y_true, y_score, pos_label=pos_label, sample_weight=sample_weight,
         session=session, run_kwargs=run_kwargs)

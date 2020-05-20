@@ -59,7 +59,7 @@ class TensorOperandMixin(TileableOperandMixin):
         chunks = kw.pop('chunks', None)
         if nsplits is not None:
             kw['nsplits'] = nsplits
-            if any(np.isnan(s) for s in shape):
+            if shape is not None and any(np.isnan(s) for s in shape):
                 # in the situation that `nan` in shape,
                 # but not in nsplits
                 shape = tuple(sum(ns) for ns in nsplits)

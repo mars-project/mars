@@ -58,7 +58,7 @@ class TensorGetShape(TensorOperand, TensorOperandMixin):
         for i in range(self.output_limit):
             kws.append({
                 'shape': (),
-                'dtype': np.dtype(np.int64),
+                'dtype': np.dtype(np.intc),
                 'order': TensorOrder.C_ORDER,
                 'i': i
             })
