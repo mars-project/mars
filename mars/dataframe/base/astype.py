@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import numpy as np
-import pandas as pd
-
+from pandas.api.types import CategoricalDtype
 
 from ... import opcodes as OperandDef
-from ...serialize import BoolField, AnyField, StringField
-from ...tiles import TilesError
-from ..utils import build_empty_df, build_empty_series, parse_index
-from ..core import SERIES_TYPE, INDEX_TYPE
+from ...serialize import AnyField, StringField, ListField
+from ...utils import recursive_tile
+from ...tensor.base import sort
+from ..utils import build_empty_df, build_empty_series
+from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 
 
@@ -28,12 +28,13 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.ASTYPE
 
     _dtype_values = AnyField('dtype_values')
-    _copy = BoolField('copy')
     _errors = StringField('errors')
+    _category_cols = ListField('category_cols')
 
-    def __init__(self, dtype_values=None, copy=None, errors=None, object_type=None, **kw):
+    def __init__(self, dtype_values=None, copy=None, errors=None,
+                 category_cols=None, object_type=None, **kw):
         super().__init__(_dtype_values=dtype_values,
-                         _copy=copy, _errors=errors,
+                         _errors=errors, _category_cols=category_cols,
                          _object_type=object_type, **kw)
 
     @property
@@ -41,23 +42,44 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
         return self._dtype_values
 
     @property
-    def copy_(self):
-        return self._copy
-
-    @property
     def errors(self):
         return self._errors
+
+    @property
+    def category_cols(self):
+        return self._category_cols
+
+    @classmethod
+    def _tile_one_chunk(cls, op):
+        c = op.inputs[0].chunks[0]
+        chunk_op = op.copy().reset_key()
+        chunk_params = op.outputs[0].params.copy()
+        chunk_params['index'] = c.index
+        out_chunks = [chunk_op.new_chunk([c], **chunk_params)]
+
+        new_op = op.copy()
+        return new_op.new_tileables(op.inputs, nsplits=op.inputs[0].nsplits,
+                                    chunks=out_chunks, **op.outputs[0].params.copy())
 
     @classmethod
     def _tile_series(cls, op):
         in_series = op.inputs[0]
         out = op.outputs[0]
+
+        unique_chunk = None
+        if op.dtype_values == 'category' and isinstance(op.dtype_values, str):
+            unique_chunk = recursive_tile(sort(in_series.unique())).chunks[0]
+
         chunks = []
         for c in in_series.chunks:
             chunk_op = op.copy().reset_key()
             params = c.params.copy()
             params['dtype'] = out.dtype
-            new_chunk = chunk_op.new_chunk([c], **params)
+            if unique_chunk is not None:
+                chunk_op._category_cols = [in_series.name]
+                new_chunk = chunk_op.new_chunk([c, unique_chunk], **params)
+            else:
+                new_chunk = chunk_op.new_chunk([c], **params)
             chunks.append(new_chunk)
 
         new_op = op.copy()
@@ -70,13 +92,46 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
         cum_nsplits = np.cumsum((0,) + in_df.nsplits[1])
         out_chunks = []
-        for c in in_df.chunks:
-            chunk_op = op.copy().reset_key()
-            params = c.params.copy()
-            dtypes = out.dtypes[cum_nsplits[c.index[1]]: cum_nsplits[c.index[1] + 1]]
-            params['dtypes'] = dtypes
-            new_chunk = chunk_op.new_chunk([c], **params)
-            out_chunks.append(new_chunk)
+
+        if op.dtype_values == 'category':
+            # all columns need unique values
+            for c in in_df.chunks:
+                chunk_op = op.copy().reset_key()
+                params = c.params.copy()
+                dtypes = out.dtypes[cum_nsplits[c.index[1]]: cum_nsplits[c.index[1] + 1]]
+                params['dtypes'] = dtypes
+                chunk_op._category_cols = list(c.columns_value.to_pandas())
+                unique_chunks = []
+                for col in c.columns_value.to_pandas():
+                    unique_chunks.append(recursive_tile(sort(in_df[col].unique())).chunks[0])
+                new_chunk = chunk_op.new_chunk([c] + unique_chunks, **params)
+                out_chunks.append(new_chunk)
+        elif isinstance(op.dtype_values, dict) and 'category' in op.dtype_values.values():
+            # some columns' types are category
+            category_cols = [c for c, v in op.dtype_values.items()
+                             if isinstance(v, str) and v == 'category']
+            for c in in_df.chunks:
+                chunk_op = op.copy().reset_key()
+                params = c.params.copy()
+                dtypes = out.dtypes[cum_nsplits[c.index[1]]: cum_nsplits[c.index[1] + 1]]
+                params['dtypes'] = dtypes
+                chunk_category_cols = []
+                unique_chunks = []
+                for col in c.columns_value.to_pandas():
+                    if col in category_cols:
+                        chunk_category_cols.append(col)
+                        unique_chunks.append(recursive_tile(sort(in_df[col].unique())).chunks[0])
+                chunk_op._category_cols = chunk_category_cols
+                new_chunk = chunk_op.new_chunk([c] + unique_chunks, **params)
+                out_chunks.append(new_chunk)
+        else:
+            for c in in_df.chunks:
+                chunk_op = op.copy().reset_key()
+                params = c.params.copy()
+                dtypes = out.dtypes[cum_nsplits[c.index[1]]: cum_nsplits[c.index[1] + 1]]
+                params['dtypes'] = dtypes
+                new_chunk = chunk_op.new_chunk([c], **params)
+                out_chunks.append(new_chunk)
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, nsplits=in_df.nsplits,
@@ -84,7 +139,9 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if isinstance(op.inputs[0], SERIES_TYPE):
+        if len(op.inputs[0].chunks) == 1:
+            return cls._tile_one_chunk(op)
+        elif isinstance(op.inputs[0], SERIES_TYPE):
             return cls._tile_series(op)
         else:
             return cls._tile_dataframe(op)
@@ -92,12 +149,23 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]
-        if isinstance(op.dtype_values, str):
-            ctx[op.outputs[0].key] = in_data.astype(op.dtype_values, copy=op.copy_, errors=op.errors)
+        if not isinstance(op.dtype_values, dict):
+            if op.category_cols is not None:
+                uniques = [ctx[c.key] for c in op.inputs[1:]]
+                dtype = dict((col, CategoricalDtype(unique_values)) for
+                             col, unique_values in zip(op.category_cols, uniques))
+                ctx[op.outputs[0].key] = in_data.astype(dtype, errors=op.errors)
+
+            else:
+                ctx[op.outputs[0].key] = in_data.astype(op.dtype_values, errors=op.errors)
         else:
             selected_dtype = dict((k, v) for k, v in op.dtype_values.items()
                                   if k in in_data.columns)
-            ctx[op.outputs[0].key] = in_data.astype(selected_dtype, copy=op.copy_, errors=op.errors)
+            if op.category_cols is not None:
+                uniques = [ctx[c.key] for c in op.inputs[1:]]
+                for col, unique_values in zip(op.category_cols, uniques):
+                    selected_dtype[col] = CategoricalDtype(unique_values)
+            ctx[op.outputs[0].key] = in_data.astype(selected_dtype, errors=op.errors)
 
     def __call__(self, df):
         if isinstance(df, SERIES_TYPE):
@@ -197,7 +265,7 @@ def astype(df, dtype, copy=True, errors='raise'):
 
     >>> cat_dtype = pd.api.types.CategoricalDtype(
     ...     categories=[2, 1], ordered=True)
-    >>> ser.astype(cat_dtype)
+    >>> ser.astype(cat_dtype).execute()
     0    1
     1    2
     dtype: category
@@ -206,11 +274,10 @@ def astype(df, dtype, copy=True, errors='raise'):
     Note that using ``copy=False`` and changing data on a new
     pandas object may propagate changes:
 
-    >>> s1 = pd.Series([1, 2])
+    >>> s1 = md.Series(pd.Series([1, 2]))
     >>> s2 = s1.astype('int64', copy=False)
-    >>> s2[0] = 10
-    >>> s1  # note that s1[0] has changed too
-    0    10
+    >>> s1.execute()  # note that s1[0] has changed too
+    0     1
     1     2
     dtype: int64
     """
@@ -226,5 +293,10 @@ def astype(df, dtype, copy=True, errors='raise'):
                 columns = df.columns_value.to_pandas()
                 if k not in columns:
                     raise KeyError('Only a column name can be used for the key in a dtype mappings argument.')
-    op = DataFrameAstype(dtype_values=dtype, copy=copy, errors=errors)
-    return op(df)
+    op = DataFrameAstype(dtype_values=dtype, errors=errors)
+    r = op(df)
+    if not copy:
+        df.data = r.data
+        return df
+    else:
+        return r

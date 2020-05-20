@@ -163,6 +163,7 @@ cdef class JsonSerializeProvider(Provider):
             'value': v
         }
 
+
     cdef inline object _deserialize_dtype(self, object value, list callbacks):
         try:
             return np.dtype(value['value'])
@@ -468,13 +469,13 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_slice(value)
         elif isinstance(value, np.ndarray):
             return self._serialize_arr(value)
-        elif isinstance(value, np.dtype):
+        elif isinstance(value, (np.dtype, pd.api.types.CategoricalDtype)):
             return self._serialize_dtype(value)
-        elif pd is not None and isinstance(value, pd.Index):
+        elif isinstance(value, pd.Index):
             return self._serialize_index(value)
-        elif pd is not None and isinstance(value, pd.Series):
+        elif isinstance(value, pd.Series):
             return self._serialize_series(value)
-        elif pd is not None and isinstance(value, pd.DataFrame):
+        elif isinstance(value, pd.DataFrame):
             return self._serialize_dataframe(value)
         elif isinstance(value, HasKey):
             return self._serialize_key(value)

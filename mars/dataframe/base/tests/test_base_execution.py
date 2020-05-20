@@ -1227,3 +1227,70 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = s.astype('str')
         pd.testing.assert_series_equal(result, expected)
+
+        # test category
+        raw = pd.DataFrame(rs.randint(3, size=(20, 8)),
+                           columns=['c' + str(i + 1) for i in range(8)])
+
+        df = from_pandas_df(raw)
+        r = df.astype('category')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype('category')
+        pd.testing.assert_frame_equal(expected, result)
+
+        df = from_pandas_df(raw)
+        r = df.astype({'c1': 'category', 'c8': 'int32', 'c4': 'str'})
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype({'c1': 'category', 'c8': 'int32', 'c4': 'str'})
+        pd.testing.assert_frame_equal(expected, result)
+
+        df = from_pandas_df(raw, chunk_size=5)
+        r = df.astype('category')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype('category')
+        pd.testing.assert_frame_equal(expected, result)
+
+        df = from_pandas_df(raw, chunk_size=3)
+        r = df.astype({'c1': 'category', 'c8': 'int32', 'c4': 'str'})
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype({'c1': 'category', 'c8': 'int32', 'c4': 'str'})
+        pd.testing.assert_frame_equal(expected, result)
+
+        df = from_pandas_df(raw, chunk_size=6)
+        r = df.astype({'c1': 'category', 'c5': 'float', 'c2': 'int32',
+                       'c7': pd.CategoricalDtype([1, 3, 4, 2]),
+                       'c4': pd.CategoricalDtype([1, 3, 2])})
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype({'c1': 'category', 'c5': 'float', 'c2': 'int32',
+                               'c7': pd.CategoricalDtype([1, 3, 4, 2]),
+                               'c4': pd.CategoricalDtype([1, 3, 2])})
+        pd.testing.assert_frame_equal(expected, result)
+
+        df = from_pandas_df(raw, chunk_size=8)
+        r = df.astype({'c2': 'category'})
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype({'c2': 'category'})
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test series category
+        raw = pd.Series(np.random.choice(['a', 'b', 'c'], size=(10,)))
+        series = from_pandas_series(raw, chunk_size=4)
+        result = self.executor.execute_dataframe(series.astype('category'), concat=True)[0]
+        expected = raw.astype('category')
+        pd.testing.assert_series_equal(expected, result)
+
+        series = from_pandas_series(raw, chunk_size=3)
+        result = self.executor.execute_dataframe(
+            series.astype(pd.CategoricalDtype(['a', 'c', 'b']), copy=False), concat=True)[0]
+        expected = raw.astype(pd.CategoricalDtype(['a', 'c', 'b']),  copy=False)
+        pd.testing.assert_series_equal(expected, result)
+
+        series = from_pandas_series(raw, chunk_size=6)
+        result = self.executor.execute_dataframe(
+            series.astype(pd.CategoricalDtype(['a', 'c', 'b', 'd'])), concat=True)[0]
+        expected = raw.astype(pd.CategoricalDtype(['a', 'c', 'b', 'd']))
+        pd.testing.assert_series_equal(expected, result)
