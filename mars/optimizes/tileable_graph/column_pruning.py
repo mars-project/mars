@@ -62,7 +62,7 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
 
         self._optimizer_context[node] = new_node
         self._optimizer_context[input_node] = new_input
-        return new_node
+        return node
 
 
 register(DataFrameGroupByAgg, GroupbyPruneReadCSV)
