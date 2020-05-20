@@ -164,7 +164,8 @@ class MarsWebAPI(MarsAPI):
 
 
 class MarsWeb(object):
-    def __init__(self, port=None, scheduler_ip=None):
+    def __init__(self, host=None, port=None, scheduler_ip=None):
+        self._host = host or '0.0.0.0'
         self._port = port
         self._scheduler_ip = scheduler_ip
         self._server = None
@@ -213,13 +214,13 @@ class MarsWeb(object):
 
                 self._server = Server(
                     handlers, allow_websocket_origin=['*'],
-                    address='0.0.0.0', port=use_port,
+                    address=self._host, port=use_port,
                     extra_patterns=extra_patterns,
                     http_server_kwargs={'max_buffer_size': 2 ** 32},
                 )
                 self._server.start()
                 self._port = use_port
-                logger.info('Mars UI started at 0.0.0.0:%d', self._port)
+                logger.info('Mars UI started at %s:%d', self._host, self._port)
                 break
             except OSError:
                 if self._port is not None:

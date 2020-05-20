@@ -2,7 +2,9 @@
 set -e
 PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning"
 if [ -n "$WITH_HADOOP" ]; then
-  pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datasource/tests/test_hdfs.py
+  source $CONDA/bin/activate test
+  pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datasource/tests/test_hdfs.py \
+    mars/deploy/yarn
   coverage report
 fi
 if [ -n "$WITH_KUBERNETES" ]; then

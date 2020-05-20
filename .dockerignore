@@ -5,7 +5,7 @@
 .idea
 .vscode
 .pytest*
-.kube-coverage
+.dist-coverage
 bin
 build
 dist

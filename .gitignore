@@ -44,7 +44,7 @@ htmlcov
 nosetests.xml
 .cache
 .pytest*
-.kube-coverage
+.dist-coverage
 test.conf
 
 # IDEs

@@ -45,23 +45,23 @@ TEST_ROOT = os.path.dirname(os.path.abspath(__file__))
     reason='Cannot run without kubernetes')
 class Test(unittest.TestCase):
     def tearDown(self):
-        kube_coverage_path = os.path.join(MARS_ROOT, '.kube-coverage')
-        if os.path.exists(kube_coverage_path):
+        dist_coverage_path = os.path.join(MARS_ROOT, '.dist-coverage')
+        if os.path.exists(dist_coverage_path):
             # change ownership of coverage files
             if find_executable('sudo'):
                 proc = subprocess.Popen(['sudo', '-n', 'chown', '-R', '%d:%d' % (os.geteuid(), os.getegid()),
-                                         kube_coverage_path], shell=False)
+                                         dist_coverage_path], shell=False)
                 proc.wait()
 
             # rewrite paths in coverage result files
-            for fn in glob.glob(os.path.join(kube_coverage_path, '.coverage.*')):
+            for fn in glob.glob(os.path.join(dist_coverage_path, '.coverage.*')):
                 if 'COVERAGE_FILE' in os.environ:
                     new_cov_file = os.environ['COVERAGE_FILE'] \
                                    + os.path.basename(fn).replace('.coverage', '')
                 else:
-                    new_cov_file = fn.replace('.kube-coverage' + os.sep, '')
+                    new_cov_file = fn.replace('.dist-coverage' + os.sep, '')
                 shutil.copyfile(fn, new_cov_file)
-            shutil.rmtree(kube_coverage_path)
+            shutil.rmtree(dist_coverage_path)
 
     @classmethod
     def _build_docker_images(cls):

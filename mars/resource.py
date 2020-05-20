@@ -72,7 +72,12 @@ def _read_cgroup_stat_file():
     return kvs
 
 
+_root_pid = None
+
+
 def virtual_memory():
+    global _root_pid
+
     sys_mem = psutil.virtual_memory()
     if _mem_use_cgroup_stat:
         # see section 5.5 in https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt
@@ -94,7 +99,23 @@ def virtual_memory():
         return _virt_memory_stat(total, available, percent, used, free)
     else:
         used = 0
-        for p in psutil.process_iter():
+        if _root_pid is None:
+            cur_proc = psutil.Process()
+            while True:
+                par_proc = cur_proc.parent()
+                if par_proc is None:
+                    break
+                try:
+                    cmd = par_proc.cmdline()
+                    if 'python' not in ' '.join(cmd).lower():
+                        break
+                    cur_proc = par_proc
+                except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+                    break
+            _root_pid = cur_proc.pid
+
+        root_proc = psutil.Process(_root_pid)
+        for p in root_proc.children(True):
             try:
                 used += p.memory_info().rss
             except (psutil.NoSuchProcess, psutil.AccessDenied):
