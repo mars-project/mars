@@ -31,7 +31,7 @@ class ChunkStandardizeRangeIndex(DataFrameOperand, DataFrameOperandMixin):
     _axis = Int32Field('axis')
 
     def __init__(self, prepare_inputs=None, axis=None, object_type=None, **kwargs):
-        super().__init__(__prepare_inputs=prepare_inputs, _axis=axis, _object_type=object_type, **kwargs)
+        super().__init__(_prepare_inputs=prepare_inputs, _axis=axis, _object_type=object_type, **kwargs)
 
     @property
     def axis(self):

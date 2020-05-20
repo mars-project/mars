@@ -23,11 +23,14 @@ import pandas as pd
 import mars.dataframe as md
 from mars.core import ExecutableTuple
 from mars.config import option_context
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, ExecutorForTest
 from mars.optimizes.tileable_graph.core import tileable_optimized
 
 
 class Test(TestBase):
+    def setUp(self):
+        self.executor = ExecutorForTest()
+
     def testGroupByPruneReadCSV(self):
         tempdir = tempfile.mkdtemp()
         file_path = os.path.join(tempdir, 'test.csv')
@@ -37,6 +40,12 @@ class Test(TestBase):
                                'c': list('aabaaddce'),
                                'd': list('abaaaddce')})
             df.to_csv(file_path, index=False)
+
+            # Use test executor
+            mdf = md.read_csv(file_path).groupby('c').agg({'a': 'sum'})
+            result = self.executor.execute_dataframe(mdf)[0]
+            expected = df.groupby('c').agg({'a': 'sum'})
+            pd.testing.assert_frame_equal(result, expected)
 
             mdf = md.read_csv(file_path).groupby('c').agg({'a': 'sum'})
             expected = df.groupby('c').agg({'a': 'sum'})
@@ -94,6 +103,40 @@ class Test(TestBase):
 
                 tileable_graph = mdf.build_graph()
                 self.assertIsNone(list(tileable_graph.topological_iter())[0].op.usecols)
+
+        finally:
+            shutil.rmtree(tempdir)
+
+    def testExecutedPruning(self):
+        tempdir = tempfile.mkdtemp()
+        file_path = os.path.join(tempdir, 'test.csv')
+        try:
+            pd_df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                                  'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                                  'c': list('aabaaddce'),
+                                  'd': list('abaaaddce')})
+            pd_df.to_csv(file_path, index=False)
+
+            in_df = md.read_csv(file_path)
+            mdf = in_df.groupby('c').agg({'a': 'sum'})
+
+            expected = pd_df.groupby('c').agg({'a': 'sum'})
+            pd.testing.assert_frame_equal(mdf.to_pandas(), expected)
+            optimized_df = tileable_optimized[mdf.data]
+            self.assertEqual(optimized_df.inputs[0].op.usecols, ['a', 'c'])
+
+            # make sure in_df has correct columns
+            pd.testing.assert_frame_equal(in_df.to_pandas(), pd_df)
+
+            # skip pruning
+            in_df = md.read_csv(file_path)
+            df1 = in_df.groupby('d').agg({'b': 'min'})
+            df2 = in_df[in_df.d.isin(df1.index)]
+
+            expected1 = pd_df.groupby('d').agg({'b': 'min'})
+            expected2 = pd_df[pd_df.d.isin(expected1.index)]
+
+            pd.testing.assert_frame_equal(df2.to_pandas(), expected2)
 
         finally:
             shutil.rmtree(tempdir)
