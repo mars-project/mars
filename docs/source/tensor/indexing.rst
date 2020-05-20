@@ -8,6 +8,8 @@ Generating index arrays
    :toctree: generated/
    :nosignatures:
 
+   mars.tensor.c_
+   mars.tensor.r_
    mars.tensor.nonzero
    mars.tensor.where
    mars.tensor.indices
