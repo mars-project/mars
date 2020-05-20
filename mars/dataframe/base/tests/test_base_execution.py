@@ -1182,3 +1182,48 @@ class Test(TestBase):
             r = series.value_counts(bins=5, normalize=True)
             pd.testing.assert_series_equal(executor.execute_dataframes([r])[0],
                                            s.value_counts(bins=5, normalize=True))
+
+    def testAsType(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(20, 8)),
+                           columns=['c' + str(i + 1) for i in range(8)])
+        # single chunk
+        df = from_pandas_df(raw)
+        r = df.astype('int32')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype('int32')
+        pd.testing.assert_frame_equal(expected, result)
+
+        # multiply chunks
+        df = from_pandas_df(raw, chunk_size=6)
+        r = df.astype('int32')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype('int32')
+        pd.testing.assert_frame_equal(expected, result)
+
+        # dict type
+        df = from_pandas_df(raw, chunk_size=5)
+        r = df.astype({'c1': 'int32', 'c2': 'float', 'c8': 'str'})
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype({'c1': 'int32', 'c2': 'float', 'c8': 'str'})
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test series
+        s = pd.Series(rs.randint(5, size=20))
+        series = from_pandas_series(s)
+        r = series.astype('int32')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.astype('int32')
+        pd.testing.assert_series_equal(result, expected)
+
+        # multiply chunks
+        series = from_pandas_series(s, chunk_size=6)
+        r = series.astype('str')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.astype('str')
+        pd.testing.assert_series_equal(result, expected)

@@ -28,6 +28,7 @@ from .cut import cut
 from .shift import shift, tshift
 from .diff import df_diff, series_diff
 from .value_counts import value_counts
+from .astype import astype
 
 
 def _install():
@@ -55,6 +56,7 @@ def _install():
         setattr(t, 'shift', shift)
         setattr(t, 'tshift', tshift)
         setattr(t, 'diff', df_diff)
+        setattr(t, 'astype', astype)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -78,6 +80,7 @@ def _install():
         setattr(t, 'tshift', tshift)
         setattr(t, 'diff', series_diff)
         setattr(t, 'value_counts', value_counts)
+        setattr(t, 'astype', astype)
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
