@@ -24,13 +24,14 @@ import time
 from ...actors import create_actor_pool
 from ...cluster_info import StaticSchedulerDiscoverer
 from ...config import options
-from ...lib import gipc
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
 from ...session import new_session
 from ...utils import get_next_port, kill_process_tree
 from ...worker.service import WorkerService
 from .distributor import gen_distributor
+
+_mp_spawn_context = multiprocessing.get_context('spawn')
 
 _local_cluster_clients = dict()
 atexit.register(lambda: [v.stop() for v in list(_local_cluster_clients.values())])
@@ -180,12 +181,14 @@ def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
 
 
 def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
-    event = multiprocessing.Event()
+    event = _mp_spawn_context.Event()
 
     kw = kw.copy()
     kw['n_process'] = n_process
     kw['shared_memory'] = shared_memory or '20%'
-    process = gipc.start_process(_start_cluster, args=(endpoint, event), kwargs=kw)
+    process = _mp_spawn_context.Process(
+        target=_start_cluster, args=(endpoint, event), kwargs=kw)
+    process.start()
 
     while True:
         event.wait(5)
@@ -214,10 +217,12 @@ def _start_web(scheduler_address, ui_port, event):
 
 
 def _start_web_process(scheduler_endpoint, web_endpoint):
-    web_event = multiprocessing.Event()
     ui_port = int(web_endpoint.rsplit(':', 1)[1])
-    web_process = gipc.start_process(
-        _start_web, args=(scheduler_endpoint, ui_port, web_event), daemon=True)
+
+    web_event = _mp_spawn_context.Event()
+    web_process = _mp_spawn_context.Process(
+        target=_start_web, args=(scheduler_endpoint, ui_port, web_event), daemon=True)
+    web_process.start()
 
     while True:
         web_event.wait(5)
