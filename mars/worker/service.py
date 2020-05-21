@@ -266,7 +266,7 @@ class WorkerService(object):
                 actor = actor_holder.create_actor(SenderActor, uid=uid)
                 self._sender_actors.append(actor)
 
-        # Mutable requires ReceiverActor (with LocalClusterSession)
+        # Mutable requires ReceiverActor (with ClusterSession)
         for receiver_id in range(2 * self._n_net_process):
             uid = 'w:%d:mars-receiver-%d-%d' % (start_pid + receiver_id // 2, os.getpid(), receiver_id)
             actor = actor_holder.create_actor(ReceiverWorkerActor, uid=uid)
