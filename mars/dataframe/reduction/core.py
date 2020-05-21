@@ -125,7 +125,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             chunk_params.update(dict(dtypes=df.dtypes, index_value=df.index_value,
                                      columns_value=df.columns_value))
         else:
-            chunk_params.update(dict(dtype=df.dtype))
+            chunk_params.update(dict(dtype=df.dtype, order=df.order))
         new_chunk_op = op.copy().reset_key()
         chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, kws=[chunk_params])
 
@@ -245,6 +245,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
+            new_chunk_op._object_type = ObjectType.series
             new_chunk_op._stage = OperandStage.map
             chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=series.dtype)
 
@@ -271,13 +272,16 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                                   index_value=parse_index(pd.RangeIndex(range_num)))
         chunk_op = op.copy().reset_key()
         chunk_op._stage = OperandStage.agg
-        chunk = chunk_op.new_chunk([chk], shape=(), index=(0,), dtype=chk.dtype)
+
+        chunk_params = series.params.copy()
+        chunk_params.update(dict(index=(0,)))
+        chunk = chunk_op.new_chunk([chk], **chunk_params)
 
         new_op = op.copy().reset_key()
         nsplits = tuple((s,) for s in chunk.shape)
-        return new_op.new_tileables(op.inputs, series.shape,
-                                    nsplits=tuple(tuple(ns) for ns in nsplits),
-                                    chunks=[chunk], dtype=series.dtype)
+        params = series.params.copy()
+        params.update(dict(nsplits=nsplits, chunks=[chunk]))
+        return new_op.new_tileables(op.inputs, **params)
 
     @classmethod
     def tile(cls, op):

@@ -70,7 +70,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
             name = name if name is not None else inp.index_value.name
             if inp.index_value.has_value():
                 self._data = data = inp.index_value.to_pandas()
-                return self.new_index(None, shape=(inp.shape[0],),
+                return self.new_index(None, shape=(inp.shape[0],), dtype=data.dtype,
                                       index_value=parse_index(data),
                                       name=name, raw_chunk_size=chunk_size)
             else:
@@ -113,7 +113,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_indexes(None, index.shape, dtype=op.dtype,
+        return new_op.new_indexes(None, index.shape, dtype=index.dtype,
                                   index_value=index.index_value,
                                   name=index.name, chunks=out_chunks, nsplits=chunk_size)
 
