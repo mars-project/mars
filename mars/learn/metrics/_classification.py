@@ -113,7 +113,8 @@ def _weighted_sum(sample_score, sample_weight, normalize=False):
         return sample_score.sum()
 
 
-def accuracy_score(y_true, y_pred, normalize=True, sample_weight=None):
+def accuracy_score(y_true, y_pred, normalize=True, sample_weight=None,
+                   session=None, run_kwargs=None):
     """Accuracy classification score.
 
     In multilabel classification, this function computes subset accuracy:
@@ -176,4 +177,5 @@ def accuracy_score(y_true, y_pred, normalize=True, sample_weight=None):
     # Compute accuracy for each possible representation
     op = AccuracyScore(y_true=y_true, y_pred=y_pred, normalize=normalize,
                        sample_weight=sample_weight)
-    return op(y_true, y_pred)
+    score = op(y_true, y_pred)
+    return score.execute(session=session, **(run_kwargs or dict()))
