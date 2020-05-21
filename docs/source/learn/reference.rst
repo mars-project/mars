@@ -68,6 +68,8 @@ Classification metrics
    :toctree: generated/
 
    metrics.accuracy_score
+   metrics.auc
+   metrics.roc_curve
 
 Pairwise metrics
 ----------------

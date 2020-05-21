@@ -280,7 +280,7 @@ def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
     order = order or 'K'
     x = tensor(x, dtype=dtype, order=order, chunk_size=chunk_size)
     while ndmin is not None and x.ndim < ndmin:
-        x = x[np.newaxis, :]
+        x = x[np.newaxis]
 
     if copy and x is raw_x:
         x = x.copy(order=order)

@@ -189,7 +189,8 @@ class Session(object):
             t._attach_session(self)
 
         for t in tileables:
-            if getattr(t, 'shape', None) is not None and np.nan in t.shape:
+            if getattr(t, 'shape', None) is not None and \
+                    any(np.isnan(s) for s in t.shape):
                 self._sess._update_tileable_shape(t)
 
         if fetch:

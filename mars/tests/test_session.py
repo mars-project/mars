@@ -72,6 +72,12 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(result, expected)
 
+        s = mt.shape(0)
+
+        result = s.execute().fetch()
+        expected = np.shape(0)
+        self.assertEqual(result, expected)
+
     def testReExecuteSame(self):
         data = np.random.random((5, 9))
 
