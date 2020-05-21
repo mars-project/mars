@@ -19,6 +19,7 @@ import logging
 import pickle
 import sys
 import uuid
+import warnings
 from io import BytesIO
 from numbers import Integral
 
@@ -74,14 +75,23 @@ class Session(object):
 
             if resp.status_code >= 400:
                 raise SystemError('Failed to create mars session: ' + resp.reason)
-            content = json.loads(resp.text)
-            self._session_id = content['session_id']
         else:
-            resp = self._req_session.head(self._endpoint + '/api/session/' + self._session_id)
+            resp = self._req_session.get(self._endpoint + '/api/session/' + self._session_id)
             if resp.status_code == 404:
                 raise ValueError('The session with id = %s doesn\'t exist' % self._session_id)
             if resp.status_code >= 400:
                 raise SystemError('Failed to check mars session.')
+
+        content = json.loads(resp.text)
+        self._session_id = content['session_id']
+        self._check_arrow_version(content.get('arrow_version'))
+
+    @staticmethod
+    def _check_arrow_version(arrow_version):
+        import pyarrow
+        if arrow_version is not None and pyarrow.__version__ != arrow_version:
+            warnings.warn('pyarrow on client (%s) does not agree with server (%s), '
+                          'unexpected errors may occur', RuntimeWarning)
 
     def _get_tileable_graph_key(self, tileable_key):
         return self._executed_tileables[tileable_key][0]

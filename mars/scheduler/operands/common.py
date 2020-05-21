@@ -431,7 +431,7 @@ class OperandActor(BaseOperandActor):
                                  self.retries + 1, exc_type.__name__, self._op_key, self.worker, exc_info=exc)
                 # increase retry times
                 self.retries += 1
-                if self.retries >= options.scheduler.retry_num:
+                if not self._info['retryable'] or self.retries >= options.scheduler.retry_num:
                     # no further trial
                     self.state = OperandState.FATAL
                     self._exc = exc
