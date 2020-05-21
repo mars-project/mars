@@ -57,10 +57,6 @@ jobs:
         fi
         if [[ "$PYTHON" =~ "3.8" ]]; then
           conda install -n test --quiet --yes python=$PYTHON numpy
-          # remove three lines below once gevent 1.5 is released
-          # resolve compatibility issue in tblib inside gevent
-          GEVENT_TBLIB_FILE=$(python -c "from gevent import _tblib; print(_tblib.__file__)")
-          curl https://raw.githubusercontent.com/gevent/gevent/1.5a2/src/gevent/_tblib.py -o "$GEVENT_TBLIB_FILE"
         fi
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt

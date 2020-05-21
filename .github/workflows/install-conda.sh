@@ -35,7 +35,7 @@ fi
 
 CONDA_FILE="Miniconda3-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
 
-TEST_PACKAGES="virtualenv gevent psutil pyyaml lz4"
+TEST_PACKAGES="virtualenv psutil pyyaml lz4"
 
 if [[ "$FILE_EXT" == "sh" ]]; then
   curl -L -o "miniconda.${FILE_EXT}" https://repo.continuum.io/miniconda/$CONDA_FILE
