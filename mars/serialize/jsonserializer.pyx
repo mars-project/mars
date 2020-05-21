@@ -469,7 +469,7 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_slice(value)
         elif isinstance(value, np.ndarray):
             return self._serialize_arr(value)
-        elif isinstance(value, (np.dtype, pd.api.types.CategoricalDtype)):
+        elif isinstance(value, (np.dtype, ExtensionDtype)):
             return self._serialize_dtype(value)
         elif isinstance(value, pd.Index):
             return self._serialize_index(value)

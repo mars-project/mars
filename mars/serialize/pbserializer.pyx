@@ -483,7 +483,7 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_slice(value, obj)
         elif isinstance(value, np.ndarray):
             self._set_arr(value, obj)
-        elif isinstance(value, (np.dtype, pd.api.types.CategoricalDtype)):
+        elif isinstance(value, (np.dtype, ExtensionDtype)):
             self._set_dtype(value, obj)
         elif isinstance(value, pd.Index):
             self._set_index(value, obj)

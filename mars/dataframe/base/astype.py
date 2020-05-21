@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import pandas as pd
 from pandas.api.types import CategoricalDtype
 
 from ... import opcodes as OperandDef
@@ -110,19 +111,21 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
             # some columns' types are category
             category_cols = [c for c, v in op.dtype_values.items()
                              if isinstance(v, str) and v == 'category']
+            unique_chunks = dict((col, recursive_tile(sort(in_df[col].unique())).chunks[0])
+                                 for col in category_cols)
             for c in in_df.chunks:
                 chunk_op = op.copy().reset_key()
                 params = c.params.copy()
                 dtypes = out.dtypes[cum_nsplits[c.index[1]]: cum_nsplits[c.index[1] + 1]]
                 params['dtypes'] = dtypes
                 chunk_category_cols = []
-                unique_chunks = []
+                chunk_unique_chunks = []
                 for col in c.columns_value.to_pandas():
                     if col in category_cols:
                         chunk_category_cols.append(col)
-                        unique_chunks.append(recursive_tile(sort(in_df[col].unique())).chunks[0])
+                        chunk_unique_chunks.append(unique_chunks[col])
                 chunk_op._category_cols = chunk_category_cols
-                new_chunk = chunk_op.new_chunk([c] + unique_chunks, **params)
+                new_chunk = chunk_op.new_chunk([c] + chunk_unique_chunks, **params)
                 out_chunks.append(new_chunk)
         else:
             for c in in_df.chunks:
@@ -172,14 +175,18 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
             self._object_type = ObjectType.series
             empty_series = build_empty_series(df.dtype)
             new_series = empty_series.astype(self.dtype_values)
-
-            return self.new_series([df], shape=df.shape, dtype=new_series.dtype,
+            dtype = CategoricalDtype() if isinstance(
+                new_series.dtype, CategoricalDtype) else new_series.dtype
+            return self.new_series([df], shape=df.shape, dtype=dtype,
                                    name=df.name, index_value=df.index_value)
         else:
             self._object_type = ObjectType.dataframe
             empty_df = build_empty_df(df.dtypes)
             new_df = empty_df.astype(self.dtype_values)
-            return self.new_dataframe([df], shape=df.shape, dtypes=new_df.dtypes,
+            dtypes = pd.Series([
+                CategoricalDtype() if isinstance(dt, CategoricalDtype) else dt
+                for dt in new_df.dtypes], index=new_df.dtypes.index)
+            return self.new_dataframe([df], shape=df.shape, dtypes=dtypes,
                                       index_value=df.index_value,
                                       columns_value=df.columns_value)
 
