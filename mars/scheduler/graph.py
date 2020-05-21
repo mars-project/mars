@@ -18,6 +18,7 @@ import logging
 import operator
 import os
 import random
+import sys
 import time
 from collections import defaultdict, OrderedDict
 from functools import lru_cache, reduce
@@ -388,6 +389,7 @@ class GraphActor(SchedulerActor):
             pass
         except:  # noqa: E722
             logger.exception('Failed to start graph execution.')
+            self._graph_meta_ref.set_exc_info(sys.exc_info(), _tell=True, _wait=False)
             self.stop_graph()
             self.state = GraphState.FAILED
             self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
@@ -857,6 +859,7 @@ class GraphActor(SchedulerActor):
                 initial_keys.append(op_key)
                 state = OperandState.READY
                 op_info['is_initial'] = True
+            op_info['retryable'] = op.retryable
             op_info['retries'] = 0
             meta_op_info['state'] = op_info['state'] = state
             meta_op_info['worker'] = op_info.get('worker')
