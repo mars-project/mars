@@ -25,7 +25,6 @@ from .core import Entity, Base
 from .context import LocalContext
 from .tiles import get_tiled
 from .executor import Executor
-from .api import MarsAPI
 from .config import options
 try:
     from .resource import cpu_count, cuda_count
@@ -159,6 +158,8 @@ class LocalSession(object):
 
 class ClusterSession(object):
     def __init__(self, endpoint, session_id=None, **kwargs):
+        from .api import MarsAPI
+
         self._endpoint = endpoint
         # dict structure: {tileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tilable id
@@ -189,6 +190,8 @@ class ClusterSession(object):
 
     @endpoint.setter
     def endpoint(self, endpoint):
+        from .api import MarsAPI
+
         self._endpoint = endpoint
         self._api = MarsAPI(self._endpoint)
 
