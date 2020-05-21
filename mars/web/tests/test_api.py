@@ -273,6 +273,17 @@ class Test(unittest.TestCase):
         res = requests.post('%s/api/session' % service_ep, dict(pyver=wrong_version))
         self.assertEqual(res.status_code, 400)
 
+        import pyarrow
+        old_arrow_version = pyarrow.__version__
+        try:
+            pyarrow.__version__ = '0.0.0'
+
+            with self.assertWarns(RuntimeWarning):
+                with new_session(service_ep):
+                    pass
+        finally:
+            pyarrow.__version__ = old_arrow_version
+
         with new_session(service_ep) as sess:
             # Stop non-existing graph should raise an exception
             graph_key = str(uuid.uuid4())
