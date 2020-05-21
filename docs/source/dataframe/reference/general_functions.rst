@@ -29,4 +29,5 @@ Top-level dealing with datetimelike
 .. autosummary::
    :toctree: api/
 
+   to_datetime
    date_range

@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
+import mars.tensor as mt
 from mars.tests.core import TestBase, ExecutorForTest
 
 
@@ -569,3 +570,20 @@ class Test(TestBase):
 
         result = self.executor.execute_dataframe(df.iloc[:, 2].iat[3], concat=True)[0]
         self.assertEqual(result, data.iloc[:, 2].iat[3])
+
+    def testSetitem(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c' + str(i) for i in range(5)],
+                            index=['i' + str(i) for i in range(10)])
+        data2 = np.random.rand(10)
+        df = md.DataFrame(data, chunk_size=3)
+
+        df['c3'] = df['c3'] + 1
+        df['c10'] = 10
+        df[4] = mt.tensor(data2, chunk_size=4)
+
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = data.copy()
+        expected['c3'] = expected['c3'] + 1
+        expected['c10'] = 10
+        expected[4] = data2
+        pd.testing.assert_frame_equal(result, expected)
