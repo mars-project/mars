@@ -37,9 +37,8 @@ from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.tensor.arithmetic.abs import TensorAbs
 from mars.serialize import Int64Field
-from mars.session import new_session, Session
+from mars.session import new_session, Session, ClusterSession
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
-from mars.deploy.local.session import LocalClusterSession
 from mars.scheduler import SessionManagerActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.worker.dispatcher import DispatchActor
@@ -521,7 +520,7 @@ class Test(unittest.TestCase):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
 
-            self.assertIsInstance(Session.default_or_local()._sess, LocalClusterSession)
+            self.assertIsInstance(Session.default_or_local()._sess, ClusterSession)
 
             with option_context({'eager_mode': True}):
                 a_data = np.random.rand(10, 10)
