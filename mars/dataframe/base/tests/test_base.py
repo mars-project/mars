@@ -23,7 +23,7 @@ from mars.dataframe.core import SERIES_TYPE, SERIES_CHUNK_TYPE, \
     CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut
+from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut, astype
 from mars.dataframe.operands import ObjectType
 from mars.operands import OperandStage
 from mars.tensor.core import TENSOR_TYPE
@@ -820,3 +820,14 @@ class Test(TestBase):
         self.assertIsInstance(r, TENSOR_TYPE)
         e = pd.cut([0, 1, 1, 2], bins=4, labels=False)
         self.assertEqual(r.dtype, e.dtype)
+
+    def testAstype(self):
+        s = from_pandas_series(pd.Series([1, 2, 1, 2], name='a'), chunk_size=2)
+        with self.assertRaises(KeyError):
+            astype(s, {'b': 'str'})
+
+        df = from_pandas_df(pd.DataFrame({'a': [1, 2, 1, 2],
+                                          'b': ['a', 'b', 'a', 'b']}), chunk_size=2)
+
+        with self.assertRaises(KeyError):
+            astype(df, {'c': 'str', 'a': 'str'})
