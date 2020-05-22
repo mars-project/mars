@@ -101,7 +101,7 @@ class GraphsApiHandler(MarsApiRequestHandler):
         try:
             graph = self.get_argument('graph')
             target = self.get_argument('target').split(',')
-            names = self.get_argument('names').split(',')
+            names = self.get_argument('names', default='').split(',')
             compose = bool(int(self.get_argument('compose', '1')))
         except web.MissingArgumentError as ex:
             self.write(json.dumps(dict(msg=str(ex))))
