@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...serialize import BoolField, TupleField, DictField, FunctionField
+from ...serialize import BoolField, TupleField, DictField, AnyField
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index
 
@@ -25,7 +25,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.TRANSFORM
     _op_module_ = 'dataframe.groupby'
 
-    _func = FunctionField('func')
+    _func = AnyField('func')
     _args = TupleField('args')
     _kwds = DictField('kwds')
 
