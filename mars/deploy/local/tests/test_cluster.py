@@ -33,6 +33,7 @@ except ImportError:
 
 from mars import tensor as mt
 from mars import dataframe as md
+from mars import remote as mr
 from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.tensor.arithmetic.abs import TensorAbs
@@ -940,3 +941,21 @@ class Test(unittest.TestCase):
                 with h5py.File(filename, 'r') as f:
                     result = np.asarray(f[dataset])
                     np.testing.assert_array_equal(result, raw)
+
+    def testRemoteFunctionInLocalCluster(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', modules=[__name__], web=True) as cluster:
+            session = cluster.session
+
+            def f(x):
+                return x + 1
+
+            def g(x, y):
+                return x * y
+
+            a = mr.spawn(f, 3)
+            b = mr.spawn(f, 4)
+            c = mr.spawn(g, (a, b))
+
+            r = session.run(c, timeout=_exec_timeout)
+            self.assertEqual(r, 20)

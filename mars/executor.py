@@ -973,5 +973,6 @@ from . import tensor
 from . import dataframe
 from . import optimizes
 from . import learn
+from . import remote
 
-del tensor, dataframe, optimizes, learn
+del tensor, dataframe, optimizes, learn, remote
