@@ -174,18 +174,25 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(df, SERIES_TYPE):
             self._object_type = ObjectType.series
             empty_series = build_empty_series(df.dtype)
-            new_series = empty_series.astype(self.dtype_values)
-            dtype = CategoricalDtype() if isinstance(
-                new_series.dtype, CategoricalDtype) else new_series.dtype
+            new_series = empty_series.astype(self.dtype_values, errors=self.errors)
+            if new_series.dtype != df.dtype:
+                dtype = CategoricalDtype() if isinstance(
+                    new_series.dtype, CategoricalDtype) else new_series.dtype
+            else:  # pragma: no cover
+                dtype = df.dtype
             return self.new_series([df], shape=df.shape, dtype=dtype,
                                    name=df.name, index_value=df.index_value)
         else:
             self._object_type = ObjectType.dataframe
             empty_df = build_empty_df(df.dtypes)
-            new_df = empty_df.astype(self.dtype_values)
-            dtypes = pd.Series([
-                CategoricalDtype() if isinstance(dt, CategoricalDtype) else dt
-                for dt in new_df.dtypes], index=new_df.dtypes.index)
+            new_df = empty_df.astype(self.dtype_values, errors=self.errors)
+            dtypes = []
+            for dt, new_dt in zip(df.dtypes, new_df.dtypes):
+                if new_dt != dt and isinstance(new_dt, CategoricalDtype):
+                    dtypes.append(CategoricalDtype())
+                else:
+                    dtypes.append(new_dt)
+            dtypes = pd.Series(dtypes, index=new_df.dtypes.index)
             return self.new_dataframe([df], shape=df.shape, dtypes=dtypes,
                                       index_value=df.index_value,
                                       columns_value=df.columns_value)
