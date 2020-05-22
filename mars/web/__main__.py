@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import gevent.monkey
-gevent.monkey.patch_all(thread=False)
+gevent.monkey.patch_all(thread=False, select=False)
 
 import argparse  # noqa: E402
 import logging   # noqa: E402
