@@ -483,13 +483,13 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_slice(value, obj)
         elif isinstance(value, np.ndarray):
             self._set_arr(value, obj)
-        elif isinstance(value, np.dtype):
+        elif isinstance(value, (np.dtype, ExtensionDtype)):
             self._set_dtype(value, obj)
-        elif pd is not None and isinstance(value, pd.Index):
+        elif isinstance(value, pd.Index):
             self._set_index(value, obj)
-        elif pd is not None and isinstance(value, pd.Series):
+        elif isinstance(value, pd.Series):
             self._set_series(value, obj)
-        elif pd is not None and isinstance(value, pd.DataFrame):
+        elif isinstance(value, pd.DataFrame):
             self._set_dataframe(value, obj)
         elif isinstance(value, HasKey):
             self._set_key(value, obj)
