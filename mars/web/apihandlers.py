@@ -70,15 +70,19 @@ class SessionsApiHandler(MarsApiRequestHandler):
         if python_version[0] != sys.version_info[0]:
             raise web.HTTPError(400, reason='Python version not consistent')
 
+        import pyarrow
         session_id = tokenize(str(uuid.uuid1()))
         self.web_api.create_session(session_id, **args)
-        self.write(json.dumps(dict(session_id=session_id)))
+        self.write(json.dumps(dict(session_id=session_id, arrow_version=pyarrow.__version__)))
 
 
 class SessionApiHandler(MarsApiRequestHandler):
-    def head(self, session_id):
+    def get(self, session_id):
         if not self.web_api.has_session(session_id):
             raise web.HTTPError(404, 'Session doesn\'t not exists')
+
+        import pyarrow
+        self.write(json.dumps(dict(session_id=session_id, arrow_version=pyarrow.__version__)))
 
     def delete(self, session_id):
         self.web_api.delete_session(session_id)

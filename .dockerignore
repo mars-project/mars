@@ -6,7 +6,6 @@
 .vscode
 .pytest*
 .kube-coverage
-bin
 build
 dist
 docs
@@ -28,3 +27,13 @@ README.rst
 **/*.pyc
 **/*.so
 **/*.pyd
+**/*_pb2.py
+mars/*.c*
+mars/*.h*
+mars/lib/*.c*
+mars/actors/*.c*
+mars/actors/pool/*.c*
+mars/optimizes/**/*.c*
+mars/scheduler/*.c*
+mars/serialize/*.c*
+mars/worker/*.c*
