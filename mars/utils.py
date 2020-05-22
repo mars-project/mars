@@ -277,8 +277,10 @@ def deserialize_graph(ser_graph, graph_cls=None):
         g.ParseFromString(ser_graph_bin)
         return graph_cls.from_pb(g)
     except (zlib.error, DecodeError):
-        json_obj = json.loads(to_str(ser_graph))
-        return graph_cls.from_json(json_obj)
+        pass
+
+    json_obj = json.loads(to_str(ser_graph))
+    return graph_cls.from_json(json_obj)
 
 
 def calc_data_size(dt):
