@@ -920,7 +920,7 @@ class Executor(object):
             return self.execute_tileables(tileables, **kw)
         finally:
             for to_release_tileable in to_release_tileables:
-                for c in get_tiled(to_release_tileable).chunks:
+                for c in get_tiled(to_release_tileable, mapping=tileable_optimized).chunks:
                     del self._chunk_result[c.key]
 
     def get_tileable_nsplits(self, tileable, chunk_result=None):

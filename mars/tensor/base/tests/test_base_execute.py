@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import scipy.sparse as sps
 import pandas as pd
@@ -26,11 +24,12 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, flip, flipud, fliplr, repeat, tile, \
-    isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, trapz, to_gpu, to_cpu
-from mars.tests.core import require_cupy, ExecutorForTest
+    isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, \
+    trapz, shape, to_gpu, to_cpu
+from mars.tests.core import require_cupy, ExecutorForTest, TestBase
 
 
-class Test(unittest.TestCase):
+class Test(TestBase):
     def setUp(self):
         self.executor = ExecutorForTest('numpy')
 
@@ -1580,3 +1579,26 @@ class Test(unittest.TestCase):
                 result = self.executor.execute_tensor(r, concat=True)[0]
                 expected = np.trapz(raw_y, x=raw_x)
                 np.testing.assert_almost_equal(result, expected)
+
+    def testShape(self):
+        raw = np.random.RandomState(0).rand(4, 3)
+        x = mt.tensor(raw, chunk_size=2)
+
+        s = shape(x)
+
+        ctx, executor = self._create_test_context(self.executor)
+        with ctx:
+            result = executor.execute_tensors(s)
+            self.assertSequenceEqual(result, (4, 3))
+
+            s = shape(x[x > .5])
+
+            result = executor.execute_tensors(s)
+            expected = np.shape(raw[raw > .5])
+            self.assertSequenceEqual(result, expected)
+
+            s = shape(0)
+
+            result = executor.execute_tensors(s)
+            expected = np.shape(0)
+            self.assertSequenceEqual(result, expected)

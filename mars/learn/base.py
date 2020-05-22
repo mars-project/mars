@@ -43,6 +43,6 @@ class ClassifierMixin:
             Mean accuracy of self.predict(X) wrt. y.
         """
         from .metrics import accuracy_score
-        result = accuracy_score(y, self.predict(X), sample_weight=sample_weight)
-        result.execute(session=session, fetch=False, **(run_kwargs or dict()))
+        result = accuracy_score(y, self.predict(X), sample_weight=sample_weight,
+                                session=session, run_kwargs=run_kwargs)
         return result

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from ..serialize import DataTypeField
 from ..operands import Operand, TileableOperandMixin, HasInput, ShuffleProxy, MapReduceOperand, Fuse
 from ..utils import calc_nsplits
@@ -57,6 +59,10 @@ class TensorOperandMixin(TileableOperandMixin):
         chunks = kw.pop('chunks', None)
         if nsplits is not None:
             kw['nsplits'] = nsplits
+            if shape is not None and any(np.isnan(s) for s in shape):
+                # in the situation that `nan` in shape,
+                # but not in nsplits
+                shape = tuple(sum(ns) for ns in nsplits)
         data = TensorData(shape=shape, dtype=dt, order=order,
                           op=self, chunks=chunks, **kw)
         return tensor_cls(data)

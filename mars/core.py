@@ -642,6 +642,16 @@ class ExecutableTuple(tuple, _ExecutableMixin):
         super().__init__()
         self._executed_sessions = []
 
+    def execute(self, session=None, **kw):
+        if len(self) == 0:
+            return self
+        return super().execute(session=session, **kw)
+
+    def fetch(self, session=None, **kw):
+        if len(self) == 0:
+            return tuple()
+        return super().fetch(session=session, **kw)
+
     def _attach_session(self, session):
         super()._attach_session(session)
         for t in self:

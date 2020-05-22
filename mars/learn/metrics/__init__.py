@@ -14,3 +14,4 @@
 
 from .pairwise import euclidean_distances, pairwise_distances
 from ._classification import accuracy_score
+from ._ranking import roc_curve, auc
