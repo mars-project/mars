@@ -67,6 +67,14 @@ class ContextBase(object):
                 return func(*args, **kwargs)
         return h
 
+    def get_current_session(self):
+        """
+        Get current session.
+
+        :return: Session
+        """
+        raise NotImplementedError
+
     # ---------------
     # Meta relative
     # ---------------
@@ -185,6 +193,13 @@ class LocalContext(ContextBase, dict):
         new_d.update(self)
         return new_d
 
+    def get_current_session(self):
+        from .session import new_session
+
+        sess = new_session()
+        sess._sess = self._local_session
+        return sess
+
     def set_ncores(self, ncores):
         self._ncores = ncores
 
@@ -279,6 +294,14 @@ class DistributedContext(ContextBase):
     @property
     def session_id(self):
         return self._session_id
+
+    def get_current_session(self):
+        from .session import new_session, ClusterSession
+
+        sess = new_session()
+        sess._sess = ClusterSession(self._scheduler_address,
+                                    session_id=self._session_id)
+        return sess
 
     def get_scheduler_addresses(self):
         return self._cluster_info.get_schedulers()
