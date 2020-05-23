@@ -37,6 +37,7 @@ from typing import List
 
 import numpy as np
 import pandas as pd
+import cloudpickle
 
 from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, register_tokenizer,\
     insert_reversed_tuple, ceildiv
@@ -926,3 +927,8 @@ def adapt_mars_docstring(doc):
                 lines[-1] += '.execute()'
         lines.append(line)
     return '\n'.join(lines)
+
+
+@functools.lru_cache(500)
+def serialize_function(function):
+    return cloudpickle.dumps(function)

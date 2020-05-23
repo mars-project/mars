@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
-from ...serialize import AnyField, BoolField, TupleField, DictField, FunctionField
+from ...serialize import AnyField, BoolField, TupleField, DictField
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import build_empty_df, build_empty_series, validate_axis, parse_index
@@ -26,7 +26,7 @@ from ..utils import build_empty_df, build_empty_series, validate_axis, parse_ind
 class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.TRANSFORM
 
-    _func = FunctionField('func')
+    _func = AnyField('func')
     _axis = AnyField('axis')
     _convert_dtype = BoolField('convert_dtype')
     _args = TupleField('args')

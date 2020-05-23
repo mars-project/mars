@@ -560,7 +560,9 @@ class ObjectOperandMixin(TileableOperandMixin):
         return ObjectChunk(data)
 
     def _create_tileable(self, output_idx, **kw):
-        data = ObjectData(op=self, i=output_idx, **kw)
+        if 'i' not in kw:
+            kw['i'] = output_idx
+        data = ObjectData(op=self, **kw)
         return Object(data)
 
     def get_fetch_op_cls(self, obj):

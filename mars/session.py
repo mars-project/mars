@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import json
+import threading
 import time
 import uuid
 from numbers import Integral
@@ -26,6 +27,7 @@ from .context import LocalContext
 from .tiles import get_tiled
 from .executor import Executor
 from .config import options
+from .utils import classproperty
 try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
@@ -352,7 +354,7 @@ class ClusterSession(object):
 
 
 class Session(object):
-    _default_session = None
+    _default_session_local = threading.local()
 
     def __init__(self, endpoint=None, **kwargs):
         if endpoint is not None:
@@ -453,16 +455,25 @@ class Session(object):
         self.__exit__(None, None, None)
 
     def as_default(self):
-        Session._default_session = self
+        Session._default_session_local.default_session = self
         return self
 
     @classmethod
-    def default_or_local(cls):
-        if cls._default_session is not None:
-            return cls._default_session
+    def _set_default_session(cls, session):
+        cls._default_session_local.default_session = session
+        return session
 
-        cls._default_session = Session()
-        return cls._default_session
+    @classproperty
+    def default(self):
+        return getattr(Session._default_session_local, 'default_session', None)
+
+    @classmethod
+    def default_or_local(cls):
+        default_session = getattr(Session._default_session_local, 'default_session', None)
+        if default_session is not None:
+            return default_session
+
+        return cls._set_default_session(Session())
 
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
         return self._sess.create_mutable_tensor(name, shape, dtype, fill_value=fill_value, *args, **kwargs)
