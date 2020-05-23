@@ -29,6 +29,7 @@ import pandas as pd
 from pandas.api.extensions import ExtensionDtype
 from pandas.arrays import IntervalArray
 
+from ..utils import serialize_function
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
     ReferenceField, OneOfField, ListField, get_serializable_by_index
@@ -340,7 +341,7 @@ cdef class JsonSerializeProvider(Provider):
     cdef inline dict _serialize_function(self, value):
         return {
             'type': 'function',
-            'value': self._to_str(base64.b64encode(cloudpickle.dumps(value)))
+            'value': self._to_str(base64.b64encode(serialize_function(value)))
         }
 
     cdef inline _deserialize_function(self, obj, list callbacks):

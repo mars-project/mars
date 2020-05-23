@@ -29,6 +29,7 @@ import pandas as pd
 from pandas.api.extensions import ExtensionDtype
 from pandas.arrays import IntervalArray
 
+from ..utils import serialize_function
 from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, OneOfField, \
     ReferenceField, IdentityField, ListField, TupleField, \
@@ -209,7 +210,7 @@ cdef class ProtobufSerializeProvider(Provider):
         return complex(obj.c.real, obj.c.imag)
 
     cdef inline void _set_function(self, value, obj, tp=None):
-        obj.function = cloudpickle.dumps(value)
+        obj.function = serialize_function(value)
 
     cdef inline object _get_function(self, obj):
         x = obj.function
