@@ -636,6 +636,8 @@ cdef class JsonSerializeProvider(Provider):
     cdef object _deserialize_reference(self, model, val, list callbacks, dict key_to_instance):
         if model is None:
             model = get_serializable_by_index(val['type_id'])
+            if model is None:
+                raise KeyError('Cannot find serializable class for type_id %s' % val['type_id'])
             val = val['value']
         return model.deserialize(self, val, callbacks, key_to_instance)
 

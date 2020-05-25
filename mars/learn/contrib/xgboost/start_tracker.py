@@ -23,6 +23,7 @@ from ...operands import LearnOperand, LearnOperandMixin, OutputType
 
 class StartTracker(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.START_TRACKER
+    _op_module_ = 'learn.contrib.xgboost'
 
     _n_workers = Int32Field('n_workers')
 

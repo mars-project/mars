@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .train import train
+from .predict import predict
 
-from .core import convert_to_tensor_or_dataframe, get_output_types, concat_chunks
-from .validation import check_array, assert_all_finite, \
-    check_consistent_length, column_or_1d, check_X_y
-from .shuffle import shuffle
+try:
+    from .classifier import LGBMClassifier
+    from .regressor import LGBMRegressor
+except ImportError:
+    pass
+
+
+def register_op():
+    from .align import align_inputs
+    del align_inputs

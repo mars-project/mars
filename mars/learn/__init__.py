@@ -14,12 +14,12 @@
 
 # register operands
 from .utils.shuffle import shuffle
-from .contrib import xgboost, tensorflow, pytorch
+from .contrib import xgboost, tensorflow, pytorch, lightgbm
 from .metrics import pairwise
 from . import preprocessing
 from . import neighbors
 
-for _mod in [xgboost, tensorflow, pytorch, neighbors]:
+for _mod in [xgboost, tensorflow, pytorch, lightgbm, neighbors]:
     _mod.register_op()
 
 del _mod, shuffle, pairwise, preprocessing
