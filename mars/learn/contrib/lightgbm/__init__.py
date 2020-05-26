@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .train import train
-from .predict import predict
-
-try:
-    from .classifier import LGBMClassifier
-    from .regressor import LGBMRegressor
-except ImportError:
-    pass
+from .classifier import LGBMClassifier
+from .regressor import LGBMRegressor
+from .ranker import LGBMRanker
 
 
 def register_op():
-    from .align import align_inputs
-    del align_inputs
+    from .train import train
+    from .predict import predict
+    from .align import align_data_set
+
+    del train, predict, align_data_set

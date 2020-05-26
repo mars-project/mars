@@ -44,7 +44,7 @@ class Test(unittest.TestCase):
         X, y = self.X, self.y
         y = (y * 10).astype(mt.int32)
         classifier = LGBMClassifier(n_estimators=2)
-        classifier.fit(X, y, verbose=True)
+        classifier.fit(X, y, eval_set=[(X, y)], verbose=True)
         prediction = classifier.predict(X)
 
         self.assertEqual(prediction.ndim, 1)

@@ -26,11 +26,12 @@ class LGBMAlign(LearnOperand, LearnOperandMixin):
     _data = AnyField('data')
     _label = AnyField('label')
     _sample_weight = AnyField('sample_weight')
+    _init_score = AnyField('init_score')
 
-    def __init__(self, data=None, label=None, sample_weight=None,
+    def __init__(self, data=None, label=None, sample_weight=None, init_score=None,
                  output_types=None, **kw):
         super().__init__(_data=data, _label=label, _sample_weight=sample_weight,
-                         _output_types=output_types, **kw)
+                         _init_score=init_score, _output_types=output_types, **kw)
 
     @property
     def data(self):
@@ -45,6 +46,10 @@ class LGBMAlign(LearnOperand, LearnOperandMixin):
         return self._sample_weight
 
     @property
+    def init_score(self):
+        return self._init_score
+
+    @property
     def output_limit(self):
         return 2 if self._sample_weight is None else 3
 
@@ -52,62 +57,49 @@ class LGBMAlign(LearnOperand, LearnOperandMixin):
         super()._set_inputs(inputs)
         it = iter(inputs)
         self._data = next(it)
-        self._label = next(it)
-        if self._sample_weight is not None:
-            self._sample_weight = next(it)
+        for attr in ('_label', '_sample_weight', '_init_score'):
+            if getattr(self, attr) is not None:
+                setattr(self, attr, next(it))
 
-    def __call__(self, data, label, sample_weight=None):
-        kws = [data.params, label.params]
-        inputs = [data, label]
-        if hasattr(sample_weight, 'params'):
-            kws.append(sample_weight.params)
-            inputs.append(sample_weight)
+    def __call__(self):
+        kws, inputs = [], []
+        for arg in [self.data, self.label, self.sample_weight, self.init_score]:
+            if hasattr(arg, 'params'):
+                kws.append(arg.params)
+                inputs.append(arg)
         tileables = self.new_tileables(inputs, kws=kws)
         return ExecutableTuple(tileables)
 
     @classmethod
     def tile(cls, op: "LGBMAlign"):
+        inputs = [d for d in [op.data, op.label, op.sample_weight, op.init_score] if d is not None]
         data = op.data
-        label = op.label
-        sample_weight = op.sample_weight
 
         ctx = get_context()
         if ctx.running_mode != RunningMode.distributed:
-            data = data.rechunk(tuple((s,) for s in data.shape))._inplace_tile()
-            label = label.rechunk(tuple((s,) for s in label.shape))._inplace_tile()
-            if sample_weight is not None:
-                sample_weight = sample_weight.rechunk(tuple((s,) for s in sample_weight.shape))._inplace_tile()
+            outputs = [inp.rechunk(tuple((s,) for s in inp.shape))._inplace_tile() for inp in inputs]
         else:
             if len(data.nsplits[1]) != 1:
                 data = data.rechunk({1: data.shape[1]})._inplace_tile()
-            label = label.rechunk((data.nsplits[0],))._inplace_tile()
-            if sample_weight is not None:
-                sample_weight = sample_weight.rechunk((data.nsplits[0],))._inplace_tile()
+            outputs = [data]
+            for inp in inputs[1:]:
+                if inp is not None:
+                    outputs.append(inp.rechunk((data.nsplits[0],))._inplace_tile())
 
-        outputs = [data, label]
-        if sample_weight is not None:
-            outputs.append(sample_weight)
-
-        kws = [data.params, label.params]
-        kws[0]['chunks'] = data.chunks
-        kws[0]['nsplits'] = data.nsplits
-        kws[1]['chunks'] = label.chunks
-        kws[1]['nsplits'] = label.nsplits
-
-        inputs = [data, label]
-        if hasattr(sample_weight, 'params'):
-            kws.append(sample_weight.params)
-            inputs.append(sample_weight)
-            kws[-1]['chunks'] = sample_weight.chunks
-            kws[-1]['nsplits'] = sample_weight.nsplits
+        kws = []
+        for o in outputs:
+            kw = o.params.copy()
+            kw.update(dict(chunks=o.chunks, nsplits=o.nsplits))
+            kws.append(kw)
 
         new_op = op.copy().reset_key()
-        tileables = new_op.new_tileables(op.inputs, kws=kws)
+        tileables = new_op.new_tileables(inputs, kws=kws)
 
         return tileables
 
 
-def align_inputs(data, label, sample_weight=None):
-    op = LGBMAlign(data=data, label=label, sample_weight=sample_weight,
-                   output_types=get_output_types(data, label, sample_weight))
-    return op(data, label, sample_weight)
+def align_data_set(dataset):
+    out_types = get_output_types(dataset.data, dataset.label, dataset.sample_weight, dataset.init_score)
+    op = LGBMAlign(data=dataset.data, label=dataset.label, sample_weight=dataset.sample_weight,
+                   init_score=dataset.init_score, output_types=out_types)
+    return op()

@@ -656,7 +656,7 @@ class ExecutableTuple(tuple, _ExecutableMixin):
         super()._attach_session(session)
         for t in self:
             if hasattr(t, '_attach_session'):
-                t._attatch_session(session)
+                t._attach_session(session)
 
 
 class _TileableSession(object):
