@@ -146,10 +146,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
                             cs = list(map(operator.itemgetter(1), cs))
                             new_chunks.append((idx, xp.concatenate(cs, axis=len(axes) - i - 1)))
                         chunks = new_chunks
-                    try:
-                        res = xp.concatenate(list(map(operator.itemgetter(1), chunks)), axis=axes[0])
-                    except ValueError:
-                        raise
+                    res = xp.concatenate(list(map(operator.itemgetter(1), chunks)), axis=axes[0])
             return res
 
         chunk = op.outputs[0]

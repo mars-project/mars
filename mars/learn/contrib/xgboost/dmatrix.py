@@ -21,7 +21,7 @@ from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ....tensor import tensor as astensor
 from ....dataframe.core import DATAFRAME_TYPE
 from ...operands import LearnOperand, LearnOperandMixin
-from ...utils import convert_to_tensor_or_dataframe, get_output_types
+from ...utils import convert_to_tensor_or_dataframe, get_output_types, concat_chunks
 
 
 class ToDMatrix(LearnOperand, LearnOperandMixin):
@@ -222,18 +222,15 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             ind = itertools.count(0)
             out_chunks = []
             for worker, chunks in worker_to_chunks.items():
-                worker_data = chunks[0][0].op.create_tileable_from_chunks(chunks[0])
-                data_chunk = worker_data.op.concat_tileable_chunks(worker_data).chunks[0]
+                data_chunk = concat_chunks(chunks[0])
                 inps = [data_chunk]
                 label_chunk = None
                 if label is not None:
-                    worker_label = chunks[1][0].op.create_tileable_from_chunks(chunks[1])
-                    label_chunk = worker_label.op.concat_tileable_chunks(worker_label).chunks[0]
+                    label_chunk = concat_chunks(chunks[1])
                     inps.append(label_chunk)
                 weight_chunk = None
                 if weight is not None:
-                    worker_weight = chunks[2][0].op.create_tileable_from_chunks(chunks[2])
-                    weight_chunk = worker_weight.op.concat_tileable_chunks(worker_weight).chunks[0]
+                    weight_chunk = concat_chunks(chunks[2])
                     inps.append(weight_chunk)
                 chunk_op = ToDMatrix(data=data_chunk, label=label_chunk, missing=op.missing,
                                      weight=weight_chunk, feature_names=op.feature_names,

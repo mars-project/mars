@@ -1,0 +1,448 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-05-26 18:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:2
+msgid "mars.learn.contrib.lightgbm.LGBMRegressor"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:1 of
+msgid "Construct a gradient boosting model."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__ of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:3 of
+msgid ""
+"'gbdt', traditional Gradient Boosting Decision Tree. 'dart', Dropouts "
+"meet Multiple Additive Regression Trees. 'goss', Gradient-based One-Side "
+"Sampling. 'rf', Random Forest."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:8 of
+msgid "Maximum tree leaves for base learners."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:10 of
+msgid "Maximum tree depth for base learners, <=0 means no limit."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:12 of
+msgid ""
+"Boosting learning rate. You can use ``callbacks`` parameter of ``fit`` "
+"method to shrink/adapt learning rate in training using "
+"``reset_parameter`` callback. Note, that this will ignore the "
+"``learning_rate`` argument in training."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:17 of
+msgid "Number of boosted trees to fit."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:19 of
+msgid "Number of samples for constructing bins."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:21 of
+msgid ""
+"Specify the learning task and the corresponding learning objective or a "
+"custom objective function to be used (see note below). Default: "
+"'regression' for LGBMRegressor, 'binary' or 'multiclass' for "
+"LGBMClassifier, 'lambdarank' for LGBMRanker."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:25 of
+msgid ""
+"Weights associated with classes in the form ``{class_label: weight}``. "
+"Use this parameter only for multi-class classification task; for binary "
+"classification task you may use ``is_unbalance`` or ``scale_pos_weight`` "
+"parameters. Note, that the usage of all these parameters will result in "
+"poor estimates of the individual class probabilities. You may want to "
+"consider performing probability calibration (https://scikit-"
+"learn.org/stable/modules/calibration.html) of your model. The 'balanced' "
+"mode uses the values of y to automatically adjust weights inversely "
+"proportional to class frequencies in the input data as ``n_samples / "
+"(n_classes * np.bincount(y))``. If None, all classes are supposed to have"
+" weight one. Note, that these weights will be multiplied with "
+"``sample_weight`` (passed through the ``fit`` method) if "
+"``sample_weight`` is specified."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:37 of
+msgid ""
+"Minimum loss reduction required to make a further partition on a leaf "
+"node of the tree."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:39 of
+msgid "Minimum sum of instance weight (hessian) needed in a child (leaf)."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:41 of
+msgid "Minimum number of data needed in a child (leaf)."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:43 of
+msgid "Subsample ratio of the training instance."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:45 of
+msgid "Frequence of subsample, <=0 means no enable."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:47 of
+msgid "Subsample ratio of columns when constructing each tree."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:49 of
+msgid "L1 regularization term on weights."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:51 of
+msgid "L2 regularization term on weights."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:53 of
+msgid "Random number seed. If None, default seeds in C++ code will be used."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:56 of
+msgid "Number of parallel threads."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:58 of
+msgid "Whether to print messages while running boosting."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:60 of
+msgid ""
+"The type of feature importance to be filled into "
+"``feature_importances_``. If 'split', result contains numbers of times "
+"the feature is used in a model. If 'gain', result contains total gains of"
+" splits which use the feature."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:64 of
+msgid ""
+"Other parameters for the model. Check "
+"http://lightgbm.readthedocs.io/en/latest/Parameters.html for more "
+"parameters.  .. warning::      \\*\\*kwargs is not supported in sklearn, "
+"it may cause unexpected issues."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:64 of
+msgid ""
+"Other parameters for the model. Check "
+"http://lightgbm.readthedocs.io/en/latest/Parameters.html for more "
+"parameters."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:69 of
+msgid "\\*\\*kwargs is not supported in sklearn, it may cause unexpected issues."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:73 of
+msgid "The number of features of fitted model."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__ of
+msgid "type"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:75
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:87 of
+msgid "int"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:79 of
+msgid "The class label array (only for classification problem)."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:81 of
+msgid "array of shape = [n_classes]"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:85 of
+msgid "The number of classes (only for classification problem)."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:91 of
+msgid "The best score of fitted model."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:93
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:117 of
+msgid "dict or None"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:97 of
+msgid ""
+"The best iteration of fitted model if ``early_stopping_rounds`` has been "
+"specified."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:99 of
+msgid "int or None"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:103 of
+msgid "The concrete objective used while fitting this model."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:105 of
+msgid "string or callable"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:109 of
+msgid "The underlying Booster of this model."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:111 of
+msgid "Booster"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:115 of
+msgid "The evaluation results if ``early_stopping_rounds`` has been specified."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:121 of
+msgid "The feature importances (the higher, the more important the feature)."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:123 of
+msgid "array of shape = [n_features]"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:127 of
+msgid ""
+"A custom objective function can be provided for the ``objective`` "
+"parameter. In this case, it should have the signature ``objective(y_true,"
+" y_pred) -> grad, hess`` or ``objective(y_true, y_pred, group) -> grad, "
+"hess``:"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:132 of
+msgid "y_true"
+msgstr ""
+
+#: of
+msgid "array-like of shape = [n_samples]"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:133 of
+msgid "The target values."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:134 of
+msgid "y_pred"
+msgstr ""
+
+#: of
+msgid ""
+"array-like of shape = [n_samples] or shape = [n_samples * n_classes] (for"
+" multi-class task)"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:135 of
+msgid "The predicted values."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:136 of
+msgid "group"
+msgstr ""
+
+#: of
+msgid "array-like"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:137 of
+msgid "Group/query data, used for ranking task."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:138 of
+msgid "grad"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:139 of
+msgid "The value of the first order derivative (gradient) for each sample point."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:141 of
+msgid "hess"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:141 of
+msgid "The value of the second order derivative (Hessian) for each sample point."
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRegressor.__init__:143 of
+msgid ""
+"For multi-class task, the y_pred is group by class_id first, then group "
+"by row_id. If you want to get i-th row y_pred in j-th class, the access "
+"way is y_pred[j * num_data + i] and you should group grad and hess in "
+"this way as well."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:13
+msgid "Methods"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid ""
+":obj:`__init__ <mars.learn.contrib.lightgbm.LGBMRegressor.__init__>`\\ "
+"\\(\\[boosting\\_type\\, num\\_leaves\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid ""
+":obj:`fit <mars.learn.contrib.lightgbm.LGBMRegressor.fit>`\\ \\(X\\, "
+"y\\[\\, sample\\_weight\\, init\\_score\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid "Build a gradient boosting model from the training set (X, y)."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid ""
+":obj:`get_params "
+"<mars.learn.contrib.lightgbm.LGBMRegressor.get_params>`\\ "
+"\\(\\[deep\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid "Get parameters for this estimator."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid ""
+":obj:`predict <mars.learn.contrib.lightgbm.LGBMRegressor.predict>`\\ "
+"\\(X\\, \\*\\*kw\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid "Return the predicted value for each sample."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid ""
+":obj:`predict_proba "
+"<mars.learn.contrib.lightgbm.LGBMRegressor.predict_proba>`\\ \\(X\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid ""
+":obj:`score <mars.learn.contrib.lightgbm.LGBMRegressor.score>`\\ \\(X\\, "
+"y\\[\\, sample\\_weight\\]\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid "Return the coefficient of determination R^2 of the prediction."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid ""
+":obj:`set_params "
+"<mars.learn.contrib.lightgbm.LGBMRegressor.set_params>`\\ "
+"\\(\\*\\*params\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid "Set the parameters of this estimator."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:28:<autosummary>:1
+msgid ""
+":obj:`to_local <mars.learn.contrib.lightgbm.LGBMRegressor.to_local>`\\ "
+"\\(\\)"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:30
+msgid "Attributes"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid ""
+":obj:`best_iteration_ "
+"<mars.learn.contrib.lightgbm.LGBMRegressor.best_iteration_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid "Get the best iteration of fitted model."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid ""
+":obj:`best_score_ "
+"<mars.learn.contrib.lightgbm.LGBMRegressor.best_score_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid "Get the best score of fitted model."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid ":obj:`booster_ <mars.learn.contrib.lightgbm.LGBMRegressor.booster_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid "Get the underlying lightgbm Booster of this model."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid ""
+":obj:`evals_result_ "
+"<mars.learn.contrib.lightgbm.LGBMRegressor.evals_result_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid "Get the evaluation results."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid ""
+":obj:`feature_importances_ "
+"<mars.learn.contrib.lightgbm.LGBMRegressor.feature_importances_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid "Get feature importances."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid ""
+":obj:`n_features_ "
+"<mars.learn.contrib.lightgbm.LGBMRegressor.n_features_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid "Get the number of features of fitted model."
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid ":obj:`objective_ <mars.learn.contrib.lightgbm.LGBMRegressor.objective_>`\\"
+msgstr ""
+
+#: ../../source/learn/generated/mars.learn.contrib.lightgbm.LGBMRegressor.rst:39:<autosummary>:1
+msgid "Get the concrete objective used while fitting this model."
+msgstr ""
+

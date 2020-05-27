@@ -70,11 +70,13 @@ jobs:
               pip install matplotlib
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
-              conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
+              conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
+                "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
               conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
-              conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost
+              conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
+                libxgboost py-xgboost xgboost lightgbm
             fi
             if [[ $UNAME == "linux" ]] && [[ "$PYTHON" =~ "3.6" ]]; then
               pip install torch==1.4.0 torchvision==0.5.0

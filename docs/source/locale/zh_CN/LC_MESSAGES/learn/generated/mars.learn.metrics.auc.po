@@ -1,0 +1,89 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-05-26 18:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/learn/generated/mars.learn.metrics.auc.rst:2
+msgid "mars.learn.metrics.auc"
+msgstr ""
+
+#: mars.learn.metrics.auc:1 of
+msgid "Compute Area Under the Curve (AUC) using the trapezoidal rule"
+msgstr ""
+
+#: mars.learn.metrics.auc:3 of
+msgid ""
+"This is a general function, given points on a curve.  For computing the "
+"area under the ROC-curve, see :func:`roc_auc_score`.  For an alternative "
+"way to summarize a precision-recall curve, see "
+":func:`average_precision_score`."
+msgstr ""
+
+#: mars.learn.metrics.auc of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.metrics.auc:8 of
+msgid ""
+"x coordinates. These must be either monotonic increasing or monotonic "
+"decreasing."
+msgstr ""
+
+#: mars.learn.metrics.auc:11 of
+msgid "y coordinates."
+msgstr ""
+
+#: mars.learn.metrics.auc of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.metrics.auc:14 of
+msgid "**auc**"
+msgstr ""
+
+#: mars.learn.metrics.auc of
+msgid "Return type"
+msgstr ""
+
+#: mars.learn.metrics.auc:18 of
+msgid "Examples"
+msgstr ""
+
+#: mars.learn.metrics.auc:30 of
+msgid ":func:`roc_auc_score`"
+msgstr ""
+
+#: mars.learn.metrics.auc:30 of
+msgid "Compute the area under the ROC curve"
+msgstr ""
+
+#: mars.learn.metrics.auc:33 of
+msgid ":func:`average_precision_score`"
+msgstr ""
+
+#: mars.learn.metrics.auc:33 of
+msgid "Compute average precision from prediction scores"
+msgstr ""
+
+#: mars.learn.metrics.auc:35 of
+msgid ":func:`precision_recall_curve`"
+msgstr ""
+
+#: mars.learn.metrics.auc:36 of
+msgid "Compute precision-recall pairs for different probability thresholds"
+msgstr ""
+

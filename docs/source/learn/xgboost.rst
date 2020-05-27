@@ -144,14 +144,38 @@ For :meth:`predict`, we call it with trained model.
 .. code-block:: ipython
 
    In [19]: xgb.predict(booster, X_test)
-   Out[19]: Series <op=XGBPredict, key=60208a66c4922453e720572c0909ff28>
+   Out[19]:
+   476    12.694860
+   490     9.062592
+   304    19.793633
+   216    14.832405
+   256    24.101620
+            ...
+   250    16.733646
+   224    21.917801
+   500    14.239252
+   134    11.500128
+   248    15.969764
+   Name: predictions, Length: 152, dtype: float32
 
 For :meth:`XGBRegressor.predict`, you can run the snippet.
 
 .. code-block:: ipython
 
    In [46]: xg_reg.predict(X_test)
-   Out[46]: Series <op=XGBPredict, key=8415591102455e915a020dc8bc3541f4>
+   Out[46]:
+   476    12.059338
+   490     8.448854
+   304    20.644527
+   216    14.706422
+   256    23.231501
+            ...
+   250    16.597778
+   224    22.945301
+   500    13.720667
+   134    11.226119
+   248    15.548668
+   Name: predictions, Length: 152, dtype: float32
 
 Distributed training and prediction
 -----------------------------------

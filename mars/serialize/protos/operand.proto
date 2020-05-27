@@ -456,6 +456,11 @@ message OperandDef {
         TO_DMATRIX = 3003;
         START_TRACKER = 3004;
 
+        // LightGBM
+        LGBM_TRAIN = 3020;
+        LGBM_PREDICT = 3021;
+        LGBM_ALIGN = 3022;
+
         // TensorFlow
         RUN_TENSORFLOW = 3010;
 
