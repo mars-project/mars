@@ -696,11 +696,8 @@ def has_unknown_shape(tiled):
         return False
     if any(np.isnan(s) for s in tiled.shape):
         return True
-    try:
-        if any(np.isnan(s) for s in itertools.chain(*tiled.nsplits)):
-            return True
-    except TypeError:
-        raise
+    if any(np.isnan(s) for s in itertools.chain(*tiled.nsplits)):
+        return True
     return False
 
 
