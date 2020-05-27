@@ -164,6 +164,6 @@ class Test(TestBase):
                 register(DataFrameReadCSV, _execute_read_csv)
 
                 pd.testing.assert_frame_equal(df2.fetch(), expected)
-                pd.testing.assert_frame_equal(df2.fetch().iloc[:3], expected.iloc[:3])
+                pd.testing.assert_frame_equal(df2.iloc[:3].fetch(), expected.iloc[:3])
             finally:
                 del Executor._op_runners[DataFrameReadCSV]

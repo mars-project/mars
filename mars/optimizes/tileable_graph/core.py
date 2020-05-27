@@ -62,6 +62,15 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
             node = node_processor(node) if node_processor is not None else node
             if node in tileable_optimized:
                 node = tileable_optimized[node]
+            elif len(node.inputs or []) > 0 and \
+                    any(inp in tileable_optimized for inp in node.inputs):
+                new_inputs = []
+                for inp in node.inputs:
+                    if inp in tileable_optimized:
+                        new_inputs.append(tileable_optimized[inp])
+                    else:
+                        new_inputs.append(inp)
+                node.inputs = new_inputs
             elif type(node.op) in _rules:
                 for rule in _rules[type(node.op)]:
                     ruler = rule(optimizer_context)
