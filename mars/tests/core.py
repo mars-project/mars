@@ -620,6 +620,7 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     execute_dataframe = execute_tileable
 
     def execute_tileables(self, tileables, *args, **kwargs):
+        from mars.core import OBJECT_TYPE
         self._extract_check_options(kwargs)
 
         results = super().execute_tileables(tileables, *args, **kwargs)
@@ -627,9 +628,10 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
             # fetch = False
             results = super().fetch_tileables(tileables)
         for tileable, result in zip(tileables, results):
-            if _check_options['check_nsplits']:
-                self._check_nsplits(tileable)
-            self.assert_object_consistent(tileable, result)
+            if not isinstance(tileable, OBJECT_TYPE):
+                if _check_options['check_nsplits']:
+                    self._check_nsplits(tileable)
+                self.assert_object_consistent(tileable, result)
         return results
 
     execute_tensors = execute_tileables

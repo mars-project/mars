@@ -23,7 +23,7 @@ import time
 
 from ...actors import create_actor_pool
 from ...cluster_info import StaticSchedulerDiscoverer
-from ...config import options
+from ...config import options, option_context
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
 from ...session import new_session
@@ -173,15 +173,17 @@ def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
     modules = kw.pop('modules', None) or []
     for m in modules:
         __import__(m, globals(), locals(), [])
+    options_dict = kw.pop('options', None) or {}
 
-    cluster = LocalDistributedCluster(endpoint, n_process=n_process,
-                                      shared_memory=shared_memory, **kw)
-    cluster.start_service()
-    event.set()
-    try:
-        cluster.serve_forever()
-    finally:
-        cluster.stop_service()
+    with option_context(options_dict):
+        cluster = LocalDistributedCluster(endpoint, n_process=n_process,
+                                          shared_memory=shared_memory, **kw)
+        cluster.start_service()
+        event.set()
+        try:
+            cluster.serve_forever()
+        finally:
+            cluster.stop_service()
 
 
 def _start_cluster_process(endpoint, n_process, shared_memory, **kw):

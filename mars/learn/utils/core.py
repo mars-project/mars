@@ -48,3 +48,8 @@ def get_output_types(*objs, unknown_as=None):
         else:  # pragma: no cover
             raise TypeError('Output can only be tensor, dataframe or series')
     return output_types
+
+
+def concat_chunks(chunks):
+    tileable = chunks[0].op.create_tileable_from_chunks(chunks)
+    return tileable.op.concat_tileable_chunks(tileable).chunks[0]

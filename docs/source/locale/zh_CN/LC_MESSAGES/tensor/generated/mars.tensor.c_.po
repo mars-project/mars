@@ -1,0 +1,55 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-05-26 18:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/tensor/generated/mars.tensor.c_.rst:2
+msgid "mars.tensor.c\\_"
+msgstr ""
+
+#: mars.tensor.c_:1 of
+msgid "Translates slice objects to concatenation along the second axis."
+msgstr ""
+
+#: mars.tensor.c_:3 of
+msgid ""
+"This is short-hand for ``mt.r_['-1,2,0', index expression]``, which is "
+"useful because of its common occurrence. In particular, tensors will be "
+"stacked along their last axis after being upgraded to at least 2-D with "
+"1's post-pended to the shape (column vectors made out of 1-D tensors)."
+msgstr ""
+
+#: mars.tensor.c_:11 of
+msgid ":obj:`column_stack`"
+msgstr ""
+
+#: mars.tensor.c_:11 of
+msgid "Stack 1-D tensors as columns into a 2-D tensor."
+msgstr ""
+
+#: mars.tensor.c_:13 of
+msgid ":obj:`r_`"
+msgstr ""
+
+#: mars.tensor.c_:14 of
+msgid "For more detailed documentation."
+msgstr ""
+
+#: mars.tensor.c_:17 of
+msgid "Examples"
+msgstr ""
+
