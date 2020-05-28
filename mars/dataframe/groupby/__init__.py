@@ -40,6 +40,7 @@ def _install():
         setattr(cls, 'max', lambda groupby, **kw: agg(groupby, 'max', **kw))
         setattr(cls, 'min', lambda groupby, **kw: agg(groupby, 'min', **kw))
         setattr(cls, 'count', lambda groupby, **kw: agg(groupby, 'count', **kw))
+        setattr(cls, 'size', lambda groupby, **kw: agg(groupby, 'size', **kw))
         setattr(cls, 'mean', lambda groupby, **kw: agg(groupby, 'mean', **kw))
         setattr(cls, 'var', lambda groupby, **kw: agg(groupby, 'var', **kw))
         setattr(cls, 'std', lambda groupby, **kw: agg(groupby, 'std', **kw))

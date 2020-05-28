@@ -34,7 +34,7 @@ from ..utils import parse_index, build_concatenated_rows_frame, tokenize
 from .core import DataFrameGroupByOperand
 
 
-_available_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count',
+_available_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count', 'size',
                                     'mean', 'var', 'std'}
 
 _stage_infos = namedtuple('stage_infos', ('intermediate_cols', 'agg_cols',
@@ -188,15 +188,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         else:
             self._object_type = ObjectType.series
             return self.new_series(inputs, shape=(np.nan,), dtype=agg_result.dtype,
-                                   name=groupby.name, index_value=index_value)
+                                   name=agg_result.name, index_value=index_value)
 
     def __call__(self, groupby):
         df = groupby
         while df.op.object_type not in (ObjectType.dataframe, ObjectType.series):
             df = df.inputs[0]
 
-        self._object_type = ObjectType.dataframe if groupby.op.object_type == ObjectType.dataframe_groupby \
-            else ObjectType.series
+        if self.func == 'size':
+            self._object_type = ObjectType.series
+        else:
+            self._object_type = ObjectType.dataframe \
+                if groupby.op.object_type == ObjectType.dataframe_groupby else ObjectType.series
 
         if self.object_type == ObjectType.dataframe:
             return self._call_dataframe(groupby, df)
@@ -250,7 +253,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             for f in functions:
                 if f in {'sum', 'prod', 'min', 'max'}:
                     _add_column_to_functions(col, f, [f], [f], f)
-                elif f == 'count':
+                elif f in {'count', 'size'}:
                     _add_column_to_functions(col, f, [f], ['sum'], 'sum')
                 elif f == 'mean':
                     def _mean(_, grouped, columns):
@@ -435,8 +438,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._groupby_params['level'] = level
                 chunk_op._func = stage_infos.combine_func
                 chunk_op._output_column_to_func = stage_infos.combine_output_column_to_func
+
                 columns_value = parse_index(pd.Index(stage_infos.intermediate_cols), store_data=True)
-                new_chunks.append(chunk_op.new_chunk([chk], index=(idx, 0), shape=(np.nan, out_df.shape[1]),
+                new_shape = (np.nan, out_df.shape[1]) if len(out_df.shape) == 2 else (np.nan,)
+
+                new_chunks.append(chunk_op.new_chunk([chk], index=(idx, 0), shape=new_shape,
                                                      index_value=chks[0].index_value,
                                                      columns_value=columns_value))
             chunks = new_chunks
@@ -514,7 +520,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             func = raw_func[0]
         if func is None:
             return False
-        return func in {'min', 'max', 'prod', 'sum', 'count'}
+        return func in {'min', 'max', 'prod', 'sum', 'count', 'size'}
 
     @classmethod
     def execute(cls, ctx, op):
