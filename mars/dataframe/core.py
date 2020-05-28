@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
-    is_eager_mode, build_mode
+    is_eager_mode, build_mode, ceildiv
 from ..core import ChunkData, Chunk, TileableEntity, \
     HasShapeTileableData, HasShapeTileableEnity
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
@@ -955,6 +955,26 @@ class DataFrameData(BaseDataFrameData):
             return DataFrameDef
         return super().cls(provider)
 
+    def _iter_wrap(self, method, batch_size, session):
+        from .indexing.iloc import iloc
+
+        # trigger execution
+        self.execute(session=session)
+
+        size = self.shape[0]
+        n_batch = ceildiv(size, batch_size)
+
+        for i in range(n_batch):
+            batch_data = iloc(self)[size * i: size * (i + 1)] \
+                .fetch(session=session)
+            yield from getattr(batch_data, method)()
+
+    def iterrows(self, batch_size=1000, session=None):
+        return self._iter_wrap('iterrows', batch_size=batch_size, session=session)
+
+    def itertuples(self, batch_size=1000, session=None):
+        return self._iter_wrap('itertuples', batch_size=batch_size, session=session)
+
 
 class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = '_cache',
@@ -1050,6 +1070,12 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
         dtype: object
         """
         return self._data.dtypes
+
+    def iterrows(self, batch_size=1000, session=None):
+        return self._data.iterrows(batch_size=batch_size, session=session)
+
+    def itertuples(self, batch_size=1000, session=None):
+        return self._data.itertuples(batch_size=batch_size, session=session)
 
 
 class DataFrameGroupByChunkData(BaseDataFrameChunkData):
