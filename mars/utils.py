@@ -929,6 +929,19 @@ def adapt_mars_docstring(doc):
     return '\n'.join(lines)
 
 
+def prune_chunk_graph(chunk_graph, result_chunk_keys):
+    reverse_chunk_graph = chunk_graph.build_reversed()
+    marked = set()
+    for c in reverse_chunk_graph.topological_iter():
+        if c.key in result_chunk_keys:
+            marked.update(o for o in c.op.outputs)
+        elif any(inp in marked for inp in reverse_chunk_graph.iter_predecessors(c)):
+            marked.update(o for o in c.op.outputs)
+    for n in list(chunk_graph):
+        if n not in marked:
+            chunk_graph.remove_node(n)
+
+
 @functools.lru_cache(500)
 def serialize_function(function):
     return cloudpickle.dumps(function)

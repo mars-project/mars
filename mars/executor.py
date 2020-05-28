@@ -28,7 +28,7 @@ from numbers import Integral
 import numpy as np
 
 from .operands import Fetch, ShuffleProxy
-from .graph import DirectedGraph
+from .graph import DAG, DirectedGraph
 from .config import options
 from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
 from .optimizes.runtime.optimizers.core import Optimizer
@@ -36,7 +36,7 @@ from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTile
 from .graph_builder import TileableGraphBuilder
 from .context import LocalContext
 from .utils import kernel_mode, enter_build_mode, build_fetch, calc_nsplits,\
-    has_unknown_shape
+    has_unknown_shape, prune_chunk_graph
 
 try:
     from numpy.core._exceptions import UFuncTypeError
@@ -596,8 +596,6 @@ class Executor(object):
         self._chunk_result = storage if storage is not None else dict()
         self._prefetch = prefetch
 
-        # only record the executed tileable
-        self.tileable_to_tiled = weakref.WeakKeyDictionary()
         # dict structure: {tileable_key -> chunk_keys, tileable_ids}
         # dict value is a tuple object which records chunk keys and tileable id
         self.stored_tileables = dict()
@@ -764,14 +762,13 @@ class Executor(object):
         tileable_data_to_concat_keys = weakref.WeakKeyDictionary()
         tileable_data_to_chunk_keys = weakref.WeakKeyDictionary()
 
-        executed_keys = set(chunk_result)
         node_to_fetch = weakref.WeakKeyDictionary()
 
         def _generate_fetch_if_executed(nd):
             # node processor that if the node is executed
             # replace it with a fetch node
-            _keys, _to_fetch = executed_keys, node_to_fetch  # noqa: F821
-            if nd.key not in _keys:
+            _to_fetch = node_to_fetch  # noqa: F821
+            if nd.key not in chunk_result:
                 return nd
             if nd in _to_fetch:
                 return _to_fetch[nd]
@@ -813,8 +810,8 @@ class Executor(object):
             tileable_graph_builder = _get_tileable_graph_builder()
             tileable_graph = tileable_graph_builder.build(tileables)
             chunk_graph_builder = IterativeChunkGraphBuilder(
-                graph_cls=DirectedGraph, node_processor=_generate_fetch_if_executed,
-                compose=compose, on_tile_success=_on_tile_success)
+                graph_cls=DAG, node_processor=_generate_fetch_if_executed,
+                compose=False, on_tile_success=_on_tile_success)
             intermediate_result_keys = set()
             while True:
                 # build chunk graph, tile will be done during building
@@ -829,6 +826,12 @@ class Executor(object):
                             if inp.op not in chunk_graph_builder.interrupted_ops:
                                 for n in get_tiled(inp).chunks:
                                     temp_result_keys.add(n.key)
+                else:
+                    # if done, prune chunk graph
+                    prune_chunk_graph(chunk_graph, temp_result_keys)
+                # compose
+                if compose:
+                    chunk_graph.compose(list(temp_result_keys))
                 # execute chunk graph
                 self.execute_graph(chunk_graph, list(temp_result_keys),
                                    n_parallel=n_parallel or n_thread,
@@ -850,7 +853,6 @@ class Executor(object):
                     delattr(chunk_graph_builder, '_prev_tileable_graph')
                     break
                 else:
-                    executed_keys = set(chunk_result)
                     intermediate_result_keys.update(temp_result_keys)
                     # add the node that failed
                     to_run_tileables = list(itertools.chain(
@@ -869,8 +871,11 @@ class Executor(object):
                 if tileable.key in self.stored_tileables:
                     self.stored_tileables[tileable.key][0].add(tileable.id)
                 else:
-                    chunk_keys = tileable_data_to_chunk_keys[tileable_optimized.get(tileable, tileable)]
-                    self.stored_tileables[tileable.key] = tuple([{tileable.id}, set(chunk_keys)])
+                    chunk_keys = tileable_data_to_chunk_keys[
+                        tileable_optimized.get(tileable, tileable)]
+                    self.stored_tileables[tileable.key] = \
+                        tuple([{tileable.id}, set(chunk_keys)])
+
             try:
                 if fetch:
                     concat_keys = [
@@ -915,13 +920,12 @@ class Executor(object):
                 raise ValueError(
                     'Tileable object {} to fetch must be executed first'.format(tileable))
 
-        try:
-            # if chunk executed, fetch chunk mechanism will be triggered in execute_tileables
-            return self.execute_tileables(tileables, **kw)
-        finally:
-            for to_release_tileable in to_release_tileables:
-                for c in get_tiled(to_release_tileable, mapping=tileable_optimized).chunks:
-                    del self._chunk_result[c.key]
+        # if chunk executed, fetch chunk mechanism will be triggered in execute_tileables
+        result = self.execute_tileables(tileables, **kw)
+        for to_release_tileable in to_release_tileables:
+            for c in get_tiled(to_release_tileable, mapping=tileable_optimized).chunks:
+                del self._chunk_result[c.key]
+        return result
 
     def get_tileable_nsplits(self, tileable, chunk_result=None):
         chunk_idx_to_shape = OrderedDict()
