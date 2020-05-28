@@ -26,7 +26,7 @@ from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
 from mars.session import new_session
 from mars.tensor import tensor
-from mars.tests.core import TestBase, require_cudf, ExecutorForTest
+from mars.tests.core import TestBase, require_cudf
 from mars.utils import lazy_import
 
 cudf = lazy_import('cudf', globals=globals())
@@ -35,7 +35,7 @@ cudf = lazy_import('cudf', globals=globals())
 class Test(TestBase):
     def setUp(self):
         super().setUp()
-        self.executor = ExecutorForTest()
+        self.ctx, self.executor = self._create_test_context()
 
     @require_cudf
     def testToGPUExecution(self):
@@ -336,6 +336,16 @@ class Test(TestBase):
 
         with self.assertRaises(ValueError):
             df.describe(percentiles=[1.1])
+
+        # test input dataframe which has unknown shape
+        with self.ctx:
+            df = from_pandas_df(df_raw, chunk_size=3)
+            df2 = df[df['a'] < 0.5]
+            r = df2.describe()
+
+            result = self.executor.execute_tileables([r])[0]
+            expected = df_raw[df_raw['a'] < 0.5].describe()
+            pd.testing.assert_frame_equal(result, expected)
 
     def testDataFrameFillNAExecution(self):
         df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
