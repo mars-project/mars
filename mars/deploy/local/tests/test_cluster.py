@@ -24,6 +24,7 @@ import traceback
 import unittest
 import uuid
 
+import cloudpickle
 import numpy as np
 import pandas as pd
 try:
@@ -34,19 +35,20 @@ except ImportError:
 from mars import tensor as mt
 from mars import dataframe as md
 from mars import remote as mr
+from mars.config import options, option_context
+from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
+from mars.errors import ExecutionFailed
+from mars.serialize import Int64Field
 from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.tensor.arithmetic.abs import TensorAbs
-from mars.serialize import Int64Field
 from mars.session import new_session, Session, ClusterSession
-from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
 from mars.scheduler import SessionManagerActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.worker.dispatcher import DispatchActor
-from mars.errors import ExecutionFailed
-from mars.config import options, option_context
 from mars.web.session import Session as WebSession
 from mars.context import get_context, RunningMode
+from mars.utils import serialize_function
 from mars.tests.core import mock, require_cudf
 
 logger = logging.getLogger(__name__)
@@ -942,7 +944,7 @@ class Test(unittest.TestCase):
                     np.testing.assert_array_equal(result, raw)
 
     def testRemoteFunctionInLocalCluster(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+        with new_cluster(scheduler_n_process=2, worker_n_process=3,
                          shared_memory='20M', modules=[__name__], web=True) as cluster:
             session = cluster.session
 
@@ -958,3 +960,22 @@ class Test(unittest.TestCase):
 
             r = session.run(c, timeout=_exec_timeout)
             self.assertEqual(r, 20)
+
+            session2 = new_session(cluster.endpoint)
+            expect_session_id = session2.session_id
+
+            def f2():
+                session = Session.default
+                assert isinstance(session._sess, ClusterSession)
+                assert session._sess.session_id == expect_session_id
+
+                t = mt.ones((3, 2))
+                return t.sum().to_numpy()
+
+            self.assertIsInstance(cloudpickle.dumps(Session.default), bytes)
+            self.assertIsInstance(serialize_function(f2), bytes)
+
+            d = mr.spawn(f2, retry_when_fail=False)
+
+            r = session2.run(d, timeout=_exec_timeout)
+            self.assertEqual(r, 6)

@@ -15,8 +15,9 @@
 from functools import partial
 
 from .. import opcodes
+from ..context import ContextBase
 from ..core import Entity, Base
-from ..serialize import FunctionField, ListField, DictField
+from ..serialize import FunctionField, ListField, DictField, BoolField
 from ..operands import ObjectOperand, ObjectOperandMixin
 from ..tensor.core import TENSOR_TYPE
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
@@ -30,11 +31,13 @@ class RemoteFunction(ObjectOperand, ObjectOperandMixin):
     _function = FunctionField('function')
     _function_args = ListField('function_args')
     _function_kwargs = DictField('function_kwargs')
+    _retry_when_fail = BoolField('retry_when_fail')
 
     def __init__(self, function=None, function_args=None,
-                 function_kwargs=None, **kw):
+                 function_kwargs=None, retry_when_fail=None, **kw):
         super().__init__(_function=function, _function_args=function_args,
-                         _function_kwargs=function_kwargs, **kw)
+                         _function_kwargs=function_kwargs,
+                         _retry_when_fail=retry_when_fail, **kw)
 
     @property
     def function(self):
@@ -47,6 +50,14 @@ class RemoteFunction(ObjectOperand, ObjectOperandMixin):
     @property
     def function_kwargs(self):
         return self._function_kwargs
+
+    @property
+    def retry_when_fail(self):
+        return self._retry_when_fail
+
+    @property
+    def retryable(self) -> bool:
+        return self._retry_when_fail
 
     @classmethod
     def _no_prepare(cls, tileable):
@@ -115,22 +126,26 @@ class RemoteFunction(ObjectOperand, ObjectOperandMixin):
         inputs_to_data = {inp: ctx[inp.key] for inp, prepare_inp
                           in zip(op.inputs, op.prepare_inputs) if prepare_inp}
 
+        function = op.function
+        function_args = replace_inputs(op.function_args, inputs_to_data)
+        function_kwargs = replace_inputs(op.function_kwargs, inputs_to_data)
+
+        # set session created from context as default one
+        session.as_default()
         try:
-            # set session created from context as default one
-            session.as_default()
-
-            function = op.function
-            function_args = replace_inputs(op.function_args, inputs_to_data)
-            function_kwargs = replace_inputs(op.function_kwargs, inputs_to_data)
-
-            result = function(*function_args, **function_kwargs)
-            ctx[op.outputs[0].key] = result
+            if isinstance(ctx, ContextBase):
+                with ctx:
+                    result = function(*function_args, **function_kwargs)
+            else:
+                result = function(*function_args, **function_kwargs)
         finally:
             # set back default session
             Session._set_default_session(prev_default_session)
 
+        ctx[op.outputs[0].key] = result
 
-def spawn(func, args=(), kwargs=None):
+
+def spawn(func, args=(), kwargs=None, retry_when_fail=True):
     if not isinstance(args, tuple):
         args = [args]
     else:
@@ -141,5 +156,6 @@ def spawn(func, args=(), kwargs=None):
         raise TypeError('kwargs has to be a dict')
 
     op = RemoteFunction(function=func, function_args=args,
-                        function_kwargs=kwargs)
+                        function_kwargs=kwargs,
+                        retry_when_fail=retry_when_fail)
     return op()

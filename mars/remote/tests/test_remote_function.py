@@ -14,6 +14,8 @@
 
 import numpy as np
 
+from mars import tensor as mt
+from mars.session import new_session, Session
 from mars.remote import spawn
 from mars.tests.core import TestBase, ExecutorForTest
 
@@ -49,3 +51,11 @@ class Test(TestBase):
 
         with self.assertRaises(TypeError):
             spawn(f2, (r1, r2), kwargs=())
+
+        session = new_session()
+
+        def f():
+            assert Session.default.session_id == session.session_id
+            return mt.ones((2, 3)).sum().to_numpy()
+
+        self.assertEqual(spawn(f).execute(session=session).fetch(session=session), 6)
