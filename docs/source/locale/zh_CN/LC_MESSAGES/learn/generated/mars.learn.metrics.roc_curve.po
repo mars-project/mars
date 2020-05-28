@@ -1,0 +1,157 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-05-26 18:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/learn/generated/mars.learn.metrics.roc_curve.rst:2
+msgid "mars.learn.metrics.roc\\_curve"
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:1 of
+msgid "Compute Receiver operating characteristic (ROC)"
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:3 of
+msgid "Note: this implementation is restricted to the binary classification task."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:5 of
+msgid "Read more in the :ref:`User Guide <roc_metrics>`."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:7 of
+msgid ""
+"True binary labels. If labels are not either {-1, 1} or {0, 1}, then "
+"pos_label should be explicitly given."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:10 of
+msgid ""
+"Target scores, can either be probability estimates of the positive class,"
+" confidence values, or non-thresholded measure of decisions (as returned "
+"by \"decision_function\" on some classifiers)."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:14 of
+msgid ""
+"The label of the positive class. When ``pos_label=None``, if y_true is in"
+" {-1, 1} or {0, 1}, ``pos_label`` is set to 1, otherwise an error will be"
+" raised."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:18 of
+msgid "Sample weights."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:20 of
+msgid ""
+"Whether to drop some suboptimal thresholds which would not appear on a "
+"plotted ROC curve. This is useful in order to create lighter ROC curves."
+"  .. versionadded:: 0.17    parameter *drop_intermediate*."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:20 of
+msgid ""
+"Whether to drop some suboptimal thresholds which would not appear on a "
+"plotted ROC curve. This is useful in order to create lighter ROC curves."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:24 of
+msgid "parameter *drop_intermediate*."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:28 of
+msgid ""
+"* **fpr** (*tensor, shape = [>2]*) -- Increasing false positive rates "
+"such that element i is the false   positive rate of predictions with "
+"score >= thresholds[i]. * **tpr** (*tensor, shape = [>2]*) -- Increasing "
+"true positive rates such that element i is the true   positive rate of "
+"predictions with score >= thresholds[i]. * **thresholds** (*tensor, shape"
+" = [n_thresholds]*) -- Decreasing thresholds on the decision function "
+"used to compute   fpr and tpr. `thresholds[0]` represents no instances "
+"being predicted   and is arbitrarily set to `max(y_score) + 1`."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:28 of
+msgid ""
+"**fpr** (*tensor, shape = [>2]*) -- Increasing false positive rates such "
+"that element i is the false positive rate of predictions with score >= "
+"thresholds[i]."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:30 of
+msgid ""
+"**tpr** (*tensor, shape = [>2]*) -- Increasing true positive rates such "
+"that element i is the true positive rate of predictions with score >= "
+"thresholds[i]."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:32 of
+msgid ""
+"**thresholds** (*tensor, shape = [n_thresholds]*) -- Decreasing "
+"thresholds on the decision function used to compute fpr and tpr. "
+"`thresholds[0]` represents no instances being predicted and is "
+"arbitrarily set to `max(y_score) + 1`."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:38 of
+msgid ":func:`roc_auc_score`"
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:39 of
+msgid "Compute the area under the ROC curve"
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:42 of
+msgid "Notes"
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:43 of
+msgid ""
+"Since the thresholds are sorted from low to high values, they are "
+"reversed upon returning them to ensure they correspond to both ``fpr`` "
+"and ``tpr``, which are sorted in reversed order during their calculation."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:48 of
+msgid "References"
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:49 of
+msgid ""
+"`Wikipedia entry for the Receiver operating characteristic "
+"<https://en.wikipedia.org/wiki/Receiver_operating_characteristic>`_"
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:52 of
+msgid ""
+"Fawcett T. An introduction to ROC analysis[J]. Pattern Recognition "
+"Letters, 2006, 27(8):861-874."
+msgstr ""
+
+#: mars.learn.metrics.roc_curve:56 of
+msgid "Examples"
+msgstr ""
+

@@ -111,6 +111,16 @@ it's fairly simple to migrate from a single machine to a cluster due to the incr
 
 .. toctree::
    :maxdepth: 2
+   :caption: Learn Interface
+   :hidden:
+
+   learn/tensorflow
+   learn/xgboost
+   learn/lightgbm
+   learn/reference
+
+.. toctree::
+   :maxdepth: 2
    :caption: Distributed Scheduling
    :hidden:
 

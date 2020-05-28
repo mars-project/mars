@@ -17,82 +17,100 @@ import pickle
 import numpy as np
 import pandas as pd
 
-from .... import opcodes as OperandDef
-from ....serialize import KeyField, BytesField
-from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
+from .... import opcodes
 from ....dataframe.utils import parse_index
+from ....serialize import BoolField, BytesField, DictField, KeyField
 from ....tensor.core import TENSOR_TYPE, TensorOrder
 from ....utils import register_tokenizer
 from ...operands import LearnOperand, LearnOperandMixin, OutputType
-from .dmatrix import ToDMatrix, check_data
 
 try:
-    from xgboost import Booster
-
-    register_tokenizer(Booster, pickle.dumps)
+    from lightgbm import LGBMModel
+    register_tokenizer(LGBMModel, pickle.dumps)
 except ImportError:
     pass
 
 
-class XGBPredict(LearnOperand, LearnOperandMixin):
-    _op_type_ = OperandDef.XGBOOST_PREDICT
+class LGBMPredict(LearnOperand, LearnOperandMixin):
+    _op_type_ = opcodes.LGBM_PREDICT
 
     _data = KeyField('data')
     _model = BytesField('model', on_serialize=pickle.dumps, on_deserialize=pickle.loads)
+    _proba = BoolField('proba')
+    _kwds = DictField('kwds')
 
-    def __init__(self, data=None, model=None, output_types=None, gpu=None, **kw):
-        super().__init__(_data=data, _model=model, _gpu=gpu, _output_types=output_types, **kw)
+    def __init__(self, data=None, model=None, proba=None, kwds=None,
+                 output_types=None, **kw):
+        super().__init__(_data=data, _model=model, _proba=proba, _kwds=kwds,
+                         _output_types=output_types, **kw)
 
     @property
     def data(self):
         return self._data
 
     @property
-    def model(self):
+    def model(self) -> "LGBMModel":
         return self._model
+
+    @property
+    def proba(self) -> bool:
+        return self._proba
+
+    @property
+    def kwds(self) -> dict:
+        return self._kwds
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._data = self._inputs[0]
+        it = iter(inputs)
+        self._data = next(it)
 
     def __call__(self):
-        num_class = self._model.attr('num_class')
-        if num_class is not None:
-            num_class = int(num_class)
-        if num_class is not None:
-            shape = (len(self._data), int(self._model.attr('num_class')))
+        num_class = int(getattr(self.model, 'n_classes_', 2))
+        if self.proba and num_class > 2:
+            shape = (self.data.shape[0], num_class)
         else:
-            shape = (len(self._data),)
+            shape = (self.data.shape[0],)
+
+        if self._proba:
+            dtype = np.dtype(np.float_)
+        elif hasattr(self.model, 'classes_'):
+            dtype = np.array(self.model.classes_).dtype
+        else:
+            dtype = self.model.out_dtype_
+
         if self._output_types[0] == OutputType.tensor:
             # tensor
-            return self.new_tileable([self._data], shape=shape, dtype=np.dtype(np.float32),
+            return self.new_tileable([self.data], shape=shape, dtype=dtype,
                                      order=TensorOrder.C_ORDER)
         elif self._output_types[0] == OutputType.dataframe:
             # dataframe
-            dtypes = pd.DataFrame(np.random.rand(0, num_class), dtype=np.float32).dtypes
-            return self.new_tileable([self._data], shape=shape, dtypes=dtypes,
+            dtypes = pd.Series([dtype] * num_class)
+            return self.new_tileable([self.data], shape=shape, dtypes=dtypes,
                                      columns_value=parse_index(dtypes.index),
-                                     index_value=self._data.index_value)
+                                     index_value=self.data.index_value)
         else:
-            # series
-            return self.new_tileable([self._data], shape=shape, index_value=self._data.index_value,
-                                     name='predictions', dtype=np.dtype(np.float32))
+            return self.new_tileable([self.data], shape=shape, index_value=self.data.index_value,
+                                     name='predictions', dtype=dtype)
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "LGBMPredict"):
         out = op.outputs[0]
         out_chunks = []
         data = op.data
         if data.chunk_shape[1] > 1:
             data = data.rechunk({1: op.data.shape[1]})._inplace_tile()
+
         for in_chunk in data.chunks:
             chunk_op = op.copy().reset_key()
             chunk_index = (in_chunk.index[0],)
-            if op.model.attr('num_class'):
-                chunk_shape = (len(in_chunk), 2)
+
+            if len(out.shape) > 1:
+                chunk_shape = (in_chunk.shape[0], out.shape[1])
                 chunk_index += (0,)
             else:
-                chunk_shape = (len(in_chunk),)
+                chunk_shape = (in_chunk.shape[0],)
+
             if op.output_types[0] == OutputType.tensor:
                 out_chunk = chunk_op.new_chunk([in_chunk], shape=chunk_shape,
                                                dtype=out.dtype,
@@ -122,40 +140,44 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
-    def execute(cls, ctx, op):
-        from xgboost import DMatrix
+    def execute(cls, ctx, op: "LGBMPredict"):
+        in_data = ctx[op.data.key]
+        out = op.outputs[0]
 
-        raw_data = data = ctx[op.data.key]
-        if isinstance(data, tuple):
-            data = ToDMatrix.get_xgb_dmatrix(data)
+        if op.data.shape[0] == 0:
+            result = np.array([])
+        elif op.proba:
+            result = op.model.predict_proba(in_data, **op.kwds)
         else:
-            data = DMatrix(data)
-        result = op.model.predict(data)
+            result = op.model.predict(in_data, **op.kwds)
 
-        if isinstance(op.outputs[0], DATAFRAME_CHUNK_TYPE):
-            result = pd.DataFrame(result, index=raw_data.index)
-        elif isinstance(op.outputs[0], SERIES_CHUNK_TYPE):
-            result = pd.Series(result, index=raw_data.index, name='predictions')
+        if op.output_types[0] == OutputType.dataframe:
+            result = pd.DataFrame(result, index=in_data.index, columns=out.columns_value.to_pandas())
+        elif op.output_types[0] == OutputType.series:
+            result = pd.Series(result, index=in_data.index, name='predictions')
 
-        ctx[op.outputs[0].key] = result
+        ctx[out.key] = result
 
 
-def predict(model, data, session=None, run_kwargs=None, run=True):
-    from xgboost import Booster
+def predict(model, data, session=None, run_kwargs=None, run=True, **kwargs):
+    from lightgbm import LGBMModel
 
-    data = check_data(data)
-    if not isinstance(model, Booster):
-        raise TypeError('model has to be a xgboost.Booster, got {0} instead'.format(type(model)))
+    if not isinstance(model, LGBMModel):
+        raise TypeError('model has to be a lightgbm.LGBMModel, got {0} instead'.format(type(model)))
+    model = model.to_local() if hasattr(model, 'to_local') else model
 
-    num_class = model.attr('num_class')
+    proba = kwargs.pop('proba', hasattr(model, 'classes_'))
+
+    num_class = getattr(model, 'n_classes_', 2)
     if isinstance(data, TENSOR_TYPE):
         output_types = [OutputType.tensor]
-    elif num_class is not None:
+    elif proba and num_class > 2:
         output_types = [OutputType.dataframe]
     else:
         output_types = [OutputType.series]
 
-    op = XGBPredict(data=data, model=model, gpu=data.op.gpu, output_types=output_types)
+    op = LGBMPredict(data=data, model=model, gpu=data.op.gpu, output_types=output_types,
+                     proba=proba, kwds=kwargs)
     result = op()
     if run:
         result.execute(session=session, **(run_kwargs or dict()))

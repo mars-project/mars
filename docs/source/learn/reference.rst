@@ -217,3 +217,21 @@ XGBoost Integration
    contrib.xgboost.predict
    contrib.xgboost.XGBClassifier
    contrib.xgboost.XGBRegressor
+
+.. _lightgbm_ref:
+
+LightGBM Integration
+===================
+
+.. automodule:: mars.learn.contrib.lightgbm
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   contrib.lightgbm.LGBMClassifier
+   contrib.lightgbm.LGBMRegressor
+   contrib.lightgbm.LGBMRanker

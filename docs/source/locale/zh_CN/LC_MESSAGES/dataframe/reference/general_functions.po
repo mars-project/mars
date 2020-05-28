@@ -79,13 +79,23 @@ msgstr ""
 msgid "Top-level dealing with datetimelike"
 msgstr "顶层日期时间处理函数"
 
-#: ../../source/dataframe/reference/general_functions.rst:32:<autosummary>:1
+#: ../../source/dataframe/reference/general_functions.rst:33:<autosummary>:1
+msgid ""
+":obj:`to_datetime <mars.dataframe.to_datetime>`\\ \\(arg\\[\\, errors\\, "
+"dayfirst\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/general_functions.rst:33:<autosummary>:1
+msgid "Convert argument to datetime."
+msgstr ""
+
+#: ../../source/dataframe/reference/general_functions.rst:33:<autosummary>:1
 msgid ""
 ":obj:`date_range <mars.dataframe.date_range>`\\ \\(\\[start\\, end\\, "
 "periods\\, freq\\, tz\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/general_functions.rst:32:<autosummary>:1
+#: ../../source/dataframe/reference/general_functions.rst:33:<autosummary>:1
 msgid "Return a fixed frequency DatetimeIndex."
 msgstr ""
 
