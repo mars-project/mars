@@ -251,19 +251,11 @@ class ClusterSession(object):
         timeout = kw.pop('timeout', -1)
         fetch = kw.pop('fetch', True)
         compose = kw.pop('compose', True)
-        name = kw.pop('name', None)
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
         # those executed tileables should fetch data directly, submit the others
         run_tileables = [t for t in tileables if t.key not in self._executed_tileables]
-
-        if name is not None:
-            if not isinstance(name, (list, tuple)):
-                name = [name]
-            if len(name) != len(tileables):
-                raise TypeError('Name must match execute tileables')
-            name = ','.join(name)
 
         graph = build_tileable_graph(run_tileables, set(self._executed_tileables.keys()))
         targets = [t.key for t in run_tileables]
@@ -271,7 +263,7 @@ class ClusterSession(object):
 
         # submit graph to local cluster
         self._api.submit_graph(self._session_id, json.dumps(graph.to_json(), separators=(',', ':')),
-                               graph_key, targets, names=name or '', compose=compose)
+                               graph_key, targets, compose=compose)
 
         exec_start_time = time.time()
         time_elapsed = 0

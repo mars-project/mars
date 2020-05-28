@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
+
 import numpy as np
 
 from mars import tensor as mt
+from mars.remote import spawn, ExecutableTuple
 from mars.session import new_session, Session
-from mars.remote import spawn
+from mars.lib.mmh3 import hash as mmh3_hash
 from mars.tests.core import TestBase, ExecutorForTest
 
 
@@ -59,3 +62,43 @@ class Test(TestBase):
             return mt.ones((2, 3)).sum().to_numpy()
 
         self.assertEqual(spawn(f).execute(session=session).fetch(session=session), 6)
+
+    def testMultiOutput(self):
+        sentences = ['word1 word2', 'word2 word3', 'word3 word2 word1']
+
+        def mapper(s):
+            word_to_count = defaultdict(lambda: 0)
+            for word in s.split():
+                word_to_count[word] += 1
+
+            downsides = [defaultdict(lambda: 0),
+                         defaultdict(lambda: 0)]
+            for word, count in word_to_count.items():
+                downsides[mmh3_hash(word) % 2][word] += count
+
+            return downsides
+
+        def reducer(word_to_count_list):
+            d = defaultdict(lambda: 0)
+            for word_to_count in word_to_count_list:
+                for word, count in word_to_count.items():
+                    d[word] += count
+
+            return dict(d)
+
+        outs = [], []
+        for sentence in sentences:
+            out1, out2 = spawn(mapper, sentence, n_output=2)
+            outs[0].append(out1)
+            outs[1].append(out2)
+
+        rs = []
+        for out in outs:
+            r = spawn(reducer, out)
+            rs.append(r)
+
+        result = dict()
+        for wc in ExecutableTuple(rs).execute().fetch():
+            result.update(wc)
+
+        self.assertEqual(result, {'word1': 2, 'word2': 3, 'word3': 2})
