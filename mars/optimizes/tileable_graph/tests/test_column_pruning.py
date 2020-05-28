@@ -23,6 +23,8 @@ import pandas as pd
 import mars.dataframe as md
 from mars.core import ExecutableTuple
 from mars.config import option_context
+from mars.dataframe.datasource.read_csv import DataFrameReadCSV
+from mars.executor import register, Executor
 from mars.tests.core import TestBase, ExecutorForTest
 from mars.optimizes.tileable_graph.core import tileable_optimized
 
@@ -140,3 +142,28 @@ class Test(TestBase):
 
         finally:
             shutil.rmtree(tempdir)
+
+    def testFetch(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            filename = os.path.join(tempdir, 'test_fetch.csv')
+            pd_df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                                  'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                                  'c': list('aabaaddce'),
+                                  'd': list('abaaaddce')})
+            pd_df.to_csv(filename, index=False)
+
+            df = md.read_csv(filename)
+            df2 = df.groupby('d').agg({'b': 'min'})
+            expected = pd_df.groupby('d').agg({'b': 'min'})
+            _ = df2.execute()
+
+            def _execute_read_csv(*_):  # pragma: no cover
+                raise ValueError('cannot run read_csv again')
+
+            try:
+                register(DataFrameReadCSV, _execute_read_csv)
+
+                pd.testing.assert_frame_equal(df2.fetch(), expected)
+                pd.testing.assert_frame_equal(df2.iloc[:3].fetch(), expected.iloc[:3])
+            finally:
+                del Executor._op_runners[DataFrameReadCSV]
