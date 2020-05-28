@@ -135,7 +135,6 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
         # ['count', 'mean', 'std', 'min', {percentiles}, 'max']
         names = index.tolist()
 
-        df = df.rechunk({1: df.shape[1]})
         df = df[columns]
 
         values = [None] * 6
