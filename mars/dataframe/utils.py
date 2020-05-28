@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
-from ..core import Entity
+from ..core import Entity, ExecutableTuple
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..utils import tokenize, sbytes
@@ -749,8 +749,10 @@ def fetch_corner_data(df_or_series, session=None) -> pd.DataFrame:
     if index_size is None:
         return df_or_series.fetch(session=session)
     else:
-        head_data = iloc(df_or_series)[:index_size].fetch(session=session)
-        tail_data = iloc(df_or_series)[-index_size:].fetch(session=session)
+        head = iloc(df_or_series)[:index_size]
+        tail = iloc(df_or_series)[-index_size:]
+        head_data, tail_data = \
+            ExecutableTuple([head, tail]).fetch(session=session)
         return pd.concat([head_data, tail_data], axis='index')
 
 
