@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 09:59+0800\n"
+"POT-Creation-Date: 2020-05-27 20:30+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -27,9 +27,9 @@ msgid ""
 ":func:`mars.dataframe.DataFrame.groupby`, "
 ":func:`mars.dataframe.Series.groupby`, etc."
 msgstr ""
-"GroupBy 对象是 groupby 方法调用的结果，groupby 方法可以是 "
-":func:`mars.dataframe.DataFrame.groupby` 或者 "
-":func:`mars.dataframe.Series.groupby` 等。"
+"GroupBy 对象是 groupby 方法调用的结果，groupby 方法可以是 :func:`mars."
+"dataframe.DataFrame.groupby` 或者 :func:`mars.dataframe.Series.groupby` "
+"等。"
 
 #: ../../source/dataframe/reference/groupby.rst:12
 msgid "Indexing, iteration"
@@ -71,67 +71,71 @@ msgstr ""
 msgid "Computations / descriptive stats"
 msgstr "计算和描述统计"
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ""
 ":obj:`GroupBy.count <mars.dataframe.groupby.GroupBy.count>`\\ "
 "\\(\\*\\*kw\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ""
 ":obj:`GroupBy.cumcount <mars.dataframe.groupby.GroupBy.cumcount>`\\ "
 "\\(\\[ascending\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ""
 ":obj:`GroupBy.cummax <mars.dataframe.groupby.GroupBy.cummax>`\\ "
 "\\(\\[axis\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ""
 ":obj:`GroupBy.cummin <mars.dataframe.groupby.GroupBy.cummin>`\\ "
 "\\(\\[axis\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ""
 ":obj:`GroupBy.cumprod <mars.dataframe.groupby.GroupBy.cumprod>`\\ "
 "\\(\\[axis\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ""
 ":obj:`GroupBy.cumsum <mars.dataframe.groupby.GroupBy.cumsum>`\\ "
 "\\(\\[axis\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ":obj:`GroupBy.max <mars.dataframe.groupby.GroupBy.max>`\\ \\(\\*\\*kw\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ":obj:`GroupBy.mean <mars.dataframe.groupby.GroupBy.mean>`\\ \\(\\*\\*kw\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ":obj:`GroupBy.min <mars.dataframe.groupby.GroupBy.min>`\\ \\(\\*\\*kw\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
+msgid ":obj:`GroupBy.size <mars.dataframe.groupby.GroupBy.size>`\\ \\(\\*\\*kw\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ":obj:`GroupBy.std <mars.dataframe.groupby.GroupBy.std>`\\ \\(\\*\\*kw\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ":obj:`GroupBy.sum <mars.dataframe.groupby.GroupBy.sum>`\\ \\(\\*\\*kw\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:51:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:52:<autosummary>:1
 msgid ":obj:`GroupBy.var <mars.dataframe.groupby.GroupBy.var>`\\ \\(\\*\\*kw\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:52
+#: ../../source/dataframe/reference/groupby.rst:53
 msgid ""
 "The following methods are available in both ``SeriesGroupBy`` and "
 "``DataFrameGroupBy`` objects, but may differ slightly, usually in that "
@@ -139,45 +143,45 @@ msgid ""
 "axis argument, and often an argument indicating whether to restrict "
 "application to columns of a specific data type."
 msgstr ""
-"下面的方法对 ``SeriesGroupBy`` 和 "
-"``DataFrameGroupBy`` 均可用，但有细微的差别。通常 "
-"``DataFrameGroupBy`` 允许指定坐标，以及会提供一个是否将操作限制在特定数据类型上的参数。"
+"下面的方法对 ``SeriesGroupBy`` 和 ``DataFrameGroupBy`` 均可用，但有细微的"
+"差别。通常 ``DataFrameGroupBy`` 允许指定坐标，以及会提供一个是否将操作"
+"限制在特定数据类型上的参数。"
 
-#: ../../source/dataframe/reference/groupby.rst:66:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:67:<autosummary>:1
 msgid ""
 ":obj:`DataFrameGroupBy.count "
 "<mars.dataframe.groupby.DataFrameGroupBy.count>`\\ \\(\\*\\*kw\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:66:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:67:<autosummary>:1
 msgid ""
 ":obj:`DataFrameGroupBy.cummax "
 "<mars.dataframe.groupby.DataFrameGroupBy.cummax>`\\ \\(\\[axis\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:66:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:67:<autosummary>:1
 msgid ""
 ":obj:`DataFrameGroupBy.cummin "
 "<mars.dataframe.groupby.DataFrameGroupBy.cummin>`\\ \\(\\[axis\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:66:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:67:<autosummary>:1
 msgid ""
 ":obj:`DataFrameGroupBy.cumprod "
 "<mars.dataframe.groupby.DataFrameGroupBy.cumprod>`\\ \\(\\[axis\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:66:<autosummary>:1
+#: ../../source/dataframe/reference/groupby.rst:67:<autosummary>:1
 msgid ""
 ":obj:`DataFrameGroupBy.cumsum "
 "<mars.dataframe.groupby.DataFrameGroupBy.cumsum>`\\ \\(\\[axis\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/groupby.rst:67
+#: ../../source/dataframe/reference/groupby.rst:68
 msgid "The following methods are available only for ``SeriesGroupBy`` objects."
 msgstr "下列方法仅对 ``SeriesGroupBy`` 对象可用。"
 
-#: ../../source/dataframe/reference/groupby.rst:73
+#: ../../source/dataframe/reference/groupby.rst:74
 msgid "The following methods are available only for ``DataFrameGroupBy`` objects."
 msgstr "下列方法仅对 ``DataFrameGroupBy`` 对象可用。"
 

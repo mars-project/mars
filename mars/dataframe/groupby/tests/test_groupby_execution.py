@@ -168,6 +168,10 @@ class Test(TestBase):
         mdf2 = md.DataFrame(df2, chunk_size=2)
 
         for method in ['tree', 'shuffle']:
+            r0 = mdf2.groupby('c2').agg('size', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r0, concat=True)[0],
+                                           df2.groupby('c2').agg('size'))
+
             r1 = mdf.groupby('a').agg('sum', method=method)
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
                                           df1.groupby('a').agg('sum'))
@@ -194,7 +198,7 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r6, concat=True)[0],
                                           df2.groupby('c2').agg('std'))
 
-            agg = ['std', 'mean', 'var', 'max', 'count']
+            agg = ['std', 'mean', 'var', 'max', 'count', 'size']
             r3 = mdf2.groupby('c2').agg(agg, method=method)
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                           df2.groupby('c2').agg(agg))
@@ -217,6 +221,10 @@ class Test(TestBase):
             r3 = mdf2.groupby(mdf2['c2']).sum(method=method)
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                           df2.groupby(df2['c2']).sum())
+
+        r8 = mdf2.groupby('c2').size()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r8, concat=True)[0],
+                                       df2.groupby('c2').size())
 
         r4 = mdf2.groupby('c2').sum()
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r4, concat=True)[0],
@@ -272,6 +280,10 @@ class Test(TestBase):
         ms1 = md.Series(series1, chunk_size=3)
 
         for method in ['tree', 'shuffle']:
+            r0 = ms1.groupby(lambda x: x % 2).agg('size', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r0, concat=True)[0],
+                                           series1.groupby(lambda x: x % 2).agg('size'))
+
             r1 = ms1.groupby(lambda x: x % 2).agg('sum', method=method)
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0],
                                            series1.groupby(lambda x: x % 2).agg('sum'))
@@ -298,7 +310,7 @@ class Test(TestBase):
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r6, concat=True)[0],
                                            series1.groupby(lambda x: x % 2).agg('std'))
 
-            agg = ['std', 'mean', 'var', 'max', 'count']
+            agg = ['std', 'mean', 'var', 'max', 'count', 'size']
             r3 = ms1.groupby(lambda x: x % 2).agg(agg, method=method)
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                           series1.groupby(lambda x: x % 2).agg(agg))
@@ -307,6 +319,10 @@ class Test(TestBase):
             r3 = ms1.groupby(ms1).sum(method=method)
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                            series1.groupby(series1).sum())
+
+        r4 = ms1.groupby(lambda x: x % 2).size()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r4, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).size())
 
         r4 = ms1.groupby(lambda x: x % 2).sum()
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r4, concat=True)[0],

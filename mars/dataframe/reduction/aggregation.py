@@ -28,9 +28,10 @@ from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import build_empty_df, build_empty_series, parse_index, validate_axis
 
+cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())
 
-_builtin_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count', 'mean', 'var', 'std'}
+_builtin_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count', 'size', 'mean', 'var', 'std'}
 _stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_groups', 'combine_sources',
                                          'agg_sources', 'agg_columns', 'agg_funcs', 'key_to_funcs',
                                          'valid_columns'))
@@ -41,6 +42,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.AGGREGATE
 
     _func = AnyField('func')
+    _raw_func = AnyField('raw_func')
     _axis = AnyField('axis')
     _use_inf_as_na = BoolField('use_inf_as_na')
 
@@ -53,11 +55,11 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     _agg_funcs = DictField('agg_funcs')
     _key_to_funcs = DictField('keys_to_funcs')
 
-    def __init__(self, func=None, axis=None, use_inf_as_na=None, map_groups=None, map_sources=None,
-                 combine_groups=None, combine_sources=None, agg_sources=None, agg_columns=None,
-                 agg_funcs=None, key_to_funcs=None, object_type=None, stage=None, **kw):
-        super().__init__(_func=func, _axis=axis, _use_inf_as_na=use_inf_as_na, _map_groups=map_groups,
-                         _map_sources=map_sources, _combine_groups=combine_groups,
+    def __init__(self, func=None, raw_func=None, axis=None, use_inf_as_na=None, map_groups=None,
+                 map_sources=None, combine_groups=None, combine_sources=None, agg_sources=None,
+                 agg_columns=None, agg_funcs=None, key_to_funcs=None, object_type=None, stage=None, **kw):
+        super().__init__(_func=func, _raw_func=raw_func, _axis=axis, _use_inf_as_na=use_inf_as_na,
+                         _map_groups=map_groups, _map_sources=map_sources, _combine_groups=combine_groups,
                          _combine_sources=combine_sources, _agg_sources=agg_sources,
                          _agg_columns=agg_columns, _agg_funcs=agg_funcs, _key_to_funcs=key_to_funcs,
                          _stage=stage, _object_type=object_type, **kw)
@@ -65,6 +67,10 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     @property
     def func(self):
         return self._func
+
+    @property
+    def raw_func(self):
+        return self._raw_func
 
     @property
     def axis(self) -> int:
@@ -125,6 +131,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             return np.array(result_df).dtype, None
 
     def _normalize_funcs(self):
+        self._raw_func = self._func
+
         if isinstance(self._func, dict):
             new_func = OrderedDict()
             for k, v in self._func.items():
@@ -218,7 +226,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             for func in funcs:
                 if func in {'sum', 'prod', 'min', 'max'}:
                     _add_column_to_functions(col, func, [func], [func], func)
-                elif func == 'count':
+                elif func in {'count', 'size'}:
                     _add_column_to_functions(col, func, [func], ['sum'], 'sum')
                 elif func == 'mean':
                     def _mean(sum_data, count_data, axis=0):
@@ -306,14 +314,33 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             chunk = chunk_op.new_chunk(in_df.chunks, index=(0, 0), shape=out_df.shape,
                                        index_value=out_df.index_value, columns_value=out_df.columns_value,
                                        dtypes=out_df.dtypes)
-        else:
-            chunk = chunk_op.new_chunk(in_df.chunks, index=(0,), shape=out_df.shape,
+        elif op.object_type == ObjectType.series:
+            chunk = chunk_op.new_chunk(in_df.chunks, index=(0,), shape=out_df.shape, dtype=out_df.dtype,
                                        index_value=out_df.index_value, name=out_df.name)
+        else:
+            chunk = chunk_op.new_chunk(in_df.chunks, dtype=out_df.dtype, shape=())
 
         tileable_op = op.copy().reset_key()
         kw = out_df.params.copy()
         kw.update(dict(chunks=[chunk], nsplits=((x,) for x in out_df.shape)))
         return tileable_op.new_tileables([in_df], **kw)
+
+    @classmethod
+    def _tile_size(cls, op: "DataFrameAggregate"):
+        in_df = op.inputs[0]
+        out_df = op.outputs[0]
+
+        chunks = []
+        for c in in_df.chunks:
+            chunk_op = op.copy().reset_key()
+            chunks.append(chunk_op.new_chunk([c], index=c.index, shape=(1,) * len(in_df.shape),
+                                             dtype=out_df.dtype))
+
+        tileable_op = op.copy().reset_key()
+        nsplits = tuple((1,) * s for s in in_df.chunk_shape)
+        tileable = tileable_op.new_tileable(out_df.inputs, chunks=chunks, nsplits=nsplits,
+                                            shape=in_df.chunk_shape, dtype=out_df.dtype)
+        return [tileable.sum()._inplace_tile()]
 
     @classmethod
     def _tile_tree(cls, op: "DataFrameAggregate"):
@@ -433,7 +460,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     kw.update(dict(name=out_df.name, dtype=out_df.dtype, index=(idx,),
                                    index_value=index_value, shape=shape))
                 else:
-                    kw.update(dict(index=(0,), shape=(), dtype=out_df.dtype))
+                    kw.update(dict(index=(), shape=(), dtype=out_df.dtype))
             agg_chunks.append(chunk_op.new_chunk([chk], **kw))
 
         new_op = op.copy()
@@ -455,14 +482,18 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op: "DataFrameAggregate"):
-        if len(op.inputs[0].chunks) == 1:
+        in_df = op.inputs[0]
+
+        if len(in_df.chunks) == 1:
             return cls._tile_single_chunk(op)
+        elif in_df.ndim == 2 and op.raw_func == 'size':
+            return cls._tile_size(op)
         else:
             return cls._tile_tree(op)
 
     @staticmethod
     def _wrap_df(xdf, value, columns=None, transform=False):
-        if isinstance(value, np.generic):
+        if isinstance(value, (np.generic, int, float, complex)):
             value = xdf.DataFrame([value], columns=columns)
         else:
             value = xdf.DataFrame(value, columns=columns)
@@ -482,7 +513,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 src_df = in_data
             else:
                 src_df = in_data[cols]
-            ret_map_dfs[map_func_str] = cls._wrap_df(xdf, src_df.agg(map_func_str, axis=axis),
+            map_func = map_func_str if map_func_str != 'size' else (lambda x: x.size)
+            ret_map_dfs[map_func_str] = cls._wrap_df(xdf, src_df.agg(map_func, axis=axis),
                                                      columns=[axis_index], transform=axis == 0)
 
         ret_combine_dfs = OrderedDict()
@@ -541,7 +573,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
         concat_df = xdf.concat(aggs, axis=axis)
         if op.object_type == ObjectType.series:
-            if concat_df.shape[0] == 1:
+            if concat_df.shape[1] > 1:
                 concat_df = concat_df.iloc[0, :]
             else:
                 concat_df = concat_df.iloc[:, 0]
@@ -569,8 +601,12 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 cls._execute_combine(ctx, op)
             elif op.stage == OperandStage.agg:
                 cls._execute_agg(ctx, op)
+            elif op.raw_func == 'size':
+                xp = cp if op.gpu else np
+                ctx[op.outputs[0].key] = xp.array(ctx[op.inputs[0].key].agg(op.raw_func, axis=op.axis)) \
+                    .reshape(op.outputs[0].shape)
             else:
-                ctx[op.outputs[0].key] = ctx[op.inputs[0].key].agg(op.func, axis=op.axis)
+                ctx[op.outputs[0].key] = ctx[op.inputs[0].key].agg(op.raw_func, axis=op.axis)
         finally:
             pd.reset_option('mode.use_inf_as_na')
 
