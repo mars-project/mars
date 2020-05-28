@@ -972,7 +972,8 @@ class Test(unittest.TestCase):
                 t = mt.ones((3, 2))
                 return t.sum().to_numpy()
 
-            self.assertIsInstance(cloudpickle.dumps(Session.default), bytes)
+            self.assertEqual(cloudpickle.loads(cloudpickle.dumps(Session.default)).session_id,
+                             session.session_id)
             self.assertIsInstance(serialize_function(f2), bytes)
 
             d = mr.spawn(f2, retry_when_fail=False)

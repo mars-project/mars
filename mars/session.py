@@ -377,11 +377,12 @@ class Session(object):
             self._sess = LocalSession(**kwargs)
 
     def __getstate__(self):
-        return self._endpoint, self._kws
+        return self._endpoint, self._kws, self.session_id
 
     def __setstate__(self, state):
-        self._endpoint, self._kws = state
+        self._endpoint, self._kws, session_id = state
         self._init()
+        self._sess._session_id = session_id
 
     def run(self, *tileables, **kw):
         from . import tensor as mt
