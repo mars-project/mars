@@ -21,6 +21,8 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.executor import register, Executor
+from mars.tensor.datasource import ArrayDataSource
 from mars.tiles import get_tiled
 from mars.session import new_session, Session
 
@@ -280,6 +282,22 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(fetch1, np.ones((5, 10)))
         np.testing.assert_array_equal(fetch2, raw)
         np.testing.assert_almost_equal(fetch3, raw.sum())
+
+        raw = np.random.rand(5, 10)
+        arr = mt.tensor(raw, chunk_size=5)
+        s = arr.sum()
+
+        self.assertAlmostEqual(s.execute().fetch(), raw.sum())
+
+        def _execute_ds(*_):  # pragma: no cover
+            raise ValueError('cannot run random again')
+
+        try:
+            register(ArrayDataSource, _execute_ds)
+
+            self.assertAlmostEqual(s.fetch(), raw.sum())
+        finally:
+            del Executor._op_runners[ArrayDataSource]
 
     def testDecref(self):
         sess = new_session()
