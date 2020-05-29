@@ -517,3 +517,24 @@ class Test(unittest.TestCase):
         ind = md.Index(pind, chunk_size=5)
 
         self.assertIn('DatetimeIndex', repr(ind.execute()))
+
+    def testDataFrameIter(self):
+        raw_data = pd.DataFrame(np.random.randint(1000, size=(20, 10)))
+        df = md.DataFrame(raw_data, chunk_size=5)
+
+        i = 0
+        for result_row, expect_row in zip(df.iterrows(batch_size=15),
+                                          raw_data.iterrows()):
+            self.assertEqual(result_row[0], expect_row[0])
+            pd.testing.assert_series_equal(result_row[1], expect_row[1])
+            i += 1
+
+        self.assertEqual(i, len(raw_data))
+
+        i = 0
+        for result_tup, expect_tup in zip(df.itertuples(batch_size=10),
+                                          raw_data.itertuples()):
+            self.assertEqual(result_tup, expect_tup)
+            i += 1
+
+        self.assertEqual(i, len(raw_data))
