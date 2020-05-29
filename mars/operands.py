@@ -556,7 +556,9 @@ class ObjectOperand(Operand):
 
 class ObjectOperandMixin(TileableOperandMixin):
     def _create_chunk(self, output_idx, index, **kw):
-        data = ObjectChunkData(op=self, index=index, i=output_idx, **kw)
+        if 'i' not in kw:
+            kw['i'] = output_idx
+        data = ObjectChunkData(op=self, index=index, **kw)
         return ObjectChunk(data)
 
     def _create_tileable(self, output_idx, **kw):

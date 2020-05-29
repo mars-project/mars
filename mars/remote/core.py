@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
 from functools import partial
 
 from .. import opcodes
+from ..context import ContextBase
 from ..core import Entity, Base
-from ..serialize import FunctionField, ListField, DictField
+from ..serialize import FunctionField, ListField, DictField, BoolField, Int32Field
 from ..operands import ObjectOperand, ObjectOperandMixin
 from ..tensor.core import TENSOR_TYPE
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
@@ -30,11 +32,16 @@ class RemoteFunction(ObjectOperand, ObjectOperandMixin):
     _function = FunctionField('function')
     _function_args = ListField('function_args')
     _function_kwargs = DictField('function_kwargs')
+    _retry_when_fail = BoolField('retry_when_fail')
+    _n_output = Int32Field('n_output')
 
     def __init__(self, function=None, function_args=None,
-                 function_kwargs=None, **kw):
+                 function_kwargs=None, retry_when_fail=None,
+                 n_output=None, **kw):
         super().__init__(_function=function, _function_args=function_args,
-                         _function_kwargs=function_kwargs, **kw)
+                         _function_kwargs=function_kwargs,
+                         _retry_when_fail=retry_when_fail,
+                         _n_output=n_output, **kw)
 
     @property
     def function(self):
@@ -47,6 +54,22 @@ class RemoteFunction(ObjectOperand, ObjectOperandMixin):
     @property
     def function_kwargs(self):
         return self._function_kwargs
+
+    @property
+    def retry_when_fail(self):
+        return self._retry_when_fail
+
+    @property
+    def n_output(self):
+        return self._n_output
+
+    @property
+    def output_limit(self):
+        return self._n_output or 1
+
+    @property
+    def retryable(self) -> bool:
+        return self._retry_when_fail
 
     @classmethod
     def _no_prepare(cls, tileable):
@@ -75,15 +98,16 @@ class RemoteFunction(ObjectOperand, ObjectOperandMixin):
         if any(self._no_prepare(inp) for inp in inputs):  # pragma: no cover
             raise NotImplementedError('For now DataFrame, Tensor etc '
                                       'cannot be passed to arguments')
-        return self.new_tileable(inputs)
+        if self.n_output is None:
+            return self.new_tileable(inputs)
+        else:
+            return self.new_tileables(
+                inputs, kws=[dict(i=i) for i in range(self.n_output)])
 
     @classmethod
     def tile(cls, op):
-        out = op.outputs[0]
-
+        outs = op.outputs
         chunk_op = op.copy().reset_key()
-        chunk_params = out.params
-        chunk_params['index'] = ()
 
         chunk_inputs = []
         prepare_inputs = []
@@ -97,16 +121,29 @@ class RemoteFunction(ObjectOperand, ObjectOperandMixin):
                 prepare_inputs.extend([True] * len(inp.chunks))
             chunk_inputs.extend(inp.chunks)
         chunk_op._prepare_inputs = prepare_inputs
-        chunk = chunk_op.new_chunk(chunk_inputs, kws=[chunk_params])
 
+        out_chunks = [list() for _ in range(len(outs))]
+        chunk_kws = []
+        for i, out in enumerate(outs):
+            chunk_params = out.params
+            chunk_params['index'] = ()
+            chunk_params['i'] = i
+            chunk_kws.append(chunk_params)
+        chunks = chunk_op.new_chunks(chunk_inputs, kws=chunk_kws)
+        for i, c in enumerate(chunks):
+            out_chunks[i].append(c)
+
+        kws = []
+        for i, out in enumerate(outs):
+            params = out.params
+            params['chunks'] = out_chunks[i]
+            params['nsplits'] = ()
+            kws.append(params)
         new_op = op.copy()
-        params = out.params
-        params['chunks'] = [chunk]
-        params['nsplits'] = ()
-        return new_op.new_tileables(op.inputs, kws=[params])
+        return new_op.new_tileables(op.inputs, kws=kws)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "RemoteFunction"):
         from ..session import Session
 
         session = ctx.get_current_session()
@@ -115,22 +152,38 @@ class RemoteFunction(ObjectOperand, ObjectOperandMixin):
         inputs_to_data = {inp: ctx[inp.key] for inp, prepare_inp
                           in zip(op.inputs, op.prepare_inputs) if prepare_inp}
 
+        function = op.function
+        function_args = replace_inputs(op.function_args, inputs_to_data)
+        function_kwargs = replace_inputs(op.function_kwargs, inputs_to_data)
+
+        # set session created from context as default one
+        session.as_default()
         try:
-            # set session created from context as default one
-            session.as_default()
-
-            function = op.function
-            function_args = replace_inputs(op.function_args, inputs_to_data)
-            function_kwargs = replace_inputs(op.function_kwargs, inputs_to_data)
-
-            result = function(*function_args, **function_kwargs)
-            ctx[op.outputs[0].key] = result
+            if isinstance(ctx, ContextBase):
+                with ctx:
+                    result = function(*function_args, **function_kwargs)
+            else:
+                result = function(*function_args, **function_kwargs)
         finally:
             # set back default session
             Session._set_default_session(prev_default_session)
 
+        if op.n_output is None:
+            ctx[op.outputs[0].key] = result
+        else:
+            if not isinstance(result, Iterable):
+                raise TypeError('Specifying n_output={}, '
+                                'but result is not iterable, got {}'.format(
+                    op.n_output, result))
+            result = list(result)
+            if len(result) != op.n_output:
+                raise ValueError('Length of return value should be {}, '
+                                 'got {}'.format(op.n_output, len(result)))
+            for out, r in zip(op.outputs, result):
+                ctx[out.key] = r
 
-def spawn(func, args=(), kwargs=None):
+
+def spawn(func, args=(), kwargs=None, retry_when_fail=True, n_output=None):
     if not isinstance(args, tuple):
         args = [args]
     else:
@@ -141,5 +194,7 @@ def spawn(func, args=(), kwargs=None):
         raise TypeError('kwargs has to be a dict')
 
     op = RemoteFunction(function=func, function_args=args,
-                        function_kwargs=kwargs)
+                        function_kwargs=kwargs,
+                        retry_when_fail=retry_when_fail,
+                        n_output=n_output)
     return op()
