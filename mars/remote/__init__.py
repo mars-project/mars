@@ -12,4 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# noinspection PyUnresolvedReferences
+from ..core import ExecutableTuple
 from .core import spawn
