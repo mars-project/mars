@@ -17,7 +17,7 @@ from collections import OrderedDict, defaultdict
 
 import numpy as np
 
-from ....serialize import ValueType, DictField, KeyField, TupleField
+from ....serialize import ValueType, DictField, KeyField, ListField
 from .... import opcodes as OperandDef
 from ....context import get_context, RunningMode
 from ...operands import LearnMergeDictOperand, OutputType
@@ -25,12 +25,18 @@ from .start_tracker import StartTracker
 from .dmatrix import ToDMatrix
 
 
+def _on_serialize_evals(evals_val):
+    if evals_val is None:
+        return None
+    return [list(x) for x in evals_val]
+
+
 class XGBTrain(LearnMergeDictOperand):
     _op_type_ = OperandDef.XGBOOST_TRAIN
 
     _params = DictField('params', key_type=ValueType.string)
     _dtrain = KeyField('dtrain')
-    _evals = TupleField('evals')
+    _evals = ListField('evals', on_serialize=_on_serialize_evals)
     _kwargs = DictField('kwargs', key_type=ValueType.string)
     _tracker = KeyField('tracker')
 
@@ -74,7 +80,7 @@ class XGBTrain(LearnMergeDictOperand):
             new_evals_dict = OrderedDict()
             for new_key, val in zip(rest, evals_dict.values()):
                 new_evals_dict[new_key] = val
-            self._evals = tuple(new_evals_dict.items())
+            self._evals = list(new_evals_dict.items())
 
     def __call__(self):
         inputs = [self._dtrain]
@@ -125,7 +131,7 @@ class XGBTrain(LearnMergeDictOperand):
                 chunk_op = op.copy().reset_key()
                 chunk_op._expect_worker = worker
                 chunk_op._tracker = tracker_chunk
-                chunk_evals = tuple(worker_to_evals.get(worker, list()))
+                chunk_evals = list(worker_to_evals.get(worker, list()))
                 chunk_op._evals = chunk_evals
                 input_chunks = [in_chunk] + [pair[0] for pair in chunk_evals] + [tracker_chunk]
                 out_chunk = chunk_op.new_chunk(input_chunks, shape=(np.nan,),

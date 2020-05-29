@@ -16,6 +16,10 @@ import unittest
 
 import numpy as np
 import scipy.sparse as sps
+
+from mars.session import new_session
+from mars.tests.core import ExecutorForTest
+
 try:
     import faiss
 except ImportError:  # pragma: no cover
@@ -28,7 +32,7 @@ try:
     from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
     from sklearn.neighbors import BallTree as SkBallTree
     from sklearn.neighbors import KDTree as SkKDTree
-    from sklearn.utils.testing import assert_warns
+    from sklearn.utils._testing import assert_warns
 except ImportError:  # pragma: no cover
     SkNearestNeighbors = None
 
@@ -40,6 +44,15 @@ from mars.learn.neighbors import NearestNeighbors
 
 @unittest.skipIf(SkNearestNeighbors is None, 'scikit-learn not installed')
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
     def testNearestNeighbors(self):
         rs = np.random.RandomState(0)
         raw_X = rs.rand(10, 5)

@@ -18,6 +18,7 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
+from mars.tests.core import ExecutorForTest
 
 try:
     import xgboost
@@ -36,9 +37,15 @@ class Test(unittest.TestCase):
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
         self.X_df = md.DataFrame(self.X)
 
-    def testLocalClassifier(self):
-        new_session().as_default()
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
 
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
+    def testLocalClassifier(self):
         X, y = self.X, self.y
         y = (y * 10).astype(mt.int32)
         classifier = XGBClassifier(verbosity=1, n_estimators=2)

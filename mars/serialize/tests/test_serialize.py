@@ -40,7 +40,7 @@ from mars.serialize.core import Serializable, IdentityField, StringField, Unicod
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
-from mars.core import Base
+from mars.core import Base, Entity
 from mars.tests.core import assert_groupby_equal
 from mars.utils import to_binary, to_text
 
@@ -66,7 +66,8 @@ class Node1(Serializable):
     cl1 = Complex64Field('cl1')
     cl2 = Complex128Field('cl2')
     e = BoolField('e')
-    f = KeyField('f')
+    f1 = KeyField('f1')
+    f2 = AnyField('f2')
     g = ReferenceField('g', 'Node2')
     h = ListField('h')
     i = ListField('i', ValueType.reference('self'))
@@ -94,7 +95,7 @@ class Node8(Node1):
 
 
 class Node9(Node1):
-    f = AnyField('f')
+    f1 = AnyField('f1')
 
 
 class Node2(Base, Serializable):
@@ -110,6 +111,11 @@ class Node2(Base, Serializable):
             from mars.serialize.tests.testser_pb2 import Node2Def
             return Node2Def
         return super().cls(provider)
+
+
+class Node2Entity(Entity):
+    __slots__ = ()
+    _allow_data_type_ = (Node2,)
 
 
 class Node3(Serializable):
@@ -188,7 +194,8 @@ class Test(unittest.TestCase):
                       d1=2.5, d2=7.37, d3=5.976321,
                       cl1=1+2j, cl2=2.5+3.1j,
                       e=False,
-                      f=node2,
+                      f1=Node2Entity(node2),
+                      f2=Node2Entity(node2),
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
                          np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
@@ -227,13 +234,15 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node3.value.cl1, d_node3.value.cl1)
         self.assertAlmostEqual(node3.value.cl2, d_node3.value.cl2)
         self.assertEqual(node3.value.e, d_node3.value.e)
-        self.assertIsNot(node3.value.f, d_node3.value.f)
-        self.assertEqual(node3.value.f.a, d_node3.value.f.a)
+        self.assertIsNot(node3.value.f1, d_node3.value.f1)
+        self.assertEqual(node3.value.f1.a, d_node3.value.f1.a)
+        self.assertIsNot(node3.value.f2, d_node3.value.f2)
+        self.assertEqual(node3.value.f2.a, d_node3.value.f2.a)
         self.assertIsNot(node3.value.g, d_node3.value.g)
         self.assertEqual(node3.value.g.a, d_node3.value.g.a)
         self.assertEqual(node3.value.h[0], d_node3.value.h[0])
         self.assertNotIsInstance(d_node3.value.h[1], str)
-        self.assertIs(d_node3.value.h[1], d_node3.value.f)
+        self.assertIs(d_node3.value.h[1], d_node3.value.f1)
         self.assertEqual(node3.value.h[2], True)
         self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
         self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
@@ -268,7 +277,8 @@ class Test(unittest.TestCase):
                       d1=2.5, d2=7.37, d3=5.976321,
                       cl1=1+2j, cl2=2.5+3.1j,
                       e=False,
-                      f=node2,
+                      f1=Node2Entity(node2),
+                      f2=Node2Entity(node2),
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
                          np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
@@ -308,13 +318,15 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node3.value.cl1, d_node3.value.cl1)
         self.assertAlmostEqual(node3.value.cl2, d_node3.value.cl2)
         self.assertEqual(node3.value.e, d_node3.value.e)
-        self.assertIsNot(node3.value.f, d_node3.value.f)
-        self.assertEqual(node3.value.f.a, d_node3.value.f.a)
+        self.assertIsNot(node3.value.f1, d_node3.value.f1)
+        self.assertEqual(node3.value.f1.a, d_node3.value.f1.a)
+        self.assertIsNot(node3.value.f2, d_node3.value.f2)
+        self.assertEqual(node3.value.f2.a, d_node3.value.f2.a)
         self.assertIsNot(node3.value.g, d_node3.value.g)
         self.assertEqual(node3.value.g.a, d_node3.value.g.a)
         self.assertEqual(node3.value.h[0], d_node3.value.h[0])
         self.assertNotIsInstance(d_node3.value.h[1], str)
-        self.assertIs(d_node3.value.h[1], d_node3.value.f)
+        self.assertIs(d_node3.value.h[1], d_node3.value.f1)
         self.assertEqual(node3.value.h[2], True)
         self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
         self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
@@ -345,7 +357,7 @@ class Test(unittest.TestCase):
         node9 = Node9(b1=np.int8(-2), b2=np.int16(2000), b3=np.int32(-5000), b4=np.int64(500000),
                       c1=np.uint8(2), c2=np.uint16(2000), c3=np.uint32(5000), c4=np.uint64(500000),
                       d1=np.float16(2.5), d2=np.float32(7.37), d3=np.float64(5.976321),
-                      f=np.int8(3))
+                      f1=np.int8(3))
 
         serials = serializes(provider, [node9])
         d_node9, = deserializes(provider, [Node9], serials)
@@ -362,26 +374,26 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node9.d1, d_node9.d1, places=2)
         self.assertAlmostEqual(node9.d2, d_node9.d2, places=4)
         self.assertAlmostEqual(node9.d3, d_node9.d3)
-        self.assertEqual(node9.f, d_node9.f)
+        self.assertEqual(node9.f1, d_node9.f1)
 
-        node_rec1 = Node9(f=np.dtype([('label', 'int32'),
-                                      ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
-                                      ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
-        node_rec2 = Node9(f=np.dtype([('label', 'int32'),
-                                      ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
-                                      ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+        node_rec1 = Node9(f1=np.dtype([('label', 'int32'),
+                                       ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
+                                       ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+        node_rec2 = Node9(f1=np.dtype([('label', 'int32'),
+                                       ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
+                                       ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
 
         serials = serializes(provider, [node_rec1])
         d_node_rec1, = deserializes(provider, [Node9], serials)
 
         self.assertIsNot(node_rec1, d_node_rec1)
-        self.assertEqual(node_rec1.f, d_node_rec1.f)
+        self.assertEqual(node_rec1.f1, d_node_rec1.f1)
 
         serials = serializes(provider, [node_rec2])
         d_node_rec2, = deserializes(provider, [Node9], serials)
 
         self.assertIsNot(node_rec2, d_node_rec2)
-        self.assertEqual(node_rec2.f, d_node_rec2.f)
+        self.assertEqual(node_rec2.f1, d_node_rec2.f1)
 
     def testNumpyDtypeJSONSerialize(self):
         provider = JsonSerializeProvider()
@@ -389,7 +401,7 @@ class Test(unittest.TestCase):
         node9 = Node9(b1=np.int8(-2), b2=np.int16(2000), b3=np.int32(-5000), b4=np.int64(500000),
                       c1=np.uint8(2), c2=np.uint16(2000), c3=np.uint32(5000), c4=np.uint64(500000),
                       d1=np.float16(2.5), d2=np.float32(7.37), d3=np.float64(5.976321),
-                      f=np.int8(3))
+                      f1=np.int8(3))
 
         serials = serializes(provider, [node9])
         d_node9, = deserializes(provider, [Node9], serials)
@@ -406,26 +418,26 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node9.d1, d_node9.d1, places=2)
         self.assertAlmostEqual(node9.d2, d_node9.d2, places=4)
         self.assertAlmostEqual(node9.d3, d_node9.d3)
-        self.assertEqual(node9.f, d_node9.f)
+        self.assertEqual(node9.f1, d_node9.f1)
 
-        node_rec1 = Node9(f=np.dtype([('label', 'int32'),
-                                      ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
-                                      ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
-        node_rec2 = Node9(f=np.dtype([('label', 'int32'),
-                                      ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
-                                      ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+        node_rec1 = Node9(f1=np.dtype([('label', 'int32'),
+                                       ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
+                                       ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+        node_rec2 = Node9(f1=np.dtype([('label', 'int32'),
+                                       ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
+                                       ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
 
         serials = serializes(provider, [node_rec1])
         d_node_rec1, = deserializes(provider, [Node9], serials)
 
         self.assertIsNot(node_rec1, d_node_rec1)
-        self.assertEqual(node_rec1.f, d_node_rec1.f)
+        self.assertEqual(node_rec1.f1, d_node_rec1.f1)
 
         serials = serializes(provider, [node_rec2])
         d_node_rec2, = deserializes(provider, [Node9], serials)
 
         self.assertIsNot(node_rec2, d_node_rec2)
-        self.assertEqual(node_rec2.f, d_node_rec2.f)
+        self.assertEqual(node_rec2.f1, d_node_rec2.f1)
 
     def testAttributeAsDict(self):
         other_data = {}

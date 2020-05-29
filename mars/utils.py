@@ -930,13 +930,23 @@ def adapt_mars_docstring(doc):
 
 
 def prune_chunk_graph(chunk_graph, result_chunk_keys):
+    from .operands import Fetch
+
+    key_to_fetch_chunk = {c.key: c for c in chunk_graph
+                          if isinstance(c.op, Fetch)}
+
     reverse_chunk_graph = chunk_graph.build_reversed()
     marked = set()
     for c in reverse_chunk_graph.topological_iter():
-        if c.key in result_chunk_keys:
-            marked.update(o for o in c.op.outputs)
-        elif any(inp in marked for inp in reverse_chunk_graph.iter_predecessors(c)):
-            marked.update(o for o in c.op.outputs)
+        if c.key in result_chunk_keys or \
+                any(inp in marked for inp in reverse_chunk_graph.iter_predecessors(c)):
+            for o in c.op.outputs:
+                marked.add(o)
+                if o.key in key_to_fetch_chunk:
+                    # for multi outputs, if one of the output is replaced by fetch
+                    # keep the fetch chunk as marked,
+                    # or the node will be lost in the chunk graph and serialize would fail
+                    marked.add(key_to_fetch_chunk[o.key])
     for n in list(chunk_graph):
         if n not in marked:
             chunk_graph.remove_node(n)

@@ -60,7 +60,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         if num_class is not None:
             num_class = int(num_class)
         if num_class is not None:
-            shape = (len(self._data), int(self._model.attr('num_class')))
+            shape = (len(self._data), num_class)
         else:
             shape = (len(self._data),)
         if self._output_types[0] == OutputType.tensor:
@@ -89,7 +89,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_index = (in_chunk.index[0],)
             if op.model.attr('num_class'):
-                chunk_shape = (len(in_chunk), 2)
+                chunk_shape = (len(in_chunk), int(op.model.attr('num_class')))
                 chunk_index += (0,)
             else:
                 chunk_shape = (len(in_chunk),)
