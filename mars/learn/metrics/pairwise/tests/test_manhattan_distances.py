@@ -16,6 +16,9 @@ import unittest
 
 import numpy as np
 import scipy.sparse as sps
+
+from mars.session import new_session
+
 try:
     import sklearn
 
@@ -31,7 +34,13 @@ from mars.learn.metrics.pairwise import manhattan_distances
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
 class Test(unittest.TestCase):
     def setUp(self) -> None:
-        self.executor = ExecutorForTest('numpy')
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
 
     def testManhattanDistances(self):
         x = mt.random.randint(10, size=(10, 3), density=0.4)

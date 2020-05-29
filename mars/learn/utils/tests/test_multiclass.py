@@ -15,6 +15,10 @@
 import unittest
 
 import numpy as np
+
+from mars.session import new_session
+from mars.tests.core import ExecutorForTest
+
 try:
     import scipy.sparse as sps
     import sklearn
@@ -30,6 +34,15 @@ from mars.learn.utils.multiclass import is_multilabel, type_of_target
 
 @unittest.skipIf(sklearn is None, 'scikit-learn is not installed')
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
     def testIsMultilabel(self):
         raws = [
             [[1, 2]],

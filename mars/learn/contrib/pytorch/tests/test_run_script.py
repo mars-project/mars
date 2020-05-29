@@ -16,6 +16,8 @@ import os
 import unittest
 
 from mars.learn.contrib.pytorch import run_pytorch_script
+from mars.session import new_session
+from mars.tests.core import ExecutorForTest
 from mars.utils import lazy_import
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
@@ -23,6 +25,15 @@ torch_installed = lazy_import('torch', globals=globals()) is not None
 
 @unittest.skipIf(not torch_installed, 'pytorch not installed')
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
     def testLocalRunPyTorchScript(self):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pytorch_sample.py')
         self.assertEqual(run_pytorch_script(

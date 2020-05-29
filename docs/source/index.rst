@@ -116,6 +116,7 @@ it's fairly simple to migrate from a single machine to a cluster due to the incr
 
    learn/tensorflow
    learn/xgboost
+   learn/lightgbm
    learn/reference
 
 .. toctree::

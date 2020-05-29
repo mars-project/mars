@@ -15,12 +15,15 @@
 import unittest
 
 import numpy as np
+
+from mars.session import new_session
+
 try:
     import sklearn
 
     from sklearn.metrics import pairwise_distances as sk_pairwise_distances
     from sklearn.exceptions import DataConversionWarning
-    from sklearn.utils.testing import assert_warns
+    from sklearn.utils._testing import assert_warns
 except ImportError:
     sklearn = None
 
@@ -32,7 +35,13 @@ from mars.tests.core import ExecutorForTest
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
 class Test(unittest.TestCase):
     def setUp(self) -> None:
-        self.executor = ExecutorForTest('numpy')
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
 
     def testPairwiseDistancesExecution(self):
         raw_x = np.random.rand(20, 5)

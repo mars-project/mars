@@ -17,11 +17,15 @@ import unittest
 import mars.tensor as mt
 
 import numpy as np
+
+from mars.session import new_session
+from mars.tests.core import ExecutorForTest
+
 try:
     import sklearn
     import scipy.sparse as sp
     from sklearn.utils import check_random_state
-    from sklearn.utils.testing import assert_array_almost_equal, assert_array_less
+    from sklearn.utils._testing import assert_array_almost_equal, assert_array_less
 
     from mars.learn.decomposition.truncated_svd import TruncatedSVD
 except ImportError:
@@ -43,6 +47,14 @@ class Test(unittest.TestCase):
         self.Xdense = X.A
         self.n_samples = n_samples
         self.n_features = n_features
+
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
 
     def test_attributes(self):
         for n_components in (10, 25, 41):

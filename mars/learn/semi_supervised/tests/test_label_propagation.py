@@ -15,6 +15,10 @@
 import unittest
 
 import numpy as np
+
+from mars.session import new_session
+from mars.tests.core import ExecutorForTest
+
 try:
     import sklearn
 
@@ -33,11 +37,19 @@ from mars.learn.semi_supervised import LabelPropagation
 
 class Test(unittest.TestCase):
     def setUp(self) -> None:
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
         self.estimators = [
             (LabelPropagation, {'kernel': 'rbf'}),
             (LabelPropagation, {'kernel': 'knn', 'n_neighbors': 2}),
             (LabelPropagation, {'kernel': lambda x, y: rbf_kernel(x, y, gamma=20)})
         ]
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
 
     def testFitTransduction(self):
         samples = [[1., 0.], [0., 2.], [1., 3.]]

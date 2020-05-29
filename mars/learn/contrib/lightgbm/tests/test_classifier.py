@@ -37,10 +37,15 @@ class Test(unittest.TestCase):
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
         self.X_df = md.DataFrame(self.X)
 
-    def testLocalClassifier(self):
-        session = new_session().as_default()
-        session._sess._executor = ExecutorForTest(storage=session._sess._context)
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
 
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
+    def testLocalClassifier(self):
         X, y = self.X, self.y
         y = (y * 10).astype(mt.int32)
         classifier = LGBMClassifier(n_estimators=2)

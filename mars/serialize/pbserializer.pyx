@@ -34,7 +34,7 @@ from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, OneOfField, \
     ReferenceField, IdentityField, ListField, TupleField, \
     get_serializable_by_index
-from .core import HasKey
+from .core import HasKey, HasData
 from .protos.value_pb2 import Value
 from .dataserializer import dumps as datadumps, loads as dataloads
 
@@ -494,6 +494,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_dataframe(value, obj)
         elif isinstance(value, HasKey):
             self._set_key(value, obj)
+        elif isinstance(value, HasData):
+            self._set_key(value.data, obj)
         elif isinstance(value, list):
             self._set_list(value, obj, tp=None, weak_ref=weak_ref)
         elif isinstance(value, tuple):
@@ -602,22 +604,22 @@ cdef class ProtobufSerializeProvider(Provider):
                 self._set_value(value, field_obj, field.type, weak_ref=field.weak_ref)
             except TypeError:
                 exc_info = sys.exc_info()
-                raise TypeError('Failed to set field `{}` for {}, reason: {}'.format(
-                    tag, model_instance, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
+                raise TypeError('Failed to set field `{}` for {} with value {}, reason: {}'.format(
+                    tag, model_instance, value, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
         elif isinstance(field, TupleField):
             try:
                 self._set_tuple(value, field_obj, tp=field.type, weak_ref=field.weak_ref)
             except TypeError:
                 exc_info = sys.exc_info()
-                raise TypeError('Failed to set field `{}` for {}, reason: {}'.format(
-                    tag, model_instance, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
+                raise TypeError('Failed to set field `{}` for {} with value {}, reason: {}'.format(
+                    tag, model_instance, value, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
         else:
             try:
                 setattr(obj, tag, value)
             except TypeError:
                 exc_info = sys.exc_info()
-                raise TypeError('Failed to set field `{}` for {}, reason: {}'.format(
-                    tag, model_instance, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
+                raise TypeError('Failed to set field `{}` for {} with value {}, reason: {}'.format(
+                    tag, model_instance, value, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
 
     cpdef serialize_attribute_as_dict(self, model_instance, obj=None):
         cdef object id_field

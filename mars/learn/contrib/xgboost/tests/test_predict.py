@@ -21,6 +21,7 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
 from mars.learn.contrib.xgboost import MarsDMatrix, train, predict
+from mars.tests.core import ExecutorForTest
 
 try:
     import xgboost
@@ -41,8 +42,15 @@ class Test(unittest.TestCase):
         self.X_df = md.DataFrame(self.X)
         self.y_series = md.Series(self.y)
 
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
     def testLocalPredictTensor(self):
-        new_session().as_default()
         dtrain = MarsDMatrix(self.X, self.y)
         booster = train({}, dtrain, num_boost_round=2)
         self.assertIsInstance(booster, Booster)
@@ -57,7 +65,6 @@ class Test(unittest.TestCase):
             predict(None, self.X)
 
     def testLocalPredictDataFrame(self):
-        new_session().as_default()
         dtrain = MarsDMatrix(self.X_df, self.y_series)
         booster = train({}, dtrain, num_boost_round=2)
         self.assertIsInstance(booster, Booster)
