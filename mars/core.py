@@ -24,7 +24,7 @@ import numpy as np
 
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
     on_deserialize_shape, on_serialize_nsplits, enter_build_mode, build_mode
-from .serialize import HasKey, ValueType, ProviderType, Serializable, AttributeAsDict, \
+from .serialize import HasKey, HasData, ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, ListField, DictField, KeyField, BoolField, StringField, ReferenceField
 from .tiles import Tileable, handler
 
@@ -107,8 +107,8 @@ class Base(HasKey):
         return self._id
 
 
-class Entity(object):
-    __slots__ = '_data',
+class Entity(HasData):
+    __slots__ = ()
     _allow_data_type_ = ()
 
     def __init__(self, data):

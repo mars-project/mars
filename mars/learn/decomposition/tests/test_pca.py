@@ -19,12 +19,13 @@ import numpy as np
 
 import mars.tensor as mt
 from mars.session import new_session
+from mars.tests.core import ExecutorForTest
 
 try:
     import scipy as sp
     import sklearn
     from sklearn import datasets
-    from sklearn.utils.testing import assert_array_almost_equal, \
+    from sklearn.utils._testing import assert_array_almost_equal, \
         assert_almost_equal, assert_raises_regex, assert_raise_message, assert_raises
 
     from mars.learn.decomposition.pca import PCA, _assess_dimension_, _infer_dimension_
@@ -38,7 +39,14 @@ class Test(unittest.TestCase):
         self.iris = mt.tensor(datasets.load_iris().data)
         # solver_list not includes arpack
         self.solver_list = ['full', 'randomized', 'auto']
+
         self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
 
     def testPCA(self):
         X = self.iris

@@ -16,6 +16,8 @@ import unittest
 import os
 
 from mars.learn.contrib.tensorflow import run_tensorflow_script
+from mars.session import new_session
+from mars.tests.core import ExecutorForTest
 
 try:
     import tensorflow
@@ -25,6 +27,15 @@ except ImportError:
 
 @unittest.skipIf(tensorflow is None, 'tensorflow not installed')
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
     def testLocalRunTensorFlowScript(self):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tf_distributed_sample.py')
         self.assertEqual(run_tensorflow_script(

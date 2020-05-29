@@ -33,7 +33,7 @@ from ..utils import serialize_function
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
     ReferenceField, OneOfField, ListField, get_serializable_by_index
-from .core import HasKey
+from .core import HasKey, HasData
 from .dataserializer import dumps as datadumps, loads as dataloads
 
 
@@ -480,6 +480,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_dataframe(value)
         elif isinstance(value, HasKey):
             return self._serialize_key(value)
+        elif isinstance(value, HasData):
+            return self._serialize_key(value.data)
         elif isinstance(value, list):
             return self._serialize_list(value, tp=None, weak_ref=weak_ref)
         elif isinstance(value, tuple):

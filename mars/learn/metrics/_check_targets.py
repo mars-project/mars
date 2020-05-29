@@ -156,12 +156,11 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         y_pred = recursive_tile(y_pred)
 
         kws = [out.params for out in op.outputs]
-        kws[0]['nsplits'] = ()
-        kws[0]['chunks'] = [y_type.chunks[0]]
-        kws[1]['nsplits'] = y_true.nsplits
-        kws[1]['chunks'] = y_true.chunks
-        kws[2]['nsplits'] = y_pred.nsplits
-        kws[2]['chunks'] = y_pred.chunks
+        kws[0].update(dict(nsplits=(), chunks=[y_type.chunks[0]]))
+        kws[1].update(dict(nsplits=y_true.nsplits, chunks=y_true.chunks,
+                           shape=tuple(sum(sp) for sp in y_true.nsplits)))
+        kws[2].update(dict(nsplits=y_pred.nsplits, chunks=y_pred.chunks,
+                           shape=tuple(sum(sp) for sp in y_pred.nsplits)))
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=kws)
 

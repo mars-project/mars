@@ -17,6 +17,7 @@ import unittest
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
+from mars.tests.core import ExecutorForTest
 from mars.tiles import get_tiled
 from mars.learn.operands import OutputType
 from mars.learn.contrib.xgboost import train, MarsDMatrix
@@ -45,10 +46,16 @@ class Test(unittest.TestCase):
         self.y_series = md.Series(self.y)
         self.weight = rs.rand(n_rows, chunk_size=chunk_size)
 
-    def testSerializeLocalTrain(self):
-        sess = new_session()
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
 
-        with LocalContext(sess._sess):
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
+    def testSerializeLocalTrain(self):
+        with LocalContext(self.session._sess):
             dmatrix = ToDMatrix(data=self.X, label=self.y)()
             model = XGBTrain(dtrain=dmatrix)()
 
@@ -70,13 +77,11 @@ class Test(unittest.TestCase):
             self.assertEqual(len(dmatrix.chunks), 1)
 
     def testLocalTrainTensor(self):
-        new_session().as_default()
         dtrain = MarsDMatrix(self.X, self.y)
         booster = train({}, dtrain, num_boost_round=2)
         self.assertIsInstance(booster, Booster)
 
     def testLocalTrainDataFrame(self):
-        new_session().as_default()
         dtrain = MarsDMatrix(self.X_df, self.y_series)
         booster = train({}, dtrain, num_boost_round=2)
         self.assertIsInstance(booster, Booster)

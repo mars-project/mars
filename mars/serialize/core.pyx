@@ -739,6 +739,10 @@ class HasKey(object):
     __slots__ = '_key', '_id'
 
 
+class HasData(object):
+    __slots__ = '_data',
+
+
 cdef class KeyPlaceholder:
     def __init__(self, key, id):
         self.key = key

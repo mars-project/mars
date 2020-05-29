@@ -15,6 +15,8 @@
 import unittest
 
 import mars.tensor as mt
+from mars.session import new_session
+from mars.tests.core import ExecutorForTest
 from mars.utils import lazy_import
 from mars.learn.contrib.pytorch import MarsDataset, MarsRandomSampler
 
@@ -23,6 +25,15 @@ torch_installed = lazy_import('torch', globals=globals()) is not None
 
 @unittest.skipIf(not torch_installed, 'pytorch not installed')
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
     def testLocalDataset(self):
         import torch
 

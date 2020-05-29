@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 
 from mars.context import LocalContext
+from mars.core import OBJECT_TYPE
 from mars.executor import Executor, GraphExecution
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
@@ -400,7 +401,7 @@ def assert_groupby_equal(left, right, sort_keys=False, with_selection=False):
 
 
 _check_options = dict()
-_check_args = ['check_series_name', 'check_dtypes', 'check_dtype', 'check_shape', 'check_nsplits']
+_check_args = ['check_all', 'check_series_name', 'check_dtypes', 'check_dtype', 'check_shape', 'check_nsplits']
 
 
 class MarsObjectCheckMixin:
@@ -425,9 +426,9 @@ class MarsObjectCheckMixin:
                 return
             if expected_dtype is None:
                 raise AssertionError('Expected dtype cannot be None')
-            if not np.can_cast(expected_dtype, real_dtype):
-                raise AssertionError('dtype in metadata %r cannot cast to real dtype %r'
-                                     % (expected_dtype, real_dtype))
+            if not np.can_cast(real_dtype, expected_dtype) and not np.can_cast(expected_dtype, real_dtype):
+                raise AssertionError('cannot cast between dtype of real dtype %r and dtype %r defined in metadata'
+                                     % (real_dtype, expected_dtype))
 
     @classmethod
     def assert_tensor_consistent(cls, expected, real):
@@ -539,10 +540,11 @@ class GraphExecutionWithChunkCheck(MarsObjectCheckMixin, GraphExecution):
         super()._execute_operand(op)
         if self._mock:
             return
-        for o in op.outputs:
-            if o.key not in self._key_set:
-                continue
-            self.assert_object_consistent(o, self._chunk_results[o.key])
+        if _check_options.get('check_all', True):
+            for o in op.outputs:
+                if o.key not in self._key_set:
+                    continue
+                self.assert_object_consistent(o, self._chunk_results[o.key])
 
 
 class ExecutorForTest(MarsObjectCheckMixin, Executor):
@@ -552,6 +554,11 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     """
     __test__ = False
     _graph_execution_cls = GraphExecutionWithChunkCheck
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._raw_chunk_shapes = dict()
+        self._tileable_checked = dict()
 
     @staticmethod
     def _extract_check_options(kw_dict):
@@ -587,52 +594,78 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                 raise AssertionError('Operand %r: Cannot spot chunk via index %r, nsplits is %r'
                                      % (c.op, c.index, tiled.nsplits))
         for cid, shape in enumerate(itertools.product(*tiled.nsplits)):
-            if len(shape) != len(tiled.chunks[cid].shape):
+            chunk_shape = self._raw_chunk_shapes.get(tiled.chunks[cid].key) or tiled.chunks[cid].shape
+            if len(shape) != len(chunk_shape):
                 raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
-                                     % (tiled.chunks[cid].op, shape, tiled.chunks[cid].shape))
-            for s1, s2 in zip(shape, tiled.chunks[cid].shape):
+                                     % (tiled.chunks[cid].op, shape, chunk_shape))
+            for s1, s2 in zip(shape, chunk_shape):
                 if (not (np.isnan(s1) and np.isnan(s2))) and s1 != s2:
                     raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
-                                         % (tiled.chunks[cid].op, shape, tiled.chunks[cid].shape))
+                                         % (tiled.chunks[cid].op, shape, chunk_shape))
 
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
             graph = type(graph).from_json(graph.to_json())
             graph = type(graph).from_pb(graph.to_pb())
+
+        # record shapes generated in tile
+        for n in graph:
+            self._raw_chunk_shapes[n.key] = getattr(n, 'shape', None)
         return super().execute_graph(graph, keys, **kw)
 
+    def _update_tileable_and_chunk_shape(self, tileable_graph, chunk_result, failed_ops):
+        for n in tileable_graph:
+            if _check_options['check_nsplits'] and n.op not in failed_ops \
+                    and n.key not in self._tileable_checked and not isinstance(n, OBJECT_TYPE):
+                self._check_nsplits(n)
+                self._tileable_checked[n.key] = True
+        return super()._update_tileable_and_chunk_shape(tileable_graph, chunk_result, failed_ops)
+
     def execute_tileable(self, tileable, *args, **kwargs):
-        from mars.core import OBJECT_TYPE
         self._extract_check_options(kwargs)
 
         result = super().execute_tileable(tileable, *args, **kwargs)
 
-        if not isinstance(tileable, OBJECT_TYPE):
-            if _check_options['check_nsplits']:
-                self._check_nsplits(tileable)
+        if _check_options.get('check_all', True):
+            if not isinstance(tileable, OBJECT_TYPE) and tileable.key not in self._tileable_checked:
+                if _check_options['check_nsplits']:
+                    self._check_nsplits(tileable)
 
-        # check returned type
-        if kwargs.get('concat', False):
-            self.assert_object_consistent(tileable, result[0])
+            # check returned type
+            if kwargs.get('concat', False):
+                self.assert_object_consistent(tileable, result[0])
         return result
 
     execute_tensor = execute_tileable
     execute_dataframe = execute_tileable
 
     def execute_tileables(self, tileables, *args, **kwargs):
-        from mars.core import OBJECT_TYPE
         self._extract_check_options(kwargs)
 
+        tileables_to_check = tileables
         results = super().execute_tileables(tileables, *args, **kwargs)
         if results is None:
             # fetch = False
-            results = super().fetch_tileables(tileables)
-        for tileable, result in zip(tileables, results):
-            if not isinstance(tileable, OBJECT_TYPE):
-                if _check_options['check_nsplits']:
-                    self._check_nsplits(tileable)
-                self.assert_object_consistent(tileable, result)
+            tileables_to_check = [t for t in tileables if not isinstance(t, OBJECT_TYPE)]
+            results = self.fetch_tileables(tileables_to_check)
+
+        if _check_options.get('check_all', True):
+            for tileable, result in zip(tileables_to_check, results):
+                if not isinstance(tileable, OBJECT_TYPE) and tileable.key not in self._tileable_checked:
+                    if _check_options['check_nsplits']:
+                        self._check_nsplits(tileable)
+                    self.assert_object_consistent(tileable, result)
         return results
+
+    def fetch_tileables(self, tileables, **kw):
+        global _check_options
+        old_options = _check_options.copy()
+        try:
+            _check_options['check_all'] = False
+            kw.update(_check_options)
+            return super().fetch_tileables(tileables, **kw)
+        finally:
+            _check_options = old_options
 
     execute_tensors = execute_tileables
     execute_dataframes = execute_tileables

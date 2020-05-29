@@ -19,13 +19,20 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.learn.utils import shuffle
 from mars.learn.utils.shuffle import LearnShuffle
+from mars.session import new_session
 from mars.tiles import get_tiled
 from mars.tests.core import TestBase, ExecutorForTest
 
 
 class Test(TestBase):
-    def setUp(self):
-        self.executor = ExecutorForTest('numpy')
+    def setUp(self) -> None:
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
 
     def testShuffleExpr(self):
         a = mt.random.rand(10, 3, chunk_size=2)

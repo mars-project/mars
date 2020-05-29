@@ -146,7 +146,7 @@ def make_classification(n_samples=100, n_features=20, n_informative=2,
     make_blobs: simplified variant
     make_multilabel_classification: unrelated generator for multilabel tasks
     """
-    from sklearn.datasets.samples_generator import _generate_hypercube
+    from sklearn.datasets._samples_generator import _generate_hypercube
 
     generator = check_random_state(random_state)
     np_generator = generator.to_numpy()
@@ -296,7 +296,7 @@ def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
 
     Examples
     --------
-    >>> from sklearn.datasets.samples_generator import make_blobs
+    >>> from sklearn.datasets import make_blobs
     >>> X, y = make_blobs(n_samples=10, centers=3, n_features=2,
     ...                   random_state=0)
     >>> print(X.shape)

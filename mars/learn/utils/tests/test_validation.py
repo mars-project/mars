@@ -19,14 +19,16 @@ import numpy as np
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.session import new_session
 from mars.tensor.core import Tensor
+from mars.tests.core import ExecutorForTest
 
 try:
     import scipy.sparse as sp
     import sklearn
     from sklearn.utils.estimator_checks import NotAnArray
     from sklearn.utils.mocking import MockDataFrame
-    from sklearn.utils.testing import assert_raise_message, assert_raises_regex
+    from sklearn.utils._testing import assert_raise_message, assert_raises_regex
     import pytest
 
     from mars.learn.utils.validation import check_array
@@ -36,6 +38,15 @@ except ImportError:
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
     def test_ordering(self):
         # Check that ordering is enforced correctly by validation utilities.
         # We need to check each validation utility, because a 'copy' without

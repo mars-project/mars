@@ -90,7 +90,7 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
 
             new_op = op.copy()
             params = out.params
-            params['nsplits'] = ((),)
+            params['nsplits'] = ()
             params['chunks'] = [chunk]
             return new_op.new_tileables(op.inputs, kws=[params])
 
@@ -280,7 +280,7 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
         chunk = chunk_op.new_chunk(chunk_inputs, dtype=out.dtype,
                                    shape=out.shape, order=out.order, index=())
         params = out.params
-        params['nsplits'] = ((),)
+        params['nsplits'] = ()
         params['chunks'] = [chunk]
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
