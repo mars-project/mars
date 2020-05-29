@@ -32,6 +32,7 @@ Conversion
 .. autosummary::
    :toctree: api/
 
+   Series.astype
    Series.copy
    Series.to_tensor
 
