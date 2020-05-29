@@ -110,14 +110,14 @@ Computations / descriptive stats
    DataFrame.max
    DataFrame.mean
    DataFrame.min
+   DataFrame.nunique
    DataFrame.prod
    DataFrame.product
    DataFrame.quantile
    DataFrame.round
-   DataFrame.sum
    DataFrame.std
+   DataFrame.sum
    DataFrame.var
-   DataFrame.nunique
 
 Reindexing / selection / label manipulation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
