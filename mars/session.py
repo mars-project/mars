@@ -357,6 +357,12 @@ class Session(object):
     _default_session_local = threading.local()
 
     def __init__(self, endpoint=None, **kwargs):
+        self._endpoint = endpoint
+        self._kws = kwargs
+        self._init()
+
+    def _init(self):
+        endpoint, kwargs = self._endpoint, self._kws
         if endpoint is not None:
             if 'http' in endpoint:
                 # connect to web
@@ -369,6 +375,14 @@ class Session(object):
                 self._sess = ClusterSession(endpoint, **kwargs)
         else:
             self._sess = LocalSession(**kwargs)
+
+    def __getstate__(self):
+        return self._endpoint, self._kws, self.session_id
+
+    def __setstate__(self, state):
+        self._endpoint, self._kws, session_id = state
+        self._init()
+        self._sess._session_id = session_id
 
     def run(self, *tileables, **kw):
         from . import tensor as mt
