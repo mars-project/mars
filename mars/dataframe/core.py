@@ -955,7 +955,7 @@ class DataFrameData(BaseDataFrameData):
             return DataFrameDef
         return super().cls(provider)
 
-    def _iter_wrap(self, method, batch_size, session):
+    def _iter_wrap(self, method, batch_size, session, **kw):
         from .indexing.iloc import iloc
 
         # trigger execution
@@ -967,13 +967,14 @@ class DataFrameData(BaseDataFrameData):
         for i in range(n_batch):
             batch_data = iloc(self)[size * i: size * (i + 1)] \
                 .fetch(session=session)
-            yield from getattr(batch_data, method)()
+            yield from getattr(batch_data, method)(**kw)
 
     def iterrows(self, batch_size=1000, session=None):
-        return self._iter_wrap('iterrows', batch_size=batch_size, session=session)
+        return self._iter_wrap('iterrows', batch_size, session)
 
-    def itertuples(self, batch_size=1000, session=None):
-        return self._iter_wrap('itertuples', batch_size=batch_size, session=session)
+    def itertuples(self, index=True, name='Pandas', batch_size=1000, session=None):
+        return self._iter_wrap('itertuples', batch_size, session,
+                               index=index, name=name)
 
 
 class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
@@ -1072,10 +1073,121 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
         return self._data.dtypes
 
     def iterrows(self, batch_size=1000, session=None):
+        """
+        Iterate over DataFrame rows as (index, Series) pairs.
+
+        Yields
+        ------
+        index : label or tuple of label
+            The index of the row. A tuple for a `MultiIndex`.
+        data : Series
+            The data of the row as a Series.
+
+        it : generator
+            A generator that iterates over the rows of the frame.
+
+        See Also
+        --------
+        DataFrame.itertuples : Iterate over DataFrame rows as namedtuples of the values.
+        DataFrame.items : Iterate over (column name, Series) pairs.
+
+        Notes
+        -----
+
+        1. Because ``iterrows`` returns a Series for each row,
+           it does **not** preserve dtypes across the rows (dtypes are
+           preserved across columns for DataFrames). For example,
+
+           >>> import mars.dataframe as md
+           >>> df = md.DataFrame([[1, 1.5]], columns=['int', 'float'])
+           >>> row = next(df.iterrows())[1]
+           >>> row
+           int      1.0
+           float    1.5
+           Name: 0, dtype: float64
+           >>> print(row['int'].dtype)
+           float64
+           >>> print(df['int'].dtype)
+           int64
+
+           To preserve dtypes while iterating over the rows, it is better
+           to use :meth:`itertuples` which returns namedtuples of the values
+           and which is generally faster than ``iterrows``.
+
+        2. You should **never modify** something you are iterating over.
+           This is not guaranteed to work in all cases. Depending on the
+           data types, the iterator returns a copy and not a view, and writing
+           to it will have no effect.
+        """
         return self._data.iterrows(batch_size=batch_size, session=session)
 
-    def itertuples(self, batch_size=1000, session=None):
-        return self._data.itertuples(batch_size=batch_size, session=session)
+    def itertuples(self, index=True, name='Pandas', batch_size=1000, session=None):
+        """
+        Iterate over DataFrame rows as namedtuples.
+
+        Parameters
+        ----------
+        index : bool, default True
+            If True, return the index as the first element of the tuple.
+        name : str or None, default "Pandas"
+            The name of the returned namedtuples or None to return regular
+            tuples.
+
+        Returns
+        -------
+        iterator
+            An object to iterate over namedtuples for each row in the
+            DataFrame with the first field possibly being the index and
+            following fields being the column values.
+
+        See Also
+        --------
+        DataFrame.iterrows : Iterate over DataFrame rows as (index, Series)
+            pairs.
+        DataFrame.items : Iterate over (column name, Series) pairs.
+
+        Notes
+        -----
+        The column names will be renamed to positional names if they are
+        invalid Python identifiers, repeated, or start with an underscore.
+        On python versions < 3.7 regular tuples are returned for DataFrames
+        with a large number of columns (>254).
+
+        Examples
+        --------
+        >>> import mars.dataframe as md
+        >>> df = md.DataFrame({'num_legs': [4, 2], 'num_wings': [0, 2]},
+        ...                   index=['dog', 'hawk'])
+        >>> df.execute()
+              num_legs  num_wings
+        dog          4          0
+        hawk         2          2
+        >>> for row in df.itertuples():
+        ...     print(row)
+        ...
+        Pandas(Index='dog', num_legs=4, num_wings=0)
+        Pandas(Index='hawk', num_legs=2, num_wings=2)
+
+        By setting the `index` parameter to False we can remove the index
+        as the first element of the tuple:
+
+        >>> for row in df.itertuples(index=False):
+        ...     print(row)
+        ...
+        Pandas(num_legs=4, num_wings=0)
+        Pandas(num_legs=2, num_wings=2)
+
+        With the `name` parameter set we set a custom name for the yielded
+        namedtuples:
+
+        >>> for row in df.itertuples(name='Animal'):
+        ...     print(row)
+        ...
+        Animal(Index='dog', num_legs=4, num_wings=0)
+        Animal(Index='hawk', num_legs=2, num_wings=2)
+        """
+        return self._data.itertuples(batch_size=batch_size, session=session,
+                                     index=index, name=name)
 
 
 class DataFrameGroupByChunkData(BaseDataFrameChunkData):
