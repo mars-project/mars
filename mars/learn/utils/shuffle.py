@@ -131,23 +131,23 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
             return tileable
 
     @classmethod
-    def _calc_chunk_params(cls, in_chunk, axes, output, output_type,
+    def _calc_chunk_params(cls, in_chunk, axes, chunk_shape, output, output_type,
                            chunk_op, no_shuffle: bool):
         params = {'index': in_chunk.index}
         if output_type == OutputType.tensor:
-            chunk_shape = list(in_chunk.shape)
+            shape_c = list(in_chunk.shape)
             for ax in axes:
-                if not no_shuffle:
-                    chunk_shape[ax] = np.nan
-            params['shape'] = tuple(chunk_shape)
+                if not no_shuffle and chunk_shape[ax] > 1:
+                    shape_c[ax] = np.nan
+            params['shape'] = tuple(shape_c)
             params['dtype'] = in_chunk.dtype
             params['order'] = output.order
         elif output_type == OutputType.dataframe:
-            chunk_shape = list(in_chunk.shape)
+            shape_c = list(in_chunk.shape)
             if 0 in axes:
-                if not no_shuffle:
-                    chunk_shape[0] = np.nan
-            params['shape'] = tuple(chunk_shape)
+                if not no_shuffle and chunk_shape[0] > 1:
+                    shape_c[0] = np.nan
+            params['shape'] = tuple(shape_c)
             params['dtypes'] = output.dtypes
             params['columns_value'] = output.columns_value
             params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value)
@@ -214,7 +214,8 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
                 for c in inp.chunks:
                     chunk_op = LearnShuffle(axes=inp_axes, seeds=op.seeds[:len(inp_axes)],
                                             output_types=output_types)
-                    params = cls._calc_chunk_params(c, inp_axes, oup, output_type, chunk_op, True)
+                    params = cls._calc_chunk_params(c, inp_axes, inp.chunk_shape,
+                                                    oup, output_type, chunk_op, True)
                     out_chunk = chunk_op.new_chunk([c], kws=[params])
                     chunks.append(out_chunk)
                 out_chunks.append(chunks)
@@ -259,7 +260,8 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
                                     if reduce_sizes[j] > 1),
                         reduce_sizes=reduce_sizes_,
                         shuffle_key=shuffle_key)
-                    params = cls._calc_chunk_params(c, inp_axes, oup, output_type, chunk_op, False)
+                    params = cls._calc_chunk_params(c, inp_axes, inp.chunk_shape, oup,
+                                                    output_type, chunk_op, False)
                     reduce_chunk = chunk_op.new_chunk([proxy_chunk], kws=[params])
                     reduce_chunks.append(reduce_chunk)
 
