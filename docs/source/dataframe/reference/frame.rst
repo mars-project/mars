@@ -34,6 +34,7 @@ Conversion
 .. autosummary::
    :toctree: api/
 
+   DataFrame.astype
    DataFrame.copy
    DataFrame.isna
    DataFrame.notna
@@ -48,6 +49,8 @@ Indexing, iteration
    DataFrame.iat
    DataFrame.loc
    DataFrame.iloc
+   DataFrame.iterrows
+   DataFrame.itertuples
    DataFrame.tail
 
 Binary operator functions
