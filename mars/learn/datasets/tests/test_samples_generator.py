@@ -17,9 +17,13 @@ from functools import partial
 from collections import defaultdict
 
 import numpy as np
+
+from mars.session import new_session
+from mars.tests.core import ExecutorForTest
+
 try:
     import sklearn
-    from sklearn.utils.testing import assert_array_almost_equal, assert_raises, \
+    from sklearn.utils._testing import assert_array_almost_equal, assert_raises, \
         assert_almost_equal, assert_raise_message
 except ImportError:  # pragma: no cover
     sklearn = None
@@ -31,6 +35,15 @@ from mars import tensor as mt
 
 
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
     @unittest.skipIf(sklearn is None, 'sklearn not installed')
     def testMakeClassification(self):
         weights = [0.1, 0.25]

@@ -375,6 +375,10 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
 
         params = out.params
         params['chunks'] = out_chunks
+        if out.ndim == 1:
+            params['shape'] = (inp.shape[0],)
+        else:
+            params['shape'] = (inp.shape[0], params['shape'][1])
         nsplits = list(inp.nsplits)
         if input_ndim == 1 and output_ndim == 2:
             nsplits.append((out.shape[1],))

@@ -20,15 +20,16 @@ message Node1Def {
     Value cl1 = 18;
     Value cl2 = 19;
     bool e = 13;
-    Value f = 14;
-    Node2Def g = 15;
-    repeated Value h = 16;
-    repeated Node1Def i = 17;
-    AnyReference j = 20;
-    repeated AnyReference k = 21;
-    Value l = 22;
-    Value m = 23;
-    Value n = 24;
+    Value f1 = 14;
+    Value f2 = 15;
+    Node2Def g = 16;
+    repeated Value h = 17;
+    repeated Node1Def i = 20;
+    AnyReference j = 21;
+    repeated AnyReference k = 22;
+    Value l = 23;
+    Value m = 24;
+    Value n = 25;
 }
 
 

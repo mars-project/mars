@@ -35,10 +35,15 @@ class Test(unittest.TestCase):
         self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
 
-    def testLocalRegressor(self):
-        session = new_session().as_default()
-        session._sess._executor = ExecutorForTest(storage=session._sess._context)
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
 
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
+
+    def testLocalRegressor(self):
         X, y = self.X, self.y
         regressor = LGBMRegressor(n_estimators=2)
         regressor.fit(X, y, verbose=True)

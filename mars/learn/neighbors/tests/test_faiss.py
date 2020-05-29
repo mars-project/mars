@@ -15,6 +15,9 @@
 import unittest
 
 import numpy as np
+
+from mars.session import new_session
+
 try:
     import faiss
 except ImportError:  # pragma: no cover
@@ -31,7 +34,13 @@ from mars.tests.core import ExecutorForTest
 @unittest.skipIf(faiss is None, 'faiss not installed')
 class Test(unittest.TestCase):
     def setUp(self) -> None:
-        self.executor = ExecutorForTest('numpy')
+        self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
 
     def testManualBuildFaissIndex(self):
         d = 8
