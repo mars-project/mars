@@ -426,9 +426,9 @@ class MarsObjectCheckMixin:
                 return
             if expected_dtype is None:
                 raise AssertionError('Expected dtype cannot be None')
-            if not np.can_cast(expected_dtype, real_dtype):
-                raise AssertionError('dtype in metadata %r cannot cast to real dtype %r'
-                                     % (expected_dtype, real_dtype))
+            if not np.can_cast(real_dtype, expected_dtype) and not np.can_cast(expected_dtype, real_dtype):
+                raise AssertionError('cannot cast between dtype of real dtype %r and dtype %r defined in metadata'
+                                     % (real_dtype, expected_dtype))
 
     @classmethod
     def assert_tensor_consistent(cls, expected, real):
@@ -642,13 +642,15 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     def execute_tileables(self, tileables, *args, **kwargs):
         self._extract_check_options(kwargs)
 
+        tileables_to_check = tileables
         results = super().execute_tileables(tileables, *args, **kwargs)
         if results is None:
             # fetch = False
-            results = self.fetch_tileables(tileables)
+            tileables_to_check = [t for t in tileables if not isinstance(t, OBJECT_TYPE)]
+            results = self.fetch_tileables(tileables_to_check)
 
         if _check_options.get('check_all', True):
-            for tileable, result in zip(tileables, results):
+            for tileable, result in zip(tileables_to_check, results):
                 if not isinstance(tileable, OBJECT_TYPE) and tileable.key not in self._tileable_checked:
                     if _check_options['check_nsplits']:
                         self._check_nsplits(tileable)
