@@ -122,6 +122,7 @@ Reindexing / selection / label manipulation
 .. autosummary::
    :toctree: api/
 
+   Series.drop
    Series.head
    Series.isin
    Series.reset_index

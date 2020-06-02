@@ -401,7 +401,8 @@ def assert_groupby_equal(left, right, sort_keys=False, with_selection=False):
 
 
 _check_options = dict()
-_check_args = ['check_all', 'check_series_name', 'check_dtypes', 'check_dtype', 'check_shape', 'check_nsplits']
+_check_args = ['check_all', 'check_series_name', 'check_index_name', 'check_dtypes',
+               'check_dtype', 'check_shape', 'check_nsplits']
 
 
 class MarsObjectCheckMixin:
@@ -444,7 +445,7 @@ class MarsObjectCheckMixin:
         cls.assert_shape_consistent(expected.shape, real.shape)
 
     @classmethod
-    def assert_index_consistent(cls, expected_index_value, real_index):
+    def assert_index_value_consistent(cls, expected_index_value, real_index):
         if expected_index_value.has_value():
             expected_index = expected_index_value.to_pandas()
             try:
@@ -469,8 +470,8 @@ class MarsObjectCheckMixin:
                     raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
                                          % (expected.dtypes, real.dtypes))
 
-        cls.assert_index_consistent(expected.columns_value, real.columns)
-        cls.assert_index_consistent(expected.index_value, real.index)
+        cls.assert_index_value_consistent(expected.columns_value, real.columns)
+        cls.assert_index_value_consistent(expected.index_value, real.index)
 
     @classmethod
     def assert_series_consistent(cls, expected, real):
@@ -483,7 +484,7 @@ class MarsObjectCheckMixin:
                                  % (expected.name, real.name))
 
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
-        cls.assert_index_consistent(expected.index_value, real.index)
+        cls.assert_index_value_consistent(expected.index_value, real.index)
 
     @classmethod
     def assert_groupby_consistent(cls, expected, real):
@@ -506,22 +507,35 @@ class MarsObjectCheckMixin:
                                  % (type(expected), type(real)))
 
     @classmethod
+    def assert_index_consistent(cls, expected, real):
+        if not isinstance(real, pd.Index):
+            raise AssertionError('Type of real value (%r) not Index' % type(real))
+        cls.assert_shape_consistent(expected.shape, real.shape)
+
+        if _check_options['check_series_name'] and expected.name != real.name:
+            raise AssertionError('series name in metadata %r is not equal to real name %r'
+                                 % (expected.name, real.name))
+
+        cls.assert_dtype_consistent(expected.dtype, real.dtype)
+        cls.assert_index_value_consistent(expected.index_value, real)
+
+    @classmethod
     def assert_categorical_consistent(cls, expected, real):
         if not isinstance(real, pd.Categorical):
             raise AssertionError('Type of real value (%r) not Categorical' % type(real))
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
         cls.assert_shape_consistent(expected.shape, real.shape)
-        cls.assert_index_consistent(expected.categories_value, real.categories)
+        cls.assert_index_value_consistent(expected.categories_value, real.categories)
 
     @classmethod
     def assert_object_consistent(cls, expected, real):
         from mars.tensor.core import TENSOR_TYPE
         from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE, \
-            CATEGORICAL_TYPE
+            INDEX_TYPE, CATEGORICAL_TYPE
 
         from mars.tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE
         from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, \
-            GROUPBY_CHUNK_TYPE, CATEGORICAL_CHUNK_TYPE
+            GROUPBY_CHUNK_TYPE, INDEX_CHUNK_TYPE, CATEGORICAL_CHUNK_TYPE
 
         if isinstance(expected, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             cls.assert_tensor_consistent(expected, real)
@@ -531,6 +545,8 @@ class MarsObjectCheckMixin:
             cls.assert_series_consistent(expected, real)
         elif isinstance(expected, (GROUPBY_TYPE, GROUPBY_CHUNK_TYPE)):
             cls.assert_groupby_consistent(expected, real)
+        elif isinstance(expected, (INDEX_TYPE, INDEX_CHUNK_TYPE)):
+            cls.assert_index_consistent(expected, real)
         elif isinstance(expected, (CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE)):
             cls.assert_categorical_consistent(expected, real)
 
