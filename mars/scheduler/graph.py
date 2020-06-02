@@ -1126,7 +1126,7 @@ class GraphActor(SchedulerActor):
         tileable = self._get_tileable_by_key(tileable_key)
         graph = DAG()
 
-        new_tileable = build_fetch_tileable(tileable)
+        new_tileable = build_fetch_tileable(tileable).data
         graph.add_node(new_tileable)
         return serialize_graph(graph)
 

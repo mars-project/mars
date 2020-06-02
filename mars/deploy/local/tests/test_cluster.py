@@ -980,3 +980,27 @@ class Test(unittest.TestCase):
 
             r = session2.run(d, timeout=_exec_timeout)
             self.assertEqual(r, 6)
+
+    def testKNNInLocalCluster(self, *_):
+        from mars.learn.neighbors import NearestNeighbors
+        from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=3, shared_memory='20M') as cluster:
+            rs = np.random.RandomState(0)
+            raw_X = rs.rand(10, 5)
+            raw_Y = rs.rand(8, 5)
+
+            X = mt.tensor(raw_X, chunk_size=7)
+            Y = mt.tensor(raw_Y, chunk_size=(5, 3))
+            nn = NearestNeighbors(n_neighbors=3)
+            nn.fit(X)
+
+            ret = nn.kneighbors(Y, session=cluster.session)
+
+            snn = SkNearestNeighbors(n_neighbors=3)
+            snn.fit(raw_X)
+            expected = snn.kneighbors(raw_Y)
+
+            result = [r.fetch() for r in ret]
+            np.testing.assert_almost_equal(result[0], expected[0])
+            np.testing.assert_almost_equal(result[1], expected[1])
