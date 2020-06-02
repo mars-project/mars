@@ -142,12 +142,13 @@ class DataFrameReadSQLTable(DataFrameOperand, DataFrameOperandMixin):
             close = True
             dispose = True
 
-        yield con
-
-        if close:
-            con.close()
-        if dispose:
-            engine.dispose()
+        try:
+            yield con
+        finally:
+            if close:
+                con.close()
+            if dispose:
+                engine.dispose()
 
     def __call__(self, test_rows, chunk_size):
         import sqlalchemy as sa

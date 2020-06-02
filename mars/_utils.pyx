@@ -27,6 +27,11 @@ cimport cython
 
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
 
+try:
+    from sqlalchemy.sql.sqltypes import TypeEngine as SATypeEngine
+except ImportError:
+    SATypeEngine = None
+
 
 cpdef str to_str(s, encoding='utf-8'):
     if type(s) is str:
@@ -208,6 +213,10 @@ cdef list tokenize_pandas_interval_arrays(ob):
     return iterative_tokenize([ob.left, ob.right, ob.closed])
 
 
+cdef list tokenize_sqlalchemy_data_type(ob):
+    return iterative_tokenize([repr(ob)])
+
+
 @lru_cache(500)
 def tokenize_function(ob):
     if isinstance(ob, partial):
@@ -259,6 +268,8 @@ tokenize_handler.register(pd.arrays.DatetimeArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.TimedeltaArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.PeriodArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.IntervalArray, tokenize_pandas_interval_arrays)
+if SATypeEngine is not None:
+    tokenize_handler.register(SATypeEngine, tokenize_sqlalchemy_data_type)
 
 cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)
