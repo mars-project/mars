@@ -421,6 +421,8 @@ class MarsObjectCheckMixin:
 
     @staticmethod
     def assert_dtype_consistent(expected_dtype, real_dtype):
+        if isinstance(real_dtype, pd.DatetimeTZDtype):
+            real_dtype = real_dtype.base
         if expected_dtype != real_dtype:
             if expected_dtype == np.dtype('O') and real_dtype.type is np.str_:
                 # real dtype is string, this matches expectation
