@@ -372,3 +372,11 @@ specific plotting methods of the form ``Series.plot.<kind>``.
    :toctree: api/
 
    Series.hist
+
+Serialization / IO / conversion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Series.to_csv
+   Series.to_sql

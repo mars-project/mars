@@ -25,6 +25,7 @@ def _install():
         setattr(cls, 'to_vineyard', to_vineyard)
 
     for cls in SERIES_TYPE:
+        setattr(cls, 'to_csv', to_csv)
         setattr(cls, 'to_sql', to_sql)
 
 
