@@ -51,6 +51,7 @@ Indexing, iteration
    DataFrame.iloc
    DataFrame.iterrows
    DataFrame.itertuples
+   DataFrame.pop
    DataFrame.tail
 
 Binary operator functions
@@ -127,6 +128,7 @@ Reindexing / selection / label manipulation
 .. autosummary::
    :toctree: api/
 
+   DataFrame.drop
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index

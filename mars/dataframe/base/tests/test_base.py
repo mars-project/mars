@@ -19,10 +19,11 @@ import pandas as pd
 
 from mars import opcodes
 from mars.config import options
-from mars.dataframe.core import SERIES_TYPE, SERIES_CHUNK_TYPE, \
-    CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
+from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
+    INDEX_TYPE, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+from mars.dataframe.datasource.index import from_pandas as from_pandas_index
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut, astype
 from mars.dataframe.operands import ObjectType
 from mars.operands import OperandStage
@@ -831,3 +832,38 @@ class Test(TestBase):
 
         with self.assertRaises(KeyError):
             astype(df, {'c': 'str', 'a': 'str'})
+
+    def testDrop(self):
+        # test dataframe drop
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(20, 8)),
+                           columns=['c' + str(i + 1) for i in range(8)])
+
+        df = from_pandas_df(raw, chunk_size=3)
+
+        with self.assertRaises(KeyError):
+            df.drop(columns=['c9'])
+        with self.assertRaises(NotImplementedError):
+            df.drop(columns=from_pandas_series(pd.Series(['c9'])))
+
+        columns = ['c2', 'c4', 'c5', 'c6']
+        index = [3, 6, 7]
+        r = df.drop(columns=columns, index=index)
+        self.assertIsInstance(r, DATAFRAME_TYPE)
+
+        # test series drop
+        raw = pd.Series(rs.randint(1000, size=(20,)))
+        series = from_pandas_series(raw, chunk_size=3)
+
+        r = series.drop(index=index)
+        self.assertIsInstance(r, SERIES_TYPE)
+
+        # test index drop
+        ser = pd.Series(range(20))
+        rs.shuffle(ser)
+        raw = pd.Index(ser)
+
+        idx = from_pandas_index(raw)
+
+        r = idx.drop(index)
+        self.assertIsInstance(r, INDEX_TYPE)
