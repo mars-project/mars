@@ -107,7 +107,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
             chunk_op = op.copy().reset_key()
             slc = get_chunk_slices(chunk_size, chunk_index)
             chunk_op._data = chunk_data = raw_index[slc]
-            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, dtype=op.dtype,
+            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, dtype=index.dtype,
                                            index=chunk_index, name=index.name,
                                            index_value=parse_index(chunk_data))
             out_chunks.append(out_chunk)

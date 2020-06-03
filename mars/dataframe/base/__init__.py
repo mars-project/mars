@@ -29,6 +29,7 @@ from .shift import shift, tshift
 from .diff import df_diff, series_diff
 from .value_counts import value_counts
 from .astype import astype
+from .drop import df_drop, df_pop, series_drop, index_drop
 
 
 def _install():
@@ -57,6 +58,9 @@ def _install():
         setattr(t, 'tshift', tshift)
         setattr(t, 'diff', df_diff)
         setattr(t, 'astype', astype)
+        setattr(t, 'drop', df_drop)
+        setattr(t, 'pop', df_pop)
+        setattr(t, '__delitem__', lambda df, items: df_drop(df, items, axis=1, inplace=True))
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -81,9 +85,11 @@ def _install():
         setattr(t, 'diff', series_diff)
         setattr(t, 'value_counts', value_counts)
         setattr(t, 'astype', astype)
+        setattr(t, 'drop', series_drop)
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
+        setattr(t, 'drop', index_drop)
 
     for method in _string_method_to_handlers:
         if not hasattr(StringAccessor, method):
