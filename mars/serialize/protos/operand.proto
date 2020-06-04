@@ -352,6 +352,7 @@ message OperandDef {
         DATAFRAME_DIFF = 724;
         VALUE_COUNTS = 725;
         TO_DATETIME = 726;
+        DATAFRAME_DROP = 727;
 
         FUSE = 801;
 

@@ -1304,3 +1304,56 @@ class Test(TestBase):
             series.astype(pd.CategoricalDtype(['a', 'c', 'b', 'd'])), concat=True)[0]
         expected = raw.astype(pd.CategoricalDtype(['a', 'c', 'b', 'd']))
         pd.testing.assert_series_equal(expected, result)
+
+    def testDrop(self):
+        # test dataframe drop
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(20, 8)),
+                           columns=['c' + str(i + 1) for i in range(8)])
+
+        df = from_pandas_df(raw, chunk_size=3)
+
+        columns = ['c2', 'c4', 'c5', 'c6']
+        index = [3, 6, 7]
+        r = df.drop(columns=columns, index=index)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.drop(columns=columns, index=index))
+
+        idx_series = from_pandas_series(pd.Series(index))
+        r = df.drop(idx_series)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.drop(pd.Series(index)))
+
+        df.drop(columns, axis=1, inplace=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      raw.drop(columns, axis=1))
+
+        del df['c3']
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      raw.drop(columns + ['c3'], axis=1))
+
+        ps = df.pop('c8')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      raw.drop(columns + ['c3', 'c8'], axis=1))
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(ps, concat=True)[0],
+                                       raw['c8'])
+
+        # test series drop
+        raw = pd.Series(rs.randint(1000, size=(20,)))
+
+        series = from_pandas_series(raw, chunk_size=3)
+
+        r = series.drop(index=index)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.drop(index=index))
+
+        # test index drop
+        ser = pd.Series(range(20))
+        rs.shuffle(ser)
+        raw = pd.Index(ser)
+
+        idx = from_pandas_index(raw)
+
+        r = idx.drop(index)
+        pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.drop(index))

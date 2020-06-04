@@ -1,0 +1,146 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-02 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/dataframe/reference/api/mars.dataframe.DataFrame.drop.rst:2
+msgid "mars.dataframe.DataFrame.drop"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:1 of
+msgid "Drop specified labels from rows or columns."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:3 of
+msgid ""
+"Remove rows or columns by specifying label names and corresponding axis, "
+"or by specifying directly index or column names. When using a multi-"
+"index, labels on different levels can be removed by specifying the level."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:8 of
+msgid "Index or column labels to drop."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:10 of
+msgid ""
+"Whether to drop labels from the index (0 or 'index') or columns (1 or "
+"'columns')."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:13 of
+msgid ""
+"Alternative to specifying axis (``labels, axis=0`` is equivalent to "
+"``index=labels``)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:16 of
+msgid ""
+"Alternative to specifying axis (``labels, axis=1`` is equivalent to "
+"``columns=labels``)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:19 of
+msgid "For MultiIndex, level from which the labels will be removed."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:21 of
+msgid "If True, do operation inplace and return None."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:23 of
+msgid ""
+"If 'ignore', suppress error and only existing labels are dropped. Note "
+"that errors for missing indices will not raise."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:27 of
+msgid "DataFrame without the removed index or column labels."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop of
+msgid "Raises"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:30 of
+msgid "If any of the labels is not found in the selected axis."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:35 of
+msgid ":meth:`DataFrame.loc`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:35 of
+msgid "Label-location based indexer for selection by label."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:38 of
+msgid ":meth:`DataFrame.dropna`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:38 of
+msgid ""
+"Return DataFrame with labels on given axis omitted where (all or any) "
+"data are missing."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:41 of
+msgid ":meth:`DataFrame.drop_duplicates`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:41 of
+msgid ""
+"Return DataFrame with duplicate rows removed, optionally only considering"
+" certain columns."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:43 of
+msgid ":meth:`Series.drop`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:44 of
+msgid "Return Series with specified index labels removed."
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:47 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:59 of
+msgid "Drop columns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:73 of
+msgid "Drop a row by index"
+msgstr ""
+
+#: mars.dataframe.DataFrame.drop:79 of
+msgid "Drop columns and/or rows of MultiIndex DataFrame"
+msgstr ""
+
