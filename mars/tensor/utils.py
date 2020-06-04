@@ -30,6 +30,7 @@ try:
 except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
+from ..core import ExecutableTuple
 from ..utils import lazy_import
 from ..lib.mmh3 import hash_from_buffer
 
@@ -791,7 +792,7 @@ def fetch_corner_data(tensor, session=None):
     # thus the size could not be NaN
     if tensor.size > threshold:
         # two edges for each exis
-        indices_iter = itertools.product(*(range(2) for _ in range(tensor.ndim)))
+        indices_iter = list(itertools.product(*(range(2) for _ in range(tensor.ndim))))
         corners = np.empty(shape=(2,) * tensor.ndim, dtype=object)
         shape = [0 for _ in range(tensor.ndim)]
         for indices in indices_iter:
@@ -813,7 +814,11 @@ def fetch_corner_data(tensor, session=None):
                     else:
                         slc.append(slice(i_sep, None))
                         shape[ax] += size - i_sep
-            corners[indices] = tensor[tuple(slc)].fetch(session=session)
+            corners[indices] = tensor[tuple(slc)]
+        # fetch together
+        fetched = ExecutableTuple(corners.flat).fetch(session=session)
+        for indices, f in zip(indices_iter, fetched):
+            corners[indices] = f
         return np.block(corners.tolist())
     else:
         return tensor.fetch(session=session)

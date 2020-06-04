@@ -1,0 +1,119 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-03 18:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/remote/guide.rst:5
+msgid "User guide"
+msgstr "用户指南"
+
+#: ../../source/remote/guide.rst:7
+msgid "New in version 0.4.1"
+msgstr "自 0.4.1 起支持"
+
+#: ../../source/remote/guide.rst:9
+msgid ""
+"Mars remote API provides a simple yet powerful way to run Python "
+"functions in parallel."
+msgstr ""
+"Mars remote 接口提供了一个简单但强大的方式来并行执行一系列 Python 函数。"
+
+#: ../../source/remote/guide.rst:11
+msgid ""
+"The main API for Mars remote is :meth:`mars.remote.spawn`, it will return"
+" a Mars Object, no execution will happen yet. When `.execute()` is "
+"called, spawned function will be submitted to Mars for execution, thus if"
+" multiple spawned functions are executed together, they may run in "
+"parallel."
+msgstr ""
+"Mars remote 主要的接口就是 :meth:`mars.remote.spawn`，它返回了一个 Mars 对象，"
+"此时还没有任何的执行发生。当 `.execute` 调用的时候，这个函数会被 Mars 执行，"
+"因此如果有多个函数一起执行，它们会并行运行。"
+
+#: ../../source/remote/guide.rst:28
+msgid ""
+"List of spawned functions can be converted to "
+":class:`mars.remote.ExecutableTuple`, and `.execute()` can be called to "
+"run together."
+msgstr ""
+"使用 :class:`mars.remote.ExecutableTuple` 来执行多个函数。"
+
+#: ../../source/remote/guide.rst:37
+msgid ""
+"Mars Object returned by :meth:`mars.remote.spawn` can be treated as "
+"arguments for other spawn functions."
+msgstr ""
+":meth:`mars.remote.spawn` 返回的 Mars 对象能作为其他函数的参数。"
+
+#: ../../source/remote/guide.rst:48
+msgid ""
+"Mars will make sure that `sum_all` can be called only when the previous "
+"10 `inc` called are finished. User needs not to worry about the data of "
+"dependency, e.g. when `sum_all` called, the argument `xs` has already "
+"been replaced by the real outputs of the previous `inc` functions."
+msgstr ""
+"Mars 会保证只有前10个 `inc` 执行完毕，才会去执行 `sum_all` 函数。"
+"用户不需要担心数据依赖，比如当 `sum_call` 执行的时候，`xs` 参数会被前序 "
+"`inc` 函数的真实输出给替代。"
+
+#: ../../source/remote/guide.rst:52
+msgid ""
+"For the distributed setting, 10 `inc` function may be distributed to "
+"different workers. Users need not to care about how the functions are "
+"distributed, as well as how the outputs of spawned functions are moved "
+"between workers."
+msgstr ""
+"对于分布式来说，10个 `inc` 函数可能会被分配到不同的 worker 上。"
+"用户不需要关心这些函数是怎么分布的，亦不需要关心这些函数的输出如何在 worker 间传输。"
+
+#: ../../source/remote/guide.rst:56
+msgid "User can also spawn new functions inside a spawned function."
+msgstr "用户可以在 spawn 的函数里 spawn 新的函数。"
+
+#: ../../source/remote/guide.rst:67
+msgid ""
+"Mars tensor, DataFrame and so forth is available in spawned functions as "
+"well."
+msgstr ""
+"Spawn 的函数里也可以使用 Mars tensor、DataFrame 等等。"
+
+#: ../../source/remote/guide.rst:79
+msgid ""
+"Argument of `n_output` can indicate that the spawned function will return"
+" multiple outputs. This is important when some of the outputs may be "
+"passed to different functions."
+msgstr ""
+"`n_output` 参数可以只是一个函数返回了多个输出值。当这些输出被不同的函数使用时会很有用。"
+
+#: ../../source/remote/guide.rst:107
+msgid "API Reference"
+msgstr "API 参考"
+
+#: ../../source/remote/guide.rst:117:<autosummary>:1
+msgid ""
+":obj:`spawn <mars.remote.spawn>`\\ \\(func\\[\\, args\\, kwargs\\, "
+"retry\\_when\\_fail\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/remote/guide.rst:117:<autosummary>:1
+msgid "Spawn a function and return a Mars Object which can be executed later."
+msgstr "Spawn 一个函数，且返回一个 Mars 对象，它后续可以被执行。"
+
+#: ../../source/remote/guide.rst:117:<autosummary>:1
+msgid ":obj:`ExecutableTuple <mars.remote.ExecutableTuple>`\\ \\(\\*\\_\\)"
+msgstr ""
+

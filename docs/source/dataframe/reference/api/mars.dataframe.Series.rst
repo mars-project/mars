@@ -20,6 +20,7 @@ mars.dataframe.Series
       ~Series.aggregate
       ~Series.append
       ~Series.apply
+      ~Series.astype
       ~Series.bfill
       ~Series.copy
       ~Series.copy_from

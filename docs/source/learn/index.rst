@@ -10,6 +10,7 @@ Mars Learn - distributed machine learning
 
    tensorflow
    xgboost
+   lightgbm
 
 .. toctree::
    :caption: API Reference

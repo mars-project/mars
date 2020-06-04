@@ -1,3 +1,5 @@
+.. _tensor_creation:
+
 Tensor Creation Routines
 ========================
 
@@ -28,6 +30,8 @@ Creation from other data
 
    mars.tensor.array
    mars.tensor.asarray
+   mars.tensor.ascontiguousarray
+
 
 
 Numerical ranges
@@ -55,3 +59,13 @@ Building matrices
    mars.tensor.diagflat
    mars.tensor.tril
    mars.tensor.triu
+
+
+Misc
+----
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   mars.tensor.ExecutableTuple

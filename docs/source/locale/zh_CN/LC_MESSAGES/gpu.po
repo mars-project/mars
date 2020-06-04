@@ -1,0 +1,200 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-03 18:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/gpu.rst:4
+msgid "Mars on GPU"
+msgstr "GPU 指南"
+
+#: ../../source/gpu.rst:6
+msgid ""
+"Mars can run on NVIDIA GPUs, but for different modules, some requirements"
+" are necessary."
+msgstr ""
+"Mars 能跑在 NVIDIA 显卡上，但对于 Mars 里的不同模块，需要一些必要的依赖。"
+
+#: ../../source/gpu.rst:9
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/gpu.rst:11
+msgid ""
+"For Mars tensor, CuPy is required, assume your CUDA driver is 10.1, "
+"install cupy via:"
+msgstr ""
+"Mars tensor 依赖于 CuPy，假设你的 CUDA 驱动是 10.1，用如下方式安装 cupy："
+
+#: ../../source/gpu.rst:17
+msgid ""
+"Refer to `install cupy <https://docs-"
+"cupy.chainer.org/en/stable/install.html>`_ for more information."
+msgstr ""
+"参考 `安装 cupy <https://docs-"
+"cupy.chainer.org/en/stable/install.html>`_ 获取更多信息。"
+
+#: ../../source/gpu.rst:20
+msgid "For Mars DataFrame, RAPIDS cuDF is required. Install cuDF via conda:"
+msgstr "Mars DataFrame 依赖于 RAPIDS cuDF，使用 conda 安装 cuDF："
+
+#: ../../source/gpu.rst:27
+msgid ""
+"Refer to `install cuDF <https://rapids.ai/start.html#get-rapids>`_ for "
+"more information."
+msgstr ""
+"参考 `安装 cuDF <https://rapids.ai/start.html#get-rapids>`_ 获取更多信息。"
+
+#: ../../source/gpu.rst:30
+msgid "Mars tensor on CUDA"
+msgstr "CUDA 上运行 Mars tensor"
+
+#: ../../source/gpu.rst:32
+msgid ""
+"Tensor can be created on GPU via specifying `gpu=True`. Methods included "
+"are mentioned in :ref:`tensor creation <tensor_creation>` and "
+":ref:`random data <tensor_random>`."
+msgstr ""
+"Tensor 通过指定 `gpu=True` 来指定在 GPU 上创建。:ref:`tensor creation <tensor_creation>` 和 "
+":ref:`random data <tensor_random>` 中的方法都支持这个参数。"
+
+#: ../../source/gpu.rst:42
+msgid ""
+"Remember that when creating tensor, no GPU memory allocation happens yet."
+" When `.execute()` is triggered, real memory allocation and computation "
+"on GPU will happen then."
+msgstr ""
+"记住创建 tensor 的时候，并没有实际的 GPU 内存分配。当 `.execute()` 触发的时候，"
+"GPU 上才会有真正的内存分配和计算。"
+
+#: ../../source/gpu.rst:45
+msgid ""
+"For a tensor that on main memory, call `.to_gpu()` to indicate that "
+"moving data to GPU."
+msgstr ""
+"对于一个主存上创建的 tensor，调用 `.to_gpu()` 来指示把数据移至 GPU。"
+
+#: ../../source/gpu.rst:53 ../../source/gpu.rst:80
+msgid "Call `.to_cpu()` to indicate that moving data to main memory."
+msgstr ""
+"调用 `.to_cpu()` 来指示把数据移到主存。"
+
+#: ../../source/gpu.rst:61
+msgid "Mars DataFrame on CUDA"
+msgstr ""
+"CUDA 上运行 Mars DataFrame"
+
+#: ../../source/gpu.rst:63
+msgid "Mars can read CSV files into GPU directly."
+msgstr ""
+"Mars 可以直接读取 CSV 文件至显存。"
+
+#: ../../source/gpu.rst:71
+msgid ""
+"For a DataFrame that on main memory, call `.to_gpu()` to indicate that "
+"moving data to GPU."
+msgstr ""
+"对于主存上的 DataFrame，调用 `.to_gpu()` 指示把数据移至显存。"
+
+#: ../../source/gpu.rst:88
+msgid "Single GPU"
+msgstr "单卡"
+
+#: ../../source/gpu.rst:90
+msgid ""
+":ref:`Local thread-based scheduler <threaded>` can work well for single "
+"GPU. Examples above can work on a single GPU."
+msgstr ""
+":ref:`本地基于多线程的调度器 <threaded>` 能在单卡上正常运行。以上的例子都可以在单卡上工作。"
+
+#: ../../source/gpu.rst:94
+msgid "Multiple GPU"
+msgstr "多卡"
+
+#: ../../source/gpu.rst:96
+msgid "For Mars tensor, multiple GPU on a single machine can be utilized."
+msgstr "对于 Mars tensor，可以利用单机多卡。"
+
+#: ../../source/gpu.rst:104
+msgid ""
+"The code above will try to leverage all the visible GPU cards to perform "
+"computation."
+msgstr "如上代码会利用所有可见的显卡来计算。"
+
+#: ../../source/gpu.rst:106
+msgid ""
+"If you want to limit computation to some GPU cards, you can set "
+"environment variable `CUDA_VISIBLE_DEVICES`."
+msgstr ""
+"如果要限制使用的显卡，可以设置环境变量 `CUDA_VISIBLE_DEVICES`。"
+
+#: ../../source/gpu.rst:113
+msgid ""
+"This will limit the ipython to GPU 0, 3 and 5 only. Thus all the Mars "
+"tensor executed in the ipython will run on the visible GPUs only."
+msgstr ""
+"这会让 ipython 只使用 0、3、5 显卡。因此在 ipython 中跑的 "
+"Mars tensor 任务只会使用这些显卡。"
+
+#: ../../source/gpu.rst:116
+msgid ""
+"For Mars DataFrame, local thread-based scheduler cannot leverage multiple"
+" GPUs for DataFrame computation. In this case, please use distributed "
+"scheduler."
+msgstr ""
+"对于 Mars DataFrame，单机基于线程的调度器不能利用多卡来计算，在这种情况下，"
+"请使用分布式调度器。"
+
+#: ../../source/gpu.rst:120
+msgid "Distributed"
+msgstr "分布式"
+
+#: ../../source/gpu.rst:122
+msgid ""
+"For Mars scheduler and web, the command to start is the same. Refer to "
+":ref:`deploy`."
+msgstr ""
+"Mars scheduler 和 web 的启动命令完全相同，参考 :ref:`deploy`。"
+
+#: ../../source/gpu.rst:124
+msgid ""
+"For Mars worker, one worker can only bind to one GPU, thus if you want to"
+" leverage multiple GPUs, please start as many workers as the count of "
+"GPUs."
+msgstr ""
+"Mars worker 只能绑定到一张显卡上，因此如果你想使用多张显卡，"
+"启动和显卡个数一样多的 worker。"
+
+#: ../../source/gpu.rst:127
+msgid "Basic command to start a worker that binds to some GPU is:"
+msgstr "绑定到某个显卡的 worker 可以按如下命令启动："
+
+#: ../../source/gpu.rst:133
+msgid "The worker started will be bind to GPU 0."
+msgstr "这个 worker 会绑定到显卡 0。"
+
+#: ../../source/gpu.rst:135
+msgid ""
+"Refer to :ref:`extra arguments for starting worker "
+"<deploy_extra_arguments>` for more information."
+msgstr ""
+"参考 :ref:`启动 worker 的其他命令 "
+"<deploy_extra_arguments>` 获取更多信息。"
+
+#: ../../source/gpu.rst:137
+msgid "Once a Mars cluster is started, you can run the code below."
+msgstr "一旦一个集群创建好了，可以运行如下代码。"
+

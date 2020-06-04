@@ -1,4 +1,4 @@
-.. _api_ref:
+.. _api.learn:
 
 =============
 API Reference
@@ -221,7 +221,7 @@ XGBoost Integration
 .. _lightgbm_ref:
 
 LightGBM Integration
-===================
+====================
 
 .. automodule:: mars.learn.contrib.lightgbm
    :no-members:

@@ -1,0 +1,156 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-03 18:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/execution.rst:4
+msgid "Lazy Evaluation"
+msgstr "延迟执行"
+
+#: ../../source/execution.rst:6
+msgid ""
+"Mars tensor, DataFrame and remote need to call `.execute()` to trigger "
+"execution."
+msgstr ""
+"Mars tensor、DataFrame 和 remote 需要调用 `.execute()` 来触发执行。"
+
+#: ../../source/execution.rst:21
+msgid ""
+"Call `.execute()` will return Mars object itself, `.fetch()` could be "
+"called on executed objects to get the result."
+msgstr ""
+"调用 `.execute()` 会返回 Mars 对象自身，`.fetch()` 可以用来获取结果。"
+
+#: ../../source/execution.rst:33
+msgid ""
+"However, there are exceptions that some functions will trigger execution "
+"intermediately."
+msgstr ""
+"然而，有一些函数或方法会立即触发执行。"
+
+#: ../../source/execution.rst:35
+msgid ""
+"Iterating on DataFrame, including "
+":meth:`mars.dataframe.DataFrame.iterrows` and "
+":meth:`mars.dataframe.DataFrame.itertuples`."
+msgstr ""
+"迭代 DataFrame，包括 "
+":meth:`mars.dataframe.DataFrame.iterrows` 和 "
+":meth:`mars.dataframe.DataFrame.itertuples`。"
+
+#: ../../source/execution.rst:37
+msgid ""
+"All plot functions for DataFrame and Series, including "
+":meth:`mars.dataframe.DataFrame.plot`, "
+":meth:`mars.dataframe.DataFrame.plot.bar` and so forth."
+msgstr ""
+"DataFrame 和 Series 上所有的绘图函数，包括 "
+":meth:`mars.dataframe.DataFrame.plot`， "
+":meth:`mars.dataframe.DataFrame.plot.bar` 等等。"
+
+#: ../../source/execution.rst:39
+msgid "All functions in Mars learn like `fit`, `predict` and so forth."
+msgstr ""
+"Mars learn 里的所有函数，包括 `fit`、`predict` 等等。"
+
+#: ../../source/execution.rst:45
+msgid "Eager execution"
+msgstr "Eager 执行"
+
+#: ../../source/execution.rst:47
+msgid "New in version 0.2.0a2"
+msgstr "自 0.2.0a2 起支持"
+
+#: ../../source/execution.rst:49
+msgid ""
+"Mars supports eager mode which makes it friendly for developing and easy "
+"to debug."
+msgstr "Mars 支持 Eager 模式以方便开发和调试。"
+
+#: ../../source/execution.rst:52
+msgid ""
+"Users can enable the eager mode by options, set options at the beginning "
+"of the program or console session."
+msgstr "用户可以通过选项启用 Eager 模式，在程序开头或控制台会话中设置选项。"
+
+#: ../../source/execution.rst:60
+msgid "Or use a context."
+msgstr "或者使用上下文。"
+
+#: ../../source/execution.rst:71
+msgid ""
+"If eager mode is on, Mars object like tensor and DataFrame will be "
+"executed immediately by default session once it is created."
+msgstr "如果打开了 Eager 模式，则会在创建默认会话后立即执行 tensor 和 DataFrame 等等。"
+
+#: ../../source/execution.rst:95
+msgid "Session"
+msgstr "会话"
+
+#: ../../source/execution.rst:97
+msgid ""
+"Session can be used for local execution, connect to :ref:`local cluster "
+"<local_cluster>`, or connect to an exist :ref:`Mars cluster <deploy>`."
+msgstr ""
+"会话可以用来本地执行，连接到 :ref:`本地集群 <local_cluster>`，"
+"以及连接到已经创建的 :ref:`Mars 集群 <deploy>`。"
+
+#: ../../source/execution.rst:100
+msgid ""
+"If session is not initialized explicitly, Mars will create a session for "
+"local execution by default."
+msgstr ""
+"如果没有显式创建会话，Mars 会默认创建一个本地执行的会话。"
+
+#: ../../source/execution.rst:115
+msgid ""
+"`new_session` can be used to create new session, session can be specified"
+" for both `execute` and `fetch`."
+msgstr ""
+"用 `new_session` 来创建新的会话，`execute` 和 `fetch` 方法可以指定会话。"
+
+#: ../../source/execution.rst:132
+msgid ""
+"Call `.as_default()` on a session will set the session as default one, "
+"`.execute()` and `.fetch()` will be constraint to the default session."
+msgstr ""
+"调用会话的 `.as_default()` 方法会把这个会话设为默认，"
+"`.execute()` 和 `.fetch()` 就默认会使用这个会话。"
+
+#: ../../source/execution.rst:150
+msgid ""
+"Each session is isolated, call `.fetch()` on a Mars object that executed "
+"in another session would fail."
+msgstr ""
+"每个会话是隔离的，试图在别的会话中执行的 Mars 对象上调用 `.fetch()` 会导致失败。"
+
+#: ../../source/execution.rst:201
+msgid ""
+"If no argument is passed to `new_session`, local session will be created."
+" The local session will leverage :ref:`threaded scheduler <threaded>` for"
+" execution."
+msgstr ""
+"如果 `new_session` 没有参数，会创建本地会话。"
+"本地会话会利用 :ref:`多线程调度器 <threaded>` 执行。"
+
+#: ../../source/execution.rst:204
+msgid ""
+"For distributed, the URL of Web UI could be passed to `new_session` to "
+"connect to cluster."
+msgstr ""
+"对于分布式环境，`new_session`调用时需要传入 Web UI 的 URL 地址以连接到集群。"
+

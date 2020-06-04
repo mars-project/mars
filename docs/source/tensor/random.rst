@@ -1,3 +1,5 @@
+.. _tensor_random:
+
 .. module:: mars.tensor.random
 
 Random Sampling
