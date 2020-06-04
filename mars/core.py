@@ -573,6 +573,9 @@ class ObjectData(TileableData):
     def __init__(self, op=None, nsplits=None, chunks=None, **kw):
         super().__init__(_op=op, _nsplits=nsplits, _chunks=chunks, **kw)
 
+    def __repr__(self):
+        return 'Object <op={0}, key={1}>'.format(type(self.op).__name__, self.key)
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:

@@ -31,3 +31,10 @@ Top-level dealing with datetimelike
 
    to_datetime
    date_range
+
+Misc
+~~~~
+.. autosummary::
+   :toctree: api/
+
+   ExecutableTuple

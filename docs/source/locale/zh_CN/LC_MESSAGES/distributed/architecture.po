@@ -57,7 +57,6 @@ msgid "Job Submission"
 msgstr "作业提交"
 
 #: ../../source/distributed/architecture.rst:21
-#, fuzzy
 msgid ""
 "Jobs are submitted into Mars via RESTful APIs. Users type tensor "
 "operations and run a tensor by calling "

@@ -47,7 +47,7 @@ msgid ""
 "<https://lightgbm.readthedocs.io/en/latest/Installation-Guide.html>`_ for"
 " more information."
 msgstr ""
-"访问 `LightGBM 安装指引<https://lightgbm.readthedocs.io/en/latest/"
+"访问 `LightGBM 安装指引 <https://lightgbm.readthedocs.io/en/latest/"
 "Installation-Guide.html>`_ 获取更多信息。"
 
 #: ../../source/learn/lightgbm.rst:28

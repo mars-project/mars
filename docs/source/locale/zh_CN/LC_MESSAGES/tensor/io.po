@@ -1,0 +1,55 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-03 18:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/tensor/io.rst:4
+msgid "Input and output"
+msgstr "输入和输出"
+
+#: ../../source/tensor/io.rst:9
+msgid "Reading from external files"
+msgstr "从外部文件读取"
+
+#: ../../source/tensor/io.rst:18:<autosummary>:1
+msgid ":obj:`mars.tensor.from_hdf5 <mars.tensor.from_hdf5>`"
+msgstr ""
+
+#: ../../source/tensor/io.rst:18:<autosummary>:1
+msgid ":obj:`mars.tensor.from_zarr <mars.tensor.from_zarr>`"
+msgstr ""
+
+#: ../../source/tensor/io.rst:18:<autosummary>:1
+msgid ":obj:`mars.tensor.from_tiledb <mars.tensor.from_tiledb>`"
+msgstr ""
+
+#: ../../source/tensor/io.rst:22
+msgid "Writing to external files"
+msgstr "写到外部文件"
+
+#: ../../source/tensor/io.rst:30:<autosummary>:1
+msgid ":obj:`mars.tensor.to_hdf5 <mars.tensor.to_hdf5>`"
+msgstr ""
+
+#: ../../source/tensor/io.rst:30:<autosummary>:1
+msgid ":obj:`mars.tensor.to_zarr <mars.tensor.to_zarr>`"
+msgstr ""
+
+#: ../../source/tensor/io.rst:30:<autosummary>:1
+msgid ":obj:`mars.tensor.to_tiledb <mars.tensor.to_tiledb>`"
+msgstr ""
+

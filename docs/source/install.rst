@@ -1,14 +1,23 @@
-Standalone mode
+.. _local:
+
+Installing Mars
 ===============
 
-Threaded
---------
-
-You can install Mars via pip:
+You can simply install Mars via pip:
 
 .. code-block:: bash
 
     pip install pymars
+
+To run Mars on a single machine, there are two ways.
+
+* Threaded: a thread-based scheduling which is by default.
+* Local cluster: a process-based scheduling which owns the entire distributed runtime.
+
+.. _threaded:
+
+Threaded
+--------
 
 After installation, you can simply open a Python console and run
 
@@ -28,10 +37,12 @@ After installation, you can simply open a Python console and run
     b.execute(session=sess)  # run b
 
 
+.. _local_cluster:
+
 Local cluster
 -------------
 
-Users can start the distributed runtime of Mars on a single machine.  First,
+Users can start the distributed runtime of Mars on a single machine. First,
 install Mars distributed by run
 
 .. code-block:: bash
@@ -104,11 +115,15 @@ After all Mars processes are started, you can open a Python console and run
 .. code-block:: python
 
     import mars.tensor as mt
+    import mars.dataframe as md
     from mars.session import new_session
-    sess = new_session('http://<web_ip>:<web_port>')
+    new_session('http://<web_ip>:<web_port>').as_default()
     a = mt.ones((2000, 2000), chunk_size=200)
     b = mt.inner(a, a)
-    b.execute(session=sess)
+    b.execute()  # submit tensor to cluster
+    df = md.DataFrame(a).sum()
+    df.execute()  # submit DataFrame to cluster
+
 
 You can open a web browser and type ``http://<web_ip>:<web_port>`` to open Mars
 UI to look up resource usage of workers and execution progress of the task
@@ -153,6 +168,8 @@ Extra arguments for schedulers are listed below.
 
 Extra arguments for workers are listed below. Details about memory tuning can
 be found at the next section.
+
+.. _deploy_extra_arguments:
 
 +-------------------+----------------------------------------------------------------+
 | Argument          | Description                                                    |

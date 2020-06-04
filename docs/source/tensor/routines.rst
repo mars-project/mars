@@ -1,3 +1,5 @@
+.. _tensor_routines:
+
 Routines
 ========
 
@@ -14,6 +16,7 @@ The following pages describe Numpy-compatible routines. These functions cover a 
    binary
    fft
    indexing
+   io
    linalg
    logic
    math
