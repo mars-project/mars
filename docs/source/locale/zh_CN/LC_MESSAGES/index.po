@@ -19,10 +19,9 @@ msgstr ""
 
 #: ../../source/index.rst:151
 msgid "Install"
-msgstr ""
+msgstr "安装"
 
 #: ../../source/index.rst:159
-#, fuzzy
 msgid "Getting started"
 msgstr "开始使用 Mars"
 

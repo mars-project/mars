@@ -1,20 +1,20 @@
 .. _getting_started:
 
-Mars leverages parallel and distributed technology to
-accelerate numpy, pandas, scikit-learn and Python functions.
+Mars leverages parallel and distributed technology to accelerate numpy, pandas,
+scikit-learn and Python functions.
 
 There are four main APIs in Mars:
 
-1. Mars tensor, which mimics numpy API and provide the ability to process large tensors/ndarrays.
+1. Mars tensor, which mimics numpy API and provide ability to process large tensors/ndarrays.
 2. Mars DataFrame, which mimics pandas API and be able to process large DataFrames.
 3. Mars learn, which mimics scikit-learn API and scales machine learning algorithms.
 4. Mars Remote, which provide the ability to execute Python functions in parallel.
 
 
-Mars tensor
+Mars Tensor
 ===========
 
-Mars tensor can be created from numpy ndarray, or reading from external files.
+Mars tensors can be created from numpy ndarrays or external files.
 
 Creating a Mars tensor from numpy ndarray.
 
@@ -34,8 +34,8 @@ Reading a HDF5 file into a Mars tensor.
 
 Refer to :ref:`tensor_creation` and :ref:`tensor_read` for more information.
 
-The usage of Mars tensor is very similar to numpy except that Mars tensor is lazy evaluated.
-You need to call `.execute()` to get the final result.
+The usage of Mars tensor is very similar to numpy except that Mars tensor is
+lazy evaluated.  You need to call `.execute()` to get the final result.
 
 Remember that `.execute()` will return Mars tensor itself.
 
@@ -49,8 +49,8 @@ Remember that `.execute()` will return Mars tensor itself.
 
 For more implemented tensor API, refer to :ref:`tensor_routines`.
 
-Once a tensor is executed, `.fetch()` could be called to get the result of numpy ndarray.
-A shortcut `.to_numpy()` is identical to `.execute().fetch()`.
+Once a tensor is executed, `.fetch()` could be called to get the result as
+numpy ndarray.  A shortcut `.to_numpy()` is identical to `.execute().fetch()`.
 
 .. code-block:: python
 
@@ -74,13 +74,14 @@ A shortcut `.to_numpy()` is identical to `.execute().fetch()`.
 
 .. note::
 
-    Users should always consider to use `.execute()` instead of `.to_numpy()`,
-    because when the tensor is large enough, `.execute()` will only fetch the edge items
+    Users should always consider using `.execute()` instead of `.to_numpy()`,
+    because when the tensor is large, `.execute()` will only fetch the edge items
     for display purpose. On the other hand, `.to_numpy()` will try to generate
-    the entire array on the server side, then return back to client,
-    it's extremely inefficient, and may cause OutOfMemory error.
+    the entire array on the server side and return it back to client,
+    which is extremely inefficient and may cause OutOfMemory error.
 
-If multiple tensors need to be executed together, :class:`mars.tensor.ExecutableTuple` could be used.
+If multiple tensors need to be executed together,
+:class:`mars.tensor.ExecutableTuple` could be used.
 
 .. code-block:: python
 
@@ -95,7 +96,7 @@ If multiple tensors need to be executed together, :class:`mars.tensor.Executable
            [1., 1., 1.],
            [1., 1., 1.]]))
 
-Tensor can be saved to external files, for instance, HDF5.
+Tensors can be saved to external files, for instance, HDF5.
 
 .. code-block:: python
 
@@ -103,7 +104,8 @@ Tensor can be saved to external files, for instance, HDF5.
    >>> mt.to_hdf5('my.hdf5', mt.random.rand(3, 3), dataset='r').execute()
    array([], shape=(0, 0), dtype=float64)
 
-Refer to :ref:`tensor_write` for more information about saving to external files.
+Refer to :ref:`tensor_write` for more information about saving to external
+files.
 
 
 Mars DataFrame
@@ -134,7 +136,7 @@ Creating Mars DataFrame from Mars tensor.
    >>> md.DataFrame(mt.random.rand(3, 3))
    DataFrame <op=DataFrameFromTensor, key=10a421ed18adfa42cb649aa575a1d763>
 
-Mars DataFrame can read data from CSV, SQL table etc.
+Mars DataFrame can read data from CSV files, SQL tables, etc.
 
 .. code-block:: python
 
@@ -173,8 +175,8 @@ Remember that `DataFrame.execute()` will return DataFrame itself.
 
 For more implemented DataFrame API, refer to :ref:`api`.
 
-In order to convert Mars DataFrame to pandas, `.execute().fetch()` can be called.
-An alternative is `.to_pandas()`.
+In order to convert Mars DataFrame to pandas, `.execute().fetch()` can be
+called.  An alternative is `.to_pandas()`.
 
 .. code-block:: python
 
@@ -208,14 +210,15 @@ An alternative is `.to_pandas()`.
 
 .. note::
 
-    Users should always consider to use `.execute()` instead of `.to_pandas()`,
-    because when the DataFrame is large enough,
-    `.execute()` will only fetch the head and tail data for display purpose.
+    Users should always consider using `.execute()` instead of `.to_pandas()`,
+    because when the DataFrame is large,
+    `.execute()` will only fetch head and tail rows for display purpose.
     On the other hand, `.to_pandas()` will try to generate
-    the entire DataFrame on the server side, then return back to client,
-    it's extremely inefficient, and may cause OutOfMemory error.
+    the entire DataFrame on the server side and return it back to client,
+    which is extremely inefficient and may cause OutOfMemory error.
 
-If multiple DataFrames need to be executed together, :class:`mars.dataframe.ExecutableTuple` could be used.
+If multiple DataFrames need to be executed together,
+:class:`mars.dataframe.ExecutableTuple` could be used.
 
 .. code-block:: python
 
@@ -243,14 +246,14 @@ DataFrame can be saved to CSV etc.
 Refer to :ref:`api.dataframe.io` for more information.
 
 
-Mars learn
+Mars Learn
 ==========
 
-Mars learn mimics scikit-learn API, and leverages the ability of Mars tensor and DataFrame
-to process large data and execute in parallel.
+Mars learn mimics scikit-learn API and leverages the ability of Mars tensor and
+DataFrame to process large data and execute in parallel.
 
-Mars does not require installation of scikit-learn, but if you want to use Mars learn,
-make sure scikit-learn is installed.
+Mars does not require installation of scikit-learn, but if you want to use Mars
+learn, make sure scikit-learn is installed.
 
 Install scikit-learn via:
 
@@ -294,10 +297,11 @@ Mars learn can integrate with XGBoost, LightGBM, TensorFlow and PyTorch.
 - For PyTorch, doc is coming soon.
 
 
-Mars remote
+Mars Remote
 ===========
 
-Mars remote provides a simple but powerful way to execute Python functions in parallel.
+Mars remote provides a simple but powerful way to execute Python functions in
+parallel.
 
 Assume we have the code below.
 
@@ -318,7 +322,8 @@ Assume we have the code below.
 
 Here we call `add_one` 10 times, then call `sum_all` to get the summation.
 
-In order to make 10 `add_one` running in parallel, we can rewrite the code as below.
+In order to make 10 `add_one` running in parallel, we can rewrite the code as
+below.
 
 .. code-block:: python
 
@@ -336,12 +341,13 @@ In order to make 10 `add_one` running in parallel, we can rewrite the code as be
    >>> print(mr.spawn(sum_all, args=(x_list,)).execute().fetch())
    55
 
-The code is quite similar, the difference is that the function calls of `add_one` and `sum_all`
-is replaced by `mars.remote.spawn`. `mars.remote.spawn` does not trigger execution,
-but instead returns a Mars Object, and the object can be passed to another `mars.remote.spawn`
-as arguments. Once `.execute()` is triggered, the 10 `add_one` will run in parallel.
-Once they were finished, `sum_all` will be triggered. Mars can handle the dependencies correctly,
-and for the distributed setting, Users need not to worry about the data movements between
-different workers, Mars can handle them automatically.
+The code is quite similar with the previous one, except that calls to `add_one`
+and `sum_all` is replaced by `mars.remote.spawn`. `mars.remote.spawn` does not
+trigger execution, but instead returns a Mars Object, and the object can be
+passed to another `mars.remote.spawn` as an argument. Once `.execute()` is
+triggered, the 10 `add_one` will run in parallel.  Once they were finished,
+`sum_all` will be triggered. Mars can handle the dependencies correctly, and
+for the distributed setting, Users need not to worry about the data movements
+between different workers, Mars can handle them automatically.
 
 Refer to :ref:`guidance for Mars remote <remote>` for more information.

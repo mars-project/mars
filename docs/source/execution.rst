@@ -3,7 +3,8 @@
 Lazy Evaluation
 ===============
 
-Mars tensor, DataFrame and remote need to call `.execute()` to trigger execution.
+You need to call `.execute()` on Mars tensors, DataFrames and remote functions
+to trigger execution.
 
 .. code-block:: python
 
@@ -18,8 +19,8 @@ Mars tensor, DataFrame and remote need to call `.execute()` to trigger execution
    1  0.037518  0.796745  0.072169
    2  0.052900  0.936048  0.307194
 
-Call `.execute()` will return Mars object itself,
-`.fetch()` could be called on executed objects to get the result.
+Calling `.execute()` will return Mars object itself, `.fetch()` could be called
+on executed objects to get the result.
 
 .. code-block:: python
 
@@ -30,9 +31,10 @@ Call `.execute()` will return Mars object itself,
    >>> f.fetch()
    11
 
-However, there are exceptions that some functions will trigger execution intermediately.
+However, there are exceptions that some functions will trigger execution
+intermediately.
 
-- Iterating on DataFrame, including :meth:`mars.dataframe.DataFrame.iterrows` and
+- Iterating over DataFrame, including :meth:`mars.dataframe.DataFrame.iterrows` and
   :meth:`mars.dataframe.DataFrame.itertuples`.
 - All plot functions for DataFrame and Series, including :meth:`mars.dataframe.DataFrame.plot`,
   :meth:`mars.dataframe.DataFrame.plot.bar` and so forth.
@@ -41,16 +43,15 @@ However, there are exceptions that some functions will trigger execution interme
 
 .. _eager_mode:
 
-Eager execution
+Eager Execution
 ===============
 
 .. Note:: New in version 0.2.0a2
 
-Mars supports eager mode which makes it friendly for developing and easy to
-debug.
+Mars supports eager mode, making it friendly for developing and easy to debug.
 
-Users can enable the eager mode by options, set options at the beginning of the
-program or console session.
+Users can enable eager mode by setting options at the beginning of the program
+or console session.
 
 .. code-block:: python
 
@@ -68,8 +69,8 @@ Or use a context.
     >>>     # the eager mode is on only for the with statement
     >>>     ...
 
-If eager mode is on, Mars object like tensor and DataFrame
-will be executed immediately by default session once it is created.
+If eager mode is on, Mars objects like tensors and DataFrames will be executed
+immediately by default session once it is created.
 
 .. code-block:: python
 
@@ -94,10 +95,11 @@ will be executed immediately by default session once it is created.
 Session
 =======
 
-Session can be used for local execution, connect to :ref:`local cluster <local_cluster>`,
-or connect to an exist :ref:`Mars cluster <deploy>`.
+Sessions can be used for local execution, connecting to a :ref:`local cluster
+<local_cluster>` or an existing :ref:`Mars cluster <deploy>`.
 
-If session is not initialized explicitly, Mars will create a session for local execution by default.
+If a session is not initialized explicitly, Mars will create a session for
+local execution by default.
 
 .. code-block::
 
@@ -112,7 +114,8 @@ If session is not initialized explicitly, Mars will create a session for local e
    0  1  2
    1  3  4
 
-`new_session` can be used to create new session, session can be specified for both `execute` and `fetch`.
+`new_session` can be used to create new sessions. After created, sessions can
+be specified as an argument for both `execute` and `fetch`.
 
 .. code-block:: python
 
@@ -129,8 +132,8 @@ If session is not initialized explicitly, Mars will create a session for local e
           [0.25585635, 0.98183162],
           [0.04446616, 0.2417941 ]])
 
-Call `.as_default()` on a session will set the session as default one,
-`.execute()` and `.fetch()` will be constraint to the default session.
+Call `.as_default()` on a session will set the session as default, `.execute()`
+and `.fetch()` will be constraint to the default session.
 
 .. code-block:: python
 
@@ -147,7 +150,8 @@ Call `.as_default()` on a session will set the session as default one,
    0  1  2
    1  3  4
 
-Each session is isolated, call `.fetch()` on a Mars object that executed in another session would fail.
+Each session is isolated. Calling `.fetch()` on a Mars object which is executed
+in another session will fail.
 
 .. code-block:: python
 
@@ -198,10 +202,12 @@ Each session is isolated, call `.fetch()` on a Mars object that executed in anot
    0  1  2
    1  3  4 to fetch must be executed first
 
-If no argument is passed to `new_session`, local session will be created.
-The local session will leverage :ref:`threaded scheduler <threaded>` for execution.
+If `session` argument is not passed to `new_session`, a local session will be
+created. The local session will leverage :ref:`threaded scheduler <threaded>`
+for execution.
 
-For distributed, the URL of Web UI could be passed to `new_session` to connect to cluster.
+For distributed, the URL of Web UI could be passed to `new_session` to connect
+to an existing cluster.
 
 .. code-block:: python
 

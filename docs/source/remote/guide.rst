@@ -1,17 +1,18 @@
 .. _remote:
 
 **********
-User guide
+User Guide
 **********
 
 .. Note:: New in version 0.4.1
 
-Mars remote API provides a simple yet powerful way to run Python functions in parallel.
+Mars remote API provides a simple yet powerful way to run Python functions in
+parallel.
 
-The main API for Mars remote is :meth:`mars.remote.spawn`, it will return a Mars Object,
-no execution will happen yet. When `.execute()` is called,
-spawned function will be submitted to Mars for execution,
-thus if multiple spawned functions are executed together, they may run in parallel.
+The main API for Mars remote is :meth:`mars.remote.spawn`. It returns a Mars
+Object while no execution happens yet. When `.execute()` is called, spawned
+function will be submitted to Mars for execution, thus if multiple spawned
+functions are executed together, they may run in parallel.
 
 .. code-block:: python
 
@@ -25,8 +26,9 @@ thus if multiple spawned functions are executed together, they may run in parall
    >>> result.execute().fetch()
    1
 
-List of spawned functions can be converted to :class:`mars.remote.ExecutableTuple`,
-and `.execute()` can be called to run together.
+List of spawned functions can be converted to
+:class:`mars.remote.ExecutableTuple`, and `.execute()` can be called to run
+these functions together.
 
 .. code-block:: python
 
@@ -34,7 +36,7 @@ and `.execute()` can be called to run together.
    >>> mr.ExecutableTuple(results).execute().fetch()
    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-Mars Object returned by :meth:`mars.remote.spawn` can be treated
+Mars Objects returned by :meth:`mars.remote.spawn` can be treated
 as arguments for other spawn functions.
 
 .. code-block:: python
@@ -45,13 +47,14 @@ as arguments for other spawn functions.
    >>> mr.spawn(sum_all, args=(results,)).execute().fetch()
    55
 
-Mars will make sure that `sum_all` can be called only when the previous 10 `inc` called are finished.
-User needs not to worry about the data of dependency, e.g. when `sum_all` called,
-the argument `xs` has already been replaced by the real outputs of the previous `inc` functions.
+Mars ensures that `sum_all` can be called only when the previous 10 `inc`
+called are finished.  Users need not to worry about the data of dependency,
+e.g.  when `sum_all` is called, the argument `xs` has already been replaced by
+real outputs of the previous `inc` functions.
 
-For the distributed setting, 10 `inc` function may be distributed to different workers.
-Users need not to care about how the functions are distributed, as well as
-how the outputs of spawned functions are moved between workers.
+For the distributed setting, 10 `inc` function may be distributed to different
+workers. Users need not to care about how the functions are distributed, as
+well as how the outputs of spawned functions are moved between workers.
 
 User can also spawn new functions inside a spawned function.
 
@@ -76,8 +79,9 @@ Mars tensor, DataFrame and so forth is available in spawned functions as well.
    >>> mr.spawn(driver2).execute().fetch()
    52.47844223908132
 
-Argument of `n_output` can indicate that the spawned function will return multiple outputs.
-This is important when some of the outputs may be passed to different functions.
+The argument `n_output` can indicate the number of outputs the spawned function
+will return. This is important when different outputs are passed to different
+functions.
 
 .. code-block:: python
 

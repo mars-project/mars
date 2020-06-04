@@ -3,12 +3,12 @@
 Mars on GPU
 ===========
 
-Mars can run on NVIDIA GPUs, but for different modules, some requirements are necessary.
+Mars can run on NVIDIA GPUs. However, extra requirements are necessary for different modules.
 
 Installation
 ~~~~~~~~~~~~
 
-For Mars tensor, CuPy is required, assume your CUDA driver is 10.1, install cupy via:
+For Mars tensors, CuPy is required. Assuming that your CUDA driver is 10.1, install cupy via:
 
 .. code-block:: bash
 
@@ -39,10 +39,10 @@ Methods included are mentioned in :ref:`tensor creation <tensor_creation>` and
    >>> a = mt.random.rand(10, 10, gpu=True)  # indicate to create tensor on CUDA
    >>> a.sum().execute()                     # execution will happen on CUDA
 
-Remember that when creating tensor, no GPU memory allocation happens yet.
+Remember that when creating tensors, no GPU memory allocation happens yet.
 When `.execute()` is triggered, real memory allocation and computation on GPU will happen then.
 
-For a tensor that on main memory, call `.to_gpu()` to indicate that moving data to GPU.
+For a tensor on host memory, call `.to_gpu()` to tell Mars to move data to GPU.
 
 .. code-block:: python
 
@@ -50,7 +50,7 @@ For a tensor that on main memory, call `.to_gpu()` to indicate that moving data 
    >>> b = b.to_gpu()              # indicate to move data to GPU memory
    >>> b.sum().execute()
 
-Call `.to_cpu()` to indicate that moving data to main memory.
+Call `.to_cpu()` to tell Mars to move data to host memory.
 
 .. code-block:: python
 
@@ -68,7 +68,7 @@ Mars can read CSV files into GPU directly.
    >>> df = md.read_csv('data.csv', gpu=True)  # indicates to read csv into GPU memory
    >>> df.groupby('a').sum().execute()         # execution will happen on GPU
 
-For a DataFrame that on main memory, call `.to_gpu()` to indicate that moving data to GPU.
+For a DataFrame that on host memory, call `.to_gpu()` to tell Mars to move data to GPU.
 
 .. code-block:: python
 
@@ -77,7 +77,7 @@ For a DataFrame that on main memory, call `.to_gpu()` to indicate that moving da
    >>> df = md.DataFrame(mt.random.rand(10, 10))  # indicate to create on main memory
    >>> df = df.to_gpu()                            # indicate to move data to GPU memory
 
-Call `.to_cpu()` to indicate that moving data to main memory.
+Call `.to_cpu()` to tell Mars to move data to host memory.
 
 .. code-block:: python
 
@@ -87,13 +87,13 @@ Call `.to_cpu()` to indicate that moving data to main memory.
 Single GPU
 ~~~~~~~~~~
 
-:ref:`Local thread-based scheduler <threaded>` can work well for single GPU.
+:ref:`Local thread-based scheduler <threaded>` can work well on a single GPU.
 Examples above can work on a single GPU.
 
 Multiple GPU
 ~~~~~~~~~~~~
 
-For Mars tensor, multiple GPU on a single machine can be utilized.
+For Mars tensor, multiple GPUs on a single machine can be utilized.
 
 .. code-block:: python
 
