@@ -8,6 +8,8 @@ Integrate with TensorFlow
 
 This introduction will give a brief tour about how to integrate TensorFlow in Mars.
 
+This tutorial is based on TensorFlow 2.0.
+
 Installation
 ------------
 

@@ -203,6 +203,8 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.boxplot
    DataFrame.hist
 
+.. _api.dataframe.io:
+
 Serialization / IO / conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::

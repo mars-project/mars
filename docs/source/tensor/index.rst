@@ -14,5 +14,3 @@ Mars tensor - distributed tensor with NumPy-like API
    ufunc
    routines
    sparse
-   execution
-   eager-mode

@@ -1,0 +1,323 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-04 14:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/getting-started.rst:3
+msgid ""
+"Mars leverages parallel and distributed technology to accelerate numpy, "
+"pandas, scikit-learn and Python functions."
+msgstr "Mars 利用并行和分布式技术加速 numpy、pandas、scikit-learn 和 Python 函数。"
+
+#: ../../source/getting-started.rst:6
+msgid "There are four main APIs in Mars:"
+msgstr "Mars 中包含四种主要接口："
+
+#: ../../source/getting-started.rst:8
+msgid ""
+"Mars tensor, which mimics numpy API and provide ability to process large "
+"tensors/ndarrays."
+msgstr "Mars Tensor，提供了 numpy 接口，且能处理大规模矩阵、张量/多维数组。"
+
+#: ../../source/getting-started.rst:9
+msgid ""
+"Mars DataFrame, which mimics pandas API and be able to process large "
+"DataFrames."
+msgstr "Mars DataFrame，提供了 pandas 接口，且能处理大规模 DataFrame。"
+
+#: ../../source/getting-started.rst:10
+msgid ""
+"Mars learn, which mimics scikit-learn API and scales machine learning "
+"algorithms."
+msgstr "Mars Learn，提供了 scikit-learn 接口，且加速机器学习算法。"
+
+#: ../../source/getting-started.rst:11
+msgid ""
+"Mars Remote, which provide the ability to execute Python functions in "
+"parallel."
+msgstr "Mars Remote，能让一系列 Python 函数并行执行。"
+
+#: ../../source/getting-started.rst:15
+msgid "Mars Tensor"
+msgstr ""
+
+#: ../../source/getting-started.rst:17
+msgid "Mars tensors can be created from numpy ndarrays or external files."
+msgstr "Mars tensor 能从 numpy ndarray 创建，或者从外部文件读取。"
+
+#: ../../source/getting-started.rst:19
+msgid "Creating a Mars tensor from numpy ndarray."
+msgstr "从 numpy ndarray 创建 Mars tensor。"
+
+#: ../../source/getting-started.rst:27
+msgid "Reading a HDF5 file into a Mars tensor."
+msgstr "读取 HDF5 文件以创建 Mars tensor。"
+
+#: ../../source/getting-started.rst:35
+msgid ""
+"Refer to :ref:`tensor_creation` and :ref:`tensor_read` for more "
+"information."
+msgstr "参考 :ref:`tensor_creation` 和 :ref:`tensor_read` 获取更多信息。"
+
+#: ../../source/getting-started.rst:37
+msgid ""
+"The usage of Mars tensor is very similar to numpy except that Mars tensor"
+" is lazy evaluated.  You need to call `.execute()` to get the final "
+"result."
+msgstr ""
+"Mars tensor 用起来和 numpy 非常相似，区别在于 Mars tensor 是延迟执行的。需要"
+"调用 `.execute()` 来得到最终结果。"
+
+#: ../../source/getting-started.rst:40
+msgid "Remember that `.execute()` will return Mars tensor itself."
+msgstr "记住，`.execute()` 会返回 Mars tensor 本身。"
+
+#: ../../source/getting-started.rst:50
+msgid "For more implemented tensor API, refer to :ref:`tensor_routines`."
+msgstr "参考 :ref:`tensor_routines` 获取更多实现的 tensor 接口。"
+
+#: ../../source/getting-started.rst:52
+msgid ""
+"Once a tensor is executed, `.fetch()` could be called to get the result "
+"as numpy ndarray.  A shortcut `.to_numpy()` is identical to "
+"`.execute().fetch()`."
+msgstr ""
+"一旦一个 tensor 执行，可以调用 `.fetch()` 将结果转换为 numpy 多维数组。`.to_"
+"numpy()` 是 `.execute().fetch()` 的快捷用法。"
+
+#: ../../source/getting-started.rst:77
+msgid ""
+"Users should always consider using `.execute()` instead of `.to_numpy()`,"
+" because when the tensor is large, `.execute()` will only fetch the edge "
+"items for display purpose. On the other hand, `.to_numpy()` will try to "
+"generate the entire array on the server side and return it back to "
+"client, which is extremely inefficient and may cause OutOfMemory error."
+msgstr ""
+"应当优先考虑使用 `.execute()` 而不是 `.to_numpy()`，因为当 tensor 很大的"
+"时候，`.execute()` 只会获取角上的数据来展示。而 `.to_numpy()` 会在服务端"
+"生成完整的数组，然后返回到客户端，这非常低效，而且很有可能导致内存溢出。"
+
+#: ../../source/getting-started.rst:83
+msgid ""
+"If multiple tensors need to be executed together, "
+":class:`mars.tensor.ExecutableTuple` could be used."
+msgstr "使用 :class:`mars.tensor.ExecutableTuple` 来执行多个 tensor。"
+
+#: ../../source/getting-started.rst:99
+msgid "Tensors can be saved to external files, for instance, HDF5."
+msgstr "Tensor 能被保存到外部文件如 HDF5。"
+
+#: ../../source/getting-started.rst:107
+msgid ""
+"Refer to :ref:`tensor_write` for more information about saving to "
+"external files."
+msgstr "参考 :ref:`tensor_write` 了解如何保存 tensor 到外部文件。"
+
+#: ../../source/getting-started.rst:112
+msgid "Mars DataFrame"
+msgstr ""
+
+#: ../../source/getting-started.rst:114
+msgid "For a quick tour of Mars DataFrame, please visit :ref:`10min`."
+msgstr "想快速了解 Mars DataFrame，请访问 :ref:`10min`。"
+
+#: ../../source/getting-started.rst:116
+msgid "Mars DataFrame can be initialized just like pandas DataFrame."
+msgstr "Mars DataFrame 的创建方式和 pandas DataFrame 非常相似。"
+
+#: ../../source/getting-started.rst:124
+msgid "Pandas DataFrame can be passed to Mars DataFrame either."
+msgstr "也可以直接从 pandas DataFrame 创建 Mars DataFrame。"
+
+#: ../../source/getting-started.rst:132
+msgid "Creating Mars DataFrame from Mars tensor."
+msgstr "从 Mars tensor 创建 Mars DataFrame。"
+
+#: ../../source/getting-started.rst:139
+msgid "Mars DataFrame can read data from CSV files, SQL tables, etc."
+msgstr "Mars DataFrame 能通过 CSV 文件和 SQL 表来创建。"
+
+#: ../../source/getting-started.rst:146
+msgid "For more information about DataFrame creation, refer to :ref:`api.io`."
+msgstr "关于如何创建 DataFrame，参考 :ref:`api.io`。"
+
+#: ../../source/getting-started.rst:148
+msgid ""
+"Like Mars tensor, DataFrame is lazy evaluated as well. If you want to get"
+" result, `.execute()` needs to be called."
+msgstr ""
+"类似 Mars tensor，DataFrame 也是延迟执行的。如果要获取结果，需要调用 `."
+"execute()`。"
+
+#: ../../source/getting-started.rst:174
+msgid "Remember that `DataFrame.execute()` will return DataFrame itself."
+msgstr "记住，`DataFrame.execute()` 会返回 DataFrame 自身。"
+
+#: ../../source/getting-started.rst:176
+msgid "For more implemented DataFrame API, refer to :ref:`api`."
+msgstr "了解更多 DataFrame 接口，参考 :ref:`api`。"
+
+#: ../../source/getting-started.rst:178
+msgid ""
+"In order to convert Mars DataFrame to pandas, `.execute().fetch()` can be"
+" called.  An alternative is `.to_pandas()`."
+msgstr ""
+"调用 `.execute().fetch()` 来把 Mars DataFrame 转成 pandas。或者使用快捷"
+"方法 `.to_pandas()`。"
+
+#: ../../source/getting-started.rst:213
+msgid ""
+"Users should always consider using `.execute()` instead of "
+"`.to_pandas()`, because when the DataFrame is large, `.execute()` will "
+"only fetch head and tail rows for display purpose. On the other hand, "
+"`.to_pandas()` will try to generate the entire DataFrame on the server "
+"side and return it back to client, which is extremely inefficient and may"
+" cause OutOfMemory error."
+msgstr ""
+"应当优先考虑使用 `.execute()` 而不是 `.to_pandas()`，因为当 DataFrame "
+"很大的时候，`.execute()` 只会获取前几行和后几行数据来展示。而 `.to_pandas"
+"()` 会在服务端生成完整的 DataFrame，然后返回到客户端，这非常低效，而且很有可能"
+"导致内存溢出。"
+
+#: ../../source/getting-started.rst:220
+msgid ""
+"If multiple DataFrames need to be executed together, "
+":class:`mars.dataframe.ExecutableTuple` could be used."
+msgstr "使用 :class:`mars.dataframe.ExecutableTuple` 来执行多个 DataFrame。"
+
+#: ../../source/getting-started.rst:237
+msgid "DataFrame can be saved to CSV etc."
+msgstr "DataFrame 能被保存到 CSV 文件。"
+
+#: ../../source/getting-started.rst:246
+msgid "Refer to :ref:`api.dataframe.io` for more information."
+msgstr "参考 :ref:`api.dataframe.io` 获取更多信息。"
+
+#: ../../source/getting-started.rst:250
+msgid "Mars Learn"
+msgstr ""
+
+#: ../../source/getting-started.rst:252
+msgid ""
+"Mars learn mimics scikit-learn API and leverages the ability of Mars "
+"tensor and DataFrame to process large data and execute in parallel."
+msgstr ""
+"Mars learn 提供了 scikit-learn 接口，但利用了 Mars tensor 和 DataFrame 来"
+"处理大数据和并行执行。"
+
+#: ../../source/getting-started.rst:255
+msgid ""
+"Mars does not require installation of scikit-learn, but if you want to "
+"use Mars learn, make sure scikit-learn is installed."
+msgstr "Mars 不要求依赖 scikit-learn，但如果要使用 Mars learn，需要先安装它。"
+
+#: ../../source/getting-started.rst:258
+msgid "Install scikit-learn via:"
+msgstr "安装 scikit-learn 可通过："
+
+#: ../../source/getting-started.rst:264
+msgid ""
+"Refer to `installing scikit-learn <https://scikit-"
+"learn.org/stable/install.html>`_ for more information."
+msgstr ""
+"参考 `安装 scikit-learn <https://scikit-learn.org/stable/install.html>`_ "
+"获取更多信息"
+
+#: ../../source/getting-started.rst:267
+msgid "Let's take :class:`mars.learn.neighbors.NearestNeighbors` as an example."
+msgstr "让我们拿 :class:`mars.learn.neighbors.NearestNeighbors` 作为例子。"
+
+#: ../../source/getting-started.rst:287
+msgid ""
+"Remember that functions like `fit`, `predict` will trigger execution "
+"instantly. In the above example, `fit` and `kneighbors` will trigger "
+"execution internally."
+msgstr ""
+"记住，`fit`、`predict` 等函数会触发立即执行。如上面的例子里的 `fit` 和 `"
+"kneighbors`。"
+
+#: ../../source/getting-started.rst:290
+msgid "For implemented learn API, refer to :ref:`api.learn`."
+msgstr "参考 :ref:`api.learn` 获取更多实现的 learn 接口。"
+
+#: ../../source/getting-started.rst:292
+msgid "Mars learn can integrate with XGBoost, LightGBM, TensorFlow and PyTorch."
+msgstr "Mars learn 能和 XGBoost、LightGBM、TensorFlow 以及 PyTorch 集成。"
+
+#: ../../source/getting-started.rst:294
+msgid "For XGBoost, refer to :ref:`xgboost`."
+msgstr "XGBoost 参考 :ref:`xgboost`。"
+
+#: ../../source/getting-started.rst:295
+msgid "For LightGBM, refer to :ref:`lightgbm`."
+msgstr "LightGBM 参考 :ref:`lightgbm`。"
+
+#: ../../source/getting-started.rst:296
+msgid "For TensorFlow, refer to :ref:`tensorflow`."
+msgstr "TensorFlow 参考 :ref:`tensorflow`。"
+
+#: ../../source/getting-started.rst:297
+msgid "For PyTorch, doc is coming soon."
+msgstr "PyTorch 集成的文档尚在编写中。"
+
+#: ../../source/getting-started.rst:301
+msgid "Mars Remote"
+msgstr ""
+
+#: ../../source/getting-started.rst:303
+msgid ""
+"Mars remote provides a simple but powerful way to execute Python "
+"functions in parallel."
+msgstr "Mars Remote 提供了简单但强大的方式来并行执行一系列 Python 函数。"
+
+#: ../../source/getting-started.rst:306
+msgid "Assume we have the code below."
+msgstr "假设我们有如下代码。"
+
+#: ../../source/getting-started.rst:323
+msgid "Here we call `add_one` 10 times, then call `sum_all` to get the summation."
+msgstr "这里我们调用 `add_one` 10次，然后调用 `sum_all` 求和。"
+
+#: ../../source/getting-started.rst:325
+msgid ""
+"In order to make 10 `add_one` running in parallel, we can rewrite the "
+"code as below."
+msgstr "为了让10次 `add_one` 调用并行起来，我们可以按如下代码改写。"
+
+#: ../../source/getting-started.rst:344
+msgid ""
+"The code is quite similar with the previous one, except that calls to "
+"`add_one` and `sum_all` is replaced by `mars.remote.spawn`. "
+"`mars.remote.spawn` does not trigger execution, but instead returns a "
+"Mars Object, and the object can be passed to another `mars.remote.spawn` "
+"as an argument. Once `.execute()` is triggered, the 10 `add_one` will run"
+" in parallel.  Once they were finished, `sum_all` will be triggered. Mars"
+" can handle the dependencies correctly, and for the distributed setting, "
+"Users need not to worry about the data movements between different "
+"workers, Mars can handle them automatically."
+msgstr ""
+"代码和改写前很相似，区别仅在所有调用 `add_one` 和 `sum_all` 的地方换成了 "
+"`mars.remote.spawn`。 `mars.remote.spawn` 不会触发执行，只会返回一个 Mars"
+" 对象，这个对象能用作别的 `mars.remote.spawn` 函数的参数。一旦调用 `."
+"execute()`，10次 `add_one` 会并行执行。当它们运行完成后，`sum_all` 会自动"
+"被触发执行。Mars 能正确处理函数间的依赖，在分布式环境，用户不需要关心在"
+"各个 worker 间数据是怎么流动的，Mars 能自动正确处理。"
+
+#: ../../source/getting-started.rst:353
+msgid "Refer to :ref:`guidance for Mars remote <remote>` for more information."
+msgstr "参考 :ref:`Mars remote 使用指南 <remote>` 获取更多信息。"
+
