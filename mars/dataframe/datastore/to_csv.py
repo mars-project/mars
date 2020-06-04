@@ -60,15 +60,14 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
                  mode=None, encoding=None, compression=None, quoting=None,
                  quotechar=None, line_terminator=None, chunksize=None, date_format=None,
                  doublequote=None, escapechar=None, decimal=None, output_stat=None,
-                 storage_options=None, stage=None, **kw):
+                 storage_options=None, stage=None, object_type=None, **kw):
         super().__init__(_path=path, _sep=sep, _na_rep=na_rep, _float_format=float_format,
                          _columns=columns, _header=header, _index=index, _index_label=index_label,
                          _mode=mode, _encoding=encoding, _compression=compression, _quoting=quoting,
                          _quotechar=quotechar, _line_terminator=line_terminator, _chunksize=chunksize,
                          _date_format=date_format, _doublequote=doublequote,
                          _escapechar=escapechar, _decimal=decimal, _output_stat=output_stat,
-                         _object_type=ObjectType.dataframe, _storage_options=storage_options,
-                         _stage=stage, **kw)
+                         _storage_options=storage_options, _object_type=object_type, _stage=stage, **kw)
 
     @property
     def input(self):
@@ -172,12 +171,14 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         self._input = self._inputs[0]
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: 'DataFrameToCSV'):
         in_df = op.input
         out_df = op.outputs[0]
 
-        # make sure only 1 chunk on the column axis
-        in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
+        if in_df.ndim == 2:
+            # make sure only 1 chunk on the column axis
+            in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
+
         one_file = op.one_file
 
         out_chunks = [], []
@@ -185,11 +186,17 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
             chunk_op = op.copy().reset_key()
             if not one_file:
                 index_value = parse_index(chunk.index_value.to_pandas()[:0], chunk)
-                out_chunk = chunk_op.new_chunk([chunk], shape=(0, 0),
-                                               index_value=index_value,
-                                               columns_value=out_df.columns_value,
-                                               dtypes=out_df.dtypes,
-                                               index=chunk.index)
+                if chunk.ndim == 2:
+                    out_chunk = chunk_op.new_chunk([chunk], shape=(0, 0),
+                                                   index_value=index_value,
+                                                   columns_value=out_df.columns_value,
+                                                   dtypes=out_df.dtypes,
+                                                   index=chunk.index)
+                else:
+                    out_chunk = chunk_op.new_chunk([chunk], shape=(0,),
+                                                   index_value=index_value,
+                                                   dtype=out_df.dtype,
+                                                   index=chunk.index)
                 out_chunks[0].append(out_chunk)
             else:
                 chunk_op._output_stat = True
@@ -222,26 +229,40 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
                 out_chunks[1], shape=(len(out_chunks[0]),), order=TensorOrder.C_ORDER)
             new_out_chunks = []
             for c in out_chunks[0]:
-                out_chunk = DataFrameToCSV(stage=OperandStage.agg, path=op.path,
-                                           storage_options=op.storage_options).new_chunk(
-                    [c, stat_chunk], shape=(0, 0), dtypes=out_df.dtypes,
-                    index_value=out_df.index_value,
-                    columns_value=out_df.columns_value,
-                    index=c.index)
+                op = DataFrameToCSV(stage=OperandStage.agg, path=op.path,
+                                    storage_options=op.storage_options,
+                                    object_type=op.object_type)
+                if out_df.ndim == 2:
+                    out_chunk = op.new_chunk(
+                        [c, stat_chunk], shape=(0, 0), dtypes=out_df.dtypes,
+                        index_value=out_df.index_value,
+                        columns_value=out_df.columns_value,
+                        index=c.index)
+                else:
+                    out_chunk = op.new_chunk(
+                        [c, stat_chunk], shape=(0,), dtype=out_df.dtype,
+                        index_value=out_df.index_value, index=c.index)
                 new_out_chunks.append(out_chunk)
             out_chunks = new_out_chunks
+
         new_op = op.copy()
-        return new_op.new_dataframes([in_df], shape=(0, 0), dtypes=in_df.dtypes,
-                                     index_value=in_df.index_value,
-                                     columns_value=in_df.columns_value,
-                                     chunks=out_chunks,
-                                     nsplits=((0,) * in_df.chunk_shape[0], (0,)))
+        params = out_df.params.copy()
+        if out_df.ndim == 2:
+            params.update(dict(chunks=out_chunks, nsplits=((0,) * in_df.chunk_shape[0], (0,))))
+        else:
+            params.update(dict(chunks=out_chunks, nsplits=((0,) * in_df.chunk_shape[0],)))
+        return new_op.new_tileables([in_df], **params)
 
     def __call__(self, df):
         index_value = parse_index(df.index_value.to_pandas()[:0], df)
-        columns_value = parse_index(df.columns_value.to_pandas()[:0], store_data=True)
-        return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes[:0],
-                                  index_value=index_value, columns_value=columns_value)
+        if df.ndim == 2:
+            self._object_type = ObjectType.dataframe
+            columns_value = parse_index(df.columns_value.to_pandas()[:0], store_data=True)
+            return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes[:0],
+                                      index_value=index_value, columns_value=columns_value)
+        else:
+            self._object_type = ObjectType.series
+            return self.new_series([df], shape=(0,), dtype=df.dtype, index_value=index_value)
 
     @classmethod
     def _to_csv(cls, op, df, path, header=None):
@@ -282,7 +303,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
             f.seek(offset_start)
             f.write(csv_bytes)
 
-        ctx[out.key] = pd.DataFrame()
+        ctx[out.key] = pd.DataFrame() if out.ndim == 2 else pd.Series([], dtype=out.dtype)
 
     @classmethod
     def _get_path(cls, path, i):
@@ -299,10 +320,11 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         else:
             assert op.stage is None
             df = ctx[op.input.key]
+            out = op.outputs[0]
             path = cls._get_path(op.path, op.outputs[0].index[0])
             with open_file(path, mode='w', storage_options=op.storage_options) as f:
                 cls._to_csv(op, df, f)
-            ctx[op.outputs[0].key] = pd.DataFrame()
+            ctx[out.key] = pd.DataFrame() if out.ndim == 2 else pd.Series([], dtype=out.dtype)
 
 
 class DataFrameToCSVStat(TensorOperand, TensorOperandMixin):

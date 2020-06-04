@@ -30,6 +30,10 @@ try:
     import vineyard
 except ImportError:
     vineyard = None
+try:
+    import sqlalchemy
+except ImportError:
+    sqlalchemy = None
 
 
 class Test(TestBase):
@@ -47,7 +51,8 @@ class Test(TestBase):
         df = DataFrame(raw, chunk_size=33)
 
         with tempfile.TemporaryDirectory() as base_path:
-            # test one file
+            # DATAFRAME TESTS
+            # test one file with dataframe
             path = os.path.join(base_path, 'out.csv')
 
             r = df.to_csv(path)
@@ -57,7 +62,7 @@ class Test(TestBase):
             result.set_index('index', inplace=True)
             pd.testing.assert_frame_equal(result, raw)
 
-            # test multi files
+            # test multi files with dataframe
             path = os.path.join(base_path, 'out-*.csv')
             r = df.to_csv(path)
             self.executor.execute_dataframe(r)
@@ -69,6 +74,70 @@ class Test(TestBase):
             result.set_index('index', inplace=True)
             pd.testing.assert_frame_equal(result, raw)
             pd.testing.assert_frame_equal(dfs[1].set_index('index'), raw.iloc[33: 66])
+
+            # SERIES TESTS
+            series = md.Series(raw.col1, chunk_size=33)
+
+            # test one file with series
+            path = os.path.join(base_path, 'out.csv')
+            r = series.to_csv(path)
+            self.executor.execute_dataframe(r)
+
+            result = pd.read_csv(path, dtype=raw.dtypes.to_dict())
+            result.set_index('index', inplace=True)
+            pd.testing.assert_frame_equal(result, raw.col1.to_frame())
+
+            # test multi files with series
+            path = os.path.join(base_path, 'out-*.csv')
+            r = series.to_csv(path)
+            self.executor.execute_dataframe(r)
+
+            dfs = [pd.read_csv(os.path.join(base_path, 'out-{}.csv'.format(i)),
+                               dtype=raw.dtypes.to_dict())
+                   for i in range(4)]
+            result = pd.concat(dfs, axis=0)
+            result.set_index('index', inplace=True)
+            pd.testing.assert_frame_equal(result, raw.col1.to_frame())
+            pd.testing.assert_frame_equal(dfs[1].set_index('index'), raw.col1.to_frame().iloc[33: 66])
+
+    @unittest.skipIf(sqlalchemy is None, 'sqlalchemy not installed')
+    def testToSQL(self):
+        index = pd.RangeIndex(100, 0, -1, name='index')
+        raw = pd.DataFrame({
+            'col1': np.random.rand(100),
+            'col2': np.random.choice(['a', 'b', 'c'], (100,)),
+            'col3': np.arange(100).astype('int64'),
+        }, index=index)
+
+        with tempfile.TemporaryDirectory() as d:
+            table_name1 = 'test_table'
+            table_name2 = 'test_table2'
+            uri = 'sqlite:///' + os.path.join(d, 'test.db')
+
+            engine = sqlalchemy.create_engine(uri)
+
+            # test write dataframe
+            df = DataFrame(raw, chunk_size=33)
+            r = df.to_sql(table_name1, con=engine)
+            self.executor.execute_dataframe(r)
+
+            written = pd.read_sql(table_name1, con=engine, index_col='index') \
+                .sort_index(ascending=False)
+            pd.testing.assert_frame_equal(raw, written)
+
+            # test write with existing table
+            with self.assertRaises(ValueError):
+                df.to_sql(table_name1, con=uri).execute()
+
+            # test write series
+            series = md.Series(raw.col1, chunk_size=33)
+            with engine.connect() as conn:
+                r = series.to_sql(table_name2, con=conn)
+                self.executor.execute_dataframe(r)
+
+            written = pd.read_sql(table_name2, con=engine, index_col='index') \
+                .sort_index(ascending=False)
+            pd.testing.assert_frame_equal(raw.col1.to_frame(), written)
 
     @unittest.skipIf(vineyard is None, 'vineyard not installed')
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
