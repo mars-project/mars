@@ -17,6 +17,7 @@
 import functools
 import logging
 import os
+import pickle
 import sys
 import time
 import tempfile
@@ -38,7 +39,7 @@ from mars import remote as mr
 from mars.config import options, option_context
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
 from mars.errors import ExecutionFailed
-from mars.serialize import Int64Field
+from mars.serialize import BytesField, Int64Field
 from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.tensor.arithmetic.abs import TensorAbs
@@ -68,7 +69,38 @@ class SerializeMustFailOperand(TensorOperand, TensorElementWise):
         super().__init__(_f=f, **kw)
 
 
-class FakeOp(TensorAbs):
+class TileFailOperand(TensorAbs):
+    _op_type_ = 198732951
+
+    _exc_serial = BytesField('exc_serial')
+
+    @classmethod
+    def tile(cls, op):
+        if op._exc_serial is not None:
+            raise pickle.loads(op._exc_serial)
+        return super().tile(op)
+
+
+class ExecFailOperand(TensorAbs):
+    _op_type_ = 196432154
+
+    _exc_serial = BytesField('exc_serial')
+
+    @classmethod
+    def tile(cls, op):
+        tileables = super().tile(op)
+        # make sure chunks
+        tileables[0]._shape = (np.nan, np.nan)
+        return tileables
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if op._exc_serial is not None:
+            raise pickle.loads(op._exc_serial)
+        return super().execute(ctx, op)
+
+
+class TileWithContextOperand(TensorAbs):
     _op_type_ = 9870102948
 
     _multiplier = Int64Field('multiplier')
@@ -408,10 +440,26 @@ class Test(unittest.TestCase):
         op = SerializeMustFailOperand(f=3)
         tensor = op.new_tensor(None, (3, 3))
 
+        try:
+            raise ValueError
+        except:
+            exc = sys.exc_info()[1]
+
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
+                         shared_memory='20M', modules=[__name__],
+                         options={'scheduler.retry_num': 1}) as cluster:
             with self.assertRaises(ExecutionFailed):
                 cluster.session.run(tensor, timeout=_exec_timeout)
+
+            data = mt.tensor(np.random.rand(10, 20))
+            data2 = TileFailOperand(_exc_serial=pickle.dumps(exc)).new_tensor([data], shape=data.shape)
+            with self.assertRaises(ExecutionFailed):
+                cluster.session.run(data2)
+
+            data = mt.tensor(np.random.rand(20, 10))
+            data2 = ExecFailOperand(_exc_serial=pickle.dumps(exc)).new_tensor([data], shape=data.shape)
+            with self.assertRaises(ExecutionFailed):
+                cluster.session.run(data2)
 
     def testFetchTensor(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
@@ -917,7 +965,7 @@ class Test(unittest.TestCase):
 
             session.run(data)
 
-            data2 = FakeOp().new_tensor([data], shape=data.shape)
+            data2 = TileWithContextOperand().new_tensor([data], shape=data.shape)
 
             result = session.run(data2)
             np.testing.assert_array_equal(raw * raw.nbytes, result)
