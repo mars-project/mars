@@ -20,6 +20,7 @@ mars.dataframe.DataFrame
       ~DataFrame.aggregate
       ~DataFrame.append
       ~DataFrame.apply
+      ~DataFrame.astype
       ~DataFrame.bfill
       ~DataFrame.copy
       ~DataFrame.copy_from
@@ -49,6 +50,8 @@ mars.dataframe.DataFrame
       ~DataFrame.head
       ~DataFrame.isna
       ~DataFrame.isnull
+      ~DataFrame.iterrows
+      ~DataFrame.itertuples
       ~DataFrame.join
       ~DataFrame.le
       ~DataFrame.lt

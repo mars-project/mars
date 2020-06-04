@@ -22,7 +22,6 @@ msgid "Local Execution"
 msgstr "本地执行"
 
 #: ../../source/tensor/execution.rst:4
-#, fuzzy
 msgid ""
 "When :doc:`eager mode <eager-mode>` is not enabled, which is the default "
 "behavior, Mars tensor will not be executed unless users call ``execute`` "
