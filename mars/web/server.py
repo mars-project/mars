@@ -244,7 +244,10 @@ class MarsWeb(object):
             if event:
                 event.set()
 
-            self._server.io_loop.start()
+            try:
+                self._server.io_loop.start()
+            except KeyboardInterrupt:
+                pass
 
     def stop(self):
         if self._server is not None:

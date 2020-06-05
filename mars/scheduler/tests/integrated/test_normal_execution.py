@@ -30,6 +30,7 @@ from mars.scheduler.graph import GraphState
 from mars.scheduler.resource import ResourceActor
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 from mars.scheduler.tests.integrated.no_prepare_op import NoPrepareOperand
+from mars.remote import spawn
 from mars.utils import build_tileable_graph
 from mars.serialize.dataserializer import loads
 from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf
@@ -413,3 +414,55 @@ class Test(SchedulerIntegratedTest):
 
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
+
+    def testRemoteWithoutEtcd(self):
+        self.start_processes(etcd=False, modules=['mars.scheduler.tests.integrated.no_prepare_op'])
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+
+        rs = np.random.RandomState(0)
+        raw1 = rs.rand(10, 10)
+        raw2 = rs.rand(10, 10)
+
+        def f_none(_x):
+            return None
+
+        r_none = spawn(f_none, raw1)
+
+        graph = r_none.build_graph()
+        targets = [r_none.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, r_none.key)
+        self.assertIsNone(loads(result))
+
+        def f1(x):
+            return x + 1
+
+        def f2(x, y, z=None):
+            return x * y * (z[0] + z[1])
+
+        r1 = spawn(f1, raw1)
+        r2 = spawn(f1, raw2)
+        r3 = spawn(f2, (r1, r2), {'z': [r1, r2]})
+
+        graph = r3.build_graph()
+        targets = [r3.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, r3.key)
+        expected = (raw1 + 1) * (raw2 + 1) * (raw1 + 1 + raw2 + 1)
+        assert_allclose(loads(result), expected)

@@ -294,7 +294,7 @@ class StorageClient(object):
         device_total_size = defaultdict(lambda: 0)
         lift_reqs = defaultdict(list)
         for k, devices, size in zip(data_keys, existing_devs, data_sizes):
-            if not devices or not size:
+            if not devices or size is None:
                 err_msg = 'Data key (%s, %s) not exist, proc_id=%s' % (session_id, k, self.proc_id)
                 return promise.finished(*build_exc_info(KeyError, err_msg), _accept=False)
 
