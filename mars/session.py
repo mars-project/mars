@@ -231,6 +231,9 @@ class ClusterSession(object):
         chunk_records_to_send = tensor._do_write(index, value)
         self._api.send_chunk_records(self._session_id, tensor.name, chunk_records_to_send)
 
+    def get_workers_meta(self):
+        return self._api.get_workers_meta()
+
     def seal(self, tensor):
         from .tensor.utils import create_fetch_tensor
         chunk_records_to_send = tensor._do_flush()
