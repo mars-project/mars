@@ -82,6 +82,11 @@ class MarsAPI(object):
         except KeyError:
             return 0
 
+    def get_workers_meta(self):
+        resource_uid = ResourceActor.default_uid()
+        resource_ref = self.get_actor_ref(resource_uid)
+        return resource_ref.get_workers_meta()
+
     def create_session(self, session_id, **kw):
         self.session_manager.create_session(session_id, **kw)
 
