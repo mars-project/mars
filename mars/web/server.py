@@ -28,7 +28,7 @@ import jinja2
 from tornado import web, ioloop
 
 from ..utils import get_next_port
-from ..scheduler import ResourceActor, SessionActor
+from ..scheduler import SessionActor
 from ..api import MarsAPI
 
 logger = logging.getLogger(__name__)
