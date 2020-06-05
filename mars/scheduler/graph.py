@@ -433,7 +433,10 @@ class GraphActor(SchedulerActor):
 
     @log_unhandled
     def get_chunk_graph(self):
-        return self._chunk_graph_builder.iterative_chunk_graphs[-1]
+        try:
+            return self._chunk_graph_builder.iterative_chunk_graphs[-1]
+        except (IndexError, AttributeError):
+            raise GraphNotExists from None
 
     def _gen_tileable_graph(self):
         if self._tileable_graph_cache is None:
@@ -928,7 +931,12 @@ class GraphActor(SchedulerActor):
         :param op_key: operand key
         :param final_state: state of the operand
         """
+        if exc is not None:
+            self._graph_meta_ref.set_exc_info(exc, _tell=True, _wait=False)
+
         tileable_keys = self._terminal_chunk_op_key_to_tileable_key[op_key]
+        is_failed = final_state in (GraphState.CANCELLED, GraphState.FAILED)
+        terminal_tileable_count = len(self._terminal_tileable_key_to_chunk_op_keys)
         for tileable_key in tileable_keys:
             self._target_tileable_finished[tileable_key].add(op_key)
             if final_state == GraphState.FAILED:
@@ -936,11 +944,12 @@ class GraphActor(SchedulerActor):
                     self.final_state = GraphState.FAILED
             elif final_state == GraphState.CANCELLED:
                 self.final_state = final_state
+
             if self._target_tileable_finished[tileable_key] == \
                     self._terminal_tileable_key_to_chunk_op_keys[tileable_key]:
                 self._terminated_tileable_keys.add(tileable_key)
                 self._all_terminated_tileable_keys.add(tileable_key)
-                if len(self._terminated_tileable_keys) == len(self._terminal_tileable_key_to_chunk_op_keys):
+                if not is_failed and len(self._terminated_tileable_keys) == terminal_tileable_count:
                     # update shape if tileable or its chunks have unknown shape
                     self._update_tileable_and_its_chunk_shapes()
 
@@ -948,7 +957,7 @@ class GraphActor(SchedulerActor):
         self._terminated_chunk_keys.update([c.key for c in terminated_chunks
                                             if c.key in self._terminal_chunk_keys])
         if self._terminated_chunk_keys == self._terminal_chunk_keys:
-            if self._chunk_graph_builder.done:
+            if self._chunk_graph_builder.done or is_failed:
                 if self._chunk_graph_builder.prev_tileable_graph is not None:
                     # if failed before, clear intermediate data
                     to_free_tileable_keys = \
@@ -958,9 +967,6 @@ class GraphActor(SchedulerActor):
                 self._graph_meta_ref.set_graph_end(_tell=True)
             else:
                 self._execute_graph(compose=self._chunk_graph_builder.is_compose)
-
-        if exc is not None:
-            self._graph_meta_ref.set_exc_info(exc, _tell=True, _wait=False)
 
     def _update_tileable_and_its_chunk_shapes(self):
         need_update_tileable_to_tiled = dict()
