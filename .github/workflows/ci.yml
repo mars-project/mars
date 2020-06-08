@@ -85,12 +85,9 @@ jobs:
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               pip install tensorflow
               pip install torch torchvision
+              pip install tsfresh
             fi
             virtualenv testenv && source testenv/bin/activate
-            if [[ $UNAME == "darwin" ]] && [[ "$PYTHON" =~ "3.7" ]]; then
-              # workaround of https://issues.apache.org/jira/browse/ARROW-8684
-              pip install pyarrow==0.15.1
-            fi
             pip install -r requirements.txt && pip install pytest pytest-timeout
             if [ -z "$DEFAULT_VENV" ]; then
               deactivate

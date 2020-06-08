@@ -28,7 +28,7 @@ import jinja2
 from tornado import web, ioloop
 
 from ..utils import get_next_port
-from ..scheduler import ResourceActor, SessionActor
+from ..scheduler import SessionActor
 from ..api import MarsAPI
 
 logger = logging.getLogger(__name__)
@@ -123,11 +123,6 @@ class MarsWebAPI(MarsAPI):
     def get_operand_info(self, session_id, task_id, state=None):
         graph_meta_ref = self.get_graph_meta_ref(session_id, task_id)
         return graph_meta_ref.get_operand_info(state=state)
-
-    def get_workers_meta(self):
-        resource_uid = ResourceActor.default_uid()
-        resource_ref = self.get_actor_ref(resource_uid)
-        return resource_ref.get_workers_meta()
 
     def query_worker_events(self, endpoint, category, time_start=None, time_end=None):
         from ..worker import EventsActor

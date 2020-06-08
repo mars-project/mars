@@ -34,6 +34,9 @@ def find_objects(nested, types):
 
 
 def replace_inputs(nested, mapping):
+    if not mapping:
+        return nested
+
     if isinstance(nested, dict):
         vals = list(nested.values())
     else:
