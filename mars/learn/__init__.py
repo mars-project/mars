@@ -13,8 +13,10 @@
 # limitations under the License.
 
 # register operands
+# import torch first, or some issue emerges,
+# see https://github.com/pytorch/pytorch/issues/2575
+from .contrib import pytorch, tensorflow, xgboost, lightgbm
 from .utils.shuffle import shuffle
-from .contrib import xgboost, tensorflow, pytorch, lightgbm
 from .metrics import pairwise
 from . import preprocessing
 from . import neighbors

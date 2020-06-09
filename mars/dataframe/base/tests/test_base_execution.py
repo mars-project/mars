@@ -1385,8 +1385,15 @@ class Test(TestBase):
                                     r = df.drop_duplicates(method=method, subset=subset,
                                                            keep=keep, ignore_index=ignore_index)
                                     result = self.executor.execute_dataframe(r, concat=True)[0]
-                                    expected = raw.drop_duplicates(subset=subset,
-                                                                   keep=keep, ignore_index=ignore_index)
+                                    try:
+                                        expected = raw.drop_duplicates(subset=subset,
+                                                                       keep=keep, ignore_index=ignore_index)
+                                    except TypeError:
+                                        # ignore_index is supported in pandas 1.0
+                                        expected = raw.drop_duplicates(subset=subset,
+                                                                       keep=keep)
+                                        if ignore_index:
+                                            expected.reset_index(drop=True, inplace=True)
 
                                     pd.testing.assert_frame_equal(result, expected)
                                 except Exception as e:  # pragma: no cover

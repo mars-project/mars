@@ -123,6 +123,7 @@ Reindexing / selection / label manipulation
    :toctree: api/
 
    Series.drop
+   Series.drop_duplicates
    Series.head
    Series.isin
    Series.reset_index

@@ -302,7 +302,7 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
                 else:
                     memory_usage += s_dtype.itemsize * inp.shape[0]
             if memory_usage <= options.chunk_store_limit:
-                # if subset is small enough, use method 'merge_subset'
+                # if subset is small enough, use method 'subset_tree'
                 return cls._tile_subset_tree(op, inp)
             else:
                 return default_tile(op, inp)
@@ -324,15 +324,27 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
             return cudf
 
     @classmethod
-    def _drop_duplicates(cls, inp, op, ignore_index=None):
+    def _drop_duplicates(cls, inp, op, subset=None, keep=None, ignore_index=None):
         if ignore_index is None:
             ignore_index = op.ignore_index
+        if subset is None:
+            subset = op.subset
+        if keep is None:
+            keep = op.keep
         if inp.ndim == 2:
-            return inp.drop_duplicates(subset=op.subset,
-                                       keep=op.keep,
-                                       ignore_index=ignore_index)
+            try:
+                return inp.drop_duplicates(subset=subset,
+                                           keep=keep,
+                                           ignore_index=ignore_index)
+            except TypeError:
+                # no ignore_index for pandas < 1.0
+                ret = inp.drop_duplicates(subset=subset,
+                                          keep=keep)
+                if ignore_index:
+                    ret.reset_index(drop=True, inplace=True)
+                return ret
         else:
-            return inp.drop_duplicates(keep=op.keep)
+            return inp.drop_duplicates(keep=keep)
 
     @classmethod
     def _execute_chunk(cls, ctx, op):
@@ -352,17 +364,18 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
             [np.full(inp.shape[0], idx), np.arange(inp.shape[0])],
             names=['_chunk_index_', '_i_'])
         inp = inp.set_index(index)
-        ctx[out.key] = cls._drop_duplicates(inp, op, False)
+        ctx[out.key] = cls._drop_duplicates(inp, op, ignore_index=False)
 
     @classmethod
     def _execute_subset_tree_combine(cls, ctx, op):
         inp = ctx[op.input.key]
-        ctx[op.outputs[0].key] = cls._drop_duplicates(inp, op, False)
+        ctx[op.outputs[0].key] = cls._drop_duplicates(inp, op,
+                                                      ignore_index=False)
 
     @classmethod
     def _execute_subset_tree_agg(cls, ctx, op):
         inp = ctx[op.input.key]
-        ret = cls._drop_duplicates(inp, op, False)
+        ret = cls._drop_duplicates(inp, op, ignore_index=False)
         ret = ret.index.to_frame()
         ret.reset_index(drop=True, inplace=True)
         ctx[op.outputs[0].key] = ret
@@ -408,9 +421,10 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
         inputs = [ctx[(inp_key, str(out.index[0]))] for inp_key in input_keys]
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
-        dropped = inp.drop_duplicates(subset=[c for c in inp.columns
-                                              if c not in ('_chunk_index_', '_i_')],
-                                      keep=op.keep, ignore_index=op.ignore_index)
+        dropped = cls._drop_duplicates(inp, op,
+                                       subset=[c for c in inp.columns
+                                               if c not in ('_chunk_index_', '_i_')],
+                                       keep=op.keep, ignore_index=op.ignore_index)
         for i in range(op.shuffle_size):
             filtered = dropped[dropped['_chunk_index_'] == i]
             del filtered['_chunk_index_']
@@ -487,6 +501,32 @@ def _validate_subset(df, subset):
 
 def df_drop_duplicates(df, subset=None, keep='first',
                        inplace=False, ignore_index=False, method='auto'):
+    """
+    Return DataFrame with duplicate rows removed.
+
+    Considering certain columns is optional. Indexes, including time indexes
+    are ignored.
+
+    Parameters
+    ----------
+    subset : column label or sequence of labels, optional
+        Only consider certain columns for identifying duplicates, by
+        default use all of the columns.
+    keep : {'first', 'last', False}, default 'first'
+        Determines which duplicates (if any) to keep.
+        - ``first`` : Drop duplicates except for the first occurrence.
+        - ``last`` : Drop duplicates except for the last occurrence.
+        - False : Drop all duplicates.
+    inplace : bool, default False
+        Whether to drop duplicates in place or to return a copy.
+    ignore_index : bool, default False
+        If True, the resulting axis will be labeled 0, 1, …, n - 1.
+
+    Returns
+    -------
+    DataFrame
+        DataFrame with duplicates removed or None if ``inplace=True``.
+    """
     if method not in ('auto', 'tree', 'subset_tree', 'shuffle', None):
         raise ValueError("method could only be one of "
                          "'auto', 'tree', 'subset_tree', 'shuffle' or None")
@@ -498,6 +538,81 @@ def df_drop_duplicates(df, subset=None, keep='first',
 
 
 def series_drop_duplicates(series, keep='first', inplace=False, method='auto'):
+    """
+    Return Series with duplicate values removed.
+
+    Parameters
+    ----------
+    keep : {'first', 'last', ``False``}, default 'first'
+        Method to handle dropping duplicates:
+
+        - 'first' : Drop duplicates except for the first occurrence.
+        - 'last' : Drop duplicates except for the last occurrence.
+        - ``False`` : Drop all duplicates.
+
+    inplace : bool, default ``False``
+        If ``True``, performs operation inplace and returns None.
+
+    Returns
+    -------
+    Series
+        Series with duplicates dropped.
+
+    See Also
+    --------
+    Index.drop_duplicates : Equivalent method on Index.
+    DataFrame.drop_duplicates : Equivalent method on DataFrame.
+    Series.duplicated : Related method on Series, indicating duplicate
+        Series values.
+
+    Examples
+    --------
+    Generate a Series with duplicated entries.
+
+    >>> import mars.dataframe as md
+    >>> s = md.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
+    ...               name='animal')
+    >>> s.execute()
+    0      lama
+    1       cow
+    2      lama
+    3    beetle
+    4      lama
+    5     hippo
+    Name: animal, dtype: object
+
+    With the 'keep' parameter, the selection behaviour of duplicated values
+    can be changed. The value 'first' keeps the first occurrence for each
+    set of duplicated entries. The default value of keep is 'first'.
+
+    >>> s.drop_duplicates().execute()
+    0      lama
+    1       cow
+    3    beetle
+    5     hippo
+    Name: animal, dtype: object
+
+    The value 'last' for parameter 'keep' keeps the last occurrence for
+    each set of duplicated entries.
+
+    >>> s.drop_duplicates(keep='last').execute()
+    1       cow
+    3    beetle
+    4      lama
+    5     hippo
+    Name: animal, dtype: object
+
+    The value ``False`` for parameter 'keep' discards all sets of
+    duplicated entries. Setting the value of 'inplace' to ``True`` performs
+    the operation inplace and returns ``None``.
+
+    >>> s.drop_duplicates(keep=False, inplace=True)
+    >>> s.execute()
+    1       cow
+    3    beetle
+    5     hippo
+    Name: animal, dtype: object
+    """
     if method not in ('auto', 'tree', 'shuffle', None):
         raise ValueError("method could only be one of "
                          "'auto', 'tree', 'shuffle' or None" )
@@ -506,6 +621,53 @@ def series_drop_duplicates(series, keep='first', inplace=False, method='auto'):
 
 
 def index_drop_duplicates(index, keep='first', method='auto'):
+    """
+    Return Index with duplicate values removed.
+
+    Parameters
+    ----------
+    keep : {'first', 'last', ``False``}, default 'first'
+        - 'first' : Drop duplicates except for the first occurrence.
+        - 'last' : Drop duplicates except for the last occurrence.
+        - ``False`` : Drop all duplicates.
+
+    Returns
+    -------
+    deduplicated : Index
+
+    See Also
+    --------
+    Series.drop_duplicates : Equivalent method on Series.
+    DataFrame.drop_duplicates : Equivalent method on DataFrame.
+    Index.duplicated : Related method on Index, indicating duplicate
+        Index values.
+
+    Examples
+    --------
+    Generate an pandas.Index with duplicate values.
+
+    >>> import mars.dataframe as md
+
+    >>> idx = md.Index(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'])
+
+    The `keep` parameter controls  which duplicate values are removed.
+    The value 'first' keeps the first occurrence for each
+    set of duplicated entries. The default value of keep is 'first'.
+
+    >>> idx.drop_duplicates(keep='first').execute()
+    Index(['lama', 'cow', 'beetle', 'hippo'], dtype='object')
+
+    The value 'last' keeps the last occurrence for each set of duplicated
+    entries.
+
+    >>> idx.drop_duplicates(keep='last').execute()
+    Index(['cow', 'beetle', 'lama', 'hippo'], dtype='object')
+
+    The value ``False`` discards all sets of duplicated entries.
+
+    >>> idx.drop_duplicates(keep=False).execute()
+    Index(['cow', 'beetle', 'hippo'], dtype='object')
+    """
     if method not in ('auto', 'tree', 'shuffle', None):
         raise ValueError("method could only be one of "
                          "'auto', 'tree', 'shuffle' or None")
