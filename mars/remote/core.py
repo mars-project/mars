@@ -19,13 +19,14 @@ from .. import opcodes
 from ..context import ContextBase
 from ..core import Entity, Base
 from ..serialize import FunctionField, ListField, DictField, BoolField, Int32Field
-from ..operands import ObjectOperand, ObjectOperandMixin
+from ..operands import ObjectOperand
 from ..tensor.core import TENSOR_TYPE
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+from .operands import RemoteOperandMixin
 from .utils import replace_inputs, find_objects
 
 
-class RemoteFunction(ObjectOperand, ObjectOperandMixin):
+class RemoteFunction(ObjectOperand, RemoteOperandMixin):
     _op_type_ = opcodes.REMOTE_FUNCATION
     _op_module_ = 'remote'
 

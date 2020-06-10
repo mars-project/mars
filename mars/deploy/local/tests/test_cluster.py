@@ -1009,6 +1009,11 @@ class Test(unittest.TestCase):
             r = session.run(c, timeout=_exec_timeout)
             self.assertEqual(r, 20)
 
+            e = mr.spawn(f, mr.spawn(f, 2))
+
+            r = session.run(e, timeout=_exec_timeout)
+            self.assertEqual(r, 4)
+
             session2 = new_session(cluster.endpoint)
             expect_session_id = session2.session_id
 
