@@ -1358,6 +1358,19 @@ class Test(TestBase):
         pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.drop(index))
 
+    def testMelt(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(20, 8)),
+                           columns=['c' + str(i + 1) for i in range(8)])
+
+        df = from_pandas_df(raw, chunk_size=3)
+
+        r = df.melt(id_vars=['c1'], value_vars=['c2', 'c4'])
+        pd.testing.assert_frame_equal(
+            self.executor.execute_dataframe(r, concat=True)[0].sort_values(['c1', 'variable']).reset_index(drop=True),
+            raw.melt(id_vars=['c1'], value_vars=['c2', 'c4']).sort_values(['c1', 'variable']).reset_index(drop=True)
+        )
+
     def testDropDuplicates(self):
         # test dataframe drop
         rs = np.random.RandomState(0)

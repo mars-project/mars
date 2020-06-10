@@ -24,10 +24,6 @@ def _remove_nones(cfg):
     return dict((k, v) for k, v in cfg.items() if v is not None)
 
 
-def _get_local_app_module(mod_name):
-    return __name__.rsplit('.', 1)[0] + '.' + mod_name
-
-
 class RoleConfig:
     """
     Configuration builder for Kubernetes RBAC roles
@@ -381,10 +377,12 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
     rc_name = None
 
     def __init__(self, replicas, cpu=None, memory=None, limit_resources=False,
-                 image=None, modules=None, volumes=None, **kwargs):
+                 image=None, modules=None, volumes=None, stat_type='cgroup', **kwargs):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
+
+        self._stat_type = stat_type
 
         if isinstance(modules, str):
             self._modules = modules.split(',')
@@ -415,7 +413,8 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
         if self._cpu:
             self.add_env('MKL_NUM_THREADS', str(self._cpu))
             self.add_env('MARS_CPU_TOTAL', str(self._cpu))
-            self.add_env('MARS_USE_CGROUP_STAT', '1')
+            if self._stat_type == 'cgroup':
+                self.add_env('MARS_USE_CGROUP_STAT', '1')
 
         if self._memory:
             self.add_env('MARS_MEMORY_TOTAL', str(int(self._memory)))
@@ -426,6 +425,10 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
     def config_readiness_probe(self):
         raise NotImplementedError
 
+    @staticmethod
+    def get_local_app_module(mod_name):
+        return __name__.rsplit('.', 1)[0] + '.' + mod_name
+
 
 class MarsSchedulersConfig(MarsReplicationControllerConfig):
     """
@@ -435,13 +438,13 @@ class MarsSchedulersConfig(MarsReplicationControllerConfig):
 
     def config_readiness_probe(self):
         readiness_cmd = [
-            '/srv/entrypoint.sh', _get_local_app_module('probe'),
+            '/srv/entrypoint.sh', self.get_local_app_module('probe'),
         ]
         return ExecProbeConfig(readiness_cmd, timeout=5, failure_thresh=3)
 
     def build_container_command(self):
         return [
-            '/srv/entrypoint.sh', _get_local_app_module('scheduler'),
+            '/srv/entrypoint.sh', self.get_local_app_module('scheduler'),
             '-p', str(DEFAULT_SERVICE_PORT),
         ]
 
@@ -479,13 +482,13 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
 
     def config_readiness_probe(self):
         readiness_cmd = [
-            '/srv/entrypoint.sh', _get_local_app_module('probe'),
+            '/srv/entrypoint.sh', self.get_local_app_module('probe'),
         ]
         return ExecProbeConfig(readiness_cmd, timeout=60, failure_thresh=3)
 
     def build_container_command(self):
         return [
-            '/srv/entrypoint.sh', _get_local_app_module('worker'),
+            '/srv/entrypoint.sh', self.get_local_app_module('worker'),
             '-p', str(DEFAULT_SERVICE_PORT),
         ]
 
@@ -501,6 +504,6 @@ class MarsWebsConfig(MarsReplicationControllerConfig):
 
     def build_container_command(self):
         return [
-            '/srv/entrypoint.sh', _get_local_app_module('web'),
+            '/srv/entrypoint.sh', self.get_local_app_module('web'),
             '-p', str(DEFAULT_SERVICE_PORT),
         ]

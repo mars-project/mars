@@ -32,6 +32,7 @@ from .astype import astype
 from .drop import df_drop, df_pop, series_drop, index_drop
 from .drop_duplicates import df_drop_duplicates, \
     series_drop_duplicates, index_drop_duplicates
+from .melt import melt
 
 
 def _install():
@@ -64,6 +65,7 @@ def _install():
         setattr(t, 'pop', df_pop)
         setattr(t, '__delitem__', lambda df, items: df_drop(df, items, axis=1, inplace=True))
         setattr(t, 'drop_duplicates', df_drop_duplicates)
+        setattr(t, 'melt', melt)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
