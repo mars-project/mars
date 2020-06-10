@@ -34,6 +34,8 @@ mars.dataframe.DataFrame
       ~DataFrame.diff
       ~DataFrame.div
       ~DataFrame.dot
+      ~DataFrame.drop
+      ~DataFrame.drop_duplicates
       ~DataFrame.dropna
       ~DataFrame.eq
       ~DataFrame.ewm
@@ -66,6 +68,7 @@ mars.dataframe.DataFrame
       ~DataFrame.notna
       ~DataFrame.notnull
       ~DataFrame.nunique
+      ~DataFrame.pop
       ~DataFrame.pow
       ~DataFrame.prod
       ~DataFrame.product
@@ -95,6 +98,7 @@ mars.dataframe.DataFrame
       ~DataFrame.to_csv
       ~DataFrame.to_gpu
       ~DataFrame.to_pandas
+      ~DataFrame.to_sql
       ~DataFrame.to_tensor
       ~DataFrame.to_vineyard
       ~DataFrame.transform
