@@ -268,6 +268,18 @@ def parse_index(index_value, *args, store_data=False, key=None):
         return IndexValue(_index_value=_serialize_index(index_value))
 
 
+def gen_unknown_index_value(index_value, *args):
+    pd_index = index_value.to_pandas()
+    if isinstance(pd_index, pd.RangeIndex):
+        return parse_index(pd.RangeIndex(-1), *args)
+    elif not isinstance(pd_index, pd.MultiIndex):
+        return parse_index(pd.Index([], dtype=pd_index.dtype), *args)
+    else:
+        i = pd.MultiIndex.from_arrays([c[:0] for c in pd_index.levels],
+                                      names=pd_index.names)
+        return parse_index(i, *args)
+
+
 def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, right_increase):
     """
     Split the original two min_max into new min_max. Each min_max should be a list

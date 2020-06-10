@@ -19,7 +19,7 @@ from distutils.version import LooseVersion
 import numpy as np
 import pandas as pd
 
-from mars.config import options
+from mars.config import options, option_context
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -1357,3 +1357,80 @@ class Test(TestBase):
         r = idx.drop(index)
         pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.drop(index))
+
+    def testDropDuplicates(self):
+        # test dataframe drop
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(20, 5)),
+                           columns=['c' + str(i + 1) for i in range(5)],
+                           index=['i' + str(j) for j in range(20)])
+        duplicate_lines = rs.randint(1000, size=5)
+        for i in [1, 3, 10, 11, 15]:
+            raw.iloc[i] = duplicate_lines
+
+        with option_context({'combine_size': 2}):
+            # test dataframe
+            for chunk_size in [(8, 3), (20, 5)]:
+                df = from_pandas_df(raw, chunk_size=chunk_size)
+                if chunk_size[0] < len(raw):
+                    methods = ['tree', 'subset_tree', 'shuffle']
+                else:
+                    # 1 chunk
+                    methods = [None]
+                for method in methods:
+                    for subset in [None, 'c1', ['c1', 'c2']]:
+                        for keep in ['first', 'last', False]:
+                            for ignore_index in [True, False]:
+                                try:
+                                    r = df.drop_duplicates(method=method, subset=subset,
+                                                           keep=keep, ignore_index=ignore_index)
+                                    result = self.executor.execute_dataframe(r, concat=True)[0]
+                                    try:
+                                        expected = raw.drop_duplicates(subset=subset,
+                                                                       keep=keep, ignore_index=ignore_index)
+                                    except TypeError:
+                                        # ignore_index is supported in pandas 1.0
+                                        expected = raw.drop_duplicates(subset=subset,
+                                                                       keep=keep)
+                                        if ignore_index:
+                                            expected.reset_index(drop=True, inplace=True)
+
+                                    pd.testing.assert_frame_equal(result, expected)
+                                except Exception as e:  # pragma: no cover
+                                    raise AssertionError('failed when method={}, subset={}, '
+                                                         'keep={}, ignore_index={}'.format(
+                                        method, subset, keep, ignore_index)) from e
+
+            # test series and index
+            s = raw['c3']
+            ind = pd.Index(s)
+
+            for tp, obj in [('series', s), ('index', ind)]:
+                for chunk_size in [8, 20]:
+                    to_m = from_pandas_series if tp == 'series' else from_pandas_index
+                    mobj = to_m(obj, chunk_size=chunk_size)
+                    if chunk_size < len(obj):
+                        methods = ['tree', 'shuffle']
+                    else:
+                        # 1 chunk
+                        methods = [None]
+                    for method in methods:
+                        for keep in ['first', 'last', False]:
+                            try:
+                                r = mobj.drop_duplicates(method=method, keep=keep)
+                                result = self.executor.execute_dataframe(r, concat=True)[0]
+                                expected = obj.drop_duplicates(keep=keep)
+
+                                cmp = pd.testing.assert_series_equal \
+                                    if tp == 'series' else pd.testing.assert_index_equal
+                                cmp(result, expected)
+                            except Exception as e:  # pragma: no cover
+                                raise AssertionError('failed when method={}, keep={}'.format(
+                                    method, keep)) from e
+
+            # test inplace
+            series = from_pandas_series(s, chunk_size=11)
+            series.drop_duplicates(inplace=True)
+            result = self.executor.execute_dataframe(series, concat=True)[0]
+            expected = s.drop_duplicates()
+            pd.testing.assert_series_equal(result, expected)

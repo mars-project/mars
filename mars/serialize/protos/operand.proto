@@ -353,6 +353,7 @@ message OperandDef {
         VALUE_COUNTS = 725;
         TO_DATETIME = 726;
         DATAFRAME_DROP = 727;
+        DROP_DUPLICATES = 728;
 
         FUSE = 801;
 

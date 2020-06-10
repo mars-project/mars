@@ -205,7 +205,9 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             if len(inputs) == 1:
                 ret = inputs[0]
             else:
-                n_rows = max(inp.index[0] for inp in chunk.inputs) + 1
+                max_rows = max(inp.index[0] for inp in chunk.inputs)
+                min_rows = min(inp.index[0] for inp in chunk.inputs)
+                n_rows = max_rows - min_rows + 1
                 n_cols = int(len(inputs) // n_rows)
                 assert n_rows * n_cols == len(inputs)
 
@@ -256,7 +258,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
         def _auto_concat_index_chunks(chunk, inputs):
             if len(inputs) == 1:
-                concat_df = inputs[0]
+                xdf = pd if isinstance(inputs[0], pd.Index) else cudf
+                concat_df = xdf.DataFrame(index=inputs[0])
             else:
                 xdf = pd if isinstance(inputs[0], pd.Index) else cudf
                 empty_dfs = [xdf.DataFrame(index=inp) for inp in inputs]

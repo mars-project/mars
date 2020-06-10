@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from mars import opcodes
-from mars.config import options
+from mars.config import options, option_context
 from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
     INDEX_TYPE, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
@@ -867,3 +867,29 @@ class Test(TestBase):
 
         r = idx.drop(index)
         self.assertIsInstance(r, INDEX_TYPE)
+
+    def testDropDuplicates(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(20, 7)),
+                           columns=['c' + str(i + 1) for i in range(7)])
+        raw['c7'] = ['s{}'.format(j) for j in range(20)]
+
+        df = from_pandas_df(raw, chunk_size=10)
+        with self.assertRaises(ValueError):
+            df.drop_duplicates(method='unknown')
+        with self.assertRaises(KeyError):
+            df.drop_duplicates(subset='c8')
+
+        # test auto method selection
+        self.assertEqual(df.drop_duplicates().tiles().chunks[0].op.method, 'tree')
+        # subset size less than chunk_store_limit
+        self.assertEqual(df.drop_duplicates(subset=['c1', 'c3']).tiles().chunks[0].op.method, 'subset_tree')
+        with option_context({'chunk_store_limit': 5}):
+            # subset size greater than chunk_store_limit
+            self.assertEqual(df.drop_duplicates(subset=['c1', 'c3']).tiles().chunks[0].op.method, 'tree')
+        self.assertEqual(df.drop_duplicates(subset=['c1', 'c7']).tiles().chunks[0].op.method, 'tree')
+        self.assertEqual(df['c7'].drop_duplicates().tiles().chunks[0].op.method, 'tree')
+
+        s = df['c7']
+        with self.assertRaises(ValueError):
+            s.drop_duplicates(method='unknown')

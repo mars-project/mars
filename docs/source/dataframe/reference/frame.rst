@@ -129,6 +129,7 @@ Reindexing / selection / label manipulation
    :toctree: api/
 
    DataFrame.drop
+   DataFrame.drop_duplicates
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index
