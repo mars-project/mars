@@ -133,11 +133,9 @@ class Session(object):
             raise ExecutionInterrupted
         elif resp_json['state'] == 'failed':
             if 'exc_info' in resp_json:
-                try:
-                    exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-                    raise exc_info[1].with_traceback(exc_info[2])
-                except:  # noqa: E722
-                    raise ExecutionFailed('Graph execution failed.')
+                exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
+                exc = exc_info[1].with_traceback(exc_info[2])
+                raise ExecutionFailed('Graph execution failed.') from exc
             else:
                 raise ExecutionFailed('Graph execution failed with unknown reason.')
         raise ExecutionStateUnknown(

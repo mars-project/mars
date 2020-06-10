@@ -280,10 +280,8 @@ class ClusterSession(object):
             if graph_state == GraphState.FAILED:
                 exc_info = self._api.get_graph_exc_info(self._session_id, graph_key)
                 if exc_info is not None:
-                    try:
-                        raise exc_info[1].with_traceback(exc_info[2]) from None
-                    except:  # noqa: E722
-                        raise ExecutionFailed('Graph execution failed.')
+                    exc = exc_info[1].with_traceback(exc_info[2])
+                    raise ExecutionFailed('Graph execution failed.') from exc
                 else:
                     raise ExecutionFailed('Graph execution failed with unknown reason')
             time_elapsed = time.time() - exec_start_time

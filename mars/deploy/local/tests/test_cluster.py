@@ -449,17 +449,29 @@ class Test(unittest.TestCase):
                          shared_memory='20M', modules=[__name__],
                          options={'scheduler.retry_num': 1}) as cluster:
             with self.assertRaises(ExecutionFailed):
-                cluster.session.run(tensor, timeout=_exec_timeout)
+                try:
+                    cluster.session.run(tensor, timeout=_exec_timeout)
+                except ExecutionFailed as ex:
+                    self.assertIsInstance(ex.__cause__, TypeError)
+                    raise
 
             data = mt.tensor(np.random.rand(10, 20))
             data2 = TileFailOperand(_exc_serial=pickle.dumps(exc)).new_tensor([data], shape=data.shape)
             with self.assertRaises(ExecutionFailed):
-                cluster.session.run(data2)
+                try:
+                    cluster.session.run(data2)
+                except ExecutionFailed as ex:
+                    self.assertIsInstance(ex.__cause__, ValueError)
+                    raise
 
             data = mt.tensor(np.random.rand(20, 10))
             data2 = ExecFailOperand(_exc_serial=pickle.dumps(exc)).new_tensor([data], shape=data.shape)
             with self.assertRaises(ExecutionFailed):
-                cluster.session.run(data2)
+                try:
+                    cluster.session.run(data2)
+                except ExecutionFailed as ex:
+                    self.assertIsInstance(ex.__cause__, ValueError)
+                    raise
 
     def testFetchTensor(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
