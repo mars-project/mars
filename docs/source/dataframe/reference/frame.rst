@@ -150,6 +150,7 @@ Reshaping, sorting, transposing
 .. autosummary::
    :toctree: api/
 
+   DataFrame.melt
    DataFrame.sort_values
    DataFrame.sort_index
 

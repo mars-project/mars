@@ -354,6 +354,7 @@ message OperandDef {
         TO_DATETIME = 726;
         DATAFRAME_DROP = 727;
         DROP_DUPLICATES = 728;
+        MELT = 729;
 
         FUSE = 801;
 

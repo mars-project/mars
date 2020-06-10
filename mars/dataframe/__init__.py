@@ -18,6 +18,7 @@ from .initializer import DataFrame, Series, Index
 # do imports to register operands
 from .base.cut import cut
 from .base.checkna import isna, isnull, notna, notnull
+from .base.melt import melt
 from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
 from .datasource.from_vineyard import from_vineyard
