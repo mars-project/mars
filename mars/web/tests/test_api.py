@@ -35,7 +35,7 @@ from mars.actors.errors import ActorNotExist
 from mars.config import options
 from mars.scheduler import ResourceActor
 from mars.session import new_session
-from mars.serialize.dataserializer import dumps
+from mars.serialize.dataserializer import dumps, SerialType
 from mars.tests.core import mock
 from mars.utils import get_next_port
 
@@ -194,6 +194,18 @@ class Test(unittest.TestCase):
                 dataserializer.decompressobjs[dataserializer.CompressType.LZ4] = dataserializer.lz4_decompressobj
                 dataserializer.compress_openers[dataserializer.CompressType.LZ4] = dataserializer.lz4_open
 
+            # check serialization by pickle
+            try:
+                sess._sess._serial_type = SerialType.PICKLE
+
+                a = mt.ones((10, 10), chunk_size=30)
+                b = mt.ones((10, 10), chunk_size=30)
+                c = a.dot(b)
+                value = sess.run(c, timeout=timeout)
+                assert_array_equal(value, np.ones((10, 10)) * 10)
+            finally:
+                sess._sess._serial_type = SerialType.ARROW
+
             va = np.random.randint(0, 10000, (100, 100))
             vb = np.random.randint(0, 10000, (100, 100))
             a = mt.array(va, chunk_size=30)
@@ -273,16 +285,25 @@ class Test(unittest.TestCase):
         res = requests.post('%s/api/session' % service_ep, dict(pyver=wrong_version))
         self.assertEqual(res.status_code, 400)
 
-        import pyarrow
-        old_arrow_version = pyarrow.__version__
+        # use pickle when arrow version does not agree
+        pyarrow, arrow_ver = None, None
+        pickle_ver = pickle.HIGHEST_PROTOCOL
         try:
-            pyarrow.__version__ = '0.0.0'
+            pickle.HIGHEST_PROTOCOL = 2000
 
-            with self.assertWarns(RuntimeWarning):
-                with new_session(service_ep):
-                    pass
+            import pyarrow
+            arrow_ver = pyarrow.__version__
+            pyarrow.__version__ = '2000.0.0'
+
+            with new_session(service_ep) as sess:
+                self.assertEqual(sess._sess._serial_type, SerialType.PICKLE)
+                self.assertEqual(sess._sess._pickle_protocol, pickle_ver)
+        except ImportError:
+            pass
         finally:
-            pyarrow.__version__ = old_arrow_version
+            pickle.HIGHEST_PROTOCOL = pickle_ver
+            if pyarrow:
+                pyarrow.__version__ = arrow_ver
 
         with new_session(service_ep) as sess:
             # Stop non-existing graph should raise an exception

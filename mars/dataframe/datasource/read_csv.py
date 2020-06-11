@@ -18,7 +18,6 @@ from io import BytesIO
 
 import pandas as pd
 import numpy as np
-from pyarrow import HdfsFile
 
 from ... import opcodes as OperandDef
 from ...config import options
@@ -28,6 +27,11 @@ from ...filesystem import open_file, file_size, glob
 from ..core import IndexValue
 from ..utils import parse_index, build_empty_df, standardize_range_index
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+
+try:
+    from pyarrow import HdfsFile
+except ImportError:  # pragma: no cover
+    HdfsFile = None
 
 
 cudf = lazy_import('cudf', globals=globals())

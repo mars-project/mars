@@ -19,10 +19,14 @@ import glob as local_glob
 from gzip import GzipFile
 from urllib.parse import urlparse
 
-from pyarrow import FileSystem
-from pyarrow import LocalFileSystem as ArrowLocalFileSystem
-from pyarrow import HadoopFileSystem
-from pyarrow.util import implements
+try:
+    from pyarrow import FileSystem
+    from pyarrow import LocalFileSystem as ArrowLocalFileSystem
+    from pyarrow import HadoopFileSystem
+    from pyarrow.util import implements
+except ImportError:  # pragma: no cover
+    FileSystem, ArrowLocalFileSystem, HadoopFileSystem = object, object, object
+    implements = None
 try:
     import lz4
     import lz4.frame
@@ -49,7 +53,6 @@ class LocalFileSystem(ArrowLocalFileSystem):
             cls._fs_instance = LocalFileSystem()
         return cls._fs_instance
 
-    @implements(FileSystem.delete)
     def delete(self, path, recursive=False):
         if os.path.isfile(path):
             os.remove(path)
@@ -57,6 +60,9 @@ class LocalFileSystem(ArrowLocalFileSystem):
             os.rmdir(path)
         else:
             shutil.rmtree(path)
+
+    if implements is not None:
+        delete = implements(FileSystem.delete)(delete)
 
     def stat(self, path):
         os_stat = os.stat(path)

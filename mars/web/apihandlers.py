@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import base64
 import json
 import logging
 import pickle
+import sys
 import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from distutils.version import LooseVersion
+from functools import lru_cache
 
 from tornado import gen, web
 
@@ -27,7 +29,7 @@ from ..tensor.core import Indexes
 from ..actors import new_client
 from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
-from ..serialize.dataserializer import CompressType
+from ..serialize.dataserializer import SerialType, CompressType
 from ..utils import to_str, tokenize, numpy_dtype_from_descr_json
 from .server import MarsWebAPI, MarsRequestHandler, register_web_handler
 
@@ -52,6 +54,32 @@ class MarsApiRequestHandler(MarsRequestHandler):
         self.set_status(status_code)
         self.finish()
 
+    @staticmethod
+    @lru_cache(20)
+    def _check_arrow_compatibility(client_version):
+        import pyarrow
+        client_version = tuple(LooseVersion(client_version or pyarrow.__version__).version[:2])
+        server_version = tuple(LooseVersion(pyarrow.__version__).version[:2])
+        return client_version == server_version
+
+    def _handle_versions(self):
+        args = {k: self.get_argument(k) for k in self.request.arguments}
+        try:
+            python_version = tuple(int(p) for p in args.pop('pyver').split('.')) \
+                if 'pyver' in args else sys.version_info
+            arrow_version = args.pop('arrow_version', None)
+            pickle_protocol = int(args.pop('pickle_protocol', pickle.HIGHEST_PROTOCOL))
+        except ValueError as ex:
+            raise web.HTTPError(400, reason='Invalid version data: %s' % ex)
+        if python_version[0] != sys.version_info[0]:
+            raise web.HTTPError(400, reason='Python version not consistent')
+
+        version_info = dict(python_version=python_version,
+                            arrow_version=arrow_version,
+                            arrow_compatible=self._check_arrow_compatibility(arrow_version),
+                            pickle_protocol=min(pickle_protocol, pickle.HIGHEST_PROTOCOL))
+        return version_info, args
+
 
 class ApiEntryHandler(MarsApiRequestHandler):
     def get(self):
@@ -60,20 +88,14 @@ class ApiEntryHandler(MarsApiRequestHandler):
 
 class SessionsApiHandler(MarsApiRequestHandler):
     def post(self):
-        args = {k: self.get_argument(k) for k in self.request.arguments}
+        versions, args = self._handle_versions()
 
-        try:
-            python_version = tuple(int(p) for p in args.pop('pyver').split('.')) \
-                if 'pyver' in args else sys.version_info
-        except ValueError as ex:
-            raise web.HTTPError(400, reason='Invalid version data: %s' % ex)
-        if python_version[0] != sys.version_info[0]:
-            raise web.HTTPError(400, reason='Python version not consistent')
-
-        import pyarrow
         session_id = tokenize(str(uuid.uuid1()))
         self.web_api.create_session(session_id, **args)
-        self.write(json.dumps(dict(session_id=session_id, arrow_version=pyarrow.__version__)))
+        self.write(json.dumps(dict(
+            session_id=session_id, arrow_compatible=versions['arrow_compatible'],
+            pickle_protocol=versions['pickle_protocol'],
+        )))
 
 
 class SessionApiHandler(MarsApiRequestHandler):
@@ -81,8 +103,12 @@ class SessionApiHandler(MarsApiRequestHandler):
         if not self.web_api.has_session(session_id):
             raise web.HTTPError(404, 'Session doesn\'t not exists')
 
-        import pyarrow
-        self.write(json.dumps(dict(session_id=session_id, arrow_version=pyarrow.__version__)))
+        versions, _ = self._handle_versions()
+
+        self.write(json.dumps(dict(
+            session_id=session_id, arrow_compatible=versions['arrow_compatible'],
+            pickle_protocol=versions['pickle_protocol'],
+        )))
 
     def delete(self, session_id):
         self.web_api.delete_session(session_id)
@@ -161,6 +187,9 @@ class GraphDataApiHandler(MarsApiRequestHandler):
     def get(self, session_id, graph_key, tileable_key):
         data_type = self.get_argument('type', None)
         try:
+            serial_type = SerialType(self.get_argument('serial_type', 'arrow'))
+            pickle_protocol = int(self.get_argument('pickle_protocol', str(pickle.HIGHEST_PROTOCOL)))
+
             compressions_arg = self.get_argument('compressions', None)
             if compressions_arg:
                 compressions_arg = [CompressType(s) for s in compressions_arg.split(',') if s]
@@ -169,6 +198,7 @@ class GraphDataApiHandler(MarsApiRequestHandler):
                 slices_arg = Indexes.from_json(json.loads(to_str(slices_arg[0]))).indexes
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
+
         if data_type:
             if data_type == 'nsplits':
                 nsplits = self.web_api.get_tileable_nsplits(session_id, graph_key, tileable_key)
@@ -180,7 +210,8 @@ class GraphDataApiHandler(MarsApiRequestHandler):
             def _fetch_fun():
                 web_api = MarsWebAPI(self._scheduler)
                 return web_api.fetch_data(session_id, graph_key, tileable_key, index_obj=slices_arg,
-                                          compressions=compressions_arg)
+                                          serial_type=serial_type, compressions=compressions_arg,
+                                          pickle_protocol=pickle_protocol)
 
             data = yield self._executor.submit(_fetch_fun)
             self.write(data)

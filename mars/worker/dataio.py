@@ -16,9 +16,8 @@ from io import BytesIO
 import pickle  # nosec
 
 import numpy as np
-import pyarrow
 
-from ..serialize.dataserializer import CompressType, get_compressobj, get_decompressobj, \
+from ..serialize.dataserializer import SerialType, CompressType, get_compressobj, get_decompressobj, \
     HEADER_LENGTH, file_header, read_file_header, write_file_header, SERIAL_VERSION
 
 
@@ -78,7 +77,7 @@ class WorkerBufferIO(object):
         self._compress_type_in = header.compress
         decompressor_in = get_decompressobj(header.compress)
 
-        new_header = file_header(header.version, header.nbytes, self._compress_type_out)
+        new_header = file_header(header.type, header.version, header.nbytes, self._compress_type_out)
         write_file_header(bio, new_header)
 
         if self._compress_type_in == self._compress_type_out:
@@ -191,7 +190,7 @@ class WorkerBufferIO(object):
 
             header = read_file_header(mv)
             self._compress_type_out = header.compress
-            new_header = file_header(header.version, header.nbytes, self._compress_type_in)
+            new_header = file_header(header.type, header.version, header.nbytes, self._compress_type_in)
             self._write_header(new_header)
 
             self._decompressor_out = get_decompressobj(header.compress)
@@ -221,11 +220,12 @@ class ArrowBufferIO(WorkerBufferIO):
             self._buf_offset = 0
             self._writer = None
         else:
+            import pyarrow
             self._writer = pyarrow.FixedSizeBufferWriter(buf)
             self._writer.set_memcopy_threads(6)
 
     def _read_header(self):
-        return file_header(SERIAL_VERSION, self._nbytes, self._compress_type_in)
+        return file_header(SerialType.ARROW, SERIAL_VERSION, self._nbytes, self._compress_type_in)
 
     def _read_block(self, size):
         right = min(self._nbytes, self._buf_offset + size)
@@ -279,7 +279,7 @@ class ArrowComponentsIO(WorkerBufferIO):  # pragma: no cover
         return np.int32(len(meta_block)).tobytes() + meta_block
 
     def _read_header(self):
-        return file_header(SERIAL_VERSION, self._nbytes, self._compress_type_in)
+        return file_header(SerialType.ARROW, SERIAL_VERSION, self._nbytes, self._compress_type_in)
 
     def _read_block(self, size):
         if self._index_of_buf >= len(self._buffers):

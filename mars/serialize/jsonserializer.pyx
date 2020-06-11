@@ -82,8 +82,10 @@ cdef inline object _get_type(str value_type_name):
 
 
 cdef class JsonSerializeProvider(Provider):
-    def __init__(self):
+    def __init__(self, data_serial_type=None, pickle_protocol=None):
         self.type = ProviderType.json
+        self.data_serial_type = data_serial_type
+        self.pickle_protocol = pickle_protocol
 
     cdef inline str _to_str(self, val):
         assert isinstance(val, (bytes, unicode))
@@ -137,7 +139,8 @@ cdef class JsonSerializeProvider(Provider):
             value = value.astype(object)
         return {
             'type': _get_name(ValueType.arr),
-            'value': self._to_str(base64.b64encode(datadumps(value)))
+            'value': self._to_str(base64.b64encode(datadumps(value, serial_type=self.data_serial_type,
+                                                             pickle_protocol=self.pickle_protocol)))
         }
 
     cdef inline np.ndarray _deserialize_arr(self, object obj, list callbacks):
@@ -175,7 +178,8 @@ cdef class JsonSerializeProvider(Provider):
     cdef inline dict _serialize_index(self, value):
         return {
             'type': _get_name(ValueType.index),
-            'value': self._to_str(base64.b64encode(datadumps(value)))
+            'value': self._to_str(base64.b64encode(datadumps(value, serial_type=self.data_serial_type,
+                                                             pickle_protocol=self.pickle_protocol)))
         }
 
     cdef inline object _deserialize_pd_entity(self, object obj, list callbacks):
@@ -193,13 +197,15 @@ cdef class JsonSerializeProvider(Provider):
     cdef inline dict _serialize_series(self, value):
         return {
             'type': _get_name(ValueType.series),
-            'value': self._to_str(base64.b64encode(datadumps(value)))
+            'value': self._to_str(base64.b64encode(datadumps(value, serial_type=self.data_serial_type,
+                                                             pickle_protocol=self.pickle_protocol)))
         }
 
     cdef inline dict _serialize_dataframe(self, value):
         return {
             'type': _get_name(ValueType.dataframe),
-            'value': self._to_str(base64.b64encode(datadumps(value)))
+            'value': self._to_str(base64.b64encode(datadumps(value, serial_type=self.data_serial_type,
+                                                             pickle_protocol=self.pickle_protocol)))
         }
 
     cdef inline dict _serialize_key(self, value):
@@ -374,8 +380,10 @@ cdef class JsonSerializeProvider(Provider):
         return {
             'type': 'interval_arr',
             'value': {
-                'left': self._to_str(base64.b64encode(datadumps(value.left))),
-                'right': self._to_str(base64.b64encode(datadumps(value.right))),
+                'left': self._to_str(base64.b64encode(datadumps(value.left, serial_type=self.data_serial_type,
+                                                                pickle_protocol=self.pickle_protocol))),
+                'right': self._to_str(base64.b64encode(datadumps(value.right, serial_type=self.data_serial_type,
+                                                                 pickle_protocol=self.pickle_protocol))),
                 'closed': value.closed,
                 'dtype': self._serialize_dtype(value.dtype)
             }
