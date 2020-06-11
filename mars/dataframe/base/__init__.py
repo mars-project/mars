@@ -30,6 +30,8 @@ from .diff import df_diff, series_diff
 from .value_counts import value_counts
 from .astype import astype
 from .drop import df_drop, df_pop, series_drop, index_drop
+from .drop_duplicates import df_drop_duplicates, \
+    series_drop_duplicates, index_drop_duplicates
 
 
 def _install():
@@ -61,6 +63,7 @@ def _install():
         setattr(t, 'drop', df_drop)
         setattr(t, 'pop', df_pop)
         setattr(t, '__delitem__', lambda df, items: df_drop(df, items, axis=1, inplace=True))
+        setattr(t, 'drop_duplicates', df_drop_duplicates)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -86,10 +89,12 @@ def _install():
         setattr(t, 'value_counts', value_counts)
         setattr(t, 'astype', astype)
         setattr(t, 'drop', series_drop)
+        setattr(t, 'drop_duplicates', series_drop_duplicates)
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
         setattr(t, 'drop', index_drop)
+        setattr(t, 'drop_duplicates', index_drop_duplicates)
 
     for method in _string_method_to_handlers:
         if not hasattr(StringAccessor, method):

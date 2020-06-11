@@ -324,6 +324,10 @@ class IndexChunkData(ChunkData):
         return getattr(self, '_shape', None)
 
     @property
+    def ndim(self):
+        return len(self.shape)
+
+    @property
     def dtype(self):
         return self._dtype
 

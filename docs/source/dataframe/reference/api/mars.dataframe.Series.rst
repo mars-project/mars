@@ -34,6 +34,8 @@ mars.dataframe.Series
       ~Series.diff
       ~Series.div
       ~Series.dot
+      ~Series.drop
+      ~Series.drop_duplicates
       ~Series.dropna
       ~Series.eq
       ~Series.ewm
@@ -88,8 +90,10 @@ mars.dataframe.Series
       ~Series.tail
       ~Series.tiles
       ~Series.to_cpu
+      ~Series.to_csv
       ~Series.to_gpu
       ~Series.to_pandas
+      ~Series.to_sql
       ~Series.to_tensor
       ~Series.transform
       ~Series.truediv
