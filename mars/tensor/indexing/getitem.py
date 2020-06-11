@@ -333,7 +333,15 @@ def _calc_order(a, index):
 def _getitem_nocheck(a, item, convert_bool_to_fancy=None):
     index = process_index(a.ndim, item,
                           convert_bool_to_fancy=convert_bool_to_fancy)
-    shape = calc_shape(a.shape, index)
+    if convert_bool_to_fancy is False:
+        # come from __setitem__, the bool index is not converted to fancy index
+        # if multiple bool indexes or bool + fancy indexes exist,
+        # thus the shape will be wrong,
+        # here we just convert when calculating shape,
+        # refer to issue #1282.
+        shape = calc_shape(a.shape, process_index(a.ndim, index))
+    else:
+        shape = calc_shape(a.shape, index)
     tensor_order = _calc_order(a, index)
     op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index,
                      create_view=_is_create_view(index))
