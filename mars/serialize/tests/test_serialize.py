@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import datetime
+import itertools
 import json
 import os
 import tempfile
@@ -23,7 +24,6 @@ from collections import OrderedDict
 from io import BytesIO
 
 import numpy as np
-import pyarrow
 import pytz
 import pandas as pd
 from numpy.testing import assert_array_equal
@@ -44,6 +44,10 @@ from mars.core import Base, Entity
 from mars.tests.core import assert_groupby_equal
 from mars.utils import to_binary, to_text
 
+try:
+    import pyarrow
+except ImportError:
+    pyarrow = None
 try:
     import scipy.sparse as sps
 except ImportError:
@@ -605,33 +609,24 @@ class Test(unittest.TestCase):
             node1.serialize(jss)
 
     def testDataSerialize(self):
-        array = np.random.rand(1000, 100)
-        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
-        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-            array, compress=dataserializer.CompressType.LZ4)))
-        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-            array, compress=dataserializer.CompressType.GZIP)))
+        for type_, compress in itertools.product(
+                (None,) + tuple(dataserializer.SerialType.__members__.values()),
+                (None,) + tuple(dataserializer.CompressType.__members__.values())):
+            array = np.random.rand(1000, 100)
+            assert_array_equal(array, dataserializer.loads(
+                dataserializer.dumps(array, serial_type=type_, compress=compress)))
 
-        array = np.random.rand(1000, 100)
-        assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(array))))
-        assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
-            array, compress=dataserializer.CompressType.LZ4))))
-        assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
-            array, compress=dataserializer.CompressType.GZIP))))
+            array = np.random.rand(1000, 100)
+            assert_array_equal(array, dataserializer.load(
+                BytesIO(dataserializer.dumps(array, serial_type=type_, compress=compress))))
 
-        array = np.random.rand(1000, 100).T  # test non c-contiguous
-        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
-        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-            array, compress=dataserializer.CompressType.LZ4)))
-        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-            array, compress=dataserializer.CompressType.GZIP)))
+            array = np.random.rand(1000, 100).T  # test non c-contiguous
+            assert_array_equal(array, dataserializer.loads(
+                dataserializer.dumps(array, serial_type=type_, compress=compress)))
 
-        array = np.float64(0.2345)
-        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
-        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-            array, compress=dataserializer.CompressType.LZ4)))
-        assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-            array, compress=dataserializer.CompressType.GZIP)))
+            array = np.float64(0.2345)
+            assert_array_equal(array, dataserializer.loads(
+                dataserializer.dumps(array, serial_type=type_, compress=compress)))
 
         # test structured arrays.
         rec_dtype = np.dtype([('a', 'int64'), ('b', 'double'), ('c', '<U8')])

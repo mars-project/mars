@@ -428,8 +428,9 @@ cdef class DirectedGraph:
 
         return graph
 
-    def to_pb(self, pb_obj=None):
-        return self.serialize().to_pb(obj=pb_obj)
+    def to_pb(self, pb_obj=None, data_serial_type=None, pickle_protocol=None):
+        return self.serialize().to_pb(
+            obj=pb_obj, data_serial_type=data_serial_type, pickle_protocol=pickle_protocol)
 
     @classmethod
     def from_pb(cls, pb_obj):
@@ -439,8 +440,9 @@ cdef class DirectedGraph:
             logger.error('Failed to deserialize graph, graph_def: {0}'.format(pb_obj))
             raise
 
-    def to_json(self, json_obj=None):
-        return self.serialize().to_json(obj=json_obj)
+    def to_json(self, json_obj=None, data_serial_type=None, pickle_protocol=None):
+        return self.serialize().to_json(
+            obj=json_obj, data_serial_type=data_serial_type, pickle_protocol=pickle_protocol)
 
     @classmethod
     def from_json(cls, json_obj):

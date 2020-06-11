@@ -58,8 +58,10 @@ cdef dict PRIMITIVE_TYPE_TO_VALUE_FIELD = {
 
 
 cdef class ProtobufSerializeProvider(Provider):
-    def __init__(self):
+    def __init__(self, data_serial_type=None, pickle_protocol=None):
         self.type = ProviderType.protobuf
+        self.data_serial_type = None
+        self.pickle_protocol = None
 
     cdef inline void _set_slice(self, slice value, obj, tp=None):
         if value.start is not None:
@@ -109,7 +111,8 @@ cdef class ProtobufSerializeProvider(Provider):
         # cuz datadumps may fail due to pyarrow
         if value.ndim == 0 and value.dtype.kind in ('U', 'S'):
             value = value.astype(object)
-        obj.arr = datadumps(value)
+        obj.arr = datadumps(value, serial_type=self.data_serial_type,
+                            pickle_protocol=self.pickle_protocol)
 
     cdef inline np.ndarray _get_arr(self, obj):
         cdef object x
@@ -135,21 +138,24 @@ cdef class ProtobufSerializeProvider(Provider):
             return pickle.loads(obj.dtype)
 
     cdef inline void _set_index(self, value, obj, tp=None) except *:
-        obj.index = datadumps(value)
+        obj.index = datadumps(value, serial_type=self.data_serial_type,
+                              pickle_protocol=self.pickle_protocol)
 
     cdef inline _get_index(self, obj):
         x = obj.index
         return dataloads(x) if x is not None and len(x) > 0 else None
 
     cdef inline void _set_series(self, value, obj, tp=None) except *:
-        obj.series = datadumps(value)
+        obj.series = datadumps(value, serial_type=self.data_serial_type,
+                               pickle_protocol=self.pickle_protocol)
 
     cdef inline _get_series(self, obj):
         x = obj.series
         return dataloads(x) if x is not None and len(x) > 0 else None
 
     cdef inline void _set_dataframe(self, value, obj, tp=None) except *:
-        obj.dataframe = datadumps(value)
+        obj.dataframe = datadumps(value, serial_type=self.data_serial_type,
+                                  pickle_protocol=self.pickle_protocol)
 
     cdef inline object _get_dataframe(self, obj):
         x = obj.dataframe
@@ -224,8 +230,10 @@ cdef class ProtobufSerializeProvider(Provider):
         return pickle.loads(x) if x is not None and len(x) > 0 else None
 
     cdef inline void _set_interval_arr(self, value, obj, tp=None):
-        obj.interval_arr.left = datadumps(value.left)
-        obj.interval_arr.right = datadumps(value.right)
+        obj.interval_arr.left = datadumps(value.left, serial_type=self.data_serial_type,
+                                          pickle_protocol=self.pickle_protocol)
+        obj.interval_arr.right = datadumps(value.right, serial_type=self.data_serial_type,
+                                           pickle_protocol=self.pickle_protocol)
         obj.interval_arr.closed = value.closed
         self._set_dtype(value.dtype, obj.interval_arr)
 
