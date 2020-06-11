@@ -20,7 +20,6 @@ import os
 from collections import defaultdict
 
 import numpy as np
-import pyarrow
 from bokeh.application import Application
 from bokeh.application.handlers import FunctionHandler
 from bokeh.server.server import Server
@@ -130,6 +129,8 @@ class MarsWebAPI(MarsAPI):
         return ref.query_by_time(category, time_start=time_start, time_end=time_end)
 
     def write_mutable_tensor(self, session_id, name, payload_type, body):
+        import pyarrow
+
         from ..serialize import dataserializer
         from ..tensor.core import Indexes
         session_uid = SessionActor.gen_uid(session_id)
@@ -139,7 +140,7 @@ class MarsWebAPI(MarsAPI):
         index_json = json.loads(body[8:8+index_json_size].decode('ascii'))
         index = Indexes.from_json(index_json).indexes
         if payload_type is None:
-            value = dataserializer.loads(body[8+index_json_size:], raw=False)
+            value = dataserializer.loads(body[8+index_json_size:])
         elif payload_type == 'tensor':
             tensor_chunk_offset = 8 + index_json_size
             with pyarrow.BufferReader(body[tensor_chunk_offset:]) as reader:

@@ -178,7 +178,8 @@ class MarsAPI(object):
         graph_meta_ref = self.get_graph_meta_ref(session_id, graph_key)
         self.actor_client.actor_ref(graph_meta_ref.get_wait_ref()).wait(timeout)
 
-    def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None, compressions=None):
+    def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None,
+                   serial_type=None, compressions=None, pickle_protocol=None):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
         nsplits, chunk_keys, chunk_indexes = graph_ref.get_tileable_metas([tileable_key])[0]
@@ -209,7 +210,8 @@ class MarsAPI(object):
         else:
             ret = merge_chunks(chunk_results)
         compressions = max(compressions) if compressions else dataserializer.CompressType.NONE
-        return dataserializer.dumps(ret, compress=compressions)
+        return dataserializer.dumps(ret, serial_type=serial_type, compress=compressions,
+                                    pickle_protocol=pickle_protocol)
 
     def fetch_chunk_data(self, session_id, chunk_key, index_obj=None):
         endpoints = self.chunk_meta_client.get_workers(session_id, chunk_key)

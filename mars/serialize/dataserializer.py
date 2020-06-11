@@ -90,33 +90,42 @@ gz_decompress = gzip.decompress
 SERIAL_VERSION = 0
 
 
-class CompressType(Enum):
-    NONE = 'none'
-    LZ4 = 'lz4'
-    GZIP = 'gzip'
-
+class _EnumTagMixin:
     @property
     def tag(self):
-        return _compress_tags[self]
+        return self._tags[self]
 
     @classmethod
     def from_tag(cls, tag):
-        return _tag_to_compress[tag]
+        try:
+            rev_tags = cls._rev_tags
+        except AttributeError:
+            rev_tags = cls._rev_tags = {v: k for k, v in cls._tags.items()}
+        return rev_tags[tag]
 
     def __gt__(self, other):
-        return _compress_tags[self] > _compress_tags[other]
+        return self._tags[self] > self._tags[other]
 
 
-_compress_tags = {
+class CompressType(_EnumTagMixin, Enum):
+    NONE = 'none'
+    LZ4 = 'lz4'
+    GZIP = 'gzip'
+CompressType._tags = {
     CompressType.NONE: 0,
     CompressType.LZ4: 1,
     CompressType.GZIP: 2,
 }
-_tag_to_compress = {
-    0: CompressType.NONE,
-    1: CompressType.LZ4,
-    2: CompressType.GZIP,
+
+
+class SerialType(_EnumTagMixin, Enum):
+    ARROW = 'arrow'
+    PICKLE = 'pickle'
+SerialType._tags = {
+    SerialType.ARROW: 0,
+    SerialType.PICKLE: 1,
 }
+
 
 compressors = {
     CompressType.LZ4: lz4_compress,
@@ -166,7 +175,7 @@ def open_decompression_file(file, compress):
     return file
 
 
-file_header = namedtuple('FileHeader', 'version nbytes compress')
+file_header = namedtuple('FileHeader', 'type version nbytes compress')
 HEADER_LENGTH = 12
 
 
@@ -175,14 +184,16 @@ def read_file_header(file):
         header_bytes = file.read(HEADER_LENGTH)
     else:
         header_bytes = file[:HEADER_LENGTH]
-    version, = struct.unpack('<H', header_bytes[:2])
+    type_ = header_bytes[0]
+    version = header_bytes[1]
     nbytes, = struct.unpack('<Q', header_bytes[2:10])
     compress, = struct.unpack('<H', header_bytes[10:12])
-    return file_header(version, nbytes, CompressType.from_tag(compress))
+    return file_header(SerialType.from_tag(type_), version, nbytes, CompressType.from_tag(compress))
 
 
 def write_file_header(file, header):
-    file.write(struct.pack('<H', header.version))
+    file.write(struct.pack('B', header.type.tag))
+    file.write(struct.pack('B', header.version))
     file.write(struct.pack('<Q', header.nbytes))
     file.write(struct.pack('<H', header.compress.tag))
 
@@ -195,7 +206,7 @@ def peek_file_header(file):
         file.seek(pos)
 
 
-def load(file, raw=False):
+def load(file):
     header = read_file_header(file)
     file = open_decompression_file(file, header.compress)
 
@@ -205,13 +216,13 @@ def load(file, raw=False):
         if header.compress != CompressType.NONE:
             file.close()
 
-    if raw:
-        return buf
-    else:
+    if header.type == SerialType.ARROW:
         return pyarrow.deserialize(memoryview(buf), mars_serialize_context())
+    else:
+        return pickle.loads(buf)
 
 
-def loads(buf, raw=False):
+def loads(buf):
     mv = memoryview(buf)
     header = read_file_header(mv)
     compress = header.compress
@@ -220,47 +231,52 @@ def loads(buf, raw=False):
         data = buf[HEADER_LENGTH:]
     else:
         data = decompressors[compress](mv[HEADER_LENGTH:])
-    if raw:
-        return data
-    else:
+
+    if header.type == SerialType.ARROW:
         try:
             return pyarrow.deserialize(memoryview(data), mars_serialize_context())
         except pyarrow.lib.ArrowInvalid:  # pragma: no cover
             # reconstruct value from buffers of arrow components
             data_view = memoryview(data)
             meta_block_size = np.frombuffer(data_view[0:4], dtype='int32').item()
-            meta = pickle.loads(data_view[4:4+meta_block_size])  # nosec
+            meta = pickle.loads(data_view[4:4 + meta_block_size])  # nosec
             buffer_sizes = meta.pop('buffer_sizes')
             bounds = np.cumsum([4 + meta_block_size] + buffer_sizes)
-            meta['data'] = [pyarrow.py_buffer(data_view[bounds[idx]:bounds[idx+1]])
+            meta['data'] = [pyarrow.py_buffer(data_view[bounds[idx]:bounds[idx + 1]])
                             for idx in range(len(buffer_sizes))]
             return pyarrow.deserialize_components(meta, mars_serialize_context())
-
-
-def dump(obj, file, compress=CompressType.NONE, raw=False):
-    if raw:
-        serialized = obj
-        data_size = len(serialized)
     else:
-        serialized = pyarrow.serialize(obj, mars_serialize_context())
-        data_size = serialized.total_bytes
+        return pickle.loads(data)
 
-    write_file_header(file, file_header(SERIAL_VERSION, data_size, compress))
-    file = open_compression_file(file, compress)
+
+def dump(obj, file, *, serial_type=None, compress=None, pickle_protocol=None):
+    if serial_type is None:
+        serial_type = SerialType.ARROW if pyarrow is not None else SerialType.PICKLE
+    if compress is None:
+        compress = CompressType.NONE
     try:
-        if raw:
-            file.write(serialized)
-        else:
+        if serial_type == SerialType.ARROW:
+            serialized = pyarrow.serialize(obj, mars_serialize_context())
+            data_size = serialized.total_bytes
+            write_file_header(file, file_header(serial_type, SERIAL_VERSION, data_size, compress))
+            file = open_compression_file(file, compress)
             serialized.write_to(file)
+        else:
+            pickle_protocol = pickle_protocol or pickle.HIGHEST_PROTOCOL
+            serialized = pickle.dumps(obj, protocol=pickle_protocol)
+            data_size = len(serialized)
+            write_file_header(file, file_header(serial_type, SERIAL_VERSION, data_size, compress))
+            file = open_compression_file(file, compress)
+            file.write(serialized)
     finally:
         if compress != CompressType.NONE:
             file.close()
     return
 
 
-def dumps(obj, compress=CompressType.NONE, raw=False):
+def dumps(obj, *, serial_type=None, compress=None, pickle_protocol=None):
     sio = BytesIO()
-    dump(obj, sio, compress=compress, raw=raw)
+    dump(obj, sio, serial_type=serial_type, compress=compress, pickle_protocol=pickle_protocol)
     return sio.getvalue()
 
 
@@ -283,7 +299,7 @@ def _deserialize_groupby_wrapper(serialized):
     return GroupByWrapper.from_tuple(serialized)
 
 
-if LooseVersion(pyarrow.__version__) < LooseVersion('0.16'):
+if pyarrow and LooseVersion(pyarrow.__version__) < LooseVersion('0.16'):
     def _serialize_sparse_nd_array(obj):
         return obj.data, obj.indices, obj.indptr, obj.shape
 

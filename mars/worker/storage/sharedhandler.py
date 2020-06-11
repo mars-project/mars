@@ -14,8 +14,6 @@
 
 import functools
 
-import pyarrow
-
 from ... import promise
 from ...config import options
 from ...errors import StorageFull, StorageDataExists
@@ -53,6 +51,7 @@ class SharedStorageIO(BytesStorageIO):
             if packed:
                 self._buf = ArrowBufferIO(self._shared_buf, 'w', block_size=block_size)
             else:
+                import pyarrow
                 self._buf = pyarrow.FixedSizeBufferWriter(self._shared_buf)
                 self._buf.set_memcopy_threads(6)
         elif self.is_readable:

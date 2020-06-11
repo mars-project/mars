@@ -129,7 +129,7 @@ class Test(WorkerCase):
 
             data1 = np.random.random((100, 100))
             ser_data1 = dataserializer.serialize(data1)
-            block_data1 = dataserializer.dumps(data1, dataserializer.CompressType.NONE)
+            block_data1 = dataserializer.dumps(data1, compress=dataserializer.CompressType.NONE)
 
             session_id = str(uuid.uuid4())
             data_key1 = str(uuid.uuid4())

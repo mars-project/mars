@@ -162,7 +162,7 @@ class Test(WorkerCase):
                 storage_client.delete(session_id, [data_key1])
                 self.rm_spill_dirs()
 
-                block_data1 = dataserializer.dumps(data1, handler._compress)
+                block_data1 = dataserializer.dumps(data1, compress=handler._compress)
 
                 def _write_data(ser, writer):
                     with writer:

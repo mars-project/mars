@@ -19,7 +19,6 @@ import logging
 import pickle
 import sys
 import uuid
-import warnings
 from io import BytesIO
 from numbers import Integral
 
@@ -43,6 +42,9 @@ class Session(object):
         # dict structure: {tileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tileable id
         self._executed_tileables = dict()
+
+        self._serial_type = None
+        self._pickle_protocol = pickle.HIGHEST_PROTOCOL
 
         if req_session:
             self._req_session = req_session
@@ -68,15 +70,26 @@ class Session(object):
         self._endpoint = url
 
     def _main(self):
+        try:
+            import pyarrow
+            self._serial_type = dataserializer.SerialType(options.client.serial_type.lower())
+        except ImportError:
+            pyarrow = None
+            self._serial_type = dataserializer.SerialType.PICKLE
+
+        args = self._args.copy()
+        args['pyver'] = '.'.join(str(v) for v in sys.version_info[:3])
+        args['pickle_protocol'] = self._pickle_protocol
+        if pyarrow is not None:
+            args['arrow_version'] = pyarrow.__version__
+
         if self._session_id is None:
-            args = self._args.copy()
-            args['pyver'] = '.'.join(str(v) for v in sys.version_info[:3])
-            resp = self._req_session.post(self._endpoint + '/api/session', args)
+            resp = self._req_session.post(self._endpoint + '/api/session', data=args)
 
             if resp.status_code >= 400:
                 raise SystemError('Failed to create mars session: ' + resp.reason)
         else:
-            resp = self._req_session.get(self._endpoint + '/api/session/' + self._session_id)
+            resp = self._req_session.get(self._endpoint + '/api/session/' + self._session_id, params=args)
             if resp.status_code == 404:
                 raise ValueError('The session with id = %s doesn\'t exist' % self._session_id)
             if resp.status_code >= 400:
@@ -84,14 +97,9 @@ class Session(object):
 
         content = json.loads(resp.text)
         self._session_id = content['session_id']
-        self._check_arrow_version(content.get('arrow_version'))
-
-    @staticmethod
-    def _check_arrow_version(arrow_version):
-        import pyarrow
-        if arrow_version is not None and pyarrow.__version__ != arrow_version:
-            warnings.warn('pyarrow on client (%s) does not agree with server (%s), '
-                          'unexpected errors may occur', RuntimeWarning)
+        self._pickle_protocol = content.get('pickle_protocol', pickle.HIGHEST_PROTOCOL)
+        if not content.get('arrow_compatible'):
+            self._serial_type = dataserializer.SerialType.PICKLE
 
     def _get_tileable_graph_key(self, tileable_key):
         return self._executed_tileables[tileable_key][0]
@@ -164,7 +172,7 @@ class Session(object):
 
         targets_join = ','.join(targets)
         session_url = self._endpoint + '/api/session/' + self._session_id
-        graph_json = graph.to_json()
+        graph_json = graph.to_json(data_serial_type=self._serial_type, pickle_protocol=self._pickle_protocol)
 
         resp_json = self._submit_graph(graph_json, targets_join, names=name or '', compose=compose)
         graph_key = resp_json['graph_key']
@@ -225,7 +233,8 @@ class Session(object):
 
             session_url = self._endpoint + '/api/session/' + self._session_id
             compression_str = ','.join(v.value for v in dataserializer.get_supported_compressions())
-            params = dict(compressions=compression_str, slices=indexes_str)
+            params = dict(compressions=compression_str, slices=indexes_str,
+                          serial_type=self._serial_type.value, pickle_protocol=self._pickle_protocol)
             data_url = session_url + '/graph/%s/data/%s' % (self._get_tileable_graph_key(key), key)
             resp = self._req_session.get(data_url, params=params, timeout=timeout)
             if resp.status_code >= 400:
@@ -235,7 +244,7 @@ class Session(object):
             results.append(sort_dataframe_result(tileable, result_data))
         return results
 
-    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *args, **kwargs):
+    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *_, **__):
         from ..tensor.utils import create_mutable_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
         tensor_url = session_url + '/mutable-tensor/%s?action=create' % name
@@ -293,7 +302,7 @@ class Session(object):
         bio = BytesIO()
         bio.write(np.int64(len(index_bytes)).tobytes())
         bio.write(index_bytes)
-        dataserializer.dump(value, bio, raw=False)
+        dataserializer.dump(value, bio)
 
         session_url = self._endpoint + '/api/session/' + self._session_id
         tensor_url = session_url + '/mutable-tensor/%s' % tensor.name

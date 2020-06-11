@@ -839,7 +839,7 @@ class ResultSenderActor(WorkerActor):
                 sliced_value = value[tuple(index_obj)]
 
             return self._serialize_pool.submit(
-                dataserializer.dumps, sliced_value, compression_type).result()
+                dataserializer.dumps, sliced_value, compress=compression_type).result()
 
 
 def put_remote_chunk(session_id, chunk_key, data, receiver_manager_ref):
