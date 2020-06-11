@@ -102,3 +102,15 @@ class Test(TestBase):
             result.update(wc)
 
         self.assertEqual(result, {'word1': 2, 'word2': 3, 'word3': 2})
+
+    def testChainedRemote(self):
+        def f(x):
+            return x + 1
+
+        def g(x):
+            return x * 2
+
+        s = spawn(g, spawn(f, 2))
+
+        result = self.executor.execute_tileables([s])[0]
+        self.assertEqual(result, 6)
