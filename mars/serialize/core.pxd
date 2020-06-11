@@ -265,6 +265,8 @@ cpdef object get_serializable_by_index(object index)
 
 cdef class Provider:
     cdef public object type
+    cdef public object data_serial_type
+    cdef public object pickle_protocol
 
     cpdef serialize_field(self, Field field, model_instance, obj)
     cpdef serialize_model(self, model_instance, obj=?)

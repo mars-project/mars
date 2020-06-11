@@ -16,7 +16,6 @@ import unittest
 import os
 from io import BytesIO
 
-import pyarrow
 import pandas as pd
 
 import mars.dataframe as md
@@ -44,6 +43,8 @@ A,B,C,D,E
 class TestHDFS(TestBase):
     def setUp(self):
         super().setUp()
+
+        import pyarrow
         self.hdfs = pyarrow.hdfs.connect(host="localhost", port=8020)
         if self.hdfs.exists(TEST_DIR):
             self.hdfs.rm(TEST_DIR, recursive=True)

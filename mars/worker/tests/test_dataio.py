@@ -30,7 +30,6 @@ class Test(unittest.TestCase):
     def testArrowBufferIO(self):
         if not np:
             return
-        import pyarrow
         from numpy.testing import assert_array_equal
 
         for compress in [dataserializer.CompressType.LZ4, dataserializer.CompressType.GZIP]:

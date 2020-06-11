@@ -91,7 +91,7 @@ class DiskIO(BytesStorageIO):
                     buf, 'w', compress_in=compress, block_size=block_size)
             else:
                 dataserializer.write_file_header(buf, dataserializer.file_header(
-                    dataserializer.SERIAL_VERSION, nbytes, compress
+                    dataserializer.SerialType.ARROW, dataserializer.SERIAL_VERSION, nbytes, compress
                 ))
                 self._buf = dataserializer.open_compression_file(buf, compress)
         elif self.is_readable:

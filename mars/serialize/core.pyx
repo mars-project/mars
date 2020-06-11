@@ -669,10 +669,10 @@ class Serializable(metaclass=SerializableMetaclass):
             [cb(key_to_instance) for cb in callbacks]
         return obj
 
-    def to_pb(self, obj=None):
+    def to_pb(self, obj=None, data_serial_type=None, pickle_protocol=None):
         from .pbserializer import ProtobufSerializeProvider
 
-        provider = ProtobufSerializeProvider()
+        provider = ProtobufSerializeProvider(data_serial_type=data_serial_type)
         return self.serialize(provider, obj=obj)
 
     @classmethod
@@ -682,10 +682,10 @@ class Serializable(metaclass=SerializableMetaclass):
         provider = ProtobufSerializeProvider()
         return cls.deserialize(provider, obj)
 
-    def to_json(self, obj=None):
+    def to_json(self, obj=None, data_serial_type=None, pickle_protocol=None):
         from .jsonserializer import JsonSerializeProvider
 
-        provider = JsonSerializeProvider()
+        provider = JsonSerializeProvider(data_serial_type=data_serial_type)
         return self.serialize(provider, obj=obj)
 
     @classmethod
