@@ -143,9 +143,9 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
 
 def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False, named=None):
     if named is not None:
-        from ...context import get_context
+        from ...session import Session
 
-        context = get_context()
+        context = Session.default_or_local().context
         return context.build_named_tileable(named=named, rtype='tensor')
 
     order = order or 'K'

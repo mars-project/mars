@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import numpy as np
 try:
     import torch
@@ -22,7 +20,7 @@ except ImportError:  # pragma: no cover
     torch = None
     Dataset = object
 
-from ....context import get_context, DistributedContext, RunningMode
+from ....context import get_context, RunningMode
 from ....tensor.core import TENSOR_TYPE
 from ....tensor.indexing.core import process_index
 from ....dataframe.indexing.iloc import process_iloc_indexes
@@ -73,9 +71,3 @@ class MarsDataset(Dataset):
             return ret
         else:
             return self._get_data(item)
-
-
-def enter_mars_context():
-    scheduler = os.environ['MARS_SCHEDULER']
-    session_id = os.environ['MARS_SESSION']
-    return DistributedContext(scheduler_address=scheduler, session_id=session_id)

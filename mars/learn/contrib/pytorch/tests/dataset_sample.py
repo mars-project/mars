@@ -35,34 +35,32 @@ def main():
     import torch.utils.data
     import mars.tensor as mt
     from mars.learn.contrib.pytorch import MarsDataset, MarsDistributedSampler
-    from mars.learn.contrib.pytorch.dataset import enter_mars_context
 
     dist.init_process_group(backend='gloo')
     torch.manual_seed(42)
 
-    with enter_mars_context():
-        data = mt.tensor(named='data')
-        labels = mt.tensor(named='labels')
-        train_dataset = MarsDataset(data, labels)
-        train_sampler = MarsDistributedSampler(train_dataset)
-        train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                                   batch_size=32,
-                                                   shuffle=False,
-                                                   sampler=train_sampler)
+    data = mt.tensor(named='data')
+    labels = mt.tensor(named='labels')
+    train_dataset = MarsDataset(data, labels)
+    train_sampler = MarsDistributedSampler(train_dataset)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                               batch_size=32,
+                                               shuffle=False,
+                                               sampler=train_sampler)
 
-        model = nn.parallel.DistributedDataParallel(get_model())
-        optimizer = optim.SGD(model.parameters(),
-                              lr=0.01, momentum=0.5)
-        criterion = nn.BCELoss()
+    model = nn.parallel.DistributedDataParallel(get_model())
+    optimizer = optim.SGD(model.parameters(),
+                          lr=0.01, momentum=0.5)
+    criterion = nn.BCELoss()
 
-        for _ in range(2):
-            # 2 epochs
-            for _, (batch_data, batch_labels) in enumerate(train_loader):
-                outputs = model(batch_data)
-                loss = criterion(outputs.squeeze(), batch_labels)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+    for _ in range(2):
+        # 2 epochs
+        for _, (batch_data, batch_labels) in enumerate(train_loader):
+            outputs = model(batch_data)
+            loss = criterion(outputs.squeeze(), batch_labels)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
 
 if __name__ == "__main__":
