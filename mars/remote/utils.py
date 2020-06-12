@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..core import Base, Entity
-
 
 def find_objects(nested, types):
-    inputs = []
+    found = []
     stack = [nested]
 
     while len(stack) > 0:
         it = stack.pop()
         if isinstance(it, types):
-            inputs.append(it)
+            found.append(it)
             continue
 
         if isinstance(it, (list, tuple, set)):
@@ -30,7 +28,7 @@ def find_objects(nested, types):
         elif isinstance(it, dict):
             stack.extend(list(it.values())[::-1])
 
-    return inputs
+    return found
 
 
 def replace_inputs(nested, mapping):
@@ -46,10 +44,11 @@ def replace_inputs(nested, mapping):
     for val in vals:
         if isinstance(val, (dict, list, tuple, set)):
             new_val = replace_inputs(val, mapping)
-        elif isinstance(val, (Entity, Base)):
-            new_val = mapping.get(val, val)
         else:
-            new_val = val
+            try:
+                new_val = mapping.get(val, val)
+            except TypeError:
+                new_val = val
         new_vals.append(new_val)
 
     if isinstance(nested, dict):

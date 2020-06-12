@@ -100,7 +100,7 @@ cdef class Tokenizer:
             handler = self._handlers[object_type]
             return handler(obj)
         except KeyError:
-            if hasattr(obj, '__mars_tokenize__'):
+            if hasattr(obj, '__mars_tokenize__') and not isinstance(obj, type):
                 return self.tokenize(obj.__mars_tokenize__())
             if callable(obj):
                 return tokenize_function(obj)
