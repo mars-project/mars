@@ -141,12 +141,13 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
     return op(spmatrix.shape, chunk_size=chunk_size)
 
 
-def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False, named=None):
+def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
+           sparse=False, named=None, session=None):
     if named is not None:
         from ...session import Session
 
-        context = Session.default_or_local().context
-        return context.build_named_tileable(named=named, rtype='tensor')
+        sess = session or Session.default_or_local()
+        return sess.build_named_tileable(named=named, rtype='tensor')
 
     order = order or 'K'
     if isinstance(data, TENSOR_TYPE):

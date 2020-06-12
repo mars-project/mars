@@ -28,12 +28,12 @@ from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
 
 class DataFrame(_Frame):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
-                 chunk_size=None, gpu=None, sparse=None, named=None):
+                 chunk_size=None, gpu=None, sparse=None, named=None, session=None):
         if named is not None:
             from ..session import Session
 
-            context = Session.default_or_local().context
-            df = context.build_named_tileable(named=named, rtype='dataframe')
+            sess = session or Session.default_or_local()
+            df = sess.build_named_tileable(named=named, rtype='dataframe')
         elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
@@ -59,12 +59,12 @@ class DataFrame(_Frame):
 
 class Series(_Series):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False,
-                 chunk_size=None, gpu=None, sparse=None, named=None):
+                 chunk_size=None, gpu=None, sparse=None, named=None, session=None):
         if named is not None:
             from ..session import Session
 
-            context = Session.default_or_local().context
-            series = context.build_named_tileable(named=named, rtype='series')
+            sess = session or Session.default_or_local()
+            series = sess.build_named_tileable(named=named, rtype='series')
         elif isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)

@@ -244,6 +244,31 @@ class Session(object):
             results.append(sort_dataframe_result(tileable, result_data))
         return results
 
+    def build_named_tileable(self, named, rtype):
+        from ..tensor.fetch import TensorFetch
+        from ..dataframe.fetch import DataFrameFetch
+        from ..dataframe.operands import ObjectType
+
+        url = self._endpoint + '/api/session/' + self._session_id
+        params = dict(named=named)
+        resp = self._req_session.get(url, params=params)
+        if resp.status_code >= 400:
+            raise ValueError('Failed to get tileable key from server. Code: %d, Reason: %s, Content:\n%s' %
+                             (resp.status_code, resp.reason, resp.text))
+        tileable_key = json.loads(resp.content)['tileable_key']
+        nsplits = self._get_tileable_nsplits(tileable_key)
+        shape = tuple(sum(s) for s in nsplits)
+        if rtype == 'tensor':
+            return TensorFetch().new_tensor([], shape=shape, _key=tileable_key)
+        elif rtype == 'series':
+            return DataFrameFetch(object_type=ObjectType.series).new_series(
+                [], shape=shape,  _key=tileable_key)
+        elif rtype == 'dataframe':
+            return DataFrameFetch(object_type=ObjectType.dataframe).new_dataframe(
+                [], shape=shape,  _key=tileable_key)
+        else:
+            raise TypeError('Unknown type {}'.format(rtype))
+
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *_, **__):
         from ..tensor.utils import create_mutable_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
@@ -330,13 +355,17 @@ class Session(object):
         return create_fetch_tensor(chunk_size, shape, numpy_dtype_from_descr_json(dtype),
                                    tensor_key=tensor_key, chunk_keys=chunk_keys)
 
-    def _update_tileable_shape(self, tileable):
-        tileable_key = tileable.key
+    def _get_tileable_nsplits(self, tileable_key):
         session_url = self._endpoint + '/api/session/' + self._session_id
         url = session_url + '/graph/%s/data/%s?type=nsplits' % (
             self._get_tileable_graph_key(tileable_key), tileable_key)
         resp = self._req_session.get(url)
         new_nsplits = json.loads(resp.text)
+        return new_nsplits
+
+    def _update_tileable_shape(self, tileable):
+        tileable_key = tileable.key
+        new_nsplits = self._get_tileable_nsplits(tileable_key)
         tileable._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
         tileable.nsplits = new_nsplits
 

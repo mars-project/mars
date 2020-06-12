@@ -267,6 +267,7 @@ class ClusterSession(object):
         timeout = kw.pop('timeout', -1)
         fetch = kw.pop('fetch', True)
         compose = kw.pop('compose', True)
+        name = kw.pop('name', None)
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
@@ -279,7 +280,7 @@ class ClusterSession(object):
 
         # submit graph to local cluster
         self._api.submit_graph(self._session_id, json.dumps(graph.to_json(), separators=(',', ':')),
-                               graph_key, targets, compose=compose)
+                               graph_key, targets, compose=compose, names=name)
 
         exec_start_time = time.time()
         time_elapsed = 0
