@@ -11,8 +11,9 @@ Data manipulations
    :toctree: api/
 
    cut
-   merge
    concat
+   melt
+   merge
 
 Top-level missing data
 ~~~~~~~~~~~~~~~~~~~~~~
