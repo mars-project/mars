@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import contextmanager
-
 import pandas as pd
 import cloudpickle
 
@@ -22,7 +20,7 @@ from ...serialize import StringField, AnyField, BoolField, \
     Int64Field, BytesField
 from ..core import DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
-from ..utils import parse_index, build_empty_df, build_empty_series
+from ..utils import parse_index, build_empty_df, build_empty_series, create_sa_connection
 
 
 class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
@@ -86,40 +84,9 @@ class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
     def engine_kwargs(self):
         return self._engine_kwargs
 
-    @contextmanager
-    def _create_con(self):
-        import sqlalchemy as sa
-        from sqlalchemy.engine import Connection, Engine
-
-        # process con
-        con = self._con
-        engine = None
-        if isinstance(con, Connection):
-            self._con = str(con.engine.url)
-            # connection create by user
-            close = False
-            dispose = False
-        elif isinstance(con, Engine):
-            self._con = str(con.url)
-            con = con.connect()
-            close = True
-            dispose = False
-        else:
-            engine = sa.create_engine(con, **(self._engine_kwargs or dict()))
-            con = engine.connect()
-            close = True
-            dispose = True
-
-        try:
-            yield con
-        finally:
-            if close:
-                con.close()
-            if dispose:
-                engine.dispose()
-
     def __call__(self, df_or_series):
-        with self._create_con() as con:
+        with create_sa_connection(self._con, **(self._engine_kwargs or dict())) as con:
+            self._con = str(con.engine.url)
             empty_index = df_or_series.index_value.to_pandas()[:0]
             if isinstance(df_or_series, DATAFRAME_TYPE):
                 empty_obj = build_empty_df(df_or_series.dtypes, index=empty_index)
@@ -175,11 +142,16 @@ class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
 
         import sqlalchemy as sa
         engine = sa.create_engine(op.con, **(op.engine_kwargs or dict()))
-        with engine.connect() as connection:
-            with connection.begin():
-                in_data.to_sql(op.table_name, con=connection, if_exists=op.if_exists, index=op.index,
-                               index_label=op.index_label, chunksize=op.chunksize, dtype=op.dtype,
-                               method=op.method)
+
+        try:
+            with engine.connect() as connection:
+                with connection.begin():
+                    in_data.to_sql(op.table_name, con=connection, if_exists=op.if_exists, index=op.index,
+                                   index_label=op.index_label, chunksize=op.chunksize, dtype=op.dtype,
+                                   method=op.method)
+        finally:
+            engine.dispose()
+
         if in_df.ndim == 2:
             ctx[out_df.key] = pd.DataFrame()
         else:

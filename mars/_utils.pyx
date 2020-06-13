@@ -28,9 +28,10 @@ cimport cython
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
 
 try:
+    from sqlalchemy.sql import Selectable as SASelectable
     from sqlalchemy.sql.sqltypes import TypeEngine as SATypeEngine
 except ImportError:
-    SATypeEngine = None
+    SASelectable, SATypeEngine = None, None
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -217,6 +218,10 @@ cdef list tokenize_sqlalchemy_data_type(ob):
     return iterative_tokenize([repr(ob)])
 
 
+cdef list tokenize_sqlalchemy_selectable(ob):
+    return iterative_tokenize([str(ob)])
+
+
 @lru_cache(500)
 def tokenize_function(ob):
     if isinstance(ob, partial):
@@ -270,6 +275,8 @@ tokenize_handler.register(pd.arrays.PeriodArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.IntervalArray, tokenize_pandas_interval_arrays)
 if SATypeEngine is not None:
     tokenize_handler.register(SATypeEngine, tokenize_sqlalchemy_data_type)
+if SASelectable is not None:
+    tokenize_handler.register(SASelectable, tokenize_sqlalchemy_selectable)
 
 cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)

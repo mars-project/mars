@@ -15,7 +15,9 @@
 import os
 import tempfile
 import shutil
+import time
 from collections import OrderedDict
+from datetime import datetime
 from string import printable
 
 import numpy as np
@@ -24,7 +26,7 @@ import pandas as pd
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
-from mars.tests.core import TestBase, require_cudf, ExecutorForTest
+from mars.tests.core import TestBase, require_cudf
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
@@ -35,7 +37,7 @@ from mars.dataframe.datasource.from_records import from_records
 class Test(TestBase):
     def setUp(self):
         super().setUp()
-        self.executor = ExecutorForTest()
+        self.ctx, self.executor = self._create_test_context()
 
     def testFromPandasDataFrameExecution(self):
         pdf = pd.DataFrame(np.random.rand(20, 30), index=[np.arange(20), np.arange(20, 0, -1)])
@@ -458,7 +460,9 @@ class Test(TestBase):
 
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                                 'b': ['s%d' % i for i in range(10)],
-                                'c': np.random.rand(10)})
+                                'c': np.random.rand(10),
+                                'd': [datetime.fromtimestamp(time.time() + 3600 * (i - 5))
+                                      for i in range(10)]})
 
         with tempfile.TemporaryDirectory() as d:
             table_name = 'test'
@@ -467,17 +471,44 @@ class Test(TestBase):
 
             test_df.to_sql(table_name, uri, index=False)
 
+            # test read with table name
             r = md.read_sql_table('test', uri, chunk_size=4)
             result = self.executor.execute_dataframe(r, concat=True)[0]
             pd.testing.assert_frame_equal(result, test_df)
 
+            # test read with sql string and offset method
+            r = md.read_sql_query('select * from test where c > 0.5', uri,
+                                  parse_dates=['d'], chunk_size=4)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            pd.testing.assert_frame_equal(result, test_df[test_df.c > 0.5].reset_index(drop=True))
+
+            # test read with sql string and partition method with integer cols
+            r = md.read_sql('select * from test where b > \'s5\'', uri,
+                            parse_dates=['d'], partition_col='a', num_partitions=3)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            pd.testing.assert_frame_equal(result, test_df[test_df.b > 's5'].reset_index(drop=True))
+
+            # test read with sql string and partition method with datetime cols
+            r = md.read_sql_query('select * from test where b > \'s5\'', uri,
+                                  parse_dates={'d': '%Y-%m-%d %H:%M:%S'},
+                                  partition_col='d', num_partitions=3)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            pd.testing.assert_frame_equal(result.astype(test_df.dtypes),
+                                          test_df[test_df.b > 's5'].reset_index(drop=True))
+
+            # test read with sql string and partition method with datetime cols
+            r = md.read_sql_query('select * from test where b > \'s5\'', uri,
+                                  parse_dates=['d'], partition_col='d', num_partitions=3)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            pd.testing.assert_frame_equal(result.astype(test_df.dtypes),
+                                          test_df[test_df.b > 's5'].reset_index(drop=True))
+
             engine = sa.create_engine(uri)
             m = sa.MetaData()
-
             try:
                 # test index_col and columns
                 r = md.read_sql_table('test', engine.connect(), chunk_size=4,
-                                      index_col='a', columns=['b'])
+                                      index_col='a', columns=['b', 'd'])
                 result = self.executor.execute_dataframe(r, concat=True)[0]
                 expected = test_df.copy(deep=True)
                 expected.set_index('a', inplace=True)
@@ -486,7 +517,7 @@ class Test(TestBase):
 
                 # do not specify chunk_size
                 r = md.read_sql_table('test', engine.connect(),
-                                      index_col='a', columns=['b'])
+                                      index_col='a', columns=['b', 'd'])
                 result = self.executor.execute_dataframe(r, concat=True)[0]
                 pd.testing.assert_frame_equal(result, expected)
 
@@ -494,18 +525,19 @@ class Test(TestBase):
                                  autoload_with=engine)
                 r = md.read_sql_table(table, engine, chunk_size=4,
                                       index_col=[table.columns['a'], table.columns['b']],
-                                      columns=[table.columns['c']])
+                                      columns=[table.columns['c'], 'd'])
                 result = self.executor.execute_dataframe(r, concat=True)[0]
                 expected = test_df.copy(deep=True)
                 expected.set_index(['a', 'b'], inplace=True)
                 pd.testing.assert_frame_equal(result, expected)
 
-                # test primary key
+                # test table with primary key
                 sa.Table(table_name2, m,
                          sa.Column('id', sa.Integer, primary_key=True),
                          sa.Column('a', sa.Integer),
                          sa.Column('b', sa.String),
-                         sa.Column('c', sa.Float))
+                         sa.Column('c', sa.Float),
+                         sa.Column('d', sa.DateTime))
                 m.create_all(engine)
                 test_df = test_df.copy(deep=True)
                 test_df.index.name = 'id'

@@ -420,8 +420,7 @@ message OperandDef {
         TO_CSV = 2101;
         READ_PARQUET = 2103;
         TO_PARQUET = 2104;
-        READ_SQL_TABLE = 2105;
-        READ_SQL_QUERY = 2106;
+        READ_SQL = 2105;
         TO_SQL = 2108;
 
         TO_CSV_STAT = 2102;
