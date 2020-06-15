@@ -525,7 +525,7 @@ class Test(TestBase):
         finally:
             shutil.rmtree(tempdir)
 
-    def testReadSQLTable(self):
+    def testReadSQL(self):
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                                 'b': ['s%d' % i for i in range(10)]})
 

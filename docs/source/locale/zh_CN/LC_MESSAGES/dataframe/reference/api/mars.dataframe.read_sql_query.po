@@ -6,7 +6,7 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars 0.4.0rc1\n"
+"Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-06-15 14:41+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -17,107 +17,113 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.8.0\n"
 
-#: ../../source/dataframe/reference/api/mars.dataframe.read_sql_table.rst:2
-msgid "mars.dataframe.read\\_sql\\_table"
+#: ../../source/dataframe/reference/api/mars.dataframe.read_sql_query.rst:2
+msgid "mars.dataframe.read\\_sql\\_query"
 msgstr ""
 
-#: mars.dataframe.read_sql_table:1 of
-msgid "Read SQL database table into a DataFrame."
+#: mars.dataframe.read_sql_query:1 of
+msgid "Read SQL query into a DataFrame."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:3 of
+#: mars.dataframe.read_sql_query:3 of
 msgid ""
-"Given a table name and a SQLAlchemy connectable, returns a DataFrame. "
-"This function does not support DBAPI connections."
+"Returns a DataFrame corresponding to the result set of the query string. "
+"Optionally provide an `index_col` parameter to use one of the columns as "
+"the index, otherwise default integer index will be used."
 msgstr ""
 
-#: mars.dataframe.read_sql_table of
+#: mars.dataframe.read_sql_query of
 msgid "Parameters"
 msgstr ""
 
-#: mars.dataframe.read_sql_table:6 of
-msgid "Name of SQL table in database."
+#: mars.dataframe.read_sql_query:7 of
+msgid "SQL query to be executed."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:8 of
+#: mars.dataframe.read_sql_query:9 of
 msgid ""
-"A database URI could be provided as as str. SQLite DBAPI connection mode "
-"not supported."
+"or sqlite3 DBAPI2 connection Using SQLAlchemy makes it possible to use "
+"any DB supported by that library. If a DBAPI2 object, only sqlite3 is "
+"supported."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:11 of
-msgid ""
-"Name of SQL schema in database to query (if database flavor supports "
-"this). Uses default schema if None (default)."
-msgstr ""
-
-#: mars.dataframe.read_sql_table:14 of
+#: mars.dataframe.read_sql_query:14 of
 msgid "Column(s) to set as index(MultiIndex)."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:16 of
+#: mars.dataframe.read_sql_query:16 of
 msgid ""
 "Attempts to convert values of non-string, non-numeric objects (like "
-"decimal.Decimal) to floating point. Can result in loss of Precision."
+"decimal.Decimal) to floating point. Useful for SQL result sets."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:19 of
+#: mars.dataframe.read_sql_query:19 of
+#, python-format
+msgid ""
+"List of parameters to pass to execute method.  The syntax used to pass "
+"parameters is database driver dependent. Check your database driver "
+"documentation for which of the five syntax styles, described in PEP 249's"
+" paramstyle, is supported. Eg. for psycopg2, uses %(name)s so use "
+"params={'name' : 'value'}."
+msgstr ""
+
+#: mars.dataframe.read_sql_query:25 of
 msgid ""
 "- List of column names to parse as dates. - Dict of ``{column_name: "
 "format string}`` where format string is   strftime compatible in case of "
-"parsing string times or is one of   (D, s, ns, ms, us) in case of parsing"
-" integer timestamps. - Dict of ``{column_name: arg dict}``, where the arg"
-" dict corresponds   to the keyword arguments of "
+"parsing string times, or is one of   (D, s, ns, ms, us) in case of "
+"parsing integer timestamps. - Dict of ``{column_name: arg dict}``, where "
+"the arg dict corresponds   to the keyword arguments of "
 ":func:`pandas.to_datetime`   Especially useful with databases without "
 "native Datetime support,   such as SQLite."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:20 of
+#: mars.dataframe.read_sql_query:26 of
 msgid "List of column names to parse as dates."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:21 of
+#: mars.dataframe.read_sql_query:27 of
 msgid ""
 "Dict of ``{column_name: format string}`` where format string is strftime "
-"compatible in case of parsing string times or is one of (D, s, ns, ms, "
+"compatible in case of parsing string times, or is one of (D, s, ns, ms, "
 "us) in case of parsing integer timestamps."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:24 of
+#: mars.dataframe.read_sql_query:30 of
 msgid ""
 "Dict of ``{column_name: arg dict}``, where the arg dict corresponds to "
 "the keyword arguments of :func:`pandas.to_datetime` Especially useful "
 "with databases without native Datetime support, such as SQLite."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:29 of
-msgid "List of column names to select from SQL table."
-msgstr ""
-
-#: mars.dataframe.read_sql_table:31 of
+#: mars.dataframe.read_sql_query:35 of
 msgid ""
-"If specified, returns an iterator where `chunksize` is the number of rows"
-" to include in each chunk. Note that this argument is only kept for "
+"If specified, return an iterator where `chunksize` is the number of rows "
+"to include in each chunk. Note that this argument is only kept for "
 "compatibility. If a non-none value passed, an error will be reported."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:36 of
+#: mars.dataframe.read_sql_query:40 of
+msgid "Sort RangeIndex if csv doesn't contain index columns."
+msgstr ""
+
+#: mars.dataframe.read_sql_query:42 of
 msgid "The number of rows to fetch for inferring dtypes."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:38 of
+#: mars.dataframe.read_sql_query:44 of
 msgid "Specifies chunk size for each dimension."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:40 of
+#: mars.dataframe.read_sql_query:46 of
 msgid "Extra kwargs to pass to sqlalchemy.create_engine"
 msgstr ""
 
-#: mars.dataframe.read_sql_table:42 of
+#: mars.dataframe.read_sql_query:48 of
 msgid "Create a new RangeIndex if csv doesn't contain index columns."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:44 of
+#: mars.dataframe.read_sql_query:50 of
 msgid ""
 "Specify name of the column to split the result of the query. If "
 "specified, the range ``[low_limit, high_limit]`` will be divided into "
@@ -126,63 +132,51 @@ msgid ""
 "clauses will be used to cut the result of the query."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:51 of
+#: mars.dataframe.read_sql_query:57 of
 msgid ""
 "The number of chunks to divide the result of the query into, when "
 "``partition_col`` is specified."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:54 of
+#: mars.dataframe.read_sql_query:60 of
 msgid ""
 "The lower bound of the range of column ``partition_col``. If not "
 "specified, a query will be executed to query the minimum of the column."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:58 of
+#: mars.dataframe.read_sql_query:64 of
 msgid ""
 "The higher bound of the range of column ``partition_col``. If not "
 "specified, a query will be executed to query the maximum of the column."
 msgstr ""
 
-#: mars.dataframe.read_sql_table of
+#: mars.dataframe.read_sql_query of
 msgid "Returns"
 msgstr ""
 
-#: mars.dataframe.read_sql_table:63 of
-msgid ""
-"A SQL table is returned as two-dimensional data structure with labeled "
-"axes."
-msgstr ""
-
-#: mars.dataframe.read_sql_table of
+#: mars.dataframe.read_sql_query of
 msgid "Return type"
 msgstr ""
 
-#: mars.dataframe.read_sql_table:70 of
-msgid ":func:`read_sql_query`"
+#: mars.dataframe.read_sql_query:75 of
+msgid ":func:`read_sql_table`"
 msgstr ""
 
-#: mars.dataframe.read_sql_table:70 of
-msgid "Read SQL query into a DataFrame."
+#: mars.dataframe.read_sql_query:75 of
+msgid "Read SQL database table into a DataFrame."
 msgstr ""
 
-#: mars.dataframe.read_sql_table:72 of
+#: mars.dataframe.read_sql_query:77 of
 msgid ":func:`read_sql`"
 msgstr ""
 
-#: mars.dataframe.read_sql_table:73 of
-msgid "Read SQL query or database table into a DataFrame."
-msgstr ""
-
-#: mars.dataframe.read_sql_table:76 of
+#: mars.dataframe.read_sql_query:80 of
 msgid "Notes"
 msgstr ""
 
-#: mars.dataframe.read_sql_table:77 of
-msgid "Any datetime values with time zone information will be converted to UTC."
-msgstr ""
-
-#: mars.dataframe.read_sql_table:80 of
-msgid "Examples"
+#: mars.dataframe.read_sql_query:81 of
+msgid ""
+"Any datetime values with time zone information parsed via the "
+"`parse_dates` parameter will be converted to UTC."
 msgstr ""
 

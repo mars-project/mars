@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 19:36+0800\n"
+"POT-Creation-Date: 2020-06-15 14:41+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -475,7 +475,7 @@ msgid "Number of lines to use in the head of file, mainly for data inference."
 msgstr ""
 
 #: mars.dataframe.read_csv:254 of
-msgid "Sort RangeIndex if csv doesn't contain index columns."
+msgid "Create a new RangeIndex if csv doesn't contain index columns."
 msgstr ""
 
 #: mars.dataframe.read_csv:256 of

@@ -90,17 +90,17 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     _usecols = ListField('usecols')
     _offset = Int64Field('offset')
     _size = Int64Field('size')
-    _sort_range_index = BoolField('sort_range_index')
+    _incremental_index = BoolField('incremental_index')
 
     _storage_options = DictField('storage_options')
 
     def __init__(self, path=None, names=None, sep=None, header=None, index_col=None,
                  compression=None, usecols=None, offset=None, size=None, gpu=None,
-                 sort_range_index=None, storage_options=None, **kw):
+                 incremental_index=None, storage_options=None, **kw):
         super().__init__(_path=path, _names=names, _sep=sep, _header=header,
                          _index_col=index_col, _compression=compression,
                          _usecols=usecols, _offset=offset, _size=size,
-                         _gpu=gpu, _sort_range_index=sort_range_index,
+                         _gpu=gpu, _incremental_index=incremental_index,
                          _storage_options=storage_options, _object_type=ObjectType.dataframe, **kw)
 
     @property
@@ -140,8 +140,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         return self._size
 
     @property
-    def sort_range_index(self):
-        return self._sort_range_index
+    def incremental_index(self):
+        return self._incremental_index
 
     @property
     def storage_options(self):
@@ -201,7 +201,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 index_num += 1
                 offset += chunk_bytes
 
-        if op.sort_range_index and len(out_chunks) > 1 and \
+        if op.incremental_index and len(out_chunks) > 1 and \
                 isinstance(df.index_value._index_value, IndexValue.RangeIndex):
             out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
@@ -267,7 +267,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
 
 def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer',
              dtype=None, usecols=None, chunk_bytes='64M', gpu=None, head_bytes='100k',
-             head_lines=None, sort_range_index=False, storage_options=None, **kwargs):
+             head_lines=None, incremental_index=False, storage_options=None, **kwargs):
     r"""
     Read a comma-separated values (csv) file into DataFrame.
     Also supports optionally iterating or breaking of the file
@@ -524,8 +524,8 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
         Number of bytes to use in the head of file, mainly for data inference.
     head_lines: int, optional
         Number of lines to use in the head of file, mainly for data inference.
-    sort_range_index: bool, default False
-        Sort RangeIndex if csv doesn't contain index columns.
+    incremental_index: bool, default False
+        Create a new RangeIndex if csv doesn't contain index columns.
     storage_options: dict, optional
         Options for storage connection.
 
@@ -569,7 +569,8 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     names = list(mini_df.columns)
     op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col,
                           usecols=usecols, compression=compression, gpu=gpu,
-                          sort_range_index=sort_range_index, storage_options=storage_options, **kwargs)
+                          incremental_index=incremental_index, storage_options=storage_options,
+                          **kwargs)
     chunk_bytes = chunk_bytes or options.chunk_store_limit
     return op(index_value=index_value, columns_value=columns_value,
               dtypes=mini_df.dtypes, chunk_bytes=chunk_bytes)

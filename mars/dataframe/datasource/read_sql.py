@@ -26,6 +26,7 @@ from ...config import options
 from ...serialize import StringField, AnyField, BoolField, ListField, \
     Int64Field, Float64Field, BytesField
 from ...tensor.utils import normalize_chunk_sizes
+from ..core import IndexValue
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index, create_sa_connection, standardize_range_index
 
@@ -46,6 +47,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                                 on_deserialize=cloudpickle.loads)
     _row_memory_usage = Float64Field('row_memory_usage')
     _method = StringField('method')
+    _incremental_index = BoolField('incremental_index')
     # for chunks
     _offset = Int64Field('offset')
     _partition_col = StringField('partition_col')
@@ -57,17 +59,18 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, table_or_sql=None, selectable=None, con=None, schema=None,
                  index_col=None, coerce_float=None, parse_dates=None, columns=None,
-                 engine_kwargs=None, row_memory_usage=None, method=None, offset=None,
-                 partition_col=None, num_partitions=None, low_limit=None, high_limit=None,
-                 left_end=None, right_end=None, object_type=None, gpu=None, **kw):
+                 engine_kwargs=None, row_memory_usage=None, method=None,
+                 incremental_index=None, offset=None, partition_col=None,
+                 num_partitions=None, low_limit=None, high_limit=None, left_end=None,
+                 right_end=None, object_type=None, gpu=None, **kw):
         super().__init__(_table_or_sql=table_or_sql, selectable=selectable, _con=con,
                          _schema=schema, _index_col=index_col, _coerce_float=coerce_float,
                          _parse_dates=parse_dates, _columns=columns,
                          _engine_kwargs=engine_kwargs, _row_memory_usage=row_memory_usage,
-                         _method=method, _offset=offset, _partition_col=partition_col,
-                         _num_partitions=num_partitions, _low_limit=low_limit,
-                         _left_end=left_end, _right_end=right_end, _high_limit=high_limit,
-                         _object_type=object_type, _gpu=gpu, **kw)
+                         _method=method, _incremental_index=incremental_index, _offset=offset,
+                         _partition_col=partition_col, _num_partitions=num_partitions,
+                         _low_limit=low_limit, _left_end=left_end, _right_end=right_end,
+                         _high_limit=high_limit, _object_type=object_type, _gpu=gpu, **kw)
         if self._object_type is None:
             self._object_type = ObjectType.dataframe
 
@@ -114,6 +117,10 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
     @property
     def method(self):
         return self._method
+
+    @property
+    def incremental_index(self):
+        return self._incremental_index
 
     @property
     def offset(self):
@@ -241,10 +248,15 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
 
             test_df, shape = self._collect_info(con, selectable, sa_columns, test_rows)
 
-            if self.method == 'partition' \
-                    and not issubclass(test_df[self.partition_col].dtype.type, (np.number, np.datetime64)):
-                raise TypeError('Type of partition column should be numeric or datetime, '
-                                'now it is %r' % test_df[self.partition_col].dtype)
+            if self.method == 'partition':
+                if not self.index_col or self.partition_col not in self.index_col:
+                    part_frame = test_df
+                else:
+                    part_frame = test_df.index.to_frame()
+
+                if not issubclass(part_frame[self.partition_col].dtype.type, (np.number, np.datetime64)):
+                    raise TypeError('Type of partition column should be numeric or datetime, '
+                                    'now it is %r' % test_df[self.partition_col].dtype)
 
             if isinstance(test_df.index, pd.RangeIndex):
                 index_value = parse_index(pd.RangeIndex(shape[0] if not np.isnan(shape[0]) else -1),
@@ -320,9 +332,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                 engine.dispose()
 
         if isinstance(op._low_limit, (datetime.datetime, np.datetime64, pd.Timestamp)):
-            start_val = pd.Timestamp(op._low_limit).value
-            end_val = pd.Timestamp(op._high_limit).value
-            seps = pd.to_datetime(np.linspace(start_val, end_val, op.num_partitions + 1, endpoint=True), utc=True)
+            seps = pd.date_range(op._low_limit, op._high_limit, op.num_partitions + 1)
         else:
             seps = np.linspace(op._low_limit, op._high_limit, op.num_partitions + 1, endpoint=True)
 
@@ -348,7 +358,9 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                                            index=(i, 0))
             out_chunks.append(out_chunk)
 
-        out_chunks = standardize_range_index(out_chunks)
+        if op.incremental_index and len(out_chunks) > 1 and \
+                isinstance(df.index_value._index_value, IndexValue.RangeIndex):
+            out_chunks = standardize_range_index(out_chunks)
 
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
         new_op = op.copy()
@@ -428,8 +440,9 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
 
 def _read_sql(table_or_sql, con, schema=None, index_col=None, coerce_float=True,
               params=None, parse_dates=None, columns=None, chunksize=None,
-              test_rows=None, chunk_size=None, engine_kwargs=None, partition_col=None,
-              num_partitions=None, low_limit=None, high_limit=None):
+              incremental_index=False, test_rows=None, chunk_size=None,
+              engine_kwargs=None, partition_col=None, num_partitions=None,
+              low_limit=None, high_limit=None):
     if chunksize is not None:
         raise NotImplementedError('read_sql_query with chunksize not supported')
     method = 'offset' if partition_col is None else 'partition'
@@ -437,15 +450,17 @@ def _read_sql(table_or_sql, con, schema=None, index_col=None, coerce_float=True,
     op = DataFrameReadSQL(table_or_sql=table_or_sql, con=con, schema=schema,
                           index_col=index_col, coerce_float=coerce_float,
                           params=params, parse_dates=parse_dates, columns=columns,
-                          engine_kwargs=engine_kwargs, method=method,
-                          partition_col=partition_col, num_partitions=num_partitions,
-                          low_limit=low_limit, high_limit=high_limit)
+                          engine_kwargs=engine_kwargs, incremental_index=incremental_index,
+                          method=method, partition_col=partition_col,
+                          num_partitions=num_partitions, low_limit=low_limit,
+                          high_limit=high_limit)
     return op(test_rows, chunk_size)
 
 
 def read_sql(sql, con, index_col=None, coerce_float=True, params=None, parse_dates=None,
              columns=None, chunksize=None, test_rows=5, chunk_size=None, engine_kwargs=None,
-             partition_col=None, num_partitions=None, low_limit=None, high_limit=None):
+             incremental_index=None, partition_col=None, num_partitions=None, low_limit=None,
+             high_limit=None):
     """
     Read SQL query or database table into a DataFrame.
 
@@ -491,8 +506,37 @@ def read_sql(sql, con, index_col=None, coerce_float=True, params=None, parse_dat
         List of column names to select from SQL table (only used when reading
         a table).
     chunksize : int, default None
-        If specified, return an iterator where `chunksize` is the
-        number of rows to include in each chunk.
+        If specified, return an iterator where `chunksize` is the number of rows
+        to include in each chunk. Note that this argument is only kept for
+        compatibility. If a non-none value passed, an error will be reported.
+    incremental_index: bool, default False
+        Sort RangeIndex if csv doesn't contain index columns.
+    test_rows: int, default 5
+        The number of rows to fetch for inferring dtypes.
+    chunk_size: : int or tuple of ints, optional
+        Specifies chunk size for each dimension.
+    engine_kwargs: dict, default None
+        Extra kwargs to pass to sqlalchemy.create_engine
+    incremental_index: bool, default False
+        Create a new RangeIndex if csv doesn't contain index columns.
+    partition_col : str, default None
+        Specify name of the column to split the result of the query. If
+        specified, the range ``[low_limit, high_limit]`` will be divided
+        into ``n_partitions`` chunks with equal lengths. We do not
+        guarantee the sizes of chunks be equal. When the value is None,
+        ``OFFSET`` and ``LIMIT`` clauses will be used to cut the result
+        of the query.
+    num_partitions : int, default None
+        The number of chunks to divide the result of the query into,
+        when ``partition_col`` is specified.
+    low_limit : default None
+        The lower bound of the range of column ``partition_col``. If not
+        specified, a query will be executed to query the minimum of
+        the column.
+    high_limit : default None
+        The higher bound of the range of column ``partition_col``. If not
+        specified, a query will be executed to query the maximum of
+        the column.
 
     Returns
     -------
@@ -505,15 +549,17 @@ def read_sql(sql, con, index_col=None, coerce_float=True, params=None, parse_dat
     """
     return _read_sql(table_or_sql=sql, con=con, index_col=index_col, coerce_float=coerce_float,
                      params=params, parse_dates=parse_dates, columns=columns,
-                     engine_kwargs=engine_kwargs, chunksize=chunksize, test_rows=test_rows,
-                     chunk_size=chunk_size, partition_col=partition_col,
-                     num_partitions=num_partitions, low_limit=low_limit, high_limit=high_limit)
+                     engine_kwargs=engine_kwargs, incremental_index=incremental_index,
+                     chunksize=chunksize, test_rows=test_rows, chunk_size=chunk_size,
+                     partition_col=partition_col, num_partitions=num_partitions,
+                     low_limit=low_limit, high_limit=high_limit)
 
 
 def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=True,
                    parse_dates=None, columns=None, chunksize=None, test_rows=5,
-                   chunk_size=None, engine_kwargs=None, partition_col=None,
-                   num_partitions=None, low_limit=None, high_limit=None):
+                   chunk_size=None, engine_kwargs=None, incremental_index=False,
+                   partition_col=None, num_partitions=None, low_limit=None,
+                   high_limit=None):
     """
     Read SQL database table into a DataFrame.
 
@@ -548,13 +594,35 @@ def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=Tr
         List of column names to select from SQL table.
     chunksize : int, default None
         If specified, returns an iterator where `chunksize` is the number of
-        rows to include in each chunk.
+        rows to include in each chunk. Note that this argument is only kept
+        for compatibility. If a non-none value passed, an error will be
+        reported.
     test_rows: int, default 5
         The number of rows to fetch for inferring dtypes.
     chunk_size: : int or tuple of ints, optional
         Specifies chunk size for each dimension.
     engine_kwargs: dict, default None
         Extra kwargs to pass to sqlalchemy.create_engine
+    incremental_index: bool, default False
+        Create a new RangeIndex if csv doesn't contain index columns.
+    partition_col : str, default None
+        Specify name of the column to split the result of the query. If
+        specified, the range ``[low_limit, high_limit]`` will be divided
+        into ``n_partitions`` chunks with equal lengths. We do not
+        guarantee the sizes of chunks be equal. When the value is None,
+        ``OFFSET`` and ``LIMIT`` clauses will be used to cut the result
+        of the query.
+    num_partitions : int, default None
+        The number of chunks to divide the result of the query into,
+        when ``partition_col`` is specified.
+    low_limit : default None
+        The lower bound of the range of column ``partition_col``. If not
+        specified, a query will be executed to query the minimum of
+        the column.
+    high_limit : default None
+        The higher bound of the range of column ``partition_col``. If not
+        specified, a query will be executed to query the maximum of
+        the column.
 
     Returns
     -------
@@ -578,14 +646,16 @@ def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=Tr
     """
     return _read_sql(table_or_sql=table_name, con=con, schema=schema, index_col=index_col,
                      coerce_float=coerce_float, parse_dates=parse_dates, columns=columns,
-                     engine_kwargs=engine_kwargs, chunksize=chunksize, test_rows=test_rows,
-                     chunk_size=chunk_size, partition_col=partition_col,
-                     num_partitions=num_partitions, low_limit=low_limit, high_limit=high_limit)
+                     engine_kwargs=engine_kwargs, incremental_index=incremental_index,
+                     chunksize=chunksize, test_rows=test_rows, chunk_size=chunk_size,
+                     partition_col=partition_col, num_partitions=num_partitions,
+                     low_limit=low_limit, high_limit=high_limit)
 
 
 def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, parse_dates=None,
                    chunksize=None, test_rows=5, chunk_size=None, engine_kwargs=None,
-                   partition_col=None, num_partitions=None, low_limit=None, high_limit=None):
+                   incremental_index=None, partition_col=None, num_partitions=None,
+                   low_limit=None, high_limit=None):
     """
     Read SQL query into a DataFrame.
 
@@ -624,7 +694,37 @@ def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, par
           such as SQLite.
     chunksize : int, default None
         If specified, return an iterator where `chunksize` is the number of
-        rows to include in each chunk.
+        rows to include in each chunk. Note that this argument is only kept
+        for compatibility. If a non-none value passed, an error will be
+        reported.
+    incremental_index: bool, default False
+        Sort RangeIndex if csv doesn't contain index columns.
+    test_rows: int, default 5
+        The number of rows to fetch for inferring dtypes.
+    chunk_size: : int or tuple of ints, optional
+        Specifies chunk size for each dimension.
+    engine_kwargs: dict, default None
+        Extra kwargs to pass to sqlalchemy.create_engine
+    incremental_index: bool, default False
+        Create a new RangeIndex if csv doesn't contain index columns.
+    partition_col : str, default None
+        Specify name of the column to split the result of the query. If
+        specified, the range ``[low_limit, high_limit]`` will be divided
+        into ``n_partitions`` chunks with equal lengths. We do not
+        guarantee the sizes of chunks be equal. When the value is None,
+        ``OFFSET`` and ``LIMIT`` clauses will be used to cut the result
+        of the query.
+    num_partitions : int, default None
+        The number of chunks to divide the result of the query into,
+        when ``partition_col`` is specified.
+    low_limit : default None
+        The lower bound of the range of column ``partition_col``. If not
+        specified, a query will be executed to query the minimum of
+        the column.
+    high_limit : default None
+        The higher bound of the range of column ``partition_col``. If not
+        specified, a query will be executed to query the maximum of
+        the column.
 
     Returns
     -------
@@ -642,6 +742,6 @@ def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, par
     """
     return _read_sql(table_or_sql=sql, con=con, index_col=index_col, coerce_float=coerce_float,
                      params=params, parse_dates=parse_dates, engine_kwargs=engine_kwargs,
-                     chunksize=chunksize, test_rows=test_rows, chunk_size=chunk_size,
-                     partition_col=partition_col, num_partitions=num_partitions,
+                     incremental_index=incremental_index, chunksize=chunksize, test_rows=test_rows,
+                     chunk_size=chunk_size, partition_col=partition_col, num_partitions=num_partitions,
                      low_limit=low_limit, high_limit=high_limit)

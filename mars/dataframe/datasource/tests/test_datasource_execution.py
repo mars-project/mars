@@ -447,15 +447,15 @@ class Test(TestBase):
             df.to_csv(file_path, index=False)
 
             pdf = pd.read_csv(file_path)
-            mdf = sess.run(md.read_csv(file_path, sort_range_index=True))
+            mdf = sess.run(md.read_csv(file_path, incremental_index=True))
             pd.testing.assert_frame_equal(pdf, mdf)
 
-            mdf2 = sess.run(md.read_csv(file_path, sort_range_index=True, chunk_bytes=10))
+            mdf2 = sess.run(md.read_csv(file_path, incremental_index=True, chunk_bytes=10))
             pd.testing.assert_frame_equal(pdf, mdf2)
         finally:
             shutil.rmtree(tempdir)
 
-    def testReadSQLTableExecution(self):
+    def testReadSQLExecution(self):
         import sqlalchemy as sa
 
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
@@ -478,30 +478,32 @@ class Test(TestBase):
 
             # test read with sql string and offset method
             r = md.read_sql_query('select * from test where c > 0.5', uri,
-                                  parse_dates=['d'], chunk_size=4)
+                                  parse_dates=['d'], chunk_size=4,
+                                  incremental_index=True)
             result = self.executor.execute_dataframe(r, concat=True)[0]
             pd.testing.assert_frame_equal(result, test_df[test_df.c > 0.5].reset_index(drop=True))
 
             # test read with sql string and partition method with integer cols
             r = md.read_sql('select * from test where b > \'s5\'', uri,
-                            parse_dates=['d'], partition_col='a', num_partitions=3)
+                            parse_dates=['d'], partition_col='a', num_partitions=3,
+                            incremental_index=True)
             result = self.executor.execute_dataframe(r, concat=True)[0]
             pd.testing.assert_frame_equal(result, test_df[test_df.b > 's5'].reset_index(drop=True))
 
             # test read with sql string and partition method with datetime cols
             r = md.read_sql_query('select * from test where b > \'s5\'', uri,
                                   parse_dates={'d': '%Y-%m-%d %H:%M:%S'},
-                                  partition_col='d', num_partitions=3)
+                                  partition_col='d', num_partitions=3,
+                                  incremental_index=True)
             result = self.executor.execute_dataframe(r, concat=True)[0]
-            pd.testing.assert_frame_equal(result.astype(test_df.dtypes),
-                                          test_df[test_df.b > 's5'].reset_index(drop=True))
+            pd.testing.assert_frame_equal(result, test_df[test_df.b > 's5'].reset_index(drop=True))
 
             # test read with sql string and partition method with datetime cols
             r = md.read_sql_query('select * from test where b > \'s5\'', uri,
-                                  parse_dates=['d'], partition_col='d', num_partitions=3)
+                                  parse_dates=['d'], partition_col='d', num_partitions=3,
+                                  index_col='d')
             result = self.executor.execute_dataframe(r, concat=True)[0]
-            pd.testing.assert_frame_equal(result.astype(test_df.dtypes),
-                                          test_df[test_df.b > 's5'].reset_index(drop=True))
+            pd.testing.assert_frame_equal(result, test_df[test_df.b > 's5'].set_index('d'))
 
             engine = sa.create_engine(uri)
             m = sa.MetaData()
