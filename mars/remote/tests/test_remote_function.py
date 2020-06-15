@@ -114,3 +114,21 @@ class Test(TestBase):
 
         result = self.executor.execute_tileables([s])[0]
         self.assertEqual(result, 6)
+
+    def testInputTileable(self):
+        def f(t, x):
+            return (t * x).sum().to_numpy()
+
+        rs = np.random.RandomState(0)
+        raw = rs.rand(5, 4)
+
+        t1 = mt.tensor(raw, chunk_size=3)
+        t2 = t1.sum(axis=0)
+        s = spawn(f, args=(t2, 3))
+
+        sess = new_session()
+        sess._sess._executor = ExecutorForTest('numpy', storage=sess._context)
+
+        result = s.execute(session=sess).fetch(session=sess)
+        expected = (raw.sum(axis=0) * 3).sum()
+        self.assertAlmostEqual(result, expected)

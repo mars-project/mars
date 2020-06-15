@@ -611,6 +611,14 @@ class Executor(object):
         return self._chunk_result
 
     @property
+    def storage(self):
+        return self._chunk_result
+
+    @storage.setter
+    def storage(self, new_storage):
+        self._chunk_result = new_storage
+
+    @property
     def mock_max_memory(self):
         return self._mock_max_memory
 

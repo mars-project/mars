@@ -53,6 +53,12 @@ class LocalSession(object):
     def endpoint(self):
         return self._endpoint
 
+    @endpoint.setter
+    def endpoint(self, endpoint):
+        if endpoint is not None:
+            raise ValueError('Local session cannot set endpoint')
+        self._endpoint = endpoint
+
     @property
     def session_id(self):
         return self._session_id
@@ -65,15 +71,14 @@ class LocalSession(object):
     def context(self):
         return self._context
 
+    @context.setter
+    def context(self, new_context):
+        self._context = new_context
+        self._executor.storage = new_context
+
     @property
     def executed_tileables(self):
         return self._executor.stored_tileables.keys()
-
-    @endpoint.setter
-    def endpoint(self, endpoint):
-        if endpoint is not None:
-            raise ValueError('Local session cannot set endpoint')
-        self._endpoint = endpoint
 
     def run(self, *tileables, **kw):
         with self.context:

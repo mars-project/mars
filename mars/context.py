@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import sys
 import threading
 import random
@@ -197,7 +198,8 @@ class LocalContext(ContextBase, dict):
         from .session import new_session
 
         sess = new_session()
-        sess._sess = self._local_session
+        sess._sess = copy.copy(self._local_session)
+        sess._sess.context = self
         return sess
 
     def set_ncores(self, ncores):
