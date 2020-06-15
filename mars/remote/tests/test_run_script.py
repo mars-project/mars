@@ -14,8 +14,7 @@
 
 from io import BytesIO
 
-from mars.tests.core import TestBase, ExecutorForTest
-from mars.session import new_session
+from mars.tests.core import TestBase
 from mars.remote import run_script
 
 
@@ -29,12 +28,10 @@ class Test(TestBase):
     def testLocalRunPyTorchScript(self):
         s = BytesIO(script)
         self.assertEqual(run_script(
-            s, n_workers=2, run_kwargs={'n_parallel': 2}
+            s, n_workers=2, run_kwargs={'n_parallel': 2}, mode='exec'
         )['status'], 'ok')
 
         s = BytesIO(script)
         self.assertEqual(run_script(
-            s, n_workers=2, run_kwargs={'n_parallel': 2}, mode='exec'
+            s, n_workers=2, run_kwargs={'n_parallel': 2}
         )['status'], 'ok')
-
-

@@ -15,9 +15,6 @@
 import itertools
 import os
 import json
-import tempfile
-import sys
-import subprocess
 from collections import defaultdict
 
 import numpy as np
@@ -25,7 +22,7 @@ import numpy as np
 from ....context import get_context, RunningMode
 from .... import opcodes as OperandDef
 from ....remote.run_script import RunScript
-from ....serialize import BytesField, Int32Field, DictField, StringField, ListField
+from ....serialize import BytesField, Int32Field, DictField, StringField
 from ....utils import to_binary
 from ..utils import pick_workers
 

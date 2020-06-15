@@ -91,7 +91,7 @@ class RunScript(LearnMergeDictOperand):
         try:
             # exec code in a new process
             process = subprocess.Popen([sys.executable, filename] + op.command_args,
-                                       env=envs)
+                                       env=new_envs)
             process.wait()
             if process.returncode != 0:
                 raise RuntimeError('Run script failed')
