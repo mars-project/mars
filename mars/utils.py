@@ -396,6 +396,7 @@ def kernel_mode(func):
 
 
 def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
+    from .operands import Fetch
     from .tiles import TileableGraphBuilder
 
     with build_mode():
@@ -419,6 +420,11 @@ def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
                     p = o.params.copy()
                     p.update(o.extra_params)
                     p['_key'] = o.key
+                    if isinstance(o.op, Fetch):
+                        # chunks may be generated in the remote functions,
+                        # thus bring chunks and nsplits for serialization
+                        p['chunks'] = o.chunks
+                        p['nsplits'] = o.nsplits
                     params.append(p)
                 copies = copy_op.new_tileables([replace_with_fetch_or_copy(inp) for inp in n.inputs],
                                                kws=params, output_limit=len(params))

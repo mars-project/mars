@@ -17,13 +17,43 @@ from functools import partial
 
 from .. import opcodes
 from ..context import ContextBase
-from ..core import Entity, Base
+from ..core import Entity, Base, ChunkData
 from ..serialize import FunctionField, ListField, DictField, BoolField, Int32Field
 from ..operands import ObjectOperand
 from ..tensor.core import TENSOR_TYPE
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+from ..utils import build_fetch_tileable
 from .operands import RemoteOperandMixin
 from .utils import replace_inputs, find_objects
+
+
+class _TileablePlaceholder:
+    def __init__(self, tileable):
+        self.tileable = build_fetch_tileable(tileable)
+
+    def __getstate__(self):
+        fetch_op = self.tileable.op
+        fetch_tileable = self.tileable
+        chunk_infos = [(type(c.op), c.key, c.id, c.params) for c in fetch_tileable.chunks]
+        return type(fetch_op), fetch_op.id, fetch_tileable.params, \
+               fetch_tileable.nsplits, chunk_infos
+
+    def __setstate__(self, state):
+        fetch_op_type, fetch_op_id, params, nsplits, chunk_infos = state
+        params['nsplits'] = nsplits
+        chunks = []
+        for ci in chunk_infos:
+            chunk = ci[0]().new_chunk(None, _key=ci[1], _id=ci[2], kws=[ci[3]])
+            chunks.append(chunk)
+        params['chunks'] = chunks
+        self.tileable = fetch_op_type(_id=fetch_op_id).new_tileable(None, kws=[params])
+
+    def __mars_tokenize__(self):
+        return self.__getstate__()
+
+    def __call__(self):  # pragma: no cover
+        # make itself serializable
+        pass
 
 
 class RemoteFunction(ObjectOperand, RemoteOperandMixin):
@@ -81,13 +111,17 @@ class RemoteFunction(ObjectOperand, RemoteOperandMixin):
         raw_inputs = getattr(self, '_inputs', None)
         super()._set_inputs(inputs)
 
-        function_inputs = iter(inp for inp in self._inputs
-                               if isinstance(inp.op, RemoteFunction))
+        function_inputs = iter(inp for inp in self._inputs)
         mapping = {inp: new_inp for inp, new_inp in zip(inputs, self._inputs)}
         if raw_inputs is not None:
             for raw_inp in raw_inputs:
-                if self._no_prepare(raw_inp):  # pragma: no cover
-                    raise NotImplementedError
+                if self._no_prepare(raw_inp):
+                    if not isinstance(self._inputs[0], ChunkData):
+                        # not in tile, set_inputs from tileable
+                        mapping[raw_inp] = next(function_inputs)
+                    else:
+                        # in tile, set_inputs from chunk
+                        mapping[raw_inp] = _TileablePlaceholder(raw_inp)
                 else:
                     mapping[raw_inp] = next(function_inputs)
         self._function_args = replace_inputs(self._function_args, mapping)
@@ -96,9 +130,6 @@ class RemoteFunction(ObjectOperand, RemoteOperandMixin):
     def __call__(self):
         find_inputs = partial(find_objects, types=(Entity, Base))
         inputs = find_inputs(self._function_args) + find_inputs(self._function_kwargs)
-        if any(self._no_prepare(inp) for inp in inputs):  # pragma: no cover
-            raise NotImplementedError('For now DataFrame, Tensor etc '
-                                      'cannot be passed to arguments')
         if self.n_output is None:
             return self.new_tileable(inputs)
         else:
@@ -150,12 +181,16 @@ class RemoteFunction(ObjectOperand, RemoteOperandMixin):
         session = ctx.get_current_session()
         prev_default_session = Session.default
 
-        inputs_to_data = {inp: ctx[inp.key] for inp, prepare_inp
-                          in zip(op.inputs, op.prepare_inputs) if prepare_inp}
+        mapping = {inp: ctx[inp.key] for inp, prepare_inp
+                   in zip(op.inputs, op.prepare_inputs) if prepare_inp}
+        for to_search in [op.function_args, op.function_kwargs]:
+            tileable_placeholders = find_objects(to_search, _TileablePlaceholder)
+            for ph in tileable_placeholders:
+                mapping[ph] = ph.tileable
 
         function = op.function
-        function_args = replace_inputs(op.function_args, inputs_to_data)
-        function_kwargs = replace_inputs(op.function_kwargs, inputs_to_data)
+        function_args = replace_inputs(op.function_args, mapping)
+        function_kwargs = replace_inputs(op.function_kwargs, mapping)
 
         # set session created from context as default one
         session.as_default()
