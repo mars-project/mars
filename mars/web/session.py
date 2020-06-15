@@ -255,7 +255,7 @@ class Session(object):
         if resp.status_code >= 400:
             raise ValueError('Failed to get tileable key from server. Code: %d, Reason: %s, Content:\n%s' %
                              (resp.status_code, resp.reason, resp.text))
-        tileable_key = json.loads(resp.content)['tileable_key']
+        tileable_key = json.loads(resp.text)['tileable_key']
         nsplits = self._get_tileable_nsplits(tileable_key)
         shape = tuple(sum(s) for s in nsplits)
         if rtype == 'tensor':

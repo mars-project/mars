@@ -28,7 +28,7 @@ from .context import LocalContext
 from .tiles import get_tiled
 from .executor import Executor
 from .config import options
-from .utils import classproperty
+from .utils import classproperty, build_fetch_tileable
 try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
@@ -154,6 +154,12 @@ class LocalSession(object):
         self._executor.execute_tileables([sealed_tensor])
         return sealed_tensor
 
+    def build_named_tileable(self, named, rtype=None):
+        if named not in self._executor._tileable_names:
+            raise ValueError("Name {} doesn't exist.".format(named))
+        tileable = self._executor._tileable_names[named]
+        return build_fetch_tileable(tileable)
+
     def decref(self, *keys):
         self._executor.decref(*keys)
 
@@ -268,6 +274,8 @@ class ClusterSession(object):
         fetch = kw.pop('fetch', True)
         compose = kw.pop('compose', True)
         name = kw.pop('name', None)
+        if not isinstance(name, (tuple, list)):
+            name = [name]
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 

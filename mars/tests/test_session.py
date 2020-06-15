@@ -538,3 +538,22 @@ class Test(unittest.TestCase):
             i += 1
 
         self.assertEqual(i, len(raw_data))
+
+    def testNamed(self):
+        rs = np.random.RandomState(0)
+        raw = rs.rand(10, 10)
+
+        sess = Session.default_or_local()
+        name = 't_name'
+
+        t = mt.tensor(raw, chunk_size=3)
+        r = t.execute(name=name, session=sess)
+        np.testing.assert_array_equal(r, raw)
+
+        t2 = mt.tensor(named=name, session=sess)
+        r2 = (t2 + 1).execute(session=sess)
+
+        np.testing.assert_array_equal(r2, raw + 1)
+
+        with self.assertRaises(ValueError):
+            mt.tensor(named='fake_name', session=sess)

@@ -599,6 +599,7 @@ class Executor(object):
         # dict structure: {tileable_key -> chunk_keys, tileable_ids}
         # dict value is a tuple object which records chunk keys and tileable id
         self.stored_tileables = dict()
+        self._tileable_names = dict()
         # executed key to ref counts
         self.key_to_ref_counts = defaultdict(lambda: 0)
         # synchronous provider
@@ -757,7 +758,7 @@ class Executor(object):
     @kernel_mode
     @enter_build_mode
     def execute_tileables(self, tileables, fetch=True, n_parallel=None, n_thread=None,
-                          print_progress=False, mock=False, compose=True):
+                          print_progress=False, mock=False, compose=True, name=None):
         # shallow copy chunk_result, prevent from any chunk key decref
         chunk_result = self._chunk_result.copy()
         tileables = [tileable.data if hasattr(tileable, 'data') else tileable
@@ -874,6 +875,12 @@ class Executor(object):
                         inputs_selector=lambda inps: [inp for inp in inps
                                                       if inp in to_run_tileables_set])
                     tileable_graph = tileable_graph_builder.build(to_run_tileables_set)
+
+            if name is not None:
+                if not isinstance(name, (list, tuple)):
+                    name = [name]
+                tiled_tileables = [get_tiled(t, mapping=tileable_optimized) for t in tileables]
+                self._tileable_names.update(zip(name, tiled_tileables))
 
             for tileable in tileables:
                 if tileable.key in self.stored_tileables:

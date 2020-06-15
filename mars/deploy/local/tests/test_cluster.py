@@ -1061,6 +1061,21 @@ class Test(unittest.TestCase):
             expected = (raw.sum(axis=0) * 3).sum()
             self.assertAlmostEqual(r, expected)
 
+            # test named tileable
+            session3 = new_session(cluster.endpoint)
+            t = mt.ones((10, 10), chunk_size=3)
+            session3.run(t, name='t_name')
+
+            def f3():
+                import mars.tensor as mt
+
+                s = mt.tensor(named='t_name')
+                return (s + 1).to_numpy()
+
+            d = mr.spawn(f3, retry_when_fail=False)
+            r = session3.run(d, timeout=_exec_timeout)
+            np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
+
     def testKNNInLocalCluster(self, *_):
         from mars.learn.neighbors import NearestNeighbors
         from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
