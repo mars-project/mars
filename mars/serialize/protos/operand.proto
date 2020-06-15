@@ -485,6 +485,7 @@ message OperandDef {
 
         // Remote Functions and class
         REMOTE_FUNCATION = 5001;
+        RUN_SCRIPT = 5002;
 
         // vineyard
         TENSOR_FROM_VINEYARD_CHUNK = 4001;

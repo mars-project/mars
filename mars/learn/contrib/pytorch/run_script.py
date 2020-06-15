@@ -12,54 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
 import os
-import subprocess
-import sys
 
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import BytesField, Int32Field, ListField, StringField
+from ....serialize import Int32Field, StringField
 from ....context import get_context, RunningMode
 from ....utils import to_binary
-from ...operands import LearnMergeDictOperand, OutputType
+from ....remote.run_script import RunScript
+from ...operands import OutputType
 from ..utils import pick_workers
 
 
-class RunPyTorch(LearnMergeDictOperand):
+class RunPyTorch(RunScript):
     _op_type_ = OperandDef.RUN_PYTORCH
 
-    _code = BytesField('code')
-    _command_args = ListField('command_args')
-    _world_size = Int32Field('world_size')
     # used for chunk op
     _master_port = Int32Field('master_port')
     _master_addr = StringField('master_addr')
     _rank = Int32Field('rank')
     _init_method = StringField('init_method')
 
-    def __init__(self, code=None, command_args=None, world_size=None,
-                 master_port=None, master_addr=None, rank=None, init_method=None,
-                 merge=None, output_types=None, gpu=None, **kw):
-        super().__init__(_code=code, _command_args=command_args, _world_size=world_size,
-                         _master_port=master_port, _master_addr=master_addr, _rank=rank,
-                         _init_method=init_method, _merge=merge, _output_types=output_types,
-                         _gpu=gpu, **kw)
+    def __init__(self, master_port=None, master_addr=None, init_method=None,
+                 gpu=None, **kw):
+        super().__init__(mode='spawn', _master_port=master_port, _master_addr=master_addr,
+                         _init_method=init_method, _gpu=gpu, **kw)
         if self.output_types is None:
             self.output_types = [OutputType.object]
-
-    @property
-    def code(self):
-        return self._code
-
-    @property
-    def command_args(self):
-        return self._command_args or []
-
-    @property
-    def world_size(self):
-        return self._world_size
 
     @property
     def master_port(self):
@@ -68,10 +48,6 @@ class RunPyTorch(LearnMergeDictOperand):
     @property
     def master_addr(self):
         return self._master_addr
-
-    @property
-    def rank(self):
-        return self._rank
 
     @property
     def init_method(self):
@@ -106,44 +82,19 @@ class RunPyTorch(LearnMergeDictOperand):
                                     nsplits=(tuple(np.nan for _ in range(len(out_chunks))),))
 
     @classmethod
-    def execute(cls, ctx, op):
-        if op.merge:
-            return super().execute(ctx, op)
+    def _build_envs(cls, ctx, op):
+        envs = super()._build_envs(ctx, op)
+        if op.master_port is not None:
+            envs['MASTER_PORT'] = str(op.master_port)
+        if op.master_addr is not None:
+            envs['MASTER_ADDR'] = str(op.master_addr)
+        return envs
 
+    @classmethod
+    def execute(cls, ctx, op):
         assert ctx.get_local_address() == op.expect_worker
 
-        # write source code into a temp file
-        fd, filename = tempfile.mkstemp('.py')
-        with os.fdopen(fd, 'wb') as f:
-            f.write(op.code)
-
-        try:
-            env = os.environ.copy()
-            if op.master_port is not None:
-                env['MASTER_PORT'] = str(op.master_port)
-            if op.master_addr is not None:
-                env['MASTER_ADDR'] = str(op.master_addr)
-            env['RANK'] = str(op.rank)
-            env['WORLD_SIZE'] = str(op.world_size)
-
-            # set mars envs
-            if ctx.running_mode != RunningMode.local:
-                env['MARS_SCHEDULER_ADDRESS'] = str(ctx._scheduler_address)
-                env['MARS_SESSION_ID'] = str(ctx._session_id)
-
-            # exec pytorch code in a new process
-            process = subprocess.Popen(
-                [sys.executable, filename] + op.command_args, env=env)
-            process.wait()
-            if process.returncode != 0:
-                raise RuntimeError('Run PyTorch script failed')
-
-            if op.rank == 0:
-                ctx[op.outputs[0].key] = {'status': 'ok'}
-            else:
-                ctx[op.outputs[0].key] = {}
-        finally:
-            os.remove(filename)
+        super().execute(ctx, op)
 
 
 def run_pytorch_script(script, n_workers, gpu=None, command_argv=None,

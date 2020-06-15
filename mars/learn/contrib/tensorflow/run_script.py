@@ -24,38 +24,29 @@ import numpy as np
 
 from ....context import get_context, RunningMode
 from .... import opcodes as OperandDef
+from ....remote.run_script import RunScript
 from ....serialize import BytesField, Int32Field, DictField, StringField, ListField
 from ....utils import to_binary
-from ...operands import LearnMergeDictOperand, OutputType
 from ..utils import pick_workers
 
 
-class RunTensorFlow(LearnMergeDictOperand):
+class RunTensorFlow(RunScript):
     _op_type_ = OperandDef.RUN_TENSORFLOW
 
     _code = BytesField('code')
     _n_workers = Int32Field('n_workers')
     _n_ps = Int32Field('n_ps')
-    _command_args = ListField('command_args')
     _tf_config = DictField('tf_config')
     _port = Int32Field('port')
     # used for chunk op
     _tf_task_type = StringField('tf_task_type')
     _tf_task_index = Int32Field('tf_task_index')
 
-    def __init__(self, code=None, n_workers=None, n_ps=None, tf_config=None,
-                 port=None, command_args=None, tf_task_type=None, tf_task_index=None,
-                 merge=None, output_types=None, gpu=None, **kw):
-        super().__init__(_code=code, _n_workers=n_workers, _n_ps=n_ps, _tf_config=tf_config,
-                         _command_args=command_args, _port=port, _tf_task_type=tf_task_type,
-                         _tf_task_index=tf_task_index, _merge=merge, _output_types=output_types,
-                         _gpu=gpu, **kw)
-        if self.output_types is None:
-            self.output_types = [OutputType.object]
-
-    @property
-    def code(self):
-        return self._code
+    def __init__(self, n_workers=None, n_ps=None, tf_config=None, port=None,
+                 tf_task_type=None, tf_task_index=None, gpu=None, **kw):
+        super().__init__(mode='spawn', _n_workers=n_workers, _n_ps=n_ps,
+                         _tf_config=tf_config, _port=port, _tf_task_type=tf_task_type,
+                         _tf_task_index=tf_task_index, _gpu=gpu, **kw)
 
     @property
     def n_workers(self):
@@ -76,10 +67,6 @@ class RunTensorFlow(LearnMergeDictOperand):
     @property
     def port(self):
         return self._port
-
-    @property
-    def command_args(self):
-        return self._command_args or []
 
     @property
     def tf_task_type(self):
@@ -141,31 +128,24 @@ class RunTensorFlow(LearnMergeDictOperand):
                                     nsplits=(tuple(np.nan for _ in range(len(out_chunks))),))
 
     @classmethod
+    def _build_envs(cls, ctx, op):
+        envs = super()._build_envs(ctx, op)
+        envs.update({'TF_CONFIG': json.dumps(op.tf_config)})
+        return envs
+
+    @classmethod
     def execute(cls, ctx, op):
         if op.merge:
             return super().execute(ctx, op)
 
         assert ctx.get_local_address() == op.expect_worker
 
-        # write source code into a temp file
-        fd, filename = tempfile.mkstemp('.py')
-        with os.fdopen(fd, 'wb') as f:
-            f.write(op.code)
+        super().execute(ctx, op)
 
-        try:
-            # exec tf code in a new process
-            process = subprocess.Popen([sys.executable, filename] + op.command_args,
-                                       env={'TF_CONFIG': json.dumps(op.tf_config)})
-            process.wait()
-            if process.returncode != 0:
-                raise RuntimeError('Run TensorFlow script failed')
-
-            if op.tf_task_type == 'worker' and op.tf_task_index == 0:
-                ctx[op.outputs[0].key] = {'status': 'ok'}
-            else:
-                ctx[op.outputs[0].key] = {}
-        finally:
-            os.remove(filename)
+        if op.tf_task_type == 'worker' and op.tf_task_index == 0:
+            ctx[op.outputs[0].key] = {'status': 'ok'}
+        else:
+            ctx[op.outputs[0].key] = {}
 
 
 def run_tensorflow_script(script, n_workers, n_ps=0, gpu=None, command_argv=None,
