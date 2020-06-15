@@ -33,7 +33,7 @@ from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, \
     series_from_tensor, dataframe_from_1d_tileables
 from mars.dataframe.datasource.from_records import from_records
 from mars.dataframe.datasource.read_csv import read_csv, DataFrameReadCSV
-from mars.dataframe.datasource.read_sql_table import read_sql_table, DataFrameReadSQLTable
+from mars.dataframe.datasource.read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
 from mars.dataframe.datasource.date_range import date_range
 
 
@@ -525,7 +525,7 @@ class Test(TestBase):
         finally:
             shutil.rmtree(tempdir)
 
-    def testReadSQLTable(self):
+    def testReadSQL(self):
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                                 'b': ['s%d' % i for i in range(10)]})
 
@@ -544,12 +544,15 @@ class Test(TestBase):
             df = df.tiles()
             self.assertEqual(df.nsplits, ((4, 4, 2), (2,)))
             for c in df.chunks:
-                self.assertIsInstance(c.op, DataFrameReadSQLTable)
+                self.assertIsInstance(c.op, DataFrameReadSQL)
                 self.assertIsNotNone(c.op.offset)
 
+            with self.assertRaises(NotImplementedError):
+                read_sql_table(table_name, uri, chunksize=4, index_col=b'a')
             with self.assertRaises(TypeError):
-                read_sql_table(table_name, uri, chunk_size=4,
-                               index_col=b'a')
+                read_sql_table(table_name, uri, chunk_size=4, index_col=b'a')
+            with self.assertRaises(TypeError):
+                read_sql_query('select * from ' + table_name, uri, partition_col='b')
 
     def testDateRange(self):
         with self.assertRaises(TypeError):

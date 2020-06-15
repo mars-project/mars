@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.4.0rc1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 09:59+0800\n"
+"POT-Creation-Date: 2020-06-15 14:41+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -39,13 +39,33 @@ msgstr ""
 msgid "SQL"
 msgstr ""
 
-#: ../../source/dataframe/reference/io.rst:20:<autosummary>:1
+#: ../../source/dataframe/reference/io.rst:22:<autosummary>:1
+msgid ""
+":obj:`read_sql <mars.dataframe.read_sql>`\\ \\(sql\\, con\\[\\, "
+"index\\_col\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/io.rst:22:<autosummary>:1
+msgid "Read SQL query or database table into a DataFrame."
+msgstr ""
+
+#: ../../source/dataframe/reference/io.rst:22:<autosummary>:1
 msgid ""
 ":obj:`read_sql_table <mars.dataframe.read_sql_table>`\\ "
 "\\(table\\_name\\, con\\[\\, schema\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/dataframe/reference/io.rst:20:<autosummary>:1
+#: ../../source/dataframe/reference/io.rst:22:<autosummary>:1
 msgid "Read SQL database table into a DataFrame."
+msgstr ""
+
+#: ../../source/dataframe/reference/io.rst:22:<autosummary>:1
+msgid ""
+":obj:`read_sql_query <mars.dataframe.read_sql_query>`\\ \\(sql\\, "
+"con\\[\\, index\\_col\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/dataframe/reference/io.rst:22:<autosummary>:1
+msgid "Read SQL query into a DataFrame."
 msgstr ""
 

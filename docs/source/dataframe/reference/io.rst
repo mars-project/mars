@@ -17,4 +17,6 @@ SQL
 .. autosummary::
    :toctree: api/
 
+   read_sql
    read_sql_table
+   read_sql_query
