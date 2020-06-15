@@ -15,6 +15,7 @@
 import itertools
 import operator
 import functools
+from contextlib import contextmanager
 from numbers import Integral
 
 import numpy as np
@@ -778,3 +779,33 @@ class ReprSeries(pd.Series):
         # the length would be wrong and we have no way to control,
         # thus we just overwrite the length to show the real one
         return self._real_shape[0]
+
+
+@contextmanager
+def create_sa_connection(con, **kwargs):
+    import sqlalchemy as sa
+    from sqlalchemy.engine import Connection, Engine
+
+    # process con
+    engine = None
+    if isinstance(con, Connection):
+        # connection create by user
+        close = False
+        dispose = False
+    elif isinstance(con, Engine):
+        con = con.connect()
+        close = True
+        dispose = False
+    else:
+        engine = sa.create_engine(con, **kwargs)
+        con = engine.connect()
+        close = True
+        dispose = True
+
+    try:
+        yield con
+    finally:
+        if close:
+            con.close()
+        if dispose:
+            engine.dispose()
