@@ -252,7 +252,7 @@ class Session(object):
         url = self._endpoint + '/api/session/' + self._session_id
         params = dict(named=named)
         resp = self._req_session.get(url, params=params)
-        if resp.status_code >= 400:
+        if resp.status_code >= 400:  # pragma: no cover
             raise ValueError('Failed to get tileable key from server. Code: %d, Reason: %s, Content:\n%s' %
                              (resp.status_code, resp.reason, resp.text))
         tileable_key = json.loads(resp.text)['tileable_key']
@@ -266,7 +266,7 @@ class Session(object):
         elif rtype == 'dataframe':
             return DataFrameFetch(object_type=ObjectType.dataframe).new_dataframe(
                 [], shape=shape,  _key=tileable_key)
-        else:
+        else:  # pragma: no cover
             raise TypeError('Unknown type {}'.format(rtype))
 
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *_, **__):

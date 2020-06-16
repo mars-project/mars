@@ -544,16 +544,38 @@ class Test(unittest.TestCase):
         raw = rs.rand(10, 10)
 
         sess = Session.default_or_local()
-        name = 't_name'
 
+        # test named tensor
         t = mt.tensor(raw, chunk_size=3)
-        r = t.execute(name=name, session=sess)
-        np.testing.assert_array_equal(r, raw)
+        name = 't_name'
+        r1 = t.execute(name=name, session=sess)
+        np.testing.assert_array_equal(r1, raw)
 
         t2 = mt.tensor(named=name, session=sess)
-        r2 = (t2 + 1).execute(session=sess)
-
+        r2 = (t2 + 1).execute(session=sess).fetch()
         np.testing.assert_array_equal(r2, raw + 1)
+
+        # test named series
+        name = 's_name'
+        raw = pd.Series([1, 2, 3])
+        s = md.Series(raw)
+        r1 = s.execute(name=name, session=sess).fetch()
+        pd.testing.assert_series_equal(r1, raw)
+
+        s2 = md.Series(named=name, session=sess)
+        r2 = (s2.sum()).execute(session=sess).fetch()
+        self.assertEqual(r2, raw.sum())
+
+        # test dataframe
+        name = 'd_name'
+        raw = pd.DataFrame(np.random.rand(10, 3))
+        d = md.DataFrame(raw, chunk_size=4)
+        r1 = d.execute(name=name, session=sess).fetch()
+        pd.testing.assert_frame_equal(r1, raw)
+
+        d2 = md.DataFrame(named=name, session=sess)
+        r2 = (d2.max()).execute(session=sess).fetch()
+        pd.testing.assert_series_equal(r2, raw.max())
 
         with self.assertRaises(ValueError):
             mt.tensor(named='fake_name', session=sess)
