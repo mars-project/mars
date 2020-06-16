@@ -811,6 +811,12 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t)[0]
         self.assertAlmostEqual(res, 3.14, delta=1)
 
+        raw = np.random.RandomState(0).rand(10, 10)
+        d = norm(tensor(raw, chunk_size=5))
+        expected = self.executor.execute_tensor(d, concat=True)[0]
+        result = np.linalg.norm(raw)
+        np.testing.assert_allclose(expected, result)
+
     def testTensordotExecution(self):
         size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
 
