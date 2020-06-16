@@ -64,7 +64,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        x = op.input
+        x = astensor(op.input)
         axis = op.axis
         ord = op.ord
         keepdims = op.keepdims
