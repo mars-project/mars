@@ -1,0 +1,165 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.random.standard_t.rst:2
+msgid "mars.tensor.random.standard\\_t"
+msgstr ""
+
+#: mars.tensor.random.standard_t:1 of
+msgid ""
+"Draw samples from a standard Student's t distribution with `df` degrees "
+"of freedom."
+msgstr ""
+
+#: mars.tensor.random.standard_t:4 of
+msgid ""
+"A special case of the hyperbolic distribution.  As `df` gets large, the "
+"result resembles that of the standard normal distribution "
+"(`standard_normal`)."
+msgstr ""
+
+#: mars.tensor.random.standard_t of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.random.standard_t:8 of
+msgid "Degrees of freedom, should be > 0."
+msgstr ""
+
+#: mars.tensor.random.standard_t:10 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  If size is ``None`` (default), a single value is"
+" returned if ``df`` is a scalar.  Otherwise, ``mt.array(df).size`` "
+"samples are drawn."
+msgstr ""
+
+#: mars.tensor.random.standard_t:15 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.standard_t:17 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.standard_t:19 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: mars.tensor.random.standard_t of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.random.standard_t:22 of
+msgid ""
+"**out** -- Drawn samples from the parameterized standard Student's t "
+"distribution."
+msgstr ""
+
+#: mars.tensor.random.standard_t of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.random.standard_t:26 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.random.standard_t:27 of
+msgid "The probability density function for the t distribution is"
+msgstr ""
+
+#: mars.tensor.random.standard_t:29 of
+msgid ""
+"P(x, df) = \\frac{\\Gamma(\\frac{df+1}{2})}{\\sqrt{\\pi df} "
+"\\Gamma(\\frac{df}{2})}\\Bigl( 1+\\frac{x^2}{df} \\Bigr)^{-(df+1)/2}"
+msgstr ""
+
+#: mars.tensor.random.standard_t:32 of
+msgid ""
+"The t test is based on an assumption that the data come from a Normal "
+"distribution. The t test provides a way to test whether the sample mean "
+"(that is the mean calculated from the data) is a good estimate of the "
+"true mean."
+msgstr ""
+
+#: mars.tensor.random.standard_t:37 of
+msgid ""
+"The derivation of the t-distribution was first published in 1908 by "
+"William Gosset while working for the Guinness Brewery in Dublin. Due to "
+"proprietary issues, he had to publish under a pseudonym, and so he used "
+"the name Student."
+msgstr ""
+
+#: mars.tensor.random.standard_t:43 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.random.standard_t:44 of
+msgid "Dalgaard, Peter, \"Introductory Statistics With R\", Springer, 2002."
+msgstr ""
+
+#: mars.tensor.random.standard_t:46 of
+msgid ""
+"Wikipedia, \"Student's t-distribution\" "
+"http://en.wikipedia.org/wiki/Student's_t-distribution"
+msgstr ""
+
+#: mars.tensor.random.standard_t:50 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.standard_t:51 of
+msgid ""
+"From Dalgaard page 83 [1]_, suppose the daily energy intake for 11 women "
+"in Kj is:"
+msgstr ""
+
+#: mars.tensor.random.standard_t:59 of
+msgid ""
+"Does their energy intake deviate systematically from the recommended "
+"value of 7725 kJ?"
+msgstr ""
+
+#: mars.tensor.random.standard_t:62 of
+#, python-format
+msgid ""
+"We have 10 degrees of freedom, so is the sample mean within 95% of the "
+"recommended value?"
+msgstr ""
+
+#: mars.tensor.random.standard_t:71 of
+msgid ""
+"Calculate the t statistic, setting the ddof parameter to the unbiased "
+"value so the divisor in the standard deviation will be degrees of "
+"freedom, N-1."
+msgstr ""
+
+#: mars.tensor.random.standard_t:79 of
+msgid ""
+"For a one-sided t-test, how far out in the distribution does the t "
+"statistic appear?"
+msgstr ""
+
+#: mars.tensor.random.standard_t:85 of
+#, python-format
+msgid ""
+"So the p-value is about 0.009, which says the null hypothesis has a "
+"probability of about 99% of being true."
+msgstr ""
+

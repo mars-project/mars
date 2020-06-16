@@ -1,0 +1,125 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/generated/mars.tensor.fmax.rst:2
+msgid "mars.tensor.fmax"
+msgstr ""
+
+#: mars.tensor.fmax:1 of
+msgid "Element-wise maximum of array elements."
+msgstr ""
+
+#: mars.tensor.fmax:3 of
+msgid ""
+"Compare two tensors and returns a new tensor containing the element-wise "
+"maxima. If one of the elements being compared is a NaN, then the non-nan "
+"element is returned. If both elements are NaNs then the first is "
+"returned.  The latter distinction is important for complex NaNs, which "
+"are defined as at least one of the real or imaginary parts being a NaN. "
+"The net effect is that NaNs are ignored when possible."
+msgstr ""
+
+#: mars.tensor.fmax of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.fmax:10 of
+msgid ""
+"The tensors holding the elements to be compared. They must have the same "
+"shape."
+msgstr ""
+
+#: mars.tensor.fmax:13 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.fmax:18 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.fmax of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.fmax:23 of
+msgid ""
+"**y** -- The maximum of `x1` and `x2`, element-wise.  Returns scalar if "
+"both  `x1` and `x2` are scalars."
+msgstr ""
+
+#: mars.tensor.fmax of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.fmax:30 of
+msgid ":func:`fmin`"
+msgstr ""
+
+#: mars.tensor.fmax:30 of
+msgid "Element-wise minimum of two tensors, ignores NaNs."
+msgstr ""
+
+#: mars.tensor.fmax:33 of
+msgid ":func:`maximum`"
+msgstr ""
+
+#: mars.tensor.fmax:33 of
+msgid "Element-wise maximum of two tensors, propagates NaNs."
+msgstr ""
+
+#: mars.tensor.fmax:36 of
+msgid ":func:`amax`"
+msgstr ""
+
+#: mars.tensor.fmax:36 of
+msgid "The maximum value of an tensor along a given axis, propagates NaNs."
+msgstr ""
+
+#: mars.tensor.fmax:39 of
+msgid ":func:`nanmax`"
+msgstr ""
+
+#: mars.tensor.fmax:39 of
+msgid "The maximum value of an tensor along a given axis, ignores NaNs."
+msgstr ""
+
+#: mars.tensor.fmax:41 of
+msgid ":func:`minimum`, :func:`amin`, :func:`nanmin`"
+msgstr ""
+
+#: mars.tensor.fmax:44 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.fmax:45 of
+msgid ""
+"The fmax is equivalent to ``mt.where(x1 >= x2, x1, x2)`` when neither x1 "
+"nor x2 are NaNs, but it is faster and does proper broadcasting."
+msgstr ""
+
+#: mars.tensor.fmax:49 of
+msgid "Examples"
+msgstr ""
+

@@ -1,0 +1,180 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.str.islower.rst:2
+msgid "mars.dataframe.Series.str.islower"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:1 of
+msgid "Check whether all characters in each string are lowercase."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:3 of
+msgid ""
+"This is equivalent to running the Python string method "
+":meth:`str.islower` for each element of the Series/Index. If a string has"
+" zero characters, ``False`` is returned for that check."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:7 of
+msgid ""
+"Series or Index of boolean values with the same length as the original "
+"Series/Index."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:14 of
+msgid ":meth:`Series.str.isalpha`"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:14 of
+msgid "Check whether all characters are alphabetic."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:17 of
+msgid ":meth:`Series.str.isnumeric`"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:17 of
+msgid "Check whether all characters are numeric."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:20 of
+msgid ":meth:`Series.str.isalnum`"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:20 of
+msgid "Check whether all characters are alphanumeric."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:23 of
+msgid ":meth:`Series.str.isdigit`"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:23 of
+msgid "Check whether all characters are digits."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:26 of
+msgid ":meth:`Series.str.isdecimal`"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:26 of
+msgid "Check whether all characters are decimal."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:29 of
+msgid ":meth:`Series.str.isspace`"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:29 of
+msgid "Check whether all characters are whitespace."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:32 of
+msgid ":meth:`Series.str.islower`"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:32 of
+msgid "Check whether all characters are lowercase."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:35 of
+msgid ":meth:`Series.str.isupper`"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:35 of
+msgid "Check whether all characters are uppercase."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:37 of
+msgid ":meth:`Series.str.istitle`"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:38 of
+msgid "Check whether all characters are titlecase."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:41 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:42 of
+msgid "**Checks for Alphabetic and Numeric Characters**"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:68 of
+msgid ""
+"Note that checks against characters mixed with any additional punctuation"
+" or whitespace will evaluate to false for an alphanumeric check."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:78 of
+msgid "**More Detailed Checks for Numeric Characters**"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:80 of
+msgid ""
+"There are several different but overlapping sets of numeric characters "
+"that can be checked for."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:85 of
+msgid ""
+"The ``s3.str.isdecimal`` method checks for characters used to form "
+"numbers in base 10."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:95 of
+msgid ""
+"The ``s.str.isdigit`` method is the same as ``s3.str.isdecimal`` but also"
+" includes special digits, like superscripted and subscripted digits in "
+"unicode."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:106 of
+msgid ""
+"The ``s.str.isnumeric`` method is the same as ``s3.str.isdigit`` but also"
+" includes other characters that can represent quantities such as unicode "
+"fractions."
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:117 of
+msgid "**Checks for Whitespace**"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:126 of
+msgid "**Checks for Character Case**"
+msgstr ""
+
+#: mars.dataframe.Series.str.islower:144 of
+msgid ""
+"The ``s5.str.istitle`` method checks for whether all words are in title "
+"case (whether only the first letter of each word is capitalized). Words "
+"are assumed to be as any sequence of non-numeric characters separated by "
+"whitespace characters."
+msgstr ""
+

@@ -1,0 +1,107 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.str.zfill.rst:2
+msgid "mars.dataframe.Series.str.zfill"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:1 of
+msgid "Pad strings in the Series/Index by prepending '0' characters."
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:3 of
+msgid ""
+"Strings in the Series/Index are padded with '0' characters on the left of"
+" the string to reach a total string length  `width`. Strings in the "
+"Series/Index with length greater or equal to `width` are unchanged."
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:8 of
+msgid ""
+"Minimum length of resulting string; strings with length less than `width`"
+" be prepended with '0' characters."
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:18 of
+msgid ":meth:`Series.str.rjust`"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:18 of
+msgid "Fills the left side of strings with an arbitrary character."
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:21 of
+msgid ":meth:`Series.str.ljust`"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:21 of
+msgid "Fills the right side of strings with an arbitrary character."
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:24 of
+msgid ":meth:`Series.str.pad`"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:24 of
+msgid "Fills the specified sides of strings with an arbitrary character."
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:26 of
+msgid ":meth:`Series.str.center`"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:27 of
+msgid "Fills boths sides of strings with an arbitrary character."
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:30 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:31 of
+msgid ""
+"Differs from :meth:`str.zfill` which has special handling for '+'/'-' in "
+"the string."
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:35 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.str.zfill:47 of
+msgid ""
+"Note that ``10`` and ``NaN`` are not strings, therefore they are "
+"converted to ``NaN``. The minus sign in ``'-1'`` is treated as a regular "
+"character and the zero is added to the left of it (:meth:`str.zfill` "
+"would have moved it to the left). ``1000`` remains unchanged as it is "
+"longer than `width`."
+msgstr ""
+

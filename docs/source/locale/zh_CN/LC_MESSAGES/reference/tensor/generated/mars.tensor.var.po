@@ -1,0 +1,179 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.var.rst:2
+msgid "mars.tensor.var"
+msgstr ""
+
+#: mars.tensor.var:1 of
+msgid "Compute the variance along the specified axis."
+msgstr ""
+
+#: mars.tensor.var:3 of
+msgid ""
+"Returns the variance of the tensor elements, a measure of the spread of a"
+" distribution.  The variance is computed for the flattened tensor by "
+"default, otherwise over the specified axis."
+msgstr ""
+
+#: mars.tensor.var of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.var:7 of
+msgid ""
+"Tensor containing numbers whose variance is desired.  If `a` is not a "
+"tensor, a conversion is attempted."
+msgstr ""
+
+#: mars.tensor.var:10 of
+msgid ""
+"Axis or axes along which the variance is computed.  The default is to "
+"compute the variance of the flattened array.  If this is a tuple of ints,"
+" a variance is performed over multiple axes, instead of a single axis or "
+"all the axes as before."
+msgstr ""
+
+#: mars.tensor.var:10 of
+msgid ""
+"Axis or axes along which the variance is computed.  The default is to "
+"compute the variance of the flattened array."
+msgstr ""
+
+#: mars.tensor.var:13 of
+msgid ""
+"If this is a tuple of ints, a variance is performed over multiple axes, "
+"instead of a single axis or all the axes as before."
+msgstr ""
+
+#: mars.tensor.var:16 of
+msgid ""
+"Type to use in computing the variance.  For arrays of integer type the "
+"default is `float32`; for tensors of float types it is the same as the "
+"tensor type."
+msgstr ""
+
+#: mars.tensor.var:20 of
+msgid ""
+"Alternate output array in which to place the result.  It must have the "
+"same shape as the expected output, but the type is cast if necessary."
+msgstr ""
+
+#: mars.tensor.var:24 of
+msgid ""
+"\"Delta Degrees of Freedom\": the divisor used in the calculation is ``N "
+"- ddof``, where ``N`` represents the number of elements. By default "
+"`ddof` is zero."
+msgstr ""
+
+#: mars.tensor.var:28 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input tensor.  If the default value is passed, "
+"then `keepdims` will not be passed through to the `var` method of sub-"
+"classes of `Tensor`, however any non-default value will be.  If the sub-"
+"classes `sum` method does not implement `keepdims` any exceptions will be"
+" raised."
+msgstr ""
+
+#: mars.tensor.var:28 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input tensor."
+msgstr ""
+
+#: mars.tensor.var:32 of
+msgid ""
+"If the default value is passed, then `keepdims` will not be passed "
+"through to the `var` method of sub-classes of `Tensor`, however any non-"
+"default value will be.  If the sub-classes `sum` method does not "
+"implement `keepdims` any exceptions will be raised."
+msgstr ""
+
+#: mars.tensor.var:38 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.var of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.var:41 of
+msgid ""
+"**variance** -- If ``out=None``, returns a new tensor containing the "
+"variance; otherwise, a reference to the output tensor is returned."
+msgstr ""
+
+#: mars.tensor.var of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.var:45 of
+msgid ":func:`std`, :func:`mean`, :func:`nanmean`, :func:`nanstd`, :func:`nanvar`"
+msgstr ""
+
+#: mars.tensor.var:48 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.var:49 of
+msgid ""
+"The variance is the average of the squared deviations from the mean, "
+"i.e.,  ``var = mean(abs(x - x.mean())**2)``."
+msgstr ""
+
+#: mars.tensor.var:52 of
+msgid ""
+"The mean is normally calculated as ``x.sum() / N``, where ``N = len(x)``."
+" If, however, `ddof` is specified, the divisor ``N - ddof`` is used "
+"instead.  In standard statistical practice, ``ddof=1`` provides an "
+"unbiased estimator of the variance of a hypothetical infinite population."
+" ``ddof=0`` provides a maximum likelihood estimate of the variance for "
+"normally distributed variables."
+msgstr ""
+
+#: mars.tensor.var:59 of
+msgid ""
+"Note that for complex numbers, the absolute value is taken before "
+"squaring, so that the result is always real and nonnegative."
+msgstr ""
+
+#: mars.tensor.var:62 of
+msgid ""
+"For floating-point input, the variance is computed using the same "
+"precision the input has.  Depending on the input data, this can cause the"
+" results to be inaccurate, especially for `float32` (see example below)."
+"  Specifying a higher-accuracy accumulator using the ``dtype`` keyword "
+"can alleviate this issue."
+msgstr ""
+
+#: mars.tensor.var:69 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.var:80 of
+msgid "In single precision, var() can be inaccurate:"
+msgstr ""
+
+#: mars.tensor.var:88 of
+msgid "Computing the variance in float64 is more accurate:"
+msgstr ""
+

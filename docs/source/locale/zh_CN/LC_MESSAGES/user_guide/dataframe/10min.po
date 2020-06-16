@@ -1,0 +1,402 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/dataframe/10min.rst:5
+msgid "10 minutes to Mars DataFrame"
+msgstr "10 分钟入门 Mars DataFrame"
+
+#: ../../source/user_guide/dataframe/10min.rst:9
+msgid ""
+"This is a short introduction to Mars DataFrame which is originated from "
+"`10 minutes to pandas "
+"<https://pandas.pydata.org/docs/getting_started/10min.html>`_."
+msgstr ""
+"本页面是一个对 Mars DataFrame 的简短介绍，内容修改自 `10 分钟入门 pandas "
+"<https://pandas.pydata.org/docs/getting_started/10min.html>`_ 。"
+
+#: ../../source/user_guide/dataframe/10min.rst:13
+msgid "Customarily, we import as follows:"
+msgstr "如果没有说明，我们默认导入下面的包："
+
+#: ../../source/user_guide/dataframe/10min.rst:21
+msgid "Object creation"
+msgstr "创建对象"
+
+#: ../../source/user_guide/dataframe/10min.rst:23
+msgid ""
+"Creating a :class:`Series` by passing a list of values, letting it create"
+" a default integer index:"
+msgstr ""
+"通过传入一个包含值的 list 来创建 :class:`Series` 实例，并使用默认的整数"
+"索引："
+
+#: ../../source/user_guide/dataframe/10min.rst:32
+msgid ""
+"Creating a :class:`DataFrame` by passing a Mars tensor, with a datetime "
+"index and labeled columns:"
+msgstr ""
+"通过一个 Mars Tensor 来创建 :class:`DataFrame` 实例，并使用时间日期索引和"
+"列标签："
+
+#: ../../source/user_guide/dataframe/10min.rst:42
+msgid ""
+"Creating a :class:`DataFrame` by passing a dict of objects that can be "
+"converted to series-like."
+msgstr "通过值可转换为序列的字典来创建 :class:`DataFrame` 实例："
+
+#: ../../source/user_guide/dataframe/10min.rst:53
+msgid "The columns of the resulting :class:`DataFrame` have different dtypes."
+msgstr "最终生成的 :class:`DataFrame` 中，每列的类型均不相同。"
+
+#: ../../source/user_guide/dataframe/10min.rst:61
+msgid "Viewing data"
+msgstr "查看数据"
+
+#: ../../source/user_guide/dataframe/10min.rst:63
+msgid "Here is how to view the top and bottom rows of the frame:"
+msgstr "下面是显示 DataFrame 中开头和结尾若干行的方法："
+
+#: ../../source/user_guide/dataframe/10min.rst:70
+msgid "Display the index, columns:"
+msgstr "显示索引和列："
+
+#: ../../source/user_guide/dataframe/10min.rst:78
+msgid ""
+":meth:`DataFrame.to_tensor` gives a Mars tensor representation of the "
+"underlying data. Note that this can be an expensive operation when your "
+":class:`DataFrame` has columns with different data types, which comes "
+"down to a fundamental difference between DataFrame and tensor: **tensors "
+"have one dtype for the entire tensor, while DataFrames have one dtype per"
+" column**. When you call :meth:`DataFrame.to_tensor`, Mars DataFrame will"
+" find the tensor dtype that can hold *all* of the dtypes in the "
+"DataFrame. This may end up being ``object``, which requires casting every"
+" value to a Python object."
+msgstr ""
+":meth:`DataFrame.to_tensor` 将 DataFrame 中的数据转换为 Mars Tensor 表示"
+"。注意当 :class:`DataFrame` 中的列类型不同时，该操作可能代价很高。这也"
+"揭示了 DataFrame 和 Tensor 之间一项最基本的差异：**在 Tensor 中，对于整个"
+" Tensor 对象只有一个 dtype，但 DataFrame 对每列都有一个 dtype**。当调用 :"
+"meth:`DataFrame.to_tensor` 时，Mars DataFrame 将会找出一个可存储 "
+"DataFrame 中 **所有** 对象的 dtype，这可能是一个 ``object``，并将导致 "
+"DataFrame 中的每个值都被转换为一个 Python 对象。"
+
+#: ../../source/user_guide/dataframe/10min.rst:87
+msgid ""
+"For ``df``, our :class:`DataFrame` of all floating-point values, "
+":meth:`DataFrame.to_tensor` is fast and doesn't require copying data."
+msgstr ""
+"在上面的 ``df`` 对象中，:class:`DataFrame` 实例中的值均为浮点数，因而 :"
+"meth:`DataFrame.to_tensor` 执行速度会很快，且不需要数据复制。"
+
+#: ../../source/user_guide/dataframe/10min.rst:94
+msgid ""
+"For ``df2``, the :class:`DataFrame` with multiple dtypes, "
+":meth:`DataFrame.to_tensor` is relatively expensive."
+msgstr ""
+"而对于 ``df2`` 对象，:class:`DataFrame` 实例中有不同的数据类型，因而 :"
+"meth:`DataFrame.to_tensor` 执行代价就相对较高了。"
+
+#: ../../source/user_guide/dataframe/10min.rst:103
+msgid ""
+":meth:`DataFrame.to_tensor` does *not* include the index or column labels"
+" in the output."
+msgstr ":meth:`DataFrame.to_tensor` 在输出结果中 **不保留** 索引或列标签。"
+
+#: ../../source/user_guide/dataframe/10min.rst:106
+msgid ":func:`~DataFrame.describe` shows a quick statistic summary of your data:"
+msgstr ":func:`~DataFrame.describe` 将会为你的数据显示一份简单的统计摘要："
+
+#: ../../source/user_guide/dataframe/10min.rst:112
+msgid "Sorting by an axis:"
+msgstr "按坐标排序："
+
+#: ../../source/user_guide/dataframe/10min.rst:118
+msgid "Sorting by values:"
+msgstr "按值排序："
+
+#: ../../source/user_guide/dataframe/10min.rst:125
+msgid "Selection"
+msgstr "选择数据"
+
+#: ../../source/user_guide/dataframe/10min.rst:129
+msgid ""
+"While standard Python / Numpy expressions for selecting and setting are "
+"intuitive and come in handy for interactive work, for production code, we"
+" recommend the optimized DataFrame data access methods, ``.at``, "
+"``.iat``, ``.loc`` and ``.iloc``."
+msgstr ""
+"尽管在交互式分析场景下，使用标准的 Python / Numpy 表达式选择和设置 "
+"DataFrame 数据非常自然且便于使用，但对生产代码，我们推荐使用经过优化的"
+"数据访问方法，即 ``.at``、``.iat``、``.loc`` 和 ``.iloc``。"
+
+#: ../../source/user_guide/dataframe/10min.rst:136
+msgid "Getting"
+msgstr "获取数据"
+
+#: ../../source/user_guide/dataframe/10min.rst:138
+msgid ""
+"Selecting a single column, which yields a :class:`Series`, equivalent to "
+"``df.A``:"
+msgstr "选择一列，将返回一个 :class:`Series` 实例。这一操作等价于 ``df.A`` ："
+
+#: ../../source/user_guide/dataframe/10min.rst:145
+msgid "Selecting via ``[]``, which slices the rows."
+msgstr "通过 ``[]`` 选择数据，将在行中选取。"
+
+#: ../../source/user_guide/dataframe/10min.rst:153
+msgid "Selection by label"
+msgstr "按标签选择数据"
+
+#: ../../source/user_guide/dataframe/10min.rst:155
+msgid "For getting a cross section using a label:"
+msgstr "通过行标签选择一行数据："
+
+#: ../../source/user_guide/dataframe/10min.rst:161
+msgid "Selecting on a multi-axis by label:"
+msgstr "在特定坐标上指定标签："
+
+#: ../../source/user_guide/dataframe/10min.rst:167
+msgid "Showing label slicing, both endpoints are *included*:"
+msgstr "在多个坐标上指定标签，带有这些标签的 **所有数据** 均会被选取："
+
+#: ../../source/user_guide/dataframe/10min.rst:173
+msgid "Reduction in the dimensions of the returned object:"
+msgstr "在特定坐标上降低返回对象的维度："
+
+#: ../../source/user_guide/dataframe/10min.rst:179
+msgid "For getting a scalar value:"
+msgstr "获得一个常量："
+
+#: ../../source/user_guide/dataframe/10min.rst:185
+#: ../../source/user_guide/dataframe/10min.rst:230
+msgid "For getting fast access to a scalar (equivalent to the prior method):"
+msgstr "快速获取一个常数（和前述方法等价）："
+
+#: ../../source/user_guide/dataframe/10min.rst:192
+msgid "Selection by position"
+msgstr "按位置选择"
+
+#: ../../source/user_guide/dataframe/10min.rst:194
+msgid "Select via the position of the passed integers:"
+msgstr "通过传入的整数选择相应位置的数据："
+
+#: ../../source/user_guide/dataframe/10min.rst:200
+msgid "By integer slices, acting similar to numpy/python:"
+msgstr "通过整数切片来选择数据，与 Numpy / Python 行为一致："
+
+#: ../../source/user_guide/dataframe/10min.rst:206
+msgid "By lists of integer position locations, similar to the numpy/python style:"
+msgstr "通过整数列表选择相应位置的数据，与 Numpy / Python 行为一致："
+
+#: ../../source/user_guide/dataframe/10min.rst:212
+msgid "For slicing rows explicitly:"
+msgstr "显示对行切片："
+
+#: ../../source/user_guide/dataframe/10min.rst:218
+msgid "For slicing columns explicitly:"
+msgstr "显示对列切片："
+
+#: ../../source/user_guide/dataframe/10min.rst:224
+msgid "For getting a value explicitly:"
+msgstr "显示获取某个位置的常数："
+
+#: ../../source/user_guide/dataframe/10min.rst:237
+msgid "Boolean indexing"
+msgstr "布尔索引"
+
+#: ../../source/user_guide/dataframe/10min.rst:239
+msgid "Using a single column's values to select data."
+msgstr "使用一行布尔值选择数据："
+
+#: ../../source/user_guide/dataframe/10min.rst:245
+msgid "Selecting values from a DataFrame where a boolean condition is met."
+msgstr "从 DataFrame 选择满足某个布尔条件的值："
+
+#: ../../source/user_guide/dataframe/10min.rst:253
+msgid "Operations"
+msgstr "数据操作"
+
+#: ../../source/user_guide/dataframe/10min.rst:256
+msgid "Stats"
+msgstr "统计"
+
+#: ../../source/user_guide/dataframe/10min.rst:258
+msgid "Operations in general *exclude* missing data."
+msgstr "除缺失值外的常见操作："
+
+#: ../../source/user_guide/dataframe/10min.rst:260
+msgid "Performing a descriptive statistic:"
+msgstr "计算描述统计值："
+
+#: ../../source/user_guide/dataframe/10min.rst:266
+msgid "Same operation on the other axis:"
+msgstr "在另一条坐标轴上进行相同的操作："
+
+#: ../../source/user_guide/dataframe/10min.rst:273
+msgid ""
+"Operating with objects that have different dimensionality and need "
+"alignment. In addition, Mars DataFrame automatically broadcasts along the"
+" specified dimension."
+msgstr ""
+"在维度不同的对象上进行操作，这需要进行对齐。此外，Mars DataFrame 会自动在"
+"给定的坐标轴上对数据进行广播操作。"
+
+#: ../../source/user_guide/dataframe/10min.rst:284
+msgid "Apply"
+msgstr "应用函数"
+
+#: ../../source/user_guide/dataframe/10min.rst:286
+msgid "Applying functions to the data:"
+msgstr "在数据上应用函数："
+
+#: ../../source/user_guide/dataframe/10min.rst:293
+msgid "String Methods"
+msgstr "字符串方法"
+
+#: ../../source/user_guide/dataframe/10min.rst:295
+msgid ""
+"Series is equipped with a set of string processing methods in the `str` "
+"attribute that make it easy to operate on each element of the array, as "
+"in the code snippet below. Note that pattern-matching in `str` generally "
+"uses `regular expressions <https://docs.python.org/3/library/re.html>`__ "
+"by default (and in some cases always uses them). See more at "
+":ref:`Vectorized String Methods <text.string_methods>`."
+msgstr ""
+"如同下面的例子展示的那样，Series 对象通过 `str` 属性提供了一系列字符串"
+"操作方法以便于操作每一个元素。注意通过 `str` 进行的模式匹配通常会默认（在"
+"某些情形下会一直）用到 `正则表达式 <https://docs.python.org/3/library/re."
+"html>`__ 。更多的信息可在 :ref:`向量化字符串方法 <text.string_methods>` "
+"中查看。"
+
+#: ../../source/user_guide/dataframe/10min.rst:308
+msgid "Merge"
+msgstr "数据合并"
+
+#: ../../source/user_guide/dataframe/10min.rst:311
+msgid "Concat"
+msgstr "拼接"
+
+#: ../../source/user_guide/dataframe/10min.rst:313
+msgid ""
+"Mars DataFrame provides various facilities for easily combining together "
+"Series and DataFrame objects with various kinds of set logic for the "
+"indexes and relational algebra functionality in the case of join / merge-"
+"type operations."
+msgstr ""
+"Mars DataFrame 提供一系列的方法方便地将 Series 和 DataFrame 对象连接到"
+"一起。这些方法基于一系列在索引上的集合逻辑以及关系代数上的功能来实现 Join"
+" / 合并这样的操作。"
+
+#: ../../source/user_guide/dataframe/10min.rst:318
+msgid "Concatenating DataFrame objects together with :func:`concat`:"
+msgstr "通过 :func:`concat`: 拼接 DataFrame 对象："
+
+#: ../../source/user_guide/dataframe/10min.rst:331
+msgid ""
+"Adding a column to a :class:`DataFrame` is relatively fast. However, "
+"adding a row requires a copy, and may be expensive. We recommend passing "
+"a pre-built list of records to the :class:`DataFrame` constructor instead"
+" of building a :class:`DataFrame` by iteratively appending records to it."
+msgstr ""
+"向 :class:`DataFrame` 增加一列是相对较为高效的，但增加一行需要数据复制，"
+"因而可能会比较昂贵。我们建议向 :class:`DataFrame` 的构造函数传入一系列"
+"预先填充的列表来构建 :class:`DataFrame` 而不是向 :class:`DataFrame` 迭代"
+"追加数据。"
+
+#: ../../source/user_guide/dataframe/10min.rst:337
+msgid "Join"
+msgstr "Join"
+
+#: ../../source/user_guide/dataframe/10min.rst:339
+msgid ""
+"SQL style merges. See the :ref:`Database style joining <merging.join>` "
+"section."
+msgstr ""
+"SQL 样式的数据合并。参考 :ref:`Database style joining <merging.join>` "
+"章节以获取更多信息。"
+
+#: ../../source/user_guide/dataframe/10min.rst:349
+msgid "Another example that can be given is:"
+msgstr "另一个可供参考的例子如下："
+
+#: ../../source/user_guide/dataframe/10min.rst:360
+msgid "Grouping"
+msgstr "分组"
+
+#: ../../source/user_guide/dataframe/10min.rst:362
+msgid ""
+"By \"group by\" we are referring to a process involving one or more of "
+"the following steps:"
+msgstr "当提到“分组”时，我们指的是下面一个或多个步骤组成的过程："
+
+#: ../../source/user_guide/dataframe/10min.rst:365
+msgid "**Splitting** the data into groups based on some criteria"
+msgstr "**拆分** ：根据某些条件将数据拆分成组"
+
+#: ../../source/user_guide/dataframe/10min.rst:366
+msgid "**Applying** a function to each group independently"
+msgstr "**应用函数** ：对每一组数据分别应用某个函数"
+
+#: ../../source/user_guide/dataframe/10min.rst:367
+msgid "**Combining** the results into a data structure"
+msgstr "**合并** ：将结果合并为一组数据"
+
+#: ../../source/user_guide/dataframe/10min.rst:380
+msgid ""
+"Grouping and then applying the "
+":meth:`~mars.dataframe.groupby.GroupBy.sum` function to the resulting "
+"groups."
+msgstr "分组，然后在结果上执行 :meth:`~mars.dataframe.groupby.GroupBy.sum` 函数。"
+
+#: ../../source/user_guide/dataframe/10min.rst:387
+msgid ""
+"Grouping by multiple columns forms a hierarchical index, and again we can"
+" apply the `sum` function."
+msgstr ""
+"我们也可以利用多列进行分组，这将形成一个多重索引。在此结果上，我们也可以"
+"执行 `sum` 函数。"
+
+#: ../../source/user_guide/dataframe/10min.rst:395
+msgid "Plotting"
+msgstr "绘图"
+
+#: ../../source/user_guide/dataframe/10min.rst:397
+msgid "We use the standard convention for referencing the matplotlib API:"
+msgstr "我们使用标准的约定来引用 matplotlib API："
+
+#: ../../source/user_guide/dataframe/10min.rst:413
+msgid ""
+"On a DataFrame, the :meth:`~DataFrame.plot` method is a convenience to "
+"plot all of the columns with labels:"
+msgstr ""
+"在 DataFrame 中， :meth:`~DataFrame.plot` 方法可用于方便地绘制带有标签的"
+"行数据："
+
+#: ../../source/user_guide/dataframe/10min.rst:428
+msgid "Getting data in/out"
+msgstr "读取和写入数据"
+
+#: ../../source/user_guide/dataframe/10min.rst:431
+msgid "CSV"
+msgstr ""
+
+#: ../../source/user_guide/dataframe/10min.rst:437
+msgid ":ref:`Reading from a csv file. <io.read_csv_table>`"
+msgstr ":ref:`从 CSV 文件读取数据 <io.read_csv_table>`"
+

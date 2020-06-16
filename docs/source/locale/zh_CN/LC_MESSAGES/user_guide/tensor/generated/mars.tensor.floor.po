@@ -1,0 +1,86 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/generated/mars.tensor.floor.rst:2
+msgid "mars.tensor.floor"
+msgstr ""
+
+#: mars.tensor.floor:1 of
+msgid "Return the floor of the input, element-wise."
+msgstr ""
+
+#: mars.tensor.floor:3 of
+msgid ""
+"The floor of the scalar `x` is the largest integer `i`, such that `i <= "
+"x`.  It is often denoted as :math:`\\lfloor x \\rfloor`."
+msgstr ""
+
+#: mars.tensor.floor of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.floor:6 of
+msgid "Input data."
+msgstr ""
+
+#: mars.tensor.floor:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.floor:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.floor of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.floor:18 of
+msgid "**y** -- The floor of each element in `x`."
+msgstr ""
+
+#: mars.tensor.floor of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.floor:21 of
+msgid ":func:`ceil`, :func:`trunc`, :func:`rint`"
+msgstr ""
+
+#: mars.tensor.floor:24 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.floor:25 of
+msgid ""
+"Some spreadsheet programs calculate the \"floor-towards-zero\", in other "
+"words ``floor(-2.5) == -2``.  NumPy instead uses the definition of "
+"`floor` where `floor(-2.5) == -3`."
+msgstr ""
+
+#: mars.tensor.floor:30 of
+msgid "Examples"
+msgstr ""
+

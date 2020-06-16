@@ -1,0 +1,96 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.quantile.rst:2
+msgid "mars.dataframe.Series.quantile"
+msgstr ""
+
+#: mars.dataframe.Series.quantile:1 of
+msgid "Return value at the given quantile."
+msgstr ""
+
+#: mars.dataframe.Series.quantile of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.quantile:3 of
+msgid "0 <= q <= 1, the quantile(s) to compute."
+msgstr ""
+
+#: mars.dataframe.Series.quantile:5 of
+msgid ""
+".. versionadded:: 0.18.0  This optional parameter specifies the "
+"interpolation method to use, when the desired quantile lies between two "
+"data points `i` and `j`:      * linear: `i + (j - i) * fraction`, where "
+"`fraction` is the       fractional part of the index surrounded by `i` "
+"and `j`.     * lower: `i`.     * higher: `j`.     * nearest: `i` or `j` "
+"whichever is nearest.     * midpoint: (`i` + `j`) / 2."
+msgstr ""
+
+#: mars.dataframe.Series.quantile:7 of
+msgid ""
+"This optional parameter specifies the interpolation method to use, when "
+"the desired quantile lies between two data points `i` and `j`:"
+msgstr ""
+
+#: mars.dataframe.Series.quantile:10 of
+msgid ""
+"linear: `i + (j - i) * fraction`, where `fraction` is the fractional part"
+" of the index surrounded by `i` and `j`."
+msgstr ""
+
+#: mars.dataframe.Series.quantile:12 of
+msgid "lower: `i`."
+msgstr ""
+
+#: mars.dataframe.Series.quantile:13 of
+msgid "higher: `j`."
+msgstr ""
+
+#: mars.dataframe.Series.quantile:14 of
+msgid "nearest: `i` or `j` whichever is nearest."
+msgstr ""
+
+#: mars.dataframe.Series.quantile:15 of
+msgid "midpoint: (`i` + `j`) / 2."
+msgstr ""
+
+#: mars.dataframe.Series.quantile of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.quantile:18 of
+msgid ""
+"If ``q`` is an array or a tensor, a Series will be returned where the "
+"index is ``q`` and the values are the quantiles, otherwise a float will "
+"be returned."
+msgstr ""
+
+#: mars.dataframe.Series.quantile of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.quantile:23 of
+msgid ":meth:`core.window.Rolling.quantile`, :meth:`numpy.percentile`"
+msgstr ""
+
+#: mars.dataframe.Series.quantile:26 of
+msgid "Examples"
+msgstr ""
+

@@ -1,0 +1,151 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.utils.check_array.rst:2
+msgid "mars.learn.utils.check\\_array"
+msgstr ""
+
+#: mars.learn.utils.check_array:1 of
+msgid "Input validation on a tensor, list, sparse matrix or similar."
+msgstr ""
+
+#: mars.learn.utils.check_array:3 of
+msgid ""
+"By default, the input is checked to be a non-empty 2D array containing "
+"only finite values. If the dtype of the tensor is object, attempt "
+"converting to float, raising on failure."
+msgstr ""
+
+#: mars.learn.utils.check_array of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.utils.check_array:7 of
+msgid "Input object to check / convert."
+msgstr ""
+
+#: mars.learn.utils.check_array:9 of
+msgid ""
+"String[s] representing allowed sparse matrix formats, such as 'csc', "
+"'csr', etc. If the input is sparse but not in the allowed format, it will"
+" be converted to the first listed format. True allows the input to be any"
+" format. False means that a sparse matrix input will raise an error."
+msgstr ""
+
+#: mars.learn.utils.check_array:15 of
+msgid ""
+"If a CSR, CSC, COO or BSR sparse matrix is supplied and accepted by "
+"accept_sparse, accept_large_sparse=False will cause it to be accepted "
+"only if its indices are stored with a 32-bit dtype."
+msgstr ""
+
+#: mars.learn.utils.check_array:19 of
+msgid ""
+"Data type of result. If None, the dtype of the input is preserved. If "
+"\"numeric\", dtype is preserved unless array.dtype is object. If dtype is"
+" a list of types, conversion on the first type is only performed if the "
+"dtype of the input is not in the list."
+msgstr ""
+
+#: mars.learn.utils.check_array:24 of
+msgid ""
+"Whether a tenor will be forced to be fortran or c-style. When order is "
+"None (default), then if copy=False, nothing is ensured about the memory "
+"layout of the output tensor; otherwise (copy=True) the memory layout of "
+"the returned tensor is kept as close as possible to the original tensor."
+msgstr ""
+
+#: mars.learn.utils.check_array:30 of
+msgid ""
+"Whether a forced copy will be triggered. If copy=False, a copy might be "
+"triggered by a conversion."
+msgstr ""
+
+#: mars.learn.utils.check_array:33 of
+msgid ""
+"Whether to raise an error on np.inf and np.nan in tensor. The "
+"possibilities are:  - True: Force all values of tensor to be finite. - "
+"False: accept both np.inf and np.nan in tensor. - 'allow-nan': accept "
+"only np.nan values in tensor. Values cannot   be infinite.  For object "
+"dtyped data, only np.nan is checked and not np.inf."
+msgstr ""
+
+#: mars.learn.utils.check_array:33 of
+msgid ""
+"Whether to raise an error on np.inf and np.nan in tensor. The "
+"possibilities are:"
+msgstr ""
+
+#: mars.learn.utils.check_array:36 of
+msgid "True: Force all values of tensor to be finite."
+msgstr ""
+
+#: mars.learn.utils.check_array:37 of
+msgid "False: accept both np.inf and np.nan in tensor."
+msgstr ""
+
+#: mars.learn.utils.check_array:38 of
+msgid ""
+"'allow-nan': accept only np.nan values in tensor. Values cannot be "
+"infinite."
+msgstr ""
+
+#: mars.learn.utils.check_array:41 of
+msgid "For object dtyped data, only np.nan is checked and not np.inf."
+msgstr ""
+
+#: mars.learn.utils.check_array:43 of
+msgid "Whether to raise a value error if tensor is not 2D."
+msgstr ""
+
+#: mars.learn.utils.check_array:45 of
+msgid "Whether to allow tensor.ndim > 2."
+msgstr ""
+
+#: mars.learn.utils.check_array:47 of
+msgid ""
+"Make sure that the tensor has a minimum number of samples in its first "
+"axis (rows for a 2D tensor). Setting to 0 disables this check."
+msgstr ""
+
+#: mars.learn.utils.check_array:50 of
+msgid ""
+"Make sure that the 2D tensor has some minimum number of features "
+"(columns). The default value of 1 rejects empty datasets. This check is "
+"only enforced when the input data has effectively 2 dimensions or is "
+"originally 1D and ``ensure_2d`` is True. Setting to 0 disables this "
+"check."
+msgstr ""
+
+#: mars.learn.utils.check_array:56 of
+msgid "If passed, include the name of the estimator in warning messages."
+msgstr ""
+
+#: mars.learn.utils.check_array of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.utils.check_array:59 of
+msgid "**array_converted** -- The converted and validated tensor."
+msgstr ""
+
+#: mars.learn.utils.check_array of
+msgid "Return type"
+msgstr ""
+

@@ -1,0 +1,176 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.nanvar.rst:2
+msgid "mars.tensor.nanvar"
+msgstr ""
+
+#: mars.tensor.nanvar:1 of
+msgid "Compute the variance along the specified axis, while ignoring NaNs."
+msgstr ""
+
+#: mars.tensor.nanvar:3 of
+msgid ""
+"Returns the variance of the tensor elements, a measure of the spread of a"
+" distribution.  The variance is computed for the flattened tensor by "
+"default, otherwise over the specified axis."
+msgstr ""
+
+#: mars.tensor.nanvar:7 of
+msgid ""
+"For all-NaN slices or slices with zero degrees of freedom, NaN is "
+"returned and a `RuntimeWarning` is raised."
+msgstr ""
+
+#: mars.tensor.nanvar of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.nanvar:10 of
+msgid ""
+"Tensor containing numbers whose variance is desired.  If `a` is not a "
+"tensor, a conversion is attempted."
+msgstr ""
+
+#: mars.tensor.nanvar:13 of
+msgid ""
+"Axis along which the variance is computed.  The default is to compute the"
+" variance of the flattened array."
+msgstr ""
+
+#: mars.tensor.nanvar:16 of
+msgid ""
+"Type to use in computing the variance.  For tensors of integer type the "
+"default is `float32`; for tensors of float types it is the same as the "
+"tensor type."
+msgstr ""
+
+#: mars.tensor.nanvar:20 of
+msgid ""
+"Alternate output tensor in which to place the result.  It must have the "
+"same shape as the expected output, but the type is cast if necessary."
+msgstr ""
+
+#: mars.tensor.nanvar:24 of
+msgid ""
+"\"Delta Degrees of Freedom\": the divisor used in the calculation is ``N "
+"- ddof``, where ``N`` represents the number of non-NaN elements. By "
+"default `ddof` is zero."
+msgstr ""
+
+#: mars.tensor.nanvar:28 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the original `a`."
+msgstr ""
+
+#: mars.tensor.nanvar:32 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.nanvar of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.nanvar:35 of
+msgid ""
+"**variance** -- If `out` is None, return a new tensor containing the "
+"variance, otherwise return a reference to the output tensor. If ddof is "
+">= the number of non-NaN elements in a slice or the slice contains only "
+"NaNs, then the result for that slice is NaN."
+msgstr ""
+
+#: mars.tensor.nanvar of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.nanvar:44 of
+msgid ":func:`std`"
+msgstr ""
+
+#: mars.tensor.nanvar:44 of
+msgid "Standard deviation"
+msgstr ""
+
+#: mars.tensor.nanvar:47 of
+msgid ":func:`mean`"
+msgstr ""
+
+#: mars.tensor.nanvar:47 of
+msgid "Average"
+msgstr ""
+
+#: mars.tensor.nanvar:50 of
+msgid ":func:`var`"
+msgstr ""
+
+#: mars.tensor.nanvar:50 of
+msgid "Variance while not ignoring NaNs"
+msgstr ""
+
+#: mars.tensor.nanvar:52 of
+msgid ":func:`nanstd`, :func:`nanmean`"
+msgstr ""
+
+#: mars.tensor.nanvar:55 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.nanvar:56 of
+msgid ""
+"The variance is the average of the squared deviations from the mean, "
+"i.e.,  ``var = mean(abs(x - x.mean())**2)``."
+msgstr ""
+
+#: mars.tensor.nanvar:59 of
+msgid ""
+"The mean is normally calculated as ``x.sum() / N``, where ``N = len(x)``."
+" If, however, `ddof` is specified, the divisor ``N - ddof`` is used "
+"instead.  In standard statistical practice, ``ddof=1`` provides an "
+"unbiased estimator of the variance of a hypothetical infinite population."
+"  ``ddof=0`` provides a maximum likelihood estimate of the variance for "
+"normally distributed variables."
+msgstr ""
+
+#: mars.tensor.nanvar:66 of
+msgid ""
+"Note that for complex numbers, the absolute value is taken before "
+"squaring, so that the result is always real and nonnegative."
+msgstr ""
+
+#: mars.tensor.nanvar:69 of
+msgid ""
+"For floating-point input, the variance is computed using the same "
+"precision the input has.  Depending on the input data, this can cause the"
+" results to be inaccurate, especially for `float32` (see example below)."
+"  Specifying a higher-accuracy accumulator using the ``dtype`` keyword "
+"can alleviate this issue."
+msgstr ""
+
+#: mars.tensor.nanvar:75 of
+msgid ""
+"For this function to work on sub-classes of Tensor, they must define "
+"`sum` with the kwarg `keepdims`"
+msgstr ""
+
+#: mars.tensor.nanvar:79 of
+msgid "Examples"
+msgstr ""
+

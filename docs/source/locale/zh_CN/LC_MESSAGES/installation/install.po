@@ -1,0 +1,69 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/installation/install.rst:4
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/installation/install.rst:6
+msgid "You can simply install Mars via pip:"
+msgstr "你可以使用 ``pip`` 安装 Mars："
+
+#: ../../source/installation/install.rst:12
+msgid "To run Mars on a single machine, there are two ways."
+msgstr "在单机运行 Mars，有两种方式。"
+
+#: ../../source/installation/install.rst:14
+msgid "Threaded: a thread-based scheduling which is by default."
+msgstr "多线程：基于线程的的调度器，它是单机的默认调度器。"
+
+#: ../../source/installation/install.rst:15
+msgid ""
+"Local cluster: a process-based scheduling which owns the entire "
+"distributed runtime."
+msgstr "本地集群：包含整个分布式运行时的基于进程的调度器。"
+
+#: ../../source/installation/install.rst:20
+msgid "Threaded"
+msgstr "多线程执行模式"
+
+#: ../../source/installation/install.rst:22
+msgid "After installation, you can simply open a Python console and run"
+msgstr "当安装完成，可启动 Python 命令行并执行"
+
+#: ../../source/installation/install.rst:43
+msgid "Local cluster"
+msgstr "本地集群模式"
+
+#: ../../source/installation/install.rst:45
+msgid ""
+"Users can start the distributed runtime of Mars on a single machine. "
+"First, install Mars distributed by run"
+msgstr ""
+"你可以在一台机器上启动 Mars 的分布式运行时。首先，使用下面的命令安装"
+"分布式 Mars 及相关组件："
+
+#: ../../source/installation/install.rst:52
+msgid "For now, local cluster mode can only run on Linux and Mac OS."
+msgstr "目前，本地集群模式仅支持 Linux 和 MacOS。"
+
+#: ../../source/installation/install.rst:54
+msgid "Then start a local cluster by run"
+msgstr "此后，使用下面的命令启动一个本地集群"
+

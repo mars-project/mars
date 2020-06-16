@@ -1,0 +1,96 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.random.beta.rst:2
+msgid "mars.tensor.random.beta"
+msgstr ""
+
+#: mars.tensor.random.beta:1 of
+msgid "Draw samples from a Beta distribution."
+msgstr ""
+
+#: mars.tensor.random.beta:3 of
+msgid ""
+"The Beta distribution is a special case of the Dirichlet distribution, "
+"and is related to the Gamma distribution.  It has the probability "
+"distribution function"
+msgstr ""
+
+#: mars.tensor.random.beta:7 of
+msgid ""
+"f(x; a,b) = \\frac{1}{B(\\alpha, \\beta)} x^{\\alpha - 1} (1 - x)^{\\beta"
+" - 1},"
+msgstr ""
+
+#: mars.tensor.random.beta:10 of
+msgid "where the normalisation, B, is the beta function,"
+msgstr ""
+
+#: mars.tensor.random.beta:12 of
+msgid "B(\\alpha, \\beta) = \\int_0^1 t^{\\alpha - 1} (1 - t)^{\\beta - 1} dt."
+msgstr ""
+
+#: mars.tensor.random.beta:15 of
+msgid "It is often seen in Bayesian inference and order statistics."
+msgstr ""
+
+#: mars.tensor.random.beta of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.random.beta:17 of
+msgid "Alpha, non-negative."
+msgstr ""
+
+#: mars.tensor.random.beta:19 of
+msgid "Beta, non-negative."
+msgstr ""
+
+#: mars.tensor.random.beta:21 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  If size is ``None`` (default), a single value is"
+" returned if ``a`` and ``b`` are both scalars. Otherwise, "
+"``mt.broadcast(a, b).size`` samples are drawn."
+msgstr ""
+
+#: mars.tensor.random.beta:26 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.beta:28 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.beta:30 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: mars.tensor.random.beta of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.random.beta:33 of
+msgid "**out** -- Drawn samples from the parameterized beta distribution."
+msgstr ""
+
+#: mars.tensor.random.beta of
+msgid "Return type"
+msgstr ""
+

@@ -1,0 +1,99 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 18:05+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/getting_started/tensor.rst:4
+msgid "Mars Tensor"
+msgstr ""
+
+#: ../../source/getting_started/tensor.rst:6
+msgid "Mars tensors can be created from numpy ndarrays or external files."
+msgstr "Mars tensor 能从 numpy ndarray 创建，或者从外部文件读取。"
+
+#: ../../source/getting_started/tensor.rst:8
+msgid "Creating a Mars tensor from numpy ndarray."
+msgstr "从 numpy ndarray 创建 Mars tensor。"
+
+#: ../../source/getting_started/tensor.rst:16
+msgid "Reading a HDF5 file into a Mars tensor."
+msgstr "读取 HDF5 文件以创建 Mars tensor。"
+
+#: ../../source/getting_started/tensor.rst:24
+msgid ""
+"Refer to :ref:`tensor_creation` and :ref:`tensor_read` for more "
+"information."
+msgstr "参考 :ref:`tensor_creation` 和 :ref:`tensor_read` 获取更多信息。"
+
+#: ../../source/getting_started/tensor.rst:26
+msgid ""
+"The usage of Mars tensor is very similar to numpy except that Mars tensor"
+" is lazy evaluated.  You need to call ``.execute()`` to get the final "
+"result."
+msgstr ""
+"Mars tensor 用起来和 numpy 非常相似，区别在于 Mars tensor 是延迟执行的。"
+"需要调用 ``.execute()`` 来得到最终结果。"
+
+#: ../../source/getting_started/tensor.rst:29
+msgid "Remember that ``.execute()`` will return Mars tensor itself."
+msgstr "记住，``.execute()`` 会返回 Mars tensor 本身。"
+
+#: ../../source/getting_started/tensor.rst:39
+msgid ""
+"For more implemented tensor API, refer to :ref:`tensor API reference "
+"<tensor_api>`."
+msgstr "参考 :ref:`tensor API <tensor_api>` 获取更多实现的 tensor 接口。"
+
+#: ../../source/getting_started/tensor.rst:41
+msgid ""
+"Once a tensor is executed, ``.fetch()`` could be called to get the result"
+" as numpy ndarray.  A shortcut ``.to_numpy()`` is identical to "
+"``.execute().fetch()``."
+msgstr ""
+"一旦一个 tensor 执行，可以调用 ``.fetch()`` 将结果转换为 numpy 多维数组。"
+"``.to_numpy()`` 是 ``.execute().fetch()`` 的快捷用法。"
+
+#: ../../source/getting_started/tensor.rst:66
+msgid ""
+"Users should always consider using ``.execute()`` instead of "
+"``.to_numpy()``, because when the tensor is large, ``.execute()`` will "
+"only fetch the edge items for display purpose. On the other hand, "
+"``.to_numpy()`` will try to generate the entire array on the server side "
+"and return it back to client, which is extremely inefficient and may "
+"cause OutOfMemory error."
+msgstr ""
+"应当优先考虑使用 ``.execute()`` 而不是 ``.to_numpy()``，因为当 tensor "
+"很大的时候，``.execute()`` 只会获取角上的数据来展示。而 ``.to_numpy()`` "
+"会在服务端生成完整的数组，然后返回到客户端，这非常低效，而且很有可能导致"
+"内存溢出。"
+
+#: ../../source/getting_started/tensor.rst:72
+msgid ""
+"If multiple tensors need to be executed together, "
+":class:`mars.tensor.ExecutableTuple` could be used."
+msgstr "使用 :class:`mars.tensor.ExecutableTuple` 来执行多个 tensor。"
+
+#: ../../source/getting_started/tensor.rst:88
+msgid "Tensors can be saved to external files, for instance, HDF5."
+msgstr "Tensor 能被保存到外部文件如 HDF5。"
+
+#: ../../source/getting_started/tensor.rst:96
+msgid ""
+"Refer to :ref:`tensor_write` for more information about saving to "
+"external files."
+msgstr "参考 :ref:`tensor_write` 了解如何保存 tensor 到外部文件。"
+

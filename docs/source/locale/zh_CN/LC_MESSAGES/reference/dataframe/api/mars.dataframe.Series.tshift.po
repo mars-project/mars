@@ -1,0 +1,68 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.tshift.rst:2
+msgid "mars.dataframe.Series.tshift"
+msgstr ""
+
+#: mars.dataframe.Series.tshift:1 of
+msgid "Shift the time index, using the index's frequency if available."
+msgstr ""
+
+#: mars.dataframe.Series.tshift of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.tshift:3 of
+msgid "Number of periods to move, can be positive or negative."
+msgstr ""
+
+#: mars.dataframe.Series.tshift:5 of
+msgid ""
+"Increment to use from the tseries module or time rule expressed as a "
+"string (e.g. 'EOM')."
+msgstr ""
+
+#: mars.dataframe.Series.tshift:8 of
+msgid "Corresponds to the axis that contains the Index."
+msgstr ""
+
+#: mars.dataframe.Series.tshift of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.tshift:11 of
+msgid "**shifted**"
+msgstr ""
+
+#: mars.dataframe.Series.tshift of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.tshift:15 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.Series.tshift:16 of
+msgid ""
+"If freq is not specified then tries to use the freq or inferred_freq "
+"attributes of the index. If neither of those attributes exist, a "
+"ValueError is thrown"
+msgstr ""
+

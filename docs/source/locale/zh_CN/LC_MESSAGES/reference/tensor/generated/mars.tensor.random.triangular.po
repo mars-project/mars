@@ -1,0 +1,126 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.random.triangular.rst:2
+msgid "mars.tensor.random.triangular"
+msgstr ""
+
+#: mars.tensor.random.triangular:1 of
+msgid ""
+"Draw samples from the triangular distribution over the interval ``[left, "
+"right]``."
+msgstr ""
+
+#: mars.tensor.random.triangular:4 of
+msgid ""
+"The triangular distribution is a continuous probability distribution with"
+" lower limit left, peak at mode, and upper limit right. Unlike the other "
+"distributions, these parameters directly define the shape of the pdf."
+msgstr ""
+
+#: mars.tensor.random.triangular of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.random.triangular:9 of
+msgid "Lower limit."
+msgstr ""
+
+#: mars.tensor.random.triangular:11 of
+msgid ""
+"The value where the peak of the distribution occurs. The value should "
+"fulfill the condition ``left <= mode <= right``."
+msgstr ""
+
+#: mars.tensor.random.triangular:14 of
+msgid "Upper limit, should be larger than `left`."
+msgstr ""
+
+#: mars.tensor.random.triangular:16 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  If size is ``None`` (default), a single value is"
+" returned if ``left``, ``mode``, and ``right`` are all scalars.  "
+"Otherwise, ``mt.broadcast(left, mode, right).size`` samples are drawn."
+msgstr ""
+
+#: mars.tensor.random.triangular:22 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.triangular:24 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.triangular:26 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: mars.tensor.random.triangular of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.random.triangular:29 of
+msgid "**out** -- Drawn samples from the parameterized triangular distribution."
+msgstr ""
+
+#: mars.tensor.random.triangular of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.random.triangular:33 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.random.triangular:34 of
+msgid "The probability density function for the triangular distribution is"
+msgstr ""
+
+#: mars.tensor.random.triangular:36 of
+msgid ""
+"P(x;l, m, r) = \\begin{cases} \\frac{2(x-l)}{(r-l)(m-l)}& \\text{for $l "
+"\\leq x \\leq m$},\\\\ \\frac{2(r-x)}{(r-l)(r-m)}& \\text{for $m \\leq x "
+"\\leq r$},\\\\ 0& \\text{otherwise}. \\end{cases}"
+msgstr ""
+
+#: mars.tensor.random.triangular:42 of
+msgid ""
+"The triangular distribution is often used in ill-defined problems where "
+"the underlying distribution is not known, but some knowledge of the "
+"limits and mode exists. Often it is used in simulations."
+msgstr ""
+
+#: mars.tensor.random.triangular:48 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.random.triangular:49 of
+msgid ""
+"Wikipedia, \"Triangular distribution\" "
+"http://en.wikipedia.org/wiki/Triangular_distribution"
+msgstr ""
+
+#: mars.tensor.random.triangular:53 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.triangular:54 of
+msgid "Draw values from the distribution and plot the histogram:"
+msgstr ""
+

@@ -1,0 +1,83 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/generated/mars.tensor.sqrt.rst:2
+msgid "mars.tensor.sqrt"
+msgstr ""
+
+#: mars.tensor.sqrt:1 of
+msgid "Return the positive square-root of an tensor, element-wise."
+msgstr ""
+
+#: mars.tensor.sqrt of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.sqrt:3 of
+msgid "The values whose square-roots are required."
+msgstr ""
+
+#: mars.tensor.sqrt:5 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.sqrt:10 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.sqrt of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.sqrt:15 of
+msgid ""
+"**y** -- An tensor of the same shape as `x`, containing the positive "
+"square-root of each element in `x`.  If any element in `x` is complex, a "
+"complex tensor is returned (and the square-roots of negative reals are "
+"calculated).  If all of the elements in `x` are real, so is `y`, with "
+"negative elements returning ``nan``. If `out` was provided, `y` is a "
+"reference to it."
+msgstr ""
+
+#: mars.tensor.sqrt of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.sqrt:24 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.sqrt:25 of
+msgid ""
+"*sqrt* has--consistent with common convention--as its branch cut the real"
+" \"interval\" [`-inf`, 0), and is continuous from above on it. A branch "
+"cut is a curve in the complex plane across which a given complex function"
+" fails to be continuous."
+msgstr ""
+
+#: mars.tensor.sqrt:31 of
+msgid "Examples"
+msgstr ""
+

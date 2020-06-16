@@ -1,0 +1,91 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.bitwise_or.rst:2
+msgid "mars.tensor.bitwise\\_or"
+msgstr ""
+
+#: mars.tensor.bitwise_or:1 of
+msgid "Compute the bit-wise OR of two tensors element-wise."
+msgstr ""
+
+#: mars.tensor.bitwise_or:3 of
+msgid ""
+"Computes the bit-wise OR of the underlying binary representation of the "
+"integers in the input arrays. This ufunc implements the C/Python operator"
+" ``|``."
+msgstr ""
+
+#: mars.tensor.bitwise_or of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.bitwise_or:7 of
+msgid "Only integer and boolean types are handled."
+msgstr ""
+
+#: mars.tensor.bitwise_or:9 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.bitwise_or:14 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.bitwise_or of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.bitwise_or:19 of
+msgid "**out** -- Result."
+msgstr ""
+
+#: mars.tensor.bitwise_or of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.bitwise_or:24 of
+msgid ":func:`logical_or`, :func:`bitwise_and`, :func:`bitwise_xor`"
+msgstr ""
+
+#: mars.tensor.bitwise_or:26 of
+msgid ":func:`binary_repr`"
+msgstr ""
+
+#: mars.tensor.bitwise_or:27 of
+msgid "Return the binary representation of the input number as a string."
+msgstr ""
+
+#: mars.tensor.bitwise_or:30 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.bitwise_or:31 of
+msgid ""
+"The number 13 has the binaray representation ``00001101``. Likewise, 16 "
+"is represented by ``00010000``.  The bit-wise OR of 13 and 16 is then "
+"``000111011``, or 29:"
+msgstr ""
+

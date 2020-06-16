@@ -1,0 +1,35 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/installation/index.rst:5
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/installation/index.rst:7
+msgid "You can simply install Mars via pip:"
+msgstr "你可以使用 ``pip`` 安装 Mars："
+
+#: ../../source/installation/index.rst:13
+msgid "Install Mars distributed by run:"
+msgstr "安装分布式版本可以："
+
+#: ../../source/installation/index.rst:19
+msgid "For now, distributed version is only available for Linux and Mac OS."
+msgstr "目前，分布式版本只支持 Linux 和 MacOS。"
+

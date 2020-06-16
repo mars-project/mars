@@ -1,0 +1,202 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.to_sql.rst:2
+msgid "mars.dataframe.Series.to\\_sql"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:1 of
+msgid "Write records stored in a DataFrame to a SQL database."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:3 of
+msgid ""
+"Databases supported by SQLAlchemy [1]_ are supported. Tables can be newly"
+" created, appended to, or overwritten."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:6 of
+msgid "Name of SQL table."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:8 of
+msgid ""
+"Using SQLAlchemy makes it possible to use any DB supported by that "
+"library. Legacy support is provided for sqlite3.Connection objects. The "
+"user is responsible for engine disposal and connection closure for the "
+"SQLAlchemy connectable See `here                 "
+"<https://docs.sqlalchemy.org/en/13/core/connections.html>`_"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:13 of
+msgid ""
+"Specify the schema (if database flavor supports this). If None, use "
+"default schema."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:16 of
+msgid ""
+"How to behave if the table already exists.  * fail: Raise a ValueError. *"
+" replace: Drop the table before inserting new values. * append: Insert "
+"new values to the existing table."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:16 of
+msgid "How to behave if the table already exists."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:18 of
+msgid "fail: Raise a ValueError."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:19 of
+msgid "replace: Drop the table before inserting new values."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:20 of
+msgid "append: Insert new values to the existing table."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:22 of
+msgid ""
+"Write DataFrame index as a column. Uses `index_label` as the column name "
+"in the table."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:25 of
+msgid ""
+"Column label for index column(s). If None is given (default) and `index` "
+"is True, then the index names are used. A sequence should be given if the"
+" DataFrame uses MultiIndex."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:29 of
+msgid ""
+"Specify the number of rows in each batch to be written at a time. By "
+"default, all rows will be written at once."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:32 of
+msgid ""
+"Specifying the datatype for columns. If a dictionary is used, the keys "
+"should be the column names and the values should be the SQLAlchemy types "
+"or strings for the sqlite3 legacy mode. If a scalar is provided, it will "
+"be applied to all columns."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:37 of
+msgid ""
+"Controls the SQL insertion clause used:  * None : Uses standard SQL "
+"``INSERT`` clause (one per row). * 'multi': Pass multiple values in a "
+"single ``INSERT`` clause. * callable with signature ``(pd_table, conn, "
+"keys, data_iter)``.  Details and a sample callable implementation can be "
+"found in the section :ref:`insert method <io.sql.method>`.  .. "
+"versionadded:: 0.24.0"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:37 of
+msgid "Controls the SQL insertion clause used:"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:39 of
+msgid "None : Uses standard SQL ``INSERT`` clause (one per row)."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:40 of
+msgid "'multi': Pass multiple values in a single ``INSERT`` clause."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:41 of
+msgid "callable with signature ``(pd_table, conn, keys, data_iter)``."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:43 of
+msgid ""
+"Details and a sample callable implementation can be found in the section "
+":ref:`insert method <io.sql.method>`."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql of
+msgid "Raises"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:49 of
+msgid "When the table already exists and `if_exists` is 'fail' (the     default)."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:53 of
+msgid ":meth:`read_sql`"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:54 of
+msgid "Read a DataFrame from a table."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:57 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:58 of
+msgid ""
+"Timezone aware datetime columns will be written as ``Timestamp with "
+"timezone`` type with SQLAlchemy if supported by the database. Otherwise, "
+"the datetimes will be stored as timezone unaware timestamps local to the "
+"original timezone."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:66 of
+msgid "References"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:67 of
+msgid "http://docs.sqlalchemy.org"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:68 of
+msgid "https://www.python.org/dev/peps/pep-0249/"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:71 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:72 of
+msgid "Create an in-memory SQLite database."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:78 of
+msgid "Create a table from scratch with 3 rows."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:97 of
+msgid "Overwrite the table with just ``df1``."
+msgstr ""
+
+#: mars.dataframe.Series.to_sql:104 of
+msgid ""
+"Specify the dtype (especially useful for integers with missing values). "
+"Notice that while pandas is forced to store the data as floating point, "
+"the database supports nullable integers. When fetching the data with "
+"Python, we get back integer scalars."
+msgstr ""
+

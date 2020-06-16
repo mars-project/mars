@@ -1,0 +1,82 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/generated/mars.tensor.logaddexp2.rst:2
+msgid "mars.tensor.logaddexp2"
+msgstr ""
+
+#: mars.tensor.logaddexp2:1 of
+msgid "Logarithm of the sum of exponentiations of the inputs in base-2."
+msgstr ""
+
+#: mars.tensor.logaddexp2:3 of
+msgid ""
+"Calculates ``log2(2**x1 + 2**x2)``. This function is useful in machine "
+"learning when the calculated probabilities of events may be so small as "
+"to exceed the range of normal floating point numbers.  In such cases the "
+"base-2 logarithm of the calculated probability can be used instead. This "
+"function allows adding probabilities stored in such a fashion."
+msgstr ""
+
+#: mars.tensor.logaddexp2 of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.logaddexp2:9 of
+msgid "Input values."
+msgstr ""
+
+#: mars.tensor.logaddexp2:11 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.logaddexp2:16 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.logaddexp2 of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.logaddexp2:21 of
+msgid "**result** -- Base-2 logarithm of ``2**x1 + 2**x2``."
+msgstr ""
+
+#: mars.tensor.logaddexp2 of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.logaddexp2:26 of
+msgid ":func:`logaddexp`"
+msgstr ""
+
+#: mars.tensor.logaddexp2:27 of
+msgid "Logarithm of the sum of exponentiations of the inputs."
+msgstr ""
+
+#: mars.tensor.logaddexp2:30 of
+msgid "Examples"
+msgstr ""
+

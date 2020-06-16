@@ -1,0 +1,63 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 18:21+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/getting_started/execution.rst:4
+msgid "Lazy Evaluation"
+msgstr "延迟执行"
+
+#: ../../source/getting_started/execution.rst:6
+msgid ""
+"You need to call ``.execute()`` on Mars tensors, DataFrames and remote "
+"functions to trigger execution."
+msgstr "Mars Tensor、DataFrame 和 Remote 需要调用 ``.execute()`` 来触发执行。"
+
+#: ../../source/getting_started/execution.rst:22
+msgid ""
+"Calling ``.execute()`` will return Mars object itself, ``.fetch()`` could"
+" be called on executed objects to get the result."
+msgstr "调用 ``.execute()`` 会返回 Mars 对象自身，``.fetch()`` 可以用来获取结果。"
+
+#: ../../source/getting_started/execution.rst:34
+msgid ""
+"However, there are exceptions that some functions will trigger execution "
+"intermediately."
+msgstr "然而，有一些函数或方法会立即触发执行。"
+
+#: ../../source/getting_started/execution.rst:37
+msgid ""
+"Iterating over DataFrame, including "
+":meth:`mars.dataframe.DataFrame.iterrows` and "
+":meth:`mars.dataframe.DataFrame.itertuples`."
+msgstr ""
+"迭代 DataFrame，包括 :meth:`mars.dataframe.DataFrame.iterrows` 和 :meth:`"
+"mars.dataframe.DataFrame.itertuples`。"
+
+#: ../../source/getting_started/execution.rst:39
+msgid ""
+"All plot functions for DataFrame and Series, including "
+":meth:`mars.dataframe.DataFrame.plot`, "
+":meth:`mars.dataframe.DataFrame.plot.bar` and so forth."
+msgstr ""
+"DataFrame 和 Series 上所有的绘图函数，包括 :meth:`mars.dataframe."
+"DataFrame.plot`， :meth:`mars.dataframe.DataFrame.plot.bar` 等等。"
+
+#: ../../source/getting_started/execution.rst:41
+msgid "All functions in Mars learn like ``fit``, ``predict`` and so forth."
+msgstr "Mars learn 里的所有函数，包括 ``fit``、``predict`` 等等。"
+

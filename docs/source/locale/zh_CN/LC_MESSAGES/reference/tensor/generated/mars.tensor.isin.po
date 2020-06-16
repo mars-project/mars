@@ -1,0 +1,116 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.isin.rst:2
+msgid "mars.tensor.isin"
+msgstr ""
+
+#: mars.tensor.isin:1 of
+msgid ""
+"Calculates `element in test_elements`, broadcasting over `element` only. "
+"Returns a boolean array of the same shape as `element` that is True where"
+" an element of `element` is in `test_elements` and False otherwise."
+msgstr ""
+
+#: mars.tensor.isin of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.isin:5 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.isin:7 of
+msgid ""
+"The values against which to test each value of `element`. This argument "
+"is flattened if it is a tensor or array_like. See notes for behavior with"
+" non-array-like parameters."
+msgstr ""
+
+#: mars.tensor.isin:11 of
+msgid ""
+"If True, the input tensors are both assumed to be unique, which can speed"
+" up the calculation.  Default is False."
+msgstr ""
+
+#: mars.tensor.isin:14 of
+msgid ""
+"If True, the values in the returned tensor are inverted, as if "
+"calculating `element not in test_elements`. Default is False. "
+"``mt.isin(a, b, invert=True)`` is equivalent to (but faster than) "
+"``mt.invert(mt.isin(a, b))``."
+msgstr ""
+
+#: mars.tensor.isin of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.isin:20 of
+msgid ""
+"**isin** -- Has the same shape as `element`. The values `element[isin]` "
+"are in `test_elements`."
+msgstr ""
+
+#: mars.tensor.isin of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.isin:26 of
+msgid ":func:`in1d`"
+msgstr ""
+
+#: mars.tensor.isin:27 of
+msgid "Flattened version of this function."
+msgstr ""
+
+#: mars.tensor.isin:30 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.isin:31 of
+msgid ""
+"`isin` is an element-wise function version of the python keyword `in`. "
+"``isin(a, b)`` is roughly equivalent to ``mt.array([item in b for item in"
+" a])`` if `a` and `b` are 1-D sequences."
+msgstr ""
+
+#: mars.tensor.isin:35 of
+msgid ""
+"`element` and `test_elements` are converted to tensors if they are not "
+"already. If `test_elements` is a set (or other non-sequence collection) "
+"it will be converted to an object tensor with one element, rather than a "
+"tensor of the values contained in `test_elements`. This is a consequence "
+"of the `tensor` constructor's way of handling non-sequence collections. "
+"Converting the set to a list usually gives the desired behavior."
+msgstr ""
+
+#: mars.tensor.isin:43 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.isin:64 of
+msgid ""
+"Because of how `array` handles sets, the following does not work as "
+"expected:"
+msgstr ""
+
+#: mars.tensor.isin:72 of
+msgid "Casting the set to a list gives the expected result:"
+msgstr ""
+

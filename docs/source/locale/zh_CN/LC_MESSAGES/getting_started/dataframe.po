@@ -1,0 +1,101 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 18:05+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/getting_started/dataframe.rst:4
+msgid "Mars DataFrame"
+msgstr ""
+
+#: ../../source/getting_started/dataframe.rst:6
+msgid "For a quick tour of Mars DataFrame, please visit :ref:`10min`."
+msgstr "想快速了解 Mars DataFrame，请访问 :ref:`10min`。"
+
+#: ../../source/getting_started/dataframe.rst:8
+msgid "Mars DataFrame can be initialized just like pandas DataFrame."
+msgstr "Mars DataFrame 的创建方式和 pandas DataFrame 非常相似。"
+
+#: ../../source/getting_started/dataframe.rst:16
+msgid "Pandas DataFrame can be passed to Mars DataFrame either."
+msgstr "也可以直接从 pandas DataFrame 创建 Mars DataFrame。"
+
+#: ../../source/getting_started/dataframe.rst:24
+msgid "Creating Mars DataFrame from Mars tensor."
+msgstr "从 Mars tensor 创建 Mars DataFrame。"
+
+#: ../../source/getting_started/dataframe.rst:31
+msgid "Mars DataFrame can read data from CSV files, SQL tables, etc."
+msgstr "Mars DataFrame 能通过 CSV 文件和 SQL 表来创建。"
+
+#: ../../source/getting_started/dataframe.rst:38
+msgid "For more information about DataFrame creation, refer to :ref:`api.io`."
+msgstr "关于如何创建 DataFrame，参考 :ref:`api.io`。"
+
+#: ../../source/getting_started/dataframe.rst:40
+msgid ""
+"Like Mars tensor, DataFrame is lazy evaluated as well. If you want to get"
+" result, ``.execute()`` needs to be called."
+msgstr ""
+"类似 Mars tensor，DataFrame 也是延迟执行的。如果要获取结果，需要调用 ``."
+"execute()``。"
+
+#: ../../source/getting_started/dataframe.rst:66
+msgid "Remember that ``DataFrame.execute()`` will return DataFrame itself."
+msgstr "记住，``DataFrame.execute()`` 会返回 DataFrame 自身。"
+
+#: ../../source/getting_started/dataframe.rst:68
+msgid ""
+"For more implemented DataFrame API, refer to :ref:`DataFrame API "
+"reference <dataframe_api>`."
+msgstr "了解更多 DataFrame 接口，参考 :ref:`api`。"
+
+#: ../../source/getting_started/dataframe.rst:70
+msgid ""
+"In order to convert Mars DataFrame to pandas, ``.execute().fetch()`` can "
+"be called.  An alternative is ``.to_pandas()``."
+msgstr ""
+"调用 ``.execute().fetch()`` 来把 Mars DataFrame 转成 pandas。或者使用快捷"
+"方法 ``.to_pandas()``。"
+
+#: ../../source/getting_started/dataframe.rst:105
+msgid ""
+"Users should always consider using ``.execute()`` instead of "
+"``.to_pandas()``, because when the DataFrame is large, ``.execute()`` "
+"will only fetch head and tail rows for display purpose. On the other "
+"hand, ``.to_pandas()`` will try to generate the entire DataFrame on the "
+"server side and return it back to client, which is extremely inefficient "
+"and may cause OutOfMemory error."
+msgstr ""
+"应当优先考虑使用 ``.execute()`` 而不是 ``.to_pandas()``，因为当 DataFrame "
+"很大的时候，``.execute()`` 只会获取前几行和后几行数据来展示。而 ``.to_pandas"
+"()`` 会在服务端生成完整的 DataFrame，然后返回到客户端，这非常低效，而且很"
+"有可能导致内存溢出。"
+
+#: ../../source/getting_started/dataframe.rst:112
+msgid ""
+"If multiple DataFrames need to be executed together, "
+":class:`mars.dataframe.ExecutableTuple` could be used."
+msgstr "使用 :class:`mars.dataframe.ExecutableTuple` 来执行多个 DataFrame。"
+
+#: ../../source/getting_started/dataframe.rst:129
+msgid "DataFrame can be saved to CSV etc."
+msgstr "DataFrame 能被保存到 CSV 文件。"
+
+#: ../../source/getting_started/dataframe.rst:138
+msgid "Refer to :ref:`api.dataframe.io` for more information."
+msgstr "参考 :ref:`api.dataframe.io` 获取更多信息。"
+

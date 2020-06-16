@@ -1,0 +1,127 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 19:05+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/learn/lightgbm.rst:5
+msgid "Integrate with LightGBM"
+msgstr "和 LightGBM 集成"
+
+#: ../../source/user_guide/learn/lightgbm.rst:9
+msgid ""
+"This is an introduction about how to use LightGBM for training and "
+"prediction in Mars."
+msgstr "这个指引会介绍如何在 Mars 里使用 LightGBM 进行训练和预测。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:13
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/user_guide/learn/lightgbm.rst:15
+msgid ""
+"If you are trying to use Mars on a single machine e.g. on your laptop, "
+"make sure LightGBM is installed."
+msgstr "如果你试图在单机比如你的笔记本上使用 Mars，确保 LightGBM 已经安装。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:18
+msgid "You can install LightGBM via pip:"
+msgstr "你可以通过 pip 安装 LightGBM："
+
+#: ../../source/user_guide/learn/lightgbm.rst:24
+msgid ""
+"Visit `installation guide for LightGBM "
+"<https://lightgbm.readthedocs.io/en/latest/Installation-Guide.html>`_ for"
+" more information."
+msgstr ""
+"访问 `LightGBM 安装指引 <https://lightgbm.readthedocs.io/en/latest/"
+"Installation-Guide.html>`_ 获取更多信息。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:28
+msgid ""
+"On the other hand, if you are using Mars on a cluster, make sure LightGBM"
+" is installed on each worker."
+msgstr "另一方面，如果你在集群上使用 Mars，确保 LightGBM 在每个 Worker 上安装。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:32
+msgid "Prepare data"
+msgstr "准备数据"
+
+#: ../../source/user_guide/learn/lightgbm.rst:34
+msgid "First, we use scikit-learn to load the Boston Housing dataset."
+msgstr "首先，我们使用 scikit-learn 来加载波士顿房屋数据集。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:41
+msgid "Then create Mars DataFrame from the dataset."
+msgstr "接着从数据创建 Mars DataFrame。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:48
+msgid "Explore the top 5 rows data of the DataFrame."
+msgstr "查看 DataFrame 前五条数据。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:63
+msgid ""
+":meth:`mars.dataframe.DataFrame.describe` gives summary statistics of the"
+" columns."
+msgstr ":meth:`mars.dataframe.DataFrame.describe` 给出了所有列的统计信息。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:81
+msgid ""
+"We can shuffle the sequence of the data, and separate the data into train"
+" and test parts."
+msgstr "我们可以把数据打乱，然后把他们分成训练和测试集。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:93
+msgid "Training"
+msgstr "训练"
+
+#: ../../source/user_guide/learn/lightgbm.rst:95
+msgid ""
+"We can train data with scikit-learn API similar to the API implemented in"
+" LightGBM."
+msgstr "我们可以使用与原始 LightGBM 类似的 scikie-learn 接口对数据进行训练。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:115
+msgid "Prediction"
+msgstr "预测"
+
+#: ../../source/user_guide/learn/lightgbm.rst:117
+msgid "For prediction, scikit-learn API can also be used."
+msgstr "预测中也可以使用 scikit-learn 样式的接口。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:137
+msgid "Distributed training and prediction"
+msgstr "分布式训练和预测"
+
+#: ../../source/user_guide/learn/lightgbm.rst:139
+msgid ""
+"Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for "
+"running Mars on Kubernetes."
+msgstr "部署参考 :ref:`deploy` 部分，在 Kubernetes 上运行参考 :ref:`k8s` 部分。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:142
+msgid ""
+"Once a cluster exists, you can either set the session as default, the "
+"training and prediction shown above will be submitted to the cluster, or "
+"you can specify ``session=***`` explicitly as well."
+msgstr ""
+"一旦一个集群存在，你可以要么设置默认 session，训练和预测就会自动提交到"
+"集群，要么你可以通过 ``session=***`` 显示指定运行的 session。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:146
+msgid "Take :meth:`LGBMRegressor.fit` as an example."
+msgstr "以 :meth:`LGBMRegressor.fit` 为例。"
+

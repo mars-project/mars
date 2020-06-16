@@ -1,0 +1,117 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.utils.validation.check_is_fitted.rst:2
+msgid "mars.learn.utils.validation.check\\_is\\_fitted"
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:1 of
+msgid "Perform is_fitted validation for estimator."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:3 of
+msgid ""
+"Checks if the estimator is fitted by verifying the presence of fitted "
+"attributes (ending with a trailing underscore) and otherwise raises a "
+"NotFittedError with the given message."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:7 of
+msgid ""
+"This utility is meant to be used internally by estimators themselves, "
+"typically in their own predict / transform methods."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:10 of
+msgid "estimator instance for which the check is performed."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:12 of
+msgid ""
+"Attribute name(s) given as string or a list/tuple of strings Eg.: "
+"``[\"coef_\", \"estimator_\", ...], \"coef_\"``  If `None`, `estimator` "
+"is considered fitted if there exist an attribute that ends with a "
+"underscore and does not start with double underscore."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:12 of
+msgid ""
+"Attribute name(s) given as string or a list/tuple of strings Eg.: "
+"``[\"coef_\", \"estimator_\", ...], \"coef_\"``"
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:15 of
+msgid ""
+"If `None`, `estimator` is considered fitted if there exist an attribute "
+"that ends with a underscore and does not start with double underscore."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:19 of
+#, python-format
+msgid ""
+"The default error message is, \"This %(name)s instance is not fitted yet."
+" Call 'fit' with appropriate arguments before using this estimator.\"  "
+"For custom messages if \"%(name)s\" is present in the message string, it "
+"is substituted for the estimator name.  Eg. : \"Estimator, %(name)s, must"
+" be fitted before sparsifying\"."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:19 of
+#, python-format
+msgid ""
+"The default error message is, \"This %(name)s instance is not fitted yet."
+" Call 'fit' with appropriate arguments before using this estimator.\""
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:23 of
+#, python-format
+msgid ""
+"For custom messages if \"%(name)s\" is present in the message string, it "
+"is substituted for the estimator name."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:26 of
+#, python-format
+msgid "Eg. : \"Estimator, %(name)s, must be fitted before sparsifying\"."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:28 of
+msgid "Specify whether all or any of the given attributes must exist."
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted of
+msgid "Return type"
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted of
+msgid "Raises"
+msgstr ""
+
+#: mars.learn.utils.validation.check_is_fitted:34 of
+msgid "If the attributes are not found."
+msgstr ""
+

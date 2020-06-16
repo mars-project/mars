@@ -1,0 +1,174 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/development/distributed/worker-schedule.rst:2
+msgid "Execution in Worker"
+msgstr "Worker 中的执行细节"
+
+#: ../../source/development/distributed/worker-schedule.rst:3
+msgid ""
+"A Mars worker consists of multiple processes to reduce the impact of the "
+"notorious global interpreter lock (GIL) in Python. Executions run in "
+"separate processes. To reduce unnecessary memory copy and inter-process "
+"communication, shared memory is used to store computation results."
+msgstr ""
+"一个 Mars Worker 包含多个进程，以减少全局解释器锁（GIL）对执行的影响。"
+"具体的执行在独立的进程中完成。为减少不必要的内存拷贝和进程间通讯，Mars "
+"Worker 使用共享内存来存储执行结果。"
+
+#: ../../source/development/distributed/worker-schedule.rst:8
+msgid ""
+"When an operand is being executed in a worker, it will first allocate "
+"memory. Then data from other workers or from files already spilled to "
+"disk are loaded. After that all data required are in memory and "
+"calculation can start. When calculation is done, the worker then put the "
+"result into shared memory cache. These four states can be seen in the "
+"graph below."
+msgstr ""
+"当一个作业被提交到 Worker，它将首先被分配内存。此后，Operand 依赖的其他 "
+"Worker 上的数据，或者当前 Worker 上已被 spill 到磁盘的数据将会被重新载入"
+"内存中。此时，所有计算需要的数据已经都在内存中，真正的计算过程将启动。当"
+"计算完成，Worker 将会把作业放到共享存储空间中。这四种执行状态的转换关系见"
+"下图。"
+
+#: ../../source/development/distributed/worker-schedule.rst:17
+msgid "Execution Control"
+msgstr "执行控制"
+
+#: ../../source/development/distributed/worker-schedule.rst:18
+msgid ""
+"A Mars worker starts an ExecutionActor to control **all** the operands "
+"running on the worker. It does not actually do calculation or data "
+"transfer itself, but submit these actions to other actors."
+msgstr ""
+"Mars Worker 通过 ExecutionActor 控制**所有** Operand 在 Worker 中的执行。"
+"该 Actor 本身并不参与实际运算或者数据传输，只是向其他 Actor 提交任务。"
+
+#: ../../source/development/distributed/worker-schedule.rst:22
+msgid ""
+"OperandActors in schedulers submit an operand into workers through "
+"``execute_graph`` calls. Then a callback is registered via "
+"``add_finish_callback``. This design allows finish message be sent to "
+"different places, which is necessary for failover."
+msgstr ""
+"Scheduler 中的 OperandActor 通过 ExecutionActor 上的 ``execute_graph`` "
+"调用向 Worker 提交作业。此后，``add_finish_callback`` 将被调用以注册一个"
+"回调。这一设计允许执行结果被多个位置接收，这对故障恢复有价值。"
+
+#: ../../source/development/distributed/worker-schedule.rst:27
+msgid ""
+"ExecutionActor uses ``mars.promise`` module to handle multiple operands "
+"simultaneously. Execution steps are chained via ``then`` method of the "
+"``Promise`` class. When the final result is successfully stored, all "
+"registered callbacks will be invoked. When exception raises in any "
+"chained promise, the final exception handler registered with ``catch`` "
+"will try handling this exception."
+msgstr ""
+"ExecutionActor 使用 ``mars.promise`` 模块来同时处理多个 Operand 的执行"
+"请求。具体的执行步骤通过 ``Promise`` 类的 ``then`` 方法相串联。当最终的"
+"执行结果被存储，之前注册的回调将被触发。如果在之前的任意执行步骤中发生"
+"错误，该错误会被传导到最后 ``catch`` 方法注册的处理函数中并得到处理。"
+
+#: ../../source/development/distributed/worker-schedule.rst:35
+msgid "Operand Ordering"
+msgstr "Operand 的排序"
+
+#: ../../source/development/distributed/worker-schedule.rst:36
+msgid ""
+"All operands in ``READY`` state are submitted into workers selected by "
+"the scheduler. Therefore, the number of operands submitted to the worker "
+"is beyond the capacity of the worker most of the time during execution, "
+"and the worker need to sort these operands in order before picking some "
+"of the operands for execution. This is done in TaskQueueActor in worker, "
+"where a priority queue is maintained to store information of the "
+"operands. An allocator runs periodically, trying to allocate resources "
+"for the operand at the head of the queue till no free space left. The "
+"allocator is also triggered when a new operand arrives, or an operand "
+"finishes execution."
+msgstr ""
+"所有在 ``READY`` 状态的 Operand 都被提交到 Scheduler 选择的 Worker 中。"
+"因此，在执行的绝大多数时间里，提交到 Worker 的 Operand 个数通常都高于单个"
+" Worker 能够处理的 Operand 总数。因此，Worker 需要对 Operand 进行排序，"
+"此后选择一部分 Worker 来执行。这一排序过程在 TaskQueueActor 中进行，该 "
+"Actor 中维护一个优先队列，其中存储 Operand 的相关信息。与此同时，"
+"TaskQueueActor 定时运行一个作业分配任务，对处于优先队列头部的 Operand "
+"分配执行资源直至没有多余的资源来运行 Operand，这一分配过程也会在新 "
+"Operand 提交或者 Operand 执行完成时触发。"
+
+#: ../../source/development/distributed/worker-schedule.rst:47
+msgid "Memory Management"
+msgstr "内存管理"
+
+#: ../../source/development/distributed/worker-schedule.rst:48
+msgid ""
+"Mars worker manages two different parts of memory. The first is private "
+"memory in every worker process, handled by every worker process. The "
+"second is shared memory between all worker processes, handled by "
+"`plasma_store in Apache Arrow "
+"<https://arrow.apache.org/docs/python/plasma.html>`_."
+msgstr ""
+"Mars Worker 管理两部分内存。第一部分是每个 Worker 进程私有的内存空间，由"
+"每个进程自己持有。第二部分是所有进程共享的内存空间，由 `Apache Arrow 中的"
+" plasma_store <https://arrow.apache.org/docs/python/plasma.html>`_ 持有。"
+
+#: ../../source/development/distributed/worker-schedule.rst:53
+msgid ""
+"To avoid out-of-memory error in process memory, we introduce a worker-"
+"level QuotaActor to allocate process memory. Before an operand starts "
+"execution, it sends a memory batch request to the QuotaActor, asking for "
+"memory blocks for its input and output chunks.  When memory quota left "
+"can satisfy the request, the QuotaActor accepts the request. Otherwise "
+"the request is queued. After the memory block is released, the allocation"
+" is freed and QuotaActor can accept other requests."
+msgstr ""
+"为了避免进程内存溢出，我们引入了 Worker 级别的 QuotaActor，用于分配进程"
+"内存。当一个 Operand 开始执行前，它将为输入和输出 Chunk 向 QuotaActor "
+"发送批量内存请求。如果剩余的内存空间可以满足请求，该请求会被 QuotaActor "
+"接受。否则，请求将排队等待空闲资源。当相关内存使用被释放，请求的资源会被"
+"释放，此时，QuotaActor 能够为其他 Operand 分配资源。"
+
+#: ../../source/development/distributed/worker-schedule.rst:61
+#, python-format
+msgid ""
+"Shared memory is handled by plasma\\_store, which often takes of up to "
+"50\\% of total memory. As there is no risk of out-of-memory, this part of"
+" memory is allocated directly without quota requests. When shared memory "
+"is exhausted, Mars worker tries to spill unused chunks into disk."
+msgstr ""
+"共享内存由 plasma\\_store 管理，通常会占据整个内存的 50\\%。由于不存在"
+"溢出的可能，这部分内存无需经过 QuotaActor 而是直接通过 plasma\\_store 的"
+"相关方法进行分配。当共享内存使用殆尽，Mars Worker 会尝试将一部分不在使用"
+"的 Chunk spill 到磁盘中，以腾出空间容纳新的 Chunk。"
+
+#: ../../source/development/distributed/worker-schedule.rst:66
+msgid ""
+"Chunks spill into disks may be used by later operands, and loading data "
+"from disk into shared memory can be costly in IO, especially when the "
+"shared memory is exhausted, and we need to spill other chunks to hold the"
+" loaded chunk. Therefore, when data sharing is not needed, for instance, "
+"the input chunk is only used by a single operand, it can be loaded into "
+"private memory instead of shared memory. This can significantly reduce "
+"execution time."
+msgstr ""
+"从共享内存 spill 到磁盘的 Chunk 数据可能会被未来的 Operand 重新使用，而从"
+"磁盘重新载入共享内存的操作可能会非常耗费 IO 资源，尤其在共享内存已经耗尽"
+"，需要 spill 其他 Chunk 到磁盘以容纳载入的 Chunk 时。因此，当数据共享"
+"并不需要时，例如该 Chunk 只会被一个 Operand 使用，我们会将 Chunk 直接载入"
+"进程私有内存中，而不是共享内存，这可以显著减少作业总执行时间。"
+

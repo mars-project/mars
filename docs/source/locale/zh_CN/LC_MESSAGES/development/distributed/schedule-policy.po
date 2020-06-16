@@ -1,0 +1,100 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/development/distributed/schedule-policy.rst:4
+msgid "Scheduling Policy"
+msgstr "调度策略"
+
+#: ../../source/development/distributed/schedule-policy.rst:5
+msgid ""
+"When an operand graph is being executed, proper selection of execution "
+"order will reduce total amount of data stored in the cluster, thus "
+"reducing the probability that chunks are spilled into disks. Proper "
+"selection of workers can also reduce the amount of data needed to "
+"transfer in execution."
+msgstr ""
+"当一个 Operand 组成的 Graph 执行时，合适的执行顺序会减少集群中暂存的数据"
+"总量，从而减小数据被 Spill 到磁盘的可能性。合适的 Worker 能够减少执行时"
+"网络传输的总量。"
+
+#: ../../source/development/distributed/schedule-policy.rst:11
+msgid "Operand Selection"
+msgstr "Operand 选择策略"
+
+#: ../../source/development/distributed/schedule-policy.rst:12
+msgid ""
+"Proper execution order can significantly reduce the number of objects "
+"stored in the cluster.  We show the example of tree reduction in the "
+"graph below, where ovals represent operands and rectangles represent "
+"chunks. Red color means that the operand is being executed, and blue "
+"color means that the operand is ready for execution. Green color means "
+"that the chunk is stored, while the gray color means that chunks or "
+"operands are freed. Assume that we have 2 workers, and work load of all "
+"operands are the same. Both graphs show one operand selection strategy "
+"that is executed after 5 time unit. The left graph show the scenario when"
+" nodes are executed in hierarchical order, while the right show that the "
+"graph is executed in depth-first order. The strategy on the left graph "
+"leaves 6 chunks stored in the cluster, while the right only 2."
+msgstr ""
+"合适的执行顺序能够显著减小集群中暂存的数据总量。下图中展示了 Tree "
+"Reduction 的例子，圆形代表 Operand，方形代表 Chunk，红色代表 Operand 正在"
+"执行，蓝色代表 Operand 可被执行，绿色代表 Operand 产生的 Chunk 已被存储，"
+"灰色代表 Operand 及其相关数据已被释放。假设我们有两台 Worker，并且每个 "
+"Operand 的资源使用量均相等，每张图展示的是不同策略下经过5个时间单元的执行"
+"后的状态。左图展示的是节点依照层次分别执行，而右图展示的是依照接近深度"
+"优先的顺序执行。左图中，有6个 Chunk 的数据需要暂存，右图只有2个。"
+
+#: ../../source/development/distributed/schedule-policy.rst:26
+msgid ""
+"Given that our goal is to reduce the amount of data stored in the cluster"
+" during execution, we put a priority for operands when they are ready for"
+" execution:"
+msgstr ""
+"因为我们的目标是减少存储在集群中的数据总数，我们为进入 ``READY`` 状态的 "
+"Operand 设定了一套优先级策略："
+
+#: ../../source/development/distributed/schedule-policy.rst:30
+msgid "The operand with greater depth shall be executed earlier;"
+msgstr "深度更大的 Operand 需要被优先执行；"
+
+#: ../../source/development/distributed/schedule-policy.rst:31
+msgid "The operand required by deeper operands shall be executed earlier;"
+msgstr "被更深的 Operand 依赖的 Operand 需要被优先执行；"
+
+#: ../../source/development/distributed/schedule-policy.rst:32
+msgid "The operand with smaller output size shall be executed first."
+msgstr "输出规模更小的节点需要被优先执行。"
+
+#: ../../source/development/distributed/schedule-policy.rst:35
+msgid "Worker Selection"
+msgstr "Worker 选择策略"
+
+#: ../../source/development/distributed/schedule-policy.rst:36
+msgid ""
+"The worker of initial operands are decided when the scheduler prepares an"
+" operand graph.  We choose the worker of descendant operands given the "
+"location of input chunks. When there are multiple workers providing "
+"minimal network transfer, a worker satisfying resource requirements are "
+"selected."
+msgstr ""
+"当 Scheduler 准备执行图时，初始 Operand 的 Worker 已被确定。我们选择后续 "
+"Operand 分配 Worker 的依据是输入数据所在的 Worker。如果某个 Worker 拥有的"
+"输入数据大小最大，则该 Worker 将被选择用于执行后续 Operand。如果这样的 "
+"Worker 有多个，则各个候选 Worker 的资源状况将起到决定作用。"
+

@@ -1,0 +1,174 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 19:14+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/learn/xgboost.rst:5
+msgid "Integrate with XGBoost"
+msgstr "和 XGBoost 集成"
+
+#: ../../source/user_guide/learn/xgboost.rst:9
+msgid ""
+"This is an introduction about how to use XGBoost for training and "
+"prediction in Mars."
+msgstr "这个指引会介绍如何在 Mars 里使用 XGBoost 进行训练和预测。"
+
+#: ../../source/user_guide/learn/xgboost.rst:12
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/user_guide/learn/xgboost.rst:14
+msgid ""
+"If you are trying to use Mars on a single machine e.g. on your laptop, "
+"make sure XGBoost is installed."
+msgstr "如果你试图在单机比如你的笔记本上使用 Mars，确保 XGBoost 已经安装。"
+
+#: ../../source/user_guide/learn/xgboost.rst:17
+msgid "You can install XGBoost via pip:"
+msgstr "你能通过 pip 安装 XGBoost："
+
+#: ../../source/user_guide/learn/xgboost.rst:23
+msgid ""
+"Visit `installation guide for XGBoost "
+"<https://xgboost.readthedocs.io/en/latest/build.html>`_ for more "
+"information."
+msgstr ""
+"访问 `XGBoost 安装指引 <https://xgboost.readthedocs.io/en/latest/build."
+"html>`_ 获取更多信息。"
+
+#: ../../source/user_guide/learn/xgboost.rst:26
+msgid ""
+"On the other hand, if you are using Mars on a cluster, make sure XGBoost "
+"is installed on each worker."
+msgstr "另一方面，如果你在集群上使用 Mars，确保 XGBoost 在每个 worker 上安装。"
+
+#: ../../source/user_guide/learn/xgboost.rst:30
+msgid "Prepare data"
+msgstr "准备数据"
+
+#: ../../source/user_guide/learn/xgboost.rst:32
+msgid "First, we use scikit-learn to load the Boston Housing dataset."
+msgstr "首先，我们使用 scikit-learn 来加载波士顿房屋数据集。"
+
+#: ../../source/user_guide/learn/xgboost.rst:39
+msgid "Then create Mars DataFrame from the dataset."
+msgstr "接着从数据创建 Mars DataFrame。"
+
+#: ../../source/user_guide/learn/xgboost.rst:46
+msgid "Explore the top 5 rows data of the DataFrame."
+msgstr "查看 DataFrame 前五条数据。"
+
+#: ../../source/user_guide/learn/xgboost.rst:61
+msgid ""
+":meth:`mars.dataframe.DataFrame.describe` gives summary statistics of the"
+" columns."
+msgstr ":meth:`mars.dataframe.DataFrame.describe` 给出了所有列的统计信息。"
+
+#: ../../source/user_guide/learn/xgboost.rst:79
+msgid ""
+"We can shuffle the sequence of the data, and separate the data into train"
+" and test parts."
+msgstr "我们可以把数据打乱，然后把他们分成训练和测试集。"
+
+#: ../../source/user_guide/learn/xgboost.rst:89
+msgid ""
+"Now we can create a :class:`MarsDMatrix` which is very similar to "
+"`xgboost.DMatrix "
+"<https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.DMatrix>`_."
+msgstr ""
+"现在我们可以创建一个 :class:`MarsDMatrix`，它非常类似于 `xgboost.DMatrix "
+"<https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost."
+"DMatrix>`_."
+
+#: ../../source/user_guide/learn/xgboost.rst:100
+msgid "Training"
+msgstr "训练"
+
+#: ../../source/user_guide/learn/xgboost.rst:102
+msgid "We can train data in two ways:"
+msgstr "训练可以包含两种方式："
+
+#: ../../source/user_guide/learn/xgboost.rst:104
+msgid "Call :meth:`train` which accepts a :class:`MarsDMatrix`."
+msgstr "调用 :meth:`train`，它接受一个 :class:`MarsDMatrix`。"
+
+#: ../../source/user_guide/learn/xgboost.rst:105
+msgid ""
+"Use scikit-learn API including :class:`XGBClassifier` and "
+":class:`XGBRegressor`."
+msgstr "使用 scikit-learn 接口 :class:`XGBClassifier` 和 :class:`XGBRegressor`。"
+
+#: ../../source/user_guide/learn/xgboost.rst:107
+msgid "For :meth:`train`, you can run the snippet."
+msgstr "对于 :meth:`train`，运行如下代码。"
+
+#: ../../source/user_guide/learn/xgboost.rst:116
+msgid "On the other hand, run the snippet below for scikit-learn API."
+msgstr "对于 scikit-learn 接口，运行如下代码。"
+
+#: ../../source/user_guide/learn/xgboost.rst:134
+msgid "Prediction"
+msgstr "预测"
+
+#: ../../source/user_guide/learn/xgboost.rst:136
+msgid "For prediction, there are still two ways"
+msgstr "对于预测，也有两种方式。"
+
+#: ../../source/user_guide/learn/xgboost.rst:138
+msgid "Call :meth:`predict` which accepts a :class:`MarsDMatrix` as well."
+msgstr "调用 :meth:`predict`，它也接受一个 :class:`MarsDMatrix`。"
+
+#: ../../source/user_guide/learn/xgboost.rst:139
+msgid ""
+"Call :meth:`XGBClassifier.predict` or :meth:`XGBRegressor.predict` which "
+"has been fitted."
+msgstr ""
+"调用 :meth:`XGBClassifier.predict` 或者 :meth:`XGBRegressor.predict`，"
+"确保他们已经训练过了。"
+
+#: ../../source/user_guide/learn/xgboost.rst:142
+msgid "For :meth:`predict`, we call it with trained model."
+msgstr "对于 :meth:`predict`，我们可以用训练过的模型来调用。"
+
+#: ../../source/user_guide/learn/xgboost.rst:161
+msgid "For :meth:`XGBRegressor.predict`, you can run the snippet."
+msgstr "对于 :meth:`XGBRegressor.predict`，运行如下代码。"
+
+#: ../../source/user_guide/learn/xgboost.rst:181
+msgid "Distributed training and prediction"
+msgstr "分布式训练和预测"
+
+#: ../../source/user_guide/learn/xgboost.rst:183
+msgid ""
+"Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for "
+"running Mars on Kubernetes."
+msgstr "部署参考 :ref:`deploy` 部分，在 Kubernetes 上运行参考 :ref:`k8s` 部分。"
+
+#: ../../source/user_guide/learn/xgboost.rst:185
+msgid ""
+"Once a cluster exists, you can either set the session as default, the "
+"training and prediction shown above will be submitted to the cluster, or "
+"you can specify ``session=***`` explicitly as well."
+msgstr ""
+"一旦一个集群存在，你可以要么设置默认 session，训练和预测就会自动提交到"
+"集群，要么你可以通过 ``session=***`` 显示指定运行的 session。"
+
+#: ../../source/user_guide/learn/xgboost.rst:189
+msgid "Take :meth:`XGBRegressor.fit` as an example."
+msgstr ""
+"以 :meth:`XGBRegressor.fit` 为例。"
+

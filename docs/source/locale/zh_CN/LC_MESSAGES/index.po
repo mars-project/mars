@@ -8,143 +8,114 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-03 18:07+0800\n"
+"POT-Creation-Date: 2020-06-16 23:08+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.8.0\n"
 
-#: ../../source/index.rst:151
-msgid "Install"
-msgstr "安装"
+#: ../../source/index.rst:5
+msgid "Mars Documentation"
+msgstr "Mars 文档"
 
-#: ../../source/index.rst:159
-msgid "Getting started"
-msgstr "开始使用 Mars"
-
-#: ../../source/index.rst:168
-msgid "Tensor Interface"
-msgstr "Tensor 接口"
-
-#: ../../source/index.rst:179
-msgid "DataFrame Interface"
-msgstr "DataFrame 接口"
-
-#: ../../source/index.rst:187
-msgid "Learn Interface"
-msgstr "机器学习接口"
-
-#: ../../source/index.rst:197
-msgid "Remote Interface"
-msgstr "Remote 接口"
-
-#: ../../source/index.rst:204
-msgid "Distributed Scheduling"
-msgstr "分布式调度"
-
-#: ../../source/index.rst:216
-msgid "Contribution Guide"
-msgstr "贡献指南"
-
-#: ../../source/index.rst:8
+#: ../../source/index.rst:9
 msgid "Mars is a tensor-based unified framework for large-scale data computation."
-msgstr "Mars 是基于张量的，用于进行大规模数据计算的统一计算框架"
+msgstr "Mars 是基于张量的，用于进行大规模数据计算的统一计算框架。"
 
-#: ../../source/index.rst:11
+#: ../../source/index.rst:12
 msgid "Mars tensor"
 msgstr "Mars tensor"
 
-#: ../../source/index.rst:13
-msgid ":doc:`documentation <tensor/index>`"
-msgstr ":doc:`文档 <tensor/index>`"
+#: ../../source/index.rst:14
+msgid ":doc:`documentation <getting_started/tensor>`"
+msgstr ":doc:`文档 <getting_started/tensor>`"
 
-#: ../../source/index.rst:15
+#: ../../source/index.rst:16
 msgid "Mars tensor provides a familiar interface like Numpy."
-msgstr "Mars tensor - 提供类似 Numpy API 的接口"
+msgstr "Mars tensor - 提供类似 Numpy API 的接口。"
 
-#: ../../source/index.rst:18
+#: ../../source/index.rst:19
 msgid "**Numpy**"
 msgstr "**Numpy**"
 
-#: ../../source/index.rst:18
+#: ../../source/index.rst:19
 msgid "**Mars tensor**"
 msgstr "**Mars Tensor**"
 
-#: ../../source/index.rst:38
+#: ../../source/index.rst:39
 msgid ""
 "Mars can leverage multiple cores, even on a laptop, and could be even "
 "faster for a distributed setting."
-msgstr ""
-"Mars 能利用多核，即使在你的笔记本上；当分布式运行时，速度会更快。"
+msgstr "Mars 能利用多核，即使在你的笔记本上；当分布式运行时，速度会更快。"
 
-#: ../../source/index.rst:41
+#: ../../source/index.rst:42
 msgid "Mars dataframe"
 msgstr "Mars DataFrame"
 
-#: ../../source/index.rst:43
-msgid ":doc:`documentation <dataframe/index>`"
-msgstr ":doc:`文档 <dataframe/index>`"
+#: ../../source/index.rst:44
+msgid ":doc:`documentation <getting_started/dataframe>`"
+msgstr ":doc:`文档 <getting_started/dataframe>`"
 
-#: ../../source/index.rst:45
+#: ../../source/index.rst:46
 msgid "Mars DataFrame provides a familiar interface like pandas."
 msgstr "Mars DataFrame - 提供类似 pandas 的接口"
 
-#: ../../source/index.rst:48
+#: ../../source/index.rst:49
 msgid "**Pandas**"
 msgstr ""
 
-#: ../../source/index.rst:48
+#: ../../source/index.rst:49
 msgid "**Mars DataFrame**"
 msgstr "**Mars DataFrame**"
 
-#: ../../source/index.rst:68
+#: ../../source/index.rst:69
 msgid "Mars learn"
 msgstr ""
 
-#: ../../source/index.rst:70
-msgid ":doc:`documentation <learn/index>`"
-msgstr ":doc:`文档 <learn/index>`"
+#: ../../source/index.rst:71
+msgid ":doc:`documentation <getting_started/learn>`"
+msgstr ":doc:`文档 <getting_started/learn>`"
 
-#: ../../source/index.rst:72
+#: ../../source/index.rst:73
 msgid "Mars learn provides a familiar interface like scikit-learn."
 msgstr "Mars learn - 提供类似 scikit-learn 的接口"
 
-#: ../../source/index.rst:75
+#: ../../source/index.rst:76
 msgid "**Scikit-learn**"
 msgstr ""
 
-#: ../../source/index.rst:75
+#: ../../source/index.rst:76
 msgid "**Mars learn**"
 msgstr "**Mars learn**"
 
-#: ../../source/index.rst:95
+#: ../../source/index.rst:96
 msgid "Mars remote"
 msgstr ""
 
-#: ../../source/index.rst:97
-msgid ":doc:`documentation <remote/index>`"
-msgstr ":doc:`文档 <remote/index>`"
+#: ../../source/index.rst:98
+msgid ":doc:`documentation <getting_started/remote>`"
+msgstr ":doc:`文档 <getting_started/remote>`"
 
-#: ../../source/index.rst:99
+#: ../../source/index.rst:100
 msgid "Mars remote allows users to execute functions in parallel."
 msgstr "Mars remote 允许用户并行执行函数。"
 
-#: ../../source/index.rst:102
+#: ../../source/index.rst:103
 msgid "**Vanilla function calls**"
 msgstr "普通函数调用"
 
-#: ../../source/index.rst:102
+#: ../../source/index.rst:103
 msgid "**Mars remote**"
 msgstr "**Mars remote**"
 
-#: ../../source/index.rst:137
+#: ../../source/index.rst:138
 msgid "Easy to scale in and scale out"
 msgstr "适应各种数据规模"
 
-#: ../../source/index.rst:139
+#: ../../source/index.rst:140
 msgid ""
 "Mars can scale in to a single machine, and scale out to a cluster with "
 "hundreds of machines. Both the local and distributed version share the "
@@ -155,23 +126,23 @@ msgstr ""
 "两种环境下可使用相同的代码。因此，Mars 可以方便地从单台机器迁移到集群，以"
 "适应数据量的增长。"
 
-#: ../../source/index.rst:143
+#: ../../source/index.rst:144
 msgid "Mars can run in a few ways:"
 msgstr "Mars 能以若干种方式运行："
 
-#: ../../source/index.rst:145
+#: ../../source/index.rst:146
 msgid ":ref:`Local thread-based scheduling <threaded>`"
 msgstr ":ref:`本地基于线程的调度 <threaded>`"
 
-#: ../../source/index.rst:146
+#: ../../source/index.rst:147
 msgid ":ref:`Local process-basesd scheduling <local_cluster>`"
 msgstr ":ref:`本地基于多进程的调度 <local_cluster>`"
 
-#: ../../source/index.rst:147
+#: ../../source/index.rst:148
 msgid ":ref:`Run on cluster <deploy>`"
 msgstr ":ref:`在集群中运行 <deploy>`"
 
-#: ../../source/index.rst:148
+#: ../../source/index.rst:149
 msgid ":ref:`Run on Kubernetes <k8s>`"
 msgstr ":ref:`在 Kubernetes 中部署 <k8s>`"
 

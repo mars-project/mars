@@ -1,0 +1,208 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:2
+msgid "mars.learn.semi\\_supervised.LabelPropagation"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:1 of
+msgid "Label Propagation classifier"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:3 of
+msgid "Read more in the :ref:`User Guide <label_propagation>`."
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:5 of
+msgid ""
+"String identifier for kernel function to use or the kernel function "
+"itself. Only 'rbf' and 'knn' strings are valid inputs. The function "
+"passed should take two inputs, each of shape [n_samples, n_features], and"
+" return a [n_samples, n_samples] shaped weight matrix."
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:10 of
+msgid "Parameter for rbf kernel"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:12 of
+msgid "Parameter for knn kernel"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:14 of
+msgid "Change maximum number of iterations allowed"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:16 of
+msgid "Convergence tolerance: threshold to consider the system at steady state"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:22 of
+msgid "Input array."
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation of
+msgid "type"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:24 of
+msgid "array, shape = [n_samples, n_features]"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:28 of
+msgid "The distinct labels used in classifying instances."
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:30 of
+msgid "array, shape = [n_classes]"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:34 of
+msgid "Categorical distribution for each item."
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:36 of
+msgid "array, shape = [n_samples, n_classes]"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:40 of
+msgid "Label assigned to each item via the transduction."
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:42 of
+msgid "array, shape = [n_samples]"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:46 of
+msgid "Number of iterations run."
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:48 of
+msgid "int"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:51 of
+msgid "Examples"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:65 of
+msgid "References"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:66 of
+msgid ""
+"Xiaojin Zhu and Zoubin Ghahramani. Learning from labeled and unlabeled "
+"data with label propagation. Technical Report CMU-CALD-02-107, Carnegie "
+"Mellon University, 2002 http://pages.cs.wisc.edu/~jerryzhu/pub/CMU-"
+"CALD-02-107.pdf"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:72 of
+msgid ":class:`LabelSpreading`"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation:73 of
+msgid "Alternate label propagation strategy more robust to noise"
+msgstr ""
+
+#: mars.learn.semi_supervised.LabelPropagation.__init__:1 of
+msgid "Initialize self.  See help(type(self)) for accurate signature."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:13
+msgid "Methods"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid ""
+":obj:`__init__ <mars.learn.semi_supervised.LabelPropagation.__init__>`\\ "
+"\\(\\[kernel\\, gamma\\, n\\_neighbors\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid "Initialize self."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid ""
+":obj:`fit <mars.learn.semi_supervised.LabelPropagation.fit>`\\ \\(X\\, "
+"y\\[\\, session\\, run\\_kwargs\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid "Fit a semi-supervised label propagation model based"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid ""
+":obj:`get_params "
+"<mars.learn.semi_supervised.LabelPropagation.get_params>`\\ "
+"\\(\\[deep\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid "Get parameters for this estimator."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid ""
+":obj:`predict <mars.learn.semi_supervised.LabelPropagation.predict>`\\ "
+"\\(X\\[\\, session\\, run\\_kwargs\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid "Performs inductive inference across the model."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid ""
+":obj:`predict_proba "
+"<mars.learn.semi_supervised.LabelPropagation.predict_proba>`\\ \\(X\\[\\,"
+" session\\, run\\_kwargs\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid "Predict probability for each possible outcome."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid ""
+":obj:`score <mars.learn.semi_supervised.LabelPropagation.score>`\\ "
+"\\(X\\, y\\[\\, sample\\_weight\\, session\\, run\\_kwargs\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid "Return the mean accuracy on the given test data and labels."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid ""
+":obj:`set_params "
+"<mars.learn.semi_supervised.LabelPropagation.set_params>`\\ "
+"\\(\\*\\*params\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.semi_supervised.LabelPropagation.rst:22:<autosummary>:1
+msgid "Set the parameters of this estimator."
+msgstr ""
+

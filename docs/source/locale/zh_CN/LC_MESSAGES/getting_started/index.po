@@ -1,0 +1,81 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 18:05+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/getting_started/index.rst:5
+msgid "Getting started"
+msgstr "快速开始"
+
+#: ../../source/getting_started/index.rst:7
+msgid ""
+"Mars leverages parallel and distributed technology to accelerate numpy, "
+"pandas, scikit-learn and Python functions."
+msgstr "Mars 利用并行和分布式技术加速 numpy、pandas、scikit-learn 和 Python 函数。"
+
+#: ../../source/getting_started/index.rst:10
+msgid "There are four main APIs in Mars:"
+msgstr "Mars 中包含四种主要接口："
+
+#: ../../source/getting_started/index.rst:12
+msgid ""
+":ref:`Mars tensor <getting_started_tensor>`, which mimics numpy API and "
+"provide ability to process large tensors/ndarrays."
+msgstr ""
+":ref:`Mars tensor <getting_started_tensor>`，提供了 numpy 接口，且能处理"
+"大规模矩阵、张量/多维数组。"
+
+#: ../../source/getting_started/index.rst:14
+msgid ""
+":ref:`Mars DataFrame <getting_started_dataframe>`, which mimics pandas "
+"API and be able to process large DataFrames."
+msgstr ""
+":ref:`Mars DataFrame <getting_started_dataframe>`，提供了 pandas 接口，且"
+"能处理大规模 DataFrame。"
+
+#: ../../source/getting_started/index.rst:16
+msgid ""
+":ref:`Mars learn <getting_started_learn>`, which mimics scikit-learn API "
+"and scales machine learning algorithms."
+msgstr ""
+":ref:`Mars learn <getting_started_learn>`，提供了 scikit-learn 接口，且"
+"加速机器学习算法。"
+
+#: ../../source/getting_started/index.rst:18
+msgid ""
+":ref:`Mars Remote <getting_started_remote>`, which provide the ability to"
+" execute Python functions in parallel."
+msgstr ""
+":ref:`Mars Remote <getting_started_remote>`，能让一系列 Python 函数"
+"并行执行。"
+
+#: ../../source/getting_started/index.rst:30
+msgid ""
+"Mars is :ref:`lazy evaluated <lazy_evaluation>` by default, "
+"``.execute()`` is required to perform computation, however, :ref:`eager "
+"mode <eager_mode>` is supported as well, if eager mode is on, execution "
+"will be triggered every time when each tensor, DataFrame, and so forth is"
+" created."
+msgstr ""
+"Mars 默认延迟执行，需要调用 ``.execute()`` 方法来触发计算，不过，Mars 也"
+"支持 :ref:`Eager 执行 <eager_mode>`，如果打开了 eager 模式，每次创建 "
+"tensor、DataFrame 等 Mars 对象的时候，会自动触发执行。"
+
+#: ../../source/getting_started/index.rst:44
+msgid "Mars can :ref:`leverage NVIDIA GPU <gpu>` to accelerate computation."
+msgstr "Mars 能 :ref:`使用 NVIDIA 显卡 <gpu>` 来加速执行。"
+

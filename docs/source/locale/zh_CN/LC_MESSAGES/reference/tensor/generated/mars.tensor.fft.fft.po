@@ -1,0 +1,167 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.fft.fft.rst:2
+msgid "mars.tensor.fft.fft"
+msgstr ""
+
+#: mars.tensor.fft.fft:1 of
+msgid "Compute the one-dimensional discrete Fourier Transform."
+msgstr ""
+
+#: mars.tensor.fft.fft:3 of
+msgid ""
+"This function computes the one-dimensional *n*-point discrete Fourier "
+"Transform (DFT) with the efficient Fast Fourier Transform (FFT) algorithm"
+" [CT]."
+msgstr ""
+
+#: mars.tensor.fft.fft of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.fft.fft:7 of
+msgid "Input tensor, can be complex."
+msgstr ""
+
+#: mars.tensor.fft.fft:9 of
+msgid ""
+"Length of the transformed axis of the output. If `n` is smaller than the "
+"length of the input, the input is cropped. If it is larger, the input is "
+"padded with zeros.  If `n` is not given, the length of the input along "
+"the axis specified by `axis` is used."
+msgstr ""
+
+#: mars.tensor.fft.fft:14 of
+msgid "Axis over which to compute the FFT.  If not given, the last axis is used."
+msgstr ""
+
+#: mars.tensor.fft.fft:17 of
+msgid "Normalization mode (see `mt.fft`). Default is None."
+msgstr ""
+
+#: mars.tensor.fft.fft of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.fft.fft:20 of
+msgid ""
+"**out** -- The truncated or zero-padded input, transformed along the axis"
+" indicated by `axis`, or the last one if `axis` is not specified."
+msgstr ""
+
+#: mars.tensor.fft.fft of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.fft.fft of
+msgid "Raises"
+msgstr ""
+
+#: mars.tensor.fft.fft:24 of
+msgid "if `axes` is larger than the last axis of `a`."
+msgstr ""
+
+#: mars.tensor.fft.fft:29 of
+msgid ":func:`mt.fft`"
+msgstr ""
+
+#: mars.tensor.fft.fft:29 of
+msgid "for definition of the DFT and conventions used."
+msgstr ""
+
+#: mars.tensor.fft.fft:32 of
+msgid ":func:`ifft`"
+msgstr ""
+
+#: mars.tensor.fft.fft:32 of
+msgid "The inverse of `fft`."
+msgstr ""
+
+#: mars.tensor.fft.fft:35 of
+msgid ":func:`fft2`"
+msgstr ""
+
+#: mars.tensor.fft.fft:35 of
+msgid "The two-dimensional FFT."
+msgstr ""
+
+#: mars.tensor.fft.fft:38 of
+msgid ":func:`fftn`"
+msgstr ""
+
+#: mars.tensor.fft.fft:38 of
+msgid "The *n*-dimensional FFT."
+msgstr ""
+
+#: mars.tensor.fft.fft:41 of
+msgid ":func:`rfftn`"
+msgstr ""
+
+#: mars.tensor.fft.fft:41 of
+msgid "The *n*-dimensional FFT of real input."
+msgstr ""
+
+#: mars.tensor.fft.fft:43 of
+msgid ":func:`fftfreq`"
+msgstr ""
+
+#: mars.tensor.fft.fft:44 of
+msgid "Frequency bins for given FFT parameters."
+msgstr ""
+
+#: mars.tensor.fft.fft:47 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.fft.fft:48 of
+msgid ""
+"FFT (Fast Fourier Transform) refers to a way the discrete Fourier "
+"Transform (DFT) can be calculated efficiently, by using symmetries in the"
+" calculated terms.  The symmetry is highest when `n` is a power of 2, and"
+" the transform is therefore most efficient for these sizes."
+msgstr ""
+
+#: mars.tensor.fft.fft:53 of
+msgid ""
+"The DFT is defined, with the conventions used in this implementation, in "
+"the documentation for the `numpy.fft` module."
+msgstr ""
+
+#: mars.tensor.fft.fft:57 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.fft.fft:58 of
+msgid ""
+"Cooley, James W., and John W. Tukey, 1965, \"An algorithm for the machine"
+" calculation of complex Fourier series,\" *Math. Comput.* 19: 297-301."
+msgstr ""
+
+#: mars.tensor.fft.fft:63 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.fft.fft:72 of
+msgid ""
+"In this example, real input has an FFT which is Hermitian, i.e., "
+"symmetric in the real part and anti-symmetric in the imaginary part, as "
+"described in the `numpy.fft` documentation:"
+msgstr ""
+

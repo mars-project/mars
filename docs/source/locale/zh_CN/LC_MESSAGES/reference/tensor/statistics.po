@@ -1,0 +1,183 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/statistics.rst:2
+msgid "Statistics"
+msgstr "统计"
+
+#: ../../source/reference/tensor/statistics.rst:5
+msgid "Order statistics"
+msgstr "顺序统计量"
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid ":obj:`mars.tensor.amin <mars.tensor.amin>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid "Return the minimum of a tensor or minimum along an axis."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid ":obj:`mars.tensor.amax <mars.tensor.amax>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid "Return the maximum of an array or maximum along an axis."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid ":obj:`mars.tensor.nanmin <mars.tensor.nanmin>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid "Return minimum of a tensor or minimum along an axis, ignoring any NaNs."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid ":obj:`mars.tensor.nanmax <mars.tensor.nanmax>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid ""
+"Return the maximum of an array or maximum along an axis, ignoring any "
+"NaNs."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid ":obj:`mars.tensor.ptp <mars.tensor.ptp>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:17:<autosummary>:1
+msgid "Range of values (maximum - minimum) along an axis."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:19
+msgid "Average and variances"
+msgstr "均值和方差"
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid ":obj:`mars.tensor.average <mars.tensor.average>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid "Compute the weighted average along the specified axis."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid ":obj:`mars.tensor.mean <mars.tensor.mean>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid "Compute the arithmetic mean along the specified axis."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid ":obj:`mars.tensor.std <mars.tensor.std>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid "Compute the standard deviation along the specified axis."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid ":obj:`mars.tensor.var <mars.tensor.var>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid "Compute the variance along the specified axis."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid ":obj:`mars.tensor.nanmean <mars.tensor.nanmean>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid "Compute the arithmetic mean along the specified axis, ignoring NaNs."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid ":obj:`mars.tensor.nanstd <mars.tensor.nanstd>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid ""
+"Compute the standard deviation along the specified axis, while ignoring "
+"NaNs."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid ":obj:`mars.tensor.nanvar <mars.tensor.nanvar>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:33:<autosummary>:1
+msgid "Compute the variance along the specified axis, while ignoring NaNs."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:35
+msgid "Correlating"
+msgstr "相关性"
+
+#: ../../source/reference/tensor/statistics.rst:44:<autosummary>:1
+msgid ":obj:`mars.tensor.corrcoef <mars.tensor.corrcoef>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:44:<autosummary>:1
+msgid "Return Pearson product-moment correlation coefficients."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:44:<autosummary>:1
+msgid ":obj:`mars.tensor.cov <mars.tensor.cov>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:44:<autosummary>:1
+msgid "Estimate a covariance matrix, given data and weights."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:46
+msgid "Histograms"
+msgstr "直方图"
+
+#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+msgid ":obj:`mars.tensor.histogram <mars.tensor.histogram>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+msgid "Compute the histogram of a set of data."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+msgid ":obj:`mars.tensor.histogram_bin_edges <mars.tensor.histogram_bin_edges>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+msgid ""
+"Function to calculate only the edges of the bins used by the `histogram` "
+"function."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+msgid ":obj:`mars.tensor.digitize <mars.tensor.digitize>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+msgid ""
+"Return the indices of the bins to which each value in input tensor "
+"belongs."
+msgstr ""
+

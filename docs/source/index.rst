@@ -1,7 +1,8 @@
-.. mars documentation master file, created by
-   sphinx-quickstart on Mon Mar 26 11:56:11 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. _index:
+
+==================
+Mars Documentation
+==================
 
 .. image:: images/mars-logo-title.png
 
@@ -10,7 +11,7 @@ Mars is a tensor-based unified framework for large-scale data computation.
 Mars tensor
 -----------
 
-:doc:`documentation <tensor/index>`
+:doc:`documentation <getting_started/tensor>`
 
 Mars tensor provides a familiar interface like Numpy.
 
@@ -40,7 +41,7 @@ Mars can leverage multiple cores, even on a laptop, and could be even faster for
 Mars dataframe
 --------------
 
-:doc:`documentation <dataframe/index>`
+:doc:`documentation <getting_started/dataframe>`
 
 Mars DataFrame provides a familiar interface like pandas.
 
@@ -67,7 +68,7 @@ Mars DataFrame provides a familiar interface like pandas.
 Mars learn
 ----------
 
-:doc:`documentation <learn/index>`
+:doc:`documentation <getting_started/learn>`
 
 Mars learn provides a familiar interface like scikit-learn.
 
@@ -94,7 +95,7 @@ Mars learn provides a familiar interface like scikit-learn.
 Mars remote
 -----------
 
-:doc:`documentation <remote/index>`
+:doc:`documentation <getting_started/remote>`
 
 Mars remote allows users to execute functions in parallel.
 
@@ -147,75 +148,12 @@ Mars can run in a few ways:
 - :ref:`Run on cluster <deploy>`
 - :ref:`Run on Kubernetes <k8s>`
 
-
 .. toctree::
    :maxdepth: 2
-   :caption: Install
    :hidden:
 
-   install
-   kubernetes
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Getting started
-   :hidden:
-
-   getting-started
-   execution
-   gpu
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Tensor Interface
-   :hidden:
-
-   tensor/overview
-   tensor/datasource
-   tensor/ufunc
-   tensor/routines
-   tensor/sparse
-
-.. toctree::
-   :maxdepth: 2
-   :caption: DataFrame Interface
-   :hidden:
-
-   dataframe/user_guide/10min
-   dataframe/reference/index
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Learn Interface
-   :hidden:
-
-   learn/tensorflow
-   learn/xgboost
-   learn/lightgbm
-   learn/reference
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Remote Interface
-   :hidden:
-
-   remote/guide
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Distributed Scheduling
-   :hidden:
-
-   distributed/architecture
-   distributed/prepare
-   distributed/schedule-policy
-   distributed/states
-   distributed/worker-schedule
-   distributed/fault-tolerance
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contribution Guide
-   :hidden:
-
-   contributing
+   installation/index
+   getting_started/index
+   user_guide/index
+   reference/index
+   development/index
