@@ -1,0 +1,413 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/random.rst:6
+msgid "Random Sampling"
+msgstr "随机抽样"
+
+#: ../../source/reference/tensor/random.rst:9
+msgid "Sample random data"
+msgstr "随机数据样本"
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ":obj:`mars.tensor.random.rand <mars.tensor.random.rand>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid "Random values in a given shape."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ":obj:`mars.tensor.random.randn <mars.tensor.random.randn>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid "Return a sample (or samples) from the \"standard normal\" distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ":obj:`mars.tensor.random.randint <mars.tensor.random.randint>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid "Return random integers from `low` (inclusive) to `high` (exclusive)."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ""
+":obj:`mars.tensor.random.random_integers "
+"<mars.tensor.random.random_integers>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid "Random integers of type mt.int between `low` and `high`, inclusive."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ":obj:`mars.tensor.random.random_sample <mars.tensor.random.random_sample>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid "Return random floats in the half-open interval [0.0, 1.0)."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ":obj:`mars.tensor.random.random <mars.tensor.random.random>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ":obj:`mars.tensor.random.ranf <mars.tensor.random.ranf>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ":obj:`mars.tensor.random.sample <mars.tensor.random.sample>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ":obj:`mars.tensor.random.choice <mars.tensor.random.choice>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid "Generates a random sample from a given 1-D array"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid ":obj:`mars.tensor.random.bytes <mars.tensor.random.bytes>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:26:<autosummary>:1
+msgid "Return random bytes."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:28
+msgid "Distributions"
+msgstr "随机分布"
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.beta <mars.tensor.random.beta>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Beta distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.binomial <mars.tensor.random.binomial>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a binomial distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.chisquare <mars.tensor.random.chisquare>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a chi-square distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.dirichlet <mars.tensor.random.dirichlet>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from the Dirichlet distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.exponential <mars.tensor.random.exponential>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from an exponential distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.f <mars.tensor.random.f>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from an F distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.gamma <mars.tensor.random.gamma>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Gamma distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.geometric <mars.tensor.random.geometric>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from the geometric distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.gumbel <mars.tensor.random.gumbel>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Gumbel distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+":obj:`mars.tensor.random.hypergeometric "
+"<mars.tensor.random.hypergeometric>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Hypergeometric distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.laplace <mars.tensor.random.laplace>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+"Draw samples from the Laplace or double exponential distribution with "
+"specified location (or mean) and scale (decay)."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.lognormal <mars.tensor.random.lognormal>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a log-normal distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.logseries <mars.tensor.random.logseries>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a logarithmic series distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.multinomial <mars.tensor.random.multinomial>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a multinomial distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+":obj:`mars.tensor.random.multivariate_normal "
+"<mars.tensor.random.multivariate_normal>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw random samples from a multivariate normal distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+":obj:`mars.tensor.random.negative_binomial "
+"<mars.tensor.random.negative_binomial>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a negative binomial distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+":obj:`mars.tensor.random.noncentral_chisquare "
+"<mars.tensor.random.noncentral_chisquare>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a noncentral chi-square distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.noncentral_f <mars.tensor.random.noncentral_f>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from the noncentral F distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.normal <mars.tensor.random.normal>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw random samples from a normal (Gaussian) distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.pareto <mars.tensor.random.pareto>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Pareto II or Lomax distribution with specified shape."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.poisson <mars.tensor.random.poisson>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Poisson distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.power <mars.tensor.random.power>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+"Draws samples in [0, 1] from a power distribution with positive exponent "
+"a - 1."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.rayleigh <mars.tensor.random.rayleigh>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Rayleigh distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+":obj:`mars.tensor.random.standard_cauchy "
+"<mars.tensor.random.standard_cauchy>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a standard Cauchy distribution with mode = 0."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+":obj:`mars.tensor.random.standard_exponential "
+"<mars.tensor.random.standard_exponential>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from the standard exponential distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+":obj:`mars.tensor.random.standard_gamma "
+"<mars.tensor.random.standard_gamma>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a standard Gamma distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+":obj:`mars.tensor.random.standard_normal "
+"<mars.tensor.random.standard_normal>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a standard Normal distribution (mean=0, stdev=1)."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.standard_t <mars.tensor.random.standard_t>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+"Draw samples from a standard Student's t distribution with `df` degrees "
+"of freedom."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.triangular <mars.tensor.random.triangular>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ""
+"Draw samples from the triangular distribution over the interval ``[left, "
+"right]``."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.uniform <mars.tensor.random.uniform>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a uniform distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.vonmises <mars.tensor.random.vonmises>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a von Mises distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.wald <mars.tensor.random.wald>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Wald, or inverse Gaussian, distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.weibull <mars.tensor.random.weibull>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Weibull distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid ":obj:`mars.tensor.random.zipf <mars.tensor.random.zipf>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:69:<autosummary>:1
+msgid "Draw samples from a Zipf distribution."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:71
+msgid "Random number generator"
+msgstr "生成随机数"
+
+#: ../../source/reference/tensor/random.rst:79:<autosummary>:1
+msgid ":obj:`mars.tensor.random.seed <mars.tensor.random.seed>`"
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:79:<autosummary>:1
+msgid "Seed the generator."
+msgstr ""
+
+#: ../../source/reference/tensor/random.rst:79:<autosummary>:1
+msgid ":obj:`mars.tensor.random.RandomState <mars.tensor.random.RandomState>`"
+msgstr ""
+

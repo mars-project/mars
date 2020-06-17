@@ -1,0 +1,330 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/installation/deploy.rst:4
+msgid "Run on Clusters"
+msgstr "在集群中部署"
+
+#: ../../source/installation/deploy.rst:7
+msgid "Basic Steps"
+msgstr "基本步骤"
+
+#: ../../source/installation/deploy.rst:9
+msgid "Mars can be deployed on a cluster. First, you need to run"
+msgstr "Mars 可在集群中部署。首先，你需要在集群中的每个节点运行"
+
+#: ../../source/installation/deploy.rst:15
+msgid ""
+"on every node in the cluster. This will install dependencies needed for "
+"distributed execution on your cluster. After that, you may select a node "
+"as scheduler and another as web service, leaving other nodes as workers."
+"  The scheduler can be started with the following command:"
+msgstr ""
+"这将会为你的集群安装所有需要的依赖。此后，你可以选择一台机器作为 "
+"Scheduler，另一台作为 Web Service，将其他的机器作为 Worker。你可以使用"
+"下面的命令启动 Scheduler："
+
+#: ../../source/installation/deploy.rst:24
+msgid "Web service can be started with the following command:"
+msgstr "可以使用下面的命令启动 Web Service："
+
+#: ../../source/installation/deploy.rst:30
+msgid "Workers can be started with the following command:"
+msgstr "可以使用下面的命令启动 Worker："
+
+#: ../../source/installation/deploy.rst:36
+msgid ""
+"After all Mars processes are started, you can open a Python console and "
+"run"
+msgstr "当所有 Mars 进程启动后，可启动一个 Python 命令行，执行"
+
+#: ../../source/installation/deploy.rst:51
+msgid ""
+"You can open a web browser and type ``http://<web_ip>:<web_port>`` to "
+"open Mars UI to look up resource usage of workers and execution progress "
+"of the task submitted just now."
+msgstr ""
+"你可以打开一个浏览器窗口，输入 ``http://<web_ip>:<web_port>`` 来打开 Mars"
+" UI，查看 Worker 资源使用状况和刚才提交作业的执行进度。"
+
+#: ../../source/installation/deploy.rst:56
+msgid "Using Command Lines"
+msgstr "使用命令行"
+
+#: ../../source/installation/deploy.rst:57
+msgid ""
+"When running Mars with command line, you can specify arguments to control"
+" the behavior of Mars processes. All Mars services have common arguments "
+"listed below."
+msgstr ""
+"当使用命令行启动 Mars 时，你可以通过指定启动参数控制 Mars 各服务进程的"
+"行为。所有 Mars 服务均拥有下面的参数。"
+
+#: ../../source/installation/deploy.rst:62
+#: ../../source/installation/deploy.rst:86
+#: ../../source/installation/deploy.rst:98
+msgid "Argument"
+msgstr "参数"
+
+#: ../../source/installation/deploy.rst:62
+#: ../../source/installation/deploy.rst:86
+#: ../../source/installation/deploy.rst:98
+msgid "Description"
+msgstr "描述"
+
+#: ../../source/installation/deploy.rst:64
+msgid "``-a``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:64
+msgid ""
+"Advertise address exposed to other processes in the cluster, useful when "
+"the server has multiple IP addresses, or the service is deployed inside a"
+" VM or container"
+msgstr ""
+"对外服务地址，该地址对集群中的其他服务进程可见。当使用多穴主机及运行在"
+"虚拟机或容器中的服务时需要配置此参数"
+
+#: ../../source/installation/deploy.rst:68
+msgid "``-H``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:68
+msgid "Service IP binding, ``0.0.0.0`` by default"
+msgstr "服务 IP 绑定，默认为 ``0.0.0.0``"
+
+#: ../../source/installation/deploy.rst:70
+msgid "``-p``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:70
+msgid "Port of the service. If absent, a randomized port will be used"
+msgstr "服务端口。如果缺失，将使用随机端口"
+
+#: ../../source/installation/deploy.rst:72
+msgid "``-s``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:72
+msgid ""
+"List of scheduler endpoints, separated by commas. Useful for workers and "
+"webs to spot schedulers, or when you want to run more than one schedulers"
+msgstr ""
+"Scheduler Endpoint 列表，使用空格或逗号分隔。当为 Worker 或 Web 服务指定 "
+ "Scheduler，或者当需要为 Scheduler 指定其他 Scheduler 时需要使用此参数"
+
+#: ../../source/installation/deploy.rst:76
+msgid "``--log-level``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:76
+msgid "Log level, can be ``debug``, ``info``, ``warning``, ``error``"
+msgstr "日志级别，可以使用 ``debug``，``info``，``warning``，``error``"
+
+#: ../../source/installation/deploy.rst:78
+msgid "``--log-format``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:78
+msgid "Log format, can be Python logging format"
+msgstr "日志格式，可以使用 Python logging 模块的日志格式"
+
+#: ../../source/installation/deploy.rst:80
+msgid "``--log-conf``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:80
+msgid "Python logging configuration file, ``logging.conf`` by default"
+msgstr "Python 日志配置文件的位置，默认为 ``logging.conf``"
+
+#: ../../source/installation/deploy.rst:83
+msgid "Extra arguments for schedulers are listed below."
+msgstr "Scheduler 的额外参数在下面列出。"
+
+#: ../../source/installation/deploy.rst:88
+msgid "``--nproc``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:88
+msgid ""
+"Number of processes. If absent, the value will be the available number of"
+" cores"
+msgstr "服务进程数，默认为可用的核数"
+
+#: ../../source/installation/deploy.rst:92
+msgid ""
+"Extra arguments for workers are listed below. Details about memory tuning"
+" can be found at the next section."
+msgstr "Worker 的额外参数在下面列出。关于内存调优的内容可以参见下一节。"
+
+#: ../../source/installation/deploy.rst:100
+msgid "``--cpu-procs``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:100
+msgid ""
+"Number of computation processes on CPUs. If absent, the value will be the"
+" available number of cores"
+msgstr "用于计算的 CPU 进程数，默认值为可用的核数"
+
+#: ../../source/installation/deploy.rst:103
+msgid "``--net-procs``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:103
+msgid "Number of processes for network transfer. 4 by default"
+msgstr "用于网络传输的进程数，默认为 1"
+
+#: ../../source/installation/deploy.rst:105
+msgid "``--cuda-device``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:105
+msgid "Index of the CUDA device to use. If not specified, CPUs will be used only."
+msgstr "CUDA 设备的序号。如果未指定，将仅使用 CPU。"
+
+#: ../../source/installation/deploy.rst:108
+msgid "``--phy-mem``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:108
+msgid ""
+"Limit of physical memory, can be percentages of total memory or multiple "
+"of bytes. For instance, ``4g`` or ``80%`` are both acceptable. If absent,"
+" the size of physical memory will be used"
+msgstr ""
+"物理内存限制，可以为总内存大小的百分比，也可以为实际值。例如，``4g`` 和 ``"
+"80%`` 均为合法的值。缺失值为当前物理内存大小"
+
+#: ../../source/installation/deploy.rst:113
+msgid "``--cache-mem``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:113
+#, python-format
+msgid ""
+"Size of shared memory, can be percentages of total memory or multiple of "
+"bytes. For instance, ``4g`` or ``80%`` are both acceptable. If absent, "
+"50% of free memory will be used"
+msgstr ""
+"共享内存限制，可以为总内存大小的百分比，也可以为实际值。例如，``4g`` 和 ``"
+"80%`` 均为合法的值。缺失值为当前未使用内存的 50%。"
+
+#: ../../source/installation/deploy.rst:117
+msgid "``--min-mem``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:117
+msgid ""
+"Minimal free memory to start worker, can be percentages of total memory "
+"or multiple of bytes. For instance, ``4g`` or ``80%`` are both "
+"acceptable. ``128m`` by default"
+msgstr ""
+"启动 Worker 所需的最小内存，可以为总内存大小的百分比，也可以为实际值。"
+"例如，``4g`` 和 ``80%`` 均为合法的值。缺失值为 ``128m``。"
+
+#: ../../source/installation/deploy.rst:121
+msgid "``--spill-dir``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:121
+msgid "Directories to spill to, separated by : in MacOS or Linux."
+msgstr "Spill 的目标路径，在 MacOS 或 Linux 下使用半角冒号（:）拆分。"
+
+#: ../../source/installation/deploy.rst:123
+msgid "``--plasma-dir``"
+msgstr ""
+
+#: ../../source/installation/deploy.rst:123
+msgid ""
+"Directory of plasma store. When specified, the size of plasma store will "
+"not be considered in memory management."
+msgstr ""
+"Plasma Store 存储所用的路径。一旦指定，管理内存时将不会考虑 Plasma Store "
+"的大小。"
+
+#: ../../source/installation/deploy.rst:127
+msgid ""
+"For instance, if you want to start a Mars cluster with two schedulers, "
+"two workers and one web service, you can run commands below (memory and "
+"CPU tunings are omitted):"
+msgstr ""
+"例如，如果你希望启动一个 Mars 集群，其中包含两个 Scheduler、两个 Worker "
+"及一个 Web 服务，你可以运行下面的命令（内存和 CPU 相关的细节已被忽略）。"
+
+#: ../../source/installation/deploy.rst:131
+msgid "On Scheduler 1 (192.168.1.10):"
+msgstr "在 Scheduler 1（192.168.1.10）上"
+
+#: ../../source/installation/deploy.rst:137
+msgid "On Scheduler 2 (192.168.1.11):"
+msgstr "在 Scheduler 2（192.168.1.11）上"
+
+#: ../../source/installation/deploy.rst:143
+msgid "On Worker 1 (192.168.1.20):"
+msgstr "在 Worker 1（192.168.1.20）上"
+
+#: ../../source/installation/deploy.rst:150
+msgid "On Worker 2 (192.168.1.21):"
+msgstr "在 Worker 2（192.168.1.21）上"
+
+#: ../../source/installation/deploy.rst:157
+msgid "On the web server (192.168.1.30):"
+msgstr "在 Web 服务器（192.168.1.30）上"
+
+#: ../../source/installation/deploy.rst:166
+msgid "Memory Tuning"
+msgstr "内存优化"
+
+#: ../../source/installation/deploy.rst:167
+#, python-format
+msgid ""
+"Mars worker manages two different parts of memory. The first is private "
+"process memory and the second is shared memory between all worker "
+"processes handled by `plasma_store in Apache Arrow "
+"<https://arrow.apache.org/docs/python/plasma.html>`_. When Mars Worker "
+"starts, it will take 50% of free memory space by default as shared memory"
+" and the left as private process memory. What's more, Mars provides soft "
+"and hard memory limits for memory allocations, which are 75% and 90% by "
+"default. If these configurations does not meet your need, you can "
+"configure them when Mars Worker starts. You can use ``--cache-mem`` "
+"argument to configure the size of shared memory, ``--phy-mem`` to "
+"configure total memory size, from which the soft and hard limits are "
+"computed."
+msgstr ""
+"Mars Worker 管理两个不同部分的内存，第一部分为每个进程的私有内存，第二"
+"部分是使用 `Apache Arrow 中的 plasma_store <https://arrow.apache.org/docs"
+"/python/plasma.html>`_ 管理的共享内存。当 Mars Worker 启动，它将默认使用"
+"当前可用内存的 50% 作为共享内存，将剩余部分作为各进程私有内存使用。"
+"与此同时，Mars 为内存分配提供了软限制和硬限制，分别默认为 75% 和 90%。"
+"如果这些选项不满足你的需要，你可以使用 ``--cache-mem`` 参数配置共享内存的"
+"大小，使用 ``--phy-mem`` 参数配置总内存大小，软限制和硬限制将从这些数值"
+"计算。"
+
+#: ../../source/installation/deploy.rst:179
+msgid "For instance, by using"
+msgstr "例如，使用"
+
+#: ../../source/installation/deploy.rst:185
+#, python-format
+msgid ""
+"We limit the size of shared memory as 512MB and the worker can use up to "
+"90% of total physical memory."
+msgstr "可将共享内存限制为 512MB，总内存限制为物理内存的 90%。"
+

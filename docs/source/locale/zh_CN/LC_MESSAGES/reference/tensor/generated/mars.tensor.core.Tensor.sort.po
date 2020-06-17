@@ -1,0 +1,119 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.core.Tensor.sort.rst:2
+msgid "mars.tensor.core.Tensor.sort"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:1 of
+msgid "Sort a tensor, in-place."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:3 of
+msgid ""
+"Axis along which to sort. Default is -1, which means sort along the last "
+"axis."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:6 of
+msgid "Sorting algorithm. Default is 'quicksort'."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:8 of
+msgid ""
+"Parallel sorting algorithm, for the details, refer to: "
+"http://csweb.cs.wfu.edu/bigiron/LittleFE-"
+"PSRS/build/html/PSRSalgorithm.html"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:11 of
+msgid "Sorting algorithms during PSRS algorithm."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:13 of
+msgid ""
+"When `a` is a tensor with fields defined, this argument specifies which "
+"fields to compare first, second, etc.  A single field can be specified as"
+" a string, and not all fields need be specified, but unspecified fields "
+"will still be used, in the order in which they come up in the dtype, to "
+"break ties."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:23 of
+msgid ":meth:`numpy.sort`"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:23 of
+msgid "Return a sorted copy of a tensor."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:26 of
+msgid ":meth:`argsort`"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:26 of
+msgid "Indirect sort."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:29 of
+msgid ":meth:`lexsort`"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:29 of
+msgid "Indirect stable sort on multiple keys."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:32 of
+msgid ":meth:`searchsorted`"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:32 of
+msgid "Find elements in sorted tensor."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:34 of
+msgid ":meth:`partition`"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:35 of
+msgid "Partial sort."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:38 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:39 of
+msgid "See ``sort`` for notes on the different sorting algorithms."
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:42 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.core.Tensor.sort:54 of
+msgid ""
+"Use the `order` keyword to specify a field to use when sorting a "
+"structured tensor:"
+msgstr ""
+

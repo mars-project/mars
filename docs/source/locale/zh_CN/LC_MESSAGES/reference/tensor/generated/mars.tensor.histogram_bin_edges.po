@@ -1,0 +1,324 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.histogram_bin_edges.rst:2
+msgid "mars.tensor.histogram\\_bin\\_edges"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:1 of
+msgid ""
+"Function to calculate only the edges of the bins used by the `histogram` "
+"function."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:4 of
+msgid "Input data. The histogram is computed over the flattened tensor."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:6 of
+msgid ""
+"If `bins` is an int, it defines the number of equal-width bins in the "
+"given range (10, by default). If `bins` is a sequence, it defines the bin"
+" edges, including the rightmost edge, allowing for non-uniform bin "
+"widths.  If `bins` is a string from the list below, `histogram_bin_edges`"
+" will use the method chosen to calculate the optimal bin width and "
+"consequently the number of bins (see `Notes` for more detail on the "
+"estimators) from the data that falls within the requested range. While "
+"the bin width will be optimal for the actual data in the range, the "
+"number of bins will be computed to fill the entire range, including the "
+"empty portions. For visualisation, using the 'auto' option is suggested. "
+"Weighted data is not supported for automated bin size selection.  'auto'"
+"     Maximum of the 'sturges' and 'fd' estimators. Provides good     all "
+"around performance.  'fd' (Freedman Diaconis Estimator)     Robust "
+"(resilient to outliers) estimator that takes into     account data "
+"variability and data size.  'doane'     An improved version of Sturges' "
+"estimator that works better     with non-normal datasets.  'scott'     "
+"Less robust estimator that that takes into account data     variability "
+"and data size.  'stone'     Estimator based on leave-one-out cross-"
+"validation estimate of     the integrated squared error. Can be regarded "
+"as a generalization     of Scott's rule.  'rice'     Estimator does not "
+"take variability into account, only data     size. Commonly overestimates"
+" number of bins required.  'sturges'     R's default method, only "
+"accounts for data size. Only     optimal for gaussian data and "
+"underestimates number of bins     for large non-gaussian datasets.  "
+"'sqrt'     Square root (of data size) estimator, used by Excel and     "
+"other programs for its speed and simplicity."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:6 of
+msgid ""
+"If `bins` is an int, it defines the number of equal-width bins in the "
+"given range (10, by default). If `bins` is a sequence, it defines the bin"
+" edges, including the rightmost edge, allowing for non-uniform bin "
+"widths."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:11 of
+msgid ""
+"If `bins` is a string from the list below, `histogram_bin_edges` will use"
+" the method chosen to calculate the optimal bin width and consequently "
+"the number of bins (see `Notes` for more detail on the estimators) from "
+"the data that falls within the requested range. While the bin width will "
+"be optimal for the actual data in the range, the number of bins will be "
+"computed to fill the entire range, including the empty portions. For "
+"visualisation, using the 'auto' option is suggested. Weighted data is not"
+" supported for automated bin size selection."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:23 of
+msgid "'auto'"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:22 of
+msgid ""
+"Maximum of the 'sturges' and 'fd' estimators. Provides good all around "
+"performance."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:27 mars.tensor.histogram_bin_edges:100 of
+msgid "'fd' (Freedman Diaconis Estimator)"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:26 of
+msgid ""
+"Robust (resilient to outliers) estimator that takes into account data "
+"variability and data size."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:31 mars.tensor.histogram_bin_edges:137 of
+msgid "'doane'"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:30 of
+msgid ""
+"An improved version of Sturges' estimator that works better with non-"
+"normal datasets."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:35 mars.tensor.histogram_bin_edges:110 of
+msgid "'scott'"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:34 of
+msgid ""
+"Less robust estimator that that takes into account data variability and "
+"data size."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:40 of
+msgid "'stone'"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:38 of
+msgid ""
+"Estimator based on leave-one-out cross-validation estimate of the "
+"integrated squared error. Can be regarded as a generalization of Scott's "
+"rule."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:44 mars.tensor.histogram_bin_edges:117 of
+msgid "'rice'"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:43 of
+msgid ""
+"Estimator does not take variability into account, only data size. "
+"Commonly overestimates number of bins required."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:49 mars.tensor.histogram_bin_edges:125 of
+msgid "'sturges'"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:47 of
+msgid ""
+"R's default method, only accounts for data size. Only optimal for "
+"gaussian data and underestimates number of bins for large non-gaussian "
+"datasets."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:52 mars.tensor.histogram_bin_edges:143 of
+msgid "'sqrt'"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:52 of
+msgid ""
+"Square root (of data size) estimator, used by Excel and other programs "
+"for its speed and simplicity."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:55 of
+msgid ""
+"The lower and upper range of the bins.  If not provided, range is simply "
+"``(a.min(), a.max())``.  Values outside the range are ignored. The first "
+"element of the range must be less than or equal to the second. `range` "
+"affects the automatic bin computation as well. While bin width is "
+"computed to be optimal based on the actual data within `range`, the bin "
+"count will fill the entire range including portions containing no data."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:63 of
+msgid ""
+"A tensor of weights, of the same shape as `a`.  Each value in `a` only "
+"contributes its associated weight towards the bin count (instead of 1). "
+"This is currently not used by any of the bin estimators, but may be in "
+"the future."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:69 of
+msgid "**bin_edges** -- The edges to pass into `histogram`"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:72 of
+msgid ":func:`histogram`"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:75 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:76 of
+msgid ""
+"The methods to estimate the optimal number of bins are well founded in "
+"literature, and are inspired by the choices R provides for histogram "
+"visualisation. Note that having the number of bins proportional to "
+":math:`n^{1/3}` is asymptotically optimal, which is why it appears in "
+"most estimators. These are simply plug-in methods that give good starting"
+" points for number of bins. In the equations below, :math:`h` is the "
+"binwidth and :math:`n_h` is the number of bins. All estimators that "
+"compute bin counts are recast to bin width using the `ptp` of the data. "
+"The final bin count is obtained from ``np.round(np.ceil(range / h))``."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:92 of
+msgid "'auto' (maximum of the 'sturges' and 'fd' estimators)"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:88 of
+msgid ""
+"A compromise to get a good value. For small datasets the Sturges value "
+"will usually be chosen, while larger datasets will usually default to FD."
+"  Avoids the overly conservative behaviour of FD and Sturges for small "
+"and large datasets respectively. Switchover point is usually "
+":math:`a.size \\approx 1000`."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:95 of
+msgid "h = 2 \\frac{IQR}{n^{1/3}}"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:97 of
+msgid ""
+"The binwidth is proportional to the interquartile range (IQR) and "
+"inversely proportional to cube root of a.size. Can be too conservative "
+"for small datasets, but is quite good for large datasets. The IQR is very"
+" robust to outliers."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:103 of
+msgid "h = \\sigma \\sqrt[3]{\\frac{24 * \\sqrt{\\pi}}{n}}"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:105 of
+msgid ""
+"The binwidth is proportional to the standard deviation of the data and "
+"inversely proportional to cube root of ``x.size``. Can be too "
+"conservative for small datasets, but is quite good for large datasets. "
+"The standard deviation is not very robust to outliers. Values are very "
+"similar to the Freedman-Diaconis estimator in the absence of outliers."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:113 of
+msgid "n_h = 2n^{1/3}"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:115 of
+msgid ""
+"The number of bins is only proportional to cube root of ``a.size``. It "
+"tends to overestimate the number of bins and it does not take into "
+"account data variability."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:120 of
+msgid "n_h = \\log _{2}n+1"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:122 of
+msgid ""
+"The number of bins is the base 2 log of ``a.size``.  This estimator "
+"assumes normality of data and is too conservative for larger, non-normal "
+"datasets. This is the default method in R's ``hist`` method."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:128 of
+msgid ""
+"n_h = 1 + \\log_{2}(n) +             \\log_{2}(1 + "
+"\\frac{|g_1|}{\\sigma_{g_1}})  g_1 = mean[(\\frac{x - \\mu}{\\sigma})^3]"
+"  \\sigma_{g_1} = \\sqrt{\\frac{6(n - 2)}{(n + 1)(n + 3)}}"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:135 of
+msgid ""
+"An improved version of Sturges' formula that produces better estimates "
+"for non-normal datasets. This estimator attempts to account for the skew "
+"of the data."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:140 of
+msgid "n_h = \\sqrt n"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:142 of
+msgid "The simplest and fastest estimator. Only takes into account the data size."
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:146 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:154 of
+msgid ""
+"For consistency with histogram, a tensor of pre-computed bins is passed "
+"through unmodified:"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:160 of
+msgid ""
+"This function allows one set of bins to be computed, and reused across "
+"multiple histograms:"
+msgstr ""
+
+#: mars.tensor.histogram_bin_edges:181 of
+msgid ""
+"Which gives more easily comparable results than using separate bins for "
+"each histogram:"
+msgstr ""
+

@@ -1,0 +1,160 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.to_csv.rst:2
+msgid "mars.dataframe.Series.to\\_csv"
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:1 of
+msgid "Write object to a comma-separated values (csv) file."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:3 of
+msgid ""
+"File path. If path is a string with wildcard e.g. '/to/path/out-*.csv', "
+"to_csv will try to write multiple files, for instance, chunk (0, 0) will "
+"write data into '/to/path/out-0.csv'. If path is a string without "
+"wildcard, all data will be written into a single file."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:10 of
+msgid "String of length 1. Field delimiter for the output file."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:12 of
+msgid "Missing data representation."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:14 of
+msgid "Format string for floating point numbers."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:16 of
+msgid "Columns to write."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:18 of
+msgid ""
+"Write out the column names. If a list of strings is given it is assumed "
+"to be aliases for the column names."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:21 of
+msgid "Write row names (index)."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:23 of
+msgid ""
+"Column label for index column(s) if desired. If None is given, and "
+"`header` and `index` are True, then the index names are used. A sequence "
+"should be given if the object uses MultiIndex. If False do not print "
+"fields for index names. Use index_label=False for easier importing in R."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:29 of
+msgid "Python write mode, default 'w'."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:31 of
+msgid ""
+"A string representing the encoding to use in the output file, defaults to"
+" 'utf-8'."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:34 of
+msgid ""
+"If str, represents compression mode. If dict, value at 'method' is the "
+"compression mode. Compression mode may be any of the following possible "
+"values: {'infer', 'gzip', 'bz2', 'zip', 'xz', None}. If compression mode "
+"is 'infer' and `path_or_buf` is path-like, then detect compression mode "
+"from the following extensions: '.gz', '.bz2', '.zip' or '.xz'. (otherwise"
+" no compression). If dict given and mode is 'zip' or inferred as 'zip', "
+"other entries passed as additional compression options."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:43 of
+msgid ""
+"Defaults to csv.QUOTE_MINIMAL. If you have set a `float_format` then "
+"floats are converted to strings and thus csv.QUOTE_NONNUMERIC will treat "
+"them as non-numeric."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:47 of
+msgid "String of length 1. Character used to quote fields."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:49 of
+msgid ""
+"The newline character or character sequence to use in the output file. "
+"Defaults to `os.linesep`, which depends on the OS in which this method is"
+" called ('\\n' for linux, '\\r\\n' for Windows, i.e.)."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:53 of
+msgid "Rows to write at a time."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:55 of
+msgid "Format string for datetime objects."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:57 of
+msgid "Control quoting of `quotechar` inside a field."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:59 of
+msgid ""
+"String of length 1. Character used to escape `sep` and `quotechar` when "
+"appropriate."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:62 of
+msgid "Character recognized as decimal separator. E.g. use ',' for European data."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:66 of
+msgid ""
+"If path_or_buf is None, returns the resulting csv format as a string. "
+"Otherwise returns None."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:72 of
+msgid ":meth:`read_csv`"
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:73 of
+msgid "Load a CSV file into a DataFrame."
+msgstr ""
+
+#: mars.dataframe.Series.to_csv:76 of
+msgid "Examples"
+msgstr ""
+

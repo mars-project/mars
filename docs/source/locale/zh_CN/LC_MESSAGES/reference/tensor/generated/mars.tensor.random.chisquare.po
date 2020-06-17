@@ -1,0 +1,137 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.random.chisquare.rst:2
+msgid "mars.tensor.random.chisquare"
+msgstr ""
+
+#: mars.tensor.random.chisquare:1 of
+msgid "Draw samples from a chi-square distribution."
+msgstr ""
+
+#: mars.tensor.random.chisquare:3 of
+msgid ""
+"When `df` independent random variables, each with standard normal "
+"distributions (mean 0, variance 1), are squared and summed, the resulting"
+" distribution is chi-square (see Notes).  This distribution is often used"
+" in hypothesis testing."
+msgstr ""
+
+#: mars.tensor.random.chisquare of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.random.chisquare:8 of
+msgid "Number of degrees of freedom, should be > 0."
+msgstr ""
+
+#: mars.tensor.random.chisquare:10 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  If size is ``None`` (default), a single value is"
+" returned if ``df`` is a scalar.  Otherwise, ``mt.array(df).size`` "
+"samples are drawn."
+msgstr ""
+
+#: mars.tensor.random.chisquare:15 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.chisquare:17 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.chisquare:19 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: mars.tensor.random.chisquare of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.random.chisquare:22 of
+msgid "**out** -- Drawn samples from the parameterized chi-square distribution."
+msgstr ""
+
+#: mars.tensor.random.chisquare of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.random.chisquare of
+msgid "Raises"
+msgstr ""
+
+#: mars.tensor.random.chisquare:25 of
+msgid ""
+"When `df` <= 0 or when an inappropriate `size` (e.g. ``size=-1``)     is "
+"given."
+msgstr ""
+
+#: mars.tensor.random.chisquare:28 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.random.chisquare:29 of
+msgid ""
+"The variable obtained by summing the squares of `df` independent, "
+"standard normally distributed random variables:"
+msgstr ""
+
+#: mars.tensor.random.chisquare:32 of
+msgid "Q = \\sum_{i=0}^{\\mathtt{df}} X^2_i"
+msgstr ""
+
+#: mars.tensor.random.chisquare:34 of
+msgid "is chi-square distributed, denoted"
+msgstr ""
+
+#: mars.tensor.random.chisquare:36 of
+msgid "Q \\sim \\chi^2_k."
+msgstr ""
+
+#: mars.tensor.random.chisquare:38 of
+msgid "The probability density function of the chi-squared distribution is"
+msgstr ""
+
+#: mars.tensor.random.chisquare:40 of
+msgid "p(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)} x^{k/2 - 1} e^{-x/2},"
+msgstr ""
+
+#: mars.tensor.random.chisquare:43 of
+msgid "where :math:`\\Gamma` is the gamma function,"
+msgstr ""
+
+#: mars.tensor.random.chisquare:45 of
+msgid "\\Gamma(x) = \\int_0^{-\\infty} t^{x - 1} e^{-t} dt."
+msgstr ""
+
+#: mars.tensor.random.chisquare:48 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.random.chisquare:49 of
+msgid ""
+"NIST \"Engineering Statistics Handbook\" "
+"http://www.itl.nist.gov/div898/handbook/eda/section3/eda3666.htm"
+msgstr ""
+
+#: mars.tensor.random.chisquare:53 of
+msgid "Examples"
+msgstr ""
+

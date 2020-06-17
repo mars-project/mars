@@ -1,0 +1,135 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 19:06+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/learn/tensorflow.rst:5
+msgid "Integrate with TensorFlow"
+msgstr "和 TensorFlow 集成"
+
+#: ../../source/user_guide/learn/tensorflow.rst:9
+msgid ""
+"This introduction will give a brief tour about how to integrate "
+"TensorFlow in Mars."
+msgstr "这篇指引会介绍如何在 Mars 里集成 TensorFlow。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:11
+msgid "This tutorial is based on TensorFlow 2.0."
+msgstr "本指引基于 TensorFlow 2.0。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:14
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/user_guide/learn/tensorflow.rst:16
+msgid ""
+"If you are trying to use Mars on a single machine, e.g. on your laptop, "
+"make sure TensorFlow is installed."
+msgstr "如果你尝试在单机比如你的笔记本上使用 Mars，确保 TensorFlow 已经安装。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:19
+msgid "You can install TensorFlow via pip:"
+msgstr "通过 pip 安装 TensorFlow："
+
+#: ../../source/user_guide/learn/tensorflow.rst:25
+msgid ""
+"Visit `installation guide for TensorFlow "
+"<https://www.tensorflow.org/install>`_ for more information."
+msgstr ""
+"访问 `TensorFlow 安装指引 <https://www.tensorflow.org/install>`_ 获取更多"
+"信息"
+
+#: ../../source/user_guide/learn/tensorflow.rst:28
+msgid ""
+"On the other hand, if you are about to use Mars on a cluster, maker sure "
+"TensorFlow is installed on each worker."
+msgstr ""
+"另一方面，如果你打算在集群中使用 Mars，确保 TensorFlow 在每个 worker 上"
+"安装。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:32
+msgid "Prepare data"
+msgstr "准备数据"
+
+#: ../../source/user_guide/learn/tensorflow.rst:34
+msgid ""
+"The dataset here we used is `ionosphere dataset "
+"<http://archive.ics.uci.edu/ml/machine-learning-databases/ionosphere/>`_,"
+" click link to download data."
+msgstr ""
+"这里我们使用 `ionosphere 数据集 <http://archive.ics.uci.edu/ml/machine-"
+"learning-databases/ionosphere/>`_，点击链接下载数据。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:38
+msgid "Prepare TensorFlow script"
+msgstr "编写 TensorFlow 脚本"
+
+#: ../../source/user_guide/learn/tensorflow.rst:40
+msgid ""
+"Now we create a Python file called ``tf_demo.py`` which contains the "
+"logic of TensorFlow."
+msgstr ""
+"现在我们创建一个命名为 `tf_demo.py` 的 Python 文件，它包含了 TensorFlow "
+"的处理逻辑。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:109
+msgid ""
+"Mars libraries including DataFrame and so forth could be used directly to"
+" process massive data and accelerate preprocess."
+msgstr "Mars DataFrame 等模块可以直接在脚本里使用，以处理大规模数据和加速预处理。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:113
+msgid "Run TensorFlow script via Mars"
+msgstr "通过 Mars 运行 TensorFlow 脚本"
+
+#: ../../source/user_guide/learn/tensorflow.rst:115
+msgid ""
+"The TensorFlow script can be submitted via :meth:`run_tensorflow_script` "
+"now."
+msgstr "现在可以通过 :meth:`run_tensorflow_script` 提交 TensorFlow 脚本。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:140
+msgid "Distributed training or inference"
+msgstr "分布式训练和推理"
+
+#: ../../source/user_guide/learn/tensorflow.rst:142
+msgid ""
+"Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for "
+"running Mars on Kubernetes."
+msgstr "部署参考 :ref:`deploy` 部分，在 Kubernetes 上运行参考 :ref:`k8s` 部分。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:144
+msgid ""
+"As you can tell from ``tf_demo.py``, Mars will set environment variable "
+"``TF_CONFIG`` automatically. ``TF_CONFIG`` contains cluster and task "
+"information. Thus you don't need to worry about the distributed setting, "
+"what you need do is to choose a proper `distributed strategy "
+"<https://www.tensorflow.org/guide/distributed_training#types_of_strategies>`_."
+msgstr ""
+"你能从 ``tf_demo.py`` 文件中看出，Mars 会自动设置 ``TF_CONFIG`` 环境变量。``TF"
+"_CONFIG`` 环境变量包含了集群的信息。你需要做的只是选择一个正确的 `分布式"
+"策略 <https://www.tensorflow.org/guide/distributed_training#types_of_"
+"strategies>`_。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:150
+msgid ""
+"Once a cluster exists, you can either set the session as default, the "
+"training and prediction shown above will be submitted to the cluster, or "
+"you can specify ``session=***`` explicitly as well."
+msgstr ""
+"一旦一个集群存在，你可以要么设置默认 session，训练和预测就会自动提交到"
+"集群，要么你可以通过 ``session=***`` 显示指定运行的 session。"

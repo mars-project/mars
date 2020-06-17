@@ -1,0 +1,80 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 18:05+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/getting_started/session.rst:4
+msgid "Session"
+msgstr "会话"
+
+#: ../../source/getting_started/session.rst:6
+msgid ""
+"Sessions can be used for local execution, connecting to a :ref:`local "
+"cluster <local_cluster>` or an existing :ref:`Mars cluster <deploy>`."
+msgstr ""
+"会话可以用来本地执行，连接到 :ref:`本地集群 <local_cluster>`，以及连接到"
+"已经创建的 :ref:`Mars 集群 <deploy>`。"
+
+#: ../../source/getting_started/session.rst:9
+msgid ""
+"If a session is not initialized explicitly, Mars will create a session "
+"for local execution by default."
+msgstr "如果没有显式创建会话，Mars 会默认创建一个本地执行的会话。"
+
+#: ../../source/getting_started/session.rst:25
+msgid ""
+"``new_session`` can be used to create new sessions. After created, "
+"sessions can be specified as an argument for both ``execute`` and "
+"``fetch``."
+msgstr ""
+"用 ``new_session`` 来创建新的会话，``execute`` 和 ``fetch`` 方法可以指定"
+"会话。"
+
+#: ../../source/getting_started/session.rst:43
+msgid ""
+"Call ``.as_default()`` on a session will set the session as default, "
+"``.execute()`` and ``.fetch()`` will be constraint to the default "
+"session."
+msgstr ""
+"调用会话的 ``.as_default()`` 方法会把这个会话设为默认，``.execute()`` 和 "
+"``.fetch()`` 就默认会使用这个会话。"
+
+#: ../../source/getting_started/session.rst:61
+msgid ""
+"Each session is isolated. Calling ``.fetch()`` on a Mars object which is "
+"executed in another session will fail."
+msgstr ""
+"每个会话是隔离的，试图通过 ``.fetch()`` 读取别的会话中执行过的 Mars 对象"
+"会导致失败。"
+
+#: ../../source/getting_started/session.rst:113
+msgid ""
+"If ``session`` argument is not passed to ``new_session``, a local session"
+" will be created. The local session will leverage :ref:`threaded "
+"scheduler <threaded>` for execution."
+msgstr ""
+"如果 ``new_session`` 没有参数，会创建本地会话。本地会话会利用 :ref:`"
+"多线程调度器 <threaded>` 执行。"
+
+#: ../../source/getting_started/session.rst:117
+msgid ""
+"For distributed, the URL of Web UI could be passed to ``new_session`` to "
+"connect to an existing cluster."
+msgstr ""
+"对于分布式环境，``new_session`` 调用时需要传入 Web UI 的 URL 以连接到集群"
+"。"
+

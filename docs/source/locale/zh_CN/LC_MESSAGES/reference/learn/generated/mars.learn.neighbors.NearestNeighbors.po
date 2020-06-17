@@ -1,0 +1,92 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:2
+msgid "mars.learn.neighbors.NearestNeighbors"
+msgstr ""
+
+#: mars.learn.neighbors.NearestNeighbors.__init__:1 of
+msgid "Initialize self.  See help(type(self)) for accurate signature."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:13
+msgid "Methods"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid ""
+":obj:`__init__ <mars.learn.neighbors.NearestNeighbors.__init__>`\\ "
+"\\(\\[n\\_neighbors\\, radius\\, algorithm\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid "Initialize self."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid ""
+":obj:`fit <mars.learn.neighbors.NearestNeighbors.fit>`\\ \\(X\\[\\, y\\, "
+"session\\, run\\_kwargs\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid "Fit the model using X as training data"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid ""
+":obj:`get_params <mars.learn.neighbors.NearestNeighbors.get_params>`\\ "
+"\\(\\[deep\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid "Get parameters for this estimator."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid ""
+":obj:`kneighbors <mars.learn.neighbors.NearestNeighbors.kneighbors>`\\ "
+"\\(\\[X\\, n\\_neighbors\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid "Finds the K-neighbors of a point."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid ""
+":obj:`kneighbors_graph "
+"<mars.learn.neighbors.NearestNeighbors.kneighbors_graph>`\\ \\(\\[X\\, "
+"n\\_neighbors\\, mode\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid "Computes the (weighted) graph of k-Neighbors for points in X"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid ""
+":obj:`set_params <mars.learn.neighbors.NearestNeighbors.set_params>`\\ "
+"\\(\\*\\*params\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.neighbors.NearestNeighbors.rst:21:<autosummary>:1
+msgid "Set the parameters of this estimator."
+msgstr ""
+

@@ -1,0 +1,94 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.preprocessing.normalize.rst:2
+msgid "mars.learn.preprocessing.normalize"
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:1 of
+msgid "Scale input vectors individually to unit norm (vector length)."
+msgstr ""
+
+#: mars.learn.preprocessing.normalize of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:3 of
+msgid ""
+"The data to normalize, element by element. scipy.sparse matrices should "
+"be in CSR format to avoid an un-necessary copy."
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:7 of
+msgid ""
+"The norm to use to normalize each non zero sample (or each non-zero "
+"feature if axis is 0)."
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:10 of
+msgid ""
+"axis used to normalize the data along. If 1, independently normalize each"
+" sample, otherwise (if 0) normalize each feature."
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:13 of
+msgid ""
+"set to False to perform inplace row normalization and avoid a copy (if "
+"the input is already a tensor and if axis is 1)."
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:16 of
+msgid "whether to return the computed norms"
+msgstr ""
+
+#: mars.learn.preprocessing.normalize of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:19 of
+msgid ""
+"* **X** (*{array-like, sparse matrix}, shape [n_samples, n_features]*) --"
+" Normalized input X. * **norms** (*Tensor, shape [n_samples] if axis=1 "
+"else [n_features]*) -- A tensor of norms along given axis for X.   When X"
+" is sparse, a NotImplementedError will be raised   for norm 'l1' or 'l2'."
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:19 of
+msgid ""
+"**X** (*{array-like, sparse matrix}, shape [n_samples, n_features]*) -- "
+"Normalized input X."
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:20 of
+msgid ""
+"**norms** (*Tensor, shape [n_samples] if axis=1 else [n_features]*) -- A "
+"tensor of norms along given axis for X. When X is sparse, a "
+"NotImplementedError will be raised for norm 'l1' or 'l2'."
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:26 of
+msgid ":func:`Normalizer`"
+msgstr ""
+
+#: mars.learn.preprocessing.normalize:27 of
+msgid ""
+"Performs normalization using the ``Transformer`` API (e.g. as part of a "
+"preprocessing :class:`mars.learn.pipeline.Pipeline`)."
+msgstr ""
+

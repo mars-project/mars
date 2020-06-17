@@ -1,0 +1,75 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.ceil.rst:2
+msgid "mars.tensor.ceil"
+msgstr ""
+
+#: mars.tensor.ceil:1 of
+msgid "Return the ceiling of the input, element-wise."
+msgstr ""
+
+#: mars.tensor.ceil:3 of
+msgid ""
+"The ceil of the scalar `x` is the smallest integer `i`, such that `i >= "
+"x`.  It is often denoted as :math:`\\lceil x \\rceil`."
+msgstr ""
+
+#: mars.tensor.ceil of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.ceil:6 of
+msgid "Input data."
+msgstr ""
+
+#: mars.tensor.ceil:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.ceil:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.ceil of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.ceil:18 of
+msgid "**y** -- The ceiling of each element in `x`, with `float` dtype."
+msgstr ""
+
+#: mars.tensor.ceil of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.ceil:21 of
+msgid ":func:`floor`, :func:`trunc`, :func:`rint`"
+msgstr ""
+
+#: mars.tensor.ceil:24 of
+msgid "Examples"
+msgstr ""
+

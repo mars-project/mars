@@ -1,0 +1,119 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/generated/mars.tensor.isinf.rst:2
+msgid "mars.tensor.isinf"
+msgstr ""
+
+#: mars.tensor.isinf:1 of
+msgid "Test element-wise for positive or negative infinity."
+msgstr ""
+
+#: mars.tensor.isinf:3 of
+msgid ""
+"Returns a boolean array of the same shape as `x`, True where ``x == "
+"+/-inf``, otherwise False."
+msgstr ""
+
+#: mars.tensor.isinf of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.isinf:6 of
+msgid "Input values"
+msgstr ""
+
+#: mars.tensor.isinf:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.isinf:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.isinf of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.isinf:18 of
+msgid ""
+"**y** -- For scalar input, the result is a new boolean with value True if"
+" the input is positive or negative infinity; otherwise the value is "
+"False.  For tensor input, the result is a boolean tensor with the same "
+"shape as the input and the values are True where the corresponding "
+"element of the input is positive or negative infinity; elsewhere the "
+"values are False.  If a second argument was supplied the result is stored"
+" there.  If the type of that array is a numeric type the result is "
+"represented as zeros and ones, if the type is boolean then as False and "
+"True, respectively.  The return value `y` is then a reference to that "
+"tensor."
+msgstr ""
+
+#: mars.tensor.isinf:18 of
+msgid ""
+"**y** -- For scalar input, the result is a new boolean with value True if"
+" the input is positive or negative infinity; otherwise the value is "
+"False."
+msgstr ""
+
+#: mars.tensor.isinf:22 of
+msgid ""
+"For tensor input, the result is a boolean tensor with the same shape as "
+"the input and the values are True where the corresponding element of the "
+"input is positive or negative infinity; elsewhere the values are False.  "
+"If a second argument was supplied the result is stored there.  If the "
+"type of that array is a numeric type the result is represented as zeros "
+"and ones, if the type is boolean then as False and True, respectively.  "
+"The return value `y` is then a reference to that tensor."
+msgstr ""
+
+#: mars.tensor.isinf of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.isinf:32 of
+msgid ":func:`isneginf`, :func:`isposinf`, :func:`isnan`, :func:`isfinite`"
+msgstr ""
+
+#: mars.tensor.isinf:35 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.isinf:36 of
+msgid ""
+"Mars uses the IEEE Standard for Binary Floating-Point for Arithmetic "
+"(IEEE 754)."
+msgstr ""
+
+#: mars.tensor.isinf:39 of
+msgid ""
+"Errors result if the second argument is supplied when the first argument "
+"is a scalar, or if the first and second arguments have different shapes."
+msgstr ""
+
+#: mars.tensor.isinf:44 of
+msgid "Examples"
+msgstr ""
+

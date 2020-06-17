@@ -1,0 +1,87 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.empty.rst:2
+msgid "mars.tensor.empty"
+msgstr ""
+
+#: mars.tensor.empty:1 of
+msgid "Return a new tensor of given shape and type, without initializing entries."
+msgstr ""
+
+#: mars.tensor.empty of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.empty:3 of
+msgid "Shape of the empty tensor"
+msgstr ""
+
+#: mars.tensor.empty:5 of
+msgid "Desired output data-type."
+msgstr ""
+
+#: mars.tensor.empty:7 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.empty:9 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.empty:11 of
+msgid ""
+"Whether to store multi-dimensional data in row-major (C-style) or column-"
+"major (Fortran-style) order in memory."
+msgstr ""
+
+#: mars.tensor.empty of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.empty:16 of
+msgid ""
+"**out** -- Tensor of uninitialized (arbitrary) data of the given shape, "
+"dtype, and order.  Object arrays will be initialized to None."
+msgstr ""
+
+#: mars.tensor.empty of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.empty:20 of
+msgid ":func:`empty_like`, :func:`zeros`, :func:`ones`"
+msgstr ""
+
+#: mars.tensor.empty:23 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.empty:24 of
+msgid ""
+"`empty`, unlike `zeros`, does not set the array values to zero, and may "
+"therefore be marginally faster.  On the other hand, it requires the user "
+"to manually set all the values in the array, and should be used with "
+"caution."
+msgstr ""
+
+#: mars.tensor.empty:30 of
+msgid "Examples"
+msgstr ""
+

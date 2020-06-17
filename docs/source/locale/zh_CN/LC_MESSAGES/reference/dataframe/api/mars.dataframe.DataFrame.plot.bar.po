@@ -1,0 +1,173 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.plot.bar.rst:2
+msgid "mars.dataframe.DataFrame.plot.bar"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:1 of
+msgid "Vertical bar plot."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:3 of
+msgid ""
+"A bar plot is a plot that presents categorical data with rectangular bars"
+" with lengths proportional to the values that they represent. A bar plot "
+"shows comparisons among discrete categories. One axis of the plot shows "
+"the specific categories being compared, and the other axis represents a "
+"measured value."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:9 of
+msgid ""
+"Allows plotting of one column versus another. If not specified, the index"
+" of the DataFrame is used."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:12 of
+msgid ""
+"Allows plotting of one column versus another. If not specified, all "
+"numerical columns are used."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:15 of
+msgid "Additional keyword arguments are documented in :meth:`DataFrame.plot`."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:18 of
+msgid ""
+"An ndarray is returned with one :class:`matplotlib.axes.Axes` per column "
+"when ``subplots=True``."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:25 of
+msgid ":meth:`DataFrame.plot.barh`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:25 of
+msgid "Horizontal bar plot."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:28 of
+msgid ":meth:`DataFrame.plot`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:28 of
+msgid "Make plots of a DataFrame."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:30 of
+msgid ":meth:`matplotlib.pyplot.bar`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:31 of
+msgid "Make a bar plot with matplotlib."
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:34 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:35 of
+msgid "Basic plot."
+msgstr ""
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.plot.bar.rst:7
+msgid ""
+"(`Source code <../../../reference/dataframe/api/mars-dataframe-DataFrame-"
+"plot-bar-1.py>`__, `png <../../../reference/dataframe/api/mars-dataframe-"
+"DataFrame-plot-bar-1.png>`__, `hires.png "
+"<../../../reference/dataframe/api/mars-dataframe-DataFrame-plot-"
+"bar-1.hires.png>`__, `pdf <../../../reference/dataframe/api/mars-"
+"dataframe-DataFrame-plot-bar-1.pdf>`__)"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:45 of
+msgid ""
+"Plot a whole dataframe to a bar plot. Each column is assigned a distinct "
+"color, and each row is nested in a group along the horizontal axis."
+msgstr ""
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.plot.bar.rst:7
+msgid ""
+"(`Source code <../../../reference/dataframe/api/mars-dataframe-DataFrame-"
+"plot-bar-2.py>`__, `png <../../../reference/dataframe/api/mars-dataframe-"
+"DataFrame-plot-bar-2.png>`__, `hires.png "
+"<../../../reference/dataframe/api/mars-dataframe-DataFrame-plot-"
+"bar-2.hires.png>`__, `pdf <../../../reference/dataframe/api/mars-"
+"dataframe-DataFrame-plot-bar-2.pdf>`__)"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:60 of
+msgid ""
+"Instead of nesting, the figure can be split by column with "
+"``subplots=True``. In this case, a :class:`numpy.ndarray` of "
+":class:`matplotlib.axes.Axes` are returned."
+msgstr ""
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.plot.bar.rst:7
+msgid ""
+"(`Source code <../../../reference/dataframe/api/mars-dataframe-DataFrame-"
+"plot-bar-3.py>`__, `png <../../../reference/dataframe/api/mars-dataframe-"
+"DataFrame-plot-bar-3.png>`__, `hires.png "
+"<../../../reference/dataframe/api/mars-dataframe-DataFrame-plot-"
+"bar-3.hires.png>`__, `pdf <../../../reference/dataframe/api/mars-"
+"dataframe-DataFrame-plot-bar-3.pdf>`__)"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:70 of
+msgid "Plot a single column."
+msgstr ""
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.plot.bar.rst:7
+msgid ""
+"(`Source code <../../../reference/dataframe/api/mars-dataframe-DataFrame-"
+"plot-bar-4.py>`__, `png <../../../reference/dataframe/api/mars-dataframe-"
+"DataFrame-plot-bar-4.png>`__, `hires.png "
+"<../../../reference/dataframe/api/mars-dataframe-DataFrame-plot-"
+"bar-4.hires.png>`__, `pdf <../../../reference/dataframe/api/mars-"
+"dataframe-DataFrame-plot-bar-4.pdf>`__)"
+msgstr ""
+
+#: mars.dataframe.DataFrame.plot.bar:77 of
+msgid "Plot only selected categories for the DataFrame."
+msgstr ""
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.plot.bar.rst:7
+msgid ""
+"(`Source code <../../../reference/dataframe/api/mars-dataframe-DataFrame-"
+"plot-bar-5.py>`__, `png <../../../reference/dataframe/api/mars-dataframe-"
+"DataFrame-plot-bar-5.png>`__, `hires.png "
+"<../../../reference/dataframe/api/mars-dataframe-DataFrame-plot-"
+"bar-5.hires.png>`__, `pdf <../../../reference/dataframe/api/mars-"
+"dataframe-DataFrame-plot-bar-5.pdf>`__)"
+msgstr ""
+

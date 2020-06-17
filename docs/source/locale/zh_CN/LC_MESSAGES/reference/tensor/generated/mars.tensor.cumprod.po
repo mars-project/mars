@@ -1,0 +1,101 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.cumprod.rst:2
+msgid "mars.tensor.cumprod"
+msgstr ""
+
+#: mars.tensor.cumprod:1 of
+msgid "Return the cumulative product of elements along a given axis."
+msgstr ""
+
+#: mars.tensor.cumprod of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.cumprod:3 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.cumprod:5 of
+msgid ""
+"Axis along which the cumulative product is computed.  By default the "
+"input is flattened."
+msgstr ""
+
+#: mars.tensor.cumprod:8 of
+msgid ""
+"Type of the returned tensor, as well as of the accumulator in which the "
+"elements are multiplied.  If *dtype* is not specified, it defaults to the"
+" dtype of `a`, unless `a` has an integer dtype with a precision less than"
+" that of the default platform integer.  In that case, the default "
+"platform integer is used instead."
+msgstr ""
+
+#: mars.tensor.cumprod:14 of
+msgid ""
+"Alternative output tensor in which to place the result. It must have the "
+"same shape and buffer length as the expected output but the type of the "
+"resulting values will be cast if necessary."
+msgstr ""
+
+#: mars.tensor.cumprod of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.cumprod:19 of
+msgid ""
+"**cumprod** -- A new tensor holding the result is returned unless `out` "
+"is specified, in which case a reference to out is returned."
+msgstr ""
+
+#: mars.tensor.cumprod of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.cumprod:25 of
+msgid ":func:`numpy.doc.ufuncs`"
+msgstr ""
+
+#: mars.tensor.cumprod:26 of
+msgid "Section \"Output arguments\""
+msgstr ""
+
+#: mars.tensor.cumprod:29 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.cumprod:30 of
+msgid ""
+"Arithmetic is modular when using integer types, and no error is raised on"
+" overflow."
+msgstr ""
+
+#: mars.tensor.cumprod:34 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.cumprod:45 of
+msgid "The cumulative product for each column (i.e., over the rows) of `a`:"
+msgstr ""
+
+#: mars.tensor.cumprod:51 of
+msgid "The cumulative product for each row (i.e. over the columns) of `a`:"
+msgstr ""
+

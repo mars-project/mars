@@ -129,7 +129,7 @@ Mars remote
 Mars remote allows users to execute functions in parallel.
 
 +-------------------------------------------+--------------------------------------------+
-| **Normal function calls**                 | **Mars remote**                            |
+| **Vanilla function calls**                | **Mars remote**                            |
 +-------------------------------------------+--------------------------------------------+
 |.. code-block:: python                     |.. code-block:: python                      |
 |                                           |                                            |

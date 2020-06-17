@@ -1,0 +1,108 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.datasets.make_low_rank_matrix.rst:2
+msgid "mars.learn.datasets.make\\_low\\_rank\\_matrix"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:1 of
+msgid "Generate a mostly low rank matrix with bell-shaped singular values"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:3 of
+msgid ""
+"Most of the variance can be explained by a bell-shaped curve of width "
+"effective_rank: the low rank part of the singular values profile is::"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:8 of
+msgid "The remaining singular values' tail is fat, decreasing as::"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:12 of
+msgid ""
+"The low rank part of the profile can be considered the structured signal "
+"part of the data while the tail can be considered the noisy part of the "
+"data that cannot be summarized by a low number of linear components "
+"(singular vectors)."
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:19 of
+msgid "This kind of singular profiles is often seen in practice, for instance:"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:18 of
+msgid "gray level pictures of faces"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:19 of
+msgid "TF-IDF vectors of text documents crawled from the web"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:21 of
+msgid "Read more in the :ref:`User Guide <sample_generators>`."
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:23 of
+msgid "The number of samples."
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:25 of
+msgid "The number of features."
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:27 of
+msgid ""
+"The approximate number of singular vectors required to explain most of "
+"the data by linear combinations."
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:30 of
+msgid ""
+"The relative importance of the fat noisy tail of the singular values "
+"profile."
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:33 of
+msgid ""
+"Determines random number generation for dataset creation. Pass an int for"
+" reproducible output across multiple function calls. See :term:`Glossary "
+"<random_state>`."
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:37 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix:40 of
+msgid "**X** -- The matrix."
+msgstr ""
+
+#: mars.learn.datasets.make_low_rank_matrix of
+msgid "Return type"
+msgstr ""
+

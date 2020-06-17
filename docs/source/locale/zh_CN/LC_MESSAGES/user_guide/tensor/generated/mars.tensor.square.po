@@ -1,0 +1,71 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/generated/mars.tensor.square.rst:2
+msgid "mars.tensor.square"
+msgstr ""
+
+#: mars.tensor.square:1 of
+msgid "Return the element-wise square of the input."
+msgstr ""
+
+#: mars.tensor.square of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.square:3 of
+msgid "Input data."
+msgstr ""
+
+#: mars.tensor.square:5 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated array is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.square:10 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.square of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.square:15 of
+msgid ""
+"**out** -- Element-wise `x*x`, of the same shape and dtype as `x`. "
+"Returns scalar if `x` is a scalar."
+msgstr ""
+
+#: mars.tensor.square of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.square:19 of
+msgid ":func:`sqrt`, :func:`power`"
+msgstr ""
+
+#: mars.tensor.square:22 of
+msgid "Examples"
+msgstr ""
+

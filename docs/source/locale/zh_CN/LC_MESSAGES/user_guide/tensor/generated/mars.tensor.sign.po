@@ -1,0 +1,92 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/generated/mars.tensor.sign.rst:2
+msgid "mars.tensor.sign"
+msgstr ""
+
+#: mars.tensor.sign:1 of
+msgid "Returns an element-wise indication of the sign of a number."
+msgstr ""
+
+#: mars.tensor.sign:3 of
+msgid ""
+"The `sign` function returns ``-1 if x < 0, 0 if x==0, 1 if x > 0``.  nan "
+"is returned for nan inputs."
+msgstr ""
+
+#: mars.tensor.sign:6 of
+msgid ""
+"For complex inputs, the `sign` function returns ``sign(x.real) + 0j if "
+"x.real != 0 else sign(x.imag) + 0j``."
+msgstr ""
+
+#: mars.tensor.sign:9 of
+msgid "complex(nan, 0) is returned for complex nan inputs."
+msgstr ""
+
+#: mars.tensor.sign of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.sign:11 of
+msgid "Input values."
+msgstr ""
+
+#: mars.tensor.sign:13 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.sign:18 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.sign of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.sign:23 of
+msgid "**y** -- The sign of `x`."
+msgstr ""
+
+#: mars.tensor.sign of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.sign:27 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.sign:28 of
+msgid ""
+"There is more than one definition of sign in common use for complex "
+"numbers.  The definition used here is equivalent to :math:`x/\\sqrt{x*x}`"
+" which is different from a common alternative, :math:`x/|x|`."
+msgstr ""
+
+#: mars.tensor.sign:33 of
+msgid "Examples"
+msgstr ""
+

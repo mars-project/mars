@@ -1,0 +1,126 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/development/distributed/prepare.rst:4
+msgid "Graph Preparation"
+msgstr "准备执行图"
+
+#: ../../source/development/distributed/prepare.rst:5
+msgid ""
+"When a tensor graph is submitted into Mars scheduler, a graph comprises "
+"of operands and chunks will be generated given ``chunk_size`` parameters "
+"passed in data sources."
+msgstr ""
+"当一个 Tensor 图被提交到 Mars Scheduler，一张包含更细粒度的，由 Operand "
+"和 Chunk 构成的图将根据数据源中包含的 chunks 参数被生成。"
+
+#: ../../source/development/distributed/prepare.rst:10
+msgid "Graph Compose"
+msgstr "图压缩"
+
+#: ../../source/development/distributed/prepare.rst:11
+msgid ""
+"After tiling a tensor graph into a chunk graph, we will combine adjacent "
+"nodes to reduce graph size as well as to utilize acceleration libraries "
+"such as ``numexpr``. Currently Mars only merges operands that forms a "
+"single chain without branches. For example, when executing code"
+msgstr ""
+"当完成 Chunk 图的生成后，我们将会通过合并图中相邻的节点来减小图的规模，"
+"这一合并也能让我们充分利用 ``numexpr`` 这样的加速库来加速计算过程。目前 "
+"Mars 仅会合并形成单条链的 Operand。例如，当执行下面的代码"
+
+#: ../../source/development/distributed/prepare.rst:23
+msgid ""
+"Mars will compose operand ADD and SUM into one FUSE node. RAND operands "
+"are excluded because they don't form a line with ADD and SUM."
+msgstr ""
+"Mars 将会合并 Operand ADD 和 SUM 成为 FUSE 节点。RAND Operand 不会被合并"
+"，因为它们并没有和 ADD 及 SUM 组成一条简单的直线。"
+
+#: ../../source/development/distributed/prepare.rst:30
+msgid "Initial Worker Assignment"
+msgstr "初始 Worker 分配"
+
+#: ../../source/development/distributed/prepare.rst:31
+msgid ""
+"Assigning operands to workers are crucial to the performance of graph "
+"execution. Random worker assignment will contribute to huge network cost "
+"and imbalanced workload between different workers. Since the workers of "
+"non-initial operands can be effectively decided given data distribution "
+"and cluster idleness, we only assign workers for initial nodes in graph "
+"preparation stage."
+msgstr ""
+"为 Operand 分配 Worker 对于图执行的性能而言至关重要。随机分配初始 Operand"
+" 可能导致巨大的网络开销，并有可能导致不同 Worker 间作业分配的不平衡。因为"
+"非初始节点的分配能够根据其前驱生成数据的物理分布及各个 Worker 的空闲情况"
+"方便地确定，在执行图准备阶段，我们只考虑初始 Operand 的分配问题。"
+
+#: ../../source/development/distributed/prepare.rst:37
+msgid ""
+"Initial worker assignment should obey several principles. First, the "
+"number of operands assigned to each worker should be balanced. This makes"
+" full use of the cluster especially in the late stage of graph execution."
+" Secondly, operand assignment should minify the amount of network "
+"transfer in its descendants. That is, locality need to be observed in the"
+" assignment process."
+msgstr ""
+"初始 Worker 分配需要遵循几个准则。首先，分配给每个 Worker 执行的 Operand "
+"需要尽量保持平衡，这能够使计算集群在整个执行阶段都有较高的利用率，这在"
+"执行的最后阶段显得尤其重要。其次，初始节点分配需要使后续节点执行时的网络"
+"\"传输尽量小。也就是说，初始点分配需要充分遵循局部性原则。"
+
+#: ../../source/development/distributed/prepare.rst:43
+msgid ""
+"Note that these principles sometimes collides with each other. That is, a"
+" network-minimal solution may be quite biased. We developed a heuristic "
+"algorithm in practice that takes a balance between minimal network "
+"transfer and worker load balance. The algorithm is described below:"
+msgstr ""
+"需要注意的是，上述准则在某些情况下会彼此冲突。一个网络传输量最小的分配"
+"方案可能会非常偏斜。我们开发了一套启发式算法来获取两个目标的平衡，该算法"
+"描述如下："
+
+#: ../../source/development/distributed/prepare.rst:48
+msgid "Select the first worker who does not have any operands;"
+msgstr "选择列表中的第一个初始节点和第一台机器；"
+
+#: ../../source/development/distributed/prepare.rst:49
+msgid ""
+"Start breadth-first search on the undirected graph produced from the "
+"operand graph;"
+msgstr "从 Operand 图转换出的无向图中自该点开始进行深度优先搜索；"
+
+#: ../../source/development/distributed/prepare.rst:51
+msgid ""
+"When an initial operand is visited, we assign it to the worker we "
+"selected in Step 1;"
+msgstr "如果另一个未被分配的初始节点被访问到，我们将其分配给步骤1中选择的机器；"
+
+#: ../../source/development/distributed/prepare.rst:53
+msgid ""
+"Stop assignment when the number of operands visited is greater than the "
+"average number of operands for every worker;"
+msgstr ""
+"当访问到的 Operand 总数大于平均每个 Worker 接受的 Operand 个数时，停止"
+"分配；"
+
+#: ../../source/development/distributed/prepare.rst:55
+msgid "Go to Step 1 when there are workers left."
+msgstr "前往步骤1，如果仍有 Worker 未被分配 Operand，否则结束。"
+

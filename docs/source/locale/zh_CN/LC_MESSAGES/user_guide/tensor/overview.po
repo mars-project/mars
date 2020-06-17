@@ -1,0 +1,137 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/overview.rst:2
+msgid "Overview"
+msgstr "概述"
+
+#: ../../source/user_guide/tensor/overview.rst:4
+msgid ""
+"Mars tensor is the counterpart of Numpy :class:`numpy.ndarray` and "
+"implements a subset of the Numpy ndarray interface. It tiles a large "
+"tensor into small chunks and describe the inner computation with a "
+"directed graph. This lets us compute on tensors larger than memory and "
+"take advantage of the ability of multi-cores or distributed clusters."
+msgstr ""
+"Mars tensor 对应 Numpy ndarray，实现了 Numpy ndarray 接口的子集。在执行中"
+"，Mars tensor 将一个大张量切分成很多小块，并用有向图描述块之间的计算。"
+"这使我们可以在大于内存的张量上进行计算，并利用多核或分布式集群的能力。"
+
+#: ../../source/user_guide/tensor/overview.rst:9
+msgid "The following is a brief overview of supported subset of Numpy interface."
+msgstr "以下是 Mars tensor 所支持 Numpy 接口子集的概述。"
+
+#: ../../source/user_guide/tensor/overview.rst:11
+msgid ""
+"Arithmetic and mathematics: ``+``, ``-``, ``*``, ``/``, ``exp``, ``log``,"
+" etc."
+msgstr "算术和数学函数：``+``、``-``、``*``、``/``、``exp``、``log`` 等。"
+
+#: ../../source/user_guide/tensor/overview.rst:12
+msgid "Reduction along axes (``sum``, ``max``, ``argmax``, etc)."
+msgstr "沿坐标聚合（``sum``, ``max``, ``argmax``, 等)。"
+
+#: ../../source/user_guide/tensor/overview.rst:13
+msgid ""
+"Most of the `array creation routines "
+"<https://docs.scipy.org/doc/numpy/reference/routines.array-"
+"creation.html>`_ (``empty``, ``ones_like``, ``diag``, etc). What's more, "
+"Mars does not only support create array/tensor on GPU, but also support "
+"create sparse tensor."
+msgstr ""
+"大多数的 `数组创建方法 <https://docs.scipy.org/doc/numpy/reference/"
+"routines.array-creation.html>`_ （``empty``、``ones_like``、``diag`` 等）"
+"。更重要的是，Mars 不仅支持在 GPU 上创建数组/张量，还支持创建稀疏张量。"
+
+#: ../../source/user_guide/tensor/overview.rst:16
+msgid ""
+"Most of the `array manipulation routines "
+"<https://docs.scipy.org/doc/numpy/reference/routines.array-"
+"manipulation.html>`_ (``reshape``, ``rollaxis``, ``concatenate``, etc.)"
+msgstr ""
+"大部分的 `数组操作例程 <https://docs.scipy.org/doc/numpy/reference/"
+"routines.array-manipulation.html>`_ （``reshape``、``rollaxis``、``"
+"concatenate`` 等）"
+
+#: ../../source/user_guide/tensor/overview.rst:18
+msgid ""
+"`Basic indexing "
+"<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_ "
+"(indexing by ints, slices, newaxes, and Ellipsis)."
+msgstr ""
+"`基本索引 <https://docs.scipy.org/doc/numpy/reference/arrays.indexing."
+"html>`_ （通过整数、切片、添加新维度和省略号进行索引）"
+
+#: ../../source/user_guide/tensor/overview.rst:20
+msgid ""
+"`Advanced indexing "
+"<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html"
+"#advanced-indexing>`_ (except combing boolean array indexing and integer "
+"array indexing)."
+msgstr ""
+"`高级索引 <https://docs.scipy.org/doc/numpy/reference/arrays.indexing."
+"html#advanced-indexing>`_ （不支持同时使用布尔数组索引和整型数组索引）"
+
+#: ../../source/user_guide/tensor/overview.rst:22
+msgid ""
+"`universal functions "
+"<https://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_ for "
+"elementwise operations."
+msgstr ""
+"元素运算的 `通用函数 <https://docs.scipy.org/doc/numpy/reference/ufuncs."
+"html>`_"
+
+#: ../../source/user_guide/tensor/overview.rst:24
+msgid ""
+"`Linear algebra functions "
+"<https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, "
+"including product (``dot``, ``matmul``, etc.) and decomposition "
+"(``cholesky``, ``svd``, etc.)."
+msgstr ""
+"`线性代数函数 <https://docs.scipy.org/doc/numpy/reference/routines.linalg"
+".html>`_，包括乘积（``dot``、``matmul`` 等）和分解（``cholesky``、``svd``"
+" 等）"
+
+#: ../../source/user_guide/tensor/overview.rst:27
+msgid ""
+"However, Mars has not implemented entire Numpy interface, either the time"
+" limitation or difficulty is the main handicap. Any contribution from "
+"community is sincerely welcomed. The main feature not implemented are "
+"listed below:"
+msgstr ""
+"然而，Mars 尚未实现 Numpy 的所有接口，时间限制和难度是主要原因。我们"
+"真诚地欢迎社区的任何贡献。未实现的主要功能如下："
+
+#: ../../source/user_guide/tensor/overview.rst:30
+msgid "Tensor with unknown shape does not support all operations."
+msgstr "形状未知的张量不支持所有操作"
+
+#: ../../source/user_guide/tensor/overview.rst:31
+msgid "Only small subset of ``np.linalg`` are implemented."
+msgstr "``np.linalg`` 只实现了一小部分。"
+
+#: ../../source/user_guide/tensor/overview.rst:32
+msgid ""
+"Mars tensor doesn't implement interface like ``tolist`` and ``nditer`` "
+"etc, because the iteration or loops over a large tensor is very "
+"inefficient."
+msgstr ""
+"Mars 张量没有实现 ``tolist`` 和 ``nditer`` 这样的接口，因为迭代或者循环"
+"处理巨大的张量非常低效。"
+

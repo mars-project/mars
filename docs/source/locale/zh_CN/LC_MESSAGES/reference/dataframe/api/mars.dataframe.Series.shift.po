@@ -1,0 +1,111 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.shift.rst:2
+msgid "mars.dataframe.Series.shift"
+msgstr ""
+
+#: mars.dataframe.Series.shift:1 of
+msgid "Shift index by desired number of periods with an optional time `freq`."
+msgstr ""
+
+#: mars.dataframe.Series.shift:3 of
+msgid ""
+"When `freq` is not passed, shift the index without realigning the data. "
+"If `freq` is passed (in this case, the index must be date or datetime, or"
+" it will raise a `NotImplementedError`), the index will be increased "
+"using the periods and the `freq`."
+msgstr ""
+
+#: mars.dataframe.Series.shift of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.shift:8 of
+msgid "Number of periods to shift. Can be positive or negative."
+msgstr ""
+
+#: mars.dataframe.Series.shift:10 of
+msgid ""
+"Offset to use from the tseries module or time rule (e.g. 'EOM'). If "
+"`freq` is specified then the index values are shifted but the data is not"
+" realigned. That is, use `freq` if you would like to extend the index "
+"when shifting and preserve the original data."
+msgstr ""
+
+#: mars.dataframe.Series.shift:15 of
+msgid "Shift direction."
+msgstr ""
+
+#: mars.dataframe.Series.shift:17 of
+msgid ""
+"The scalar value to use for newly introduced missing values. the default "
+"depends on the dtype of `self`. For numeric data, ``np.nan`` is used. For"
+" datetime, timedelta, or period data, etc. :attr:`NaT` is used. For "
+"extension dtypes, ``self.dtype.na_value`` is used."
+msgstr ""
+
+#: mars.dataframe.Series.shift of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.shift:24 of
+msgid "Copy of input object, shifted."
+msgstr ""
+
+#: mars.dataframe.Series.shift of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.shift:30 of
+msgid ":meth:`Index.shift`"
+msgstr ""
+
+#: mars.dataframe.Series.shift:30 of
+msgid "Shift values of Index."
+msgstr ""
+
+#: mars.dataframe.Series.shift:33 of
+msgid ":meth:`DatetimeIndex.shift`"
+msgstr ""
+
+#: mars.dataframe.Series.shift:33 of
+msgid "Shift values of DatetimeIndex."
+msgstr ""
+
+#: mars.dataframe.Series.shift:36 of
+msgid ":meth:`PeriodIndex.shift`"
+msgstr ""
+
+#: mars.dataframe.Series.shift:36 of
+msgid "Shift values of PeriodIndex."
+msgstr ""
+
+#: mars.dataframe.Series.shift:38 of
+msgid ":meth:`tshift`"
+msgstr ""
+
+#: mars.dataframe.Series.shift:39 of
+msgid "Shift the time index, using the index's frequency if available."
+msgstr ""
+
+#: mars.dataframe.Series.shift:42 of
+msgid "Examples"
+msgstr ""
+

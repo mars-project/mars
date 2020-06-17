@@ -1,0 +1,123 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/indexing.rst:2
+msgid "Indexing Routines"
+msgstr "索引"
+
+#: ../../source/reference/tensor/indexing.rst:5
+msgid "Generating index arrays"
+msgstr "生成索引数组"
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid ":obj:`mars.tensor.c_ <mars.tensor.c_>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid "Translates slice objects to concatenation along the second axis."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid ":obj:`mars.tensor.r_ <mars.tensor.r_>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid "Translates slice objects to concatenation along the first axis."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid ":obj:`mars.tensor.nonzero <mars.tensor.nonzero>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid "Return the indices of the elements that are non-zero."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid ":obj:`mars.tensor.where <mars.tensor.where>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid "Return elements, either from `x` or `y`, depending on `condition`."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid ":obj:`mars.tensor.indices <mars.tensor.indices>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid "Return a tensor representing the indices of a grid."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid ":obj:`mars.tensor.ogrid <mars.tensor.ogrid>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid "Construct a multi-dimensional \"meshgrid\"."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid ":obj:`mars.tensor.unravel_index <mars.tensor.unravel_index>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:19:<autosummary>:1
+msgid ""
+"Converts a flat index or tensor of flat indices into a tuple of "
+"coordinate tensors."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:21
+msgid "Indexing-like operations"
+msgstr "类似索引的操作"
+
+#: ../../source/reference/tensor/indexing.rst:30:<autosummary>:1
+msgid ":obj:`mars.tensor.take <mars.tensor.take>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:30:<autosummary>:1
+msgid "Take elements from a tensor along an axis."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:30:<autosummary>:1
+msgid ":obj:`mars.tensor.choose <mars.tensor.choose>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:30:<autosummary>:1
+msgid ""
+"Construct a tensor from an index tensor and a set of tensors to choose "
+"from."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:30:<autosummary>:1
+msgid ":obj:`mars.tensor.compress <mars.tensor.compress>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:30:<autosummary>:1
+msgid "Return selected slices of a tensor along given axis."
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:30:<autosummary>:1
+msgid ":obj:`mars.tensor.diag <mars.tensor.diag>`"
+msgstr ""
+
+#: ../../source/reference/tensor/indexing.rst:30:<autosummary>:1
+msgid "Extract a diagonal or construct a diagonal tensor."
+msgstr ""
+

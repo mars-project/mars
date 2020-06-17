@@ -1,0 +1,110 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.arctanh.rst:2
+msgid "mars.tensor.arctanh"
+msgstr ""
+
+#: mars.tensor.arctanh:1 of
+msgid "Inverse hyperbolic tangent element-wise."
+msgstr ""
+
+#: mars.tensor.arctanh of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.arctanh:3 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.arctanh:5 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.arctanh:10 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.arctanh of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.arctanh:15 of
+msgid "**out** -- Array of the same shape as `x`."
+msgstr ""
+
+#: mars.tensor.arctanh of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.arctanh:19 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.arctanh:20 of
+msgid ""
+"`arctanh` is a multivalued function: for each `x` there are infinitely "
+"many numbers `z` such that `tanh(z) = x`. The convention is to return the"
+" `z` whose imaginary part lies in `[-pi/2, pi/2]`."
+msgstr ""
+
+#: mars.tensor.arctanh:24 of
+msgid ""
+"For real-valued input data types, `arctanh` always returns real output. "
+"For each value that cannot be expressed as a real number or infinity, it "
+"yields ``nan`` and sets the `invalid` floating point error flag."
+msgstr ""
+
+#: mars.tensor.arctanh:28 of
+msgid ""
+"For complex-valued input, `arctanh` is a complex analytical function that"
+" has branch cuts `[-1, -inf]` and `[1, inf]` and is continuous from above"
+" on the former and from below on the latter."
+msgstr ""
+
+#: mars.tensor.arctanh:32 of
+msgid "The inverse hyperbolic tangent is also known as `atanh` or ``tanh^-1``."
+msgstr ""
+
+#: mars.tensor.arctanh:35 of
+msgid "References"
+msgstr ""
+
+#: mars.tensor.arctanh:36 of
+msgid ""
+"M. Abramowitz and I.A. Stegun, \"Handbook of Mathematical Functions\", "
+"10th printing, 1964, pp. 86. http://www.math.sfu.ca/~cbm/aands/"
+msgstr ""
+
+#: mars.tensor.arctanh:38 of
+msgid ""
+"Wikipedia, \"Inverse hyperbolic function\", "
+"http://en.wikipedia.org/wiki/Arctanh"
+msgstr ""
+
+#: mars.tensor.arctanh:42 of
+msgid "Examples"
+msgstr ""
+

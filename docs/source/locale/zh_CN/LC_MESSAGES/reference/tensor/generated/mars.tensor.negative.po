@@ -1,0 +1,71 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.negative.rst:2
+msgid "mars.tensor.negative"
+msgstr ""
+
+#: mars.tensor.negative:1 of
+msgid "Numerical negative, element-wise."
+msgstr ""
+
+#: mars.tensor.negative of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.negative:3 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.negative:5 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.negative:10 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.negative:13 of
+msgid ""
+"For other keyword-only arguments, see the :ref:`ufunc docs "
+"<ufuncs.kwargs>`."
+msgstr ""
+
+#: mars.tensor.negative of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.negative:16 of
+msgid "**y** -- Returned array or scalar: `y = -x`."
+msgstr ""
+
+#: mars.tensor.negative of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.negative:20 of
+msgid "Examples"
+msgstr ""
+

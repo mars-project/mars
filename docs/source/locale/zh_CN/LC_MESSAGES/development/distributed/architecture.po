@@ -1,0 +1,137 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/development/distributed/architecture.rst:2
+msgid "Architecture"
+msgstr "架构"
+
+#: ../../source/development/distributed/architecture.rst:3
+msgid ""
+"Mars provides a library for distributed execution of tensors. The "
+"distributed applications are built with actor model provided by "
+"``mars.actors`` and consists of three parts: the scheduler, the worker "
+"and the web service."
+msgstr ""
+"Mars 提供了一套分布式执行 Tensor 的库。该库使用 ``mars.actors`` 实现的 "
+"Actor 模型编写，包含 Scheduler、Worker 和 Web 服务。"
+
+#: ../../source/development/distributed/architecture.rst:7
+msgid ""
+"Users submit their tasks in graphs built with tensors. The web service "
+"accepts tensor graphs and sends them into a scheduler, where graphs are "
+"compiled into operand graphs, analyzed and partitioned before submitted "
+"to workers. The scheduler then creates and scatters operand actors who "
+"control task execution on workers on other schedulers given consistent "
+"hashing. Then operands are activated and executed in topological order. "
+"When all operands related to terminating tensors are executed, the graph "
+"will be marked as finished and the client can pull the result from "
+"workers, proxied by the scheduler. The whole procedure can be seen in the"
+" graph below."
+msgstr ""
+"用户向 Mars Web Service 提交的是由 Tensor 组成的 Graph。Web Service 接收"
+"这些图并提交到一台 Scheduler。在提交作业到各个 Worker 之前，Mars "
+"Scheduler 先将 Tensor 图编译成一张由 Chunk 和 Operand 组成的图，此后对图"
+"进行分析和切分。此后，Scheduler 在所有 Scheduler 中根据一致性哈希创建"
+"一系列控制单个 Operand 执行的 OperandActor。Operand 以符合拓扑序的顺序"
+"进行调度，当所有 Operand 完成执行，整张图将被标记为已完成，客户端能够从 "
+"Web 中拉取结果。整个执行过程如下图所述。"
+
+#: ../../source/development/distributed/architecture.rst:20
+msgid "Job Submission"
+msgstr "作业提交"
+
+#: ../../source/development/distributed/architecture.rst:21
+msgid ""
+"Jobs are submitted into Mars via RESTful APIs. Users type tensor "
+"operations and run a tensor by calling "
+"``tensor.execute(session=session)``, which builds a tensor graph given "
+"the operations created by the user. This graph is sent to the web api and"
+" a GraphActor is created given consistent hashing in the cluster to "
+"handle the tensor graph. After that the web client begins querying the "
+"state of the graph until termination."
+msgstr ""
+"用户端通过 RESTful API 向 Mars 服务提交作业。用户通过编写 Tensor 上的代码"
+"，此后通过 ``tensor.execute(session=session)`` 将 Tensor 操作转换为 Tensor 构成的 "
+"Graph 并提交到 Web API。此后，Web API 将作业提交到 SessionActor 并在集群"
+"中创建一个 GraphActor 用于图的分析和管理。用户端则开始查询图的执行状态，"
+"直至执行结束。"
+
+#: ../../source/development/distributed/architecture.rst:28
+msgid ""
+"In the GraphActor, we first convert the tensor graph into an operand "
+"graph via tiling methods. This enables the graph to run in parallel. "
+"After that, several analyzes are performed on the graph to obtain operand"
+" priorities and assign workers for the operand, which can be seen in "
+"detail in :ref:`graph preparation <graph_preparation>` and "
+":ref:`scheduling policy <scheduling_policy>` section. Then OperandActor "
+"is created for every operand to control detailed execution. When an "
+"operand is in ``READY`` state, as described in :ref:`operand states "
+"<operand_states>` section, a worker will be selected and the operand is "
+"submitted into the worker for execution."
+msgstr ""
+"在 GraphActor 中，我们首先根据 chunks 设置将 Tensor 图转换为 Operand 和 "
+"Chunk 组成的图，这一过程使得图可以被进一步拆分并能够并行执行。此后，我们"
+"在图上进行一系列的分析以获得 Operand 的优先级，同时向起始 Operand 指派 "
+"Worker，关于这一部分的细节可以参考 :ref:`准备执行图 <graph_preparation>`"
+"和 :ref:`调度策略 <scheduling_policy>` 章节。此后，每个 Operand 均建立"
+"一个 OperandActor 用于控制该 Operand 的具体执行。当 Operand 处于 ``READY`"
+"`状态（如同在 :ref:`Operand 状态 <operand_states>`章节描述的那样），"
+"Scheduler 将会为 Operand 选择目标 Worker，随后作业被提交 Worker 进行实际"
+"的执行。"
+
+#: ../../source/development/distributed/architecture.rst:39
+msgid "Execution Control"
+msgstr "执行控制"
+
+#: ../../source/development/distributed/architecture.rst:40
+msgid ""
+"When an operand is submitted to a worker, the OperandActor on the "
+"scheduler listen to its callback. When the execution is successful, "
+"successors of that operand will be scheduled. When the execution failed, "
+"the OperandActor will retry several times before announcing the execution"
+" as fatal."
+msgstr ""
+"当一个 Operand 被提交到 Worker，OperandActor 等待 Worker 上的回调。如果 "
+"Operand 执行成功，Operand 的后继将被调度。如果 Operand 执行失败，"
+"OperandActor 将会尝试数次，如果仍失败则将此次执行标记为失败。"
+
+#: ../../source/development/distributed/architecture.rst:46
+msgid "Job Cancellation"
+msgstr "取消作业"
+
+#: ../../source/development/distributed/architecture.rst:47
+msgid ""
+"Users can cancel a running job via RESTful API. The request is written "
+"into state storage first and then called in GraphActor. If the graph is "
+"under preparation, it will stop immediately when the stop request is "
+"detected in state storage.  Otherwise every operand is scanned and the "
+"states will be set as ``CANCELLING``.  When the operand is currently "
+"running, a stop request will be sent into workers which results in "
+"``ExecutionInterrupted`` exception in workers. When this exception is "
+"received in OperandActor, the state of the operand will be marked as "
+"``CANCELLED``."
+msgstr ""
+"用户端可以使用 RESTful API 取消运行中的作业。取消请求将被写入 Graph 的"
+"状态存储中，同时 GraphActor 上的取消接口将被调用。如果作业在准备阶段，它"
+"将在检测到停止请求后立即结束，否则请求将被下发到每个 OperandActor，并设置"
+"状态为 ``CANCELLING``。如果此时 Operand 没有运行，Operand 状态将被直接置"
+"为 CANCELLED。如果 Operand 正在运行，停止请求将被下发到 Worker 中并导致"
+"一个 ``ExecutionInterrupted`` 错误，该错误将返回给 OperandActor，此时 "
+"Operand 的状态将被标记为 CANCELLED。"
+

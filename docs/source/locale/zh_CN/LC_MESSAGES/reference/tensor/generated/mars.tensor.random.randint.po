@@ -1,0 +1,116 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.random.randint.rst:2
+msgid "mars.tensor.random.randint"
+msgstr ""
+
+#: mars.tensor.random.randint:1 of
+msgid "Return random integers from `low` (inclusive) to `high` (exclusive)."
+msgstr ""
+
+#: mars.tensor.random.randint:3 of
+msgid ""
+"Return random integers from the \"discrete uniform\" distribution of the "
+"specified dtype in the \"half-open\" interval [`low`, `high`). If `high` "
+"is None (the default), then results are from [0, `low`)."
+msgstr ""
+
+#: mars.tensor.random.randint of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.random.randint:7 of
+msgid ""
+"Lowest (signed) integer to be drawn from the distribution (unless "
+"``high=None``, in which case this parameter is one above the *highest* "
+"such integer)."
+msgstr ""
+
+#: mars.tensor.random.randint:11 of
+msgid ""
+"If provided, one above the largest (signed) integer to be drawn from the "
+"distribution (see above for behavior if ``high=None``)."
+msgstr ""
+
+#: mars.tensor.random.randint:14 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  Default is None, in which case a single value is"
+" returned."
+msgstr ""
+
+#: mars.tensor.random.randint:18 of
+msgid ""
+"Desired dtype of the result. All dtypes are determined by their name, "
+"i.e., 'int64', 'int', etc, so byteorder is not available and a specific "
+"precision may have different C types depending on the platform. The "
+"default value is 'np.int'."
+msgstr ""
+
+#: mars.tensor.random.randint:23 of
+msgid "if density specified, a sparse tensor will be created"
+msgstr ""
+
+#: mars.tensor.random.randint:25 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.randint:27 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.randint:29 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: mars.tensor.random.randint of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.random.randint:32 of
+msgid ""
+"**out** -- `size`-shaped tensor of random integers from the appropriate "
+"distribution, or a single such random int if `size` not provided."
+msgstr ""
+
+#: mars.tensor.random.randint of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.random.randint:38 of
+msgid ":func:`random.random_integers`"
+msgstr ""
+
+#: mars.tensor.random.randint:39 of
+msgid ""
+"similar to `randint`, only for the closed interval [`low`, `high`], and 1"
+" is the lowest value if `high` is omitted. In particular, this other one "
+"is the one to use to generate uniformly distributed discrete non-"
+"integers."
+msgstr ""
+
+#: mars.tensor.random.randint:42 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.randint:50 of
+msgid "Generate a 2 x 4 tensor of ints between 0 and 4, inclusive:"
+msgstr ""
+

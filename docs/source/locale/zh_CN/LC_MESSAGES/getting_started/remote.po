@@ -1,0 +1,69 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 18:05+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/getting_started/remote.rst:4
+msgid "Mars Remote"
+msgstr ""
+
+#: ../../source/getting_started/remote.rst:6
+msgid ""
+"Mars remote provides a simple but powerful way to execute Python "
+"functions in parallel."
+msgstr "Mars Remote 提供了简单但强大的方式来并行执行一系列 Python 函数。"
+
+#: ../../source/getting_started/remote.rst:9
+msgid "Assume we have the code below."
+msgstr "假设我们有如下代码。"
+
+#: ../../source/getting_started/remote.rst:26
+msgid ""
+"Here we call ``add_one`` 10 times, then call ``sum_all`` to get the "
+"summation."
+msgstr "这里我们调用 ``add_one`` 10次，然后调用 ``sum_all`` 求和。"
+
+#: ../../source/getting_started/remote.rst:28
+msgid ""
+"In order to make 10 ``add_one`` running in parallel, we can rewrite the "
+"code as below."
+msgstr "为了让10次 ``add_one`` 调用并行起来，我们可以按如下代码改写。"
+
+#: ../../source/getting_started/remote.rst:47
+msgid ""
+"The code is quite similar with the previous one, except that calls to "
+"``add_one`` and ``sum_all`` is replaced by ``mars.remote.spawn``. "
+"``mars.remote.spawn`` does not trigger execution, but instead returns a "
+"Mars Object, and the object can be passed to another "
+"``mars.remote.spawn`` as an argument. Once ``.execute()`` is triggered, "
+"the 10 ``add_one`` will run in parallel.  Once they were finished, "
+"``sum_all`` will be triggered. Mars can handle the dependencies "
+"correctly, and for the distributed setting, Users need not to worry about"
+" the data movements between different workers, Mars can handle them "
+"automatically."
+msgstr ""
+"代码和改写前很相似，区别仅在所有调用 ``add_one`` 和 ``sum_all`` 的地方换成了 "
+"``mars.remote.spawn``。 ``mars.remote.spawn`` 不会触发执行，只会返回一个 Mars"
+" 对象，这个对象能用作别的 ``mars.remote.spawn`` 函数的参数。一旦调用 ``."
+"execute()``，10次 ``add_one`` 会并行执行。当它们运行完成后，``sum_all`` 会自动"
+"被触发执行。Mars 能正确处理函数间的依赖，在分布式环境，用户不需要关心在"
+"各个 worker 间数据是怎么流动的，Mars 能自动正确处理。"
+
+#: ../../source/getting_started/remote.rst:56
+msgid "Refer to :ref:`guidance for Mars remote <remote>` for more information."
+msgstr "参考 :ref:`Mars remote 使用指南 <remote>` 获取更多信息。"
+

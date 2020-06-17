@@ -1,0 +1,69 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.ediff1d.rst:2
+msgid "mars.tensor.ediff1d"
+msgstr ""
+
+#: mars.tensor.ediff1d:1 of
+msgid "The differences between consecutive elements of a tensor."
+msgstr ""
+
+#: mars.tensor.ediff1d of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.ediff1d:3 of
+msgid "If necessary, will be flattened before the differences are taken."
+msgstr ""
+
+#: mars.tensor.ediff1d:5 of
+msgid "Number(s) to append at the end of the returned differences."
+msgstr ""
+
+#: mars.tensor.ediff1d:7 of
+msgid "Number(s) to prepend at the beginning of the returned differences."
+msgstr ""
+
+#: mars.tensor.ediff1d of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.ediff1d:10 of
+msgid ""
+"**ediff1d** -- The differences. Loosely, this is ``a.flat[1:] - "
+"a.flat[:-1]``."
+msgstr ""
+
+#: mars.tensor.ediff1d of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.ediff1d:13 of
+msgid ":func:`diff`, :func:`gradient`"
+msgstr ""
+
+#: mars.tensor.ediff1d:16 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.ediff1d:26 of
+msgid "The returned tensor is always 1D."
+msgstr ""
+

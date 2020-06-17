@@ -1,0 +1,125 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.random.random_integers.rst:2
+msgid "mars.tensor.random.random\\_integers"
+msgstr ""
+
+#: mars.tensor.random.random_integers:1 of
+msgid "Random integers of type mt.int between `low` and `high`, inclusive."
+msgstr ""
+
+#: mars.tensor.random.random_integers:3 of
+msgid ""
+"Return random integers of type mt.int from the \"discrete uniform\" "
+"distribution in the closed interval [`low`, `high`].  If `high` is None "
+"(the default), then results are from [1, `low`]. The np.int type "
+"translates to the C long type used by Python 2 for \"short\" integers and"
+" its precision is platform dependent."
+msgstr ""
+
+#: mars.tensor.random.random_integers:9 of
+msgid "This function has been deprecated. Use randint instead."
+msgstr ""
+
+#: mars.tensor.random.random_integers of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.random.random_integers:11 of
+msgid ""
+"Lowest (signed) integer to be drawn from the distribution (unless "
+"``high=None``, in which case this parameter is the *highest* such "
+"integer)."
+msgstr ""
+
+#: mars.tensor.random.random_integers:15 of
+msgid ""
+"If provided, the largest (signed) integer to be drawn from the "
+"distribution (see above for behavior if ``high=None``)."
+msgstr ""
+
+#: mars.tensor.random.random_integers:18 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  Default is None, in which case a single value is"
+" returned."
+msgstr ""
+
+#: mars.tensor.random.random_integers:22 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.random_integers:24 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.random_integers of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.random.random_integers:27 of
+msgid ""
+"**out** -- `size`-shaped array of random integers from the appropriate "
+"distribution, or a single such random int if `size` not provided."
+msgstr ""
+
+#: mars.tensor.random.random_integers of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.random.random_integers:33 of
+msgid ":func:`random.randint`"
+msgstr ""
+
+#: mars.tensor.random.random_integers:34 of
+msgid ""
+"Similar to `random_integers`, only for the half-open interval [`low`, "
+"`high`), and 0 is the lowest value if `high` is omitted."
+msgstr ""
+
+#: mars.tensor.random.random_integers:37 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.random.random_integers:38 of
+msgid ""
+"To sample from N evenly spaced floating-point numbers between a and b, "
+"use::"
+msgstr ""
+
+#: mars.tensor.random.random_integers:44 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.random_integers:56 of
+msgid ""
+"Choose five random numbers from the set of five evenly-spaced numbers "
+"between 0 and 2.5, inclusive (*i.e.*, from the set :math:`{0, 5/8, 10/8, "
+"15/8, 20/8}`):"
+msgstr ""
+
+#: mars.tensor.random.random_integers:63 of
+msgid "Roll two six sided dice 1000 times and sum the results:"
+msgstr ""
+
+#: mars.tensor.random.random_integers:69 of
+msgid "Display results as a histogram:"
+msgstr ""
+

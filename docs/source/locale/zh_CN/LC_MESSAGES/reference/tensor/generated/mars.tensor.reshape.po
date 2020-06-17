@@ -1,0 +1,102 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.reshape.rst:2
+msgid "mars.tensor.reshape"
+msgstr ""
+
+#: mars.tensor.reshape:1 of
+msgid "Gives a new shape to a tensor without changing its data."
+msgstr ""
+
+#: mars.tensor.reshape of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.reshape:3 of
+msgid "Tensor to be reshaped."
+msgstr ""
+
+#: mars.tensor.reshape:5 of
+msgid ""
+"The new shape should be compatible with the original shape. If an "
+"integer, then the result will be a 1-D tensor of that length. One shape "
+"dimension can be -1. In this case, the value is inferred from the length "
+"of the tensor and remaining dimensions."
+msgstr ""
+
+#: mars.tensor.reshape:10 of
+msgid ""
+"Read the elements of `a` using this index order, and place the elements "
+"into the reshaped array using this index order.  'C' means to read / "
+"write the elements using C-like index order, with the last axis index "
+"changing fastest, back to the first axis index changing slowest. 'F' "
+"means to read / write the elements using Fortran-like index order, with "
+"the first index changing fastest, and the last index changing slowest. "
+"Note that the 'C' and 'F' options take no account of the memory layout of"
+" the underlying array, and only refer to the order of indexing. 'A' means"
+" to read / write the elements in Fortran-like index order if `a` is "
+"Fortran *contiguous* in memory, C-like order otherwise."
+msgstr ""
+
+#: mars.tensor.reshape of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.reshape:24 of
+msgid ""
+"**reshaped_array** -- This will be a new view object if possible; "
+"otherwise, it will be a copy."
+msgstr ""
+
+#: mars.tensor.reshape of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.reshape:30 of
+msgid ":func:`Tensor.reshape`"
+msgstr ""
+
+#: mars.tensor.reshape:31 of
+msgid "Equivalent method."
+msgstr ""
+
+#: mars.tensor.reshape:34 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.reshape:35 of
+msgid ""
+"It is not always possible to change the shape of a tensor without copying"
+" the data. If you want an error to be raised when the data is copied, you"
+" should assign the new shape to the shape attribute of the array::"
+msgstr ""
+
+#: mars.tensor.reshape:47 of
+msgid ""
+"You can think of reshaping as first raveling the tensor (using the given "
+"index order), then inserting the elements from the raveled tensor into "
+"the new tensor using the same kind of index ordering as was used for the "
+"raveling."
+msgstr ""
+
+#: mars.tensor.reshape:60 of
+msgid "Examples"
+msgstr ""
+

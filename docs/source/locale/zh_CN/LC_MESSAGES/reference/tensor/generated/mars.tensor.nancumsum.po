@@ -1,0 +1,101 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.nancumsum.rst:2
+msgid "mars.tensor.nancumsum"
+msgstr ""
+
+#: mars.tensor.nancumsum:1 of
+msgid ""
+"Return the cumulative sum of tensor elements over a given axis treating "
+"Not a Numbers (NaNs) as zero.  The cumulative sum does not change when "
+"NaNs are encountered and leading NaNs are replaced by zeros."
+msgstr ""
+
+#: mars.tensor.nancumsum:5 of
+msgid "Zeros are returned for slices that are all-NaN or empty."
+msgstr ""
+
+#: mars.tensor.nancumsum of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.nancumsum:7 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.nancumsum:9 of
+msgid ""
+"Axis along which the cumulative sum is computed. The default (None) is to"
+" compute the cumsum over the flattened tensor."
+msgstr ""
+
+#: mars.tensor.nancumsum:12 of
+msgid ""
+"Type of the returned tensor and of the accumulator in which the elements "
+"are summed.  If `dtype` is not specified, it defaults to the dtype of "
+"`a`, unless `a` has an integer dtype with a precision less than that of "
+"the default platform integer.  In that case, the default platform integer"
+" is used."
+msgstr ""
+
+#: mars.tensor.nancumsum:18 of
+msgid ""
+"Alternative output tensor in which to place the result. It must have the "
+"same shape and buffer length as the expected output but the type will be "
+"cast if necessary. See `doc.ufuncs` (Section \"Output arguments\") for "
+"more details."
+msgstr ""
+
+#: mars.tensor.nancumsum of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.nancumsum:24 of
+msgid ""
+"**nancumsum** -- A new tensor holding the result is returned unless `out`"
+" is specified, in which it is returned. The result has the same size as "
+"`a`, and the same shape as `a` if `axis` is not None or `a` is a 1-d "
+"tensor."
+msgstr ""
+
+#: mars.tensor.nancumsum of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.nancumsum:33 of
+msgid ":func:`numpy.cumsum`"
+msgstr ""
+
+#: mars.tensor.nancumsum:33 of
+msgid "Cumulative sum across tensor propagating NaNs."
+msgstr ""
+
+#: mars.tensor.nancumsum:35 of
+msgid ":func:`isnan`"
+msgstr ""
+
+#: mars.tensor.nancumsum:36 of
+msgid "Show which elements are NaN."
+msgstr ""
+
+#: mars.tensor.nancumsum:39 of
+msgid "Examples"
+msgstr ""
+

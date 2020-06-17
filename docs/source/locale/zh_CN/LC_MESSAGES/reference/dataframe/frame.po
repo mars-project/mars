@@ -1,0 +1,924 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/frame.rst:5
+msgid "DataFrame"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:9
+msgid "Constructor"
+msgstr "构造函数"
+
+#: ../../source/reference/dataframe/frame.rst:14:<autosummary>:1
+msgid ""
+":obj:`DataFrame <mars.dataframe.DataFrame>`\\ \\(\\[data\\, index\\, "
+"columns\\, dtype\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:16
+msgid "Attributes and underlying data"
+msgstr "属性和底层数据"
+
+#: ../../source/reference/dataframe/frame.rst:17
+msgid "**Axes**"
+msgstr "坐标轴"
+
+#: ../../source/reference/dataframe/frame.rst:24:<autosummary>:1
+msgid ":obj:`DataFrame.index <mars.dataframe.DataFrame.index>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:24:<autosummary>:1
+msgid ":obj:`DataFrame.columns <mars.dataframe.DataFrame.columns>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:31:<autosummary>:1
+msgid ":obj:`DataFrame.dtypes <mars.dataframe.DataFrame.dtypes>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:31:<autosummary>:1
+msgid "Return the dtypes in the DataFrame."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:31:<autosummary>:1
+msgid ":obj:`DataFrame.ndim <mars.dataframe.DataFrame.ndim>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:31:<autosummary>:1
+msgid "Return an int representing the number of axes / array dimensions."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:31:<autosummary>:1
+msgid ":obj:`DataFrame.shape <mars.dataframe.DataFrame.shape>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:33
+msgid "Conversion"
+msgstr "转换"
+
+#: ../../source/reference/dataframe/frame.rst:41:<autosummary>:1
+msgid ""
+":obj:`DataFrame.astype <mars.dataframe.DataFrame.astype>`\\ "
+"\\(dtype\\[\\, copy\\, errors\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:41:<autosummary>:1
+msgid "Cast a pandas object to a specified dtype ``dtype``."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:41:<autosummary>:1
+msgid ":obj:`DataFrame.copy <mars.dataframe.DataFrame.copy>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:41:<autosummary>:1
+msgid ":obj:`DataFrame.isna <mars.dataframe.DataFrame.isna>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:41:<autosummary>:1
+msgid "Detect missing values."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:41:<autosummary>:1
+msgid ":obj:`DataFrame.notna <mars.dataframe.DataFrame.notna>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:41:<autosummary>:1
+msgid "Detect existing (non-missing) values."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:43
+msgid "Indexing, iteration"
+msgstr "索引和迭代"
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid ":obj:`DataFrame.head <mars.dataframe.DataFrame.head>`\\ \\(\\[n\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid "Return the first `n` rows."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid ":obj:`DataFrame.at <mars.dataframe.DataFrame.at>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid "Access a single value for a row/column label pair."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid ":obj:`DataFrame.iat <mars.dataframe.DataFrame.iat>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid ":obj:`DataFrame.loc <mars.dataframe.DataFrame.loc>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid ":obj:`DataFrame.iloc <mars.dataframe.DataFrame.iloc>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid ""
+":obj:`DataFrame.iterrows <mars.dataframe.DataFrame.iterrows>`\\ "
+"\\(\\[batch\\_size\\, session\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid "Iterate over DataFrame rows as (index, Series) pairs."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid ""
+":obj:`DataFrame.itertuples <mars.dataframe.DataFrame.itertuples>`\\ "
+"\\(\\[index\\, name\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid "Iterate over DataFrame rows as namedtuples."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid ":obj:`DataFrame.pop <mars.dataframe.DataFrame.pop>`\\ \\(item\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid "Return item and drop from frame."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid ":obj:`DataFrame.tail <mars.dataframe.DataFrame.tail>`\\ \\(\\[n\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+#: ../../source/reference/dataframe/frame.rst:56:<autosummary>:1
+msgid "Return the last `n` rows."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:58
+msgid "Binary operator functions"
+msgstr "二元运算函数"
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.add <mars.dataframe.DataFrame.add>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid "Get Addition of dataframe and other, element-wise (binary operator `add`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.sub <mars.dataframe.DataFrame.sub>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Subtraction of dataframe and other, element-wise (binary operator "
+"`subtract`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.mul <mars.dataframe.DataFrame.mul>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Multiplication of dataframe and other, element-wise (binary operator "
+"`mul`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.div <mars.dataframe.DataFrame.div>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Floating division of dataframe and other, element-wise (binary "
+"operator `truediv`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.truediv <mars.dataframe.DataFrame.truediv>`\\ "
+"\\(other\\[\\, axis\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.floordiv <mars.dataframe.DataFrame.floordiv>`\\ "
+"\\(other\\[\\, axis\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Integer division of dataframe and other, element-wise (binary "
+"operator `floordiv`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.mod <mars.dataframe.DataFrame.mod>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid "Get Modulo of dataframe and other, element-wise (binary operator `mod`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.pow <mars.dataframe.DataFrame.pow>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Exponential power of dataframe and other, element-wise (binary "
+"operator `pow`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ":obj:`DataFrame.dot <mars.dataframe.DataFrame.dot>`\\ \\(other\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid "Compute the matrix multiplication between the DataFrame and other."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.radd <mars.dataframe.DataFrame.radd>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Addition of dataframe and other, element-wise (binary operator "
+"`radd`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.rsub <mars.dataframe.DataFrame.rsub>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Subtraction of dataframe and other, element-wise (binary operator "
+"`rsubtract`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.rmul <mars.dataframe.DataFrame.rmul>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Multiplication of dataframe and other, element-wise (binary operator "
+"`rmul`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.rdiv <mars.dataframe.DataFrame.rdiv>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Floating division of dataframe and other, element-wise (binary "
+"operator `rtruediv`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.rtruediv <mars.dataframe.DataFrame.rtruediv>`\\ "
+"\\(other\\[\\, axis\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.rfloordiv <mars.dataframe.DataFrame.rfloordiv>`\\ "
+"\\(other\\[\\, axis\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Integer division of dataframe and other, element-wise (binary "
+"operator `rfloordiv`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.rmod <mars.dataframe.DataFrame.rmod>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid "Get Modulo of dataframe and other, element-wise (binary operator `rmod`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.rpow <mars.dataframe.DataFrame.rpow>`\\ \\(other\\[\\, "
+"axis\\, level\\, fill\\_value\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Exponential power of dataframe and other, element-wise (binary "
+"operator `rpow`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.lt <mars.dataframe.DataFrame.lt>`\\ \\(other\\[\\, "
+"axis\\, level\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid "Get Less than of dataframe and other, element-wise (binary operator `lt`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.gt <mars.dataframe.DataFrame.gt>`\\ \\(other\\[\\, "
+"axis\\, level\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Greater than of dataframe and other, element-wise (binary operator "
+"`gt`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.le <mars.dataframe.DataFrame.le>`\\ \\(other\\[\\, "
+"axis\\, level\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Less than or equal to of dataframe and other, element-wise (binary "
+"operator `le`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.ge <mars.dataframe.DataFrame.ge>`\\ \\(other\\[\\, "
+"axis\\, level\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Greater than or equal to of dataframe and other, element-wise (binary"
+" operator `ge`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.ne <mars.dataframe.DataFrame.ne>`\\ \\(other\\[\\, "
+"axis\\, level\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+"Get Not equal to of dataframe and other, element-wise (binary operator "
+"`ne`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid ""
+":obj:`DataFrame.eq <mars.dataframe.DataFrame.eq>`\\ \\(other\\[\\, "
+"axis\\, level\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:85:<autosummary>:1
+msgid "Get Equal to of dataframe and other, element-wise (binary operator `eq`)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:87
+msgid "Function application, GroupBy & window"
+msgstr "应用函数、分组和窗口"
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid ""
+":obj:`DataFrame.apply <mars.dataframe.DataFrame.apply>`\\ \\(func\\[\\, "
+"axis\\, raw\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid ""
+":obj:`DataFrame.agg <mars.dataframe.DataFrame.agg>`\\ \\(func\\[\\, "
+"axis\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid ""
+":obj:`DataFrame.aggregate <mars.dataframe.DataFrame.aggregate>`\\ "
+"\\(func\\[\\, axis\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid ""
+":obj:`DataFrame.transform <mars.dataframe.DataFrame.transform>`\\ "
+"\\(func\\[\\, axis\\, dtypes\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid ""
+":obj:`DataFrame.groupby <mars.dataframe.DataFrame.groupby>`\\ \\(\\[by\\,"
+" level\\, as\\_index\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid ""
+":obj:`DataFrame.rolling <mars.dataframe.DataFrame.rolling>`\\ "
+"\\(window\\[\\, min\\_periods\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid "Provide rolling window calculations."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid ""
+":obj:`DataFrame.expanding <mars.dataframe.DataFrame.expanding>`\\ "
+"\\(\\[min\\_periods\\, center\\, axis\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid "Provide expanding transformations."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid ""
+":obj:`DataFrame.ewm <mars.dataframe.DataFrame.ewm>`\\ \\(\\[com\\, "
+"span\\, halflife\\, alpha\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:99:<autosummary>:1
+msgid "Provide exponential weighted functions."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:103
+msgid "Computations / descriptive stats"
+msgstr "计算和描述统计"
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ":obj:`DataFrame.abs <mars.dataframe.DataFrame.abs>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.count <mars.dataframe.DataFrame.count>`\\ \\(\\[axis\\, "
+"level\\, numeric\\_only\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.cummax <mars.dataframe.DataFrame.cummax>`\\ \\(\\[axis\\,"
+" skipna\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.cummin <mars.dataframe.DataFrame.cummin>`\\ \\(\\[axis\\,"
+" skipna\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.cumprod <mars.dataframe.DataFrame.cumprod>`\\ "
+"\\(\\[axis\\, skipna\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.cumsum <mars.dataframe.DataFrame.cumsum>`\\ \\(\\[axis\\,"
+" skipna\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.describe <mars.dataframe.DataFrame.describe>`\\ "
+"\\(\\[percentiles\\, include\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.max <mars.dataframe.DataFrame.max>`\\ \\(\\[axis\\, "
+"skipna\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.mean <mars.dataframe.DataFrame.mean>`\\ \\(\\[axis\\, "
+"skipna\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.min <mars.dataframe.DataFrame.min>`\\ \\(\\[axis\\, "
+"skipna\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.nunique <mars.dataframe.DataFrame.nunique>`\\ "
+"\\(\\[axis\\, dropna\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid "Count distinct observations over requested axis."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.prod <mars.dataframe.DataFrame.prod>`\\ \\(\\[axis\\, "
+"skipna\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.product <mars.dataframe.DataFrame.product>`\\ "
+"\\(\\[axis\\, skipna\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.quantile <mars.dataframe.DataFrame.quantile>`\\ "
+"\\(\\[q\\, axis\\, numeric\\_only\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid "Return values at the given quantile over requested axis."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.round <mars.dataframe.DataFrame.round>`\\ "
+"\\(\\[decimals\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid "Round a DataFrame to a variable number of decimal places."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.std <mars.dataframe.DataFrame.std>`\\ \\(\\[axis\\, "
+"skipna\\, level\\, ddof\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.sum <mars.dataframe.DataFrame.sum>`\\ \\(\\[axis\\, "
+"skipna\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:125:<autosummary>:1
+msgid ""
+":obj:`DataFrame.var <mars.dataframe.DataFrame.var>`\\ \\(\\[axis\\, "
+"skipna\\, level\\, ddof\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:127
+msgid "Reindexing / selection / label manipulation"
+msgstr "重设索引、选择和标签操作"
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+msgid ""
+":obj:`DataFrame.drop <mars.dataframe.DataFrame.drop>`\\ \\(\\[labels\\, "
+"axis\\, index\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+msgid "Drop specified labels from rows or columns."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+msgid ""
+":obj:`DataFrame.drop_duplicates "
+"<mars.dataframe.DataFrame.drop_duplicates>`\\ \\(\\[subset\\, keep\\, "
+"...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+msgid "Return DataFrame with duplicate rows removed."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+msgid ""
+":obj:`DataFrame.reset_index <mars.dataframe.DataFrame.reset_index>`\\ "
+"\\(\\[level\\, drop\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:137:<autosummary>:1
+msgid ""
+":obj:`DataFrame.set_index <mars.dataframe.DataFrame.set_index>`\\ "
+"\\(keys\\[\\, drop\\, append\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:141
+msgid "Missing data handling"
+msgstr "缺失值处理"
+
+#: ../../source/reference/dataframe/frame.rst:147:<autosummary>:1
+msgid ""
+":obj:`DataFrame.dropna <mars.dataframe.DataFrame.dropna>`\\ \\(\\[axis\\,"
+" how\\, thresh\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:147:<autosummary>:1
+msgid "Remove missing values."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:147:<autosummary>:1
+msgid ""
+":obj:`DataFrame.fillna <mars.dataframe.DataFrame.fillna>`\\ "
+"\\(\\[value\\, method\\, axis\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:147:<autosummary>:1
+msgid "Fill NA/NaN values using the specified method."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:149
+msgid "Reshaping, sorting, transposing"
+msgstr "形状变换、排序和转置"
+
+#: ../../source/reference/dataframe/frame.rst:156:<autosummary>:1
+msgid ""
+":obj:`DataFrame.melt <mars.dataframe.DataFrame.melt>`\\ "
+"\\(\\[id\\_vars\\, value\\_vars\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:156:<autosummary>:1
+msgid ""
+"Unpivot a DataFrame from wide to long format, optionally leaving "
+"identifiers set."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:156:<autosummary>:1
+msgid ""
+":obj:`DataFrame.sort_values <mars.dataframe.DataFrame.sort_values>`\\ "
+"\\(by\\[\\, axis\\, ascending\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:156:<autosummary>:1
+msgid "Sort by the values along either axis."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:156:<autosummary>:1
+msgid ""
+":obj:`DataFrame.sort_index <mars.dataframe.DataFrame.sort_index>`\\ "
+"\\(\\[axis\\, level\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:156:<autosummary>:1
+msgid "Sort object by labels (along an axis)."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:158
+msgid "Combining / joining / merging"
+msgstr "数据合并"
+
+#: ../../source/reference/dataframe/frame.rst:165:<autosummary>:1
+msgid ""
+":obj:`DataFrame.append <mars.dataframe.DataFrame.append>`\\ "
+"\\(other\\[\\, ignore\\_index\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:165:<autosummary>:1
+msgid ""
+":obj:`DataFrame.join <mars.dataframe.DataFrame.join>`\\ \\(other\\[\\, "
+"on\\, how\\, lsuffix\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:165:<autosummary>:1
+msgid ""
+":obj:`DataFrame.merge <mars.dataframe.DataFrame.merge>`\\ \\(right\\[\\, "
+"how\\, on\\, left\\_on\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:167
+msgid "Time series-related"
+msgstr "时间序列相关"
+
+#: ../../source/reference/dataframe/frame.rst:174:<autosummary>:1
+msgid ""
+":obj:`DataFrame.diff <mars.dataframe.DataFrame.diff>`\\ \\(\\[periods\\, "
+"axis\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:174:<autosummary>:1
+msgid "First discrete difference of element."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:174:<autosummary>:1
+msgid ""
+":obj:`DataFrame.shift <mars.dataframe.DataFrame.shift>`\\ "
+"\\(\\[periods\\, freq\\, axis\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:174:<autosummary>:1
+msgid "Shift index by desired number of periods with an optional time `freq`."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:174:<autosummary>:1
+msgid ""
+":obj:`DataFrame.tshift <mars.dataframe.DataFrame.tshift>`\\ "
+"\\(\\[periods\\, freq\\, axis\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:174:<autosummary>:1
+msgid "Shift the time index, using the index's frequency if available."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:178
+msgid "Plotting"
+msgstr "绘图"
+
+#: ../../source/reference/dataframe/frame.rst:179
+msgid ""
+"``DataFrame.plot`` is both a callable method and a namespace attribute "
+"for specific plotting methods of the form ``DataFrame.plot.<kind>``."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:186:<autosummary>:1
+msgid ":obj:`DataFrame.plot <mars.dataframe.DataFrame.plot>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:186:<autosummary>:1
+msgid "alias of :class:`mars.dataframe.plotting.core.PlotAccessor`"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.area <mars.dataframe.DataFrame.plot.area>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Draw a stacked area plot."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.bar <mars.dataframe.DataFrame.plot.bar>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Vertical bar plot."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.barh <mars.dataframe.DataFrame.plot.barh>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Make a horizontal bar plot."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.box <mars.dataframe.DataFrame.plot.box>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Make a box plot of the DataFrame columns."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.density <mars.dataframe.DataFrame.plot.density>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Generate Kernel Density Estimate plot using Gaussian kernels."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.hexbin <mars.dataframe.DataFrame.plot.hexbin>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Generate a hexagonal binning plot."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.hist <mars.dataframe.DataFrame.plot.hist>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Draw one histogram of the DataFrame's columns."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.kde <mars.dataframe.DataFrame.plot.kde>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.line <mars.dataframe.DataFrame.plot.line>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Plot Series or DataFrame as lines."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.pie <mars.dataframe.DataFrame.plot.pie>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Generate a pie plot."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid ""
+":obj:`DataFrame.plot.scatter <mars.dataframe.DataFrame.plot.scatter>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:201:<autosummary>:1
+msgid "Create a scatter plot with varying marker point size and color."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:207:<autosummary>:1
+msgid ":obj:`DataFrame.boxplot <DataFrame.boxplot>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:207:<autosummary>:1
+msgid ":obj:`DataFrame.hist <DataFrame.hist>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:211
+msgid "Serialization / IO / conversion"
+msgstr "序列化、IO 和转换"
+
+#: ../../source/reference/dataframe/frame.rst:216:<autosummary>:1
+msgid ""
+":obj:`DataFrame.to_csv <mars.dataframe.DataFrame.to_csv>`\\ \\(path\\[\\,"
+" sep\\, na\\_rep\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:216:<autosummary>:1
+msgid "Write object to a comma-separated values (csv) file."
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:216:<autosummary>:1
+msgid ""
+":obj:`DataFrame.to_sql <mars.dataframe.DataFrame.to_sql>`\\ \\(name\\, "
+"con\\[\\, schema\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/frame.rst:216:<autosummary>:1
+msgid "Write records stored in a DataFrame to a SQL database."
+msgstr ""
+

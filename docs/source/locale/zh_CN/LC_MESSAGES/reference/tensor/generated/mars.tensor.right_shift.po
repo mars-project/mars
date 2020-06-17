@@ -1,0 +1,84 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.right_shift.rst:2
+msgid "mars.tensor.right\\_shift"
+msgstr ""
+
+#: mars.tensor.right_shift:1 of
+msgid "Shift the bits of an integer to the right."
+msgstr ""
+
+#: mars.tensor.right_shift:3 of
+msgid ""
+"Bits are shifted to the right `x2`.  Because the internal representation "
+"of numbers is in binary format, this operation is equivalent to dividing "
+"`x1` by ``2**x2``."
+msgstr ""
+
+#: mars.tensor.right_shift of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.right_shift:7 of
+msgid "Input values."
+msgstr ""
+
+#: mars.tensor.right_shift:9 of
+msgid "Number of bits to remove at the right of `x1`."
+msgstr ""
+
+#: mars.tensor.right_shift:11 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.right_shift:16 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.right_shift of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.right_shift:21 of
+msgid "**out** -- Return `x1` with bits shifted `x2` times to the right."
+msgstr ""
+
+#: mars.tensor.right_shift of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.right_shift:26 of
+msgid ":func:`left_shift`"
+msgstr ""
+
+#: mars.tensor.right_shift:27 of
+msgid "Shift the bits of an integer to the left."
+msgstr ""
+
+#: mars.tensor.right_shift:30 of
+msgid "Examples"
+msgstr ""
+

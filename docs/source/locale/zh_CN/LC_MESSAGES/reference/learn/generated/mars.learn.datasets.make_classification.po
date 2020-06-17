@@ -1,0 +1,207 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.datasets.make_classification.rst:2
+msgid "mars.learn.datasets.make\\_classification"
+msgstr ""
+
+#: mars.learn.datasets.make_classification:1 of
+msgid "Generate a random n-class classification problem."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:3 of
+msgid ""
+"This initially creates clusters of points normally distributed (std=1) "
+"about vertices of an ``n_informative``-dimensional hypercube with sides "
+"of length ``2*class_sep`` and assigns an equal number of clusters to each"
+" class. It introduces interdependence between these features and adds "
+"various types of further noise to the data."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:9 of
+msgid ""
+"Without shuffling, ``X`` horizontally stacks features in the following "
+"order: the primary ``n_informative`` features, followed by "
+"``n_redundant`` linear combinations of the informative features, followed"
+" by ``n_repeated`` duplicates, drawn randomly with replacement from the "
+"informative and redundant features. The remaining features are filled "
+"with random noise. Thus, without shuffling, all useful features are "
+"contained in the columns ``X[:, :n_informative + n_redundant + "
+"n_repeated]``."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:17 of
+msgid "Read more in the :ref:`User Guide <sample_generators>`."
+msgstr ""
+
+#: mars.learn.datasets.make_classification of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.datasets.make_classification:19 of
+msgid "The number of samples."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:21 of
+msgid ""
+"The total number of features. These comprise ``n_informative`` "
+"informative features, ``n_redundant`` redundant features, ``n_repeated`` "
+"duplicated features and ``n_features-n_informative-n_redundant-"
+"n_repeated`` useless features drawn at random."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:27 of
+msgid ""
+"The number of informative features. Each class is composed of a number of"
+" gaussian clusters each located around the vertices of a hypercube in a "
+"subspace of dimension ``n_informative``. For each cluster, informative "
+"features are drawn independently from  N(0, 1) and then randomly linearly"
+" combined within each cluster in order to add covariance. The clusters "
+"are then placed on the vertices of the hypercube."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:35 of
+msgid ""
+"The number of redundant features. These features are generated as random "
+"linear combinations of the informative features."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:38 of
+msgid ""
+"The number of duplicated features, drawn randomly from the informative "
+"and the redundant features."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:41 of
+msgid "The number of classes (or labels) of the classification problem."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:43 of
+msgid "The number of clusters per class."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:45 of
+msgid ""
+"The proportions of samples assigned to each class. If None, then classes "
+"are balanced. Note that if ``len(weights) == n_classes - 1``, then the "
+"last class weight is automatically inferred. More than ``n_samples`` "
+"samples may be returned if the sum of ``weights`` exceeds 1."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:51 of
+msgid ""
+"The fraction of samples whose class are randomly exchanged. Larger values"
+" introduce noise in the labels and make the classification task harder."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:55 of
+msgid ""
+"The factor multiplying the hypercube size.  Larger values spread out the "
+"clusters/classes and make the classification task easier."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:58 of
+msgid ""
+"If True, the clusters are put on the vertices of a hypercube. If False, "
+"the clusters are put on the vertices of a random polytope."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:61 of
+msgid ""
+"Shift features by the specified value. If None, then features are shifted"
+" by a random value drawn in [-class_sep, class_sep]."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:64 of
+msgid ""
+"Multiply features by the specified value. If None, then features are "
+"scaled by a random value drawn in [1, 100]. Note that scaling happens "
+"after shifting."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:68 of
+msgid "Shuffle the samples and the features."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:70 of
+msgid ""
+"Determines random number generation for dataset creation. Pass an int for"
+" reproducible output across multiple function calls. See :term:`Glossary "
+"<random_state>`."
+msgstr ""
+
+#: mars.learn.datasets.make_classification of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.datasets.make_classification:75 of
+msgid ""
+"* **X** (*tensor of shape [n_samples, n_features]*) -- The generated "
+"samples. * **y** (*tensor of shape [n_samples]*) -- The integer labels "
+"for class membership of each sample."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:75 of
+msgid ""
+"**X** (*tensor of shape [n_samples, n_features]*) -- The generated "
+"samples."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:76 of
+msgid ""
+"**y** (*tensor of shape [n_samples]*) -- The integer labels for class "
+"membership of each sample."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:79 of
+msgid "Notes"
+msgstr ""
+
+#: mars.learn.datasets.make_classification:80 of
+msgid ""
+"The algorithm is adapted from Guyon [1] and was designed to generate the "
+"\"Madelon\" dataset."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:84 of
+msgid "References"
+msgstr ""
+
+#: mars.learn.datasets.make_classification:85 of
+msgid ""
+"I. Guyon, \"Design of experiments for the NIPS 2003 variable selection "
+"benchmark\", 2003."
+msgstr ""
+
+#: mars.learn.datasets.make_classification:91 of
+msgid ":func:`make_blobs`"
+msgstr ""
+
+#: mars.learn.datasets.make_classification:91 of
+msgid "simplified variant"
+msgstr ""
+
+#: mars.learn.datasets.make_classification:93 of
+msgid ":func:`make_multilabel_classification`"
+msgstr ""
+
+#: mars.learn.datasets.make_classification:94 of
+msgid "unrelated generator for multilabel tasks"
+msgstr ""
+

@@ -1,0 +1,132 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/generated/mars.tensor.mod.rst:2
+msgid "mars.tensor.mod"
+msgstr ""
+
+#: mars.tensor.mod:1 of
+msgid "Return element-wise remainder of division."
+msgstr ""
+
+#: mars.tensor.mod:3 of
+#, python-format
+msgid ""
+"Computes the remainder complementary to the `floor_divide` function.  It "
+"is equivalent to the Python modulus operator``x1 % x2`` and has the same "
+"sign as the divisor `x2`. The MATLAB function equivalent to "
+"``np.remainder`` is ``mod``."
+msgstr ""
+
+#: mars.tensor.mod:10 of
+msgid "This should not be confused with:"
+msgstr ""
+
+#: mars.tensor.mod:12 of
+msgid ""
+"Python 3.7's `math.remainder` and C's ``remainder``, which computes the "
+"IEEE remainder, which are the complement to ``round(x1 / x2)``."
+msgstr ""
+
+#: mars.tensor.mod:15 of
+msgid ""
+"The MATLAB ``rem`` function and or the C ``%`` operator which is the "
+"complement to ``int(x1 / x2)``."
+msgstr ""
+
+#: mars.tensor.mod of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.mod:18 of
+msgid "Dividend array."
+msgstr ""
+
+#: mars.tensor.mod:20 of
+msgid "Divisor array."
+msgstr ""
+
+#: mars.tensor.mod:22 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.mod:27 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.mod of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.mod:32 of
+msgid ""
+"**y** -- The element-wise remainder of the quotient ``floor_divide(x1, "
+"x2)``. Returns a scalar if both  `x1` and `x2` are scalars."
+msgstr ""
+
+#: mars.tensor.mod of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.mod:39 of
+msgid ":func:`floor_divide`"
+msgstr ""
+
+#: mars.tensor.mod:39 of
+msgid "Equivalent of Python ``//`` operator."
+msgstr ""
+
+#: mars.tensor.mod:42 of
+msgid ":func:`divmod`"
+msgstr ""
+
+#: mars.tensor.mod:42 of
+msgid "Simultaneous floor division and remainder."
+msgstr ""
+
+#: mars.tensor.mod:45 of
+msgid ":func:`fmod`"
+msgstr ""
+
+#: mars.tensor.mod:45 of
+msgid "Equivalent of the MATLAB ``rem`` function."
+msgstr ""
+
+#: mars.tensor.mod:47 of
+msgid ":func:`divide`, :func:`floor`"
+msgstr ""
+
+#: mars.tensor.mod:50 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.mod:51 of
+msgid "Returns 0 when `x2` is 0 and both `x1` and `x2` are (tensors of) integers."
+msgstr ""
+
+#: mars.tensor.mod:55 of
+msgid "Examples"
+msgstr ""
+

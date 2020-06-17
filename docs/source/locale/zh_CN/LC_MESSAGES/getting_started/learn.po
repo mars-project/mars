@@ -1,0 +1,88 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 18:05+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/getting_started/learn.rst:4
+msgid "Mars Learn"
+msgstr ""
+
+#: ../../source/getting_started/learn.rst:6
+msgid ""
+"Mars learn mimics scikit-learn API and leverages the ability of Mars "
+"tensor and DataFrame to process large data and execute in parallel."
+msgstr ""
+"Mars learn 提供了 scikit-learn 接口，但利用了 Mars tensor 和 DataFrame 来"
+"处理大数据和并行执行。"
+
+#: ../../source/getting_started/learn.rst:9
+msgid ""
+"Mars does not require installation of scikit-learn, but if you want to "
+"use Mars learn, make sure scikit-learn is installed."
+msgstr "Mars 不要求依赖 scikit-learn，但如果要使用 Mars learn，需要先安装它。"
+
+#: ../../source/getting_started/learn.rst:12
+msgid "Install scikit-learn via:"
+msgstr "安装 scikit-learn 可通过："
+
+#: ../../source/getting_started/learn.rst:18
+msgid ""
+"Refer to `installing scikit-learn <https://scikit-"
+"learn.org/stable/install.html>`_ for more information."
+msgstr ""
+"参考 `安装 scikit-learn <https://scikit-learn.org/stable/install.html>`_ "
+"获取更多信息"
+
+#: ../../source/getting_started/learn.rst:21
+msgid "Let's take :class:`mars.learn.neighbors.NearestNeighbors` as an example."
+msgstr "让我们拿 :class:`mars.learn.neighbors.NearestNeighbors` 作为例子。"
+
+#: ../../source/getting_started/learn.rst:41
+msgid ""
+"Remember that functions like ``fit``, ``predict`` will trigger execution "
+"instantly. In the above example, ``fit`` and ``kneighbors`` will trigger "
+"execution internally."
+msgstr ""
+"记住，``fit``、``predict`` 等函数会触发立即执行。如上面的例子里的 ``fit`` 和 ``"
+"kneighbors``。"
+
+#: ../../source/getting_started/learn.rst:44
+msgid ""
+"For implemented learn API, refer to :ref:`learn API reference "
+"<learn_api>`."
+msgstr "参考 :ref:`learn API <learn_api>` 获取更多实现的 learn 接口。"
+
+#: ../../source/getting_started/learn.rst:46
+msgid "Mars learn can integrate with XGBoost, LightGBM, TensorFlow and PyTorch."
+msgstr "Mars learn 能和 XGBoost、LightGBM、TensorFlow 以及 PyTorch 集成。"
+
+#: ../../source/getting_started/learn.rst:48
+msgid "For XGBoost, refer to :ref:`xgboost`."
+msgstr "XGBoost 参考 :ref:`xgboost`。"
+
+#: ../../source/getting_started/learn.rst:49
+msgid "For LightGBM, refer to :ref:`lightgbm`."
+msgstr "LightGBM 参考 :ref:`lightgbm`。"
+
+#: ../../source/getting_started/learn.rst:50
+msgid "For TensorFlow, refer to :ref:`tensorflow`."
+msgstr "TensorFlow 参考 :ref:`tensorflow`。"
+
+#: ../../source/getting_started/learn.rst:51
+msgid "For PyTorch, doc is coming soon."
+msgstr "PyTorch 集成的文档尚在编写中。"
+

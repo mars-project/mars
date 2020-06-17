@@ -1,0 +1,102 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.random.geometric.rst:2
+msgid "mars.tensor.random.geometric"
+msgstr ""
+
+#: mars.tensor.random.geometric:1 of
+msgid "Draw samples from the geometric distribution."
+msgstr ""
+
+#: mars.tensor.random.geometric:3 of
+msgid ""
+"Bernoulli trials are experiments with one of two outcomes: success or "
+"failure (an example of such an experiment is flipping a coin).  The "
+"geometric distribution models the number of trials that must be run in "
+"order to achieve success.  It is therefore supported on the positive "
+"integers, ``k = 1, 2, ...``."
+msgstr ""
+
+#: mars.tensor.random.geometric:9 of
+msgid "The probability mass function of the geometric distribution is"
+msgstr ""
+
+#: mars.tensor.random.geometric:11 of
+msgid "f(k) = (1 - p)^{k - 1} p"
+msgstr ""
+
+#: mars.tensor.random.geometric:13 of
+msgid "where `p` is the probability of success of an individual trial."
+msgstr ""
+
+#: mars.tensor.random.geometric of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.random.geometric:15 of
+msgid "The probability of success of an individual trial."
+msgstr ""
+
+#: mars.tensor.random.geometric:17 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  If size is ``None`` (default), a single value is"
+" returned if ``p`` is a scalar.  Otherwise, ``mt.array(p).size`` samples "
+"are drawn."
+msgstr ""
+
+#: mars.tensor.random.geometric:22 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.geometric:24 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.geometric:26 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: mars.tensor.random.geometric of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.random.geometric:29 of
+msgid "**out** -- Drawn samples from the parameterized geometric distribution."
+msgstr ""
+
+#: mars.tensor.random.geometric of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.random.geometric:33 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.random.geometric:34 of
+msgid ""
+"Draw ten thousand values from the geometric distribution, with the "
+"probability of an individual success equal to 0.35:"
+msgstr ""
+
+#: mars.tensor.random.geometric:41 of
+msgid "How many trials succeeded after a single run?"
+msgstr ""
+

@@ -1,0 +1,235 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:2
+msgid "mars.learn.decomposition.TruncatedSVD"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:1 of
+msgid "Dimensionality reduction using truncated SVD (aka LSA)."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:3 of
+msgid ""
+"This transformer performs linear dimensionality reduction by means of "
+"truncated singular value decomposition (SVD). Contrary to PCA, this "
+"estimator does not center the data before computing the singular value "
+"decomposition. This means it can work with scipy.sparse matrices "
+"efficiently."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:9 of
+msgid ""
+"In particular, truncated SVD works on term count/tf-idf matrices as "
+"returned by the vectorizers in sklearn.feature_extraction.text. In that "
+"context, it is known as latent semantic analysis (LSA)."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:13 of
+msgid ""
+"This estimator supports two algorithms: a fast randomized SVD solver, and"
+" a \"naive\" algorithm that uses ARPACK as an eigensolver on (X * X.T) or"
+" (X.T * X), whichever is more efficient."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:17 of
+msgid "Read more in the :ref:`User Guide <LSA>`."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:19 of
+msgid ""
+"Desired dimensionality of output data. Must be strictly less than the "
+"number of features. The default value is useful for visualisation. For "
+"LSA, a value of 100 is recommended."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:24 of
+msgid ""
+"SVD solver to use. Either \"arpack\" for the ARPACK wrapper in SciPy "
+"(scipy.sparse.linalg.svds), or \"randomized\" for the randomized "
+"algorithm due to Halko (2009)."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:28 of
+msgid ""
+"Number of iterations for randomized SVD solver. Not used by ARPACK. The "
+"default is larger than the default in `randomized_svd` to handle sparse "
+"matrices that may have large slowly decaying spectrum."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:32 of
+msgid ""
+"If int, random_state is the seed used by the random number generator; If "
+"RandomState instance, random_state is the random number generator; If "
+"None, the random number generator is the RandomState instance used by "
+"`np.random`."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:37 of
+msgid ""
+"Tolerance for ARPACK. 0 means machine precision. Ignored by randomized "
+"SVD solver."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD of
+msgid "type"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:45 of
+msgid "array, shape (n_components, n_features)"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:49 of
+msgid ""
+"The variance of the training samples transformed by a projection to each "
+"component."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:52
+#: mars.learn.decomposition.TruncatedSVD:58
+#: mars.learn.decomposition.TruncatedSVD:66 of
+msgid "array, shape (n_components,)"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:56 of
+msgid "Percentage of variance explained by each of the selected components."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:62 of
+msgid ""
+"The singular values corresponding to each of the selected components. The"
+" singular values are equal to the 2-norms of the ``n_components`` "
+"variables in the lower-dimensional space."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:69 of
+msgid "Examples"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:85 of
+msgid ":class:`PCA`"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:88 of
+msgid "References"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:89 of
+msgid ""
+"Finding structure with randomness: Stochastic algorithms for constructing"
+" approximate matrix decompositions Halko, et al., 2009 (arXiv:909) "
+"https://arxiv.org/pdf/0909.4061.pdf"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:94 of
+msgid "Notes"
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD:95 of
+msgid ""
+"SVD suffers from a problem called \"sign indeterminacy\", which means the"
+" sign of the ``components_`` and the output from transform depend on the "
+"algorithm and random state. To work around this, fit instances of this "
+"class to data once, then keep the instance around to do transformations."
+msgstr ""
+
+#: mars.learn.decomposition.TruncatedSVD.__init__:1 of
+msgid "Initialize self.  See help(type(self)) for accurate signature."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:13
+msgid "Methods"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid ""
+":obj:`__init__ <mars.learn.decomposition.TruncatedSVD.__init__>`\\ "
+"\\(\\[n\\_components\\, algorithm\\, n\\_iter\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid "Initialize self."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid ""
+":obj:`fit <mars.learn.decomposition.TruncatedSVD.fit>`\\ \\(X\\[\\, y\\, "
+"session\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid "Fit LSI model on training data X."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid ""
+":obj:`fit_transform "
+"<mars.learn.decomposition.TruncatedSVD.fit_transform>`\\ \\(X\\[\\, y\\, "
+"session\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid "Fit LSI model to X and perform dimensionality reduction on X."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid ""
+":obj:`get_params <mars.learn.decomposition.TruncatedSVD.get_params>`\\ "
+"\\(\\[deep\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid "Get parameters for this estimator."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid ""
+":obj:`inverse_transform "
+"<mars.learn.decomposition.TruncatedSVD.inverse_transform>`\\ \\(X\\[\\, "
+"session\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid "Transform X back to its original space."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid ""
+":obj:`set_params <mars.learn.decomposition.TruncatedSVD.set_params>`\\ "
+"\\(\\*\\*params\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid "Set the parameters of this estimator."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid ""
+":obj:`transform <mars.learn.decomposition.TruncatedSVD.transform>`\\ "
+"\\(X\\[\\, session\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.decomposition.TruncatedSVD.rst:22:<autosummary>:1
+msgid "Perform dimensionality reduction on X."
+msgstr ""
+

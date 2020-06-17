@@ -1,0 +1,101 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/tensor/generated/mars.tensor.true_divide.rst:2
+msgid "mars.tensor.true\\_divide"
+msgstr ""
+
+#: mars.tensor.true_divide:1 of
+msgid "Returns a true division of the inputs, element-wise."
+msgstr ""
+
+#: mars.tensor.true_divide:3 of
+msgid ""
+"Instead of the Python traditional 'floor division', this returns a true "
+"division.  True division adjusts the output type to present the best "
+"answer, regardless of input types."
+msgstr ""
+
+#: mars.tensor.true_divide of
+msgid "Parameters"
+msgstr ""
+
+#: mars.tensor.true_divide:7 of
+msgid "Dividend tensor."
+msgstr ""
+
+#: mars.tensor.true_divide:9 of
+msgid "Divisor tensor."
+msgstr ""
+
+#: mars.tensor.true_divide:11 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.true_divide:16 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.true_divide of
+msgid "Returns"
+msgstr ""
+
+#: mars.tensor.true_divide:21 of
+msgid "**out** -- Result is scalar if both inputs are scalar, tensor otherwise."
+msgstr ""
+
+#: mars.tensor.true_divide of
+msgid "Return type"
+msgstr ""
+
+#: mars.tensor.true_divide:25 of
+msgid "Notes"
+msgstr ""
+
+#: mars.tensor.true_divide:26 of
+msgid ""
+"The floor division operator ``//`` was added in Python 2.2 making ``//`` "
+"and ``/`` equivalent operators.  The default floor division operation of "
+"``/`` can be replaced by true division with ``from __future__ import "
+"division``."
+msgstr ""
+
+#: mars.tensor.true_divide:31 of
+msgid ""
+"In Python 3.0, ``//`` is the floor division operator and ``/`` the true "
+"division operator.  The ``true_divide(x1, x2)`` function is equivalent to"
+" true division in Python."
+msgstr ""
+
+#: mars.tensor.true_divide:36 of
+msgid "Examples"
+msgstr ""
+
+#: mars.tensor.true_divide:43 of
+msgid ""
+"# for python 2 >>> (x/4).execute() array([0, 0, 0, 0, 1]) >>> "
+"(x//4).execute() array([0, 0, 0, 0, 1])"
+msgstr ""
+

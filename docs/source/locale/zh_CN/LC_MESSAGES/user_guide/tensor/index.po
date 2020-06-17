@@ -1,0 +1,41 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/tensor/index.rst:3
+msgid "Mars Tensor"
+msgstr ""
+
+#: ../../source/user_guide/tensor/index.rst:5
+msgid "Mars tensor: distributed tensor with NumPy-like API."
+msgstr "Mars tensor 提供类似 Numpy 的分布式张量支持。"
+
+#: ../../source/user_guide/tensor/index.rst:7
+msgid ""
+"Users brand-new to Mars tensor should start with :ref:`getting started "
+"<getting_started_tensor>`."
+msgstr ""
+"Mars tensor 的新用户可以参考 :ref:`快速开始 <getting_started_tensor>`。"
+
+#: ../../source/user_guide/tensor/index.rst:9
+msgid ""
+"Further information on any specific method can be obtained in the "
+":ref:`API reference <tensor_api>`."
+msgstr ""
+"关于某个特定方法的更多信息，请参考 :ref:`API参考手册 <tensor_api>`。"
+

@@ -1,0 +1,117 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.plot.box.rst:2
+msgid "mars.dataframe.Series.plot.box"
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:1 of
+msgid "Make a box plot of the DataFrame columns."
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:3 of
+msgid ""
+"A box plot is a method for graphically depicting groups of numerical data"
+" through their quartiles. The box extends from the Q1 to Q3 quartile "
+"values of the data, with a line at the median (Q2). The whiskers extend "
+"from the edges of box to show the range of the data. The position of the "
+"whiskers is set by default to 1.5*IQR (IQR = Q3 - Q1) from the edges of "
+"the box. Outlier points are those past the end of the whiskers."
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:11 of
+msgid ""
+"For further details see Wikipedia's entry for `boxplot "
+"<https://en.wikipedia.org/wiki/Box_plot>`__."
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:14 of
+msgid ""
+"A consideration when using this chart is that the box and the whiskers "
+"can overlap, which is very common when plotting small sets of data."
+msgstr ""
+
+#: mars.dataframe.Series.plot.box of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:17 of
+msgid "Column in the DataFrame to group by."
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:19 of
+msgid "Additional keywords are documented in :meth:`DataFrame.plot`."
+msgstr ""
+
+#: mars.dataframe.Series.plot.box of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.plot.box of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:23 of
+msgid ":class:`matplotlib.axes.Axes` or numpy.ndarray of them"
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:28 of
+msgid ":meth:`DataFrame.boxplot`"
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:28 of
+msgid "Another method to draw a box plot."
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:31 of
+msgid ":meth:`Series.plot.box`"
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:31 of
+msgid "Draw a box plot from a Series object."
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:33 of
+msgid ":meth:`matplotlib.pyplot.boxplot`"
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:34 of
+msgid "Draw a box plot in matplotlib."
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:37 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.Series.plot.box:38 of
+msgid ""
+"Draw a box plot from a DataFrame with four columns of randomly generated "
+"data."
+msgstr ""
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.plot.box.rst:7
+msgid ""
+"(`Source code <../../../reference/dataframe/api/mars-dataframe-Series-"
+"plot-box-1.py>`__, `png <../../../reference/dataframe/api/mars-dataframe-"
+"Series-plot-box-1.png>`__, `hires.png <../../../reference/dataframe/api"
+"/mars-dataframe-Series-plot-box-1.hires.png>`__, `pdf "
+"<../../../reference/dataframe/api/mars-dataframe-Series-plot-"
+"box-1.pdf>`__)"
+msgstr ""
+
