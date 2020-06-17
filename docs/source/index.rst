@@ -4,8 +4,6 @@
 Mars Documentation
 ==================
 
-.. image:: images/mars-logo-title.png
-
 Mars is a tensor-based unified framework for large-scale data computation.
 
 Mars tensor
