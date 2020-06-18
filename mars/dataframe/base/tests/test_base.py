@@ -192,6 +192,7 @@ class Test(TestBase):
 
         self.assertEqual(df.shape, (4, 3))
         pd.testing.assert_series_equal(df.dtypes, r.dtypes)
+        pd.testing.assert_index_equal(df.columns_value.to_pandas(), r.columns)
 
         df2 = df.tiles()
 
