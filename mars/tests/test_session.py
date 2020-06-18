@@ -538,3 +538,41 @@ class Test(unittest.TestCase):
             i += 1
 
         self.assertEqual(i, len(raw_data))
+
+    def testNamed(self):
+        rs = np.random.RandomState(0)
+        raw = rs.rand(10, 10)
+
+        sess = Session.default_or_local()
+
+        # test named tensor
+        t = mt.tensor(raw, chunk_size=3)
+        name = 't_name'
+        r1 = t.execute(name=name, session=sess)
+        np.testing.assert_array_equal(r1, raw)
+
+        t2 = mt.named_tensor(name=name, session=sess)
+        r2 = (t2 + 1).execute(session=sess).fetch()
+        np.testing.assert_array_equal(r2, raw + 1)
+
+        # test named series
+        name = 's_name'
+        raw = pd.Series([1, 2, 3])
+        s = md.Series(raw)
+        r1 = s.execute(name=name, session=sess).fetch()
+        pd.testing.assert_series_equal(r1, raw)
+
+        s2 = md.named_series(name=name, session=sess)
+        r2 = s2.execute(session=sess).fetch()
+        pd.testing.assert_series_equal(r2, raw)
+
+        # test dataframe
+        name = 'd_name'
+        raw = pd.DataFrame(np.random.rand(10, 3))
+        d = md.DataFrame(raw, chunk_size=4)
+        r1 = d.execute(name=name, session=sess).fetch()
+        pd.testing.assert_frame_equal(r1, raw)
+
+        d2 = md.named_dataframe(name=name, session=sess)
+        r2 = d2.execute(session=sess).fetch()
+        pd.testing.assert_frame_equal(r2, raw)

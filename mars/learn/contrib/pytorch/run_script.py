@@ -128,8 +128,8 @@ class RunPyTorch(LearnMergeDictOperand):
 
             # set mars envs
             if ctx.running_mode != RunningMode.local:
-                env['MARS_SCHEDULER'] = str(ctx._scheduler_address)
-                env['MARS_SESSION'] = str(ctx._session_id)
+                env['MARS_SCHEDULER_ADDRESS'] = str(ctx._scheduler_address)
+                env['MARS_SESSION_ID'] = str(ctx._session_id)
 
             # exec pytorch code in a new process
             process = subprocess.Popen(

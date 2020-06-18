@@ -596,9 +596,10 @@ class Executor(object):
         self._chunk_result = storage if storage is not None else dict()
         self._prefetch = prefetch
 
-        # dict structure: {tileable_key -> chunk_keys, tileable_ids}
-        # dict value is a tuple object which records chunk keys and tileable id
+        # dict structure: {tileable_key -> fetch tileables}
+        # dict value is a fetch tileable to record metas.
         self.stored_tileables = dict()
+        self._tileable_names = dict()
         # executed key to ref counts
         self.key_to_ref_counts = defaultdict(lambda: 0)
         # synchronous provider
@@ -677,7 +678,9 @@ class Executor(object):
                     continue
                 fetch_keys.update(inp.key for inp in c.inputs or ())
 
-        executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tileables.values()]))
+        executed_keys = set()
+        for t in itertools.chain(*list(self.stored_tileables.values())):
+            executed_keys.update([c.key for c in t.chunks])
         chunk_result = self._chunk_result if chunk_result is None else chunk_result
         graph_execution = self._graph_execution_cls(
             chunk_result, optimized_graph, keys, executed_keys, self._sync_provider,
@@ -757,7 +760,7 @@ class Executor(object):
     @kernel_mode
     @enter_build_mode
     def execute_tileables(self, tileables, fetch=True, n_parallel=None, n_thread=None,
-                          print_progress=False, mock=False, compose=True):
+                          print_progress=False, mock=False, compose=True, name=None):
         # shallow copy chunk_result, prevent from any chunk key decref
         chunk_result = self._chunk_result.copy()
         tileables = [tileable.data if hasattr(tileable, 'data') else tileable
@@ -768,9 +771,20 @@ class Executor(object):
         result_keys = []
         to_release_keys = set()
         tileable_data_to_concat_keys = weakref.WeakKeyDictionary()
-        tileable_data_to_chunk_keys = weakref.WeakKeyDictionary()
+        tileable_data_to_chunks = weakref.WeakKeyDictionary()
 
         node_to_fetch = weakref.WeakKeyDictionary()
+
+        def _generate_fetch_tileable(node):
+            # Attach chunks to fetch tileables to skip tile.
+            if isinstance(node.op, Fetch) and node.key in self.stored_tileables:
+                tiled = self.stored_tileables[node.key][0]
+                node._chunks = tiled.chunks
+                node.nsplits = tiled.nsplits
+                for param, v in tiled.params.items():
+                    setattr(node, '_' + param, v)
+
+            return node
 
         def _generate_fetch_if_executed(nd):
             # node processor that if the node is executed
@@ -789,7 +803,7 @@ class Executor(object):
                 return after_tile_data
             tile_chunk_keys = [c.key for c in after_tile_data.chunks]
             result_keys.extend(tile_chunk_keys)
-            tileable_data_to_chunk_keys[before_tile_data] = tile_chunk_keys
+            tileable_data_to_chunks[before_tile_data] = [build_fetch(c) for c in after_tile_data.chunks]
             if not fetch:
                 pass
             elif len(after_tile_data.chunks) > 1:
@@ -815,7 +829,8 @@ class Executor(object):
         # thus here just to make sure the new context is entered
         with self._gen_local_context(chunk_result):
             # build tileable graph
-            tileable_graph_builder = _get_tileable_graph_builder()
+            tileable_graph_builder = _get_tileable_graph_builder(
+                node_processor=_generate_fetch_tileable)
             tileable_graph = tileable_graph_builder.build(tileables)
             chunk_graph_builder = IterativeChunkGraphBuilder(
                 graph_cls=DAG, node_processor=_generate_fetch_if_executed,
@@ -875,14 +890,20 @@ class Executor(object):
                                                       if inp in to_run_tileables_set])
                     tileable_graph = tileable_graph_builder.build(to_run_tileables_set)
 
+            if name is not None:
+                if not isinstance(name, (list, tuple)):
+                    name = [name]
+                self._tileable_names.update(zip(name, tileables))
+
             for tileable in tileables:
+                fetch_tileable = build_fetch(get_tiled(tileable, mapping=tileable_optimized))
+                fetch_tileable._key = tileable.key
+                fetch_tileable._id = tileable.id
                 if tileable.key in self.stored_tileables:
-                    self.stored_tileables[tileable.key][0].add(tileable.id)
+                    if tileable.id not in [t.id for t in self.stored_tileables[tileable.key]]:
+                        self.stored_tileables[tileable.key].append(fetch_tileable)
                 else:
-                    chunk_keys = tileable_data_to_chunk_keys[
-                        tileable_optimized.get(tileable, tileable)]
-                    self.stored_tileables[tileable.key] = \
-                        tuple([{tileable.id}, set(chunk_keys)])
+                    self.stored_tileables[tileable.key] = [fetch_tileable]
 
             try:
                 if fetch:
@@ -947,13 +968,17 @@ class Executor(object):
         rs = set(self._chunk_result)
         for key in keys:
             tileable_key, tileable_id = key
-            if key[0] not in self.stored_tileables:
+            if tileable_key not in self.stored_tileables:
                 continue
-            ids, chunk_keys = self.stored_tileables[key[0]]
+
+            ids = [t.id for t in self.stored_tileables[tileable_key]]
             if tileable_id in ids:
-                ids.remove(tileable_id)
+                idx = ids.index(tileable_id)
+                tiled = self.stored_tileables[tileable_key][0]
+                chunk_keys = set([c.key for c in tiled.chunks])
+                self.stored_tileables[tileable_key].pop(idx)
                 # for those same key tileables, do decref only when all those tileables are garbage collected
-                if len(ids) != 0:
+                if len(self.stored_tileables[tileable_key]) != 0:
                     continue
                 for chunk_key in (chunk_keys & rs):
                     self._chunk_result.pop(chunk_key, None)

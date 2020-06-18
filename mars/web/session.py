@@ -244,6 +244,20 @@ class Session(object):
             results.append(sort_dataframe_result(tileable, result_data))
         return results
 
+    def get_named_tileable_infos(self, name):
+        from ..context import TileableInfos
+
+        url = self._endpoint + '/api/session/' + self._session_id
+        params = dict(name=name)
+        resp = self._req_session.get(url, params=params)
+        if resp.status_code >= 400:  # pragma: no cover
+            raise ValueError('Failed to get tileable key from server. Code: %d, Reason: %s, Content:\n%s' %
+                             (resp.status_code, resp.reason, resp.text))
+        tileable_key = json.loads(resp.text)['tileable_key']
+        nsplits = self._get_tileable_nsplits(tileable_key)
+        shape = tuple(sum(s) for s in nsplits)
+        return TileableInfos(tileable_key, shape)
+
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *_, **__):
         from ..tensor.utils import create_mutable_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
@@ -330,13 +344,17 @@ class Session(object):
         return create_fetch_tensor(chunk_size, shape, numpy_dtype_from_descr_json(dtype),
                                    tensor_key=tensor_key, chunk_keys=chunk_keys)
 
-    def _update_tileable_shape(self, tileable):
-        tileable_key = tileable.key
+    def _get_tileable_nsplits(self, tileable_key):
         session_url = self._endpoint + '/api/session/' + self._session_id
         url = session_url + '/graph/%s/data/%s?type=nsplits' % (
             self._get_tileable_graph_key(tileable_key), tileable_key)
         resp = self._req_session.get(url)
         new_nsplits = json.loads(resp.text)
+        return new_nsplits
+
+    def _update_tileable_shape(self, tileable):
+        tileable_key = tileable.key
+        new_nsplits = self._get_tileable_nsplits(tileable_key)
         tileable._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
         tileable.nsplits = new_nsplits
 
