@@ -98,8 +98,11 @@ class Index(_Index):
             else:
                 index = data
         else:
-            pd_index = pd.Index(data=data, dtype=dtype, copy=copy,
-                                name=name, tupleize_cols=tupleize_cols)
+            if not isinstance(data, pd.Index):
+                pd_index = pd.Index(data=data, dtype=dtype, copy=copy,
+                                    name=name, tupleize_cols=tupleize_cols)
+            else:
+                pd_index = data
             index = from_pandas_index(pd_index, chunk_size=chunk_size,
                                       gpu=gpu, sparse=sparse)
         super().__init__(index.data)

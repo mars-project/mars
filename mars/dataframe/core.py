@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
 from io import StringIO
 from typing import Union
 
@@ -184,6 +185,10 @@ class IndexValue(Serializable):
         _names = ListField('names', on_serialize=list)
         _data = NDArrayField('data')
         _sortorder = Int32Field('sortorder')
+
+        @property
+        def names(self) -> list:
+            return self._names
 
         def to_pandas(self):
             data = getattr(self, '_data', None)
@@ -425,9 +430,9 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
     def index_value(self) -> IndexValue:
         return self._index_value
 
-    def to_tensor(self, dtype=None):
-        from ..tensor.datasource.from_dataframe import from_series
-        return from_series(self, dtype=dtype)
+    def to_tensor(self, dtype=None, extract_multi_index=False):
+        from ..tensor.datasource.from_dataframe import from_index
+        return from_index(self, dtype=dtype, extract_multi_index=extract_multi_index)
 
 
 class Index(HasShapeTileableEnity, _ToPandasMixin):
@@ -446,10 +451,13 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
     def __len__(self):
         return len(self._data)
 
-    def __mars_tensor__(self, dtype=None, order='K'):
-        tensor = self._data.to_tensor()
+    def _to_mars_tensor(self, dtype=None, order='K', extract_multi_index=False):
+        tensor = self._data.to_tensor(extract_multi_index=extract_multi_index)
         dtype = dtype if dtype is not None else tensor.dtype
         return tensor.astype(dtype=dtype, order=order, copy=False)
+
+    def __mars_tensor__(self, dtype=None, order='K'):
+        return self._to_mars_tensor(dtype=dtype, order=order)
 
     def to_frame(self, index: bool = True, name=None):
         """
@@ -503,12 +511,24 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
         1  Bear
         2   Cow
         """
-        from ..tensor import tensor as astensor
         from . import dataframe_from_tensor
 
-        name = name or self.name or 0
+        if isinstance(self.index_value.value, IndexValue.MultiIndex):
+            old_names = self.index_value.value.names
+
+            if name is not None and not isinstance(name, Iterable) or isinstance(name, str):
+                raise TypeError("'name' must be a list / sequence of column names.")
+
+            name = list(name if name is not None else old_names)
+            if len(name) != len(old_names):
+                raise ValueError("'name' should have same length as number of levels on index.")
+
+            columns = [old or new or idx for idx, (old, new) in enumerate(zip(old_names, name))]
+        else:
+            columns = [name or self.name or 0]
         index_ = self if index else None
-        return dataframe_from_tensor(astensor(self), index=index_, columns=[name])
+        return dataframe_from_tensor(self._to_mars_tensor(self, extract_multi_index=True),
+                                     index=index_, columns=columns)
 
     def to_series(self, index=None, name=None):
         """

@@ -68,3 +68,24 @@ class Test(TestBase):
         r = index.to_series(name='new_name')
         result = self.executor.execute_dataframe(r, concat=True)[0]
         pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
+
+        raw = pd.MultiIndex.from_tuples([('A', 'E'), ('B', 'F'), ('C', 'G')])
+        index = Index(raw, tupleize_cols=True)
+
+        r = index.to_frame()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(raw.to_frame(), result)
+
+        with self.assertRaises(TypeError):
+            index.to_frame(name='XY')
+
+        with self.assertRaises(ValueError):
+            index.to_frame(name=['X', 'Y', 'Z'])
+
+        r = index.to_frame(name=['X', 'Y'])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(raw.to_frame(name=['X', 'Y']), result)
+
+        r = index.to_series(name='new_name')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)

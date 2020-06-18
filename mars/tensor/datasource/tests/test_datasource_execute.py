@@ -21,7 +21,11 @@ import os
 import time
 
 import numpy as np
-import scipy.sparse as sps
+import pandas as pd
+try:
+    import scipy.sparse as sps
+except ImportError:
+    sps = None
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -963,6 +967,16 @@ class Test(TestBase):
         series = md.Series(range(10), chunk_size=3)
         tensor_result = series.to_tensor().execute()
         np.testing.assert_array_equal(tensor_result, np.arange(10))
+
+        # test from index
+        index = md.Index(pd.MultiIndex.from_tuples([(0, 1), (2, 3), (4, 5)]))
+        tensor_result = index.to_tensor(extract_multi_index=True).execute()
+        np.testing.assert_array_equal(tensor_result, np.arange(6).reshape((3, 2)))
+
+        index = md.Index(pd.MultiIndex.from_tuples([(0, 1), (2, 3), (4, 5)]))
+        tensor_result = index.to_tensor(extract_multi_index=False).execute()
+        np.testing.assert_array_equal(tensor_result,
+                                      pd.MultiIndex.from_tuples([(0, 1), (2, 3), (4, 5)]).to_series())
 
     @unittest.skipIf(h5py is None, 'h5py not installed')
     def testReadHDF5Execution(self):
