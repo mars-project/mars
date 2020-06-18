@@ -38,7 +38,7 @@ class DataFrame(_Frame):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
-        elif isinstance(index, INDEX_TYPE):
+        elif isinstance(index, (INDEX_TYPE, SERIES_TYPE)):
             df = dataframe_from_tensor(astensor(data, chunk_size=chunk_size), index=index,
                                        columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):

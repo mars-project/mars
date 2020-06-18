@@ -19,7 +19,7 @@ from .initializer import DataFrame, Series, Index
 from .base.cut import cut
 from .base.checkna import isna, isnull, notna, notnull
 from .base.melt import melt
-from .datasource.from_tensor import dataframe_from_tensor
+from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 from .datasource.from_records import from_records
 from .datasource.from_vineyard import from_vineyard
 from .datasource.read_csv import read_csv
