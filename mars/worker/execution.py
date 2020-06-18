@@ -384,7 +384,10 @@ class ExecutionActor(WorkerActor):
             for c in graph:
                 if not isinstance(c.op, Fetch):
                     break
-                data_size = calc_data_size(c)
+                try:
+                    data_size = calc_data_size(c)
+                except (AttributeError, TypeError, ValueError):
+                    data_size = 0
                 input_size += data_size
                 data_locations = self.storage_client.get_data_locations(session_id, [c.key])[0]
                 if (0, DataStorageDevice.VINEYARD) in data_locations or \

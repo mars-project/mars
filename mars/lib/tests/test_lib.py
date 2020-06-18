@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import pandas as pd
@@ -19,6 +20,7 @@ import numpy as np
 
 from mars.lib.groupby_wrapper import GroupByWrapper, wrapped_groupby
 from mars.tests.core import assert_groupby_equal
+from mars.utils import calc_data_size
 
 
 class Test(unittest.TestCase):
@@ -35,6 +37,8 @@ class Test(unittest.TestCase):
         assert_groupby_equal(grouped, df.groupby(level=0))
         self.assertEqual(grouped.shape, (8, 4))
         self.assertTrue(grouped.is_frame)
+        self.assertGreater(sys.getsizeof(grouped), sys.getsizeof(grouped.groupby_obj))
+        self.assertGreater(calc_data_size(grouped), sys.getsizeof(grouped.groupby_obj))
 
         grouped = GroupByWrapper.from_tuple(wrapped_groupby(df, level=0).C.to_tuple())
         assert_groupby_equal(grouped, df.groupby(level=0).C)
