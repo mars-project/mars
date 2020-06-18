@@ -39,8 +39,8 @@ def main():
     dist.init_process_group(backend='gloo')
     torch.manual_seed(42)
 
-    data = mt.tensor(named='data')
-    labels = mt.tensor(named='labels')
+    data = mt.named_tensor(name='data')
+    labels = mt.named_tensor(name='labels')
     train_dataset = MarsDataset(data, labels)
     train_sampler = MarsDistributedSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,

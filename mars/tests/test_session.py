@@ -551,7 +551,7 @@ class Test(unittest.TestCase):
         r1 = t.execute(name=name, session=sess)
         np.testing.assert_array_equal(r1, raw)
 
-        t2 = mt.tensor(named=name, session=sess)
+        t2 = mt.named_tensor(name=name, session=sess)
         r2 = (t2 + 1).execute(session=sess).fetch()
         np.testing.assert_array_equal(r2, raw + 1)
 
@@ -562,9 +562,9 @@ class Test(unittest.TestCase):
         r1 = s.execute(name=name, session=sess).fetch()
         pd.testing.assert_series_equal(r1, raw)
 
-        s2 = md.Series(named=name, session=sess)
-        r2 = (s2.sum()).execute(session=sess).fetch()
-        self.assertEqual(r2, raw.sum())
+        s2 = md.named_series(name=name, session=sess)
+        r2 = s2.execute(session=sess).fetch()
+        pd.testing.assert_series_equal(r2, raw)
 
         # test dataframe
         name = 'd_name'
@@ -573,9 +573,6 @@ class Test(unittest.TestCase):
         r1 = d.execute(name=name, session=sess).fetch()
         pd.testing.assert_frame_equal(r1, raw)
 
-        d2 = md.DataFrame(named=name, session=sess)
-        r2 = (d2.max()).execute(session=sess).fetch()
-        pd.testing.assert_series_equal(r2, raw.max())
-
-        with self.assertRaises(ValueError):
-            mt.tensor(named='fake_name', session=sess)
+        d2 = md.named_dataframe(name=name, session=sess)
+        r2 = d2.execute(session=sess).fetch()
+        pd.testing.assert_frame_equal(r2, raw)

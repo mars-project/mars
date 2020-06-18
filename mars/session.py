@@ -28,7 +28,7 @@ from .context import LocalContext
 from .tiles import get_tiled
 from .executor import Executor
 from .config import options
-from .utils import classproperty, build_fetch_tileable
+from .utils import classproperty
 try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
@@ -154,11 +154,8 @@ class LocalSession(object):
         self._executor.execute_tileables([sealed_tensor])
         return sealed_tensor
 
-    def build_named_tileable(self, named, rtype=None):
-        if named not in self._executor._tileable_names:
-            raise ValueError("Name {} doesn't exist.".format(named))
-        tileable = self._executor._tileable_names[named]
-        return build_fetch_tileable(tileable)
+    def get_named_tileable_infos(self, name):
+        return self._context.get_named_tileable_infos(name)
 
     def decref(self, *keys):
         self._executor.decref(*keys)
@@ -367,24 +364,8 @@ class ClusterSession(object):
         self._api.delete_data(self._session_id, graph_key, tileable_key, wait=wait)
         del self._executed_tileables[tileable_key]
 
-    def build_named_tileable(self, named, rtype):
-        from .tensor.fetch import TensorFetch
-        from .dataframe.fetch import DataFrameFetch
-        from .dataframe.operands import ObjectType
-
-        tileable_key = self._context.get_tileable_key_by_name(named)
-        nsplits = self._context.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
-        shape = tuple(sum(s) for s in nsplits)
-        if rtype == 'tensor':
-            return TensorFetch().new_tensor([], shape=shape, _key=tileable_key)
-        elif rtype == 'series':
-            return DataFrameFetch(object_type=ObjectType.series).new_series(
-                [], shape=shape,  _key=tileable_key)
-        elif rtype == 'dataframe':
-            return DataFrameFetch(object_type=ObjectType.dataframe).new_dataframe(
-                [], shape=shape,  _key=tileable_key)
-        else:
-            raise TypeError('Unknown type {}'.format(rtype))
+    def get_named_tileable_infos(self, name):
+        return self._context.get_named_tileable_infos(name)
 
     def __enter__(self):
         return self

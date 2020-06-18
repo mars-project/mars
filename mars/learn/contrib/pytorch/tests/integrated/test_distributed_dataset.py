@@ -29,7 +29,7 @@ class Test(LearnIntegrationTestBase):
             data.execute(name='data', session=sess)
 
             with DistributedContext(scheduler_address=scheduler_ep, session_id=sess.session_id):
-                t = mt.tensor(named='data', session=sess)
+                t = mt.named_tensor(name='data', session=sess)
                 dataset = MarsDataset(t)
                 self.assertEqual(len(dataset), 100)
 
@@ -55,8 +55,8 @@ class Test(LearnIntegrationTestBase):
             data2.execute(name='data2', session=sess)
 
             with DistributedContext(scheduler_address=scheduler_ep, session_id=sess.session_id):
-                t1 = mt.tensor(named='data1', session=sess)
-                t2 = mt.tensor(named='data2', session=sess)
+                t1 = mt.named_tensor(name='data1', session=sess)
+                t2 = mt.named_tensor(name='data2', session=sess)
                 dataset = MarsDataset(t1, t2)
                 self.assertEqual(len(dataset), 100)
 
@@ -88,8 +88,8 @@ class Test(LearnIntegrationTestBase):
             data2.execute(name='dataframe', session=sess)
 
             with DistributedContext(scheduler_address=scheduler_ep, session_id=sess.session_id):
-                t1 = md.Series(named='series', session=sess)
-                t2 = md.DataFrame(named='dataframe', session=sess)
+                t1 = md.named_series(name='series', session=sess)
+                t2 = md.named_dataframe(name='dataframe', session=sess)
                 dataset = MarsDataset(t1, t2)
                 self.assertEqual(len(dataset), 100)
 

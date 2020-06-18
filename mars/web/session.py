@@ -244,13 +244,11 @@ class Session(object):
             results.append(sort_dataframe_result(tileable, result_data))
         return results
 
-    def build_named_tileable(self, named, rtype):
-        from ..tensor.fetch import TensorFetch
-        from ..dataframe.fetch import DataFrameFetch
-        from ..dataframe.operands import ObjectType
+    def get_named_tileable_infos(self, name):
+        from ..context import TileableInfos
 
         url = self._endpoint + '/api/session/' + self._session_id
-        params = dict(named=named)
+        params = dict(name=name)
         resp = self._req_session.get(url, params=params)
         if resp.status_code >= 400:  # pragma: no cover
             raise ValueError('Failed to get tileable key from server. Code: %d, Reason: %s, Content:\n%s' %
@@ -258,16 +256,7 @@ class Session(object):
         tileable_key = json.loads(resp.text)['tileable_key']
         nsplits = self._get_tileable_nsplits(tileable_key)
         shape = tuple(sum(s) for s in nsplits)
-        if rtype == 'tensor':
-            return TensorFetch().new_tensor([], shape=shape, _key=tileable_key)
-        elif rtype == 'series':
-            return DataFrameFetch(object_type=ObjectType.series).new_series(
-                [], shape=shape,  _key=tileable_key)
-        elif rtype == 'dataframe':
-            return DataFrameFetch(object_type=ObjectType.dataframe).new_dataframe(
-                [], shape=shape,  _key=tileable_key)
-        else:  # pragma: no cover
-            raise TypeError('Unknown type {}'.format(rtype))
+        return TileableInfos(tileable_key, shape)
 
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *_, **__):
         from ..tensor.utils import create_mutable_tensor

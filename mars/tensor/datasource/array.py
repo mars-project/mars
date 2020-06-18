@@ -21,6 +21,7 @@ from ...lib.sparse import SparseNDArray
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ...serialize import ValueType, NDArrayField, TupleField
 from ..core import TENSOR_TYPE, TensorOrder, TensorData, Tensor
+from ..fetch import TensorFetch
 from ..utils import get_chunk_slices
 from ..array_utils import array_module
 from .core import TensorNoInput
@@ -142,13 +143,7 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
 
 
 def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
-           sparse=False, named=None, session=None):
-    if named is not None:
-        from ...session import Session
-
-        sess = session or Session.default_or_local()
-        return sess.build_named_tileable(named=named, rtype='tensor')
-
+           sparse=False):
     order = order or 'K'
     if isinstance(data, TENSOR_TYPE):
         if isinstance(data, TensorData):
@@ -193,6 +188,16 @@ def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
         return t
     else:
         raise ValueError('Cannot create tensor by given data: {0}'.format(data))
+
+
+def named_tensor(name, session=None):
+    from ...session import Session
+
+    sess = session or Session.default_or_local()
+    tileable_infos = sess.get_named_tileable_infos(name=name)
+    fetch_op = TensorFetch()
+    return fetch_op.new_tensor([], shape=tileable_infos.tileable_shape,
+                               _key=tileable_infos.tileable_key)
 
 
 def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):

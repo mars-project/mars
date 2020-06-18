@@ -1069,7 +1069,7 @@ class Test(unittest.TestCase):
             def f3():
                 import mars.tensor as mt
 
-                s = mt.tensor(named='t_name')
+                s = mt.named_tensor(name='t_name')
                 return (s + 1).to_numpy()
 
             d = mr.spawn(f3, retry_when_fail=False)
