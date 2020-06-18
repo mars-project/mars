@@ -296,7 +296,7 @@ def calc_data_size(dt):
         return max(sys.getsizeof(dt), dt.nbytes)
     if hasattr(dt, 'shape') and len(dt.shape) == 0:
         return 0
-    if hasattr(dt, 'memory_usage'):
+    if hasattr(dt, 'memory_usage') or hasattr(dt, 'groupby_obj'):
         return sys.getsizeof(dt)
     if hasattr(dt, 'dtypes') and hasattr(dt, 'shape'):
         return dt.shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
