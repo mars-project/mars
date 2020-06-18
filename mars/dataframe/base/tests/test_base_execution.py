@@ -204,6 +204,15 @@ class Test(TestBase):
         expected = (data1 + data2).reset_index()
         np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
 
+        # case from https://github.com/mars-project/mars/issues/1286
+        data = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
+        df = from_pandas_df(data, chunk_size=3)
+
+        r = df.sort_values('a').reset_index(drop=True)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data.sort_values('a').reset_index(drop=True)
+        pd.testing.assert_frame_equal(result, expected)
+
     def testSeriesMapExecution(self):
         raw = pd.Series(np.arange(10))
         s = from_pandas_series(raw, chunk_size=7)
