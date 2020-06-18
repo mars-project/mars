@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from collections.abc import Iterable
 
 import cloudpickle
@@ -77,6 +78,10 @@ class GroupByWrapper:
 
     def __iter__(self):
         return self.groupby_obj.__iter__()
+
+    def __sizeof__(self):
+        return sys.getsizeof(self.obj) \
+            + sys.getsizeof(getattr(self.groupby_obj.grouper, '_cache', None))
 
     @property
     def empty(self):
