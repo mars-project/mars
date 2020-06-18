@@ -103,12 +103,17 @@ class SessionApiHandler(MarsApiRequestHandler):
         if not self.web_api.has_session(session_id):
             raise web.HTTPError(404, 'Session doesn\'t not exists')
 
-        versions, _ = self._handle_versions()
+        name = self.get_argument('name', None)
+        if name is None:
+            versions, _ = self._handle_versions()
 
-        self.write(json.dumps(dict(
-            session_id=session_id, arrow_compatible=versions['arrow_compatible'],
-            pickle_protocol=versions['pickle_protocol'],
-        )))
+            self.write(json.dumps(dict(
+                session_id=session_id, arrow_compatible=versions['arrow_compatible'],
+                pickle_protocol=versions['pickle_protocol'],
+            )))
+        else:
+            tileable_key = self.web_api.get_tileable_key_by_name(session_id, name)
+            self.write(json.dumps(dict(tileable_key=tileable_key)))
 
     def delete(self, session_id):
         self.web_api.delete_session(session_id)

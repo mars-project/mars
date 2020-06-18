@@ -176,11 +176,12 @@ class ContextBase(object):
     def create_lock(self):
         raise NotImplementedError
 
-    def build_named_tileable(self, named, rtype):
+    def get_named_tileable_infos(self, name: str):
         raise NotImplementedError
 
 
 ChunkMeta = namedtuple('ChunkMeta', ['chunk_size', 'chunk_shape', 'workers'])
+TileableInfos = namedtuple('TileableInfos', ['tileable_key', 'tileable_shape'])
 
 
 class LocalContext(ContextBase, dict):
@@ -258,6 +259,12 @@ class LocalContext(ContextBase, dict):
         # As the context is actually holding the data,
         # so for the local context, we just fetch data from itself
         return [self[chunk_key] for chunk_key in chunk_keys]
+
+    def get_named_tileable_infos(self, name: str):
+        if name not in self._local_session.executor._tileable_names:
+            raise ValueError("Name {} doesn't exist.".format(name))
+        tileable = self._local_session.executor._tileable_names[name]
+        return TileableInfos(tileable.key, tileable.shape)
 
     def create_lock(self):
         return self._local_session.executor._sync_provider.lock()
@@ -340,8 +347,11 @@ class DistributedContext(ContextBase):
     def get_chunk_metas(self, chunk_keys, filter_fields: List[str] = None) -> List:
         return self._meta_api.get_chunk_metas(self._session_id, chunk_keys, filter_fields)
 
-    def get_tileable_key_by_name(self, name: str):
-        return self._meta_api.get_tileable_key_by_name(self._session_id, name)
+    def get_named_tileable_infos(self, name: str):
+        tileable_key = self._meta_api.get_tileable_key_by_name(self._session_id, name)
+        nsplits = self.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+        shape = tuple(sum(s) for s in nsplits)
+        return TileableInfos(tileable_key, shape)
 
     # Worker API
     def get_chunks_data(self, worker: str, chunk_keys: List[str], indexes: List = None,
@@ -420,25 +430,6 @@ class DistributedContext(ContextBase):
 
     def create_lock(self):
         return self._actor_ctx.lock()
-
-    def build_named_tileable(self, named, rtype):
-        from .tensor.fetch import TensorFetch
-        from .dataframe.fetch import DataFrameFetch
-        from .dataframe.operands import ObjectType
-
-        tileable_key = self.get_tileable_key_by_name(named)
-        nsplits = self.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
-        shape = tuple(sum(s) for s in nsplits)
-        if rtype == 'tensor':
-            return TensorFetch().new_tensor([], shape=shape, _key=tileable_key)
-        elif rtype == 'series':
-            return DataFrameFetch(object_type=ObjectType.series).new_series(
-                [], shape=shape,  _key=tileable_key)
-        elif rtype == 'dataframe':
-            return DataFrameFetch(object_type=ObjectType.dataframe).new_dataframe(
-                [], shape=shape,  _key=tileable_key)
-        else:
-            raise TypeError('Unknown type {}'.format(rtype))
 
 
 class DistributedDictContext(DistributedContext, dict):
