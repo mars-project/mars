@@ -90,7 +90,7 @@ class Index(_Index):
         return object.__new__(cls)
 
     def __init__(self, data=None, dtype=None, copy=False, name=None,
-                 tupleize_cols=False, chunk_size=None, gpu=None, sparse=None):
+                 tupleize_cols=True, chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, INDEX_TYPE):
             if not hasattr(data, 'data'):
                 # IndexData

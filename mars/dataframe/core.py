@@ -463,8 +463,6 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
         """
         Create a DataFrame with a column containing the Index.
 
-        .. versionadded:: 0.24.0
-
         Parameters
         ----------
         index : bool, default True
