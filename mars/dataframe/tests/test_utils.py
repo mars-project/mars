@@ -102,7 +102,7 @@ class Test(unittest.TestCase):
         self.assertIsInstance(parsed_index.value, IndexValue.RangeIndex)
         pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-        index = pd.MultiIndex.from_arrays([[0, 1], ['a', 'b']])
+        index = pd.MultiIndex.from_arrays([[0, 1], ['a', 'b'], ['X', 'Y']])
         parsed_index = parse_index(index)  # not parse data
         self.assertIsInstance(parsed_index.value, IndexValue.MultiIndex)
         with self.assertRaises(AssertionError):
