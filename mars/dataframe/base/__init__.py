@@ -33,6 +33,7 @@ from .drop import df_drop, df_pop, series_drop, index_drop
 from .drop_duplicates import df_drop_duplicates, \
     series_drop_duplicates, index_drop_duplicates
 from .melt import melt
+from .set_label import DataFrameSetLabel
 
 
 def _install():

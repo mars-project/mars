@@ -166,7 +166,7 @@ class Entity(HasData):
 
     def __setattr__(self, key, value):
         try:
-            super().__setattr__(key, value)
+            object.__setattr__(self, key, value)
         except AttributeError:
             return setattr(self._data, key, value)
 

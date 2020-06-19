@@ -355,6 +355,7 @@ message OperandDef {
         DATAFRAME_DROP = 727;
         DROP_DUPLICATES = 728;
         MELT = 729;
+        SET_LABEL = 730;
 
         FUSE = 801;
 

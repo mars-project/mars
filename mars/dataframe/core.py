@@ -1188,6 +1188,14 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
     def columns(self):
         return self._data.columns
 
+    @columns.setter
+    def columns(self, new_columns):
+        from .base import DataFrameSetLabel
+
+        op = DataFrameSetLabel(axis=1, value=new_columns)
+        new_df = op(self)
+        self.data = new_df.data
+
     @property
     def dtypes(self):
         """
