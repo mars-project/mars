@@ -34,6 +34,7 @@ Conversion
 
    Series.astype
    Series.copy
+   Series.to_frame
    Series.to_tensor
 
 Indexing, iteration
