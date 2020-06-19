@@ -435,9 +435,12 @@ def _generate_value(dtype, fill_value):
 
 def build_empty_df(dtypes, index=None):
     columns = dtypes.index
-    df = pd.DataFrame(columns=columns, index=index)
-    for c, d in zip(columns, dtypes):
-        df[c] = pd.Series(dtype=d, index=index)
+    # duplicate column may exist,
+    # so use RangeIndex first
+    df = pd.DataFrame(columns=pd.RangeIndex(len(columns)), index=index)
+    for i, d in enumerate(dtypes):
+        df[i] = pd.Series(dtype=d, index=index)
+    df.columns = columns
     return df
 
 
@@ -454,7 +457,10 @@ def build_df(df_obj, fill_value=1, size=1):
 
     empty_df = pd.concat([empty_df] * size)
     # make sure dtypes correct for MultiIndex
-    empty_df = empty_df.astype(dtypes, copy=False)
+    for i, dtype in enumerate(dtypes.tolist()):
+        s = empty_df.iloc[:, i]
+        if s.dtype != dtype:
+            empty_df.iloc[:, i] = s.astype(dtype)
     return empty_df
 
 
