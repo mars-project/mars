@@ -300,6 +300,23 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(expected.sort_values(by=expected.columns[1]).reset_index(drop=True),
                                       result.sort_values(by=result.columns[1]).reset_index(drop=True))
 
+    def testMergeOnDuplicateColumns(self):
+        raw1 = pd.DataFrame([['foo', 1, 'bar'],
+                             ['bar', 2, 'foo'],
+                             ['baz', 3, 'foo']],
+                            columns=['lkey', 'value', 'value'],
+                            index=['a1', 'a2', 'a3'])
+        raw2 = pd.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+                             'value': [5, 6, 7, 8]}, index=['a1', 'a2', 'a3', 'a4'])
+
+        df1 = from_pandas(raw1, chunk_size=2)
+        df2 = from_pandas(raw2, chunk_size=3)
+
+        r = df1.merge(df2, left_on='lkey', right_on='rkey')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw1.merge(raw2, left_on='lkey', right_on='rkey')
+        pd.testing.assert_frame_equal(expected, result)
+
     def testAppendExecution(self):
         executor = ExecutorForTest(storage=new_session().context)
 
