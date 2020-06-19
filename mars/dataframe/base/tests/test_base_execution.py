@@ -1447,3 +1447,18 @@ class Test(TestBase):
             result = self.executor.execute_dataframe(series, concat=True)[0]
             expected = s.drop_duplicates()
             pd.testing.assert_series_equal(result, expected)
+
+    def testSetColumns(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.rand(10, 4))
+
+        df = from_pandas_df(raw, chunk_size=3)
+        df.columns = ['a', 'b', 'c', 'd']
+
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw.copy()
+        expected.columns = ['a', 'b', 'c', 'd']
+        pd.testing.assert_frame_equal(result, expected)
+
+        with self.assertRaises(ValueError):
+            df.columns = ['1', '2', '3']
