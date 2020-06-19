@@ -365,8 +365,9 @@ class Test(SchedulerIntegratedTest):
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        tileable_key = context.get_tileable_key_by_name('test')
-        self.assertEqual(a.key, tileable_key)
+        tileable_infos = context.get_named_tileable_infos('test')
+        self.assertEqual(a.key, tileable_infos.tileable_key)
+        self.assertEqual(a.shape, tileable_infos.tileable_shape)
 
         nsplits = context.get_tileable_metas([a.key], filter_fields=['nsplits'])[0][0]
         self.assertEqual(((4, 4, 2), (4, 4, 2)), nsplits)

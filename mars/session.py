@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import json
 import threading
 import time
@@ -153,6 +154,9 @@ class LocalSession(object):
         self._executor.execute_tileables([sealed_tensor])
         return sealed_tensor
 
+    def get_named_tileable_infos(self, name):
+        return self._context.get_named_tileable_infos(name)
+
     def decref(self, *keys):
         self._executor.decref(*keys)
 
@@ -166,6 +170,7 @@ class LocalSession(object):
 class ClusterSession(object):
     def __init__(self, endpoint, session_id=None, **kwargs):
         from .api import MarsAPI
+        from .context import DistributedContext
 
         self._endpoint = endpoint
         # dict structure: {tileable_key -> graph_key, tileable_ids}
@@ -182,6 +187,8 @@ class ClusterSession(object):
             self._session_id = session_id
             if not self._api.has_session(self._session_id):
                 raise ValueError('The session with id = %s doesn\'t exist' % self._session_id)
+
+        self._context = DistributedContext(endpoint, self._session_id)
 
         if kwargs:
             unexpected_keys = ', '.join(list(kwargs.keys()))
@@ -201,6 +208,10 @@ class ClusterSession(object):
 
         self._endpoint = endpoint
         self._api = MarsAPI(self._endpoint)
+
+    @property
+    def context(self):
+        return self._context
 
     def _get_tileable_graph_key(self, tileable_key):
         return self._executed_tileables[tileable_key][0]
@@ -259,6 +270,9 @@ class ClusterSession(object):
         timeout = kw.pop('timeout', -1)
         fetch = kw.pop('fetch', True)
         compose = kw.pop('compose', True)
+        name = kw.pop('name', None)
+        if not isinstance(name, (tuple, list)):
+            name = [name]
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
@@ -271,7 +285,7 @@ class ClusterSession(object):
 
         # submit graph to local cluster
         self._api.submit_graph(self._session_id, json.dumps(graph.to_json(), separators=(',', ':')),
-                               graph_key, targets, compose=compose)
+                               graph_key, targets, compose=compose, names=name)
 
         exec_start_time = time.time()
         time_elapsed = 0
@@ -350,6 +364,9 @@ class ClusterSession(object):
         self._api.delete_data(self._session_id, graph_key, tileable_key, wait=wait)
         del self._executed_tileables[tileable_key]
 
+    def get_named_tileable_infos(self, name):
+        return self._context.get_named_tileable_infos(name)
+
     def __enter__(self):
         return self
 
@@ -380,7 +397,12 @@ class Session(object):
 
                 self._sess = ClusterSession(endpoint, **kwargs)
         else:
-            self._sess = LocalSession(**kwargs)
+            try:
+                endpoint = os.environ['MARS_SCHEDULER_ADDRESS']
+                session_id = os.environ.get('MARS_SESSION_ID', None)
+                self._sess = ClusterSession(endpoint, session_id=session_id)
+            except KeyError:
+                self._sess = LocalSession(**kwargs)
 
     def __getstate__(self):
         return self._endpoint, self._kws, self.session_id

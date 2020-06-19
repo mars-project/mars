@@ -230,3 +230,8 @@ class MarsAPI(object):
         graph_ref = self.get_actor_ref(graph_uid)
 
         return graph_ref.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+
+    def get_tileable_key_by_name(self, session_id, name):
+        session_uid = SessionActor.gen_uid(session_id)
+        session_ref = self.get_actor_ref(session_uid)
+        return session_ref.get_tileable_key(name)

@@ -17,6 +17,7 @@ import pandas as pd
 from ..core import Base, Entity
 from ..tensor import tensor as astensor
 from ..tensor.core import TENSOR_TYPE
+from .operands import ObjectType
 from .core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DataFrame as _Frame, \
     Series as _Series, Index as _Index
 from .datasource.dataframe import from_pandas as from_pandas_df
@@ -24,17 +25,13 @@ from .datasource.series import from_pandas as from_pandas_series
 from .datasource.index import from_pandas as from_pandas_index
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
     dataframe_from_1d_tileables
+from .fetch import DataFrameFetch
 
 
 class DataFrame(_Frame):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
-                 chunk_size=None, gpu=None, sparse=None, named=None):
-        if named is not None:
-            from ..context import get_context
-
-            context = get_context()
-            df = context.build_named_tileable(named=named, rtype='dataframe')
-        elif isinstance(data, TENSOR_TYPE):
+                 chunk_size=None, gpu=None, sparse=None):
+        if isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
@@ -59,13 +56,8 @@ class DataFrame(_Frame):
 
 class Series(_Series):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False,
-                 chunk_size=None, gpu=None, sparse=None, named=None):
-        if named is not None:
-            from ..context import get_context
-
-            context = get_context()
-            series = context.build_named_tileable(named=named, rtype='series')
-        elif isinstance(data, TENSOR_TYPE):
+                 chunk_size=None, gpu=None, sparse=None):
+        if isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)
@@ -103,3 +95,23 @@ class Index(_Index):
             index = from_pandas_index(pd_index, chunk_size=chunk_size,
                                       gpu=gpu, sparse=sparse)
         super().__init__(index.data)
+
+
+def named_dataframe(name, session=None):
+    from ..session import Session
+
+    sess = session or Session.default_or_local()
+    tileable_infos = sess.get_named_tileable_infos(name=name)
+    fetch_op = DataFrameFetch(object_type=ObjectType.dataframe)
+    return fetch_op.new_dataframe([], shape=tileable_infos.tileable_shape,
+                                  _key=tileable_infos.tileable_key)
+
+
+def named_series(name, session=None):
+    from ..session import Session
+
+    sess = session or Session.default_or_local()
+    tileable_infos = sess.get_named_tileable_infos(name=name)
+    fetch_op = DataFrameFetch(object_type=ObjectType.series)
+    return fetch_op.new_series([], shape=tileable_infos.tileable_shape,
+                               _key=tileable_infos.tileable_key)
