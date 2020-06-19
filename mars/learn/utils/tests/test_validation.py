@@ -31,7 +31,7 @@ try:
     from sklearn.utils._testing import assert_raise_message, assert_raises_regex
     import pytest
 
-    from mars.learn.utils.validation import check_array
+    from mars.learn.utils.validation import check_array, check_consistent_length
 except ImportError:
     sklearn = None
 
@@ -245,3 +245,12 @@ class Test(unittest.TestCase):
         X = sp.coo_matrix([[0, 1 + 2j], [0, 0]])
         assert_raises_regex(
             ValueError, "Complex data not supported", check_array, X)
+
+    def testCheckConsistentLength(self):
+        t = mt.random.RandomState(0).rand(10, 5)
+        t2 = t[t[:, 0] < 0.5]
+        t3 = t[t[:, 1] < 0.1]
+
+        check_consistent_length(t2, t2.copy())
+        with self.assertRaises(ValueError):
+            check_consistent_length(t2, t3)

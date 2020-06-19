@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover
     DataConversionWarning = UserWarning
 
 from ... import tensor as mt
+from ...core import ExecutableTuple
 from ...lib.sparse import issparse
 from ...tensor import Tensor
 from .checks import check_non_negative_then_return_value, \
@@ -80,7 +81,23 @@ def check_consistent_length(*arrays):
         Objects that will be checked for consistent length.
     """
 
-    lengths = [_num_samples(X) for X in arrays if X is not None]
+    new_arrays = []
+    lengths = []
+    to_execute = []
+    for X in arrays:
+        if X is not None:
+            n = _num_samples(X)
+            if np.isnan(n):
+                to_execute.append(X)
+            new_arrays.append(X)
+            lengths.append(n)
+    # unknown length exists
+    if len(to_execute) > 0:
+        # update shape
+        ExecutableTuple(to_execute).execute()
+        # get length again
+        lengths = [_num_samples(X) for X in new_arrays]
+
     uniques = np.unique(lengths)
     if len(uniques) > 1:
         raise ValueError("Found input variables with inconsistent numbers of"
