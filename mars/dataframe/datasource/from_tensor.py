@@ -422,7 +422,8 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(chunk_pd_index, store_data=True)
             index_start += in_chunk.shape[0]
             out_chunk = new_op.new_chunk(chunk_inputs, shape=in_chunk.shape, index=in_chunk.index,
-                                         index_value=index_value, name=out_series.name)
+                                         index_value=index_value, name=out_series.name,
+                                         dtype=out_series.dtype)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

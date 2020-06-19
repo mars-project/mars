@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
 from io import StringIO
 from typing import Union
 
@@ -185,11 +186,15 @@ class IndexValue(Serializable):
         _data = NDArrayField('data')
         _sortorder = Int32Field('sortorder')
 
+        @property
+        def names(self) -> list:
+            return self._names
+
         def to_pandas(self):
             data = getattr(self, '_data', None)
             if data is None:
-                return pd.MultiIndex.from_arrays([[], []], sortorder=self._sortorder,
-                                                 names=self._names)
+                return pd.MultiIndex.from_arrays([[] for _ in range(len(self._names))],
+                                                 sortorder=self._sortorder, names=self._names)
             return pd.MultiIndex.from_tuples([tuple(d) for d in data], sortorder=self._sortorder,
                                              names=self._names)
 
@@ -425,6 +430,10 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
     def index_value(self) -> IndexValue:
         return self._index_value
 
+    def to_tensor(self, dtype=None, extract_multi_index=False):
+        from ..tensor.datasource.from_dataframe import from_index
+        return from_index(self, dtype=dtype, extract_multi_index=extract_multi_index)
+
 
 class Index(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = ()
@@ -441,6 +450,109 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
 
     def __len__(self):
         return len(self._data)
+
+    def _to_mars_tensor(self, dtype=None, order='K', extract_multi_index=False):
+        tensor = self._data.to_tensor(extract_multi_index=extract_multi_index)
+        dtype = dtype if dtype is not None else tensor.dtype
+        return tensor.astype(dtype=dtype, order=order, copy=False)
+
+    def __mars_tensor__(self, dtype=None, order='K'):
+        return self._to_mars_tensor(dtype=dtype, order=order)
+
+    def to_frame(self, index: bool = True, name=None):
+        """
+        Create a DataFrame with a column containing the Index.
+
+        Parameters
+        ----------
+        index : bool, default True
+            Set the index of the returned DataFrame as the original Index.
+
+        name : object, default None
+            The passed name should substitute for the index name (if it has
+            one).
+
+        Returns
+        -------
+        DataFrame
+            DataFrame containing the original Index data.
+
+        See Also
+        --------
+        Index.to_series : Convert an Index to a Series.
+        Series.to_frame : Convert Series to DataFrame.
+
+        Examples
+        --------
+        >>> import mars.dataframe as md
+        >>> idx = md.Index(['Ant', 'Bear', 'Cow'], name='animal')
+        >>> idx.to_frame().execute()
+               animal
+        animal
+        Ant       Ant
+        Bear     Bear
+        Cow       Cow
+
+        By default, the original Index is reused. To enforce a new Index:
+
+        >>> idx.to_frame(index=False).execute()
+          animal
+        0    Ant
+        1   Bear
+        2    Cow
+
+        To override the name of the resulting column, specify `name`:
+
+        >>> idx.to_frame(index=False, name='zoo').execute()
+            zoo
+        0   Ant
+        1  Bear
+        2   Cow
+        """
+        from . import dataframe_from_tensor
+
+        if isinstance(self.index_value.value, IndexValue.MultiIndex):
+            old_names = self.index_value.value.names
+
+            if name is not None and not isinstance(name, Iterable) or isinstance(name, str):
+                raise TypeError("'name' must be a list / sequence of column names.")
+
+            name = list(name if name is not None else old_names)
+            if len(name) != len(old_names):
+                raise ValueError("'name' should have same length as number of levels on index.")
+
+            columns = [old or new or idx for idx, (old, new) in enumerate(zip(old_names, name))]
+        else:
+            columns = [name or self.name or 0]
+        index_ = self if index else None
+        return dataframe_from_tensor(self._to_mars_tensor(self, extract_multi_index=True),
+                                     index=index_, columns=columns)
+
+    def to_series(self, index=None, name=None):
+        """
+        Create a Series with both index and values equal to the index keys.
+
+        Useful with map for returning an indexer based on an index.
+
+        Parameters
+        ----------
+        index : Index, optional
+            Index of resulting Series. If None, defaults to original index.
+        name : str, optional
+            Dame of resulting Series. If None, defaults to name of original
+            index.
+
+        Returns
+        -------
+        Series
+            The dtype will be based on the type of the Index values.
+        """
+        from ..tensor import tensor as astensor
+        from . import series_from_tensor
+
+        name = name or self.name or 0
+        index_ = index if index is not None else self
+        return series_from_tensor(astensor(self), index=index_, name=name)
 
 
 class RangeIndex(Index):
@@ -735,6 +847,37 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
         tensor = self._data.to_tensor()
         dtype = dtype if dtype is not None else tensor.dtype
         return tensor.astype(dtype=dtype, order=order, copy=False)
+
+    def to_frame(self, name=None):
+        """
+        Convert Series to DataFrame.
+
+        Parameters
+        ----------
+        name : object, default None
+            The passed name should substitute for the series name (if it has
+            one).
+
+        Returns
+        -------
+        DataFrame
+            DataFrame representation of Series.
+
+        Examples
+        --------
+        >>> import mars.dataframe as md
+        >>> s = md.Series(["a", "b", "c"], name="vals")
+        >>> s.to_frame().execute()
+          vals
+        0    a
+        1    b
+        2    c
+        """
+        from ..tensor import tensor as astensor
+        from . import dataframe_from_tensor
+
+        name = name or self.name or 0
+        return dataframe_from_tensor(astensor(self), columns=[name])
 
 
 class BaseDataFrameChunkData(ChunkData):
