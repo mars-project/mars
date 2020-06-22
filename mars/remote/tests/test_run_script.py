@@ -18,20 +18,25 @@ from mars.tests.core import TestBase
 from mars.remote import run_script
 
 
-script = b"""
+script1 = b"""
 import os
 assert os.environ['WORLD_SIZE'] == '2'
 """
 
+script2 = b"""
+assert session is not None
+"""
+
 
 class Test(TestBase):
-    def testLocalRunPyTorchScript(self):
-        s = BytesIO(script)
-        self.assertEqual(run_script(
-            s, n_workers=2, run_kwargs={'n_parallel': 2}, mode='exec'
-        )['status'], 'ok')
-
-        s = BytesIO(script)
+    def testLocalRunScript(self):
+        s = BytesIO(script1)
         self.assertEqual(run_script(
             s, n_workers=2, run_kwargs={'n_parallel': 2}
+        )['status'], 'ok')
+
+    def testLocalRunScriptWithExec(self):
+        s = BytesIO(script2)
+        self.assertEqual(run_script(
+            s, n_workers=2, run_kwargs={'n_parallel': 2}, mode='exec'
         )['status'], 'ok')

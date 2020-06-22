@@ -98,7 +98,7 @@ class RunPyTorch(RunScript):
 
 
 def run_pytorch_script(script, n_workers, gpu=None, command_argv=None,
-                       session=None, run_kwargs=None, port=None):
+                       retry_when_fail=False, session=None, run_kwargs=None, port=None):
     """
     Run PyTorch script in Mars cluster.
 
@@ -107,6 +107,7 @@ def run_pytorch_script(script, n_workers, gpu=None, command_argv=None,
     :param n_workers: number of PyTorch workers
     :param gpu: run PyTorch script on GPU
     :param command_argv: extra command args for script
+    :param retry_when_fail: bool, default False. If True, retry when function failed.
     :param session: Mars session, if not provided, will use default one
     :param run_kwargs: extra kwargs for session.run
     :param port: port of PyTorch worker or ps, will automatically increase for the same worker
@@ -121,6 +122,6 @@ def run_pytorch_script(script, n_workers, gpu=None, command_argv=None,
             code = f.read()
 
     port = 29500 if port is None else port
-    op = RunPyTorch(code=to_binary(code), world_size=int(n_workers),
+    op = RunPyTorch(code=to_binary(code), world_size=int(n_workers), retry_when_fail=retry_when_fail,
                     gpu=gpu, master_port=port, command_args=command_argv)
     return op().execute(session=session, **(run_kwargs or {})).fetch(session=session)
