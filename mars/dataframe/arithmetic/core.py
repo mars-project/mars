@@ -70,7 +70,7 @@ class DataFrameBinOp(DataFrameOperand):
         else:
             if isinstance(self._lhs, (DATAFRAME_TYPE, SERIES_TYPE)):
                 self._lhs = self._inputs[0]
-            elif np.isscalar(self._lhs):
+            elif pd.api.types.is_scalar(self._lhs):
                 self._rhs = self._inputs[0]
 
 
@@ -181,7 +181,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _tile_scalar(cls, op):
-        tileable = op.rhs if np.isscalar(op.lhs) else op.lhs
+        tileable = op.rhs if pd.api.types.is_scalar(op.lhs) else op.lhs
         df = op.outputs[0]
         out_chunks = []
         for chunk in tileable.chunks:
@@ -270,7 +270,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 func_name = getattr(cls, '_rfunc_name')
             else:
                 func_name = getattr(cls, '_func_name')
-        elif np.isscalar(op.lhs) or isinstance(op.lhs, np.ndarray):
+        elif pd.api.types.is_scalar(op.lhs) or isinstance(op.lhs, np.ndarray):
             df = ctx[op.rhs.key]
             other = op.lhs
             func_name = getattr(cls, '_rfunc_name')
@@ -297,10 +297,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     @classmethod
     def _calc_properties(cls, x1, x2=None, axis='columns'):
         if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) \
-                and (x2 is None or np.isscalar(x2) or isinstance(x2, TENSOR_TYPE)):
+                and (x2 is None or pd.api.types.is_scalar(x2) or isinstance(x2, TENSOR_TYPE)):
             if x2 is None:
                 dtypes = x1.dtypes
-            elif np.isscalar(x2):
+            elif pd.api.types.is_scalar(x2):
                 dtypes = infer_dtypes(x1.dtypes, pd.Series(np.array(x2).dtype), cls._operator)
             elif x1.dtypes is not None and isinstance(x2, TENSOR_TYPE):
                 dtypes = pd.Series(
@@ -312,7 +312,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     'columns_value': x1.columns_value, 'index_value': x1.index_value}
 
         if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) \
-                and (x2 is None or np.isscalar(x2) or isinstance(x2, TENSOR_TYPE)):
+                and (x2 is None or pd.api.types.is_scalar(x2) or isinstance(x2, TENSOR_TYPE)):
             x2_dtype = x2.dtype if hasattr(x2, 'dtype') else type(x2)
             dtype = infer_dtype(x1.dtype, np.dtype(x2_dtype), cls._operator)
             return {'shape': x1.shape, 'dtype': dtype, 'index_value': x1.index_value}
@@ -436,7 +436,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @staticmethod
     def _process_input(x):
-        if isinstance(x, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(x):
+        if isinstance(x, (DATAFRAME_TYPE, SERIES_TYPE)) or pd.api.types.is_scalar(x):
             return x
         elif isinstance(x, pd.Series):
             return Series(x)
@@ -478,7 +478,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             df1, df2 = (x1, x2) if isinstance(x1, DATAFRAME_TYPE) else (x2, x1)
             setattr(self, '_object_type', ObjectType.dataframe)
             kw = self._calc_properties(df1, df2, axis=self.axis)
-            if not np.isscalar(df2):
+            if not pd.api.types.is_scalar(df2):
                 return self.new_dataframe([x1, x2], **kw)
             else:
                 return self.new_dataframe([df1], **kw)
@@ -486,7 +486,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             s1, s2 = (x1, x2) if isinstance(x1, SERIES_TYPE) else (x2, x1)
             setattr(self, '_object_type', ObjectType.series)
             kw = self._calc_properties(s1, s2)
-            if not np.isscalar(s2):
+            if not pd.api.types.is_scalar(s2):
                 return self.new_series([x1, x2], **kw)
             else:
                 return self.new_series([s1], **kw)

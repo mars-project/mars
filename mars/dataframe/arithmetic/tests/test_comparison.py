@@ -14,6 +14,7 @@
 
 import operator
 import unittest
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -48,3 +49,11 @@ class Test(unittest.TestCase):
                                          columns=['a', 'b', 'c']))
             with self.assertRaises(ValueError):
                 op(df1, df4)
+
+        # test datetime
+        df = DataFrame(pd.DataFrame(pd.date_range('20130101', periods=6)))
+        for op in [operator.eq, operator.ne, operator.lt, operator.gt,
+                   operator.le, operator.ge]:
+            r_df = op(df, datetime(2013, 1, 2))
+            pd.testing.assert_index_equal(r_df.index_value.to_pandas(),
+                                          df.index_value.to_pandas())
