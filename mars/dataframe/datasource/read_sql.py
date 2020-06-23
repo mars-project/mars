@@ -63,7 +63,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                  incremental_index=None, offset=None, partition_col=None,
                  num_partitions=None, low_limit=None, high_limit=None, left_end=None,
                  right_end=None, object_type=None, gpu=None, **kw):
-        super().__init__(_table_or_sql=table_or_sql, selectable=selectable, _con=con,
+        super().__init__(_table_or_sql=table_or_sql, _selectable=selectable, _con=con,
                          _schema=schema, _index_col=index_col, _coerce_float=coerce_float,
                          _parse_dates=parse_dates, _columns=columns,
                          _engine_kwargs=engine_kwargs, _row_memory_usage=row_memory_usage,
@@ -150,42 +150,41 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
     def right_end(self):
         return self._right_end
 
-    def _get_selectable(self, engine_or_conn):
+    def _get_selectable(self, engine_or_conn, columns=None):
         import sqlalchemy as sa
         from sqlalchemy import sql
         from sqlalchemy.exc import NoSuchTableError
 
         # process table_name
-        if self._table_or_sql is not None:
+        if self._selectable is not None:
+            selectable = self._selectable
+        else:
             if isinstance(self._table_or_sql, sa.Table):
                 selectable = self._table_or_sql
                 self._table_or_sql = selectable.name
-                result_cols = selectable.columns
             else:
                 m = sa.MetaData()
                 try:
                     selectable = sa.Table(self._table_or_sql, m, autoload=True,
                                           autoload_with=engine_or_conn, schema=self._schema)
-                    result_cols = selectable.columns
                 except NoSuchTableError:
-                    col_query = 'SELECT * FROM (%s) WHERE 1=0' % (self._table_or_sql,)
                     temp_table_name = 'temp_' + binascii.b2a_hex(uuid.uuid4().bytes).decode()
-                    result_cols = self._columns or list(engine_or_conn.execute(col_query).keys())
+                    if columns:
+                        selectable = sql.text(self._table_or_sql).columns(*[sql.column(c) for c in columns])
+                    else:
+                        selectable = sql.select(
+                            '*', from_obj=sql.text('(%s) AS %s' % (self._table_or_sql, temp_table_name)))
+                    self._selectable = selectable
+        return selectable
 
-                    sql_table = sql.text(self._table_or_sql).columns(*[sql.column(c) for c in result_cols]) \
-                        .alias(temp_table_name)
-                    self._table_or_sql = None
-                    selectable = self._selectable = sql.select([sql_table])
-        else:
-            selectable = self._selectable
-            result_cols = self._columns or list(engine_or_conn.execute(selectable.where(sql.text('1=0'))).keys())
-        return selectable, result_cols
-
-    def _collect_info(self, engine_or_conn, table, columns, test_rows):
+    def _collect_info(self, engine_or_conn, selectable, columns, test_rows):
         from sqlalchemy import sql
 
         # fetch test DataFrame
-        query = sql.select(columns).limit(test_rows)
+        if columns:
+            query = sql.select([sql.column(c) for c in columns], from_obj=selectable).limit(test_rows)
+        else:
+            query = sql.select('*', from_obj=selectable).limit(test_rows)
         test_df = pd.read_sql(query, engine_or_conn, index_col=self._index_col,
                               coerce_float=self._coerce_float,
                               parse_dates=self._parse_dates)
@@ -195,7 +194,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
         if self._method == 'offset':
             # fetch size
             size = list(engine_or_conn.execute(
-                sql.select([sql.func.count()]).select_from(table)))[0][0]
+                sql.select([sql.func.count()]).select_from(selectable)))[0][0]
             shape = (size, test_df.shape[1])
         else:
             shape = (np.nan, test_df.shape[1])
@@ -208,8 +207,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
 
         with create_sa_connection(self._con, **(self._engine_kwargs or dict())) as con:
             self._con = str(con.engine.url)
-
-            selectable, src_columns = self._get_selectable(con)
+            selectable = self._get_selectable(con)
 
             # process index_col
             index_col = self._index_col
@@ -217,36 +215,37 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                 if not isinstance(index_col, (list, tuple)):
                     index_col = (index_col,)
                 new_index_col = []
-                sa_index_col = []
                 for col in index_col:
                     if isinstance(col, (sa.Column, elements.Label)):
                         new_index_col.append(col.name)
-                        sa_index_col.append(col)
                     elif isinstance(col, str):
-                        sa_index_col.append(selectable.columns[col])
                         new_index_col.append(col)
                     elif col is not None:
                         raise TypeError('unknown index_col type: {}'.format(type(col)))
                 self._index_col = new_index_col
-                index_col = sa_index_col
 
             # process columns
-            columns = self._columns if self._columns is not None else src_columns
+            columns = self._columns or []
             new_columns = []
-            sa_columns = []
             for col in columns:
                 if isinstance(col, str):
                     new_columns.append(col)
-                    sa_columns.append(selectable.columns[col])
                 else:
                     new_columns.append(col.name)
-                    sa_columns.append(col)
             self._columns = new_columns
-            if self._index_col is not None:
-                for icol in index_col:
-                    sa_columns.append(icol)
 
-            test_df, shape = self._collect_info(con, selectable, sa_columns, test_rows)
+            if self._columns:
+                collect_cols = self._columns + (self._index_col or [])
+            else:
+                collect_cols = []
+            test_df, shape = self._collect_info(con, selectable, collect_cols, test_rows)
+
+            # reconstruct selectable using known column names
+            if not collect_cols:
+                self._columns = list(test_df.columns)
+                if self._selectable is not None:
+                    self._selectable = None
+                    self._get_selectable(con, columns=self._columns + (self._index_col or []))
 
             if self.method == 'partition':
                 if not self.index_col or self.partition_col not in self.index_col:
@@ -313,7 +312,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
     def _tile_partition(cls, op: 'DataFrameReadSQL'):
         df = op.outputs[0]
 
-        selectable, _ = op._get_selectable(None)
+        selectable = op._get_selectable(None)
 
         if op._low_limit is None or op._high_limit is None:
             import sqlalchemy as sa
@@ -389,7 +388,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
 
         engine = sa.create_engine(op.con, **(op.engine_kwargs or dict()))
         try:
-            selectable, _ = op._get_selectable(engine)
+            selectable = op._get_selectable(engine)
 
             columns = [selectable.columns[col] for col in op.columns]
             column_names = set(op.columns)
@@ -447,7 +446,7 @@ def _read_sql(table_or_sql, con, schema=None, index_col=None, coerce_float=True,
         raise NotImplementedError('read_sql_query with chunksize not supported')
     method = 'offset' if partition_col is None else 'partition'
 
-    op = DataFrameReadSQL(table_or_sql=table_or_sql, con=con, schema=schema,
+    op = DataFrameReadSQL(table_or_sql=table_or_sql, selectable=None, con=con, schema=schema,
                           index_col=index_col, coerce_float=coerce_float,
                           params=params, parse_dates=parse_dates, columns=columns,
                           engine_kwargs=engine_kwargs, incremental_index=incremental_index,
