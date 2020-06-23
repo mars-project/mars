@@ -91,6 +91,7 @@ mars.dataframe.Series
       ~Series.tiles
       ~Series.to_cpu
       ~Series.to_csv
+      ~Series.to_frame
       ~Series.to_gpu
       ~Series.to_pandas
       ~Series.to_sql

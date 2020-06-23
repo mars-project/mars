@@ -27,7 +27,7 @@ from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..align import align_dataframe_series, align_dataframe_dataframe
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, \
-    DATAFRAME_CHUNK_TYPE, TILEABLE_TYPE, CHUNK_TYPE, IndexValue
+    DATAFRAME_CHUNK_TYPE, TILEABLE_TYPE, CHUNK_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index, in_range_index
@@ -402,9 +402,7 @@ def dataframe_getitem(df, item):
 
     if isinstance(item, slice):
         edge = item.start if item.start is not None else item.stop
-        if isinstance(edge, Integral) and not \
-                isinstance(df.index_value, (IndexValue.RangeIndex, IndexValue.Int64Index,
-                                            IndexValue.UInt64Index)):
+        if isinstance(edge, Integral):
             return df.iloc[item]
         else:
             return df.loc[item]
