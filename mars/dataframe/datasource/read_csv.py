@@ -64,7 +64,7 @@ def _find_hdfs_start_end(f, offset, size):
 
 
 def _find_chunk_start_end(f, offset, size):
-    if isinstance(f, HdfsFile):
+    if HdfsFile is not None and isinstance(f, HdfsFile):
         return _find_hdfs_start_end(f, offset, size)
     f.seek(offset)
     if f.tell() == 0:
