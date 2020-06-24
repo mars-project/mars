@@ -25,7 +25,7 @@ from urllib.parse import urlparse
 try:
     from pyarrow import FileSystem, LocalFileSystem
     from pyarrow.util import implements
-except ImportError:
+except ImportError:  # pragma: no cover
     def implements(f):
         def decorator(g):
             g.__doc__ = f.__doc__
