@@ -1084,9 +1084,6 @@ class SparseArray(SparseNDArray):
         if isinstance(item, list):
             item = tuple(item)
 
-        if not all(isinstance(i, slice) for i in item):
-            raise NotImplementedError('sparse matrix only support slice for indexing')
-
         x = self.spmatrix[item]
         if issparse(x):
             return SparseNDArray(x, shape=self.shape)
