@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover
     check_is_fitted = None
     DataConversionWarning = UserWarning
 
+from ... import dataframe as md
 from ... import tensor as mt
 from ...core import ExecutableTuple
 from ...lib.sparse import issparse
@@ -70,7 +71,7 @@ def _num_samples(x):
         return len(x)
 
 
-def check_consistent_length(*arrays):
+def check_consistent_length(*arrays, session=None, run_kwargs=None):
     """Check that all arrays have consistent first dimensions.
 
     Checks whether all objects in arrays have the same shape or length.
@@ -94,7 +95,8 @@ def check_consistent_length(*arrays):
     # unknown length exists
     if len(to_execute) > 0:
         # update shape
-        ExecutableTuple(to_execute).execute()
+        ExecutableTuple(to_execute).execute(session=session,
+                                            **(run_kwargs or dict()))
         # get length again
         lengths = [_num_samples(X) for X in new_arrays]
 
@@ -102,6 +104,46 @@ def check_consistent_length(*arrays):
     if len(uniques) > 1:
         raise ValueError("Found input variables with inconsistent numbers of"
                          " samples: %r" % [int(l) for l in lengths])
+
+
+def _make_indexable(iterable):
+    """Ensure iterable supports indexing or convert to an indexable variant.
+
+    Convert sparse matrices to csr and other non-indexable iterable to arrays.
+    Let `None` and indexable objects (e.g. pandas dataframes) pass unchanged.
+
+    Parameters
+    ----------
+    iterable : {list, dataframe, array, sparse} or None
+        Object to be converted to an indexable iterable.
+    """
+    if issparse(iterable):
+        return mt.tensor(iterable)
+    elif hasattr(iterable, "iloc"):
+        return md.DataFrame(iterable)
+    elif hasattr(iterable, "__getitem__"):
+        return mt.tensor(iterable)
+    elif iterable is None:
+        return iterable
+    return mt.tensor(iterable)
+
+
+def indexable(*iterables, session=None, run_kwargs=None):
+    """Make arrays indexable for cross-validation.
+
+    Checks consistent length, passes through None, and ensures that everything
+    can be indexed by converting sparse matrices to csr and converting
+    non-interable objects to arrays.
+
+    Parameters
+    ----------
+    *iterables : lists, dataframes, arrays, sparse matrices
+        List of objects to ensure sliceability.
+    """
+    result = [_make_indexable(X) for X in iterables]
+    check_consistent_length(*result, session=session,
+                            run_kwargs=run_kwargs)
+    return result
 
 
 def _ensure_no_complex_data(array):

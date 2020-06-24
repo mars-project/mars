@@ -21,11 +21,12 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...dataframe.utils import parse_index
+from ...lib import sparse
 from ...operands import OperandStage
 from ...serialize import ValueType, TupleField, KeyField
 from ...tensor.utils import validate_axis, check_random_state, gen_random_seeds, decide_unify_split
 from ...tensor.array_utils import get_array_module
-from ...dataframe.utils import parse_index
 from ...utils import tokenize, get_shuffle_input_keys_idxes, lazy_import, check_chunks_unknown_shape
 from ...tiles import TilesError
 from ...core import ExecutableTuple
@@ -286,8 +287,11 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
         conv = lambda x: x
         if op.output_types[0] == OutputType.tensor:
             xp = get_array_module(x)
-            conv = xp.ascontiguousarray \
-                if op.outputs[0].order.value == 'C' else xp.asfortranarray
+            if xp is sparse:
+                conv = lambda x: x
+            else:
+                conv = xp.ascontiguousarray \
+                    if op.outputs[0].order.value == 'C' else xp.asfortranarray
 
         for axis, seed in zip(op.axes, op.seeds):
             size = x.shape[axis]
