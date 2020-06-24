@@ -15,12 +15,12 @@
 import os
 import shutil
 import tempfile
+import unittest
 
-from mars.tests.core import TestBase
 from mars.filesystem import _parse_from_path, LocalFileSystem, glob, FSMap
 
 
-class Test(TestBase):
+class Test(unittest.TestCase):
 
     def testPathParser(self):
         path = 'hdfs://user:password@localhost:8080/test'
