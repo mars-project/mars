@@ -91,6 +91,16 @@ Pairwise metrics
    metrics.pairwise.rbf_kernel
    metrics.pairwise_distances
 
+Splitter Functions
+------------------
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   model_selection.train_test_split
+
 .. _neighbors_ref:
 
 Nearest Neighbors
