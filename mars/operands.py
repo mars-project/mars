@@ -570,9 +570,20 @@ class ObjectOperandMixin(TileableOperandMixin):
     def get_fetch_op_cls(self, obj):
         return ObjectFetch
 
+    def get_fuse_op_cls(self, obj):
+        return ObjectFuseChunk
+
 
 class ObjectFetchMixin(ObjectOperandMixin, FetchMixin):
     __slots__ = ()
+
+
+class ObjectFuseChunkMixin(FuseChunkMixin, ObjectOperandMixin):
+    __slots__ = ()
+
+
+class ObjectFuseChunk(ObjectFuseChunkMixin, Fuse):
+    pass
 
 
 class ObjectFetch(Fetch, ObjectFetchMixin):
@@ -590,7 +601,32 @@ class ObjectFetch(Fetch, ObjectFetchMixin):
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
-class SuccessorsExclusive(VirtualOperand, ObjectOperandMixin):
+class MergeDictOperand(ObjectOperand, ObjectOperandMixin):
+    _merge = BoolField('merge')
+
+    def __init__(self, merge=None, **kw):
+        super().__init__(_merge=merge, _object_type=Object, **kw)
+
+    @property
+    def merge(self):
+        return self._merge
+
+    @classmethod
+    def concat_tileable_chunks(cls, tileable):
+        assert not tileable.is_coarse()
+
+        op = cls(merge=True)
+        chunk = cls(merge=True).new_chunk(tileable.chunks)
+        return op.new_tileable([tileable], chunks=[chunk], nsplits=((1,),))
+
+    @classmethod
+    def execute(cls, ctx, op):
+        assert op.merge
+        inputs = [ctx[inp.key] for inp in op.inputs]
+        ctx[op.outputs[0].key] = next(inp for inp in inputs if inp)
+
+
+class SuccessorsExclusive(ObjectOperandMixin, VirtualOperand):
     _op_module_ = 'core'
     _op_type_ = OperandDef.SUCCESSORS_EXCLUSIVE
 

@@ -18,9 +18,9 @@ from collections import OrderedDict, defaultdict
 import numpy as np
 
 from ....serialize import ValueType, DictField, KeyField, ListField
+from ....operands import MergeDictOperand
 from .... import opcodes as OperandDef
 from ....context import get_context, RunningMode
-from ...operands import LearnMergeDictOperand, OutputType
 from .start_tracker import StartTracker
 from .dmatrix import ToDMatrix
 
@@ -31,7 +31,7 @@ def _on_serialize_evals(evals_val):
     return [list(x) for x in evals_val]
 
 
-class XGBTrain(LearnMergeDictOperand):
+class XGBTrain(MergeDictOperand):
     _op_type_ = OperandDef.XGBOOST_TRAIN
 
     _params = DictField('params', key_type=ValueType.string)
@@ -41,12 +41,9 @@ class XGBTrain(LearnMergeDictOperand):
     _tracker = KeyField('tracker')
 
     def __init__(self, params=None, dtrain=None, evals=None, kwargs=None,
-                 tracker=None, merge=None, gpu=None, output_types=None, **kw):
+                 tracker=None, gpu=None, **kw):
         super().__init__(_params=params, _dtrain=dtrain, _evals=evals, _kwargs=kwargs,
-                         _tracker=tracker, _merge=merge, _gpu=gpu,
-                         _output_types=output_types, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
+                         _tracker=tracker, _gpu=gpu, **kw)
 
     @property
     def params(self):
