@@ -24,7 +24,7 @@ from ...tensor.core import TENSOR_TYPE, ChunkData, Chunk
 from ...utils import classproperty
 from ..align import align_series_series, align_dataframe_series, align_dataframe_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
-from ..operands import DataFrameOperandMixin, ObjectType, DataFrameOperand
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..initializer import Series, DataFrame
 from ..ufunc.tensor import TensorUfuncMixin
 from ..utils import parse_index, infer_dtypes, infer_dtype, infer_index_value
@@ -38,9 +38,9 @@ class DataFrameBinOp(DataFrameOperand):
     _rhs = AnyField('rhs')
 
     def __init__(self, axis=None, level=None, fill_value=None,
-                 object_type=None, lhs=None, rhs=None, **kw):
+                 output_types=None, lhs=None, rhs=None, **kw):
         super().__init__(_axis=axis, _level=level, _fill_value=fill_value,
-                         _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
+                         _output_types=output_types, _lhs=lhs, _rhs=rhs, **kw)
 
     @property
     def axis(self):
@@ -278,7 +278,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             df = ctx[op.lhs.key]
             other = op.rhs
             func_name = getattr(cls, '_func_name')
-        if op.object_type == ObjectType.dataframe:
+        if df.ndim == 2:
             kw = dict({'axis': op.axis})
         else:
             kw = dict()
@@ -476,7 +476,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         self._check_inputs(x1, x2)
         if isinstance(x1, DATAFRAME_TYPE) or isinstance(x2, DATAFRAME_TYPE):
             df1, df2 = (x1, x2) if isinstance(x1, DATAFRAME_TYPE) else (x2, x1)
-            setattr(self, '_object_type', ObjectType.dataframe)
             kw = self._calc_properties(df1, df2, axis=self.axis)
             if not pd.api.types.is_scalar(df2):
                 return self.new_dataframe([x1, x2], **kw)
@@ -484,7 +483,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 return self.new_dataframe([df1], **kw)
         if isinstance(x1, SERIES_TYPE) or isinstance(x2, SERIES_TYPE):
             s1, s2 = (x1, x2) if isinstance(x1, SERIES_TYPE) else (x2, x1)
-            setattr(self, '_object_type', ObjectType.series)
             kw = self._calc_properties(s1, s2)
             if not pd.api.types.is_scalar(s2):
                 return self.new_series([x1, x2], **kw)
@@ -520,7 +518,7 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
         out_chunks = []
         for in_chunk in in_df.chunks:
             out_op = op.copy().reset_key()
-            if op.object_type == ObjectType.dataframe:
+            if out_df.ndim == 2:
                 out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape,
                                              index=in_chunk.index,
                                              index_value=in_chunk.index_value,
@@ -550,12 +548,12 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
 
 
 class DataFrameUnaryOp(DataFrameOperand, DataFrameUnaryOpMixin):
-    def __init__(self, object_type=None, **kw):
-        super().__init__(_object_type=object_type, **kw)
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
     def __call__(self, df):
-        self._object_type = df.op.object_type
-        if self._object_type == ObjectType.dataframe:
+        self.output_types = df.op.output_types
+        if df.ndim == 2:
             return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
                                       columns_value=df.columns_value,
                                       index_value=df.index_value)

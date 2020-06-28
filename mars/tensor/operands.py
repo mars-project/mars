@@ -12,60 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 from ..serialize import DataTypeField
-from ..operands import Operand, TileableOperandMixin, HasInput, ShuffleProxy, MapReduceOperand, Fuse
+from ..operands import Operand, TileableOperandMixin, HasInput, ShuffleProxy, MapReduceOperand, \
+    Fuse, OutputType
 from ..utils import calc_nsplits
-from .core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk, TensorOrder
 
 
 class TensorOperandMixin(TileableOperandMixin):
     __slots__ = ()
     _op_module_ = 'tensor'
-
-    @staticmethod
-    def _get_dtype(kw, i):
-        dtype = kw.pop('dtype', None)
-        return dtype[i] if isinstance(dtype, (list, tuple)) else dtype
-
-    def _get_order(self, kw, i):
-        inputs = self._inputs or []
-        order = kw.pop('order', None)
-        if order is None:
-            if len(inputs) == 0:
-                order = TensorOrder.C_ORDER
-            elif all(hasattr(inp, 'order') and inp.order == TensorOrder.F_ORDER
-                     for inp in inputs):
-                order = TensorOrder.F_ORDER
-            else:
-                order = TensorOrder.C_ORDER
-
-        return order[i] if isinstance(order, (list, tuple)) else order
-
-    def _create_chunk(self, output_idx, index, **kw):
-        dt = self._get_dtype(kw, output_idx)
-        order = self._get_order(kw, output_idx)
-        shape = kw.pop('shape', None)
-        data = TensorChunkData(shape=shape, index=index, op=self, dtype=dt, order=order, **kw)
-        return TensorChunk(data)
-
-    def _create_tileable(self, output_idx, **kw):
-        tensor_cls = SparseTensor if getattr(self, 'issparse')() else Tensor
-        dt = self._get_dtype(kw, output_idx)
-        order = self._get_order(kw, output_idx)
-        nsplits = kw.pop('nsplits', None)
-        shape = kw.pop('shape', None)
-        chunks = kw.pop('chunks', None)
-        if nsplits is not None:
-            kw['nsplits'] = nsplits
-            if shape is not None and any(np.isnan(s) for s in shape):
-                # in the situation that `nan` in shape,
-                # but not in nsplits
-                shape = tuple(sum(ns) for ns in nsplits)
-        data = TensorData(shape=shape, dtype=dt, order=order,
-                          op=self, chunks=chunks, **kw)
-        return tensor_cls(data)
+    _output_type_ = OutputType.tensor
 
     def new_tensors(self, inputs, shape=None, dtype=None, order=None, chunks=None, nsplits=None,
                     output_limit=None, kws=None, **kw):
@@ -75,7 +31,6 @@ class TensorOperandMixin(TileableOperandMixin):
     def new_tensor(self, inputs, shape, dtype=None, order=None, **kw):
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new tensor with more than 1 outputs')
-
         return self.new_tensors(inputs, shape=shape, dtype=dtype, order=order, **kw)[0]
 
     @classmethod
@@ -116,6 +71,7 @@ class TensorOperandMixin(TileableOperandMixin):
 
 
 class TensorOperand(Operand):
+    _output_type_ = OutputType.tensor
     _dtype = DataTypeField('dtype')
 
     @property
@@ -124,6 +80,7 @@ class TensorOperand(Operand):
 
 
 class TensorHasInput(HasInput):
+    _output_type_ = OutputType.tensor
     _dtype = DataTypeField('dtype')
 
     @property
@@ -132,6 +89,7 @@ class TensorHasInput(HasInput):
 
 
 class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
+    _output_type_ = OutputType.tensor
     _dtype = DataTypeField('dtype')
 
     def __init__(self, dtype=None, **kwargs):
@@ -144,6 +102,7 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
 
 
 class TensorMapReduceOperand(MapReduceOperand):
+    _output_type_ = OutputType.tensor
     _dtype = DataTypeField('dtype')
 
     @property
@@ -152,6 +111,7 @@ class TensorMapReduceOperand(MapReduceOperand):
 
 
 class TensorFuse(Fuse):
+    _output_type_ = OutputType.tensor
     _dtype = DataTypeField('dtype')
 
     @property

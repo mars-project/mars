@@ -17,9 +17,10 @@ from collections import OrderedDict
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...serialize import BoolField
 from ...utils import lazy_import
-from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
+from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 
 cudf = lazy_import('cudf', globals=globals())
@@ -42,7 +43,7 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
     def _execute_map(cls, ctx, op):
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
-        if isinstance(in_data, xdf.Series) or op.object_type == ObjectType.series:
+        if isinstance(in_data, xdf.Series) or op.output_types[0] == OutputType.series:
             unique_values = in_data.drop_duplicates()
             ctx[op.outputs[0].key] = xdf.Series(unique_values, name=in_data.name)
         else:
@@ -136,7 +137,7 @@ def nunique_dataframe(df, axis=0, dropna=True, combine_size=None):
     dtype: int64
     """
     op = DataFrameNunique(axis=axis, dropna=dropna, combine_size=combine_size,
-                          object_type=ObjectType.series)
+                          output_types=[OutputType.series])
     return op(df)
 
 
@@ -178,5 +179,5 @@ def nunique_series(df, dropna=True, combine_size=None):
     4
     """
     op = DataFrameNunique(dropna=dropna, combine_size=combine_size,
-                          object_type=ObjectType.scalar)
+                          output_types=[OutputType.scalar])
     return op(df)

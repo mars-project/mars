@@ -15,8 +15,9 @@
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...serialize import KeyField, StringField, TupleField, DictField, BoolField
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_series
 
 
@@ -30,12 +31,12 @@ class SeriesDatetimeMethod(DataFrameOperand, DataFrameOperandMixin):
     _is_property = BoolField('is_property')
 
     def __init__(self, method=None, method_args=None, method_kwargs=None,
-                 is_property=None, stage=None, object_type=None, **kw):
+                 is_property=None, stage=None, output_types=None, **kw):
         super().__init__(_method=method, _method_args=method_args,
                          _method_kwargs=method_kwargs, _is_property=is_property,
-                         _stage=stage, _object_type=object_type, **kw)
-        if self._object_type is None:
-            self._object_type = ObjectType.series
+                         _stage=stage, _output_types=output_types, **kw)
+        if not self.output_types:
+            self.output_types = [OutputType.series]
 
     @property
     def input(self):

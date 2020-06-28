@@ -21,13 +21,13 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
-    is_eager_mode, build_mode, ceildiv
-from ..core import ChunkData, Chunk, TileableEntity, \
-    HasShapeTileableData, HasShapeTileableEnity
+from ..core import ChunkData, Chunk, TileableEntity, HasShapeTileableData, \
+    HasShapeTileableEnity, OutputType, register_output_types
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
+from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
+    is_eager_mode, build_mode, ceildiv
 from .utils import fetch_corner_data, ReprSeries
 
 
@@ -1613,3 +1613,10 @@ CATEGORICAL_CHUNK_TYPE = (CategoricalChunk, CategoricalChunkData)
 TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE + GROUPBY_TYPE + CATEGORICAL_TYPE
 CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE + \
              GROUPBY_CHUNK_TYPE + CATEGORICAL_CHUNK_TYPE
+
+register_output_types(OutputType.dataframe, DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)
+register_output_types(OutputType.series, SERIES_TYPE, SERIES_CHUNK_TYPE)
+register_output_types(OutputType.index, INDEX_TYPE, INDEX_CHUNK_TYPE)
+register_output_types(OutputType.categorical, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE)
+register_output_types(OutputType.dataframe_groupby, DATAFRAME_GROUPBY_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE)
+register_output_types(OutputType.series_groupby, SERIES_GROUPBY_TYPE, SERIES_GROUPBY_CHUNK_TYPE)

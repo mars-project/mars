@@ -18,13 +18,14 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, AnyField, StringField, ListField, \
-    BoolField, Int32Field, Int64Field, DictField
+from ...core import OutputType
 from ...filesystem import open_file
 from ...operands import OperandStage
+from ...serialize import KeyField, AnyField, StringField, ListField, \
+    BoolField, Int32Field, Int64Field, DictField
 from ...tensor.core import TensorOrder
 from ...tensor.operands import TensorOperand, TensorOperandMixin
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 
@@ -60,14 +61,14 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
                  mode=None, encoding=None, compression=None, quoting=None,
                  quotechar=None, line_terminator=None, chunksize=None, date_format=None,
                  doublequote=None, escapechar=None, decimal=None, output_stat=None,
-                 storage_options=None, stage=None, object_type=None, **kw):
+                 storage_options=None, stage=None, output_types=None, **kw):
         super().__init__(_path=path, _sep=sep, _na_rep=na_rep, _float_format=float_format,
                          _columns=columns, _header=header, _index=index, _index_label=index_label,
                          _mode=mode, _encoding=encoding, _compression=compression, _quoting=quoting,
                          _quotechar=quotechar, _line_terminator=line_terminator, _chunksize=chunksize,
                          _date_format=date_format, _doublequote=doublequote,
                          _escapechar=escapechar, _decimal=decimal, _output_stat=output_stat,
-                         _storage_options=storage_options, _object_type=object_type, _stage=stage, **kw)
+                         _storage_options=storage_options, _output_types=output_types, _stage=stage, **kw)
 
     @property
     def input(self):
@@ -207,14 +208,14 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
                     'dtype': np.dtype(np.str_),
                     'index': chunk.index,
                     'order': TensorOrder.C_ORDER,
-                    'object_type': ObjectType.scalar,
+                    'output_type': OutputType.scalar,
                     'type': 'csv',
                 }, {
                     'shape': (),
                     'dtype': np.dtype(np.intp),
                     'index': chunk.index,
                     'order': TensorOrder.C_ORDER,
-                    'object_type': ObjectType.scalar,
+                    'output_type': OutputType.scalar,
                     'type': 'stat',
                 }]
                 chunks = chunk_op.new_chunks([chunk], kws=kws, output_limit=len(kws))
@@ -231,7 +232,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
             for c in out_chunks[0]:
                 op = DataFrameToCSV(stage=OperandStage.agg, path=op.path,
                                     storage_options=op.storage_options,
-                                    object_type=op.object_type)
+                                    output_types=op.output_types)
                 if out_df.ndim == 2:
                     out_chunk = op.new_chunk(
                         [c, stat_chunk], shape=(0, 0), dtypes=out_df.dtypes,
@@ -256,12 +257,10 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, df):
         index_value = parse_index(df.index_value.to_pandas()[:0], df)
         if df.ndim == 2:
-            self._object_type = ObjectType.dataframe
             columns_value = parse_index(df.columns_value.to_pandas()[:0], store_data=True)
             return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes[:0],
                                       index_value=index_value, columns_value=columns_value)
         else:
-            self._object_type = ObjectType.series
             return self.new_series([df], shape=(0,), dtype=df.dtype, index_value=index_value)
 
     @classmethod

@@ -19,18 +19,17 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity, ExecutableTuple
+from ...core import Base, Entity, ExecutableTuple, OutputType
 from ...context import get_context
 from ...serialize import KeyField, AnyField, BoolField, Int32Field, StringField
 from ...tensor import tensor as astensor
-from ...tensor.core import TENSOR_TYPE
-from ...tensor.operands import TensorOrder
+from ...tensor.core import TENSOR_TYPE, TensorOrder
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..core import SERIES_TYPE, INDEX_TYPE
 from ..datasource.index import from_pandas as asindex
 from ..initializer import Series as asseries
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 
@@ -161,14 +160,14 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
                      duplicates=self._duplicates)
 
         kws = []
-        object_types = []
+        output_types = []
         if bins_unknown and isinstance(ret[0].dtype, pd.CategoricalDtype):
             # inaccurate dtype, just create an empty one
             out_dtype = pd.CategoricalDtype()
         else:
             out_dtype = ret[0].dtype
         if isinstance(ret[0], pd.Series):
-            object_types.append(ObjectType.series)
+            output_types.append(OutputType.series)
             kws.append({
                 'dtype': out_dtype,
                 'shape': x.shape,
@@ -176,7 +175,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
                 'name': x.name
             })
         elif isinstance(ret[0], np.ndarray):
-            object_types.append(ObjectType.tensor)
+            output_types.append(OutputType.tensor)
             kws.append({
                 'dtype': out_dtype,
                 'shape': x.shape,
@@ -184,7 +183,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             })
         else:
             assert isinstance(ret[0], pd.Categorical)
-            object_types.append(ObjectType.categorical)
+            output_types.append(OutputType.categorical)
             kws.append({
                 'dtype': out_dtype,
                 'shape': x.shape,
@@ -194,7 +193,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
 
         if self._retbins:
             if isinstance(self._bins, (pd.IntervalIndex, INDEX_TYPE)):
-                object_types.append(ObjectType.index)
+                output_types.append(OutputType.index)
                 kws.append({
                     'dtype': self._bins.dtype,
                     'shape': self._bins.shape,
@@ -204,14 +203,14 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
                     'name': self._bins.name
                 })
             else:
-                object_types.append(ObjectType.tensor)
+                output_types.append(OutputType.tensor)
                 kws.append({
                     'dtype': ret[1].dtype,
                     'shape': ret[1].shape if ret[1].size > 0 else (np.nan,),
                     'order': TensorOrder.C_ORDER
                 })
 
-        self._object_type = object_types
+        self.output_types = output_types
         return ExecutableTuple(self.new_tileables(inputs, kws=kws))
 
     @classmethod

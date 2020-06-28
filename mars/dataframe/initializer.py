@@ -14,10 +14,9 @@
 
 import pandas as pd
 
-from ..core import Base, Entity
+from ..core import Base, Entity, OutputType
 from ..tensor import tensor as astensor
 from ..tensor.core import TENSOR_TYPE
-from .operands import ObjectType
 from .core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DataFrame as _Frame, \
     Series as _Series, Index as _Index
 from .datasource.dataframe import from_pandas as from_pandas_df
@@ -105,7 +104,7 @@ def named_dataframe(name, session=None):
 
     sess = session or Session.default_or_local()
     tileable_infos = sess.get_named_tileable_infos(name=name)
-    fetch_op = DataFrameFetch(object_type=ObjectType.dataframe)
+    fetch_op = DataFrameFetch(output_types=[OutputType.dataframe])
     return fetch_op.new_dataframe([], shape=tileable_infos.tileable_shape,
                                   _key=tileable_infos.tileable_key)
 
@@ -115,6 +114,6 @@ def named_series(name, session=None):
 
     sess = session or Session.default_or_local()
     tileable_infos = sess.get_named_tileable_infos(name=name)
-    fetch_op = DataFrameFetch(object_type=ObjectType.series)
+    fetch_op = DataFrameFetch(output_types=[OutputType.series])
     return fetch_op.new_series([], shape=tileable_infos.tileable_shape,
                                _key=tileable_infos.tileable_key)

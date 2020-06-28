@@ -27,7 +27,7 @@ from ...serialize import StringField, AnyField, BoolField, ListField, \
     Int64Field, Float64Field, BytesField
 from ...tensor.utils import normalize_chunk_sizes
 from ..core import IndexValue
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import parse_index, create_sa_connection, standardize_range_index
 
 
@@ -62,7 +62,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                  engine_kwargs=None, row_memory_usage=None, method=None,
                  incremental_index=None, offset=None, partition_col=None,
                  num_partitions=None, low_limit=None, high_limit=None, left_end=None,
-                 right_end=None, object_type=None, gpu=None, **kw):
+                 right_end=None, output_types=None, gpu=None, **kw):
         super().__init__(_table_or_sql=table_or_sql, _selectable=selectable, _con=con,
                          _schema=schema, _index_col=index_col, _coerce_float=coerce_float,
                          _parse_dates=parse_dates, _columns=columns,
@@ -70,9 +70,9 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                          _method=method, _incremental_index=incremental_index, _offset=offset,
                          _partition_col=partition_col, _num_partitions=num_partitions,
                          _low_limit=low_limit, _left_end=left_end, _right_end=right_end,
-                         _high_limit=high_limit, _object_type=object_type, _gpu=gpu, **kw)
-        if self._object_type is None:
-            self._object_type = ObjectType.dataframe
+                         _high_limit=high_limit, _output_types=output_types, _gpu=gpu, **kw)
+        if not self.output_types:
+            self._output_types = [OutputType.dataframe]
 
     @property
     def table_or_sql(self):

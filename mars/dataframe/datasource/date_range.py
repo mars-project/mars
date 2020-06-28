@@ -22,9 +22,10 @@ from pandas._libs.tslibs import timezones
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import OutputType
 from ...serialize import AnyField, Int64Field, BoolField, StringField
 from ...tensor.utils import decide_chunk_sizes
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 try:
@@ -57,13 +58,13 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, start=None, end=None, periods=None,
                  freq=None, tz=None, normalize=None, name=None,
-                 closed=None, object_type=None, **kw):
+                 closed=None, output_types=None, **kw):
         super().__init__(_start=start, _end=end, _periods=periods,
                          _freq=freq, _tz=tz, _normalize=normalize,
                          _name=name, _closed=closed,
-                         _object_type=object_type, **kw)
-        if self._object_type is None:
-            self._object_type = ObjectType.index
+                         _output_types=output_types, **kw)
+        if self.output_types is None:
+            self.output_types = [OutputType.index]
 
     @property
     def start(self):

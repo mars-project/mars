@@ -15,11 +15,8 @@
 import pandas as pd
 
 from ...tensor import tensor as astensor
-from ...tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ...dataframe import DataFrame, Series
-from ...dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, \
-    DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
-from ..operands import OutputType
+from ...dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 
 
 def convert_to_tensor_or_dataframe(item):
@@ -30,24 +27,6 @@ def convert_to_tensor_or_dataframe(item):
     else:
         item = astensor(item)
     return item
-
-
-def get_output_types(*objs, unknown_as=None):
-    output_types = []
-    for obj in objs:
-        if obj is None:
-            continue
-        if isinstance(obj, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
-            output_types.append(OutputType.tensor)
-        elif isinstance(obj, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)):
-            output_types.append(OutputType.dataframe)
-        elif isinstance(obj, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
-            output_types.append(OutputType.series)
-        elif unknown_as is not None:
-            output_types.append(unknown_as)
-        else:  # pragma: no cover
-            raise TypeError('Output can only be tensor, dataframe or series')
-    return output_types
 
 
 def concat_chunks(chunks):

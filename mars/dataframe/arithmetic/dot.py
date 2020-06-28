@@ -23,7 +23,7 @@ from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.utils import decide_unify_split, validate_axis
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, IndexValue
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 
@@ -33,8 +33,8 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
     _lhs = KeyField('lhs')
     _rhs = KeyField('rhs')
 
-    def __init__(self, object_type=None, lhs=None, rhs=None, **kw):
-        super().__init__(_object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
+    def __init__(self, output_types=None, lhs=None, rhs=None, **kw):
+        super().__init__(_output_types=output_types, _lhs=lhs, _rhs=rhs, **kw)
 
     @property
     def lhs(self):
@@ -61,10 +61,8 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
             if isinstance(lhs, SERIES_TYPE) and isinstance(rhs, TENSOR_TYPE):
                 # return tensor
                 return test_ret
-            self._object_type = ObjectType.scalar
             return self.new_scalar([lhs, rhs], dtype=test_ret.dtype)
         elif test_ret.ndim == 1:
-            self._object_type = ObjectType.series
             if lhs.ndim == 1:
                 if hasattr(rhs, 'columns_value'):
                     index_value = rhs.columns_value
@@ -79,7 +77,6 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
             return self.new_series([lhs, rhs], shape=test_ret.shape,
                                    dtype=test_ret.dtype, index_value=index_value)
         else:
-            self._object_type = ObjectType.dataframe
             if isinstance(rhs, TENSOR_TYPE):
                 dtypes = pd.Series(np.repeat(test_ret.dtype, test_ret.shape[1]),
                                    index=pd.RangeIndex(test_ret.shape[1]))

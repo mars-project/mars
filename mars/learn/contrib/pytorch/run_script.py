@@ -46,8 +46,8 @@ class RunPyTorch(LearnMergeDictOperand):
                          _master_port=master_port, _master_addr=master_addr, _rank=rank,
                          _init_method=init_method, _merge=merge, _output_types=output_types,
                          _gpu=gpu, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
+        if self.output_types is None:
+            self.output_types = [OutputType.object]
 
     @property
     def code(self):

@@ -21,7 +21,7 @@ from ...serialize import ValueType, KeyField, ListField
 from ...utils import recursive_tile
 from ..core import SERIES_TYPE
 from ..initializer import DataFrame, Series
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_empty_df
 
 
@@ -34,9 +34,9 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
     _exclude = ListField('exclude')
 
     def __init__(self, percentiles=None, include=None, exclude=None,
-                 object_type=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_percentiles=percentiles, _include=include,
-                         _exclude=exclude, _object_type=object_type, **kw)
+                         _exclude=exclude, _output_types=output_types, **kw)
 
     @property
     def input(self):
@@ -60,7 +60,6 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, df_or_series):
         if isinstance(df_or_series, SERIES_TYPE):
-            self._object_type = ObjectType.series
             if not np.issubdtype(df_or_series.dtype, np.number):
                 raise NotImplementedError('non-numeric type is not supported for now')
             test_series = pd.Series([], dtype=df_or_series.dtype).describe(
@@ -69,7 +68,6 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
                                    dtype=test_series.dtype,
                                    index_value=parse_index(test_series.index, store_data=True))
         else:
-            self._object_type = ObjectType.dataframe
             test_inp_df = build_empty_df(df_or_series.dtypes)
             test_df = test_inp_df.describe(
                 percentiles=self._percentiles, include=self._include, exclude=self._exclude)

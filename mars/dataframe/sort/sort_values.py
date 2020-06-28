@@ -14,12 +14,12 @@
 
 import pandas as pd
 
-from ...serialize import ListField, ValueType
 from ... import opcodes as OperandDef
+from ...core import OutputType
+from ...serialize import ListField, ValueType
 from ...tensor.base.sort import _validate_sort_psrs_kinds
 from ..utils import parse_index, validate_axis, build_concatenated_rows_frame
 from ..core import IndexValue
-from ..operands import ObjectType
 from .core import DataFrameSortOperand
 from .psrs import DataFramePSRSOperandMixin, execute_sort_values
 
@@ -29,8 +29,8 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
 
     _by = ListField('by', ValueType.string)
 
-    def __init__(self, by=None, object_type=None, **kw):
-        super(DataFrameSortValues, self).__init__(_by=by, _object_type=object_type, **kw)
+    def __init__(self, by=None, output_types=None, **kw):
+        super(DataFrameSortValues, self).__init__(_by=by, _output_types=output_types, **kw)
 
     @property
     def by(self):
@@ -80,7 +80,7 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if op.object_type == ObjectType.dataframe:
+        if op.inputs[0].ndim == 2:
             return cls._tile_dataframe(op)
         else:
             return cls._tile_series(op)
@@ -99,7 +99,7 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
                 index_value = parse_index(pd.Int64Index([]))
             else:
                 index_value = a.index_value
-        if a.op.object_type == ObjectType.dataframe:
+        if a.ndim == 2:
             return self.new_dataframe([a], shape=a.shape, dtypes=a.dtypes,
                                       index_value=index_value,
                                       columns_value=a.columns_value)
@@ -189,7 +189,7 @@ def dataframe_sort_values(df, by, axis=0, ascending=True, inplace=False, kind='q
     by = by if isinstance(by, (list, tuple)) else [by]
     op = DataFrameSortValues(by=by, axis=axis, ascending=ascending, inplace=inplace, kind=kind,
                              na_position=na_position, ignore_index=ignore_index, parallel_kind=parallel_kind,
-                             psrs_kinds=psrs_kinds, object_type=ObjectType.dataframe)
+                             psrs_kinds=psrs_kinds, output_types=[OutputType.dataframe])
     sorted_df = op(df)
     if inplace:
         df.data = sorted_df.data
@@ -284,7 +284,7 @@ def series_sort_values(series, axis=0, ascending=True, inplace=False, kind='quic
     op = DataFrameSortValues(axis=axis, ascending=ascending, inplace=inplace, kind=kind,
                              na_position=na_position, ignore_index=ignore_index,
                              parallel_kind=parallel_kind, psrs_kinds=psrs_kinds,
-                             object_type=ObjectType.series)
+                             output_types=[OutputType.series])
     sorted_series = op(series)
     if inplace:
         series.data = sorted_series.data

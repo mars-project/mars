@@ -79,11 +79,11 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
         else:
             dtype = self.model.out_dtype_
 
-        if self._output_types[0] == OutputType.tensor:
+        if self.output_types[0] == OutputType.tensor:
             # tensor
             return self.new_tileable([self.data], shape=shape, dtype=dtype,
                                      order=TensorOrder.C_ORDER)
-        elif self._output_types[0] == OutputType.dataframe:
+        elif self.output_types[0] == OutputType.dataframe:
             # dataframe
             dtypes = pd.Series([dtype] * num_class)
             return self.new_tileable([self.data], shape=shape, dtypes=dtypes,

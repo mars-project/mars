@@ -17,9 +17,10 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import OutputType
 from ...serialize import Int32Field
 from ...utils import lazy_import
-from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
+from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -104,7 +105,7 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
 def var_series(series, axis=None, skipna=None, level=None, ddof=1, combine_size=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameVar(axis=axis, skipna=skipna, level=level, ddof=ddof,
-                      combine_size=combine_size, object_type=ObjectType.scalar,
+                      combine_size=combine_size, output_types=[OutputType.scalar],
                       use_inf_as_na=use_inf_as_na)
     return op(series)
 
@@ -113,5 +114,5 @@ def var_dataframe(df, axis=None, skipna=None, level=None, ddof=1, numeric_only=N
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameVar(axis=axis, skipna=skipna, level=level, ddof=ddof,
                       numeric_only=numeric_only, combine_size=combine_size,
-                      object_type=ObjectType.series, use_inf_as_na=use_inf_as_na)
+                      output_types=[OutputType.series], use_inf_as_na=use_inf_as_na)
     return op(df)

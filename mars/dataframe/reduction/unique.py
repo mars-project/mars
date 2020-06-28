@@ -16,11 +16,12 @@
 import pandas as pd
 import numpy as np
 
-from ...tensor.core import TensorOrder
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...serialize import StringField
+from ...tensor.core import TensorOrder
 from ...utils import lazy_import
-from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
+from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 
 cudf = lazy_import('cudf', globals=globals())
@@ -72,7 +73,7 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
         ctx[op.outputs[0].key] = in_data.unique()
 
     def __call__(self, a):
-        self._object_type = ObjectType.tensor
+        self.output_types = [OutputType.tensor]
         return self.new_tileables([a], shape=(np.nan,), dtype=a.dtype, order=TensorOrder.C_ORDER)[0]
 
 

@@ -16,8 +16,9 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import OutputType
 from ...utils import lazy_import
-from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
+from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -48,7 +49,7 @@ class DataFrameCount(DataFrameReductionOperand, DataFrameReductionMixin):
 
 def count_series(series, level=None, combine_size=None, **kw):
     use_inf_as_na = kw.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
-    op = DataFrameCount(level=level, combine_size=combine_size, object_type=ObjectType.scalar,
+    op = DataFrameCount(level=level, combine_size=combine_size, output_types=[OutputType.scalar],
                         use_inf_as_na=use_inf_as_na)
     return op(series)
 
@@ -56,5 +57,5 @@ def count_series(series, level=None, combine_size=None, **kw):
 def count_dataframe(df, axis=0, level=None, numeric_only=False, combine_size=None, **kw):
     use_inf_as_na = kw.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
     op = DataFrameCount(axis=axis, level=level, numeric_only=numeric_only, combine_size=combine_size,
-                        object_type=ObjectType.series, use_inf_as_na=use_inf_as_na)
+                        output_types=[OutputType.series], use_inf_as_na=use_inf_as_na)
     return op(df)

@@ -21,12 +21,13 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import OutputType
 from ...utils import parse_readable_size, lazy_import
 from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, BoolField, AnyField
 from ...filesystem import open_file, file_size, glob
 from ..core import IndexValue
 from ..utils import parse_index, build_empty_df, standardize_range_index
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 try:
     from pyarrow import HdfsFile
@@ -101,7 +102,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                          _index_col=index_col, _compression=compression,
                          _usecols=usecols, _offset=offset, _size=size,
                          _gpu=gpu, _incremental_index=incremental_index,
-                         _storage_options=storage_options, _object_type=ObjectType.dataframe, **kw)
+                         _storage_options=storage_options,
+                         _output_types=[OutputType.dataframe], **kw)
 
     @property
     def path(self):

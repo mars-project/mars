@@ -500,7 +500,7 @@ def concat_index_value(index_values, store_data=False):
 
 
 def build_concatenated_rows_frame(df):
-    from .operands import ObjectType
+    from ..core import OutputType
     from .merge.concat import DataFrameConcat
 
     # When the df isn't splitted along the column axis, return the df directly.
@@ -513,13 +513,13 @@ def build_concatenated_rows_frame(df):
 
     out_chunks = []
     for idx in range(df.chunk_shape[0]):
-        out_chunk = DataFrameConcat(axis=1, object_type=ObjectType.dataframe).new_chunk(
+        out_chunk = DataFrameConcat(axis=1, output_types=[OutputType.dataframe]).new_chunk(
             [df.cix[idx, k] for k in range(df.chunk_shape[1])], index=(idx, 0),
             shape=(df.cix[idx, 0].shape[0], columns_size), dtypes=df.dtypes,
             index_value=df.cix[idx, 0].index_value, columns_value=columns)
         out_chunks.append(out_chunk)
 
-    return DataFrameConcat(axis=1, object_type=ObjectType.dataframe).new_dataframe(
+    return DataFrameConcat(axis=1, output_types=[OutputType.dataframe]).new_dataframe(
         [df], chunks=out_chunks, nsplits=((chunk.shape[0] for chunk in out_chunks), (df.shape[1],)),
         shape=df.shape, dtypes=df.dtypes,
         index_value=df.index_value, columns_value=df.columns_value)
@@ -734,7 +734,7 @@ def standardize_range_index(chunks, axis=0):
     for c in chunks:
         inputs = row_chunks[:c.index[axis]] + [c]
         op = ChunkStandardizeRangeIndex(
-            prepare_inputs=[False] * len(inputs), axis=axis, object_type=c.op.object_type)
+            prepare_inputs=[False] * len(inputs), axis=axis, output_types=c.op.output_types)
         out_chunks.append(op.new_chunk(inputs, **c.params.copy()))
 
     return out_chunks

@@ -17,12 +17,13 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ... import opcodes
+from ...core import OutputType
 from ...serialize import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
 from ...tiles import TilesError
 from ..core import SERIES_TYPE, DataFrame
 from ..initializer import Series as asseries
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 
@@ -33,11 +34,11 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
     _indexes = AnyField('indexes')
     _value = AnyField('value')
 
-    def __init__(self, target=None, indexes=None, value=None, object_type=None, **kw):
+    def __init__(self, target=None, indexes=None, value=None, output_types=None, **kw):
         super().__init__(_target=target, _indexes=indexes,
-                         _value=value, _object_type=object_type, **kw)
-        if self._object_type is None:
-            self._object_type = ObjectType.dataframe
+                         _value=value, _output_types=output_types, **kw)
+        if self.output_types is None:
+            self.output_types = [OutputType.dataframe]
 
     @property
     def target(self):

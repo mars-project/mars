@@ -149,7 +149,7 @@ class TensorTileDBDataStore(TensorDataStore):
                                            shape=chunk.shape)
 
 
-class TensorTileDBConsolidate(Operand, TensorOperandMixin):
+class TensorTileDBConsolidate(TensorOperandMixin, Operand):
     _op_type_ = OperandDef.TENSOR_STORE_TILEDB_CONSOLIDATE
 
     _tiledb_config = DictField('tiledb_config')

@@ -17,11 +17,12 @@
 import numpy as np
 import pandas as pd
 
-from ...serialize import BoolField, ListField, Int32Field
 from ... import opcodes as OperandDef
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
-from ..utils import parse_index
+from ...core import OutputType
+from ...serialize import BoolField, ListField, Int32Field
 from ...tensor.core import TENSOR_TYPE
+from ..operands import DataFrameOperand, DataFrameOperandMixin
+from ..utils import parse_index
 
 
 class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
@@ -37,7 +38,7 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
         if index is not None or columns is not None:
             raise NotImplementedError('Specifying index value is not supported for now')
         super().__init__(_exclude=exclude, _columns=columns, _coerce_float=coerce_float, _nrows=nrows,
-                         _gpu=gpu, _sparse=sparse, _object_type=ObjectType.dataframe, **kw)
+                         _gpu=gpu, _sparse=sparse, _output_types=[OutputType.dataframe], **kw)
 
     @property
     def columns(self):

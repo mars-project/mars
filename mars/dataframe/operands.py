@@ -12,103 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
 from collections import OrderedDict
-from enum import Enum
 from functools import reduce
 
 import pandas as pd
 
-from ..core import FuseChunkData, FuseChunk, Base, Entity
+from ..core import FuseChunkData, FuseChunk, Base, Entity, OutputType
 from ..operands import Operand, TileableOperandMixin, MapReduceOperand, Fuse
 from ..operands import ShuffleProxy, FuseChunkMixin
-from ..serialize import Int8Field, AnyField
-from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, TensorOrder
+from ..tensor.core import TENSOR_TYPE
 from ..tensor.operands import TensorOperandMixin
 from ..utils import calc_nsplits
-from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
-    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE, \
-    DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE, \
-    CATEGORICAL_CHUNK_TYPE, CATEGORICAL_TYPE
+from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, SERIES_TYPE, \
+    INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE, CATEGORICAL_TYPE
 from .utils import parse_index
-
-
-class ObjectType(Enum):
-    dataframe = 1
-    series = 2
-    index = 3
-    scalar = 4
-    tensor = 8
-    dataframe_groupby = 5
-    series_groupby = 6
-    categorical = 7
 
 
 class DataFrameOperandMixin(TileableOperandMixin):
     __slots__ = ()
     _op_module_ = 'dataframe'
 
-    _OBJECT_TYPE_TO_CHUNK_TYPES = {
-        ObjectType.dataframe: DATAFRAME_CHUNK_TYPE,
-        ObjectType.series: SERIES_CHUNK_TYPE,
-        ObjectType.index: INDEX_CHUNK_TYPE,
-        ObjectType.scalar: TENSOR_CHUNK_TYPE,
-        ObjectType.tensor: TENSOR_CHUNK_TYPE,
-        ObjectType.dataframe_groupby: DATAFRAME_GROUPBY_CHUNK_TYPE,
-        ObjectType.series_groupby: SERIES_GROUPBY_CHUNK_TYPE,
-        ObjectType.categorical: CATEGORICAL_CHUNK_TYPE,
-    }
-
-    _OBJECT_TYPE_TO_TILEABLE_TYPES = {
-        ObjectType.dataframe: DATAFRAME_TYPE,
-        ObjectType.series: SERIES_TYPE,
-        ObjectType.index: INDEX_TYPE,
-        ObjectType.scalar: TENSOR_TYPE,
-        ObjectType.tensor: TENSOR_TYPE,
-        ObjectType.dataframe_groupby: DATAFRAME_GROUPBY_TYPE,
-        ObjectType.series_groupby: SERIES_GROUPBY_TYPE,
-        ObjectType.categorical: CATEGORICAL_TYPE,
-    }
-
-    @classmethod
-    def _chunk_types(cls, object_type):
-        return cls._OBJECT_TYPE_TO_CHUNK_TYPES[object_type]
-
-    @classmethod
-    def _tileable_types(cls, object_type):
-        return cls._OBJECT_TYPE_TO_TILEABLE_TYPES[object_type]
-
-    def _create_chunk(self, output_idx, index, **kw):
-        object_type = kw.pop('object_type', getattr(self, '_object_type', None))
-        if object_type is None:
-            raise ValueError('object_type should be specified')
-        if isinstance(object_type, (list, tuple)):
-            object_type = object_type[output_idx]
-        chunk_type, chunk_data_type = self._chunk_types(object_type)
-        kw['op'] = self
-        kw['index'] = index
-        if object_type == ObjectType.scalar:
-            # tensor
-            kw['order'] = TensorOrder.C_ORDER
-        data = chunk_data_type(**kw)
-        return chunk_type(data)
-
-    def _create_tileable(self, output_idx, **kw):
-        object_type = kw.pop('object_type', getattr(self, '_object_type', None))
-        if object_type is None:
-            raise ValueError('object_type should be specified')
-        if isinstance(object_type, (list, tuple)):
-            object_type = object_type[output_idx]
-        tileable_type, tileable_data_type = self._tileable_types(object_type)
-        kw['op'] = self
-        if object_type == ObjectType.scalar:
-            # tensor
-            kw['order'] = TensorOrder.C_ORDER
-        data = tileable_data_type(**kw)
-        return tileable_type(data)
-
     def new_dataframes(self, inputs, shape=None, dtypes=None, index_value=None, columns_value=None,
                        chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
+        setattr(self, '_output_types', [OutputType.dataframe])
         return self.new_tileables(inputs, shape=shape, dtypes=dtypes, index_value=index_value,
                                   columns_value=columns_value, chunks=chunks, nsplits=nsplits,
                                   output_limit=output_limit, kws=kws, **kw)
@@ -122,6 +48,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
     def new_seriess(self, inputs, shape=None, dtype=None, index_value=None, name=None,
                     chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
+        setattr(self, '_output_types', [OutputType.series])
         return self.new_tileables(inputs, shape=shape, dtype=dtype, index_value=index_value,
                                   name=name, chunks=chunks, nsplits=nsplits,
                                   output_limit=output_limit, kws=kws, **kw)
@@ -135,6 +62,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
     def new_indexes(self, inputs, shape=None, dtype=None, index_value=None, name=None,
                     chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
+        setattr(self, '_output_types', [OutputType.index])
         return self.new_tileables(inputs, shape=shape, dtype=dtype, index_value=index_value,
                                   name=name, chunks=chunks, nsplits=nsplits,
                                   output_limit=output_limit, kws=kws, **kw)
@@ -147,6 +75,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
                                 index_value=index_value, name=name, **kw)[0]
 
     def new_scalars(self, inputs, dtype=None, chunks=None, output_limit=None, kws=None, **kw):
+        setattr(self, '_output_types', [OutputType.scalar])
         return self.new_tileables(inputs, shape=(), dtype=dtype, chunks=chunks, nsplits=(),
                                   output_limit=output_limit, kws=kws, **kw)
 
@@ -158,6 +87,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
     def new_categoricals(self, inputs, shape=None, dtype=None, categories_value=None,
                          chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
+        setattr(self, '_output_types', [OutputType.categorical])
         return self.new_tileables(inputs, shape=shape, dtype=dtype,
                                   categories_value=categories_value, chunks=chunks,
                                   nsplits=nsplits, output_limit=output_limit,
@@ -202,45 +132,45 @@ class DataFrameOperandMixin(TileableOperandMixin):
         assert not df.is_coarse()
 
         if isinstance(df, DATAFRAME_TYPE):
-            chunk = DataFrameConcat(object_type=ObjectType.dataframe).new_chunk(
+            chunk = DataFrameConcat(output_types=[OutputType.dataframe]).new_chunk(
                 df.chunks, shape=df.shape, index=(0, 0), dtypes=df.dtypes,
                 index_value=df.index_value, columns_value=df.columns_value)
-            return DataFrameConcat(object_type=ObjectType.dataframe).new_dataframe(
+            return DataFrameConcat(output_types=[OutputType.dataframe]).new_dataframe(
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
                 index_value=df.index_value, columns_value=df.columns_value)
         elif isinstance(df, SERIES_TYPE):
-            chunk = DataFrameConcat(object_type=ObjectType.series).new_chunk(
+            chunk = DataFrameConcat(output_types=[OutputType.series]).new_chunk(
                 df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
-            return DataFrameConcat(object_type=ObjectType.series).new_series(
+            return DataFrameConcat(output_types=[OutputType.series]).new_series(
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
         elif isinstance(df, INDEX_TYPE):
-            chunk = DataFrameConcat(object_type=ObjectType.index).new_chunk(
+            chunk = DataFrameConcat(output_types=[OutputType.index]).new_chunk(
                 df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
-            return DataFrameConcat(object_type=ObjectType.index).new_series(
+            return DataFrameConcat(output_types=[OutputType.index]).new_series(
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
         elif isinstance(df, (DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE)):
-            object_type = ObjectType.dataframe_groupby \
-                if isinstance(df, DATAFRAME_GROUPBY_TYPE) else ObjectType.series_groupby
+            output_type = OutputType.dataframe_groupby \
+                if isinstance(df, DATAFRAME_GROUPBY_TYPE) else OutputType.series_groupby
             groupby_params = cls._process_groupby_params(df.op.groupby_params)
             inputs, chunk_inputs = cls._get_groupby_inputs(df, groupby_params)
             chunk = GroupByConcat(groups=df.chunks, groupby_params=groupby_params,
-                                  object_type=object_type).new_chunk(
+                                  output_types=[output_type]).new_chunk(
                 chunk_inputs, **df.params)
             return GroupByConcat(groups=[df], groupby_params=df.op.groupby_params,
-                                 object_type=object_type).new_dataframe(
+                                 output_types=[output_type]).new_dataframe(
                 inputs, chunks=[chunk], **df.params)
         elif isinstance(df, CATEGORICAL_TYPE):
-            chunk = DataFrameConcat(object_type=ObjectType.categorical).new_chunk(
+            chunk = DataFrameConcat(output_types=[OutputType.categorical]).new_chunk(
                 df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
                 categories_value=df.categories_value)
-            return DataFrameConcat(object_type=ObjectType.categorical).new_categorical(
+            return DataFrameConcat(output_types=[OutputType.categorical]).new_categorical(
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
                 categories_value=df.categories_value)
@@ -318,7 +248,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
             cls = DataFrameFetch
 
         def _inner(**kw):
-            return cls(object_type=self.object_type, **kw)
+            return cls(output_types=self.output_types, **kw)
 
         return _inner
 
@@ -326,47 +256,15 @@ class DataFrameOperandMixin(TileableOperandMixin):
         return DataFrameFuseChunk
 
 
-def on_serialize_object_type(object_type):
-    if hasattr(object_type, 'value'):
-        return object_type.value
-    # otherwise, multiple object types
-    return tuple(ot.value for ot in object_type)
-
-
-def on_deserialize_object_type(object_type):
-    if isinstance(object_type, tuple):
-        return tuple(ObjectType(v) for v in object_type)
-    return ObjectType(object_type)
-
-
-class DataFrameOperand(Operand):
-    _object_type = AnyField('object_type', on_serialize=on_serialize_object_type,
-                             on_deserialize=on_deserialize_object_type)
-
-    @property
-    def object_type(self):
-        return self._object_type
+DataFrameOperand = Operand
 
 
 class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
-    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
-                             on_deserialize=ObjectType)
-
-    def __init__(self, object_type=None, sparse=None, **kwargs):
-        super().__init__(_object_type=object_type, _sparse=sparse, **kwargs)
-
-    @property
-    def object_type(self):
-        return self._object_type
+    def __init__(self, sparse=None, output_types=None, **kwargs):
+        super().__init__(_sparse=sparse, _output_types=output_types, **kwargs)
 
 
-class DataFrameMapReduceOperand(MapReduceOperand):
-    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
-                             on_deserialize=ObjectType)
-
-    @property
-    def object_type(self):
-        return self._object_type
+DataFrameMapReduceOperand = MapReduceOperand
 
 
 class DataFrameFuseChunkMixin(FuseChunkMixin, DataFrameOperandMixin):
@@ -383,5 +281,5 @@ class DataFrameFuseChunk(Fuse, DataFrameFuseChunkMixin):
         super().__init__(_sparse=sparse, **kwargs)
 
     @property
-    def object_type(self):
-        return self._operands[-1].object_type
+    def output_types(self):
+        return self._operands[-1].output_types

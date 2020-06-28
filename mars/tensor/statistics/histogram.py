@@ -23,7 +23,7 @@ from ...serialize import AnyField, TupleField, KeyField, BoolField
 from ...tiles import TilesError
 from ...context import get_context
 from ...utils import check_chunks_unknown_shape, recursive_tile
-from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
+from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..arithmetic.utils import tree_add
@@ -871,7 +871,7 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
         inputs, device_id, xp = as_same_device(
             [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
         a = inputs[0]
-        bins = inputs[1] if isinstance(op.bins, CHUNK_TYPE) else op.bins
+        bins = inputs[1] if isinstance(op.bins, TENSOR_CHUNK_TYPE) else op.bins
         weights = None
         if op.weights is not None:
             weights = inputs[-1]

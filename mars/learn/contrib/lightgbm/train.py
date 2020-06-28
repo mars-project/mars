@@ -66,8 +66,8 @@ class LGBMTrain(LearnMergeDictOperand):
                          _eval_init_scores=eval_init_scores, _kwds=kwds, _lgbm_endpoints=lgbm_endpoints,
                          _lgbm_port=lgbm_port, _tree_learner=tree_learner, _timeout=timeout, _merge=merge,
                          _output_types=output_types, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
+        if self.output_types is None:
+            self.output_types = [OutputType.object]
 
     @property
     def model_type(self) -> LGBMModelType:

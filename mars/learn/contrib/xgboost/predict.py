@@ -63,11 +63,11 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
             shape = (len(self._data), num_class)
         else:
             shape = (len(self._data),)
-        if self._output_types[0] == OutputType.tensor:
+        if self.output_types[0] == OutputType.tensor:
             # tensor
             return self.new_tileable([self._data], shape=shape, dtype=np.dtype(np.float32),
                                      order=TensorOrder.C_ORDER)
-        elif self._output_types[0] == OutputType.dataframe:
+        elif self.output_types[0] == OutputType.dataframe:
             # dataframe
             dtypes = pd.DataFrame(np.random.rand(0, num_class), dtype=np.float32).dtypes
             return self.new_tileable([self._data], shape=shape, dtypes=dtypes,

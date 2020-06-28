@@ -17,9 +17,10 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, Int32Field, StringField, ListField, BoolField
 from ...core import ExecutableTuple
-from ..operands import TensorOperand, TensorShuffleProxy, TensorOrder
 from ..array_utils import as_same_device, device
+from ..core import TensorOrder
 from ..datasource import tensor as astensor
+from ..operands import TensorOperand, TensorShuffleProxy
 from ..utils import validate_axis, validate_order
 from .psrs import TensorPSRSOperandMixin
 

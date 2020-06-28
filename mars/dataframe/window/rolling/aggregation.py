@@ -20,7 +20,7 @@ from ....serialize import ValueType, AnyField, Int64Field, BoolField, \
     StringField, Int32Field, KeyField, TupleField, DictField, ListField
 from ....tiles import TilesError
 from ....utils import lazy_import, check_chunks_unknown_shape
-from ...operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ...operands import DataFrameOperand, DataFrameOperandMixin
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, parse_index
 
@@ -47,13 +47,13 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, input=None, window=None, min_periods=None, center=None,  # pylint: disable=redefined-builtin
                  win_type=None, on=None, axis=None, closed=None, func=None,
-                 func_args=None, func_kwargs=None, object_type=None,
+                 func_args=None, func_kwargs=None, output_types=None,
                  preds=None, succs=None, **kw):
         super().__init__(_input=input, _window=window, _min_periods=min_periods,
                          _center=center, _win_type=win_type, _on=on,
                          _axis=axis, _closed=closed, _func=func,
                          _func_args=func_args, _func_kwargs=func_kwargs,
-                         _object_type=object_type,
+                         _output_types=output_types,
                          _preds=preds, _succs=succs, **kw)
 
     @property
@@ -135,7 +135,6 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(test_df.index,
                                           rolling.params, inp,
                                           store_data=False)
-            self._object_type = ObjectType.dataframe
             return self.new_dataframe(
                 [inp], shape=(inp.shape[0], test_df.shape[1]),
                 dtypes=test_df.dtypes, index_value=index_value,
@@ -146,14 +145,12 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
                                               name=inp.name)
             test_obj = empty_series.rolling(**rolling.params).agg(self._func)
             if isinstance(test_obj, pd.DataFrame):
-                self._object_type = ObjectType.dataframe
                 return self.new_dataframe(
                     [inp], shape=(inp.shape[0], test_obj.shape[1]),
                     dtypes=test_obj.dtypes, index_value=inp.index_value,
                     columns_value=parse_index(test_obj.dtypes.index,
                                               store_data=True))
             else:
-                self._object_type = ObjectType.series
                 return self.new_series(
                     [inp], shape=inp.shape, dtype=test_obj.dtype,
                     index_value=inp.index_value, name=test_obj.name)
@@ -285,7 +282,7 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
                 slices = [slice(None)] * ndim
                 slices[axis] = slice(start, None)
                 prev_chunk_op = DataFrameLocGetItem(indexes=slices,
-                                                    object_type=prev_chunk.op.object_type)
+                                                    output_types=prev_chunk.op.output_types)
                 slice_prev_chunk = prev_chunk_op.new_chunk([prev_chunk])
                 prev_chunks.insert(0, slice_prev_chunk)
             else:

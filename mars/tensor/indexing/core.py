@@ -18,7 +18,7 @@ from numbers import Integral
 
 import numpy as np
 
-from ..core import TENSOR_TYPE, CHUNK_TYPE
+from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..utils import calc_sliced_size, broadcast_shape, replace_ellipsis, index_ndim
 from ..datasource import tensor as astensor
 
@@ -34,7 +34,7 @@ def calc_shape(tensor_shape, index):
     fancy_index = None
     fancy_index_shapes = []
     for ind in index:
-        if isinstance(ind, TENSOR_TYPE + CHUNK_TYPE + (np.ndarray,)) and ind.dtype == np.bool_:
+        if isinstance(ind, TENSOR_TYPE + TENSOR_CHUNK_TYPE + (np.ndarray,)) and ind.dtype == np.bool_:
             # bool
             shape.append(np.nan if not isinstance(ind, np.ndarray) else ind.sum())
             for i, t_size, size in zip(itertools.count(0), ind.shape, tensor_shape[in_axis:ind.ndim + in_axis]):
@@ -46,7 +46,7 @@ def calc_shape(tensor_shape, index):
                     )
             in_axis += ind.ndim
             out_axis += 1
-        elif isinstance(ind, TENSOR_TYPE + CHUNK_TYPE + (np.ndarray,)):
+        elif isinstance(ind, TENSOR_TYPE + TENSOR_CHUNK_TYPE + (np.ndarray,)):
             first_fancy_index = False
             if fancy_index is None:
                 first_fancy_index = True

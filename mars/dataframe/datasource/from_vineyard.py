@@ -18,12 +18,13 @@ from pandas.core.internals.blocks import Block
 from pandas.core.internals.managers import BlockManager
 
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...config import options
 from ...serialize import StringField
 from ...context import get_context, RunningMode
 from ...tiles import TilesError
 from ...utils import calc_nsplits, check_chunks_unknown_shape
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 try:
     import vineyard
@@ -42,7 +43,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, vineyard_socket=None, object_id=None, **kw):
         super().__init__(_vineyard_socket=vineyard_socket, _object_id=object_id,
-                         _object_type=ObjectType.dataframe, **kw)
+                         _output_types=[OutputType.dataframe], **kw)
 
     @property
     def vineyard_socket(self):
@@ -69,7 +70,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, shape, chunk_size=None):
         return self.new_dataframe(None, shape, dtypes=[], raw_chunk_size=chunk_size,
-                                  object_type=ObjectType.dataframe)
+                                  output_types=[OutputType.dataframe])
 
     @classmethod
     def tile(cls, op):
@@ -125,7 +126,7 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, vineyard_socket=None, **kw):
         super().__init__(_vineyard_socket=vineyard_socket, _object_id=None,
-                         _object_type=ObjectType.dataframe, **kw)
+                         _output_types=[OutputType.dataframe], **kw)
 
     @property
     def vineyard_socket(self):
@@ -139,7 +140,7 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         if not isinstance(a.op, DataFrameFromVineyard):
             raise ValueError('Not a vineyard dataframe')
         self._object_id = a.op.object_id
-        return self.new_dataframe([a], object_type=ObjectType.dataframe)
+        return self.new_dataframe([a], output_types=[OutputType.dataframe])
 
     @classmethod
     def tile(cls, op):

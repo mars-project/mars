@@ -18,8 +18,9 @@ import pandas as pd
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...serialize import BoolField, AnyField, StringField
-from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
 from ..core import IndexValue
 from ..utils import parse_index, build_empty_df, build_empty_series, standardize_range_index
 
@@ -33,9 +34,9 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
     _col_level = AnyField('col_level')
     _col_fill = AnyField('col_fill')
 
-    def __init__(self, level=None, drop=None, name=None, col_level=None, col_fill=None, object_type=None, **kwargs):
+    def __init__(self, level=None, drop=None, name=None, col_level=None, col_fill=None, output_types=None, **kwargs):
         super().__init__(_level=level, _drop=drop, _name=name, _col_level=col_level,
-                         _col_fill=col_fill, _object_type=object_type, **kwargs)
+                         _col_fill=col_fill, _output_types=output_types, **kwargs)
 
     @property
     def level(self):
@@ -171,7 +172,6 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
             index_value = parse_index(pd.RangeIndex(range_value))
             return self.new_series([a], shape=a.shape, dtype=a.dtype, name=a.name, index_value=index_value)
         else:
-            self._object_type = ObjectType.dataframe
             empty_series = build_empty_series(dtype=a.dtype, index=a.index_value.to_pandas()[:0], name=a.name)
             empty_df = empty_series.reset_index(level=self.level, name=self.name)
             shape = (a.shape[0], len(empty_df.dtypes))
@@ -207,10 +207,10 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
 
 def df_reset_index(df, level=None, drop=False, col_level=None, col_fill=None):
     op = DataFrameResetIndex(level=level, drop=drop, col_level=col_level,
-                             col_fill=col_fill, object_type=ObjectType.dataframe)
+                             col_fill=col_fill, output_types=[OutputType.dataframe])
     return op(df)
 
 
 def series_reset_index(series, level=None, drop=False, name=None):
-    op = DataFrameResetIndex(level=level, drop=drop, name=name, object_type=ObjectType.series)
+    op = DataFrameResetIndex(level=level, drop=drop, name=name, output_types=[OutputType.series])
     return op(series)

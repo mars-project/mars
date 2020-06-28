@@ -20,12 +20,12 @@ import numpy as np
 import pandas as pd
 
 from .. import opcodes as OperandDef
-from ..operands import OperandStage
+from ..operands import OperandStage, OutputType
 from ..serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, ListField
 from ..utils import get_shuffle_input_keys_idxes
 from .core import SERIES_CHUNK_TYPE
 from .utils import hash_dtypes, filter_dtypes
-from .operands import DataFrameMapReduceOperand, DataFrameOperandMixin, ObjectType, \
+from .operands import DataFrameMapReduceOperand, DataFrameOperandMixin, \
     DataFrameShuffleProxy
 from .utils import parse_index, split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value, hash_index
@@ -51,7 +51,7 @@ class DataFrameIndexAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def __init__(self, index_min_max=None, index_shuffle_size=None, column_min_max=None,
                  column_shuffle_size=None, column_shuffle_segments=None,
                  sparse=None, dtype=None, dtypes=None, gpu=None, stage=None, shuffle_key=None,
-                 object_type=None, **kw):
+                 output_types=None, **kw):
         if index_min_max is not None:
             kw.update(dict(_index_min=index_min_max[0], _index_min_close=index_min_max[1],
                            _index_max=index_min_max[2], _index_max_close=index_min_max[3]))
@@ -62,7 +62,7 @@ class DataFrameIndexAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
             _index_shuffle_size=index_shuffle_size, _column_shuffle_size=column_shuffle_size,
             _column_shuffle_segments=column_shuffle_segments, _sparse=sparse,
             _dtype=dtype, _dtypes=dtypes, _gpu=gpu, _stage=stage, _shuffle_key=shuffle_key,
-            _object_type=object_type, **kw)
+            _output_types=output_types, **kw)
 
     @property
     def index_min(self):
@@ -218,7 +218,7 @@ class DataFrameIndexAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
             shuffle_size = op.index_shuffle_size
             filters[0].extend(hash_index(df.index, shuffle_size))
 
-        if op.object_type == ObjectType.series:
+        if chunk.ndim == 1:
             if len(filters[0]) == 1:
                 # no shuffle
                 ctx[chunk.key] = df.loc[filters[0][0]]
@@ -274,12 +274,12 @@ class DataFrameIndexAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
         input_idx_to_df = {idx: ctx[inp_key, ','.join(str(ix) for ix in chunk.index)]
                            for inp_key, idx in zip(input_keys, input_idxes)}
         row_idxes = sorted({idx[0] for idx in input_idx_to_df})
-        if op.object_type == ObjectType.dataframe:
+        if chunk.ndim == 2:
             col_idxes = sorted({idx[1] for idx in input_idx_to_df})
 
         ress = []
         for row_idx in row_idxes:
-            if op.object_type == ObjectType.dataframe:
+            if chunk.ndim == 2:
                 row_dfs = []
                 for col_idx in col_idxes:
                     row_dfs.append(input_idx_to_df[row_idx, col_idx])
@@ -528,7 +528,7 @@ def _gen_series_chunks(splits, out_shape, left_or_right, series):
             if _need_align_map(chunk, index_min_max, None):
                 align_op = DataFrameIndexAlign(
                     stage=OperandStage.map, index_min_max=index_min_max, column_min_max=None,
-                    dtype=chunk.dtype, sparse=series.issparse(), object_type=ObjectType.series)
+                    dtype=chunk.dtype, sparse=series.issparse(), output_types=[OutputType.series])
                 out_chunk = align_op.new_chunk([chunk], shape=(np.nan,), index=(out_idx,))
             else:
                 out_chunk = chunk
@@ -539,17 +539,17 @@ def _gen_series_chunks(splits, out_shape, left_or_right, series):
         for chunk in series.chunks:
             map_op = DataFrameIndexAlign(
                 stage=OperandStage.map, sparse=chunk.issparse(), index_shuffle_size=out_shape[0],
-                object_type=ObjectType.series)
+                output_types=[OutputType.series])
             map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan,), index=chunk.index))
 
-        proxy_chunk = DataFrameShuffleProxy(object_type=ObjectType.series).new_chunk(
+        proxy_chunk = DataFrameShuffleProxy(output_types=[OutputType.series]).new_chunk(
             map_chunks, shape=())
 
         # gen reduce chunks
         for out_idx in range(out_shape[0]):
             reduce_op = DataFrameIndexAlign(stage=OperandStage.reduce, i=out_idx,
                                             sparse=proxy_chunk.issparse(), shuffle_key=str(out_idx),
-                                            object_type=ObjectType.series)
+                                            output_types=[OutputType.series])
             out_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan,), index=(out_idx,)))
 
@@ -584,7 +584,7 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
                 align_op = DataFrameIndexAlign(
                     stage=OperandStage.map, index_min_max=index_min_max,
                     column_min_max=column_min_max, dtypes=dtypes, sparse=chunk.issparse(),
-                    object_type=ObjectType.dataframe, **kw)
+                    output_types=[OutputType.dataframe], **kw)
                 out_chunk = align_op.new_chunk([chunk], shape=(np.nan, np.nan), index=out_idx, **chunk_kw)
             else:
                 out_chunk = chunk
@@ -618,13 +618,13 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
                 else:
                     chunk_kw['columns_value'] = input_chunk.columns_value if splits[1].isdummy() else None
                 map_op = DataFrameIndexAlign(stage=OperandStage.map, sparse=input_chunk.issparse(),
-                                             object_type=ObjectType.dataframe, **kw)
+                                             output_types=[OutputType.dataframe], **kw)
                 idx = [None, None]
                 idx[align_axis] = align_axis_idx
                 idx[shuffle_axis] = j
                 map_chunks.append(map_op.new_chunk([input_chunk], shape=(np.nan, np.nan), index=tuple(idx), **chunk_kw))
             proxy_chunk = DataFrameShuffleProxy(
-                sparse=df.issparse(), object_type=ObjectType.dataframe).new_chunk(map_chunks, shape=())
+                sparse=df.issparse(), output_types=[OutputType.dataframe]).new_chunk(map_chunks, shape=())
             for j in range(out_shape[shuffle_axis]):
                 chunk_kw = dict()
                 if align_axis == 0:
@@ -636,7 +636,7 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
                 reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
                 reduce_op = DataFrameIndexAlign(stage=OperandStage.reduce, i=j, sparse=proxy_chunk.issparse(),
                                                 shuffle_key=','.join(str(idx) for idx in reduce_idx),
-                                                object_type=ObjectType.dataframe)
+                                                output_types=[OutputType.dataframe])
                 out_chunks.append(
                     reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=reduce_idx, **chunk_kw))
         out_chunks.sort(key=lambda c: c.index)
@@ -649,10 +649,10 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
         for chunk in df.chunks:
             map_op = DataFrameIndexAlign(
                 stage=OperandStage.map, sparse=chunk.issparse(), index_shuffle_size=out_shape[0],
-                column_shuffle_size=out_shape[1], object_type=ObjectType.dataframe)
+                column_shuffle_size=out_shape[1], output_types=[OutputType.dataframe])
             map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan, np.nan), index=chunk.index))
 
-        proxy_chunk = DataFrameShuffleProxy(object_type=ObjectType.dataframe).new_chunk(
+        proxy_chunk = DataFrameShuffleProxy(output_types=[OutputType.dataframe]).new_chunk(
             map_chunks, shape=())
 
         # gen reduce chunks
@@ -660,7 +660,7 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
             reduce_op = DataFrameIndexAlign(stage=OperandStage.reduce, i=out_idx,
                                             sparse=proxy_chunk.issparse(),
                                             shuffle_key=','.join(str(idx) for idx in out_idx),
-                                            object_type=ObjectType.dataframe)
+                                            output_types=[OutputType.dataframe])
             out_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx))
 

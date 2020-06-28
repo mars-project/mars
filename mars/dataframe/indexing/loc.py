@@ -27,7 +27,7 @@ from ...tensor.datasource import asarray
 from ...tensor.utils import calc_sliced_size, filter_inputs
 from ...utils import lazy_import
 from ..core import IndexValue, DATAFRAME_TYPE
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 from .index_lib import DataFrameLocIndexesHandler
 
@@ -80,9 +80,9 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, object_type=None, **kw):
+    def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse,
-                         _object_type=object_type, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def input(self):
@@ -263,7 +263,6 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
         shape = tuple(shape)
         if len(shape) == 0:
             # scalar
-            self._object_type = ObjectType.scalar
             if isinstance(inp, DATAFRAME_TYPE):
                 dtype = inp.dtypes[self._indexes[1]]
             else:
@@ -271,7 +270,6 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
             return self.new_scalar(inputs, dtype=dtype)
         elif len(shape) == 1:
             # series
-            self._object_type = ObjectType.series
             if isinstance(inp, DATAFRAME_TYPE):
                 if sizes[0] is None:
                     # label on axis 0
@@ -288,7 +286,6 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
                                        index_value=index_value, name=inp.name)
         else:
             # dataframe
-            self._object_type = ObjectType.dataframe
             return self.new_dataframe(inputs, shape=shape, dtypes=dtypes,
                                       index_value=index_value, columns_value=columns_value)
 

@@ -26,8 +26,8 @@ class DataFrameAround(DataFrameUnaryUfunc):
 
     _decimals = Int32Field('decimals')
 
-    def __init__(self, decimals=None, object_type=None, **kw):
-        super().__init__(_decimals=decimals, object_type=object_type, **kw)
+    def __init__(self, decimals=None, output_types=None, **kw):
+        super().__init__(_decimals=decimals, output_types=output_types, **kw)
 
     @classproperty
     def tensor_op_type(self):

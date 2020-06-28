@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import Entity, Base
+from ...core import Entity, Base, OutputType
 from ...lib.groupby_wrapper import wrapped_groupby
 from ...operands import OperandStage
 from ...serialize import BoolField, Int32Field, AnyField
@@ -29,8 +29,7 @@ from ..initializer import Series as asseries
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..utils import build_concatenated_rows_frame, hash_dataframe_on, \
     build_empty_df, build_empty_series, parse_index
-from ..operands import DataFrameOperandMixin, \
-    DataFrameMapReduceOperand, DataFrameShuffleProxy, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameMapReduceOperand, DataFrameShuffleProxy
 
 
 class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
@@ -45,21 +44,22 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     _shuffle_size = Int32Field('shuffle_size')
 
     def __init__(self, by=None, level=None, as_index=None, sort=None, group_keys=None,
-                 shuffle_size=None, stage=None, shuffle_key=None, object_type=None, **kw):
+                 shuffle_size=None, stage=None, shuffle_key=None, output_types=None, **kw):
         super().__init__(_by=by, _level=level, _as_index=as_index, _sort=sort,
                          _group_keys=group_keys, _shuffle_size=shuffle_size, _stage=stage,
-                         _shuffle_key=shuffle_key, _object_type=object_type, **kw)
-        if stage in (OperandStage.map, OperandStage.reduce):
-            if object_type in (ObjectType.dataframe, ObjectType.dataframe_groupby):
-                object_type = ObjectType.dataframe
+                         _shuffle_key=shuffle_key, _output_types=output_types, **kw)
+        if output_types:
+            if stage in (OperandStage.map, OperandStage.reduce):
+                if output_types[0] in (OutputType.dataframe, OutputType.dataframe_groupby):
+                    output_types = [OutputType.dataframe]
+                else:
+                    output_types = [OutputType.series]
             else:
-                object_type = ObjectType.series
-        else:
-            if object_type in (ObjectType.dataframe, ObjectType.dataframe_groupby):
-                object_type = ObjectType.dataframe_groupby
-            elif object_type == ObjectType.series:
-                object_type = ObjectType.series_groupby
-        self._object_type = object_type
+                if output_types[0] in (OutputType.dataframe, OutputType.dataframe_groupby):
+                    output_types = [OutputType.dataframe_groupby]
+                elif output_types[0] == OutputType.series:
+                    output_types = [OutputType.series_groupby]
+            self.output_types = output_types
 
     @property
     def by(self):
@@ -87,7 +87,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     @property
     def is_dataframe_obj(self):
-        return self._object_type in (ObjectType.dataframe_groupby, ObjectType.dataframe)
+        return self.output_types[0] in (OutputType.dataframe_groupby, OutputType.dataframe)
 
     @property
     def groupby_params(self):
@@ -206,10 +206,10 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         is_dataframe_obj = op.is_dataframe_obj
         if is_dataframe_obj:
             in_df = build_concatenated_rows_frame(in_df)
-            out_object_type = ObjectType.dataframe
+            output_type = OutputType.dataframe
             chunk_shape = (in_df.chunk_shape[0], 1)
         else:
-            out_object_type = ObjectType.series
+            output_type = OutputType.series
             chunk_shape = (in_df.chunk_shape[0],)
 
         # generate map chunks
@@ -231,7 +231,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
                 map_op._by = chunk_by
             map_chunks.append(map_op.new_chunk(chunk_inputs, shape=(np.nan, np.nan), index=chunk.index))
 
-        proxy_chunk = DataFrameShuffleProxy(object_type=out_object_type).new_chunk(map_chunks, shape=())
+        proxy_chunk = DataFrameShuffleProxy(output_types=[output_type]).new_chunk(map_chunks, shape=())
 
         # generate reduce chunks
         reduce_chunks = []
@@ -316,7 +316,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute_reduce(cls, ctx, op):
-        is_dataframe_obj = op.inputs[0].op.object_type == ObjectType.dataframe
+        is_dataframe_obj = op.inputs[0].op.output_types[0] == OutputType.dataframe
         chunk = op.outputs[0]
         input_keys, input_idxes = get_shuffle_input_keys_idxes(op.inputs[0])
         input_idx_to_df = {idx: ctx[inp_key, ','.join(str(ix) for ix in chunk.index)]
@@ -374,14 +374,14 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
 
 def groupby(df, by=None, level=None, as_index=True, sort=True, group_keys=True):
-    if not as_index and df.op.object_type == ObjectType.series:
+    if not as_index and df.op.output_types[0] == OutputType.series:
         raise TypeError('as_index=False only valid with DataFrame')
 
-    object_type = ObjectType.dataframe_groupby if df.ndim == 2 else ObjectType.series_groupby
+    output_types = [OutputType.dataframe_groupby] if df.ndim == 2 else [OutputType.series_groupby]
     if isinstance(by, (str, SERIES_TYPE, pd.Series)):
         if isinstance(by, pd.Series):
             by = asseries(by)
         by = [by]
     op = DataFrameGroupByOperand(by=by, level=level, as_index=as_index, sort=sort,
-                                 group_keys=group_keys, object_type=object_type)
+                                 group_keys=group_keys, output_types=output_types)
     return op(df)

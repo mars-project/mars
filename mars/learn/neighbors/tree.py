@@ -43,8 +43,8 @@ class TreeBase(LearnOperand, LearnOperandMixin):
         super().__init__(_leaf_size=leaf_size, _metric=metric,
                          _metric_params=metric_params,
                          _output_types=output_types, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
+        if self.output_types is None:
+            self.output_types = [OutputType.object]
 
     @property
     def input(self):
@@ -128,8 +128,8 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
         super().__init__(_tree=tree, _n_neighbors=n_neighbors,
                          _return_distance=return_distance,
                          _output_types=output_types, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.tensor] * self.output_limit
+        if self.output_types is None:
+            self.output_types = [OutputType.tensor] * self.output_limit
 
     @property
     def input(self):
