@@ -56,7 +56,7 @@ class _TileablePlaceholder:
         pass
 
 
-class RemoteFunction(ObjectOperand, RemoteOperandMixin):
+class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     _op_type_ = opcodes.REMOTE_FUNCATION
     _op_module_ = 'remote'
 

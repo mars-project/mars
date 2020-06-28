@@ -23,7 +23,7 @@ from ...serialize import NDArrayField, StringField, Float64Field
 from ...config import options
 from ..utils import decide_chunk_sizes, gen_random_seeds
 from ..array_utils import array_module, device
-from .core import TensorRandomOperandMixin, TensorDistribution, CHUNK_TYPE
+from .core import TensorRandomOperandMixin, TensorDistribution, TENSOR_CHUNK_TYPE
 
 
 class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
@@ -109,7 +109,7 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
             args = []
             for k in op.args:
                 val = getattr(op, k, None)
-                if isinstance(val, CHUNK_TYPE):
+                if isinstance(val, TENSOR_CHUNK_TYPE):
                     args.append(ctx[val.key])
                 else:
                     args.append(val)

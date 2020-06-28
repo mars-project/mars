@@ -18,8 +18,8 @@ import numpy as np
 
 from ... import opcodes
 from ...serialize import AnyField, Int8Field, Int64Field
-from ..core import DATAFRAME_TYPE
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..core import DATAFRAME_TYPE, OutputType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, build_empty_series, validate_axis
 from .shift import DataFrameShift
 
@@ -51,11 +51,11 @@ class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
         params = df_or_series.params.copy()
 
         if isinstance(df_or_series, DATAFRAME_TYPE):
-            self._object_type = ObjectType.dataframe
+            self.output_types = [OutputType.dataframe]
             mock_obj = build_empty_df(df_or_series.dtypes)
             params['dtypes'] = mock_obj.diff().dtypes
         else:
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
             mock_obj = build_empty_series(df_or_series.dtype, name=df_or_series.name)
             params['dtype'] = mock_obj.diff().dtype
 

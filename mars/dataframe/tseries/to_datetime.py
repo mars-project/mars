@@ -22,11 +22,11 @@ from pandas.api.types import is_scalar, is_dict_like
 from ... import opcodes
 from ...serialize import KeyField, StringField, BoolField, AnyField
 from ...tensor import tensor as astensor
-from ...tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE
+from ...tensor.core import TENSOR_CHUNK_TYPE
 from ...tiles import TilesError
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, INDEX_CHUNK_TYPE
 from ..initializer import DataFrame as asdataframe, Series as asseries, Index as asindex
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 
@@ -119,7 +119,6 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
         dtype = np.datetime64(1, 'ns').dtype
         if isinstance(arg, (pd.Series, SERIES_TYPE)):
             arg = asseries(arg)
-            self._object_type = ObjectType.series
             return self.new_series([arg], shape=arg.shape,
                                    dtype=dtype, index_value=arg.index_value,
                                    name=arg.name)
@@ -130,23 +129,20 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
                 missing = ','.join(c for c in ['day', 'month', 'year'] if c not in columns)
                 raise ValueError('to assemble mappings requires at least '
                                  'that [year, month, day] be specified: [{}] is missing'.format(missing))
-            self._object_type = ObjectType.series
             return self.new_series([arg], shape=(arg.shape[0],),
                                    dtype=dtype, index_value=arg.index_value)
         elif isinstance(arg, (pd.Index, INDEX_TYPE)):
             arg = asindex(arg)
-            self._object_type = ObjectType.index
-            return self.new_series([arg], shape=arg.shape,
-                                   dtype=dtype,
-                                   index_value=parse_index(pd.Index([], dtype=dtype),
-                                                           self._params, arg),
-                                   name=arg.name)
+            return self.new_index([arg], shape=arg.shape,
+                                  dtype=dtype,
+                                  index_value=parse_index(pd.Index([], dtype=dtype),
+                                                          self._params, arg),
+                                  name=arg.name)
         else:
             arg = astensor(arg)
             if arg.ndim != 1:
                 raise TypeError('arg must be a string, datetime, '
                                 'list, tuple, 1-d tensor, or Series')
-            self._object_type = ObjectType.index
             return self.new_index([arg], shape=arg.shape,
                                   dtype=dtype,
                                   index_value=parse_index(pd.Index([], dtype=dtype),

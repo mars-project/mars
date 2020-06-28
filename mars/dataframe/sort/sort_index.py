@@ -14,11 +14,12 @@
 
 import pandas as pd
 
-from ...serialize import ListField, BoolField
 from ... import opcodes as OperandDef
+from ...core import OutputType
+from ...serialize import ListField, BoolField
 from ...tensor.base.sort import _validate_sort_psrs_kinds
 from ..utils import parse_index, validate_axis, build_concatenated_rows_frame, standardize_range_index
-from ..operands import DATAFRAME_TYPE, ObjectType
+from ..operands import DATAFRAME_TYPE
 from .core import DataFrameSortOperand
 from .psrs import DataFramePSRSOperandMixin, execute_sort_index
 
@@ -46,7 +47,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
 
         if op.axis == 0:
             if df.chunk_shape[op.axis] == 1:
-                if op.object_type == ObjectType.dataframe:
+                if op.output_types[0] == OutputType.dataframe:
                     df = build_concatenated_rows_frame(df)
                     out_chunks = []
                     for chunk in df.chunks:
@@ -72,7 +73,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
                     kws['chunks'] = out_chunks
                     return new_op.new_seriess(op.inputs, **kws)
             else:
-                if op.object_type == ObjectType.dataframe:
+                if op.output_types[0] == OutputType.dataframe:
                     df = build_concatenated_rows_frame(df)
                 if op.na_position != 'last':  # pragma: no cover
                     raise NotImplementedError('Only support puts NaNs at the end.')
@@ -126,10 +127,10 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
 
     def __call__(self, a):
         if isinstance(a, DATAFRAME_TYPE):
-            self._object_type = ObjectType.dataframe
+            self.output_types = [OutputType.dataframe]
             return self._call_dataframe(a)
         else:
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
             return self._call_series(a)
 
 

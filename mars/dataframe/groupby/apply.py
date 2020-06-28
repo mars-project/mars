@@ -16,8 +16,9 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
+from ...core import OutputType
 from ...serialize import TupleField, DictField, FunctionField
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_empty_df, build_empty_series, parse_index
 
 
@@ -29,8 +30,8 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     _args = TupleField('args')
     _kwds = DictField('kwds')
 
-    def __init__(self, func=None, args=None, kwds=None, object_type=None, **kw):
-        super().__init__(_func=func, _args=args, _kwds=kwds, _object_type=object_type, **kw)
+    def __init__(self, func=None, args=None, kwds=None, output_types=None, **kw):
+        super().__init__(_func=func, _args=args, _kwds=kwds, _output_types=output_types, **kw)
 
     @property
     def func(self):
@@ -48,7 +49,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]
         if not in_data:
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 ctx[op.outputs[0].key] = build_empty_df(op.outputs[0].dtypes)
             else:
                 ctx[op.outputs[0].key] = build_empty_series(op.outputs[0].dtype)
@@ -58,7 +59,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
 
         # when there is only one group, pandas tend to return a DataFrame, while
         # we need to convert it into a compatible series
-        if op.object_type == ObjectType.series and isinstance(applied, pd.DataFrame):
+        if op.output_types[0] == OutputType.series and isinstance(applied, pd.DataFrame):
             assert len(applied.index) == 1
             applied_idx = pd.MultiIndex.from_arrays(
                 [[applied.index[0]] * len(applied.columns), applied.columns.tolist()])
@@ -76,7 +77,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             inp_chunks = [c]
 
             new_op = op.copy().reset_key()
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 chunks.append(new_op.new_chunk(
                     inp_chunks, index=c.index, shape=(np.nan, len(out_df.dtypes)), dtypes=out_df.dtypes,
                     columns_value=out_df.columns_value, index_value=out_df.index_value))
@@ -88,17 +89,17 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
         kw['chunks'] = chunks
-        if op.object_type == ObjectType.dataframe:
+        if op.output_types[0] == OutputType.dataframe:
             kw['nsplits'] = ((np.nan,) * len(chunks), (out_df.shape[1],))
         else:
             kw['nsplits'] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
 
     def _infer_df_func_returns(self, in_groupby, in_df, dtypes, index):
-        index_value, object_type, new_dtypes = None, None, None
+        index_value, output_type, new_dtypes = None, None, None
 
         try:
-            if in_df.op.object_type == ObjectType.dataframe:
+            if in_df.op.output_types[0] == OutputType.dataframe:
                 empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
             else:
                 empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
@@ -114,35 +115,35 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             index_value = parse_index(None, in_df.key, self.func)
 
             if isinstance(infer_df, pd.DataFrame):
-                object_type = object_type or ObjectType.dataframe
+                output_type = output_type or OutputType.dataframe
                 new_dtypes = new_dtypes or infer_df.dtypes
             elif isinstance(infer_df, pd.Series):
-                object_type = object_type or ObjectType.series
+                output_type = output_type or OutputType.series
                 new_dtypes = new_dtypes or (infer_df.name, infer_df.dtype)
             else:
-                object_type = ObjectType.series
+                output_type = OutputType.series
                 new_dtypes = (None, pd.Series(infer_df).dtype)
         except:  # noqa: E722  # nosec
             pass
 
-        self._object_type = object_type if self._object_type is None else self._object_type
+        self.output_types = [output_type] if not self.output_types else self.output_types
         dtypes = new_dtypes if dtypes is None else dtypes
         index_value = index_value if index is None else parse_index(index)
         return dtypes, index_value
 
     def __call__(self, groupby, dtypes=None, index=None):
         in_df = groupby
-        while in_df.op.object_type not in (ObjectType.dataframe, ObjectType.series):
+        while in_df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
             in_df = in_df.inputs[0]
 
         dtypes, index_value = self._infer_df_func_returns(groupby, in_df, dtypes, index)
-        for arg, desc in zip((self._object_type, dtypes, index_value),
-                             ('object_type', 'dtypes', 'index')):
+        for arg, desc in zip((self.output_types, dtypes, index_value),
+                             ('output_types', 'dtypes', 'index')):
             if arg is None:
                 raise TypeError('Cannot determine %s by calculating with enumerate data, '
                                 'please specify it as arguments' % desc)
 
-        if self.object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             new_shape = (np.nan, len(dtypes))
             return self.new_dataframe([groupby], shape=new_shape, dtypes=dtypes, index_value=index_value,
                                       columns_value=parse_index(dtypes.index, store_data=True))
@@ -153,9 +154,9 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
                                    index_value=index_value)
 
 
-def groupby_apply(groupby, func, *args, dtypes=None, index=None, object_type=None, **kwargs):
+def groupby_apply(groupby, func, *args, dtypes=None, index=None, output_types=None, **kwargs):
     # todo this can be done with sort_index implemented
     if not groupby.op.groupby_params.get('as_index', True):
         raise NotImplementedError('apply when set_index == False is not supported')
-    op = GroupByApply(func=func, args=args, kwds=kwargs, object_type=object_type)
+    op = GroupByApply(func=func, args=args, kwds=kwargs, output_types=output_types)
     return op(groupby, dtypes=dtypes, index=index)

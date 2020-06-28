@@ -23,7 +23,7 @@ from ...utils import check_chunks_unknown_shape, flatten, stack_back
 from ...tiles import TilesError
 from ...core import Base, Entity, ExecutableTuple
 from ..operands import TensorOperand, TensorShuffleProxy
-from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
+from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..utils import validate_axis, validate_order
@@ -387,7 +387,7 @@ class CalcPartitionsInfo(TensorOperand, TensorPSRSOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if isinstance(self._kth, (TENSOR_TYPE, CHUNK_TYPE)):
+        if isinstance(self._kth, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             self._kth = self._inputs[0]
 
     @classmethod
@@ -396,7 +396,7 @@ class CalcPartitionsInfo(TensorOperand, TensorPSRSOperandMixin):
             [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            if isinstance(op.kth, CHUNK_TYPE):
+            if isinstance(op.kth, TENSOR_CHUNK_TYPE):
                 kth = inputs[0]
                 sort_infos = inputs[1:]
                 # make kth all positive

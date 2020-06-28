@@ -69,10 +69,6 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
     def combine_size(self):
         return self._combine_size
 
-    @property
-    def stage(self):
-        return self._stage
-
     def __call__(self, a, v):
         inputs = [a]
         if isinstance(v, TENSOR_TYPE):

@@ -23,14 +23,13 @@ from mars import opcodes as OperandDef
 from mars.operands import OperandStage
 from mars.tests.core import TestBase, parameterized
 from mars.tensor import Tensor
-from mars.dataframe.core import DataFrame, IndexValue, Series
+from mars.dataframe.core import DataFrame, IndexValue, Series, OutputType
 from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, \
     DataFrameMax, DataFrameCount, DataFrameMean, DataFrameVar, DataFrameCummin, \
     DataFrameCummax, DataFrameCumprod, DataFrameCumsum, DataFrameNunique
 from mars.dataframe.merge import DataFrameConcat
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
-from mars.dataframe.operands import ObjectType
 
 
 reduction_functions = dict(
@@ -376,7 +375,7 @@ class TestCumReduction(TestBase):
         result = df.nunique()
 
         self.assertEqual(result.shape, (10,))
-        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertEqual(result.op.output_types[0], OutputType.series)
         self.assertIsInstance(result.op, DataFrameNunique)
 
         tiled = result.tiles()
@@ -391,7 +390,7 @@ class TestCumReduction(TestBase):
         result2 = df2.nunique(axis=1)
 
         self.assertEqual(result2.shape, (20,))
-        self.assertEqual(result2.op.object_type, ObjectType.series)
+        self.assertEqual(result2.op.output_types[0], OutputType.series)
         self.assertIsInstance(result2.op, DataFrameNunique)
 
         tiled = result2.tiles()
@@ -413,7 +412,7 @@ class TestAggregate(TestBase):
         self.assertEqual(result.shape, (6, data.shape[1]))
         self.assertListEqual(list(result.columns_value.to_pandas()), list(range(19)))
         self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
-        self.assertEqual(result.op.object_type, ObjectType.dataframe)
+        self.assertEqual(result.op.output_types[0], OutputType.dataframe)
         self.assertListEqual(result.op.func, agg_funcs)
 
         df = from_pandas_df(data, chunk_size=(3, 4))
@@ -422,7 +421,7 @@ class TestAggregate(TestBase):
         self.assertEqual(len(result.chunks), 5)
         self.assertEqual(result.shape, (data.shape[1],))
         self.assertListEqual(list(result.index_value.to_pandas()), list(range(data.shape[1])))
-        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertEqual(result.op.output_types[0], OutputType.series)
         self.assertListEqual(result.op.func, ['sum'])
         agg_chunk = result.chunks[0]
         self.assertEqual(agg_chunk.shape, (4,))
@@ -433,7 +432,7 @@ class TestAggregate(TestBase):
         self.assertEqual(len(result.chunks), 7)
         self.assertEqual(result.shape, (data.shape[0],))
         self.assertListEqual(list(result.index_value.to_pandas()), list(range(data.shape[0])))
-        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertEqual(result.op.output_types[0], OutputType.series)
         agg_chunk = result.chunks[0]
         self.assertEqual(agg_chunk.shape, (3,))
         self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(3)))
@@ -443,7 +442,7 @@ class TestAggregate(TestBase):
         self.assertEqual(len(result.chunks), 7)
         self.assertEqual(result.shape, (data.shape[0],))
         self.assertListEqual(list(result.index_value.to_pandas()), list(range(data.shape[0])))
-        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertEqual(result.op.output_types[0], OutputType.series)
         self.assertListEqual(result.op.func, ['var'])
         agg_chunk = result.chunks[0]
         self.assertEqual(agg_chunk.shape, (3,))
@@ -455,7 +454,7 @@ class TestAggregate(TestBase):
         self.assertEqual(result.shape, (len(agg_funcs), data.shape[1]))
         self.assertListEqual(list(result.columns_value.to_pandas()), list(range(data.shape[1])))
         self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
-        self.assertEqual(result.op.object_type, ObjectType.dataframe)
+        self.assertEqual(result.op.output_types[0], OutputType.dataframe)
         self.assertListEqual(result.op.func, agg_funcs)
         agg_chunk = result.chunks[0]
         self.assertEqual(agg_chunk.shape, (len(agg_funcs), 4))
@@ -468,7 +467,7 @@ class TestAggregate(TestBase):
         self.assertEqual(result.shape, (data.shape[0], len(agg_funcs)))
         self.assertListEqual(list(result.columns_value.to_pandas()), agg_funcs)
         self.assertListEqual(list(result.index_value.to_pandas()), list(range(data.shape[0])))
-        self.assertEqual(result.op.object_type, ObjectType.dataframe)
+        self.assertEqual(result.op.output_types[0], OutputType.dataframe)
         self.assertListEqual(result.op.func, agg_funcs)
         agg_chunk = result.chunks[0]
         self.assertEqual(agg_chunk.shape, (3, len(agg_funcs)))
@@ -483,7 +482,7 @@ class TestAggregate(TestBase):
         self.assertEqual(result.shape, (len(all_cols), len(dict_fun)))
         self.assertSetEqual(set(result.columns_value.to_pandas()), set(dict_fun.keys()))
         self.assertSetEqual(set(result.index_value.to_pandas()), all_cols)
-        self.assertEqual(result.op.object_type, ObjectType.dataframe)
+        self.assertEqual(result.op.output_types[0], OutputType.dataframe)
         self.assertListEqual(result.op.func[0], [dict_fun[0]])
         self.assertListEqual(result.op.func[2], dict_fun[2])
         agg_chunk = result.chunks[0]
@@ -505,7 +504,7 @@ class TestAggregate(TestBase):
         self.assertEqual(len(result.chunks), 1)
         self.assertEqual(result.shape, (6,))
         self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
-        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertEqual(result.op.output_types[0], OutputType.series)
         self.assertListEqual(result.op.func, agg_funcs)
 
         series = from_pandas_series(data, chunk_size=3)
@@ -513,7 +512,7 @@ class TestAggregate(TestBase):
         result = series.agg('sum').tiles()
         self.assertEqual(len(result.chunks), 1)
         self.assertEqual(result.shape, ())
-        self.assertEqual(result.op.object_type, ObjectType.scalar)
+        self.assertEqual(result.op.output_types[0], OutputType.scalar)
         agg_chunk = result.chunks[0]
         self.assertEqual(agg_chunk.shape, ())
         self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
@@ -522,7 +521,7 @@ class TestAggregate(TestBase):
         self.assertEqual(len(result.chunks), 1)
         self.assertEqual(result.shape, (len(agg_funcs),))
         self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
-        self.assertEqual(result.op.object_type, ObjectType.series)
+        self.assertEqual(result.op.output_types[0], OutputType.series)
         self.assertListEqual(result.op.func, agg_funcs)
         agg_chunk = result.chunks[0]
         self.assertEqual(agg_chunk.shape, (len(agg_funcs),))

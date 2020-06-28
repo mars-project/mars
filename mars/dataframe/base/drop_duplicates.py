@@ -24,7 +24,7 @@ from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, ceildiv, get_shuffle_input_keys_idxes, lazy_import
 from ..initializer import DataFrame as asdataframe
 from ..operands import DataFrameMapReduceOperand, DataFrameOperandMixin, \
-    DataFrameShuffleProxy, ObjectType
+    DataFrameShuffleProxy, OutputType
 from ..merge import DataFrameConcat
 from ..utils import parse_index, hash_dataframe_on, gen_unknown_index_value, standardize_range_index
 
@@ -46,10 +46,10 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
     _shuffle_phase = StringField('shuffle_phase')
 
     def __init__(self, subset=None, keep=None, ignore_index=None,
-                 object_type=None, method=None, subset_chunk=None,
+                 output_types=None, method=None, subset_chunk=None,
                  shuffle_size=None, shuffle_phase=None, shuffle_key=None, **kw):
         super().__init__(_subset=subset, _keep=keep, _ignore_index=ignore_index,
-                         _object_type=object_type, _method=method,
+                         _output_types=output_types, _method=method,
                          _subset_chunk=subset_chunk,
                          _shuffle_size=shuffle_size,
                          _shuffle_phase=shuffle_phase,
@@ -94,7 +94,7 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
             self._subset_chunk = self._inputs[1]
 
     def __call__(self, inp, inplace=False):
-        self._object_type = inp.op.object_type
+        self._output_types = inp.op.output_types
         params = inp.params
         if self._ignore_index:
             params['index_value'] = parse_index(pd.RangeIndex(-1))
@@ -166,7 +166,7 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
                 else:
                     kw = dict(dtype=in_chunks[0].dtype)
                 concat_chunk = DataFrameConcat(
-                    object_type=in_chunks[0].op.object_type).new_chunk(
+                    output_types=in_chunks[0].op.output_types).new_chunk(
                     in_chunks, **kw)
                 chunk_op = op.copy().reset_key()
                 chunk_op._method = method
@@ -234,7 +234,7 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
         map_chunks = cls._gen_map_chunks(op, inp, 'shuffle',
                                          _shuffle_size=inp.chunk_shape[0])
         proxy_chunk = DataFrameShuffleProxy(
-            object_type=map_chunks[0].op.object_type).new_chunk(map_chunks, shape=())
+            output_types=map_chunks[0].op.output_types).new_chunk(map_chunks, shape=())
         reduce_chunks = []
         for i in range(len(map_chunks)):
             reduce_op = op.copy().reset_key()
@@ -249,7 +249,7 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
                 reduce_op.new_chunk([proxy_chunk], kws=[reduce_chunk_params]))
 
         put_back_proxy_chunk = DataFrameShuffleProxy(
-            object_type=map_chunks[0].op.object_type).new_chunk(reduce_chunks, shape=())
+            output_types=map_chunks[0].op.output_types).new_chunk(reduce_chunks, shape=())
         put_back_chunks = []
         for i in range(len(map_chunks)):
             put_back_op = op.copy().reset_key()
@@ -441,10 +441,10 @@ class DataFrameDropDuplicates(DataFrameMapReduceOperand, DataFrameOperandMixin):
         inp.sort_values('_i_', inplace=True)
         del inp['_i_']
 
-        if out.op.object_type == ObjectType.index:
+        if out.op.output_types[0] == OutputType.index:
             assert inp.shape[1] == 1
             ret = xdf.Index(inp.iloc[:, 0])
-        elif out.op.object_type == ObjectType.series:
+        elif out.op.output_types[0] == OutputType.series:
             assert inp.shape[1] == 1
             ret = inp.iloc[:, 0]
         else:

@@ -16,7 +16,7 @@ from ..core import FuseChunkData, FuseChunk
 from ..operands import Fuse, FuseChunkMixin, ObjectOperandMixin
 
 
-class RemoteFuseChunkMixin(FuseChunkMixin, ObjectOperandMixin):
+class RemoteFuseChunkMixin(ObjectOperandMixin, FuseChunkMixin):
     __slots__ = ()
 
     def _create_chunk(self, output_idx, index, **kw):
@@ -25,7 +25,7 @@ class RemoteFuseChunkMixin(FuseChunkMixin, ObjectOperandMixin):
         return FuseChunk(data)
 
 
-class RemoteFuseChunk(Fuse, RemoteFuseChunkMixin):
+class RemoteFuseChunk(RemoteFuseChunkMixin, Fuse):
     pass
 
 

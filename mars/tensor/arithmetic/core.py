@@ -50,9 +50,8 @@ class TensorElementWise(TensorOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_shape = broadcast_shape(*(c.shape for c in in_chunks))
             chunks = chunk_op.new_chunks(in_chunks, shape=chunk_shape, index=out_index,
-                                         dtype=[o.dtype for o in op.outputs],
-                                         kws=[{'side': str(i), 'order': out.order}
-                                              for i, out in enumerate(op.outputs)])
+                                         kws=[{'side': str(i), 'order': o.order, 'dtype': o.dtype}
+                                              for i, o in enumerate(op.outputs)])
             for i, out_chunk in enumerate(chunks):
                 out_chunks[i].append(out_chunk)
             for i, idx, s in zip(itertools.count(0), out_index, chunks[0].shape):
@@ -556,9 +555,9 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
         order2 = self._calc_order(x, out2)
 
         inputs = filter_inputs([x, out1, out2, where])
-        t1, t2 = self.new_tensors(inputs, shape, dtype=dtype,
-                                  kws=[{'order': order1, 'side': 'left'},
-                                       {'order': order2, 'side': 'right'}])
+        t1, t2 = self.new_tensors(inputs, shape,
+                                  kws=[{'order': order1, 'dtype': dtype[0], 'side': 'left'},
+                                       {'order': order2, 'dtype': dtype[1], 'side': 'right'}])
 
         if out1 is None and out2 is None:
             return ExecutableTuple([t1, t2])
@@ -576,8 +575,8 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
         # if `out` is specified, use out's dtype and shape
         if t1.shape != out1_shape or t2.shape != out2_shape:
             t1, t2 = self.new_tensor(inputs, [out1_shape, out2_shape],
-                                     dtype=[out1_dtype, out2_dtype],
-                                     kws=[{'order': order1}, {'order': order2}])
+                                     kws=[{'order': order1, 'dtype': out1_dtype},
+                                          {'order': order2, 'dtype': out2_dtype}])
 
         if out1 is not None:
             out1.data = t1.data

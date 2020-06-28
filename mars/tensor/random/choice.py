@@ -24,7 +24,7 @@ from ...serialize import ValueType, AnyField, KeyField, BoolField, TupleField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, ceildiv, recursive_tile
 from ..operands import TensorOperandMixin
-from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
+from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..datasource import arange, array
 from ..utils import decide_chunk_sizes, normalize_chunk_sizes, gen_random_seeds
 from ..array_utils import as_same_device, device
@@ -62,9 +62,9 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if isinstance(self._a, (TENSOR_TYPE, CHUNK_TYPE)):
+        if isinstance(self._a, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             self._a = self._inputs[0]
-        if isinstance(self._p, (TENSOR_TYPE, CHUNK_TYPE)):
+        if isinstance(self._p, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             self._p = self._inputs[-1]
 
     def __call__(self, a, p, chunk_size=None):
@@ -240,11 +240,11 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
             [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
-        if isinstance(op.a, CHUNK_TYPE):
+        if isinstance(op.a, TENSOR_CHUNK_TYPE):
             a = inputs[0]
         else:
             a = op.a
-        if isinstance(op.p, CHUNK_TYPE):
+        if isinstance(op.p, TENSOR_CHUNK_TYPE):
             p = inputs[-1]
         else:
             p = op.p

@@ -109,18 +109,26 @@ class OperandTilesHandler(object):
     @kernel_mode
     def dispatch(self, op):
         op_cls = self._get_op_cls(op)
-        if op_cls in self._handlers:
-            return self._handlers[op_cls](op)
-        try:
-            return op_cls.tile(op)
-        except NotImplementedError as ex:
-            cause = ex
-            for registered_op_cls in self._handlers:
-                if issubclass(op_cls, registered_op_cls):
-                    self._handlers[op_cls] = self._handlers[registered_op_cls]
-                    return self._handlers[op_cls][op]
+        tiled = None
+        cause = None
 
-        raise NotImplementedError('{} does not support tile'.format(type(op))) from cause
+        if op_cls in self._handlers:
+            tiled = self._handlers[op_cls](op)
+        else:
+            try:
+                tiled = op_cls.tile(op)
+            except NotImplementedError as ex:
+                cause = ex
+                for super_cls in op_cls.__mro__:
+                    if super_cls in self._handlers:
+                        h = self._handlers[op_cls] = self._handlers[super_cls]
+                        tiled = h(op)
+                        break
+
+        if tiled is not None:
+            return tiled if isinstance(tiled, list) else [tiled]
+        else:
+            raise NotImplementedError('{} does not support tile'.format(type(op))) from cause
 
     def inplace_tile(self, to_tile):
         if not to_tile.is_coarse():

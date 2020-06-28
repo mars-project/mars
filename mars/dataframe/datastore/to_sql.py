@@ -19,7 +19,7 @@ from ... import opcodes
 from ...serialize import StringField, AnyField, BoolField, \
     Int64Field, BytesField
 from ..core import DATAFRAME_TYPE
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_empty_df, build_empty_series, create_sa_connection
 
 
@@ -98,13 +98,11 @@ class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
 
             index_value = parse_index(df_or_series.index_value.to_pandas()[:0], df_or_series.key, 'index')
             if isinstance(df_or_series, DATAFRAME_TYPE):
-                self._object_type = ObjectType.dataframe
                 columns_value = parse_index(df_or_series.columns_value.to_pandas()[:0],
                                             df_or_series.key, 'columns', store_data=True)
                 return self.new_dataframe([df_or_series], shape=(0, 0), dtypes=df_or_series.dtypes[:0],
                                           index_value=index_value, columns_value=columns_value)
             else:
-                self._object_type = ObjectType.series
                 return self.new_series([df_or_series], shape=(0,), dtype=df_or_series.dtype,
                                        index_value=index_value)
 

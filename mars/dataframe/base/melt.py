@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...serialize.core import AnyField, StringField
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_empty_df, parse_index, standardize_range_index
 
 
@@ -59,7 +59,7 @@ class DataFrameMelt(DataFrameOperand, DataFrameOperandMixin):
         empty_result = build_empty_df(df.dtypes).melt(id_vars=self.id_vars, value_vars=self.value_vars,
                                                       var_name=self.var_name, value_name=self.value_name,
                                                       col_level=self.col_level)
-        self._object_type = ObjectType.dataframe
+        self._output_types = [OutputType.dataframe]
         return self.new_tileable([df], shape=(np.nan, len(empty_result.columns)), dtypes=empty_result.dtypes,
                                  index_value=parse_index(pd.RangeIndex(-1), df.key, df.index_value.key),
                                  columns_value=parse_index(empty_result.columns, store_data=True))

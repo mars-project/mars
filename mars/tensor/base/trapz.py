@@ -19,8 +19,9 @@ from ...serialize import KeyField, Float64Field, Int8Field
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..array_utils import as_same_device, device
+from ..core import TensorOrder
 from ..datasource import tensor as astensor
-from ..operands import TensorOperand, TensorOperandMixin, TensorOrder
+from ..operands import TensorOperand, TensorOperandMixin
 from ..utils import validate_axis
 
 

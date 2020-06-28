@@ -22,7 +22,7 @@ import numpy as np
 from ...config import options
 from ...serialize import ValueType, TupleField, Int32Field
 from ...utils import tokenize
-from ..core import TENSOR_TYPE, CHUNK_TYPE
+from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..utils import decide_chunk_sizes, gen_random_seeds, broadcast_shape
 from ..array_utils import array_module, device
 from ..operands import TensorOperand, TensorMapReduceOperand, TensorOperandMixin
@@ -161,7 +161,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             device_id = -1
         else:
             device_id = op.device or 0
-        get_val = lambda x: ctx[x.key] if isinstance(x, CHUNK_TYPE) else x
+        get_val = lambda x: ctx[x.key] if isinstance(x, TENSOR_CHUNK_TYPE) else x
 
         with device(device_id):
             rs = xp.random.RandomState(op.seed)
@@ -234,7 +234,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                             val = np.asarray(val)
                         if tensor:
                             val = self._handle_arg(val, raw_chunk_size)
-                    if isinstance(val, TENSOR_TYPE + CHUNK_TYPE):
+                    if isinstance(val, TENSOR_TYPE + TENSOR_CHUNK_TYPE):
                         field_to_obj[field] = val
                         if field not in to_one_chunk_fields:
                             to_broadcast_shapes.append(val.shape)
@@ -242,7 +242,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             else:
                 inputs_iter = iter(inputs)
                 for field in fields:
-                    if isinstance(getattr(self, field), TENSOR_TYPE + CHUNK_TYPE):
+                    if isinstance(getattr(self, field), TENSOR_TYPE + TENSOR_CHUNK_TYPE):
                         field_to_obj[field] = next(inputs_iter)
 
         if tensor:
@@ -344,7 +344,7 @@ class TensorDistribution(TensorRandomOperand):
             args = []
             for k in op.args:
                 val = getattr(op, k, None)
-                if isinstance(val, CHUNK_TYPE):
+                if isinstance(val, TENSOR_CHUNK_TYPE):
                     args.append(ctx[val.key])
                 else:
                     args.append(val)

@@ -20,6 +20,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import OutputType
 from ...serialize import AnyField, Int32Field, BoolField
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.datasource import tensor as astensor
@@ -29,7 +30,7 @@ from ..align import align_dataframe_series, align_dataframe_dataframe
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, \
     DATAFRAME_CHUNK_TYPE, TILEABLE_TYPE, CHUNK_TYPE
 from ..merge import DataFrameConcat
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, in_range_index
 from .utils import calc_columns_index
 
@@ -43,9 +44,9 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     _combine_size = Int32Field('combine_size')
     _is_intermediate = BoolField('is_intermediate')
 
-    def __init__(self, labels=None, combine_size=None, is_intermediate=None, object_type=None, **kw):
+    def __init__(self, labels=None, combine_size=None, is_intermediate=None, output_types=None, **kw):
         super().__init__(_labels=labels, _combine_size=combine_size, _is_intermediate=is_intermediate,
-                         _object_type=object_type, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def labels(self):
@@ -64,14 +65,14 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 
     def _new_tileables(self, inputs, kws=None, **kw):
         # Override this method to automatically decide the output type,
-        # when `labels` is a list, we will set `object_type` as series,
+        # when `labels` is a list, we will set `output_types` as series,
         # otherwise it will be a scalar.
-        object_type = getattr(self, '_object_type', None)
+        output_types = getattr(self, '_output_types', None)
         shape = kw.pop('shape', None)
         is_scalar = not isinstance(self._labels, list)
-        if object_type is None:
-            object_type = ObjectType.scalar if is_scalar else ObjectType.series
-            self._object_type = object_type
+        if not output_types:
+            output_types = [OutputType.scalar] if is_scalar else [OutputType.series]
+            self.output_types = output_types
         if shape is None:
             shape = () if is_scalar else ((len(self._labels)),)
             kw['shape'] = shape
@@ -82,13 +83,13 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 
     def _new_chunks(self, inputs, kws=None, **kw):
         # Override this method to automatically decide the output type,
-        # when `labels` is a list, we will set `object_type` as series,
+        # when `labels` is a list, we will set `output_types` as series,
         # otherwise it will be a scalar.
-        object_type = getattr(self, '_object_type', None)
+        output_types = getattr(self, '_output_types', None)
         is_scalar = not isinstance(self._labels, list)
-        if object_type is None:
-            object_type = ObjectType.scalar if is_scalar else ObjectType.series
-            self._object_type = object_type
+        if not output_types:
+            output_types = [OutputType.scalar] if is_scalar else [OutputType.series]
+            self.output_types = output_types
         if kw.get('shape', None) is None:
             shape = () if is_scalar else ((len(self._labels)),)
             kw['shape'] = shape
@@ -138,7 +139,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                 if len(chks) == 1:
                     chk = chks[0]
                 else:
-                    concat_op = DataFrameConcat(object_type=ObjectType.series)
+                    concat_op = DataFrameConcat(output_types=[OutputType.series])
                     chk = concat_op.new_chunk(chks, dtype=chks[0].dtype)
                 chk_op = SeriesIndex(labels=op.labels, is_intermediate=True)
                 kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
@@ -147,7 +148,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                 new_chunks.append(chk)
             chunks = new_chunks
 
-        concat_op = DataFrameConcat(object_type=ObjectType.series)
+        concat_op = DataFrameConcat(output_types=[OutputType.series])
         kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
         kw['index'] = (0,)
         chk = concat_op.new_chunk(chunks, dtype=chunks[0].dtype, **kw)
@@ -219,8 +220,10 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
     _col_names = AnyField('col_names')
     _mask = AnyField('mask')
 
-    def __init__(self, col_names=None, mask=None, object_type=ObjectType.series, **kw):
-        super().__init__(_col_names=col_names, _mask=mask, _object_type=object_type, **kw)
+    def __init__(self, col_names=None, mask=None, output_types=None, **kw):
+        super().__init__(_col_names=col_names, _mask=mask, _output_types=output_types, **kw)
+        if not self.output_types:
+            self.output_types = [OutputType.series]
 
     @property
     def col_names(self):
@@ -360,7 +363,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 column_nsplits.append(len(columns))
                 for j in range(in_df.chunk_shape[0]):
                     c = in_df.cix[(j, column_idx[0])]
-                    index_op = DataFrameIndex(col_names=list(columns), object_type=ObjectType.dataframe)
+                    index_op = DataFrameIndex(col_names=list(columns), output_types=[OutputType.dataframe])
                     out_chunk = index_op.new_chunk([c], shape=(c.shape[0], len(columns)), index=(j, i),
                                                    dtypes=dtypes, index_value=c.index_value,
                                                    columns_value=parse_index(pd.Index(columns),
@@ -410,10 +413,10 @@ def dataframe_getitem(df, item):
         for col_name in item:
             if col_name not in columns:
                 raise KeyError('%s not in columns' % col_name)
-        op = DataFrameIndex(col_names=item, object_type=ObjectType.dataframe)
+        op = DataFrameIndex(col_names=item, output_types=[OutputType.dataframe])
     elif isinstance(item, _list_like_types) or hasattr(item, 'dtypes'):
         # NB: don't enforce the dtype of `item` to be `bool` since it may be unknown
-        op = DataFrameIndex(mask=item, object_type=ObjectType.dataframe)
+        op = DataFrameIndex(mask=item, output_types=[OutputType.dataframe])
     else:
         if item not in columns:
             raise KeyError('%s not in columns' % item)

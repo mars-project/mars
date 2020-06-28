@@ -18,8 +18,9 @@ from ... import opcodes
 from ...core import ExecutableTuple
 from ...serialize import KeyField, Int32Field
 from ...utils import calc_nsplits
+from ..core import TensorOrder
 from ..datasource import tensor as astensor
-from ..operands import TensorOperand, TensorOperandMixin, TensorOrder
+from ..operands import TensorOperand, TensorOperandMixin
 
 
 class TensorGetShape(TensorOperand, TensorOperandMixin):

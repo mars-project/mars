@@ -20,14 +20,14 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity
+from ...core import Base, Entity, OutputType
 from ...serialize import KeyField, SeriesField, DataTypeField, AnyField
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..core import INDEX_TYPE
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 
@@ -43,7 +43,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, input_=None, index=None, dtypes=None, gpu=None, sparse=None, **kw):
         super().__init__(_input=input_, _index=index, _dtypes=dtypes, _gpu=gpu,
-                         _sparse=sparse, _object_type=ObjectType.dataframe, **kw)
+                         _sparse=sparse, _output_types=[OutputType.dataframe], **kw)
 
     @property
     def dtypes(self):
@@ -372,7 +372,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, index=None, dtype=None, gpu=None, sparse=None, **kw):
         super().__init__(_index=index, _dtype=dtype, _gpu=gpu,
-                         _sparse=sparse, _object_type=ObjectType.series, **kw)
+                         _sparse=sparse, _output_types=[OutputType.series], **kw)
 
     @property
     def index(self):
@@ -427,9 +427,9 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, out_series.shape, dtype=out_series.dtype,
-                                     index_value=out_series.index_value, name=out_series.name,
-                                     chunks=out_chunks, nsplits=in_tensor.nsplits)
+        return new_op.new_tileables(op.inputs, shape=out_series.shape, dtype=out_series.dtype,
+                                    index_value=out_series.index_value, name=out_series.name,
+                                    chunks=out_chunks, nsplits=in_tensor.nsplits)
 
     @classmethod
     def execute(cls, ctx, op):

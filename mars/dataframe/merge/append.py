@@ -14,13 +14,13 @@
 
 import pandas as pd
 
-from ...serialize import BoolField
 from ... import opcodes as OperandDef
+from ...core import OutputType
+from ...serialize import BoolField
 from ..datasource.dataframe import from_pandas
 from ..indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 from ..utils import parse_index, standardize_range_index
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
-    DATAFRAME_TYPE, SERIES_TYPE
+from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE, SERIES_TYPE
 
 
 class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
@@ -30,11 +30,11 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
     _verify_integrity = BoolField('verify_integrity')
     _sort = BoolField('sort')
 
-    def __init__(self, ignore_index=None, verify_integrity=None, sort=None, object_type=None, **kw):
+    def __init__(self, ignore_index=None, verify_integrity=None, sort=None, output_types=None, **kw):
         super(DataFrameAppend, self).__init__(_ignore_index=ignore_index,
                                               _verify_integrity=verify_integrity,
                                               _sort=sort,
-                                              _object_type=object_type, **kw)
+                                              _output_types=output_types, **kw)
 
     @property
     def ignore_index(self):
@@ -111,7 +111,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if op.object_type == ObjectType.dataframe:
+        if op.output_types[0] == OutputType.dataframe:
             return cls._tile_dataframe(op)
         else:
             return cls._tile_series(op)
@@ -182,10 +182,10 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, df, other):
         if isinstance(df, DATAFRAME_TYPE):
-            self._object_type = ObjectType.dataframe
+            self.output_types = [OutputType.dataframe]
             return self._call_dataframe(df, other)
         else:
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
             return self._call_series(df, other)
 
 

@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 import pandas as pd
 
+from mars.core import OutputType
 from mars.operands import OperandStage
 from mars.dataframe.core import IndexValue
-from mars.dataframe.operands import ObjectType
 from mars.dataframe.utils import hash_dtypes
 from mars.dataframe.utils import split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
@@ -336,7 +336,7 @@ class TestBinary(TestBase):
             # test the right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlign)
             self.assertEqual(c.inputs[1].op.stage, OperandStage.reduce)
-            self.assertEqual(c.inputs[1].op.object_type, ObjectType.series)
+            self.assertEqual(c.inputs[1].op.output_types[0], OutputType.series)
             self.assertIsInstance(c.inputs[1].inputs[0].op, DataFrameShuffleProxy)
             for j, ci, ic in zip(itertools.count(0), c.inputs[1].inputs[0].inputs, s1.chunks):
                 self.assertIsInstance(ci.op, DataFrameIndexAlign)
@@ -437,7 +437,7 @@ class TestBinary(TestBase):
         self.assertEqual(s3.chunk_shape, (2,))
         for c in s3.chunks:
             self.assertIsInstance(c.op, self.op)
-            self.assertEqual(c.op.object_type, ObjectType.series)
+            self.assertEqual(c.op.output_types[0], OutputType.series)
             self.assertEqual(len(c.inputs), 2)
             self.assertEqual(c.shape, (5,))
             self.assertEqual(c.index_value.key, s1.cix[c.index].index_value.key)
@@ -477,7 +477,7 @@ class TestBinary(TestBase):
             # test the left side
             self.assertIsInstance(c.inputs[0].op, DataFrameIndexAlign)
             self.assertEqual(c.inputs[0].op.stage, OperandStage.reduce)
-            self.assertEqual(c.inputs[0].op.object_type, ObjectType.series)
+            self.assertEqual(c.inputs[0].op.output_types[0], OutputType.series)
             self.assertIsInstance(c.inputs[0].inputs[0].op, DataFrameShuffleProxy)
             for j, ci, ic in zip(itertools.count(0), c.inputs[0].inputs[0].inputs, s1.chunks):
                 self.assertIsInstance(ci.op, DataFrameIndexAlign)
@@ -489,7 +489,7 @@ class TestBinary(TestBase):
             # test the right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlign)
             self.assertEqual(c.inputs[1].op.stage, OperandStage.reduce)
-            self.assertEqual(c.inputs[1].op.object_type, ObjectType.series)
+            self.assertEqual(c.inputs[1].op.output_types[0], OutputType.series)
             self.assertIsInstance(c.inputs[1].inputs[0].op, DataFrameShuffleProxy)
             for j, ci, ic in zip(itertools.count(0), c.inputs[1].inputs[0].inputs, s2.chunks):
                 self.assertIsInstance(ci.op, DataFrameIndexAlign)

@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
-from ...core import TileableEntity, Chunk
+from ...core import TileableEntity, Chunk, OutputType
 from ...operands import OperandStage
 from ...tiles import TilesError
 from ...tensor.core import TENSOR_TYPE
@@ -34,7 +34,6 @@ from ...tensor.utils import split_indexes_into_chunks, calc_pos, \
     filter_inputs, slice_split, calc_sliced_size, to_numpy
 from ...utils import check_chunks_unknown_shape, classproperty
 from ..core import SERIES_CHUNK_TYPE, IndexValue
-from ..operands import ObjectType
 from ..utils import parse_index
 from .utils import convert_labels_into_positions
 
@@ -131,17 +130,17 @@ class DataFrameIndexHandlerContext(IndexHandlerContext):
         index_values = chunk_index_info.index_values
         if len(shape) == 0:
             # scalar
-            chunk_op._object_type = ObjectType.scalar
+            chunk_op.output_types = [OutputType.scalar]
             kw['dtype'] = self.op.outputs[0].dtype
         elif len(shape) == 1:
             # Series
-            chunk_op._object_type = ObjectType.series
+            chunk_op.output_types = [OutputType.series]
             kw['index_value'] = index_values[0]
             kw['dtype'] = self.op.outputs[0].dtype
             kw['name'] = getattr(self.op.outputs[0], 'name', None)
         else:
             # dataframe
-            chunk_op._object_type = ObjectType.dataframe
+            chunk_op.output_types = [OutputType.dataframe]
             kw['index_value'] = index_values[0]
             kw['columns_value'] = index_values[1]
             kw['dtypes'] = chunk_index_info.dtypes

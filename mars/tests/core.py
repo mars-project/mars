@@ -535,7 +535,7 @@ class MarsObjectCheckMixin:
         from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE, \
             INDEX_TYPE, CATEGORICAL_TYPE
 
-        from mars.tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE
+        from mars.tensor.core import TENSOR_CHUNK_TYPE
         from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, \
             GROUPBY_CHUNK_TYPE, INDEX_CHUNK_TYPE, CATEGORICAL_CHUNK_TYPE
 

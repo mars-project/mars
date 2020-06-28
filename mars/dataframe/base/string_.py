@@ -17,6 +17,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import OutputType
 from ...operands import OperandStage
 from ...serialize import KeyField, StringField, TupleField, DictField
 from ...tensor import tensor as astensor
@@ -26,7 +27,7 @@ from ...utils import ceildiv, check_chunks_unknown_shape
 from ..align import align_series_series
 from ..core import SERIES_TYPE
 from ..initializer import Series as asseries
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_series, parse_index, infer_index_value
 
 
@@ -39,12 +40,12 @@ class SeriesStringMethod(DataFrameOperand, DataFrameOperandMixin):
     _method_kwargs = DictField('method_kwargs')
 
     def __init__(self, method=None, method_args=None, method_kwargs=None,
-                 stage=None, object_type=None, **kw):
+                 stage=None, output_types=None, **kw):
         super().__init__(_method=method, _method_args=method_args,
                          _method_kwargs=method_kwargs, _stage=stage,
-                         _object_type=object_type, **kw)
-        if self._object_type is None:
-            self._object_type = ObjectType.series
+                         _output_types=output_types, **kw)
+        if not self.output_types:
+            self.output_types = [OutputType.series]
 
     @property
     def input(self):
@@ -129,7 +130,7 @@ class SeriesStringSplitHandler(SeriesStringMethodBaseHandler):
         if n == -1:  # pragma: no cover
             raise NotImplementedError('`n` needs to be specified when expand=True')
 
-        op._object_type = ObjectType.dataframe
+        op.output_types = [OutputType.dataframe]
         columns = pd.RangeIndex(n + 1)
         columns_value = parse_index(columns, store_data=True)
         dtypes = pd.Series([inp.dtype] * len(columns), index=columns)
@@ -141,7 +142,7 @@ class SeriesStringSplitHandler(SeriesStringMethodBaseHandler):
     def tile(cls, op):
         out = op.outputs[0]
 
-        if out.op.object_type == ObjectType.series:
+        if out.op.output_types[0] == OutputType.series:
             return super().tile(op)
 
         out_chunks = []
@@ -189,7 +190,7 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
         others = method_kwargs.get('others')
 
         if others is None:
-            op._object_type = ObjectType.scalar
+            op.output_types = [OutputType.scalar]
             return op.new_scalar([inp], dtype=inp.dtype)
         elif isinstance(others, (tuple, list, np.ndarray, TENSOR_TYPE)):
             others = astensor(others, dtype=object)
@@ -235,12 +236,12 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
                 chunk_inputs = out_chunks[i * combine_size: (i + 1) * combine_size]
                 index_value = parse_index(chunk_inputs[0].index_value.to_pandas(), chunk_inputs)
                 # concat inputs
-                concat_chunk = DataFrameConcat(object_type=ObjectType.series).new_chunk(
+                concat_chunk = DataFrameConcat(output_types=[OutputType.series]).new_chunk(
                     chunk_inputs, index=(i,), dtype=chunk_inputs[0].dtype,
                     index_value=index_value, name=chunk_inputs[0].name)
                 chunk_op = op.copy().reset_key()
                 if not is_terminate:
-                    chunk_op._object_type = ObjectType.series
+                    chunk_op.output_types = [OutputType.series]
                     chunk_op._stage = OperandStage.map if not is_terminate else OperandStage.agg
                     index_value = parse_index(index_value.to_pandas()[:0], concat_chunk)
                     out_chunk = chunk_op.new_chunk([concat_chunk], dtype=concat_chunk.dtype,
@@ -330,7 +331,7 @@ class SeriesStringExtractHandler(SeriesStringMethodBaseHandler):
                                  index_value=inp.index_value,
                                  name=inp.name)
         else:
-            op._object_type = ObjectType.dataframe
+            op.output_types = [OutputType.dataframe]
             if op.method == 'extractall':
                 index_value = parse_index(test_df.index, inp)
                 shape = (np.nan, test_df.shape[1])

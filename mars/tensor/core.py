@@ -24,7 +24,7 @@ from operator import attrgetter
 import numpy as np
 
 from ..core import Entity, HasShapeTileableEnity, ChunkData, Chunk, HasShapeTileableData, \
-    build_mode, Serializable
+    build_mode, Serializable, OutputType, register_output_types
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape, is_eager_mode
@@ -52,7 +52,17 @@ class TensorChunkData(ChunkData):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, op=None, index=None, shape=None, dtype=None, order=None, **kw):
+        if isinstance(order, str):
+            order = getattr(TensorOrder, order)
         super().__init__(_op=op, _index=index, _shape=shape, _dtype=dtype, _order=order, **kw)
+        if self.order is None and self.op is not None:
+            if len(self.inputs) == 0:
+                self._order = TensorOrder.C_ORDER
+            elif all(hasattr(inp, 'order') and inp.order == TensorOrder.F_ORDER
+                     for inp in self.inputs):
+                self._order = TensorOrder.F_ORDER
+            else:
+                self._order = TensorOrder.C_ORDER
 
     @classmethod
     def cls(cls, provider):
@@ -124,8 +134,18 @@ class TensorData(HasShapeTileableData):
                         on_deserialize=lambda x: [TensorChunk(it) for it in x] if x is not None else x)
 
     def __init__(self, op=None, shape=None, dtype=None, order=None, nsplits=None, chunks=None, **kw):
+        if isinstance(order, str):
+            order = getattr(TensorOrder, order)
         super().__init__(_op=op, _shape=shape, _dtype=dtype, _order=order, _nsplits=nsplits,
                          _chunks=chunks, **kw)
+        if self.order is None and self.op is not None:
+            if len(self.inputs) == 0:
+                self._order = TensorOrder.C_ORDER
+            elif all(hasattr(inp, 'order') and inp.order == TensorOrder.F_ORDER
+                     for inp in self.inputs):
+                self._order = TensorOrder.F_ORDER
+            else:
+                self._order = TensorOrder.C_ORDER
 
     @classmethod
     def cls(cls, provider):
@@ -596,8 +616,7 @@ class Tensor(HasShapeTileableEnity):
         return self._data.to_numpy(session, **kw)
 
 
-class SparseTensor(Tensor):
-    __slots__ = ()
+SparseTensor = Tensor
 
 
 class flatiter(object):
@@ -816,4 +835,7 @@ def mutable_tensor(name, shape=None, dtype=np.float_, fill_value=None, chunk_siz
 
 
 TENSOR_TYPE = (Tensor, TensorData)
-CHUNK_TYPE = (TensorChunk, TensorChunkData)
+TENSOR_CHUNK_TYPE = (TensorChunk, TensorChunkData)
+
+register_output_types(OutputType.tensor, TENSOR_TYPE, TENSOR_CHUNK_TYPE)
+register_output_types(OutputType.scalar, TENSOR_TYPE, TENSOR_CHUNK_TYPE)

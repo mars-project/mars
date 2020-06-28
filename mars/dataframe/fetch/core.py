@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
-
-from ...serialize.core import TupleField, ValueType, Int8Field
+from ...serialize.core import TupleField, ValueType
 from ...operands import Fetch, FetchShuffle, FetchMixin
 from ...utils import on_serialize_shape, on_deserialize_shape
-from ..operands import DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperandMixin
 
 
 class DataFrameFetchMixin(DataFrameOperandMixin, FetchMixin):
@@ -28,16 +26,10 @@ class DataFrameFetch(Fetch, DataFrameFetchMixin):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
-                             on_deserialize=ObjectType)
 
-    def __init__(self, to_fetch_key=None, sparse=False, object_type=None, **kw):
+    def __init__(self, to_fetch_key=None, sparse=False, output_types=None, **kw):
         super().__init__(
-            _to_fetch_key=to_fetch_key, _sparse=sparse, _object_type=object_type, **kw)
-
-    @property
-    def object_type(self):
-        return self._object_type
+            _to_fetch_key=to_fetch_key, _sparse=sparse, _output_types=output_types, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
@@ -56,14 +48,8 @@ class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
-                             on_deserialize=ObjectType)
 
-    def __init__(self, to_fetch_keys=None, to_fetch_idxes=None, object_type=None, **kw):
+    def __init__(self, to_fetch_keys=None, to_fetch_idxes=None, output_types=None, **kw):
         super().__init__(
             _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes,
-            _object_type=object_type, **kw)
-
-    @property
-    def object_type(self):
-        return self._object_type
+            _output_types=output_types, **kw)

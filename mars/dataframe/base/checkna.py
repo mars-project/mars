@@ -17,9 +17,9 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
+from ...core import OutputType
 from ...serialize import BoolField
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
-    DATAFRAME_TYPE
+from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE
 
 
 class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
@@ -28,9 +28,9 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
     _positive = BoolField('positive')
     _use_inf_as_na = BoolField('use_inf_as_na')
 
-    def __init__(self, positive=None, use_inf_as_na=None, sparse=None, object_type=None, **kw):
+    def __init__(self, positive=None, use_inf_as_na=None, sparse=None, output_types=None, **kw):
         super().__init__(_positive=positive, _use_inf_as_na=use_inf_as_na, _sparse=sparse,
-                         _object_type=object_type, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def positive(self) -> bool:
@@ -42,12 +42,12 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, df):
         if isinstance(df, DATAFRAME_TYPE):
-            self._object_type = ObjectType.dataframe
+            self.output_types = [OutputType.dataframe]
         else:
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
 
         params = df.params.copy()
-        if self.object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             params['dtypes'] = pd.Series([np.dtype('bool')] * len(df.dtypes),
                                          index=df.columns_value.to_pandas())
         else:
@@ -62,7 +62,7 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
         chunks = []
         for c in in_df.chunks:
             params = c.params.copy()
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 params['dtypes'] = pd.Series([np.dtype('bool')] * len(c.dtypes),
                                              index=c.columns_value.to_pandas())
             else:

@@ -24,7 +24,7 @@ from ... import opcodes as OperandDef
 from ... import tensor as mt
 from ...core import Base, Entity
 from ...serialize import KeyField, BoolField, TupleField, DataTypeField, AnyField, ListField
-from ...tensor.operands import TensorOrder
+from ...tensor.core import TensorOrder
 from ...tiles import TilesError
 from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
@@ -42,7 +42,7 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
     def __init__(self, y=None, unique_y=None, is_y_sparse=None, **kw):
         super().__init__(_y=y, _unique_y=unique_y,
                          _is_y_sparse=is_y_sparse, **kw)
-        self._output_types = [OutputType.tensor]
+        self.output_types = [OutputType.tensor]
 
     @property
     def y(self):
@@ -186,7 +186,7 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
                          _assert_all_finite=assert_all_finite,
                          _unique_y=unique_y, _y_shape=y_shape,
                          _y_dtype=y_dtype, _checked_targets=checked_targets, **kw)
-        self._output_types = [OutputType.tensor]
+        self.output_types = [OutputType.tensor]
 
     @property
     def y(self):

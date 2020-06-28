@@ -14,14 +14,14 @@
 
 import itertools
 
-from ....core import ExecutableTuple
 from .... import opcodes as OperandDef
+from ....core import ExecutableTuple, get_output_types
 from ....serialize.core import KeyField, Float64Field, ListField, BoolField
-from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
+from ....tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ....tensor import tensor as astensor
 from ....dataframe.core import DATAFRAME_TYPE
 from ...operands import LearnOperand, LearnOperandMixin
-from ...utils import convert_to_tensor_or_dataframe, get_output_types, concat_chunks
+from ...utils import convert_to_tensor_or_dataframe, concat_chunks
 
 
 class ToDMatrix(LearnOperand, LearnOperandMixin):
@@ -117,6 +117,8 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
                 kw = self._get_kw(self._weight)
                 kw['type'] = 'weight'
                 kws.append(kw)
+        if not self.output_types:
+            self.output_types = get_output_types(*inputs)
 
         tileables = self.new_tileables(inputs, kws=kws)
         if not self._multi_output:

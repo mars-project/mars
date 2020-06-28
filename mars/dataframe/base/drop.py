@@ -18,10 +18,10 @@ from collections import OrderedDict
 import numpy as np
 
 from ... import opcodes
-from ...core import Entity, Chunk, CHUNK_TYPE
+from ...core import Entity, Chunk, CHUNK_TYPE, OutputType
 from ...serialize import AnyField, StringField
 from ..core import IndexValue, DATAFRAME_TYPE, SERIES_TYPE, INDEX_CHUNK_TYPE
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, validate_axis
 
 
@@ -80,11 +80,11 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
             params['columns_value'] = parse_index(new_dtypes.index, store_data=True)
             params['dtypes'] = new_dtypes
             shape_list[1] = len(new_dtypes)
-            self._object_type = ObjectType.dataframe
+            self.output_types = [OutputType.dataframe]
         elif isinstance(df_or_series, SERIES_TYPE):
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
         else:
-            self._object_type = ObjectType.index
+            self.output_types = [OutputType.index]
 
         params['shape'] = tuple(shape_list)
 

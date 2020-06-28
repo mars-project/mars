@@ -17,11 +17,12 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...operands import OperandStage
 from ...serialize import AnyField, BoolField, StringField, TupleField, KeyField, Int32Field
 from ...utils import get_shuffle_input_keys_idxes
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
-    DataFrameMapReduceOperand, DataFrameShuffleProxy
+from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameMapReduceOperand, \
+    DataFrameShuffleProxy
 from ..utils import build_concatenated_rows_frame, build_df, parse_index, hash_dataframe_on, \
     infer_index_value
 
@@ -41,7 +42,7 @@ class DataFrameMergeAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
                  stage=None, shuffle_key=None, **kw):
         super().__init__(
             _index_shuffle_size=index_shuffle_size, _shuffle_on=shuffle_on,
-            _sparse=sparse, _object_type=ObjectType.dataframe, _stage=stage,
+            _sparse=sparse, _output_types=[OutputType.dataframe], _stage=stage,
             _shuffle_key=shuffle_key, **kw)
 
     @property
@@ -123,11 +124,11 @@ class _DataFrameMergeBase(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, how=None, on=None, left_on=None, right_on=None,
                  left_index=False, right_index=False, sort=False, suffixes=('_x', '_y'),
-                 copy=True, indicator=False, validate=None, sparse=False, object_type=None, **kw):
+                 copy=True, indicator=False, validate=None, sparse=False, output_types=None, **kw):
         super().__init__(
             _how=how, _on=on, _left_on=left_on, _right_on=right_on, _left_index=left_index, _right_index=right_index,
             _sort=sort, _suffixes=suffixes, _copy=copy, _indicator=indicator, _validate=validate,
-            _sparse=sparse, _object_type=object_type, **kw)
+            _sparse=sparse, _output_types=output_types, **kw)
 
     @property
     def how(self):
@@ -207,7 +208,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
             map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan, np.nan), dtypes=chunk.dtypes, index=chunk.index,
                                                index_value=chunk.index_value, columns_value=chunk.columns_value))
 
-        proxy_chunk = DataFrameShuffleProxy(object_type=ObjectType.dataframe).new_chunk(
+        proxy_chunk = DataFrameShuffleProxy(output_types=[OutputType.dataframe]).new_chunk(
             map_chunks, shape=(), dtypes=df.dtypes,
             index_value=df.index_value, columns_value=df.columns_value)
 
@@ -355,7 +356,7 @@ def merge(df, right, how='inner', on=None, left_on=None, right_on=None,
     op = DataFrameShuffleMerge(
         how=how, on=on, left_on=left_on, right_on=right_on,
         left_index=left_index, right_index=right_index, sort=sort, suffixes=suffixes,
-        copy=copy, indicator=indicator, validate=validate, object_type=ObjectType.dataframe)
+        copy=copy, indicator=indicator, validate=validate, output_types=[OutputType.dataframe])
     return op(df, right)
 
 

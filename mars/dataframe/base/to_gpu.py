@@ -13,15 +13,14 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from ..operands import ObjectType
 from .core import DataFrameDeviceConversionBase
 
 
 class DataFrameToGPU(DataFrameDeviceConversionBase):
     _op_type_ = OperandDef.TO_GPU
 
-    def __init__(self, dtypes=None, gpu=None, sparse=None, object_type=None, **kw):
-        super().__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse, _object_type=object_type, **kw)
+    def __init__(self, dtypes=None, gpu=None, sparse=None, output_types=None, **kw):
+        super().__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
         if not self._gpu:
             self._gpu = True
 
@@ -29,10 +28,11 @@ class DataFrameToGPU(DataFrameDeviceConversionBase):
     def execute(cls, ctx, op):
         import cudf
 
-        if op.object_type == ObjectType.dataframe:
-            ctx[op.outputs[0].key] = cudf.DataFrame.from_pandas(ctx[op.inputs[0].key])
+        out_df = op.outputs[0]
+        if out_df.ndim == 2:
+            ctx[out_df.key] = cudf.DataFrame.from_pandas(ctx[op.inputs[0].key])
         else:
-            ctx[op.outputs[0].key] = cudf.Series.from_pandas(ctx[op.inputs[0].key])
+            ctx[out_df.key] = cudf.Series.from_pandas(ctx[op.inputs[0].key])
 
 
 def to_gpu(df_or_series):

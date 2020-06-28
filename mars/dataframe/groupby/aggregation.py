@@ -23,12 +23,11 @@ from pandas.core.groupby import SeriesGroupBy
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import Base, Entity
+from ...core import Base, Entity, OutputType
 from ...operands import OperandStage
 from ...serialize import ValueType, AnyField, StringField, ListField, DictField
 from ..merge import DataFrameConcat
-from ..operands import DataFrameOperand, DataFrameOperandMixin, \
-    DataFrameShuffleProxy, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..core import GROUPBY_TYPE
 from ..utils import parse_index, build_concatenated_rows_frame, tokenize
 from .core import DataFrameGroupByOperand
@@ -62,10 +61,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, func=None, method=None, groupby_params=None, raw_func=None,
                  agg_columns=None, output_column_to_func=None, stage=None,
-                 object_type=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_func=func, _method=method, _groupby_params=groupby_params,
                          _agg_columns=agg_columns, _output_column_to_func=output_column_to_func,
-                         _raw_func=raw_func, _stage=stage, _object_type=object_type, **kw)
+                         _raw_func=raw_func, _stage=stage, _output_types=output_types, **kw)
 
     @property
     def func(self):
@@ -121,7 +120,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             if isinstance(agg_df, pd.Series):
                 self._func = OrderedDict([(agg_df.name or _series_col_name, [raw_func])])
             else:
-                if groupby.op.object_type == ObjectType.series_groupby:
+                if groupby.op.output_types[0] == OutputType.series_groupby:
                     func = OrderedDict()
                     for f in agg_df.columns:
                         self._safe_append(func, groupby.name or _series_col_name, f)
@@ -181,27 +180,25 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         inputs = self._get_inputs([in_series])
         # update value type
         if isinstance(agg_result, pd.DataFrame):
-            self._object_type = ObjectType.dataframe
             return self.new_dataframe(inputs, shape=(np.nan, len(agg_result.columns)),
                                       dtypes=agg_result.dtypes, index_value=index_value,
                                       columns_value=parse_index(agg_result.columns, store_data=True))
         else:
-            self._object_type = ObjectType.series
             return self.new_series(inputs, shape=(np.nan,), dtype=agg_result.dtype,
                                    name=agg_result.name, index_value=index_value)
 
     def __call__(self, groupby):
         df = groupby
-        while df.op.object_type not in (ObjectType.dataframe, ObjectType.series):
+        while df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
             df = df.inputs[0]
 
         if self.func == 'size':
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
         else:
-            self._object_type = ObjectType.dataframe \
-                if groupby.op.object_type == ObjectType.dataframe_groupby else ObjectType.series
+            self.output_types = [OutputType.dataframe] \
+                if groupby.op.output_types[0] == OutputType.dataframe_groupby else [OutputType.series]
 
-        if self.object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             return self._call_dataframe(groupby, df)
         else:
             return self._call_series(groupby, df)
@@ -301,17 +298,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             # no longer consider as_index=False for the intermediate phases,
             # will do reset_index at last if so
             map_op = DataFrameGroupByOperand(stage=OperandStage.map, shuffle_size=chunk_shape[0],
-                                             object_type=ObjectType.dataframe_groupby)
+                                             output_types=[OutputType.dataframe_groupby])
             map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan, np.nan), index=chunk.index,
                                                index_value=op.outputs[0].index_value))
 
-        proxy_chunk = DataFrameShuffleProxy(object_type=ObjectType.dataframe).new_chunk(map_chunks, shape=())
+        proxy_chunk = DataFrameShuffleProxy(output_types=[OutputType.dataframe]).new_chunk(map_chunks, shape=())
 
         # generate reduce chunks
         reduce_chunks = []
         for out_idx in itertools.product(*(range(s) for s in chunk_shape)):
             reduce_op = DataFrameGroupByOperand(
-                stage=OperandStage.reduce, shuffle_key=','.join(str(idx) for idx in out_idx))
+                stage=OperandStage.reduce, shuffle_key=','.join(str(idx) for idx in out_idx),
+                output_types=[OutputType.dataframe_groupby])
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx,
                                     index_value=op.outputs[0].index_value))
@@ -325,7 +323,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             chunk_inputs = [chunk]
             agg_op = op.copy().reset_key()
             # force as_index=True for map phase
-            agg_op._object_type = ObjectType.dataframe
+            agg_op.output_types = [OutputType.dataframe]
             agg_op._groupby_params = agg_op.groupby_params.copy()
             agg_op._groupby_params['as_index'] = True
             if isinstance(agg_op._groupby_params['by'], list):
@@ -343,7 +341,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_op._output_column_to_func = stage_infos.map_output_column_to_func
             columns_value = parse_index(pd.Index(stage_infos.intermediate_cols), store_data=True)
             new_index = chunk.index if len(chunk.index) == 2 else (chunk.index[0], 0)
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 agg_chunk = agg_op.new_chunk(chunk_inputs, shape=out_df.shape, index=new_index,
                                              index_value=out_df.index_value,
                                              columns_value=columns_value)
@@ -384,7 +382,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_op._func = stage_infos.agg_func
             agg_op._output_column_to_func = stage_infos.agg_output_column_to_func
             agg_op._agg_columns = stage_infos.agg_cols
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
                                              index_value=out_df.index_value, dtypes=out_df.dtypes,
                                              columns_value=out_df.columns_value)
@@ -395,7 +393,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_chunks.append(agg_chunk)
 
         new_op = op.copy()
-        if op.object_type == ObjectType.dataframe:
+        if op.output_types[0] == OutputType.dataframe:
             nsplits = ((np.nan,) * len(agg_chunks), (out_df.shape[1],))
         else:
             nsplits = ((np.nan,) * len(agg_chunks),)
@@ -423,13 +421,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 if len(chks) == 1:
                     chk = chks[0]
                 else:
-                    concat_op = DataFrameConcat(object_type=ObjectType.dataframe)
+                    concat_op = DataFrameConcat(output_types=[OutputType.dataframe])
                     # Change index for concatenate
                     for j, c in enumerate(chks):
                         c._index = (j, 0)
                     chk = concat_op.new_chunk(chks, dtypes=chks[0].dtypes)
                 chunk_op = op.copy().reset_key()
-                chunk_op._object_type = ObjectType.dataframe
+                chunk_op.output_types = [OutputType.dataframe]
                 chunk_op._stage = OperandStage.combine
                 chunk_op._groupby_params = chunk_op.groupby_params.copy()
                 chunk_op._groupby_params.pop('selection', None)
@@ -447,7 +445,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                                                      columns_value=columns_value))
             chunks = new_chunks
 
-        concat_op = DataFrameConcat(object_type=ObjectType.dataframe)
+        concat_op = DataFrameConcat(output_types=[OutputType.dataframe])
         chk = concat_op.new_chunk(chunks, dtypes=chunks[0].dtypes)
         chunk_op = op.copy().reset_key()
         chunk_op._stage = OperandStage.agg
@@ -460,10 +458,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         chunk_op._output_column_to_func = stage_infos.agg_output_column_to_func
         chunk_op._agg_columns = stage_infos.agg_cols
         kw = out_df.params.copy()
-        kw['index'] = (0, 0) if op.object_type == ObjectType.dataframe else (0,)
+        kw['index'] = (0, 0) if op.output_types[0] == OutputType.dataframe else (0,)
         chunk = chunk_op.new_chunk([chk], **kw)
         new_op = op.copy()
-        if op.object_type == ObjectType.dataframe:
+        if op.output_types[0] == OutputType.dataframe:
             nsplits = ((out_df.shape[0],), (out_df.shape[1],))
         else:
             nsplits = ((out_df.shape[0],),)
@@ -527,7 +525,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         df = ctx[op.inputs[0].key]
         out = op.outputs[0]
 
-        if isinstance(df, pd.Series) and op.object_type == ObjectType.dataframe:
+        if isinstance(df, pd.Series) and op.output_types[0] == OutputType.dataframe:
             df = pd.DataFrame(df, columns=[df.name or _series_col_name])
 
         grouped = cls._get_grouped(op, df, ctx)
@@ -588,7 +586,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             # empty data, set index manually
             result.index = out.index_value.to_pandas()
 
-        if op.object_type == ObjectType.series:
+        if op.output_types[0] == OutputType.series:
             if isinstance(result, pd.DataFrame):
                 result = result.iloc[:, 0]
             result.name = out.name

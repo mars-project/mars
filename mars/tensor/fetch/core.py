@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...operands import Fetch, FetchShuffle, FetchMixin
+from ...operands import Fetch, FetchShuffle, FetchMixin, OutputType
 from ...serialize import DataTypeField
 from ..operands import TensorOperandMixin
 
 
 class TensorFetchMixin(TensorOperandMixin, FetchMixin):
     __slots__ = ()
+    _output_type_ = OutputType.tensor
 
 
-class TensorFetch(Fetch, TensorFetchMixin):
+class TensorFetch(TensorFetchMixin, Fetch):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, dtype=None, to_fetch_key=None, sparse=False, **kw):
@@ -43,7 +44,7 @@ class TensorFetch(Fetch, TensorFetchMixin):
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
-class TensorFetchShuffle(FetchShuffle, TensorFetchMixin):
+class TensorFetchShuffle(TensorFetchMixin, FetchShuffle):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, dtype=None, to_fetch_keys=None, to_fetch_idxes=None, **kw):
