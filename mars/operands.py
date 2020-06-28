@@ -640,11 +640,11 @@ class ObjectFuseChunkMixin(FuseChunkMixin, ObjectOperandMixin):
     __slots__ = ()
 
 
-class ObjectFuseChunk(Fuse, ObjectFuseChunkMixin):
+class ObjectFuseChunk(ObjectFuseChunkMixin, Fuse):
     pass
 
 
-class ObjectFetch(FetchMixin, Fetch):
+class ObjectFetch(FetchMixin, ObjectOperandMixin, Fetch):
     _output_type_ = OutputType.object
 
     def __init__(self, to_fetch_key=None, **kw):
