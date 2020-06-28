@@ -14,8 +14,9 @@
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import OutputType
 from ...utils import lazy_import
-from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
+from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -43,13 +44,13 @@ class DataFrameMean(DataFrameReductionOperand, DataFrameReductionMixin):
 def mean_series(df, axis=None, skipna=None, level=None, combine_size=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameMean(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
-                       object_type=ObjectType.scalar, use_inf_as_na=use_inf_as_na)
+                       output_types=[OutputType.scalar], use_inf_as_na=use_inf_as_na)
     return op(df)
 
 
 def mean_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameMean(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
-                       combine_size=combine_size, object_type=ObjectType.series,
+                       combine_size=combine_size, output_types=[OutputType.series],
                        use_inf_as_na=use_inf_as_na)
     return op(df)

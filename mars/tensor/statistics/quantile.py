@@ -28,7 +28,7 @@ from ..indexing import take
 from ..arithmetic import isnan, add
 from ..reduction import any as tensor_any
 from ..operands import TensorOperand, TensorOperandMixin
-from ..core import TENSOR_TYPE, CHUNK_TYPE, TensorOrder
+from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..utils import check_out_param
 from ..array_utils import as_same_device, device
 from .core import _ureduce
@@ -203,9 +203,9 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._a = self._inputs[0]
-        if isinstance(self._q, (TENSOR_TYPE, CHUNK_TYPE)):
+        if isinstance(self._q, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             self._q = self._inputs[1]
-        if isinstance(self._out, (TENSOR_TYPE, CHUNK_TYPE)):
+        if isinstance(self._out, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             self._out = self._inputs[-1]
 
     @property

@@ -21,10 +21,10 @@ from ...serialize import KeyField, AnyField, BoolField
 from ...lib.sparse.core import get_array_module
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
-from ..operands import TensorHasInput, TensorOperandMixin, Tensor
-from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
-from ..core import TensorOrder
+from ..core import Tensor, TensorOrder
+from ..datasource import tensor as astensor
+from ..operands import TensorHasInput, TensorOperandMixin
 
 
 class TensorDigitize(TensorHasInput, TensorOperandMixin):

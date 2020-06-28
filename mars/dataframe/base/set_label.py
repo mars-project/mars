@@ -50,7 +50,7 @@ class DataFrameSetLabel(DataFrameOperand, DataFrameOperandMixin):
         self._input = self._inputs[0]
 
     def __call__(self, inp):
-        self._object_type = inp.op.object_type
+        self._output_types = inp.op.output_types
         if not isinstance(inp, DATAFRAME_TYPE) or self._axis != 1:  # pragma: no cover
             raise NotImplementedError('Only support set DataFrame columns for now')
         if isinstance(self._value, (Base, Entity)):  # pragma: no cover

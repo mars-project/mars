@@ -18,11 +18,12 @@ import numpy as np
 import pandas as pd
 
 from ...config import options
+from ...core import OutputType
 from ...operands import OperandStage
 from ...utils import lazy_import
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
 from ..utils import parse_index, build_df, build_empty_df, build_series, validate_axis
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType, DATAFRAME_TYPE
+from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
 from ..merge import DataFrameConcat
 
 cudf = lazy_import('cudf', globals=globals())
@@ -40,11 +41,11 @@ class DataFrameReductionOperand(DataFrameOperand):
     _combine_size = Int32Field('combine_size')
 
     def __init__(self, axis=None, skipna=None, level=None, numeric_only=None, min_count=None,
-                 stage=None, dtype=None, combine_size=None, gpu=None, sparse=None, object_type=None,
+                 stage=None, dtype=None, combine_size=None, gpu=None, sparse=None, output_types=None,
                  use_inf_as_na=None, **kw):
         super().__init__(_axis=axis, _skipna=skipna, _level=level, _numeric_only=numeric_only,
                          _min_count=min_count, _stage=stage, _dtype=dtype, _combine_size=combine_size,
-                         _gpu=gpu, _sparse=sparse, _object_type=object_type, _use_inf_as_na=use_inf_as_na,
+                         _gpu=gpu, _sparse=sparse, _output_types=output_types, _use_inf_as_na=use_inf_as_na,
                          **kw)
 
     @property
@@ -88,9 +89,9 @@ class DataFrameCumReductionOperand(DataFrameOperand):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, axis=None, skipna=None, dtype=None, gpu=None, sparse=None,
-                 object_type=None, use_inf_as_na=None, stage=None, **kw):
+                 output_types=None, use_inf_as_na=None, stage=None, **kw):
         super().__init__(_axis=axis, _skipna=skipna, _dtype=dtype, _gpu=gpu, _sparse=sparse,
-                         _object_type=object_type, _stage=stage, _use_inf_as_na=use_inf_as_na, **kw)
+                         _output_types=output_types, _stage=stage, _use_inf_as_na=use_inf_as_na, **kw)
 
     @property
     def axis(self):
@@ -119,9 +120,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                         if k in df.params}
         chunk_params['shape'] = df.shape
         chunk_params['index'] = chk.index
-        if op.object_type == ObjectType.series:
+        if op.output_types[0] == OutputType.series:
             chunk_params.update(dict(dtype=df.dtype, index_value=df.index_value, index=(0,)))
-        elif op.object_type == ObjectType.dataframe:
+        elif op.output_types[0] == OutputType.dataframe:
             chunk_params.update(dict(dtypes=df.dtypes, index_value=df.index_value,
                                      columns_value=df.columns_value))
         else:
@@ -145,7 +146,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                     c._index = (j,)
 
                 # concatenate chunks into one chunk
-                concat_op = DataFrameConcat(axis=op.axis, object_type=ObjectType.dataframe)
+                concat_op = DataFrameConcat(axis=op.axis, output_types=[OutputType.dataframe])
                 if op.axis == 0:
                     concat_index = parse_index(pd.RangeIndex(len(chks)))
                     concat_dtypes = chks[0].dtypes
@@ -169,7 +170,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 new_op = op.copy().reset_key()
                 new_op._stage = OperandStage.combine
                 # all intermediate results' type is dataframe
-                new_op._object_type = ObjectType.dataframe
+                new_op.output_types = [OutputType.dataframe]
                 new_chunks.append(new_op.new_chunk([chk], shape=reduced_shape, index=(i,), dtypes=dtypes,
                                                    index_value=index_value))
             chunks = new_chunks
@@ -178,7 +179,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             concat_shape = (sum([c.shape[0] for c in chunks]), chunks[0].shape[1])
         else:
             concat_shape = (chunks[0].shape[0], (sum([c.shape[1] for c in chunks])))
-        concat_op = DataFrameConcat(axis=op.axis, object_type=ObjectType.dataframe)
+        concat_op = DataFrameConcat(axis=op.axis, output_types=[OutputType.dataframe])
         chk = concat_op.new_chunk(chunks, index=(idx,), shape=concat_shape)
         empty_df = build_df(chunks[0])
         reduced_df = cls._execute_reduction(empty_df, op)
@@ -208,7 +209,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
             new_chunk_op._stage = OperandStage.map
-            new_chunk_op._object_type = ObjectType.dataframe
+            new_chunk_op.output_types = [OutputType.dataframe]
             if op.axis == 0:
                 if op.numeric_only:
                     dtypes = chunk_dtypes[c.index[1]]
@@ -245,7 +246,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
-            new_chunk_op._object_type = ObjectType.series
+            new_chunk_op.output_types = [OutputType.series]
             new_chunk_op._stage = OperandStage.map
             chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=series.dtype)
 
@@ -253,19 +254,19 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             new_chunks = []
             for i in range(0, len(chunks), combine_size):
                 chks = chunks[i: i + combine_size]
-                concat_op = DataFrameConcat(object_type=ObjectType.series)
+                concat_op = DataFrameConcat(output_types=[OutputType.series])
                 length = sum([c.shape[0] for c in chks if len(c.shape) > 0])
                 range_num = -1 if np.isnan(length) else length
                 chk = concat_op.new_chunk(chks, shape=(length,), index=(i,), dtype=chks[0].dtype,
                                           index_value=parse_index(pd.RangeIndex(range_num), [c.key for c in chks]))
                 new_op = op.copy().reset_key()
-                new_op._object_type = ObjectType.series
+                new_op.output_types = [OutputType.series]
                 new_op._stage = OperandStage.combine
                 new_chunks.append(new_op.new_chunk([chk], shape=(), index=(i,), dtype=chk.dtype,
                                                    index_value=parse_index(pd.RangeIndex(-1))))
             chunks = new_chunks
 
-        concat_op = DataFrameConcat(object_type=ObjectType.series)
+        concat_op = DataFrameConcat(output_types=[OutputType.series])
         length = sum([c.shape[0] for c in chunks if len(c.shape) > 0])
         range_num = -1 if np.isnan(length) else length
         chk = concat_op.new_chunk(chunks, shape=(length,), index=(0,), dtype=chunks[0].dtype,
@@ -363,7 +364,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
         r = cls._execute_reduction(in_data, op, min_count=op.min_count, reduction_func=reduction_func)
-        if isinstance(in_data, xdf.Series) or op.object_type == ObjectType.series:
+        if isinstance(in_data, xdf.Series) or op.output_types[0] == OutputType.series:
             ctx[op.outputs[0].key] = r
         else:
             if op.axis == 0:
@@ -572,7 +573,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
 
     @staticmethod
     def _get_last_slice(op, df, start):
-        if op.object_type == ObjectType.series:
+        if op.output_types[0] == OutputType.series:
             return df.iloc[start:]
         else:
             if op.axis == 1:

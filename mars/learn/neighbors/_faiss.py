@@ -83,8 +83,8 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
                          _return_index_type=return_index_type,
                          _accuracy=accuracy, _memory_require=memory_require, _gpu=gpu,
                          _stage=stage, _output_types=output_types, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
+        if self.output_types is None:
+            self.output_types = [OutputType.object]
 
     @property
     def input(self):
@@ -441,8 +441,8 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
         super().__init__(_faiss_index=faiss_index, _metric=metric,
                          _return_index_type=return_index_type,
                          _output_types=output_types, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
+        if self.output_types is None:
+            self.output_types = [OutputType.object]
 
     @property
     def input(self):
@@ -610,8 +610,8 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
         super().__init__(_faiss_index=faiss_index, _n_neighbors=n_neighbors, _metric=metric,
                          _return_distance=return_distance, _output_types=output_types,
                          _nprobe=nprobe, _return_index_type=return_index_type, _gpu=gpu, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.tensor] * self.output_limit
+        if self.output_types is None:
+            self.output_types = [OutputType.tensor] * self.output_limit
 
     @property
     def input(self):

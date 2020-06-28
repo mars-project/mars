@@ -17,9 +17,10 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
+from ...core import OutputType
 from ...serialize import AnyField, BoolField, TupleField, DictField
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_empty_df, build_empty_series, validate_axis, parse_index
 
 
@@ -35,9 +36,9 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
     _call_agg = BoolField('call_agg')
 
     def __init__(self, func=None, axis=None, convert_dtype=None, args=None, kwds=None,
-                 call_agg=None, object_type=None, **kw):
+                 call_agg=None, output_types=None, **kw):
         super().__init__(_func=func, _axis=axis, _convert_dtype=convert_dtype, _args=args,
-                         _kwds=kwds, _call_agg=call_agg, _object_type=object_type, **kw)
+                         _kwds=kwds, _call_agg=call_agg, _output_types=output_types, **kw)
 
     @property
     def func(self):
@@ -103,7 +104,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
             new_op = op.copy().reset_key()
             params = c.params.copy()
 
-            if op.object_type == ObjectType.dataframe:
+            if out_df.ndim == 2:
                 if isinstance(c, DATAFRAME_CHUNK_TYPE):
                     columns = c.columns_value.to_pandas()
                     try:
@@ -151,7 +152,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                     params['index'] = (c.index[1 - op.axis],)
             chunks.append(new_op.new_chunk([c], **params))
 
-        if op.object_type == ObjectType.dataframe:
+        if out_df.ndim == 2:
             new_nsplits = [in_df.nsplits[0], tuple(col_sizes)]
             if op.call_agg:
                 new_nsplits[op.axis] = (np.nan,)
@@ -169,7 +170,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables(op.inputs, **kw)
 
     def _infer_df_func_returns(self, in_dtypes, dtypes):
-        if self.object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(2))
             with np.errstate(all='ignore'):
                 if self.call_agg:
@@ -187,10 +188,10 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
         if isinstance(infer_df, pd.DataFrame):
             new_dtypes = dtypes or infer_df.dtypes
-            self._object_type = ObjectType.dataframe
+            self.output_types = [OutputType.dataframe]
         else:
             new_dtypes = dtypes or (infer_df.name, infer_df.dtype)
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
 
         return new_dtypes
 
@@ -198,17 +199,17 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         axis = getattr(self, 'axis', None) or 0
         self._axis = validate_axis(axis, df)
 
-        if self.object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             dtypes = self._infer_df_func_returns(df.dtypes, dtypes)
         else:
             dtypes = self._infer_df_func_returns((df.name, df.dtype), dtypes)
 
-        for arg, desc in zip((self._object_type, dtypes), ('object_type', 'dtypes')):
+        for arg, desc in zip((self.output_types, dtypes), ('output_types', 'dtypes')):
             if arg is None:
                 raise TypeError('Cannot determine %s by calculating with enumerate data, '
                                 'please specify it as arguments' % desc)
 
-        if self.object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             new_shape = list(df.shape)
             new_index_value = df.index_value
             if len(new_shape) == 1:
@@ -235,13 +236,13 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
 
 def df_transform(df, func, axis=0, *args, dtypes=None, **kwargs):
-    op = TransformOperand(func=func, axis=axis, args=args, kwds=kwargs, object_type=ObjectType.dataframe,
+    op = TransformOperand(func=func, axis=axis, args=args, kwds=kwargs, output_types=[OutputType.dataframe],
                           call_agg=kwargs.pop('_call_agg', False))
     return op(df, dtypes=dtypes)
 
 
 def series_transform(series, func, convert_dtype=True, axis=0, *args, dtype=None, **kwargs):
     op = TransformOperand(func=func, axis=axis, convert_dtype=convert_dtype, args=args, kwds=kwargs,
-                          object_type=ObjectType.series, call_agg=kwargs.pop('_call_agg', False))
+                          output_types=[OutputType.series], call_agg=kwargs.pop('_call_agg', False))
     dtypes = (series.name, dtype) if dtype is not None else None
     return op(series, dtypes=dtypes)

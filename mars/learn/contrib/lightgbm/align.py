@@ -14,10 +14,9 @@
 
 from .... import opcodes
 from ....context import get_context, RunningMode
-from ....core import ExecutableTuple
+from ....core import ExecutableTuple, get_output_types
 from ....serialize import AnyField
 from ...operands import LearnOperand, LearnOperandMixin
-from ...utils import get_output_types
 
 
 class LGBMAlign(LearnOperand, LearnOperandMixin):

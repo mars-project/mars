@@ -18,11 +18,11 @@ from collections import OrderedDict
 
 import mars.dataframe as md
 from mars import opcodes
+from mars.core import OutputType
 from mars.dataframe.core import DataFrameGroupBy, SeriesGroupBy, DataFrame
 from mars.dataframe.groupby.core import DataFrameGroupByOperand, DataFrameShuffleProxy
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
 from mars.dataframe.groupby.getitem import GroupByIndex
-from mars.dataframe.operands import ObjectType
 from mars.operands import OperandStage
 from mars.tests.core import TestBase
 
@@ -143,7 +143,7 @@ class Test(TestBase):
         pd.testing.assert_series_equal(applied.dtypes, df1.dtypes)
         self.assertEqual(applied.shape, (np.nan, 3))
         self.assertEqual(applied.op._op_type_, opcodes.APPLY)
-        self.assertEqual(applied.op.object_type, ObjectType.dataframe)
+        self.assertEqual(applied.op.output_types[0], OutputType.dataframe)
         self.assertEqual(len(applied.chunks), 3)
         self.assertEqual(applied.chunks[0].shape, (np.nan, 3))
         pd.testing.assert_series_equal(applied.chunks[0].dtypes, df1.dtypes)
@@ -152,7 +152,7 @@ class Test(TestBase):
         self.assertEqual(applied.dtype, df1.a.dtype)
         self.assertEqual(applied.shape, (np.nan,))
         self.assertEqual(applied.op._op_type_, opcodes.APPLY)
-        self.assertEqual(applied.op.object_type, ObjectType.series)
+        self.assertEqual(applied.op.output_types[0], OutputType.series)
         self.assertEqual(len(applied.chunks), 3)
         self.assertEqual(applied.chunks[0].shape, (np.nan,))
         self.assertEqual(applied.chunks[0].dtype, df1.a.dtype)
@@ -161,7 +161,7 @@ class Test(TestBase):
         self.assertEqual(applied.dtype, df1.a.dtype)
         self.assertEqual(applied.shape, (np.nan,))
         self.assertEqual(applied.op._op_type_, opcodes.APPLY)
-        self.assertEqual(applied.op.object_type, ObjectType.series)
+        self.assertEqual(applied.op.output_types[0], OutputType.series)
         self.assertEqual(len(applied.chunks), 3)
         self.assertEqual(applied.chunks[0].shape, (np.nan,))
         self.assertEqual(applied.chunks[0].dtype, df1.a.dtype)
@@ -173,7 +173,7 @@ class Test(TestBase):
         self.assertEqual(applied.dtype, series1.dtype)
         self.assertEqual(applied.shape, (np.nan,))
         self.assertEqual(applied.op._op_type_, opcodes.APPLY)
-        self.assertEqual(applied.op.object_type, ObjectType.series)
+        self.assertEqual(applied.op.output_types[0], OutputType.series)
         self.assertEqual(len(applied.chunks), 3)
         self.assertEqual(applied.chunks[0].shape, (np.nan,))
         self.assertEqual(applied.chunks[0].dtype, series1.dtype)
@@ -200,7 +200,7 @@ class Test(TestBase):
         self.assertListEqual(r.dtypes.index.tolist(), list('acdef'))
         self.assertEqual(r.shape, (9, 5))
         self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-        self.assertEqual(r.op.object_type, ObjectType.dataframe)
+        self.assertEqual(r.op.output_types[0], OutputType.dataframe)
         self.assertEqual(len(r.chunks), 3)
         self.assertEqual(r.chunks[0].shape, (np.nan, 5))
         self.assertListEqual(r.chunks[0].dtypes.index.tolist(), list('acdef'))
@@ -208,7 +208,7 @@ class Test(TestBase):
         r = mdf.groupby('b').transform(['cummax', 'cumcount'], _call_agg=True).tiles()
         self.assertEqual(r.shape, (np.nan, 6))
         self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-        self.assertEqual(r.op.object_type, ObjectType.dataframe)
+        self.assertEqual(r.op.output_types[0], OutputType.dataframe)
         self.assertEqual(len(r.chunks), 3)
         self.assertEqual(r.chunks[0].shape, (np.nan, 6))
 
@@ -216,7 +216,7 @@ class Test(TestBase):
         r = mdf.groupby('b').transform(agg_dict, _call_agg=True).tiles()
         self.assertEqual(r.shape, (np.nan, 2))
         self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-        self.assertEqual(r.op.object_type, ObjectType.dataframe)
+        self.assertEqual(r.op.output_types[0], OutputType.dataframe)
         self.assertEqual(len(r.chunks), 3)
         self.assertEqual(r.chunks[0].shape, (np.nan, 2))
 
@@ -224,7 +224,7 @@ class Test(TestBase):
         r = mdf.groupby('b').transform(agg_list, _call_agg=True).tiles()
         self.assertEqual(r.shape, (np.nan, 10))
         self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-        self.assertEqual(r.op.object_type, ObjectType.dataframe)
+        self.assertEqual(r.op.output_types[0], OutputType.dataframe)
         self.assertEqual(len(r.chunks), 3)
         self.assertEqual(r.chunks[0].shape, (np.nan, 10))
 
@@ -235,7 +235,7 @@ class Test(TestBase):
         self.assertEqual(r.dtype, series1.dtype)
         self.assertEqual(r.shape, series1.shape)
         self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.op.output_types[0], OutputType.series)
         self.assertEqual(len(r.chunks), 3)
         self.assertEqual(r.chunks[0].shape, (np.nan,))
         self.assertEqual(r.chunks[0].dtype, series1.dtype)
@@ -243,7 +243,7 @@ class Test(TestBase):
         r = ms1.groupby(lambda x: x % 3).transform('cummax', _call_agg=True).tiles()
         self.assertEqual(r.shape, (np.nan,))
         self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.op.output_types[0], OutputType.series)
         self.assertEqual(len(r.chunks), 3)
         self.assertEqual(r.chunks[0].shape, (np.nan,))
 
@@ -251,7 +251,7 @@ class Test(TestBase):
         r = ms1.groupby(lambda x: x % 3).transform(agg_list, _call_agg=True).tiles()
         self.assertEqual(r.shape, (np.nan, 2))
         self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-        self.assertEqual(r.op.object_type, ObjectType.dataframe)
+        self.assertEqual(r.op.output_types[0], OutputType.dataframe)
         self.assertEqual(len(r.chunks), 3)
         self.assertEqual(r.chunks[0].shape, (np.nan, 2))
 
@@ -263,21 +263,21 @@ class Test(TestBase):
 
         for fun in ['cummin', 'cummax', 'cumprod', 'cumsum']:
             r = getattr(mdf.groupby('b'), fun)().tiles()
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(len(r.chunks), 4)
             self.assertEqual(r.shape, (len(df1), 2))
             self.assertEqual(r.chunks[0].shape, (np.nan, 2))
             pd.testing.assert_index_equal(r.chunks[0].columns_value.to_pandas(), pd.Index(['a', 'c']))
 
             r = getattr(mdf.groupby('b'), fun)(axis=1).tiles()
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(len(r.chunks), 4)
             self.assertEqual(r.shape, (len(df1), 3))
             self.assertEqual(r.chunks[0].shape, (np.nan, 3))
             pd.testing.assert_index_equal(r.chunks[0].columns_value.to_pandas(), df1.columns)
 
         r = mdf.groupby('b').cumcount().tiles()
-        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.op.output_types[0], OutputType.series)
         self.assertEqual(len(r.chunks), 4)
         self.assertEqual(r.shape, (len(df1),))
         self.assertEqual(r.chunks[0].shape, (np.nan,))
@@ -287,7 +287,7 @@ class Test(TestBase):
 
         for fun in ['cummin', 'cummax', 'cumprod', 'cumsum', 'cumcount']:
             r = getattr(ms1.groupby(lambda x: x % 2), fun)().tiles()
-            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.op.output_types[0], OutputType.series)
             self.assertEqual(len(r.chunks), 4)
             self.assertEqual(r.shape, (len(series1),))
             self.assertEqual(r.chunks[0].shape, (np.nan,))

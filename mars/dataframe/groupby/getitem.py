@@ -17,8 +17,9 @@ from collections.abc import Iterable
 from pandas.core import groupby as pd_groupby
 
 from ... import opcodes
+from ...core import OutputType
 from ...serialize import AnyField
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index
 
 
@@ -28,8 +29,8 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
 
     _selection = AnyField('selection')
 
-    def __init__(self, selection=None, object_type=None, **kw):
-        super().__init__(_selection=selection, _object_type=object_type, **kw)
+    def __init__(self, selection=None, output_types=None, **kw):
+        super().__init__(_selection=selection, _output_types=output_types, **kw)
 
     @property
     def selection(self):
@@ -49,13 +50,13 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
         indexed = groupby.op.build_mock_groupby()[self.selection]
 
         if isinstance(indexed, pd_groupby.SeriesGroupBy):
-            self._object_type = ObjectType.series_groupby
+            self.output_types = [OutputType.series_groupby]
             params = dict(shape=(groupby.shape[0],), name=self.selection,
                           dtype=groupby.dtypes[self.selection],
                           index_value=groupby.index_value,
                           key_dtypes=groupby.key_dtypes)
         else:
-            self._object_type = ObjectType.dataframe_groupby
+            self.output_types = [OutputType.dataframe_groupby]
 
             if isinstance(self.selection, Iterable) and not isinstance(self.selection, str):
                 item_list = list(self.selection)
@@ -77,7 +78,7 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
 
         chunks = []
         for c in in_groupby.chunks:
-            if op.object_type == ObjectType.series_groupby:
+            if op.output_types[0] == OutputType.series_groupby:
                 params = dict(shape=(c.shape[0],), name=op.selection,
                               index=(c.index[0],), dtype=c.dtypes[op.selection],
                               index_value=c.index_value, key_dtypes=c.key_dtypes)
@@ -111,14 +112,14 @@ def df_groupby_getitem(df_groupby, item):
         hashable = False
 
     if hashable and item in df_groupby.dtypes:
-        object_type = ObjectType.series_groupby
+        output_types = [OutputType.series_groupby]
     elif isinstance(item, Iterable) and all(it in df_groupby.dtypes for it in item):
-        object_type = ObjectType.dataframe_groupby
+        output_types = [OutputType.dataframe_groupby]
     else:
         raise NameError('Cannot slice groupby with %r' % item)
 
     if df_groupby.selection:
         raise IndexError('Column(s) %r already selected' % df_groupby.selection)
 
-    op = GroupByIndex(selection=item, object_type=object_type)
+    op = GroupByIndex(selection=item, output_types=output_types)
     return op(df_groupby)

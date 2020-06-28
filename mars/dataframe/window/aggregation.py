@@ -25,7 +25,7 @@ from ...serialize import AnyField, BoolField, Int32Field, Int64Field, \
 from ...utils import tokenize
 from ..core import DATAFRAME_TYPE
 from ..merge import DataFrameConcat
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, parse_index, build_empty_series
 
 _stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_sources',
@@ -142,7 +142,6 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(test_df.index,
                                           expanding.params, inp,
                                           store_data=False)
-            self._object_type = ObjectType.dataframe
             self._append_index = test_df.columns.nlevels != empty_df.columns.nlevels
             return self.new_dataframe(
                 [inp], shape=(inp.shape[0], test_df.shape[1]),
@@ -153,12 +152,10 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             empty_series = build_empty_series(inp.dtype, index=pd_index[:0], name=inp.name)
             test_obj = expanding(empty_series).agg(raw_func)
             if isinstance(test_obj, pd.DataFrame):
-                self._object_type = ObjectType.dataframe
                 return self.new_dataframe([inp], shape=(inp.shape[0], test_obj.shape[1]),
                                           dtypes=test_obj.dtypes, index_value=inp.index_value,
                                           columns_value=parse_index(test_obj.dtypes.index, store_data=True))
             else:
-                self._object_type = ObjectType.series
                 return self.new_series([inp], shape=inp.shape, dtype=test_obj.dtype,
                                        index_value=inp.index_value, name=test_obj.name)
 
@@ -385,7 +382,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
                 summary_inputs = list(summary_chunks[:c.index[0]])
 
             if len(summary_inputs) > 1:
-                concat_op = DataFrameConcat(object_type=out_df.op.object_type, axis=op.axis)
+                concat_op = DataFrameConcat(output_types=out_df.op.output_types, axis=op.axis)
                 concat_summary = concat_op.new_chunk(summary_inputs)
                 chunks.append(chunk_op.new_chunk([c, concat_summary], **params))
             elif len(summary_inputs) == 1:

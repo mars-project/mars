@@ -15,11 +15,12 @@
 import itertools
 
 from ... import opcodes as OperandDef
-from ...serialize import DataFrameField, SeriesField
 from ...config import options
+from ...core import OutputType
+from ...serialize import DataFrameField, SeriesField
 from ...tensor.utils import get_chunk_slices
 from ..utils import decide_dataframe_chunk_sizes, parse_index
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
 class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
@@ -36,7 +37,7 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         if dtypes is None and data is not None:
             dtypes = data.dtypes
         super().__init__(_data=data, _dtypes=dtypes, _gpu=gpu, _sparse=sparse,
-                         _object_type=ObjectType.dataframe, **kw)
+                         _output_types=[OutputType.dataframe], **kw)
 
     @property
     def data(self):

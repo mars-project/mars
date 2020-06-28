@@ -15,12 +15,12 @@
 import pandas as pd
 import numpy as np
 
-from ...core import Base, Entity
+from ...core import Base, Entity, OutputType
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
 from ... import opcodes as OperandDef
 from ...utils import lazy_import
 from ..utils import parse_index, build_empty_df, standardize_range_index, validate_axis
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, SERIES_TYPE
+from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -40,12 +40,12 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, axis=None, join=None, ignore_index=None,
                  keys=None, levels=None, names=None, verify_integrity=None,
-                 sort=None, copy=None, sparse=None, object_type=None, **kw):
+                 sort=None, copy=None, sparse=None, output_types=None, **kw):
         super().__init__(
             _axis=axis, _join=join, _ignore_index=ignore_index,
             _keys=keys, _levels=levels, _names=names,
             _verify_integrity=verify_integrity, _sort=sort, _copy=copy,
-            _sparse=sparse, _object_type=object_type, **kw)
+            _sparse=sparse, _output_types=output_types, **kw)
 
     @property
     def axis(self):
@@ -185,13 +185,13 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op):
         def _base_concat(chunk, inputs):
             # auto generated concat when executing a DataFrame, Series or Index
-            if chunk.op.object_type == ObjectType.dataframe:
+            if chunk.op.output_types[0] == OutputType.dataframe:
                 return _auto_concat_dataframe_chunks(chunk, inputs)
-            elif chunk.op.object_type == ObjectType.series:
+            elif chunk.op.output_types[0] == OutputType.series:
                 return _auto_concat_series_chunks(chunk, inputs)
-            elif chunk.op.object_type == ObjectType.index:
+            elif chunk.op.output_types[0] == OutputType.index:
                 return _auto_concat_index_chunks(chunk, inputs)
-            elif chunk.op.object_type == ObjectType.categorical:
+            elif chunk.op.output_types[0] == OutputType.categorical:
                 return _auto_concat_categorical_chunks(chunk, inputs)
             else:  # pragma: no cover
                 raise TypeError('Only DataFrameChunk, SeriesChunk, IndexChunk, '
@@ -304,7 +304,6 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             return self.new_series(objs, shape=(row_length,), dtype=objs[0].dtype,
                                    index_value=index_value, name=objs[0].name)
         else:
-            self._object_type = ObjectType.dataframe
             col_length = 0
             columns = []
             dtypes = dict()
@@ -372,10 +371,10 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, objs):
         if all(isinstance(obj, SERIES_TYPE) for obj in objs):
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
             return self._call_series(objs)
         else:
-            self._object_type = ObjectType.dataframe
+            self.output_types = [OutputType.dataframe]
             return self._call_dataframes(objs)
 
 
@@ -385,9 +384,9 @@ class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
     _groups = ListField('groups', ValueType.key)
     _groupby_params = AnyField('groupby_params')
 
-    def __init__(self, groups=None, groupby_params=None, object_type=None, **kw):
+    def __init__(self, groups=None, groupby_params=None, output_types=None, **kw):
         super().__init__(_groups=groups, _groupby_params=groupby_params,
-                         _object_type=object_type, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def groups(self):

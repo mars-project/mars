@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import builtins
+import enum
 import itertools
 from operator import attrgetter
 from typing import List
@@ -595,8 +596,8 @@ class Object(Entity):
     _allow_data_type_ = (ObjectData,)
 
 
-OBJECT_TYPE = (ObjectData, Object)
-OBJECT_CHUNK_TYPE = (ObjectChunkData, ObjectChunk)
+OBJECT_TYPE = (Object, ObjectData)
+OBJECT_CHUNK_TYPE = (ObjectChunk, ObjectChunkData)
 
 
 class ChunksIndexer(object):
@@ -757,3 +758,62 @@ class EntityDataModificationHandler(object):
 
 
 entity_view_handler = EntityDataModificationHandler()
+
+
+class OutputType(enum.Enum):
+    object = 1
+    tensor = 2
+    dataframe = 3
+    series = 4
+    index = 5
+    scalar = 6
+    categorical = 7
+    dataframe_groupby = 8
+    series_groupby = 9
+
+    @classmethod
+    def serialize_list(cls, output_types):
+        return [ot.value for ot in output_types] if output_types is not None else None
+
+    @classmethod
+    def deserialize_list(cls, output_types):
+        return [cls(ot) for ot in output_types] if output_types is not None else None
+
+
+_OUTPUT_TYPE_TO_CHUNK_TYPES = {OutputType.object: OBJECT_CHUNK_TYPE}
+_OUTPUT_TYPE_TO_TILEABLE_TYPES = {OutputType.object: OBJECT_TYPE}
+
+
+def register_output_types(output_type, tileable_types, chunk_types):
+    _OUTPUT_TYPE_TO_TILEABLE_TYPES[output_type] = tileable_types
+    _OUTPUT_TYPE_TO_CHUNK_TYPES[output_type] = chunk_types
+
+
+def get_tileable_types(output_type):
+    return _OUTPUT_TYPE_TO_TILEABLE_TYPES[output_type]
+
+
+def get_chunk_types(output_type):
+    return _OUTPUT_TYPE_TO_CHUNK_TYPES[output_type]
+
+
+def get_output_types(*objs, unknown_as=None):
+    output_types = []
+    for obj in objs:
+        if obj is None:
+            continue
+        for tp in OutputType.__members__.values():
+            try:
+                tileable_types = _OUTPUT_TYPE_TO_TILEABLE_TYPES[tp]
+                chunk_types = _OUTPUT_TYPE_TO_CHUNK_TYPES[tp]
+                if isinstance(obj, (tileable_types, chunk_types)):
+                    output_types.append(tp)
+                    break
+            except KeyError:
+                continue
+        else:
+            if unknown_as is not None:
+                output_types.append(unknown_as)
+            else:  # pragma: no cover
+                raise TypeError('Output can only be tensor, dataframe or series')
+    return output_types

@@ -19,13 +19,13 @@ import pandas as pd
 
 from mars import opcodes
 from mars.config import options, option_context
+from mars.core import OutputType
 from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
     INDEX_TYPE, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
 from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut, astype
-from mars.dataframe.operands import ObjectType
 from mars.operands import OperandStage
 from mars.tensor.core import TENSOR_TYPE
 from mars.tests.core import TestBase
@@ -337,13 +337,13 @@ class Test(TestBase):
             self.assertTrue(all(v == np.dtype('float64') for v in r.dtypes))
             self.assertEqual(r.shape, df.shape)
             self.assertEqual(r.op._op_type_, opcodes.APPLY)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertTrue(r.op.elementwise)
 
             r = df.apply(lambda x: pd.Series([1, 2])).tiles()
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (np.nan, df.shape[1]))
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (np.nan, 1))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -352,7 +352,7 @@ class Test(TestBase):
             r = df.apply(np.sum, axis='index').tiles()
             self.assertTrue(np.dtype('int64'), r.dtype)
             self.assertEqual(r.shape, (df.shape[1],))
-            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.op.output_types[0], OutputType.series)
             self.assertEqual(r.chunks[0].shape, (20 // df.shape[0],))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -361,7 +361,7 @@ class Test(TestBase):
             r = df.apply(np.sum, axis='columns').tiles()
             self.assertTrue(np.dtype('int64'), r.dtype)
             self.assertEqual(r.shape, (df.shape[0],))
-            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.op.output_types[0], OutputType.series)
             self.assertEqual(r.chunks[0].shape, (20 // df.shape[1],))
             self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -370,7 +370,7 @@ class Test(TestBase):
             r = df.apply(lambda x: pd.Series([1, 2], index=['foo', 'bar']), axis=1).tiles()
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (df.shape[0], np.nan))
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (20 // df.shape[1], np.nan))
             self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -379,7 +379,7 @@ class Test(TestBase):
             r = df.apply(lambda x: [1, 2], axis=1, result_type='expand').tiles()
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (df.shape[0], np.nan))
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (20 // df.shape[1], np.nan))
             self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -388,7 +388,7 @@ class Test(TestBase):
             r = df.apply(lambda x: list(range(10)), axis=1, result_type='reduce').tiles()
             self.assertTrue(np.dtype('object'), r.dtype)
             self.assertEqual(r.shape, (df.shape[0],))
-            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.op.output_types[0], OutputType.series)
             self.assertEqual(r.chunks[0].shape, (20 // df.shape[1],))
             self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -397,7 +397,7 @@ class Test(TestBase):
             r = df.apply(lambda x: list(range(10)), axis=1, result_type='broadcast').tiles()
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (df.shape[0], np.nan))
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (20 // df.shape[1], np.nan))
             self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -418,7 +418,7 @@ class Test(TestBase):
         self.assertTrue(np.dtype('float64'), r.dtype)
         self.assertEqual(r.shape, series.shape)
         self.assertEqual(r.op._op_type_, opcodes.APPLY)
-        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.op.output_types[0], OutputType.series)
         self.assertEqual(r.chunks[0].shape, (5,))
         self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
 
@@ -426,7 +426,7 @@ class Test(TestBase):
         self.assertTrue(np.dtype('float64'), r.dtype)
         self.assertEqual(r.shape, series.shape)
         self.assertEqual(r.op._op_type_, opcodes.APPLY)
-        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.op.output_types[0], OutputType.series)
         self.assertEqual(r.chunks[0].shape, (5,))
         self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
 
@@ -434,7 +434,7 @@ class Test(TestBase):
         self.assertTrue(np.dtype('object'), r.dtype)
         self.assertEqual(r.shape, series.shape)
         self.assertEqual(r.op._op_type_, opcodes.APPLY)
-        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.op.output_types[0], OutputType.series)
         self.assertEqual(r.chunks[0].shape, (5,))
         self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
 
@@ -461,7 +461,7 @@ class Test(TestBase):
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, df.shape)
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (df.shape[0], 20 // df.shape[0]))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -470,7 +470,7 @@ class Test(TestBase):
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, df.shape)
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (20 // df.shape[1], df.shape[1]))
             self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -479,7 +479,7 @@ class Test(TestBase):
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (df.shape[0], df.shape[1] * 3))
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (df.shape[0], 20 // df.shape[0] * 3))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -488,7 +488,7 @@ class Test(TestBase):
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (df.shape[0], 4))
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (df.shape[0], 1))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -498,7 +498,7 @@ class Test(TestBase):
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (np.nan, df.shape[1]))
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (np.nan, 1))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -507,7 +507,7 @@ class Test(TestBase):
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (df.shape[0], np.nan))
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (2, np.nan))
             self.assertEqual(r.chunks[0].inputs[0].shape[1], df_raw.shape[1])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -518,7 +518,7 @@ class Test(TestBase):
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (np.nan, df.shape[1] * 2))
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (np.nan, 2))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -527,7 +527,7 @@ class Test(TestBase):
             self.assertEqual(r.dtype, np.dtype('int64'))
             self.assertEqual(r.shape, (df.shape[1],))
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.op.output_types[0], OutputType.series)
             self.assertEqual(r.chunks[0].shape, (20 // df.shape[0],))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -542,7 +542,7 @@ class Test(TestBase):
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
             self.assertEqual(r.shape, (np.nan, 4))
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.dataframe)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
             self.assertEqual(r.chunks[0].shape, (np.nan, 1))
             self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
             self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
@@ -553,7 +553,7 @@ class Test(TestBase):
             self.assertTrue(np.dtype('float64'), r.dtype)
             self.assertEqual(r.shape, series.shape)
             self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
-            self.assertEqual(r.op.object_type, ObjectType.series)
+            self.assertEqual(r.op.output_types[0], OutputType.series)
             self.assertEqual(r.chunks[0].shape, (5,))
             self.assertEqual(r.chunks[0].inputs[0].shape, (5,))
         finally:
@@ -582,7 +582,7 @@ class Test(TestBase):
             self.assertEqual(c.shape, (2,) if i == 0 else (1,))
 
         r = series.str.split(',', expand=True, n=1)
-        self.assertEqual(r.op.object_type, ObjectType.dataframe)
+        self.assertEqual(r.op.output_types[0], OutputType.dataframe)
         self.assertEqual(r.shape, (3, 2))
         pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
         pd.testing.assert_index_equal(r.columns_value.to_pandas(), pd.RangeIndex(2))
@@ -608,16 +608,16 @@ class Test(TestBase):
             _ = series.str.cat({'1', '2', '3'})
 
         r = series.str.cat(sep=',')
-        self.assertEqual(r.op.object_type, ObjectType.scalar)
+        self.assertEqual(r.op.output_types[0], OutputType.scalar)
         self.assertEqual(r.dtype, s.dtype)
 
         r = r.tiles()
         self.assertEqual(len(r.chunks), 1)
-        self.assertEqual(r.chunks[0].op.object_type, ObjectType.scalar)
+        self.assertEqual(r.chunks[0].op.output_types[0], OutputType.scalar)
         self.assertEqual(r.chunks[0].dtype, s.dtype)
 
         r = series.str.extract(r'[ab](\d)', expand=False)
-        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.op.output_types[0], OutputType.series)
         self.assertEqual(r.dtype, s.dtype)
 
         r = r.tiles()
@@ -630,7 +630,7 @@ class Test(TestBase):
             self.assertEqual(c.shape, (2,) if i == 0 else (1,))
 
         r = series.str.extract(r'[ab](\d)', expand=True)
-        self.assertEqual(r.op.object_type, ObjectType.dataframe)
+        self.assertEqual(r.op.output_types[0], OutputType.dataframe)
         self.assertEqual(r.shape, (3, 1))
         pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
         pd.testing.assert_index_equal(r.columns_value.to_pandas(), pd.RangeIndex(1))
@@ -656,14 +656,14 @@ class Test(TestBase):
         self.assertEqual(r.dtype, s.dt.year.dtype)
         pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
         self.assertEqual(r.shape, s.shape)
-        self.assertEqual(r.op.object_type, ObjectType.series)
+        self.assertEqual(r.op.output_types[0], OutputType.series)
         self.assertEqual(r.name, s.dt.year.name)
 
         r = r.tiles()
         for i, c in enumerate(r.chunks):
             self.assertEqual(c.index, (i,))
             self.assertEqual(c.dtype, s.dt.year.dtype)
-            self.assertEqual(c.op.object_type, ObjectType.series)
+            self.assertEqual(c.op.output_types[0], OutputType.series)
             self.assertEqual(r.name, s.dt.year.name)
             pd.testing.assert_index_equal(c.index_value.to_pandas(),
                                           s.index[i * 2: (i + 1) * 2])
@@ -685,7 +685,7 @@ class Test(TestBase):
             self.assertEqual(c.dtype, np.dtype('bool'))
             self.assertEqual(c.shape, (10,))
             self.assertEqual(len(c.op.inputs), 2)
-            self.assertEqual(c.op.object_type, ObjectType.series)
+            self.assertEqual(c.op.output_types[0], OutputType.series)
             self.assertEqual(c.op.inputs[0].index, (i,))
             self.assertEqual(c.op.inputs[0].shape, (10,))
             self.assertEqual(c.op.inputs[1].index, (0,))
@@ -701,7 +701,7 @@ class Test(TestBase):
             self.assertEqual(c.dtype, np.dtype('bool'))
             self.assertEqual(c.shape, (2,))
             self.assertEqual(len(c.op.inputs), 2)
-            self.assertEqual(c.op.object_type, ObjectType.series)
+            self.assertEqual(c.op.output_types[0], OutputType.series)
             self.assertEqual(c.op.inputs[0].index, (i,))
             self.assertEqual(c.op.inputs[0].shape, (2,))
             self.assertEqual(c.op.inputs[1].index, (0,))
@@ -717,7 +717,7 @@ class Test(TestBase):
             self.assertEqual(c.dtype, np.dtype('bool'))
             self.assertEqual(c.shape, (2,))
             self.assertEqual(len(c.op.inputs), 2)
-            self.assertEqual(c.op.object_type, ObjectType.series)
+            self.assertEqual(c.op.output_types[0], OutputType.series)
             self.assertEqual(c.op.inputs[0].index, (i,))
             self.assertEqual(c.op.inputs[0].shape, (2,))
             self.assertEqual(c.op.inputs[1].index, (0,))

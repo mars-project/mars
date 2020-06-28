@@ -20,13 +20,13 @@ import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 from pandas.core.indexing import IndexingError
 
-from ...core import Entity, Base
+from ...core import Entity, Base, OutputType
 from ...serialize import AnyField, KeyField, ListField
 from ...tensor import asarray
 from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape
 from ... import opcodes as OperandDef
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, DATAFRAME_TYPE
+from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE
 from ..utils import indexing_index_value
 from .index_lib import DataFrameIlocIndexesHandler
 
@@ -129,8 +129,10 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
-        super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _object_type=object_type, **kw)
+    def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
+        super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
+        if not self.output_types:
+            self.output_types = [OutputType.dataframe]
 
     @property
     def input(self):
@@ -178,10 +180,8 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
             index_value = indexing_index_value(df.index_value, self.indexes[0])
             if isinstance(self.indexes[0], Integral):
                 # scalar
-                self._object_type = ObjectType.scalar
                 return self.new_scalar(inputs, dtype=dtype)
             else:
-                self._object_type = ObjectType.series
                 return self.new_series(inputs, shape=shape, dtype=dtype,
                                        index_value=index_value,
                                        name=df.dtypes.index[self.indexes[1]])
@@ -189,7 +189,6 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
             shape = shape1
             dtype = find_common_type(df.dtypes.iloc[self.indexes[1]].values)
             index_value = indexing_index_value(df.columns_value, self.indexes[1])
-            self._object_type = ObjectType.series
             return self.new_series(inputs, shape=shape, dtype=dtype, index_value=index_value)
         else:
             return self.new_dataframe(inputs, shape=shape0 + shape1, dtypes=df.dtypes.iloc[self.indexes[1]],
@@ -260,9 +259,11 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False,
-                 object_type=ObjectType.dataframe, **kw):
+                 output_types=None, **kw):
         super().__init__(_indexes=indexes, _value=value, _gpu=gpu, _sparse=sparse,
-                         _object_type=object_type, **kw)
+                         _output_types=output_types, **kw)
+        if not self.output_types:
+            self.output_types = [OutputType.dataframe]
 
     @property
     def indexes(self):
@@ -322,8 +323,10 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.series, **kw):
-        super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _object_type=object_type, **kw)
+    def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
+        super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
+        if not self.output_types:
+            self.output_types = [OutputType.series]
 
     @property
     def input(self):
@@ -369,7 +372,6 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, series):
         if isinstance(self._indexes[0], Integral):
-            self._object_type = ObjectType.scalar
             return self.new_scalar([series], dtype=series.dtype)
         else:
             shape = tuple(calc_shape(series.shape, self.indexes))
@@ -387,7 +389,7 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False, **kw):
         super().__init__(_indexes=indexes, _value=value, _gpu=gpu, _sparse=sparse,
-                         _object_type=ObjectType.series, **kw)
+                         _output_types=[OutputType.series], **kw)
 
     @property
     def indexes(self):

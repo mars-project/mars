@@ -20,15 +20,14 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import Base, Entity
+from ...core import Base, Entity, get_output_types
 from ...config import options
 from ...serialize import KeyField, StringField, BoolField, DataTypeField
 from ...operands import OperandStage
-from ...tensor.core import TensorOrder, CHUNK_TYPE as TENSOR_CHUNK_TYPE
+from ...tensor.core import TensorOrder, TENSOR_CHUNK_TYPE
 from ...tensor.array_utils import as_same_device, device, issparse, get_array_module
 from ...utils import ceildiv, recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
-from .core import get_output_types
 
 
 class CheckBase(LearnOperand, LearnOperandMixin):
@@ -64,7 +63,7 @@ class CheckBase(LearnOperand, LearnOperandMixin):
     def __call__(self, x, value=None):
         # output input if value not specified
         self._value = value = value if value is not None else x
-        self._output_types = get_output_types(value)
+        self.output_types = get_output_types(value)
         self._stage = OperandStage.agg
         return self.new_tileable([x, value],
                                  kws=[value.params])
@@ -313,7 +312,7 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
             new_out_chunks = []
             for i in range(size):
                 chunk_op = AssertAllFinite(
-                    check_only=True,
+                    check_only=True, output_types=op.output_types,
                     stage=OperandStage.combine if size > 1 else OperandStage.agg)
                 chunk_index = (i,) if size > 1 else ()
                 out_chunk = chunk_op.new_chunk(

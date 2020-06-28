@@ -16,12 +16,13 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
+from ...core import OutputType
 from ...operands import OperandStage
 from ...serialize import KeyField, BoolField, Int64Field, StringField
 from ...tiles import TilesError
 from ...utils import recursive_tile, check_chunks_unknown_shape
 from ..core import Series
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_series, parse_index
 
 
@@ -44,7 +45,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
                          _bins=bins, _dropna=dropna, _method=method,
                          _convert_index_to_interval=convert_index_to_interval,
                          _stage=stage, **kw)
-        self._object_type = ObjectType.series
+        self.output_types = [OutputType.series]
 
     @property
     def input(self):

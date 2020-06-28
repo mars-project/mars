@@ -16,8 +16,9 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
+from ...core import OutputType
 from ...serialize import BoolField, TupleField, DictField, AnyField
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_empty_df, build_empty_series, parse_index
 
 
@@ -31,9 +32,9 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
 
     _call_agg = BoolField('call_agg')
 
-    def __init__(self, func=None, args=None, kwds=None, call_agg=None, object_type=None, **kw):
+    def __init__(self, func=None, args=None, kwds=None, call_agg=None, output_types=None, **kw):
         super().__init__(_func=func, _args=args, _kwds=kwds, _call_agg=call_agg,
-                         _object_type=object_type, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def func(self):
@@ -52,10 +53,10 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         return self._call_agg
 
     def _infer_df_func_returns(self, in_groupby, dtypes, index):
-        index_value, object_type, new_dtypes = None, None, None
+        index_value, output_types, new_dtypes = None, None, None
 
-        object_type = ObjectType.dataframe \
-            if in_groupby.op.object_type == ObjectType.dataframe_groupby else ObjectType.series
+        output_types = [OutputType.dataframe] \
+            if in_groupby.op.output_types[0] == OutputType.dataframe_groupby else [OutputType.series]
 
         try:
             empty_groupby = in_groupby.op.build_mock_groupby()
@@ -69,15 +70,15 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
             index_value = parse_index(None, in_groupby.key, self.func)
 
             if isinstance(infer_df, pd.DataFrame):
-                object_type = ObjectType.dataframe
+                output_types = [OutputType.dataframe]
                 new_dtypes = new_dtypes or infer_df.dtypes
             else:
-                object_type = ObjectType.series
+                output_types = [OutputType.series]
                 new_dtypes = new_dtypes or (infer_df.name, infer_df.dtype)
         except:  # noqa: E722  # nosec
             pass
 
-        self._object_type = object_type if self._object_type is None else self._object_type
+        self.output_types = output_types if not self.output_types else self.output_types
         dtypes = new_dtypes if dtypes is None else dtypes
         index_value = index_value if index is None else parse_index(index)
         return dtypes, index_value
@@ -86,13 +87,13 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         in_df = groupby.inputs[0]
 
         dtypes, index_value = self._infer_df_func_returns(groupby, dtypes, index)
-        for arg, desc in zip((self._object_type, dtypes, index_value),
-                             ('object_type', 'dtypes', 'index')):
+        for arg, desc in zip((self.output_types, dtypes, index_value),
+                             ('output_types', 'dtypes', 'index')):
             if arg is None:
                 raise TypeError('Cannot determine %s by calculating with enumerate data, '
                                 'please specify it as arguments' % desc)
 
-        if self.object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             new_shape = (np.nan if self.call_agg else in_df.shape[0], len(dtypes))
             return self.new_dataframe([groupby], shape=new_shape, dtypes=dtypes, index_value=index_value,
                                       columns_value=parse_index(dtypes.index, store_data=True))
@@ -112,7 +113,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
             inp_chunks = [c]
 
             new_op = op.copy().reset_key()
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 new_index = c.index if c.ndim == 2 else c.index + (0,)
                 chunks.append(new_op.new_chunk(
                     inp_chunks, index=new_index, shape=(np.nan, len(out_df.dtypes)), dtypes=out_df.dtypes,
@@ -125,7 +126,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
         kw['chunks'] = chunks
-        if op.object_type == ObjectType.dataframe:
+        if op.output_types[0] == OutputType.dataframe:
             kw['nsplits'] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
         else:
             kw['nsplits'] = ((np.nan,) * len(chunks),)
@@ -137,7 +138,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         out_chunk = op.outputs[0]
 
         if not in_data:
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 ctx[op.outputs[0].key] = build_empty_df(out_chunk.dtypes)
             else:
                 ctx[op.outputs[0].key] = build_empty_series(out_chunk.dtype)
@@ -155,7 +156,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = result
 
 
-def groupby_transform(groupby, func, *args, dtypes=None, index=None, object_type=None, **kwargs):
+def groupby_transform(groupby, func, *args, dtypes=None, index=None, output_types=None, **kwargs):
     # todo this can be done with sort_index implemented
     if not groupby.op.groupby_params.get('as_index', True):
         raise NotImplementedError('transform when set_index == False is not supported')
@@ -164,6 +165,6 @@ def groupby_transform(groupby, func, *args, dtypes=None, index=None, object_type
     if not call_agg and isinstance(func, (dict, list)):
         raise TypeError('Does not support transform with %r' % type(func))
 
-    op = GroupByTransform(func=func, args=args, kwds=kwargs, object_type=object_type,
+    op = GroupByTransform(func=func, args=args, kwds=kwargs, output_types=output_types,
                           call_agg=call_agg)
     return op(groupby, dtypes=dtypes, index=index)

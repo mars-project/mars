@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
-from mars.tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE, Tensor
+from mars.tensor.core import TENSOR_CHUNK_TYPE, Tensor
 from mars.tests.core import TestBase
 from mars.dataframe.core import SERIES_CHUNK_TYPE, Series, DataFrame, DATAFRAME_CHUNK_TYPE
 from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, IndexingError

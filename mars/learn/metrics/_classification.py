@@ -19,7 +19,7 @@ from ... import tensor as mt
 from ...core import Base, Entity
 from ...context import get_context
 from ...serialize import AnyField, BoolField, KeyField
-from ...tensor.operands import TensorOrder
+from ...tensor.core import TensorOrder
 from ...tiles import TilesError
 from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
@@ -40,7 +40,7 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
         super().__init__(_y_true=y_true, _y_pred=y_pred,
                          _normalize=normalize, _sample_weight=sample_weight,
                          _type_true=type_true, **kw)
-        self._output_types = [OutputType.tensor]
+        self.output_types = [OutputType.tensor]
 
     @property
     def y_true(self):

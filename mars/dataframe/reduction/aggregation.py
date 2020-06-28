@@ -21,11 +21,12 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
+from ...core import OutputType
 from ...operands import OperandStage
 from ...serialize import BoolField, AnyField, DictField
 from ...utils import tokenize, ceildiv, lazy_import
 from ..merge import DataFrameConcat
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, build_empty_series, parse_index, validate_axis
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
@@ -57,12 +58,12 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, func=None, raw_func=None, axis=None, use_inf_as_na=None, map_groups=None,
                  map_sources=None, combine_groups=None, combine_sources=None, agg_sources=None,
-                 agg_columns=None, agg_funcs=None, key_to_funcs=None, object_type=None, stage=None, **kw):
+                 agg_columns=None, agg_funcs=None, key_to_funcs=None, output_types=None, stage=None, **kw):
         super().__init__(_func=func, _raw_func=raw_func, _axis=axis, _use_inf_as_na=use_inf_as_na,
                          _map_groups=map_groups, _map_sources=map_sources, _combine_groups=combine_groups,
                          _combine_sources=combine_sources, _agg_sources=agg_sources,
                          _agg_columns=agg_columns, _agg_funcs=agg_funcs, _key_to_funcs=key_to_funcs,
-                         _stage=stage, _object_type=object_type, **kw)
+                         _stage=stage, _output_types=output_types, **kw)
 
     @property
     def func(self):
@@ -113,7 +114,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         return self._key_to_funcs
 
     def _calc_result_shape(self, df):
-        if self.object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             empty_obj = build_empty_df(df.dtypes, index=pd.RangeIndex(0, 10))
         else:
             empty_obj = build_empty_series(df.dtype, index=pd.RangeIndex(0, 10), name=df.name)
@@ -121,13 +122,13 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         result_df = empty_obj.agg(self.func, axis=self.axis)
 
         if isinstance(result_df, pd.DataFrame):
-            self._object_type = ObjectType.dataframe
+            self.output_types = [OutputType.dataframe]
             return result_df.dtypes, result_df.index
         elif isinstance(result_df, pd.Series):
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
             return pd.Series([result_df.dtype], index=[result_df.name]), result_df.index
         else:
-            self._object_type = ObjectType.scalar
+            self.output_types = [OutputType.scalar]
             return np.array(result_df).dtype, None
 
     def _normalize_funcs(self):
@@ -149,7 +150,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, df):
         dtypes, index = self._calc_result_shape(df)
         self._normalize_funcs()
-        if self._object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             if self.axis == 0:
                 new_shape = (len(index), len(dtypes))
                 new_index = parse_index(index, store_data=True)
@@ -158,8 +159,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 new_index = df.index_value
             return self.new_dataframe([df], shape=new_shape, dtypes=dtypes, index_value=new_index,
                                       columns_value=parse_index(dtypes.index, store_data=True))
-        elif self._object_type == ObjectType.series:
-            if df.op.object_type == ObjectType.series:
+        elif self.output_types[0] == OutputType.series:
+            if df.op.output_types[0] == OutputType.series:
                 new_shape = (len(index),)
                 new_index = parse_index(index, store_data=True)
             else:
@@ -276,7 +277,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             new_axis_index = input_index_to_output[input_index]
             stage_info = stage_infos[new_axis_index]
             # force as_index=True for map phase
-            map_op._object_type = ObjectType.dataframe
+            map_op.output_types = [OutputType.dataframe]
             map_op._stage = OperandStage.map
             map_op._map_groups = stage_info.map_groups
             map_op._map_sources = stage_info.map_sources
@@ -288,7 +289,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             else:
                 new_index = (new_axis_index, chunk.index[1])
 
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 if axis == 0:
                     new_shape = (1, chunk.shape[1] if len(chunk.shape) > 1 else 1)
                 else:
@@ -296,7 +297,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 agg_chunk = map_op.new_chunk(
                     [chunk], shape=new_shape, index=new_index, index_value=chunk.index_value,
                     columns_value=chunk.columns_value)
-            elif op.object_type == ObjectType.series:
+            elif op.output_types[0] == OutputType.series:
                 agg_chunk = map_op.new_chunk([chunk], shape=(out_df.shape[0], 1), index=new_index,
                                              index_value=out_df.index_value, name=out_df.name)
             else:  # scalar target
@@ -310,11 +311,11 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
 
         chunk_op = op.copy().reset_key()
-        if op.object_type == ObjectType.dataframe:
+        if op.output_types[0] == OutputType.dataframe:
             chunk = chunk_op.new_chunk(in_df.chunks, index=(0, 0), shape=out_df.shape,
                                        index_value=out_df.index_value, columns_value=out_df.columns_value,
                                        dtypes=out_df.dtypes)
-        elif op.object_type == ObjectType.series:
+        elif op.output_types[0] == OutputType.series:
             chunk = chunk_op.new_chunk(in_df.chunks, index=(0,), shape=out_df.shape, dtype=out_df.dtype,
                                        index_value=out_df.index_value, name=out_df.name)
         else:
@@ -389,13 +390,13 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     if len(chks) == 1:
                         chk = chks[0]
                     else:
-                        concat_op = DataFrameConcat(object_type=ObjectType.dataframe, axis=axis)
+                        concat_op = DataFrameConcat(output_types=[OutputType.dataframe], axis=axis)
                         # Change index for concatenate
                         for j, c in enumerate(chks):
                             c._index = (j, 0) if axis == 0 else (0, j)
                         chk = concat_op.new_chunk(chks, dtypes=chks[0].dtypes)
                     chunk_op = op.copy().reset_key()
-                    chunk_op._object_type = ObjectType.dataframe
+                    chunk_op.output_types = [OutputType.dataframe]
                     chunk_op._stage = OperandStage.combine
                     chunk_op._combine_groups = stage_info.combine_groups
                     chunk_op._combine_sources = stage_info.combine_sources
@@ -415,7 +416,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         for idx in range(chunks.shape[1 - axis]):
             stage_info = axis_stage_infos[idx]
 
-            concat_op = DataFrameConcat(object_type=ObjectType.dataframe, axis=axis)
+            concat_op = DataFrameConcat(output_types=[OutputType.dataframe], axis=axis)
             if axis == 0:
                 chks = chunks[:, idx]
             else:
@@ -431,7 +432,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             chunk_op._key_to_funcs = stage_info.key_to_funcs
 
             kw = out_df.params.copy()
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 if axis == 0:
                     src_col_chunk = in_df.cix[0, output_index_to_input[idx]]
                     if axis_stage_infos[idx].valid_columns is None:
@@ -448,8 +449,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                                    shape=(src_col_chunk.shape[0], out_df.shape[1]),
                                    dtypes=out_df.dtypes))
             else:
-                if op.object_type == ObjectType.series:
-                    if in_df.op.object_type == ObjectType.series:
+                if op.output_types[0] == OutputType.series:
+                    if in_df.op.output_types[0] == OutputType.series:
                         index_value, shape = out_df.index_value, out_df.shape
                     elif axis == 0:
                         src_chunk = in_df.cix[0, output_index_to_input[idx]]
@@ -464,7 +465,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             agg_chunks.append(chunk_op.new_chunk([chk], **kw))
 
         new_op = op.copy()
-        if op.object_type == ObjectType.dataframe:
+        if op.output_types[0] == OutputType.dataframe:
             if axis == 0:
                 nsplits = ((out_df.shape[0],), tuple(c.shape[1] for c in agg_chunks))
             else:
@@ -472,7 +473,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             return new_op.new_tileables(op.inputs, chunks=agg_chunks, nsplits=nsplits, dtypes=out_df.dtypes,
                                         shape=out_df.shape, index_value=out_df.index_value,
                                         columns_value=out_df.columns_value)
-        elif op.object_type == ObjectType.series:
+        elif op.output_types[0] == OutputType.series:
             nsplits = (tuple(c.shape[0] for c in agg_chunks),)
             return new_op.new_tileables(op.inputs, chunks=agg_chunks, nsplits=nsplits, dtype=out_df.dtype,
                                         shape=out_df.shape, index_value=out_df.index_value, name=out_df.name)
@@ -572,7 +573,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             aggs.append(cls._wrap_df(xdf, agg_series, transform=axis == 0))
 
         concat_df = xdf.concat(aggs, axis=axis)
-        if op.object_type == ObjectType.series:
+        if op.output_types[0] == OutputType.series:
             if concat_df.shape[1] > 1:
                 concat_df = concat_df.iloc[0, :]
             else:
@@ -580,7 +581,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             concat_df.name = op.outputs[0].name
 
             concat_df = concat_df.astype(op.outputs[0].dtype, copy=False)
-        elif op.object_type == ObjectType.scalar:
+        elif op.output_types[0] == OutputType.scalar:
             concat_df = concat_df.iloc[0, 0].astype(op.outputs[0].dtype)
         else:
             if axis == 0:
@@ -636,9 +637,9 @@ def aggregate(df, func, axis=0, **kw):
 
     axis = validate_axis(axis, df)
     use_inf_as_na = kw.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
-    if (df.op.object_type == ObjectType.series or axis == 1) and isinstance(func, dict):
+    if (df.op.output_types[0] == OutputType.series or axis == 1) and isinstance(func, dict):
         raise NotImplementedError('Currently cannot aggregate dicts over axis=1 on %s'
                                   % type(df).__name__)
-    op = DataFrameAggregate(func=func, axis=axis, object_type=df.op.object_type,
+    op = DataFrameAggregate(func=func, axis=axis, output_types=df.op.output_types,
                             use_inf_as_na=use_inf_as_na)
     return op(df)

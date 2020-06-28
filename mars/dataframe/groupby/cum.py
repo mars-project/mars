@@ -16,10 +16,11 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...utils import lazy_import
+from ...core import OutputType
 from ...serialize import BoolField, AnyField
+from ...utils import lazy_import
 from ..utils import parse_index, build_empty_df, build_empty_series, validate_axis
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -30,10 +31,10 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
     _axis = AnyField('axis')
     _ascending = BoolField('ascending')
 
-    def __init__(self, axis=None, ascending=None, gpu=None, sparse=None, object_type=None,
+    def __init__(self, axis=None, ascending=None, gpu=None, sparse=None, output_types=None,
                  stage=None, **kw):
         super().__init__(_axis=axis, _ascending=ascending, _gpu=gpu, _sparse=sparse,
-                         _object_type=object_type, _stage=stage, **kw)
+                         _output_types=output_types, _stage=stage, **kw)
 
     @property
     def axis(self) -> int:
@@ -53,15 +54,15 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
             result_df = getattr(empty_groupby, func_name)(axis=self.axis)
 
         if isinstance(result_df, pd.DataFrame):
-            self._object_type = ObjectType.dataframe
+            self.output_types = [OutputType.dataframe]
             return result_df.dtypes
         else:
-            self._object_type = ObjectType.series
+            self.output_types = [OutputType.series]
             return result_df.name, result_df.dtype
 
     def __call__(self, groupby):
         in_df = groupby
-        while in_df.op.object_type not in (ObjectType.dataframe, ObjectType.series):
+        while in_df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
             in_df = in_df.inputs[0]
 
         self._axis = validate_axis(self.axis or 0, in_df)
@@ -70,7 +71,7 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
 
         kw = in_df.params.copy()
         kw['index_value'] = parse_index(pd.RangeIndex(-1), groupby.key)
-        if self.object_type == ObjectType.dataframe:
+        if self.output_types[0] == OutputType.dataframe:
             kw.update(dict(columns_value=parse_index(out_dtypes.index, store_data=True),
                            dtypes=out_dtypes, shape=(groupby.shape[0], len(out_dtypes))))
         else:
@@ -88,7 +89,7 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
             new_op = op.copy().reset_key()
 
             new_index = parse_index(pd.RangeIndex(-1), c.key)
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 chunks.append(new_op.new_chunk(
                     [c], index=c.index, shape=(np.nan, len(out_df.dtypes)), dtypes=out_df.dtypes,
                     columns_value=out_df.columns_value, index_value=new_index))
@@ -100,7 +101,7 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
         kw['chunks'] = chunks
-        if op.object_type == ObjectType.dataframe:
+        if op.output_types[0] == OutputType.dataframe:
             kw['nsplits'] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
         else:
             kw['nsplits'] = ((np.nan,) * len(chunks),)
@@ -113,7 +114,7 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
 
         if not in_data or in_data.empty:
             ctx[out_df.key] = build_empty_df(out_df.dtypes) \
-                if op.object_type == ObjectType.dataframe else build_empty_series(out_df.dtype)
+                if op.output_types[0] == OutputType.dataframe else build_empty_series(out_df.dtype)
             return
 
         func_name = getattr(op, '_func_name')

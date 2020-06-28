@@ -18,10 +18,11 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
+from ...core import OutputType
 from ...config import options
 from ...serialize import AnyField, BoolField, StringField, Int32Field
 from ..align import align_dataframe_series
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, validate_axis
 
 
@@ -41,10 +42,10 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
     _subset_size = Int32Field('subset_size')
 
     def __init__(self, axis=None, how=None, thresh=None, subset=None, use_inf_as_na=None,
-                 drop_directly=None, subset_size=None, sparse=None, object_type=None, **kw):
+                 drop_directly=None, subset_size=None, sparse=None, output_types=None, **kw):
         super().__init__(_axis=axis, _how=how, _thresh=thresh, _subset=subset,
                          _use_inf_as_na=use_inf_as_na, _drop_directly=drop_directly,
-                         _subset_size=subset_size, _sparse=sparse, _object_type=object_type, **kw)
+                         _subset_size=subset_size, _sparse=sparse, _output_types=output_types, **kw)
 
     @property
     def axis(self) -> int:
@@ -272,7 +273,7 @@ def df_dropna(df, axis=0, how='any', thresh=None, subset=None, inplace=False):
 
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameDropNA(axis=axis, how=how, thresh=thresh, subset=subset,
-                         object_type=ObjectType.dataframe, use_inf_as_na=use_inf_as_na)
+                         output_types=[OutputType.dataframe], use_inf_as_na=use_inf_as_na)
     out_df = op(df)
     if inplace:
         df.data = out_df.data
@@ -354,7 +355,7 @@ def series_dropna(series, axis=0, inplace=False, how=None):
     """
     axis = validate_axis(axis, series)
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameDropNA(axis=axis, how=how, object_type=ObjectType.series,
+    op = DataFrameDropNA(axis=axis, how=how, output_types=[OutputType.series],
                          use_inf_as_na=use_inf_as_na)
     out_series = op(series)
     if inplace:

@@ -24,6 +24,6 @@ class DataFrameCumprod(DataFrameCumReductionOperand, DataFrameCumReductionMixin)
 
 def cumprod(df, axis=None, skipna=True):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameCumprod(axis=axis, skipna=skipna, object_type=df.op.object_type,
+    op = DataFrameCumprod(axis=axis, skipna=skipna, output_types=df.op.output_types,
                           use_inf_as_na=use_inf_as_na)
     return op(df)

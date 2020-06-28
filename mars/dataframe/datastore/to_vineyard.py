@@ -18,11 +18,12 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import OutputType
 from ...context import get_context, RunningMode
 from ...serialize import TupleField, ListField, StringField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 try:
     import vineyard
@@ -37,7 +38,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
     _vineyard_socket = StringField('vineyard_socket')
 
     def __init__(self, vineyard_socket=None, dtypes=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _dtypes=dtypes, _object_type=ObjectType.dataframe, **kw)
+        super().__init__(_vineyard_socket=vineyard_socket, _dtypes=dtypes, _output_types=[OutputType.dataframe], **kw)
 
     def __call__(self, df):
         return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes,
@@ -106,7 +107,7 @@ class DataFrameToVineyardChunkMap(DataFrameOperand, DataFrameOperandMixin):
     _vineyard_socket = StringField('vineyard_socket')
 
     def __init__(self, vineyard_socket=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _object_type=ObjectType.dataframe, **kw)
+        super().__init__(_vineyard_socket=vineyard_socket, _output_types=[OutputType.dataframe], **kw)
 
     @property
     def local_chunks(self):
@@ -188,7 +189,7 @@ class DataFrameToVinyardStoreGlobalMeta(DataFrameOperand, DataFrameOperandMixin)
     def __init__(self, vineyard_socket=None, chunk_shape=None, shape=None, **kw):
         super().__init__(_vineyard_socket=vineyard_socket,
                          _chunk_shape=chunk_shape, _shape=shape,
-                         _object_type=ObjectType.dataframe, **kw)
+                         _output_types=[OutputType.dataframe], **kw)
 
     @property
     def shape(self):

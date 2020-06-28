@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...core import get_output_types
 from ...dataframe.utils import parse_index
 from ...lib import sparse
 from ...operands import OperandStage
@@ -31,7 +32,7 @@ from ...utils import tokenize, get_shuffle_input_keys_idxes, lazy_import, check_
 from ...tiles import TilesError
 from ...core import ExecutableTuple
 from ..operands import LearnOperandMixin, OutputType, LearnMapReduceOperand, LearnShuffleProxy
-from ..utils import convert_to_tensor_or_dataframe, get_output_types
+from ..utils import convert_to_tensor_or_dataframe
 
 
 cudf = lazy_import('cudf')
@@ -83,7 +84,7 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
     @property
     def output_limit(self):
         if self.stage is None:
-            return len(self._output_types)
+            return len(self.output_types)
         return 1
 
     def _set_inputs(self, inputs):
@@ -105,7 +106,7 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
 
     def _calc_params(self, params):
         axes = set(self.axes)
-        for i, output_type, param in zip(itertools.count(0), self._output_types, params):
+        for i, output_type, param in zip(itertools.count(0), self.output_types, params):
             if output_type == OutputType.dataframe:
                 if 0 in axes:
                     param['index_value'] = self._shuffle_index_value(param['index_value'])

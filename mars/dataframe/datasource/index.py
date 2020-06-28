@@ -19,9 +19,10 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import OutputType
 from ...serialize import IndexField, DataTypeField, KeyField
 from ...tensor.utils import get_chunk_slices
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, decide_series_chunk_size
 
 
@@ -39,7 +40,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
     def __init__(self, input=None, data=None, dtype=None, gpu=None,  # pylint: disable=redefined-builtin
                  sparse=None, **kw):
         super().__init__(_input=input, _data=data, _dtype=dtype, _gpu=gpu,
-                         _sparse=sparse, _object_type=ObjectType.index, **kw)
+                         _sparse=sparse, _output_types=[OutputType.index], **kw)
 
     @property
     def input(self):

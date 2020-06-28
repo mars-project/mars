@@ -17,8 +17,9 @@ import itertools
 from ... import opcodes as OperandDef
 from ...serialize import SeriesField, DataTypeField
 from ...config import options
+from ...core import OutputType
 from ...tensor.utils import get_chunk_slices
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, decide_series_chunk_size
 
 
@@ -36,7 +37,7 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
         if dtype is None and data is not None:
             dtype = data.dtype
         super().__init__(_data=data, _dtype=dtype, _gpu=gpu, _sparse=sparse,
-                         _object_type=ObjectType.series, **kw)
+                         _output_types=[OutputType.series], **kw)
 
     @property
     def data(self):

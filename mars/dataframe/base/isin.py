@@ -16,12 +16,13 @@ import numpy as np
 from pandas.api.types import is_list_like
 
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...serialize import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..core import SERIES_TYPE, INDEX_TYPE
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
 class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
@@ -30,10 +31,10 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _values = AnyField('values')
 
-    def __init__(self, values=None, object_type=None, **kw):
-        if object_type is None:
-            object_type = ObjectType.series
-        super().__init__(_values=values, _object_type=object_type, **kw)
+    def __init__(self, values=None, output_types=None, **kw):
+        if output_types is None:
+            output_types = [OutputType.series]
+        super().__init__(_values=values, _output_types=output_types, **kw)
 
     @property
     def input(self):

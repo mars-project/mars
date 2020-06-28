@@ -15,10 +15,11 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...serialize import KeyField, AnyField, Int8Field, Int64Field
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_df, build_series, validate_axis
 
 
@@ -99,12 +100,12 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                                name=series.name)
 
     def __call__(self, df_or_series):
-        if df_or_series.op.object_type == ObjectType.dataframe:
-            self._object_type = ObjectType.dataframe
+        if df_or_series.op.output_types[0] == OutputType.dataframe:
+            self.output_types = [OutputType.dataframe]
             return self._call_dataframe(df_or_series)
         else:
-            assert df_or_series.op.object_type == ObjectType.series
-            self._object_type = ObjectType.series
+            assert df_or_series.op.output_types[0] == OutputType.series
+            self.output_types = [OutputType.series]
             return self._call_series(df_or_series)
 
     @classmethod
@@ -186,7 +187,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
 
                     if len(to_concats) > 1:
                         concat_op = DataFrameConcat(axis=axis,
-                                                    object_type=ObjectType.dataframe)
+                                                    output_types=[OutputType.dataframe])
                         to_shift_chunk = concat_op.new_chunk(to_concats)
                     else:
                         to_shift_chunk = to_concats[0]
@@ -254,7 +255,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                         to_concats.append(to_concat)
 
                 if len(to_concats) > 1:
-                    concat_op = DataFrameConcat(object_type=ObjectType.series)
+                    concat_op = DataFrameConcat(output_types=[OutputType.series])
                     to_concat = concat_op.new_chunk(to_concats)
                 else:
                     to_concat = to_concats[0]
@@ -273,7 +274,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if op.object_type == ObjectType.dataframe:
+        if op.output_types[0] == OutputType.dataframe:
             return cls._tile_dataframe(op)
         else:
             return cls._tile_series(op)

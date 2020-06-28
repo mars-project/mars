@@ -50,8 +50,8 @@ class RunTensorFlow(LearnMergeDictOperand):
                          _command_args=command_args, _port=port, _tf_task_type=tf_task_type,
                          _tf_task_index=tf_task_index, _merge=merge, _output_types=output_types,
                          _gpu=gpu, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
+        if self.output_types is None:
+            self.output_types = [OutputType.object]
 
     @property
     def code(self):

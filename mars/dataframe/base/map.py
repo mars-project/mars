@@ -19,11 +19,12 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...core import OutputType
 from ...serialize import KeyField, AnyField, StringField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..core import SERIES_TYPE
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
 class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
@@ -33,11 +34,11 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
     _arg = AnyField('arg')
     _na_action = StringField('na_action')
 
-    def __init__(self, arg=None, na_action=None, object_type=None, **kw):
+    def __init__(self, arg=None, na_action=None, output_types=None, **kw):
         super().__init__(_arg=arg, _na_action=na_action,
-                         _object_type=object_type, **kw)
-        if self._object_type is None:
-            self._object_type = ObjectType.series
+                         _output_types=output_types, **kw)
+        if not self.output_types:
+            self.output_types = [OutputType.series]
 
     @property
     def input(self):

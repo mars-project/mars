@@ -18,7 +18,7 @@ from ... import opcodes as OperandDef
 from ...lib.sparse.array import get_sparse_module, SparseNDArray
 from ...serialize import KeyField, Int64Field
 from ...tensor.array_utils import as_same_device, device
-from ...tensor.operands import TensorOrder
+from ...tensor.core import TensorOrder
 from ...tensor.utils import decide_unify_split
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
@@ -36,7 +36,7 @@ class KNeighborsGraph(LearnOperand, LearnOperandMixin):
                  sparse=None, gpu=None, **kw):
         super().__init__(_a_data=a_data, _a_ind=a_ind, _n_neighbors=n_neighbors,
                          _sparse=sparse, _gpu=gpu, **kw)
-        self._output_types = [OutputType.tensor]
+        self.output_types = [OutputType.tensor]
 
     @property
     def a_data(self):

@@ -15,9 +15,10 @@
 import numpy as np
 import pandas as pd
 
-from ...serialize import AnyField, BoolField
 from ... import opcodes as OperandDef
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ...core import OutputType
+from ...serialize import AnyField, BoolField
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, parse_index
 
 
@@ -30,9 +31,9 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
     _verify_integrity = BoolField('verify_integrity')
 
     def __init__(self, keys=None, drop=True, append=False, verify_integrity=False,
-                 object_type=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_keys=keys, _drop=drop, _append=append,
-                         _verify_integrity=verify_integrity, _object_type=object_type, **kw)
+                         _verify_integrity=verify_integrity, _output_types=output_types, **kw)
 
     @property
     def keys(self):
@@ -118,5 +119,5 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
 
 def set_index(df, keys, drop=True, append=False, verify_integrity=False, **kw):
     op = DataFrameSetIndex(keys=keys, drop=drop, append=append,
-                           verify_integrity=verify_integrity, object_type=ObjectType.dataframe, **kw)
+                           verify_integrity=verify_integrity, output_types=[OutputType.dataframe], **kw)
     return op(df)

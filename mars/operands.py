@@ -24,7 +24,7 @@ from . import opcodes as OperandDef
 from .serialize import SerializableMetaclass, ValueType, ProviderType, \
     IdentityField, ListField, DictField, Int32Field, BoolField, StringField
 from .core import Entity, Chunk, Tileable, AttributeAsDictKey, ExecutableTuple, \
-    FuseChunkData, FuseChunk, ObjectChunkData, ObjectChunk, ObjectData, Object
+    FuseChunkData, FuseChunk, OutputType, get_chunk_types, get_tileable_types
 from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode
 from .tiles import NotSupportTile
 from .context import RunningMode, get_context
@@ -65,6 +65,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     __slots__ = '__weakref__',
     attr_tag = 'attr'
     _init_update_key_ = False
+    _output_type_ = None
 
     _op_id = IdentityField('type')
 
@@ -81,6 +82,10 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     _inputs = ListField('inputs', ValueType.key)
     _prepare_inputs = ListField('prepare_inputs', ValueType.bool)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
+
+    _output_types = ListField('output_type', tp=ValueType.int8,
+                              on_serialize=OutputType.serialize_list,
+                              on_deserialize=OutputType.deserialize_list)
 
     _stage = Int32Field('stage', on_serialize=lambda s: s.value if s is not None else s,
                         on_deserialize=lambda n: OperandStage(n) if n is not None else n)
@@ -137,6 +142,14 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         return 1
 
     @property
+    def output_types(self):
+        return getattr(self, '_output_types', None)
+
+    @output_types.setter
+    def output_types(self, value):
+        self._output_types = value
+
+    @property
     def retryable(self) -> bool:
         return True
 
@@ -170,6 +183,10 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     @property
     def stage(self) -> Union[None, "OperandStage"]:
         return getattr(self, '_stage', None)
+
+    @stage.setter
+    def stage(self, value: Union[None, "OperandStage"]):
+        self._stage = value
 
     @property
     def extra_params(self):
@@ -215,6 +232,15 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         if len(self._outputs) > self.output_limit:
             raise ValueError("Outputs' size exceeds limitation")
 
+    def _get_output_type(self, output_idx):
+        if self.output_types:
+            try:
+                return self.output_types[output_idx]
+            except IndexError:
+                return self.output_types[0]
+        else:
+            return self._output_type_
+
     def copy(self: T) -> T:
         new_op = super().copy()
         new_op.outputs = []
@@ -252,7 +278,21 @@ class TileableOperandMixin(object):
                 return False
 
     def _create_chunk(self, output_idx, index, **kw):
-        raise NotImplementedError
+        output_type = kw.pop('output_type', self._get_output_type(output_idx))
+        if not output_type:
+            raise ValueError('output_type should be specified')
+
+        if isinstance(output_type, (list, tuple)):
+            output_type = output_type[output_idx]
+        chunk_type, chunk_data_type = get_chunk_types(output_type)
+        kw['_i'] = output_idx
+        kw['op'] = self
+        kw['index'] = index
+        if output_type == OutputType.scalar:
+            # tensor
+            kw['order'] = 'C_ORDER'
+        data = chunk_data_type(**kw)
+        return chunk_type(data)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         output_limit = kw.pop('output_limit', None)
@@ -306,8 +346,40 @@ class TileableOperandMixin(object):
 
         return self.new_chunks(inputs, kws=kws, **kw)[0]
 
+    @staticmethod
+    def _fill_nan_shape(kw):
+        nsplits = kw.get('nsplits')
+        shape = kw.get('shape')
+        if nsplits is not None and shape is not None:
+            nsplits = tuple(nsplits)
+            shape = list(shape)
+            for idx, (s, sp) in enumerate(zip(shape, nsplits)):
+                if not np.isnan(s):
+                    continue
+                s = sum(sp)
+                if not np.isnan(s):
+                    shape[idx] = s
+            kw['shape'] = tuple(shape)
+            kw['nsplits'] = nsplits
+        return kw
+
     def _create_tileable(self, output_idx, **kw):
-        raise NotImplementedError
+        output_type = kw.pop('output_type', self._get_output_type(output_idx))
+        if output_type is None:
+            raise ValueError('output_type should be specified')
+
+        if isinstance(output_type, (list, tuple)):
+            output_type = output_type[output_idx]
+        tileable_type, tileable_data_type = get_tileable_types(output_type)
+        kw['_i'] = output_idx
+        kw['op'] = self
+        if output_type == OutputType.scalar:
+            # tensor
+            kw['order'] = 'C_ORDER'
+
+        kw = self._fill_nan_shape(kw)
+        data = tileable_data_type(**kw)
+        return tileable_type(data)
 
     def _new_tileables(self, inputs, kws=None, **kw):
         output_limit = kw.pop('output_limit', None)
@@ -555,27 +627,15 @@ class ObjectOperand(Operand):
 
 
 class ObjectOperandMixin(TileableOperandMixin):
-    def _create_chunk(self, output_idx, index, **kw):
-        if 'i' not in kw:
-            kw['i'] = output_idx
-        data = ObjectChunkData(op=self, index=index, **kw)
-        return ObjectChunk(data)
-
-    def _create_tileable(self, output_idx, **kw):
-        if 'i' not in kw:
-            kw['i'] = output_idx
-        data = ObjectData(op=self, **kw)
-        return Object(data)
+    _output_type_ = OutputType.object
 
     def get_fetch_op_cls(self, obj):
         return ObjectFetch
 
 
-class ObjectFetchMixin(ObjectOperandMixin, FetchMixin):
-    __slots__ = ()
+class ObjectFetch(Fetch, FetchMixin):
+    _output_type_ = OutputType.object
 
-
-class ObjectFetch(Fetch, ObjectFetchMixin):
     def __init__(self, to_fetch_key=None, **kw):
         super().__init__(_to_fetch_key=to_fetch_key, **kw)
 
@@ -590,7 +650,7 @@ class ObjectFetch(Fetch, ObjectFetchMixin):
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
-class SuccessorsExclusive(VirtualOperand, ObjectOperandMixin):
+class SuccessorsExclusive(ObjectOperandMixin, VirtualOperand):
     _op_module_ = 'core'
     _op_type_ = OperandDef.SUCCESSORS_EXCLUSIVE
 

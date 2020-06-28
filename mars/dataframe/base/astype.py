@@ -22,7 +22,7 @@ from ...utils import recursive_tile
 from ...tensor.base import sort
 from ..utils import build_empty_df, build_empty_series
 from ..core import SERIES_TYPE
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
 class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
@@ -32,11 +32,9 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
     _errors = StringField('errors')
     _category_cols = ListField('category_cols')
 
-    def __init__(self, dtype_values=None, copy=None, errors=None,
-                 category_cols=None, object_type=None, **kw):
-        super().__init__(_dtype_values=dtype_values,
-                         _errors=errors, _category_cols=category_cols,
-                         _object_type=object_type, **kw)
+    def __init__(self, dtype_values=None, errors=None, category_cols=None, output_types=None, **kw):
+        super().__init__(_dtype_values=dtype_values, _errors=errors, _category_cols=category_cols,
+                         _output_types=output_types, **kw)
 
     @property
     def dtype_values(self):
@@ -172,7 +170,6 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, df):
         if isinstance(df, SERIES_TYPE):
-            self._object_type = ObjectType.series
             empty_series = build_empty_series(df.dtype)
             new_series = empty_series.astype(self.dtype_values, errors=self.errors)
             if new_series.dtype != df.dtype:
@@ -183,7 +180,6 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
             return self.new_series([df], shape=df.shape, dtype=dtype,
                                    name=df.name, index_value=df.index_value)
         else:
-            self._object_type = ObjectType.dataframe
             empty_df = build_empty_df(df.dtypes)
             new_df = empty_df.astype(self.dtype_values, errors=self.errors)
             dtypes = []

@@ -23,7 +23,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, Int32Field
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
-from ..core import Tensor, TENSOR_TYPE, CHUNK_TYPE, TensorOrder
+from ..core import Tensor, TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..utils import broadcast_shape, unify_chunks
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -139,7 +139,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
                 size = in_chunk.shape[ax] * rp
 
             chunk_inputs = [in_chunk]
-            if isinstance(rp, CHUNK_TYPE):
+            if isinstance(rp, TENSOR_CHUNK_TYPE):
                 chunk_inputs.append(rp)
 
             chunk_shape = in_chunk.shape[:ax] + (size,) + in_chunk.shape[ax + 1:]

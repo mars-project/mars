@@ -22,7 +22,7 @@ from ...serialize import ValueType, Int32Field, ListField, StringField, BoolFiel
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..utils import standardize_range_index
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameShuffleProxy, \
-    ObjectType, DataFrameMapReduceOperand
+    DataFrameMapReduceOperand
 
 
 cudf = lazy_import('cudf', globals=globals())
@@ -48,7 +48,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
             in_chunk = in_data.chunks[i]
             kind = None if op.psrs_kinds is None else op.psrs_kinds[0]
             chunk_op = DataFramePSRSSortRegularSample(kind=kind, n_partition=axis_chunk_shape,
-                                                      object_type=op.object_type,
+                                                      output_types=op.output_types,
                                                       **cls._collect_op_properties(op))
             kws = []
             sort_shape = in_chunk.shape
@@ -65,7 +65,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
                         'index_value': in_chunk.index_value,
                         'index': (i,),
                         'type': 'regular_sampled'})
-            if op.object_type == ObjectType.dataframe:
+            if op.outputs[0].ndim == 2:
                 kws[0].update({'columns_value': in_chunk.columns_value, 'dtypes': in_chunk.dtypes})
                 kws[1].update({'columns_value': in_chunk.columns_value, 'dtypes': in_chunk.dtypes})
             else:
@@ -83,7 +83,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         # stage 2: gather and merge samples, choose and broadcast p-1 pivots
         kind = None if op.psrs_kinds is None else op.psrs_kinds[1]
         concat_pivot_op = DataFramePSRSConcatPivot(kind=kind, n_partition=axis_chunk_shape,
-                                                   object_type=op.object_type,
+                                                   output_types=op.output_types,
                                                    **cls._collect_op_properties(op))
         concat_pivot_shape = \
             sorted_chunks[0].shape[:op.axis] + (axis_chunk_shape - 1,) + \
@@ -92,7 +92,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         concat_pivot_chunk = concat_pivot_op.new_chunk(sampled_chunks,
                                                        shape=concat_pivot_shape,
                                                        index=concat_pivot_index,
-                                                       object_type=op.object_type)
+                                                       output_type=op.output_types[0])
         return concat_pivot_chunk
 
     @classmethod
@@ -105,12 +105,12 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
             chunk_inputs = [sorted_chunks[i], concat_pivot_chunk]
             partition_shuffle_map = DataFramePSRSShuffle(n_partition=axis_chunk_shape,
                                                          stage=OperandStage.map,
-                                                         object_type=op.object_type,
+                                                         output_types=op.output_types,
                                                          **cls._collect_op_properties(op))
             kw = dict(shape=chunk_inputs[0].shape,
                       index=chunk_inputs[0].index,
                       index_value=chunk_inputs[0].index_value)
-            if op.object_type == ObjectType.dataframe:
+            if op.outputs[0].ndim == 2:
                 kw.update(dict(columns_value=chunk_inputs[0].columns_value,
                                dtypes=chunk_inputs[0].dtypes))
             else:
@@ -127,13 +127,13 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
             kind = None if op.psrs_kinds is None else op.psrs_kinds[2]
             partition_shuffle_reduce = DataFramePSRSShuffle(
                 stage=OperandStage.reduce, kind=kind, shuffle_key=str(i),
-                object_type=op.object_type, **cls._collect_op_properties(op))
+                output_types=op.output_types, **cls._collect_op_properties(op))
             chunk_shape = list(partition_chunk.shape)
             chunk_shape[op.axis] = np.nan
 
             kw = dict(shape=tuple(chunk_shape), index=partition_chunk.index,
                       index_value=partition_chunk.index_value)
-            if op.object_type == ObjectType.dataframe:
+            if op.outputs[0].ndim == 2:
                 kw.update(dict(columns_value=partition_chunk.columns_value,
                                dtypes=partition_chunk.dtypes))
             else:
@@ -160,7 +160,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         partition_chunks = cls.partition_local_data(
             op, axis_chunk_shape, sorted_chunks, None, concat_pivot_chunk)
 
-        proxy_chunk = DataFrameShuffleProxy(object_type=op.object_type).new_chunk(
+        proxy_chunk = DataFrameShuffleProxy(output_types=op.output_types).new_chunk(
             partition_chunks, shape=())
 
         # stage 4: all *ith* classes are gathered and merged
@@ -172,7 +172,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         else:
             chunks = partition_sort_chunks
 
-        if op.object_type == ObjectType.dataframe:
+        if op.outputs[0].ndim == 2:
             nsplits = ((np.nan,) * len(chunks), (out.shape[1],))
             new_op = op.copy()
             return new_op.new_dataframes(op.inputs, shape=out.shape, chunks=chunks,
@@ -267,11 +267,11 @@ class DataFramePSRSChunkOperand(DataFrameOperand):
     _n_partition = Int32Field('n_partition')
 
     def __init__(self, sort_type=None, by=None, axis=None, ascending=None, inplace=None, kind=None,
-                 na_position=None, level=None, sort_remaining=None, n_partition=None, object_type=None, **kw):
+                 na_position=None, level=None, sort_remaining=None, n_partition=None, output_types=None, **kw):
         super().__init__(_sort_type=sort_type, _by=by, _axis=axis, _ascending=ascending,
                          _inplace=inplace, _kind=kind, _na_position=na_position,
                          _level=level, _sort_remaining=sort_remaining, _n_partition=n_partition,
-                         _object_type=object_type, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def sort_type(self):
@@ -390,11 +390,11 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     def __init__(self, sort_type=None, by=None, axis=None, ascending=None, n_partition=None,
                  na_position=None, inplace=None, kind=None, level=None, sort_remaining=None,
-                 stage=None, shuffle_key=None, object_type=None, **kw):
+                 stage=None, shuffle_key=None, output_types=None, **kw):
         super().__init__(_sort_type=sort_type, _by=by, _axis=axis, _ascending=ascending,
                          _n_partition=n_partition, _na_position=na_position, _inplace=inplace,
                          _kind=kind, _level=level, _sort_remaining=sort_remaining, _stage=stage,
-                         _shuffle_key=shuffle_key, _object_type=object_type, **kw)
+                         _shuffle_key=shuffle_key, _output_types=output_types, **kw)
 
     @property
     def sort_type(self):

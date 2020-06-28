@@ -19,12 +19,12 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
-from ...core import Base, Entity
+from ...core import Base, Entity, OutputType
 from ...operands import OperandStage
 from ...serialize import StringField, AnyField, BoolField, Int64Field
 from ..align import align_dataframe_dataframe, align_dataframe_series, align_series_series
 from ..core import DATAFRAME_TYPE
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import validate_axis
 
 
@@ -41,11 +41,11 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
     _output_limit = Int64Field('output_limit')
 
     def __init__(self, value=None, method=None, axis=None, limit=None, downcast=None,
-                 use_inf_as_na=None, sparse=None, stage=None, gpu=None, object_type=None,
+                 use_inf_as_na=None, sparse=None, stage=None, gpu=None, output_types=None,
                  output_limit=None, **kw):
         super().__init__(_value=value, _method=method, _axis=axis, _limit=limit, _downcast=downcast,
                          _use_inf_as_na=use_inf_as_na, _sparse=sparse, _stage=stage, _gpu=gpu,
-                         _object_type=object_type, _output_limit=output_limit, **kw)
+                         _output_types=output_types, _output_limit=output_limit, **kw)
 
     @property
     def value(self):
@@ -83,7 +83,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
     @staticmethod
     def _get_first_slice(op, df, end):
         if op.method == 'bfill':
-            if op.object_type == ObjectType.series:
+            if op.output_types[0] == OutputType.series:
                 return df.iloc[:end]
             else:
                 if op.axis == 1:
@@ -91,7 +91,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     return df.iloc[:end, :]
         else:
-            if op.object_type == ObjectType.series:
+            if op.output_types[0] == OutputType.series:
                 return df.iloc[-end:]
             else:
                 if op.axis == 1:
@@ -329,7 +329,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
                 (not isinstance(op.value, (Base, Entity)) or len(op.value.chunks) == 1):
             return cls._tile_one_by_one(op)
         elif op.method is not None:
-            if op.object_type == ObjectType.dataframe:
+            if op.output_types[0] == OutputType.dataframe:
                 return cls._tile_directional_dataframe(op)
             else:
                 return cls._tile_directional_series(op)
@@ -337,7 +337,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             return cls._tile_one_by_one(op)
         elif isinstance(op.value, DATAFRAME_TYPE):
             return cls._tile_both_dataframes(op)
-        elif op.object_type == ObjectType.dataframe:
+        elif op.output_types[0] == OutputType.dataframe:
             return cls._tile_dataframe_series(op)
         else:
             return cls._tile_both_series(op)
@@ -457,7 +457,7 @@ def fillna(df, value=None, method=None, axis=None, inplace=False, limit=None, do
     elif value is not None and method is not None:
         raise ValueError("Cannot specify both 'value' and 'method'.")
 
-    if df.op.object_type == ObjectType.series and isinstance(value, (DATAFRAME_TYPE, pd.DataFrame)):
+    if df.op.output_types[0] == OutputType.series and isinstance(value, (DATAFRAME_TYPE, pd.DataFrame)):
         raise ValueError('"value" parameter must be a scalar, dict or Series, but you passed a "%s"'
                          % type(value).__name__)
 
@@ -473,7 +473,7 @@ def fillna(df, value=None, method=None, axis=None, inplace=False, limit=None, do
 
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = FillNA(value=value, method=method, axis=axis, limit=limit, downcast=downcast,
-                use_inf_as_na=use_inf_as_na, object_type=df.op.object_type)
+                use_inf_as_na=use_inf_as_na, output_types=df.op.output_types)
     out_df = op(df, value_df=value_df)
     if inplace:
         df.data = out_df.data

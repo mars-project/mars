@@ -23,9 +23,10 @@ from ...serialize import ValueType, KeyField, Int64Field, Int32Field, \
     BoolField, StringField, ListField
 from ...operands import OperandStage
 from ...utils import ceildiv, flatten, recursive_tile
-from ..operands import TensorOperand, TensorOperandMixin, TensorOrder
-from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
+from ..core import TensorOrder
+from ..datasource import tensor as astensor
+from ..operands import TensorOperand, TensorOperandMixin
 from ..utils import validate_axis, validate_order
 from .sort import _validate_sort_psrs_kinds
 
