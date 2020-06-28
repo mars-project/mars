@@ -14,8 +14,7 @@
 
 from ..operands import Operand, TileableOperandMixin, Fetch, FetchMixin, \
     Fuse, FuseChunkMixin, MapReduceOperand, ShuffleProxy, OutputType
-from ..serialize import BoolField
-from ..tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
+from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ..tensor.operands import TensorOperandMixin
 from ..tensor.fuse import TensorFuseChunk
 from ..tensor.fetch import TensorFetch
@@ -118,25 +117,3 @@ class LearnShuffleProxy(ShuffleProxy, LearnOperandMixin):
 
 
 LearnMapReduceOperand = MapReduceOperand
-
-
-class LearnMergeDictOperand(LearnOperand, LearnOperandMixin):
-    _merge = BoolField('merge')
-
-    @property
-    def merge(self):
-        return self._merge
-
-    @classmethod
-    def concat_tileable_chunks(cls, tileable):
-        assert not tileable.is_coarse()
-
-        op = cls(merge=True)
-        chunk = cls(merge=True).new_chunk(tileable.chunks)
-        return op.new_tileable([tileable], chunks=[chunk], nsplits=((1,),))
-
-    @classmethod
-    def execute(cls, ctx, op):
-        assert op.merge
-        inputs = [ctx[inp.key] for inp in op.inputs]
-        ctx[op.outputs[0].key] = next(inp for inp in inputs if inp)

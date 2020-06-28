@@ -21,13 +21,13 @@ import numpy as np
 
 
 from .. import opcodes
+from ..operands import MergeDictOperand, OutputType
 from ..context import RunningMode
-from ..learn.operands import LearnMergeDictOperand, OutputType
 from ..serialize import BytesField, ListField, Int32Field, StringField, BoolField
 from ..utils import to_binary
 
 
-class RunScript(LearnMergeDictOperand):
+class RunScript(MergeDictOperand):
     _op_type_ = opcodes.RUN_SCRIPT
 
     _code = BytesField('code')
@@ -38,12 +38,12 @@ class RunScript(LearnMergeDictOperand):
     _rank = Int32Field('rank')
 
     def __init__(self, code=None, mode=None, world_size=None, rank=None, retry_when_fail=None,
-                 command_args=None, merge=None, output_types=None, **kw):
+                 command_args=None, **kw):
         super().__init__(_code=code, _mode=mode, _world_size=world_size, _rank=rank,
                          _retry_when_fail=retry_when_fail, _command_args=command_args,
-                         _merge=merge, _output_types=output_types, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
+                         **kw)
+        if self.output_types is None:
+            self.output_types = [OutputType.object]
 
     @property
     def code(self):

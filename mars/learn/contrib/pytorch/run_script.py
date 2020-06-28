@@ -21,7 +21,6 @@ from ....serialize import Int32Field, StringField
 from ....context import get_context, RunningMode
 from ....utils import to_binary
 from ....remote.run_script import RunScript
-from ...operands import OutputType
 from ..utils import pick_workers
 
 
@@ -38,8 +37,6 @@ class RunPyTorch(RunScript):
                  gpu=None, **kw):
         super().__init__(mode='spawn', _master_port=master_port, _master_addr=master_addr,
                          _init_method=init_method, _gpu=gpu, **kw)
-        if self.output_types is None:
-            self.output_types = [OutputType.object]
 
     @property
     def master_port(self):
