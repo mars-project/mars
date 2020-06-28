@@ -1,0 +1,89 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a3\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-28 15:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.model_selection.train_test_split.rst:2
+msgid "mars.learn.model\\_selection.train\\_test\\_split"
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split:1 of
+msgid "Split arrays or matrices into random train and test subsets"
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split:3 of
+msgid ""
+"Allowed inputs are lists, numpy arrays, scipy-sparse matrices or pandas "
+"dataframes."
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split:6 of
+msgid ""
+"If float, should be between 0.0 and 1.0 and represent the proportion of "
+"the dataset to include in the test split. If int, represents the absolute"
+" number of test samples. If None, the value is set to the complement of "
+"the train size. If ``train_size`` is also None, it will be set to 0.25."
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split:12 of
+msgid ""
+"If float, should be between 0.0 and 1.0 and represent the proportion of "
+"the dataset to include in the train split. If int, represents the "
+"absolute number of train samples. If None, the value is automatically set"
+" to the complement of the test size."
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split:17 of
+msgid ""
+"If int, random_state is the seed used by the random number generator; If "
+"RandomState instance, random_state is the random number generator; If "
+"None, the random number generator is the RandomState instance used by "
+"`np.random`."
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split:22 of
+msgid ""
+"Whether or not to shuffle the data before splitting. If shuffle=False "
+"then stratify must be None."
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split:25 of
+msgid ""
+"If not None, data is split in a stratified fashion, using this as the "
+"class labels."
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split:29 of
+msgid "**splitting** -- List containing train-test split of inputs."
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split of
+msgid "Return type"
+msgstr ""
+
+#: mars.learn.model_selection.train_test_split:33 of
+msgid "Examples"
+msgstr ""
+
