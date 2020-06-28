@@ -31,7 +31,7 @@ from .operands import Fetch, ShuffleProxy
 from .graph import DAG, DirectedGraph
 from .config import options
 from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
-from .optimizes.runtime.optimizers.core import Optimizer
+from .optimizes.runtime.optimizers.core import RuntimeOptimizer
 from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTileableGraphBuilder
 from .graph_builder import TileableGraphBuilder
 from .context import LocalContext
@@ -665,7 +665,7 @@ class Executor(object):
         :return: execution result
         """
         if compose:
-            Optimizer(graph, self._engine).optimize(keys=keys)
+            RuntimeOptimizer(graph, self._engine).optimize(keys=keys)
         optimized_graph = graph
 
         if not mock:

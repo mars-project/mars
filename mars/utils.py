@@ -965,3 +965,58 @@ def prune_chunk_graph(chunk_graph, result_chunk_keys):
 @functools.lru_cache(500)
 def serialize_function(function):
     return cloudpickle.dumps(function)
+
+
+class FixedSizeFileObject:
+    def __init__(self, file_obj, fixed_size):
+        self._file_obj = file_obj
+        self._cur = self._file_obj.tell()
+        self._size = fixed_size
+        self._end = self._cur + self._size
+
+    def _get_size(self, size):
+        max_size = self._end - self._cur
+        if size is None:
+            return max_size
+        else:
+            return min(max_size, size)
+
+    def read(self, size=None):
+        result = self._file_obj.read(self._get_size(size))
+        self._cur = self._file_obj.tell()
+        return result
+
+    def readline(self, size=None):
+        result = self._file_obj.readline(self._get_size(size))
+        self._cur = self._file_obj.tell()
+        return result
+
+    def readlines(self, size=None):
+        result = self._file_obj.readlines(self._get_size(size))
+        self._cur = self._file_obj.tell()
+        return result
+
+    def seek(self, offset):
+        self._cur = offset
+        return self._file_obj.seek(offset)
+
+    def tell(self):
+        return self._file_obj.tell()
+
+    def __next__(self):
+        while True:
+            result = self.readline()
+            if len(result) == 0:
+                raise StopIteration
+            else:
+                return result
+
+    def __iter__(self):
+        while True:
+            try:
+                yield next(self)
+            except StopIteration:
+                return
+
+    def __getattr__(self, item):  # pragma: no cover
+        return getattr(self._file_obj, item)

@@ -19,7 +19,7 @@ from collections import deque
 from ...operands import Fuse, VirtualOperand
 
 
-class Fusion(object):
+class Fusion:
     def __init__(self, graph):
         self._graph = graph
 
@@ -28,9 +28,6 @@ class Fusion(object):
         return self._graph
 
     def _compose_graph(self, composes):
-        cdef:
-            list composed_nodes = []
-
         from ...utils import build_fuse_chunk
         composed_nodes = []
 
@@ -41,6 +38,15 @@ class Fusion(object):
             self._graph.add_node(fuse_chunk)
             for node in self._graph.iter_successors(tail_node):
                 self._graph.add_edge(fuse_chunk, node)
+                # replace inputs
+                node_inputs = node.inputs
+                new_node_inputs = []
+                for inp in node_inputs:
+                    if inp is tail_node:
+                        new_node_inputs.append(fuse_chunk)
+                    else:
+                        new_node_inputs.append(inp)
+                node.inputs = new_node_inputs
             for node in self._graph.iter_predecessors(head_node):
                 self._graph.add_edge(node, fuse_chunk)
             # TODO:judge compose is independent?
@@ -50,7 +56,7 @@ class Fusion(object):
 
         return composed_nodes
 
-    def compose(self, list keys=None):
+    def compose(self, keys=None):
         def _visit_predicate(n, visited):
             cond = any if getattr(n.op, '_loose_require', False) else all
             preds = self._graph.predecessors(n)
@@ -105,9 +111,7 @@ class Fusion(object):
             cur_node = q.pop()
             if not cur_node.inputs:
                 continue
-            is_first = cur_node is composed_nodes[0]
-            inputs = cur_node.inputs if not is_first else \
-                self._graph.predecessors(node)
+            inputs = cur_node.inputs
             for pre in inputs:
                 pre = get_node(pre)
                 if pre in nodes_set:
@@ -118,6 +122,21 @@ class Fusion(object):
                     q.appendleft(pre)
         for n in self._graph.iter_successors(node):
             self._graph.add_edge(composed_nodes[-1], n)
+            # replace inputs for successors
+            n_inputs = n.inputs
+            new_n_inputs = []
+            node_data = getattr(node, 'data') if hasattr(node, 'data') else node
+            for inp in n_inputs:
+                if inp is node_data:
+                    new_n_inputs.append(composed_nodes[-1])
+                else:
+                    new_n_inputs.append(inp)
+            # replace inputs first
+            n.inputs = new_n_inputs
+            # if the successor is a fuse,
+            # replace the first compose node as well
+            if isinstance(n.op, Fuse):
+                n.composed[0].inputs = new_n_inputs
         self._graph.remove_node(node)
 
     def decompose(self, nodes=None):

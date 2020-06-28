@@ -22,6 +22,7 @@ import textwrap
 import time
 import unittest
 from functools import partial
+from io import BytesIO
 from enum import Enum
 
 import numpy as np
@@ -357,3 +358,21 @@ class Test(unittest.TestCase):
             pass
 
         self.assertIsNone(should_not_exist_np)
+
+    def testFixedSizeFileObject(self):
+        arr = [str(i).encode() * 20 for i in range(10)]
+        bts = os.linesep.encode().join(arr)
+        bio = BytesIO(bts)
+
+        ref_bio = BytesIO(bio.read(100))
+        bio.seek(0)
+        ref_bio.seek(0)
+        fix_bio = utils.FixedSizeFileObject(bio, 100)
+
+        self.assertEqual(ref_bio.readline(), fix_bio.readline())
+        self.assertEqual(ref_bio.tell(), fix_bio.tell())
+        pos = ref_bio.tell() + 10
+        self.assertEqual(ref_bio.seek(pos), fix_bio.seek(pos))
+        self.assertEqual(ref_bio.read(5), fix_bio.read(5))
+        self.assertEqual(ref_bio.readlines(25), fix_bio.readlines(25))
+        self.assertEqual(list(ref_bio), list(fix_bio))

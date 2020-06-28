@@ -20,15 +20,14 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import OutputType
+from ...core import Base, Entity, OutputType
 from ...serialize import AnyField, Int32Field, BoolField
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.datasource import tensor as astensor
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..align import align_dataframe_series, align_dataframe_dataframe
-from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, \
-    DATAFRAME_CHUNK_TYPE, TILEABLE_TYPE, CHUNK_TYPE
+from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, in_range_index
@@ -235,9 +234,9 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if isinstance(self._col_names, (TILEABLE_TYPE, CHUNK_TYPE)):
+        if isinstance(self._col_names, (Base, Entity)):
             self._col_names = self._inputs[0]
-        if isinstance(self._mask, (TILEABLE_TYPE, CHUNK_TYPE)):
+        if isinstance(self._mask, (Base, Entity)):
             self._mask = self._inputs[-1]
 
     def __call__(self, df):
