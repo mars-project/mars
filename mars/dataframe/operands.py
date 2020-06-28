@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from enum import Enum
 from functools import reduce
 
 import pandas as pd
@@ -20,12 +21,35 @@ import pandas as pd
 from ..core import FuseChunkData, FuseChunk, Base, Entity, OutputType
 from ..operands import Operand, TileableOperandMixin, MapReduceOperand, Fuse
 from ..operands import ShuffleProxy, FuseChunkMixin
+from ..serialize.core import Int8Field
 from ..tensor.core import TENSOR_TYPE
 from ..tensor.operands import TensorOperandMixin
 from ..utils import calc_nsplits
 from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, SERIES_TYPE, \
     INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE, CATEGORICAL_TYPE
 from .utils import parse_index
+
+
+class ObjectType(Enum):
+    dataframe = 1
+    series = 2
+    index = 3
+    scalar = 4
+    tensor = 8
+    dataframe_groupby = 5
+    series_groupby = 6
+    categorical = 7
+
+    def to_output_type(self):
+        return getattr(OutputType, self.name)
+
+    @classmethod
+    def on_serialize(cls, val):
+        return val.value if val is not None else None
+
+    @classmethod
+    def on_deserialize(cls, val):
+        return cls(val) if val is not None else None
 
 
 class DataFrameOperandMixin(TileableOperandMixin):
@@ -256,15 +280,76 @@ class DataFrameOperandMixin(TileableOperandMixin):
         return DataFrameFuseChunk
 
 
-DataFrameOperand = Operand
+class DataFrameOperand(Operand):
+    _object_type = Int8Field('object_type', on_serialize=ObjectType.on_serialize,
+                             on_deserialize=ObjectType.on_deserialize)
+
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('_object_type'):
+            kwargs['_output_types'] = [kwargs.pop('_object_type').to_output_type()]
+        super().__init__(*args, **kwargs)
+
+    @property
+    def object_type(self):
+        return getattr(self, '_object_type', None)
+
+    @property
+    def output_types(self):
+        if not super().output_types and self.object_type:
+            self._output_types = [self._object_type.to_output_type()]
+        return super().output_types
+
+    @output_types.setter
+    def output_types(self, value):
+        self._output_types = value
 
 
 class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
+    _object_type = Int8Field('object_type', on_serialize=ObjectType.on_serialize,
+                             on_deserialize=ObjectType.on_deserialize)
+
     def __init__(self, sparse=None, output_types=None, **kwargs):
+        if kwargs.get('_object_type'):
+            output_types = [kwargs.pop('_object_type').to_output_type()]
         super().__init__(_sparse=sparse, _output_types=output_types, **kwargs)
 
+    @property
+    def object_type(self):
+        return getattr(self, '_object_type', None)
 
-DataFrameMapReduceOperand = MapReduceOperand
+    @property
+    def output_types(self):
+        if not super().output_types and self.object_type:
+            self._output_types = [self._object_type.to_output_type()]
+        return super().output_types
+
+    @output_types.setter
+    def output_types(self, value):
+        self._output_types = value
+
+
+class DataFrameMapReduceOperand(MapReduceOperand):
+    _object_type = Int8Field('object_type', on_serialize=ObjectType.on_serialize,
+                             on_deserialize=ObjectType.on_deserialize)
+
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('_object_type'):
+            kwargs['_output_types'] = [kwargs.pop('_object_type').to_output_type()]
+        super().__init__(*args, **kwargs)
+
+    @property
+    def object_type(self):
+        return getattr(self, '_object_type', None)
+
+    @property
+    def output_types(self):
+        if not super().output_types and self.object_type:
+            self._output_types = [self._object_type.to_output_type()]
+        return super().output_types
+
+    @output_types.setter
+    def output_types(self, value):
+        self._output_types = value
 
 
 class DataFrameFuseChunkMixin(FuseChunkMixin, DataFrameOperandMixin):

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...serialize.core import TupleField, ValueType
+from ...serialize.core import TupleField, ValueType, Int8Field
 from ...operands import Fetch, FetchShuffle, FetchMixin
 from ...utils import on_serialize_shape, on_deserialize_shape
-from ..operands import DataFrameOperandMixin
+from ..operands import DataFrameOperandMixin, ObjectType
 
 
 class DataFrameFetchMixin(DataFrameOperandMixin, FetchMixin):
@@ -26,10 +26,28 @@ class DataFrameFetch(Fetch, DataFrameFetchMixin):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    _object_type = Int8Field('object_type', on_serialize=ObjectType.on_serialize,
+                             on_deserialize=ObjectType.on_deserialize)
 
     def __init__(self, to_fetch_key=None, sparse=False, output_types=None, **kw):
+        if kw.get('_object_type'):
+            output_types = [kw.pop('_object_type').to_output_type()]
         super().__init__(
             _to_fetch_key=to_fetch_key, _sparse=sparse, _output_types=output_types, **kw)
+
+    @property
+    def object_type(self):
+        return getattr(self, '_object_type', None)
+
+    @property
+    def output_types(self):
+        if not super().output_types and self.object_type:
+            self._output_types = [self._object_type.to_output_type()]
+        return super().output_types
+
+    @output_types.setter
+    def output_types(self, value):
+        self._output_types = value
 
     def _new_chunks(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
@@ -48,8 +66,26 @@ class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    _object_type = Int8Field('object_type', on_serialize=ObjectType.on_serialize,
+                             on_deserialize=ObjectType.on_deserialize)
 
     def __init__(self, to_fetch_keys=None, to_fetch_idxes=None, output_types=None, **kw):
+        if kw.get('_object_type'):
+            output_types = [kw.pop('_object_type').to_output_type()]
         super().__init__(
             _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes,
             _output_types=output_types, **kw)
+
+    @property
+    def object_type(self):
+        return getattr(self, '_object_type', None)
+
+    @property
+    def output_types(self):
+        if not super().output_types and self.object_type:
+            self._output_types = [self._object_type.to_output_type()]
+        return super().output_types
+
+    @output_types.setter
+    def output_types(self, value):
+        self._output_types = value
