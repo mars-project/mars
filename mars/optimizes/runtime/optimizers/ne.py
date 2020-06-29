@@ -17,6 +17,7 @@
 from ....tensor import arithmetic
 from ....tensor import reduction
 from ....tensor.fuse import TensorNeFuseChunk
+from ....tensor.fuse.ne import NUMEXPR_INSTALLED
 
 REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
                 reduction.TensorMax, reduction.TensorMin}
@@ -88,9 +89,13 @@ def _transfer_op(node):
     return op
 
 
-class NeOptimizer(object):
+class NeRuntimeOptimizer:
     def __init__(self, graph):
         self._graph = graph
+
+    @classmethod
+    def is_available(cls):
+        return NUMEXPR_INSTALLED
 
     def optimize(self, keys=None):
         self.compose(keys=keys)

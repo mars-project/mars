@@ -31,6 +31,7 @@ import pandas as pd
 from mars.context import LocalContext
 from mars.core import OBJECT_TYPE
 from mars.executor import Executor, GraphExecution
+from mars.optimizes.runtime.optimizers.core import RuntimeOptimizer
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
 from mars.utils import lazy_import
@@ -623,8 +624,15 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
 
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
+            raw_graph = graph
             graph = type(graph).from_json(graph.to_json())
             graph = type(graph).from_pb(graph.to_pb())
+            if kw.get('compose', True):
+                # decompose the raw graph
+                # due to the reason that, now after fuse,
+                # the inputs of node's op may be fuse,
+                # call optimize to decompose back
+                RuntimeOptimizer(raw_graph, self._engine).optimize(keys=keys)
 
         # record shapes generated in tile
         for n in graph:

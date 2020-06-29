@@ -19,7 +19,8 @@ import mars.dataframe as md
 from mars.tensor.core import TENSOR_CHUNK_TYPE, Tensor
 from mars.tests.core import TestBase
 from mars.dataframe.core import SERIES_CHUNK_TYPE, Series, DataFrame, DATAFRAME_CHUNK_TYPE
-from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, IndexingError
+from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, \
+    IndexingError, HeadTailOptimizedOperandMixin
 
 
 class Test(TestBase):
@@ -599,3 +600,26 @@ class Test(TestBase):
         self.assertEqual(result2.nsplits, ((2,),))
         self.assertEqual(result2.chunks[0].dtype, data.dtype)
         self.assertTrue(result2.chunks[0].op.labels, [['i2', 'i4']])
+
+    def testHeadTailOptimize(self):
+        raw = pd.DataFrame(np.random.rand(4, 3))
+
+        df = md.DataFrame(raw, chunk_size=2)
+
+        # no nan chunk shape
+        self.assertFalse(HeadTailOptimizedOperandMixin._need_tile_head_tail(df.tiles().head(2).op))
+
+        df2 = df[df[0] < 0.5].tiles()
+        # chunk shape on axis 1 greater than 1
+        self.assertFalse(HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.head(2).op))
+
+        df = md.DataFrame(raw, chunk_size=(2, 3))
+        df2 = df[df[0] < 0.5].tiles()
+        # not slice
+        self.assertFalse(HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[2].op))
+        # step not None
+        self.assertFalse(HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[:2:2].op))
+        # not head or tail
+        self.assertFalse(HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[1:3].op))
+        # slice 1 is not slice(None)
+        self.assertFalse(HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[:3, :2].op))

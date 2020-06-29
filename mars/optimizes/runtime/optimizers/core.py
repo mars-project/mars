@@ -14,25 +14,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .ne import NeOptimizer
-from .cp import CpOptimizer
-from ....tensor.fuse.ne import NUMEXPR_INSTALLED
+from .cp import CpRuntimeOptimizer
+from .ne import NeRuntimeOptimizer
+from .dataframe import DataFrameRuntimeOptimizer
 
 
-class Optimizer(object):
-    engine_dic = {'numexpr': NeOptimizer,
-                  'cupy': CpOptimizer}
+class RuntimeOptimizer:
+    engine_dic = {
+        'numpy': None,  # DO NOT optimize
+        'numexpr': NeRuntimeOptimizer,
+        'cupy': CpRuntimeOptimizer,
+        'dataframe': DataFrameRuntimeOptimizer,
+    }
 
     def __init__(self, graph, engine=None):
+        # conver to DAG first if graph is not a DAG
+        self._dag = graph.to_dag()
         self._graph = graph
-        if not engine:
-            self._engine = 'numexpr' if NUMEXPR_INSTALLED else 'numpy'
-        else:
-            self._engine = engine
+        if engine is None:
+            # add default optimizers
+            engine = ['numexpr', 'cupy', 'dataframe']
+        elif not isinstance(engine, (list, tuple)):
+            engine = [engine]
+        self._engine = engine
 
-    def optimize(self, keys=None):
-        self._graph.decompose()
-        if self._engine == 'numpy':
-            return
-        optimizer = self.engine_dic[self._engine](self._graph)
-        optimizer.optimize(keys=keys)
+    def optimize(self, keys=None, check_availablility=True):
+        self._dag.decompose()
+        for e in self._engine:
+            optimizer_cls = self.engine_dic[e]
+            if optimizer_cls is None:
+                continue
+            if check_availablility and not optimizer_cls.is_available():
+                continue
+            optimizer = optimizer_cls(self._dag)
+            optimizer.optimize(keys=keys)
+        # copy back to the original graph,
+        # only when the original graph is not a DAG
+        self._dag.copyto(self._graph)
