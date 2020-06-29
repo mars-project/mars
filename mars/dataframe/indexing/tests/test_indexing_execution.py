@@ -12,18 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import os
+import tempfile
+
 import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
 import mars.tensor as mt
+from mars.dataframe.datasource.read_csv import DataFrameReadCSV
+from mars.executor import register, Executor
 from mars.tests.core import TestBase, ExecutorForTest
 
 
 class Test(TestBase):
     def setUp(self):
         super().setUp()
-        self.executor = ExecutorForTest()
+        self.executor = self._create_test_context()[1]
 
     def testSetIndex(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
@@ -587,3 +593,67 @@ class Test(TestBase):
         expected['c10'] = 10
         expected[4] = data2
         pd.testing.assert_frame_equal(result, expected)
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _inject_execute_read_csv(limit):
+        def _execute_read_csv(ctx, op):
+            DataFrameReadCSV.execute(ctx, op)
+            result = ctx[op.outputs[0].key]
+            if len(result) > limit:
+                raise RuntimeError('have data more than expected')  # pragma: no cover
+
+        try:
+            register(DataFrameReadCSV, _execute_read_csv)
+            yield
+        finally:
+            del Executor._op_runners[DataFrameReadCSV]
+
+    def testOptimizedHeadTail(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            executor = ExecutorForTest(storage=self.executor.storage)
+
+            filename = os.path.join(tempdir, 'test_fetch.csv')
+            rs = np.random.RandomState(0)
+            pd_df = pd.DataFrame({'a': rs.randint(1000, size=(100,)).astype(np.int64),
+                                  'b': rs.randint(1000, size=(100,)).astype(np.int64),
+                                  'c': ['sss' for _ in range(100)],
+                                  'd': ['eeee' for _ in range(100)]})
+            pd_df.to_csv(filename, index=False)
+
+            size = os.path.getsize(filename)
+            chunk_bytes = size / 3
+
+            df = md.read_csv(filename, chunk_bytes=chunk_bytes)
+
+            # test DataFrame.head
+            r = df.head(3)
+
+            with self._inject_execute_read_csv(3):
+                result = executor.execute_tileables([r])[0]
+                expected = pd_df.head(3)
+                pd.testing.assert_frame_equal(result, expected)
+
+            # test DataFrame.tail
+            r = df.tail(3)
+
+            result = executor.execute_tileables([r])[0]
+            expected = pd_df.tail(3)
+            pd.testing.assert_frame_equal(result.reset_index(drop=True),
+                                          expected.reset_index(drop=True))
+
+            # test head more than 1 chunk
+            r = df.head(99)
+
+            result = executor.execute_tileables([r])[0]
+            result.reset_index(drop=True, inplace=True)
+            expected = pd_df.head(99)
+            pd.testing.assert_frame_equal(result, expected)
+
+            # test Series.tail more than 1 chunk
+            r = df.tail(99)
+
+            result = executor.execute_tileables([r])[0]
+            expected = pd_df.tail(99)
+            pd.testing.assert_frame_equal(result.reset_index(drop=True),
+                                          expected.reset_index(drop=True))

@@ -108,7 +108,6 @@ else:
 cy_extension_kw['include_dirs'] = [np.get_include()]
 cy_extensions = [
     Extension('mars.graph', ['mars/graph.pyx'], **cy_extension_kw),
-    Extension('mars.optimizes.chunk_graph.fuse', ['mars/optimizes/chunk_graph/fuse.pyx'], **cy_extension_kw),
     Extension('mars._utils', ['mars/_utils.pyx'], **cy_extension_kw),
     Extension('mars.lib.gipc', ['mars/lib/gipc.pyx'], **cy_extension_kw),
     Extension('mars.actors.core', ['mars/actors/core.pyx'], **cy_extension_kw),

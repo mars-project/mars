@@ -20,7 +20,7 @@ from mars.executor import Executor
 from mars.tensor.arithmetic import TensorTreeAdd
 from mars.tensor.indexing import TensorSlice
 from mars.graph import DirectedGraph
-from mars.optimizes.runtime.optimizers.ne import NeOptimizer
+from mars.optimizes.runtime.optimizers.ne import NeRuntimeOptimizer
 
 
 class Test(unittest.TestCase):
@@ -82,14 +82,14 @@ class Test(unittest.TestCase):
         self.assertIn(composed_nodes[0], graph.successors(chunks[0]))
         self.assertIn(composed_nodes[0], graph.successors(chunks[1]))
         # check composed's inputs
-        self.assertIn(chunks[0].key, [n.key for n in composed_nodes[0].inputs])
-        self.assertIn(chunks[1].key, [n.key for n in composed_nodes[0].inputs])
+        self.assertIn(chunks[0].data, composed_nodes[0].inputs)
+        self.assertIn(chunks[1].data, composed_nodes[0].inputs)
         # check composed's predecessors
         self.assertIn(chunks[0], graph.predecessors(composed_nodes[0]))
         self.assertIn(chunks[1], graph.predecessors(composed_nodes[0]))
         # check 4 and 5's inputs
-        self.assertIn(composed_nodes[0].key, [n.key for n in graph.successors(composed_nodes[0])[0].inputs])
-        self.assertIn(composed_nodes[0].key, [n.key for n in graph.successors(composed_nodes[0])[0].inputs])
+        self.assertIn(composed_nodes[0].data, graph.successors(composed_nodes[0])[0].inputs)
+        self.assertIn(composed_nodes[0].data, graph.successors(composed_nodes[0])[0].inputs)
         # check 4 and 5's predecessors
         self.assertIn(composed_nodes[0], graph.predecessors(chunks[4]))
         self.assertIn(composed_nodes[0], graph.predecessors(chunks[5]))
@@ -118,7 +118,7 @@ class Test(unittest.TestCase):
         graph.add_edge(chunks[3], chunk_slice)
         graph.add_edge(chunk_slice, chunks[4])
         graph.add_edge(chunk_slice, chunks[5])
-        optimizer = NeOptimizer(graph)
+        optimizer = NeRuntimeOptimizer(graph)
         composed_nodes = optimizer.compose()
         self.assertTrue(composed_nodes[0].composed == chunks[2:4])
 
@@ -136,7 +136,7 @@ class Test(unittest.TestCase):
         graph.add_edge(chunks[0], chunks[1])
         graph.add_edge(chunks[1], chunk_slice)
         graph.add_edge(chunk_slice, chunks[2])
-        optimizer = NeOptimizer(graph)
+        optimizer = NeRuntimeOptimizer(graph)
         composed_nodes = optimizer.compose()
         self.assertTrue(composed_nodes[0].composed == chunks[:2])
         self.assertTrue(len(composed_nodes) == 1)
@@ -156,7 +156,7 @@ class Test(unittest.TestCase):
         graph.add_edge(chunks[1], chunk_slice)
         graph.add_edge(chunk_slice, chunks[2])
         graph.add_edge(chunks[2], chunks[3])
-        optimizer = NeOptimizer(graph)
+        optimizer = NeRuntimeOptimizer(graph)
         composed_nodes = optimizer.compose()
         self.assertTrue(composed_nodes[0].composed == chunks[:2])
         self.assertTrue(composed_nodes[1].composed == chunks[2:4])

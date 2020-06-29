@@ -289,6 +289,14 @@ cdef class DirectedGraph:
                 graph._add_edge(n, succ)
         return graph
 
+    def copyto(self, DirectedGraph other_graph):
+        if other_graph is self:
+            return
+
+        other_graph._nodes = self._nodes.copy()
+        other_graph._predecessors = self._predecessors.copy()
+        other_graph._successors = self._successors.copy()
+
     def build_undirected(self):
         cdef DirectedGraph graph = DirectedGraph()
         for n in self:
@@ -464,12 +472,22 @@ cdef class DirectedGraph:
         g = Source(self.to_dot(graph_attrs, node_attrs, result_chunk_keys=result_chunk_keys))
         g.view(filename=filename, cleanup=True)
 
+    def to_dag(self):
+        dag = DAG()
+        dag._nodes = self._nodes.copy()
+        dag._predecessors = self._predecessors.copy()
+        dag._successors = self._successors.copy()
+        return dag
+
 
 class GraphContainsCycleError(Exception):
     pass
 
 
 cdef class DAG(DirectedGraph):
+    def to_dag(self):
+        return self
+
     def topological_iter(self, succ_checker=None, reverse=False):
         cdef:
             dict preds, succs

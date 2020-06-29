@@ -387,7 +387,7 @@ class CalcPartitionsInfo(TensorOperand, TensorPSRSOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if isinstance(self._kth, (TENSOR_TYPE, CHUNK_TYPE)):
+        if isinstance(self._kth, (Base, Entity)):
             self._kth = self._inputs[0]
 
     @classmethod

@@ -20,12 +20,14 @@ import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 from pandas.core.indexing import IndexingError
 
+from ... import opcodes as OperandDef
 from ...core import Entity, Base
+from ...config import options
 from ...serialize import AnyField, KeyField, ListField
 from ...tensor import asarray
 from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape
-from ... import opcodes as OperandDef
+from ...utils import ceildiv
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, DATAFRAME_TYPE
 from ..utils import indexing_index_value
 from .index_lib import DataFrameIlocIndexesHandler
@@ -99,7 +101,7 @@ def process_iloc_indexes(inp, indexes):
     return new_indexes
 
 
-class DataFrameIloc(object):
+class DataFrameIloc:
     def __init__(self, obj):
         self._obj = obj
 
@@ -123,7 +125,99 @@ class DataFrameIloc(object):
         self._obj.data = ret.data
 
 
-class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
+class HeadTailOptimizedOperandMixin(DataFrameOperandMixin):
+    __slots__ = ()
+
+    @classmethod
+    def _is_head(cls, index0):
+        return (index0.start is None or index0.start == 0) and \
+               index0.stop is not None and index0.stop > 0
+
+    @classmethod
+    def _is_tail(cls, index0):
+        return index0.start is not None and index0.start < 0 and \
+               index0.stop is None
+
+    @classmethod
+    def _is_indexes_head_or_tail(cls, indexes):
+        index0 = indexes[0]
+        if not isinstance(index0, slice):
+            # have to be slice
+            return False
+        if index0.step is not None:
+            return False
+        if len(indexes) == 2 and indexes[1] != slice(None):
+            return False
+        if cls._is_tail(index0):
+            # tail
+            return True
+        if cls._is_head(index0):
+            # head
+            return True
+        return False
+
+    @classmethod
+    def _need_tile_head_tail(cls, op):
+        # first, the input DataFrame should
+        # have unknown chunk shapes on the index axis,
+        inp = op.input
+        if not any(np.isnan(s) for s in inp.nsplits[0]):
+            return False
+
+        # if input is a DataFrame,
+        # should have 1 chunk on columns axis
+        if inp.ndim > 1 and inp.chunk_shape[1] > 1:
+            return False
+
+        return cls._is_indexes_head_or_tail(op.indexes)
+
+    @classmethod
+    def _tile_head_tail(cls, op):
+        from ..merge import DataFrameConcat
+
+        inp = op.input
+        out = op.outputs[0]
+        combine_size = options.combine_size
+
+        chunks = inp.chunks
+
+        new_chunks = []
+        for c in chunks:
+            chunk_op = op.copy().reset_key()
+            params = out.params
+            params['index'] = c.index
+            new_chunks.append(chunk_op.new_chunk([c], kws=[params]))
+        chunks = new_chunks
+
+        while len(chunks) > 1:
+            new_size = ceildiv(len(chunks), combine_size)
+            new_chunks = []
+            for i in range(new_size):
+                in_chunks = chunks[combine_size * i: combine_size * (i + 1)]
+                chunk_index = (i, 0) if in_chunks[0].ndim == 2 else (i,)
+                concat_chunk = DataFrameConcat(
+                    axis=0, object_type=in_chunks[0].op.object_type).new_chunk(
+                    in_chunks, index=chunk_index,
+                    shape=(sum(c.shape[0] for c in in_chunks), in_chunks[0].shape[1]))
+                chunk_op = op.copy().reset_key()
+                params = out.params
+                params['index'] = chunk_index
+                new_chunks.append(chunk_op.new_chunk([concat_chunk], kws=[params]))
+            chunks = new_chunks
+
+        new_op = op.copy()
+        params = out.params
+        params['nsplits'] = tuple((s,) for s in out.shape)
+        params['chunks'] = chunks
+        return new_op.new_tileables(op.inputs, kws=[params])
+
+    @classmethod
+    def tile(cls, op):
+        if cls._need_tile_head_tail(op):
+            return cls._tile_head_tail(op)
+
+
+class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
     _input = KeyField('input')
@@ -139,6 +233,10 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     @property
     def indexes(self):
         return self._indexes
+
+    def is_head(self):
+        return self._is_indexes_head_or_tail(self._indexes) and \
+               self._is_head(self._indexes[0])
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -235,6 +333,10 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        tileds = super().tile(op)
+        if tileds is not None:
+            return tileds
+
         handler = DataFrameIlocIndexesHandler()
         return [handler.handle(op)]
 

@@ -43,7 +43,7 @@ def _ptp(range_):
     return _unsigned_subtract(*range_[::-1])
 
 
-class HistBinSelector(object):
+class HistBinSelector:
     def __init__(self, histogram_bin_edges_op, x, range, raw_range):
         self._op = histogram_bin_edges_op
         self._x = x

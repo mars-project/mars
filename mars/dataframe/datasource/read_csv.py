@@ -21,7 +21,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...utils import parse_readable_size, lazy_import
+from ...utils import parse_readable_size, lazy_import, FixedSizeFileObject
 from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, BoolField, AnyField
 from ...filesystem import open_file, file_size, glob
 from ..core import IndexValue
@@ -90,16 +90,17 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     _usecols = ListField('usecols')
     _offset = Int64Field('offset')
     _size = Int64Field('size')
+    _nrows = Int64Field('nrows')
     _incremental_index = BoolField('incremental_index')
 
     _storage_options = DictField('storage_options')
 
     def __init__(self, path=None, names=None, sep=None, header=None, index_col=None,
-                 compression=None, usecols=None, offset=None, size=None, gpu=None,
-                 incremental_index=None, storage_options=None, **kw):
+                 compression=None, usecols=None, offset=None, size=None, nrows=None,
+                 gpu=None, incremental_index=None, storage_options=None, **kw):
         super().__init__(_path=path, _names=names, _sep=sep, _header=header,
                          _index_col=index_col, _compression=compression,
-                         _usecols=usecols, _offset=offset, _size=size,
+                         _usecols=usecols, _offset=offset, _size=size, _nrows=nrows,
                          _gpu=gpu, _incremental_index=incremental_index,
                          _storage_options=storage_options, _object_type=ObjectType.dataframe, **kw)
 
@@ -130,6 +131,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     @property
     def usecols(self):
         return self._usecols
+
+    @property
+    def nrows(self):
+        return self._nrows
 
     @property
     def offset(self):
@@ -217,7 +222,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
         start, end = _find_chunk_start_end(f, op.offset, op.size)
         f.seek(start)
-        b = BytesIO(f.read(end - start))
+        b = FixedSizeFileObject(f, end - start)
         if end == start:
             # the last chunk may be empty
             df = build_empty_df(out_df.dtypes)
@@ -227,7 +232,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
             df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col, usecols=op.usecols,
-                             dtype=out_df.dtypes.to_dict(), **csv_kwargs)
+                             dtype=out_df.dtypes.to_dict(), nrows=op.nrows, **csv_kwargs)
         return df
 
     @classmethod
@@ -238,7 +243,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         else:
             df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, names=op.names,
                                usecols=op.usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
-                               **csv_kwargs)
+                               nrows=op.nrows, **csv_kwargs)
         return df
 
     @classmethod
@@ -251,9 +256,9 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
             if op.compression is not None:
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
-                df = xdf.read_csv(BytesIO(f.read()), sep=op.sep, names=op.names, index_col=op.index_col,
+                df = xdf.read_csv(f, sep=op.sep, names=op.names, index_col=op.index_col,
                                   usecols=op.usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
-                                  **csv_kwargs)
+                                  nrows=op.nrows, **csv_kwargs)
             else:
                 df = cls._cudf_read_csv(op) if op.gpu else cls._pandas_read_csv(f, op)
 

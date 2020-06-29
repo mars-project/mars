@@ -158,6 +158,8 @@ class IndexHandlerContext(ABC):
         params = out.params
         params['chunks'] = self.out_chunks
         params['nsplits'] = self.out_nsplits
+        if 'shape' in params and any(np.isnan(s) for s in params['shape']):
+            params['shape'] = tuple(sum(ns) for ns in self.out_nsplits)
         new_op = out.op.copy()
         return new_op.new_tileable(out.inputs, kws=[params])
 
