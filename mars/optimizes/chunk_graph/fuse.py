@@ -84,10 +84,10 @@ class Fusion:
             # add successors
             cur_node = self._graph.successors(v)[0]
             while self._graph.count_predecessors(cur_node) == 1 and \
-                    not isinstance(cur_node.op, (VirtualOperand, Fetch)) and \
-                    cur_node.key not in keys_set:
+                    not isinstance(cur_node.op, (VirtualOperand, Fetch)):
                 selected.append(cur_node)
-                if self._graph.count_successors(cur_node) != 1:
+                if self._graph.count_successors(cur_node) != 1 or \
+                        cur_node.key in keys_set:
                     break
                 else:
                     cur_node = self._graph.successors(cur_node)[0]
