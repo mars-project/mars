@@ -80,8 +80,8 @@ class Index(_Index):
         # just return cls always until we support other Index's initializers
         return object.__new__(cls)
 
-    def __init__(self, data=None, dtype=None, copy=False, name=None,
-                 tupleize_cols=True, chunk_size=None, gpu=None, sparse=None):
+    def __init__(self, data=None, dtype=None, copy=False, name=None, tupleize_cols=True,
+                 chunk_size=None, gpu=None, sparse=None, names=None):
         if isinstance(data, INDEX_TYPE):
             if not hasattr(data, 'data'):
                 # IndexData
@@ -90,8 +90,8 @@ class Index(_Index):
                 index = data
         else:
             if not isinstance(data, pd.Index):
-                pd_index = pd.Index(data=data, dtype=dtype, copy=copy,
-                                    name=name, tupleize_cols=tupleize_cols)
+                pd_index = pd.Index(data=data, dtype=dtype, copy=copy, name=name,
+                                    names=names, tupleize_cols=tupleize_cols)
             else:
                 pd_index = data
             index = from_pandas_index(pd_index, chunk_size=chunk_size,

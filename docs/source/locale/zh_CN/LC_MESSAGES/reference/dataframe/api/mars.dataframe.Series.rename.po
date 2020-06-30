@@ -1,0 +1,90 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a3\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-30 13:59+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.Series.rename.rst:2
+msgid "mars.dataframe.Series.rename"
+msgstr ""
+
+#: mars.dataframe.Series.rename:1 of
+msgid "Alter Series index labels or name."
+msgstr ""
+
+#: mars.dataframe.Series.rename:3 of
+msgid ""
+"Function / dict values must be unique (1-to-1). Labels not contained in a"
+" dict / Series will be left as-is. Extra labels listed don't throw an "
+"error."
+msgstr ""
+
+#: mars.dataframe.Series.rename:7 of
+msgid "Alternatively, change ``Series.name`` with a scalar value."
+msgstr ""
+
+#: mars.dataframe.Series.rename of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.Series.rename:9 of
+msgid "Unused. Accepted for compatability with DataFrame method only."
+msgstr ""
+
+#: mars.dataframe.Series.rename:11 of
+msgid ""
+"Functions or dict-like are transformations to apply to the index. Scalar "
+"or hashable sequence-like will alter the ``Series.name`` attribute."
+msgstr ""
+
+#: mars.dataframe.Series.rename:16 of
+msgid ""
+"Additional keyword arguments passed to the function. Only the \"inplace\""
+" keyword is used."
+msgstr ""
+
+#: mars.dataframe.Series.rename of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.Series.rename:19 of
+msgid "Series with index labels or name altered."
+msgstr ""
+
+#: mars.dataframe.Series.rename of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.Series.rename:25 of
+msgid ":meth:`DataFrame.rename`"
+msgstr ""
+
+#: mars.dataframe.Series.rename:25 of
+msgid "Corresponding DataFrame method."
+msgstr ""
+
+#: mars.dataframe.Series.rename:27 of
+msgid ":meth:`Series.rename_axis`"
+msgstr ""
+
+#: mars.dataframe.Series.rename:28 of
+msgid "Set the name of the axis."
+msgstr ""
+
+#: mars.dataframe.Series.rename:31 of
+msgid "Examples"
+msgstr ""
+
