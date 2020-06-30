@@ -14,10 +14,11 @@
 
 import warnings
 
+from ..core import SERIES_TYPE, DATAFRAME_TYPE
 from ... import opcodes
 from ...serialize import AnyField, Int64Field, StringField
-from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
-from ..utils import build_empty_df, validate_axis, parse_index
+from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..utils import build_empty_df, build_empty_series, validate_axis, parse_index
 
 
 class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
@@ -25,13 +26,15 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
 
     _columns_mapper = AnyField('columns_mapper')
     _index_mapper = AnyField('index_mapper')
+    _new_name = AnyField('new_name')
     _level = Int64Field('level')
     _errors = StringField('errors')
 
-    def __init__(self, columns_mapper=None, index_mapper=None, level=None, errors=None,
-                 output_types=None, **kw):
+    def __init__(self, columns_mapper=None, index_mapper=None, new_name=None, level=None,
+                 errors=None, object_type=None, **kw):
         super().__init__(_columns_mapper=columns_mapper, _index_mapper=index_mapper,
-                         _level=level, _errors=errors, _output_types=output_types, **kw)
+                         _new_name=new_name, _level=level, _errors=errors,
+                         _object_type=object_type, **kw)
 
     @property
     def columns_mapper(self):
@@ -40,6 +43,10 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
     @property
     def index_mapper(self):
         return self._index_mapper
+
+    @property
+    def new_name(self):
+        return self._new_name
 
     @property
     def level(self):
@@ -54,17 +61,33 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
         return empty_df.rename(columns=self._columns_mapper, index=self._index_mapper,
                                level=self._level, errors=errors)
 
+    def _calc_renamed_series(self, name, dtype, index, errors='ignore'):
+        empty_series = build_empty_series(dtype, index=index, name=name)
+        new_series = empty_series.rename(index=self._index_mapper, level=self._level, errors=errors)
+        if self._new_name:
+            new_series.name = self._new_name
+        return new_series
+
     def __call__(self, df):
         params = df.params
-        new_df = self._calc_renamed_df(
-            df.dtypes, df.index_value.to_pandas(), errors=self.errors)
+        raw_index = df.index_value.to_pandas()
+        if df.ndim == 2:
+            new_df = self._calc_renamed_df(df.dtypes, raw_index, errors=self.errors)
+            new_index = new_df.index
+        elif isinstance(df, SERIES_TYPE):
+            new_df = self._calc_renamed_series(df.name, df.dtype, raw_index, errors=self.errors)
+            new_index = new_df.index
+        else:
+            new_df = new_index = raw_index.rename(self._index_mapper or self._new_name)
 
         if self._columns_mapper is not None:
             params['columns_value'] = parse_index(new_df.columns, store_data=True)
             params['dtypes'] = new_df.dtypes
         if self._index_mapper is not None:
-            params['index_value'] = parse_index(new_df.index)
-        return self.new_dataframe([df], **params)
+            params['index_value'] = parse_index(new_index)
+        if df.ndim == 1:
+            params['name'] = new_df.name
+        return self.new_tileable([df], **params)
 
     @classmethod
     def tile(cls, op: 'DataFrameRename'):
@@ -77,20 +100,22 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
             params = c.params
             new_op = op.copy().reset_key()
 
-            try:
-                new_dtypes = dtypes_cache[c.index[0]]
-            except KeyError:
-                new_dtypes = dtypes_cache[c.index[0]] = \
-                    op._calc_renamed_df(c.dtypes, c.index_value.to_pandas()).dtypes
-
             if op.columns_mapper is not None:
+                try:
+                    new_dtypes = dtypes_cache[c.index[0]]
+                except KeyError:
+                    new_dtypes = dtypes_cache[c.index[0]] = \
+                        op._calc_renamed_df(c.dtypes, c.index_value.to_pandas()).dtypes
+
                 params['columns_value'] = parse_index(new_dtypes.index, store_data=True)
                 params['dtypes'] = new_dtypes
             if op.index_mapper is not None:
                 params['index_value'] = out.index_value
+            if op.new_name is not None:
+                params['name'] = out.name
 
             if isinstance(op.columns_mapper, dict):
-                idx = new_dtypes.index
+                idx = params['dtypes'].index
                 if op._level is not None:
                     idx = idx.get_level_values(op._level)
                 new_op._columns_mapper = {k: v for k, v in op.columns_mapper.items()
@@ -98,17 +123,43 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
             chunks.append(new_op.new_chunk([c], **params))
 
         new_op = op.copy().reset_key()
-        return new_op.new_dataframes([inp], chunks=chunks, nsplits=inp.nsplits, **out.params)
+        return new_op.new_tileables([inp], chunks=chunks, nsplits=inp.nsplits, **out.params)
 
     @classmethod
     def execute(cls, ctx, op: 'DataFrameRename'):
         input_ = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = input_.rename(index=op.index_mapper, columns=op.columns_mapper,
-                                               level=op.level)
+        if input_.ndim == 2:
+            ctx[op.outputs[0].key] = input_.rename(index=op.index_mapper, columns=op.columns_mapper,
+                                                   level=op.level)
+        elif op.object_type == ObjectType.series:
+            ctx[op.outputs[0].key] = input_.rename(index=op.index_mapper or op.new_name, level=op.level)
+        else:
+            ctx[op.outputs[0].key] = input_.rename(op.index_mapper or op.new_name)
 
 
-def rename(df, mapper=None, index=None, columns=None, axis='index', copy=True, inplace=False,
-           level=None, errors='ignore'):
+def _rename(df_obj, index_mapper=None, columns_mapper=None, copy=True, inplace=False,
+            level=None, errors='ignore'):
+    if not copy:
+        raise NotImplementedError('`copy=False` not implemented')
+
+    if index_mapper is not None and errors == 'raise' and not inplace:
+        warnings.warn('Errors will not raise for non-existing indices')
+
+    if isinstance(df_obj, DATAFRAME_TYPE):
+        object_type = ObjectType.dataframe
+    else:
+        object_type = ObjectType.series
+    op = DataFrameRename(columns_mapper=columns_mapper, index_mapper=index_mapper,
+                         level=level, errors=errors, object_type=object_type)
+    ret = op(df_obj)
+    if inplace:
+        df_obj.data = ret.data
+    else:
+        return ret
+
+
+def df_rename(df, mapper=None, index=None, columns=None, axis='index', copy=True,
+              inplace=False, level=None, errors='ignore'):
     """
     Alter axes labels.
 
@@ -217,9 +268,6 @@ def rename(df, mapper=None, index=None, columns=None, axis='index', copy=True, i
     4  3  6
 
     """
-    if not copy:
-        raise NotImplementedError('`copy=False` not implemented')
-
     axis = validate_axis(axis, df)
     if axis == 0:
         index_mapper = index if index is not None else mapper
@@ -231,10 +279,130 @@ def rename(df, mapper=None, index=None, columns=None, axis='index', copy=True, i
     if index_mapper is not None and errors == 'raise' and not inplace:
         warnings.warn('Errors will not raise for non-existing indices')
 
-    op = DataFrameRename(columns_mapper=columns_mapper, index_mapper=index_mapper,
-                         level=level, errors=errors, output_types=[OutputType.dataframe])
-    ret = op(df)
+    return _rename(df, index_mapper=index_mapper, columns_mapper=columns_mapper, copy=copy,
+                   inplace=inplace, level=level, errors=errors)
+
+
+def series_rename(series, index=None, *, axis='index', copy=True, inplace=False, level=None,
+                  errors='ignore'):
+    """
+    Alter Series index labels or name.
+
+    Function / dict values must be unique (1-to-1). Labels not contained in
+    a dict / Series will be left as-is. Extra labels listed don't throw an
+    error.
+
+    Alternatively, change ``Series.name`` with a scalar value.
+
+    Parameters
+    ----------
+    axis : {0 or "index"}
+        Unused. Accepted for compatability with DataFrame method only.
+    index : scalar, hashable sequence, dict-like or function, optional
+        Functions or dict-like are transformations to apply to
+        the index.
+        Scalar or hashable sequence-like will alter the ``Series.name``
+        attribute.
+
+    **kwargs
+        Additional keyword arguments passed to the function. Only the
+        "inplace" keyword is used.
+
+    Returns
+    -------
+    Series
+        Series with index labels or name altered.
+
+    See Also
+    --------
+    DataFrame.rename : Corresponding DataFrame method.
+    Series.rename_axis : Set the name of the axis.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> s = md.Series([1, 2, 3])
+    >>> s.execute()
+    0    1
+    1    2
+    2    3
+    dtype: int64
+    >>> s.rename("my_name").execute()  # scalar, changes Series.name.execute()
+    0    1
+    1    2
+    2    3
+    Name: my_name, dtype: int64
+    >>> s.rename(lambda x: x ** 2).execute()  # function, changes labels.execute()
+    0    1
+    1    2
+    4    3
+    dtype: int64
+    >>> s.rename({1: 3, 2: 5}).execute()  # mapping, changes labels.execute()
+    0    1
+    3    2
+    5    3
+    dtype: int64
+    """
+    validate_axis(axis)
+    return _rename(series, index_mapper=index, copy=copy, inplace=inplace, level=level,
+                   errors=errors)
+
+
+def index_rename(index, name, inplace=False):
+    """
+    Alter Index or MultiIndex name.
+
+    Able to set new names without level. Defaults to returning new index.
+    Length of names must match number of levels in MultiIndex.
+
+    Parameters
+    ----------
+    name : label or list of labels
+        Name(s) to set.
+    inplace : bool, default False
+        Modifies the object directly, instead of creating a new Index or
+        MultiIndex.
+
+    Returns
+    -------
+    Index
+        The same type as the caller or None if inplace is True.
+
+    See Also
+    --------
+    Index.set_names : Able to set new names partially and by level.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> idx = md.Index(['A', 'C', 'A', 'B'], name='score')
+    >>> idx.rename('grade').execute()
+    Index(['A', 'C', 'A', 'B'], dtype='object', name='grade')
+
+    >>> idx = md.Index([('python', 2018),
+    ...                 ('python', 2019),
+    ...                 ('cobra', 2018),
+    ...                 ('cobra', 2019)],
+    ...                names=['kind', 'year'])
+    >>> idx.execute()
+    MultiIndex([('python', 2018),
+                ('python', 2019),
+                ( 'cobra', 2018),
+                ( 'cobra', 2019)],
+               names=['kind', 'year'])
+    >>> idx.rename(['species', 'year']).execute()
+    MultiIndex([('python', 2018),
+                ('python', 2019),
+                ( 'cobra', 2018),
+                ( 'cobra', 2019)],
+               names=['species', 'year'])
+    >>> idx.rename('species').execute()
+    Traceback (most recent call last):
+    TypeError: Must pass list-like as `names`.
+    """
+    op = DataFrameRename(index_mapper=name, object_type=[ObjectType.index])
+    ret = op(index)
     if inplace:
-        df.data = ret.data
+        index.data = ret.data
     else:
         return ret

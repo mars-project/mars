@@ -779,6 +779,15 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
     def name(self):
         return self._data.name
 
+    @name.setter
+    def name(self, val):
+        from .base.rename import DataFrameRename
+        from .operands import ObjectType
+
+        op = DataFrameRename(new_name=val, object_type=[ObjectType.series])
+        new_series = op(self)
+        self.data = new_series.data
+
     @property
     def dtype(self):
         """
