@@ -1,0 +1,149 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.5.0a3\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-06-28 15:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.rename.rst:2
+msgid "mars.dataframe.DataFrame.rename"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:1 of
+msgid "Alter axes labels."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:3 of
+msgid ""
+"Function / dict values must be unique (1-to-1). Labels not contained in a"
+" dict / Series will be left as-is. Extra labels listed don't throw an "
+"error."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:7 of
+msgid ""
+"Dict-like or functions transformations to apply to that axis' values. Use"
+" either ``mapper`` and ``axis`` to specify the axis to target with "
+"``mapper``, or ``index`` and ``columns``."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:12 of
+msgid ""
+"Alternative to specifying axis (``mapper, axis=0`` is equivalent to "
+"``index=mapper``)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:15 of
+msgid ""
+"Alternative to specifying axis (``mapper, axis=1`` is equivalent to "
+"``columns=mapper``)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:18 of
+msgid ""
+"Axis to target with ``mapper``. Can be either the axis name ('index', "
+"'columns') or number (0, 1). The default is 'index'."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:21 of
+msgid "Also copy underlying data."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:23 of
+msgid "Whether to return a new DataFrame. If True then value of copy is ignored."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:26 of
+msgid "In case of a MultiIndex, only rename labels in the specified level."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:29 of
+msgid ""
+"If 'raise', raise a `KeyError` when a dict-like `mapper`, `index`, or "
+"`columns` contains labels that are not present in the Index being "
+"transformed. If 'ignore', existing keys will be renamed and extra keys "
+"will be ignored."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:36 of
+msgid "DataFrame with the renamed axis labels."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename of
+msgid "Raises"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:39 of
+msgid ""
+"If any of the labels is not found in the selected axis and     "
+"\"errors='raise'\"."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:43 of
+msgid ":meth:`DataFrame.rename_axis`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:44 of
+msgid "Set the name of the axis."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:47 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:48 of
+msgid "``DataFrame.rename`` supports two calling conventions"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:50 of
+msgid "``(index=index_mapper, columns=columns_mapper, ...)``"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:51 of
+msgid "``(mapper, axis={'index', 'columns'}, ...)``"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:53 of
+msgid "We *highly* recommend using keyword arguments to clarify your intent."
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:56 of
+msgid "Rename columns using a mapping:"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:66 of
+msgid "Rename index using a mapping:"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:74 of
+msgid "Cast index labels to a different type:"
+msgstr ""
+
+#: mars.dataframe.DataFrame.rename:85 of
+msgid "Using axis-style parameters"
+msgstr ""
+

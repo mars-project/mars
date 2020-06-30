@@ -1471,3 +1471,59 @@ class Test(TestBase):
 
         with self.assertRaises(ValueError):
             df.columns = ['1', '2', '3']
+
+    def testDataFrameRename(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.rand(10, 4), columns=['A', 'B', 'C', 'D'])
+        df = from_pandas_df(raw, chunk_size=3)
+
+        with self.assertWarns(Warning):
+            df.rename(str, errors='raise')
+
+        with self.assertRaises(NotImplementedError):
+            df.rename({"A": "a", "B": "b"}, axis=1, copy=False)
+
+        r = df.rename(str)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.rename(str))
+
+        r = df.rename({"A": "a", "B": "b"}, axis=1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.rename({"A": "a", "B": "b"}, axis=1))
+
+        df.rename({"A": "a", "B": "b"}, axis=1, inplace=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      raw.rename({"A": "a", "B": "b"}, axis=1))
+
+        raw = pd.DataFrame(rs.rand(10, 4),
+                           columns=pd.MultiIndex.from_tuples((('A', 'C'), ('A', 'D'), ('B', 'E'), ('B', 'F'))))
+        df = from_pandas_df(raw, chunk_size=3)
+
+        r = df.rename({"C": "a", "D": "b"}, level=1, axis=1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.rename({"C": "a", "D": "b"}, level=1, axis=1))
+
+        raw = pd.Series(rs.rand(10), name='series')
+        series = from_pandas_series(raw, chunk_size=3)
+
+        r = series.rename('new_series')
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.rename('new_series'))
+
+        r = series.rename(lambda x: 2 ** x)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.rename(lambda x: 2 ** x))
+
+        with self.assertRaises(TypeError):
+            series.name = {1: 10, 2: 20}
+
+        series.name = 'new_series'
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
+                                       raw.rename('new_series'))
+
+        raw = pd.MultiIndex.from_frame(pd.DataFrame(rs.rand(10, 2), columns=['A', 'B']))
+        idx = from_pandas_index(raw)
+
+        r = idx.rename(['C', 'D'])
+        pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.rename(['C', 'D']))
