@@ -33,7 +33,7 @@ class MockGraphActor(FunctionActor):
     def gen_uid(session_id, graph_key):
         return GraphActor.gen_uid(session_id, graph_key)
 
-    def execute_graph(self):
+    def execute_graph(self, **_):
         pass
 
     def handle_worker_change(self, *args):

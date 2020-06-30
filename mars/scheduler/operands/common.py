@@ -85,19 +85,23 @@ class OperandActor(BaseOperandActor):
                                                     _tell=True, _wait=False))
         [f.result() for f in futures]
 
+    @log_unhandled
     def append_graph(self, graph_key, op_info):
-        from ..graph import GraphActor
+        super().append_graph(graph_key, op_info)
 
         if not self._is_terminal:
             self._is_terminal = op_info.get('is_terminal')
-        graph_ref = self.get_actor_ref(GraphActor.gen_uid(self._session_id, graph_key))
-        self._graph_refs.append(graph_ref)
-        self._pred_keys.update(op_info['io_meta']['predecessors'])
-        self._succ_keys.update(op_info['io_meta']['successors'])
-        if self._state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
-            self._state = op_info['state']
-        if self._state not in OperandState.TERMINATED_STATES:
+
+        if self.state not in OperandState.TERMINATED_STATES:
             self.start_operand()
+        elif self.state in OperandState.STORED_STATES:
+            for out_key in self._succ_keys:
+                self._get_operand_actor(out_key).add_finished_predecessor(
+                    self._op_key, self.worker, _tell=True, _wait=False)
+            # require more chunks to execute if the completion caused no successors to run
+            if self._is_terminal:
+                # update records in GraphActor to help decide if the whole graph finished execution
+                self._add_finished_terminal()
 
     def start_operand(self, state=None, **kwargs):
         target_worker = kwargs.get('target_worker')
@@ -105,10 +109,12 @@ class OperandActor(BaseOperandActor):
             self._target_worker = target_worker
         return super().start_operand(state=state, **kwargs)
 
+    @log_unhandled
     def add_running_predecessor(self, op_key, worker):
         super().add_running_predecessor(op_key, worker)
         self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
 
+    @log_unhandled
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         """
         This function shall return whether current node is ready. The return values will
@@ -123,6 +129,7 @@ class OperandActor(BaseOperandActor):
             return True
         return False
 
+    @log_unhandled
     def add_finished_successor(self, op_key, worker):
         super().add_finished_successor(op_key, worker)
         if not self._is_terminal and \
@@ -165,6 +172,7 @@ class OperandActor(BaseOperandActor):
                 if in_key not in self._finish_preds and in_key not in self._running_preds:
                     self._get_operand_actor(in_key).update_demand_depths(depth, _tell=True, _wait=False)
 
+    @log_unhandled
     def propose_descendant_workers(self, input_key, worker_scores, depth=1):
         """
         Calculate likelihood of the operand being sent to workers
@@ -215,6 +223,7 @@ class OperandActor(BaseOperandActor):
     def _is_worker_alive(self):
         return bool(self._assigner_ref.filter_alive_workers([self.worker], refresh=True))
 
+    @log_unhandled
     def move_failover_state(self, from_states, state, new_target, dead_workers):
         """
         Move the operand into new state when executing fail-over step
@@ -245,7 +254,7 @@ class OperandActor(BaseOperandActor):
 
             for succ_key in self._succ_keys:
                 self._get_operand_actor(succ_key).propose_descendant_workers(
-                    self._op_key, {new_target: 1.0}, _wait=False)
+                    self._op_key, {new_target: 1.0}, _tell=True, _wait=False)
 
             target_updated = True
         else:
@@ -266,6 +275,7 @@ class OperandActor(BaseOperandActor):
         self._allocated = False
         super().move_failover_state(from_states, state, new_target, dead_workers)
 
+    @log_unhandled
     def free_data(self, state=OperandState.FREED, check=True):
         """
         Free output data of current operand
@@ -281,6 +291,13 @@ class OperandActor(BaseOperandActor):
                 return
 
         self.start_operand(state)
+
+        for out_key in self._succ_keys:
+            self._get_operand_actor(out_key).remove_finished_predecessor(
+                self._op_key, _tell=True, _wait=False)
+        for in_key in self._pred_keys:
+            self._get_operand_actor(in_key).remove_finished_successor(
+                self._op_key, _tell=True, _wait=False)
 
         stored_keys = self._io_meta.get('data_targets')
         if stored_keys:
@@ -534,10 +551,9 @@ class OperandActor(BaseOperandActor):
     def _add_finished_terminal(self, final_state=None, exc=None):
         futures = []
         for graph_ref in self._graph_refs:
-            if graph_ref.reload_state() in (GraphState.RUNNING, GraphState.CANCELLING):
-                futures.append(graph_ref.add_finished_terminal(
-                    self._op_key, final_state=final_state, exc=exc, _tell=True, _wait=False
-                ))
+            futures.append(graph_ref.add_finished_terminal(
+                self._op_key, final_state=final_state, exc=exc, _tell=True, _wait=False
+            ))
 
         return futures
 

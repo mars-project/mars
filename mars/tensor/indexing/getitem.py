@@ -81,7 +81,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         indexes = tuple(ctx[index.key] if hasattr(index, 'key') else index
                         for index in op.indexes)
         input_ = ctx[op.inputs[0].key]
-        ret = input_[indexes]
+        xp = get_array_module(input_)
+        ret = xp.asarray(input_)[indexes]
         if hasattr(ret, 'astype'):
             ret = ret.astype(
                 ret.dtype, order=op.outputs[0].order.value, copy=False)

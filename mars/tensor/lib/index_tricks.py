@@ -228,7 +228,7 @@ class AxisConcatenator:
                 except (ValueError, TypeError):  # pragma: no cover# pragma: no cover
                     raise ValueError("unknown special directive")
             elif type(item) in ScalarType:
-                newobj = _nx.array(item, ndmin=ndmin)
+                newobj = np.array(item, ndmin=ndmin)
                 scalars.append(len(objs))
                 scalar = True
                 scalartypes.append(newobj.dtype)
