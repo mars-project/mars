@@ -127,6 +127,7 @@ Reindexing / selection / label manipulation
    Series.drop_duplicates
    Series.head
    Series.isin
+   Series.rename
    Series.reset_index
    Series.tail
 
