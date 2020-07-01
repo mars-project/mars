@@ -93,6 +93,9 @@ class OperandActor(BaseOperandActor):
             self._is_terminal = op_info.get('is_terminal')
 
         if self.state not in OperandState.TERMINATED_STATES:
+            for in_key in self._pred_keys:
+                self._get_operand_actor(in_key).remove_finished_successor(
+                    self._op_key, _tell=True, _wait=False)
             self.start_operand()
         elif self.state in OperandState.STORED_STATES:
             for out_key in self._succ_keys:
@@ -294,9 +297,6 @@ class OperandActor(BaseOperandActor):
 
         for out_key in self._succ_keys:
             self._get_operand_actor(out_key).remove_finished_predecessor(
-                self._op_key, _tell=True, _wait=False)
-        for in_key in self._pred_keys:
-            self._get_operand_actor(in_key).remove_finished_successor(
                 self._op_key, _tell=True, _wait=False)
 
         stored_keys = self._io_meta.get('data_targets')

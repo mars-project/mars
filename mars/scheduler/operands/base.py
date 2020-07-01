@@ -147,10 +147,10 @@ class BaseOperandActor(SchedulerActor):
                 self.start_operand(OperandState.READY)
             else:
                 self.state = op_info['state']
-                logger.debug('State of %s reset to %r', self._op_key, self.state)
+                logger.debug('State of %s(%s) reset to %s', self._op_key, self._op_name, self.state)
         else:
             # make sure states synchronized among graphs
-            logger.debug('State of %s kept as %r', self._op_key, op_info['state'])
+            logger.debug('State of %s(%s) kept as %s', self._op_key, self._op_name, self.state)
             self.state = self.state
 
     def get_state(self):

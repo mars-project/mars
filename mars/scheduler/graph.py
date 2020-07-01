@@ -504,11 +504,16 @@ class GraphActor(SchedulerActor):
 
     @classmethod
     def _prune_chunk_graph(cls, chunk_graph, result_chunk_keys):
+        result_op_keys = set()
+        for c in chunk_graph:
+            if c.key in result_chunk_keys:
+                result_op_keys.add(c.op.key)
+
         reverse_chunk_graph = chunk_graph.build_reversed()
         marked = set()
         for c in reverse_chunk_graph.topological_iter():
             if reverse_chunk_graph.count_predecessors(c) == 0 and \
-                    c.key in result_chunk_keys:
+                    c.op.key in result_op_keys:
                 marked.add(c)
             elif any(inp in marked for inp in reverse_chunk_graph.iter_predecessors(c)):
                 marked.add(c)
