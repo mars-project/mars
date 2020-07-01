@@ -366,19 +366,32 @@ class GraphActor(SchedulerActor):
         self.state = GraphState.PREPARING
         self._execute_graph(compose=compose)
 
+    def _dump_graph(self):
+        with self._open_dump_file('graph') as outf:  # pragma: no cover
+            succ_op_keys = dict()
+            graph = self._chunk_graph_cache
+            chunks = list(graph)
+            for n in graph:
+                succ_op_keys[n.key] = succ_op_keys.get(n.key, set()) \
+                    | set(succ.op.key for succ in graph.iter_successors(n))
+                for c in n.inputs:
+                    if isinstance(c.op, Fetch):
+                        if c.key not in succ_op_keys:
+                            chunks.append(c)
+                            succ_op_keys[c.key] = set()
+                        succ_op_keys[c.key].add(n.op.key)
+            for n in chunks:
+                outf.write(
+                    '%s(%s)[%s] -> %s\n' % (
+                        n.op.key, n.key, type(n.op).__name__, ','.join(sorted(succ_op_keys[n.key])))
+                )
+
     def _execute_graph(self, compose=True):
         try:
             self.prepare_graph(compose=compose)
             self._detect_cancel()
 
-            with self._open_dump_file('graph') as outf:  # pragma: no cover
-                graph = self._chunk_graph_cache
-                for n in graph:
-                    outf.write(
-                        '%s(%s)[%s] -> %s\n' % (
-                            n.op.key, n.key, type(n.op).__name__,
-                            ','.join(succ.op.key for succ in graph.iter_successors(n)))
-                    )
+            self._dump_graph()
 
             self.analyze_graph()
             self._detect_cancel()
@@ -491,11 +504,16 @@ class GraphActor(SchedulerActor):
 
     @classmethod
     def _prune_chunk_graph(cls, chunk_graph, result_chunk_keys):
+        result_op_keys = set()
+        for c in chunk_graph:
+            if c.key in result_chunk_keys:
+                result_op_keys.add(c.op.key)
+
         reverse_chunk_graph = chunk_graph.build_reversed()
         marked = set()
         for c in reverse_chunk_graph.topological_iter():
             if reverse_chunk_graph.count_predecessors(c) == 0 and \
-                    c.key in result_chunk_keys:
+                    c.op.key in result_op_keys:
                 marked.add(c)
             elif any(inp in marked for inp in reverse_chunk_graph.iter_predecessors(c)):
                 marked.add(c)
@@ -519,6 +537,7 @@ class GraphActor(SchedulerActor):
         is_done = chunk_graph_builder.done
         cur_tileable_graph = chunk_graph_builder.prev_tileable_graph
         cur_chunk_graph = self.get_chunk_graph()
+        chunk_keys = {c.key for c in cur_chunk_graph}
 
         if is_done:
             target_tileable_keys = self._target_tileable_keys
@@ -535,6 +554,11 @@ class GraphActor(SchedulerActor):
                 self._target_tileable_finished[tn.key] = set()
                 tiled_tn = self._tileable_key_opid_to_tiled[tn.key, tn.op.id][-1]
                 for c in tiled_tn.chunks:
+                    assert c.key in chunk_keys
+                    if isinstance(c.op, Fetch):
+                        # if the terminal chunk's op is fetch
+                        # just add it to terminated
+                        self._terminated_chunk_keys.add(c.key)
                     self._terminal_chunk_keys.add(c.key)
                     self._terminal_chunk_op_key_to_tileable_key[c.op.key].add(tn.key)
                     self._terminal_tileable_key_to_chunk_op_keys[tn.key].add(c.op.key)
@@ -546,7 +570,10 @@ class GraphActor(SchedulerActor):
             for cn in cur_chunk_graph:
                 if cur_chunk_graph.count_successors(cn) == 0 and \
                         not isinstance(cn.op, Fetch):
+                    assert cn.key in chunk_keys
                     self._terminal_chunk_keys.add(cn.key)
+
+        logger.debug('Terminal chunk keys: %r' % self._terminal_chunk_keys)
 
     @log_unhandled
     @enter_build_mode
@@ -591,8 +618,9 @@ class GraphActor(SchedulerActor):
                         tiled_before.key, tiled_before.op.id].append(tiled_after)
                 return tiled_after
 
+            # do not compose here
             self._chunk_graph_builder = IterativeChunkGraphBuilder(
-                on_tile=on_tile, on_tile_success=on_tile_success, compose=compose)
+                on_tile=on_tile, on_tile_success=on_tile_success, compose=False)
 
         chunk_graph_builder = self._chunk_graph_builder
         if chunk_graph_builder.prev_tileable_graph is None:
@@ -630,6 +658,8 @@ class GraphActor(SchedulerActor):
         self._gen_target_info()
         if chunk_graph_builder.done:
             self._prune_chunk_graph(cur_chunk_graph, self._terminal_chunk_keys)
+        if compose:
+            cur_chunk_graph.compose(keys=list(self._terminal_chunk_keys))
 
         for c in list(cur_chunk_graph):
             if not isinstance(c.op, Fetch):
@@ -931,6 +961,8 @@ class GraphActor(SchedulerActor):
         :param op_key: operand key
         :param final_state: state of the operand
         """
+        if self._state not in (GraphState.RUNNING, GraphState.CANCELLING):
+            return
         if exc is not None:
             self._graph_meta_ref.set_exc_info(exc, _tell=True, _wait=False)
 
@@ -962,7 +994,14 @@ class GraphActor(SchedulerActor):
                     # if failed before, clear intermediate data
                     to_free_tileable_keys = \
                         self._all_terminated_tileable_keys - set(self._target_tileable_keys)
-                    [self.free_tileable_data(k) for k in to_free_tileable_keys]
+                    skip_chunk_keys = set()
+                    for target_tileable_data in self._target_tileable_datas:
+                        tiled_target_tileable_data = \
+                            self._tileable_key_opid_to_tiled[target_tileable_data.key,
+                                                             target_tileable_data.op.id][-1]
+                        skip_chunk_keys.update([c.key for c in tiled_target_tileable_data.chunks])
+                    [self.free_tileable_data(k, skip_chunk_keys=skip_chunk_keys)
+                     for k in to_free_tileable_keys]
                 self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
                 self._graph_meta_ref.set_graph_end(_tell=True)
             else:
@@ -1084,12 +1123,16 @@ class GraphActor(SchedulerActor):
         return self._tileable_key_opid_to_tiled[(key, tid)][-1]
 
     @log_unhandled
-    def free_tileable_data(self, tileable_key, wait=False):
+    def free_tileable_data(self, tileable_key, skip_chunk_keys=None, wait=False):
         tileable = self._get_tileable_by_key(tileable_key)
         futures = []
         for chunk in tileable.chunks:
+            if skip_chunk_keys is not None and chunk.key in skip_chunk_keys:
+                continue
             futures.append(self._get_operand_ref(chunk.op.key).free_data(
                 check=False, _tell=not wait, _wait=False))
+        logger.debug('Free tileable data: %s, chunk keys: %r' %
+                     (tileable_key, [c.key for c in tileable.chunks]))
         [f.result() for f in futures]
 
     def get_tileable_metas(self, tileable_keys, filter_fields=None):
