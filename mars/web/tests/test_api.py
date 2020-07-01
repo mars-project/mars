@@ -14,19 +14,20 @@
 # limitations under the License.
 
 import base64
-import requests
 import json
-import unittest
+import logging
 import os
 import pickle
-import sys
 import signal
 import subprocess
+import sys
 import time
 import traceback
+import unittest
 import uuid
 
 import numpy as np
+import requests
 from numpy.testing import assert_array_equal
 
 from mars import tensor as mt
@@ -38,6 +39,8 @@ from mars.session import new_session
 from mars.serialize.dataserializer import dumps, SerialType
 from mars.tests.core import mock
 from mars.utils import get_next_port
+
+logger = logging.getLogger(__name__)
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
@@ -165,6 +168,7 @@ class Test(unittest.TestCase):
         timeout = 120 if 'CI' in os.environ else -1
         with new_session(service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
+
             a = mt.ones((100, 100), chunk_size=30)
             b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
@@ -258,7 +262,7 @@ class Test(unittest.TestCase):
         actor_client = new_client()
         storage_manager_ref = actor_client.actor_ref(StorageManagerActor.default_uid(),
                                                      address='127.0.0.1:' + str(self.worker_port))
-        self.assertFalse(bool(storage_manager_ref.dump_keys()))
+        self.assertSetEqual(set(storage_manager_ref.dump_keys()), set())
 
     def testWebApiException(self):
         def normalize_tbs(tb_lines):

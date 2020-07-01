@@ -82,8 +82,8 @@ with open(os.path.join(repo_root, 'requirements-dev.txt'), 'r') as f:
 
 long_description = None
 if os.path.exists(os.path.join(repo_root, 'README.rst')):
-    with open(os.path.join(repo_root, 'README.rst')) as f:
-        long_description = f.read()
+    with open(os.path.join(repo_root, 'README.rst'), 'rb') as f:
+        long_description = f.read().decode()
 
 
 if os.path.exists(os.path.join(repo_root, '.git')):

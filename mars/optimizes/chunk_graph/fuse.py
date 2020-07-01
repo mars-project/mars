@@ -16,7 +16,7 @@
 
 from collections import deque
 
-from ...operands import Fuse, VirtualOperand
+from ...operands import Fuse, VirtualOperand, Fetch
 
 
 class Fusion:
@@ -74,8 +74,8 @@ class Fusion:
                 continue
             if len(v.op.outputs) != 1:
                 continue
-            if isinstance(v.op, VirtualOperand):
-                # cannot fuse virtual operand
+            if isinstance(v.op, (VirtualOperand, Fetch)):
+                # cannot fuse virtual operand or fetch
                 continue
             if v.op.expect_worker is not None:
                 # don't fuse operand that has explicit worker assignment
@@ -84,9 +84,10 @@ class Fusion:
             # add successors
             cur_node = self._graph.successors(v)[0]
             while self._graph.count_predecessors(cur_node) == 1 and \
-                    not isinstance(cur_node.op, VirtualOperand):
+                    not isinstance(cur_node.op, (VirtualOperand, Fetch)):
                 selected.append(cur_node)
-                if self._graph.count_successors(cur_node) != 1:
+                if self._graph.count_successors(cur_node) != 1 or \
+                        cur_node.key in keys_set:
                     break
                 else:
                     cur_node = self._graph.successors(cur_node)[0]
