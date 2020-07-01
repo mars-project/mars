@@ -300,24 +300,28 @@ def roc_curve(y_true, y_score, pos_label=None, sample_weight=None,
     fps = mt.r_[0, fps]
     thresholds = mt.r_[thresholds[0] + 1, thresholds]
 
-    mt.ExecutableTuple([tps, fps]).execute(session=session,
-                                           **(run_kwargs or dict()))
+    last_fps = fps[-1]
+    last_tps = tps[-1]
+    mt.ExecutableTuple([tps, fps, last_fps, last_tps]).execute(session=session,
+                                                               **(run_kwargs or dict()))
+    last_fps, last_tps = mt.ExecutableTuple([last_fps, last_tps]).fetch(session=session)
 
-    if fps[-1].fetch() <= 0:
+    if last_fps <= 0:
         warnings.warn("No negative samples in y_true, "
                       "false positive value should be meaningless",
                       UndefinedMetricWarning)
         fpr = mt.repeat(mt.nan, fps.shape)
     else:
-        fpr = fps / fps[-1]
+        fpr = fps / last_fps
 
-    if tps[-1].fetch() <= 0:
+    if last_tps <= 0:
         warnings.warn("No positive samples in y_true, "
                       "true positive value should be meaningless",
                       UndefinedMetricWarning)
         tpr = mt.repeat(mt.nan, tps.shape)
     else:
-        tpr = tps / tps[-1]
+        tpr = tps / last_tps
 
-    ret = mt.ExecutableTuple([fpr, tpr, thresholds])
-    return ret.execute(session=session, **(run_kwargs or dict()))
+    ret = mt.ExecutableTuple([fpr, tpr, thresholds]).execute(
+        session=session, **(run_kwargs or dict()))
+    return ret

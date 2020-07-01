@@ -133,6 +133,26 @@ class BaseOperandActor(SchedulerActor):
         [f.result() for f in futures]
         self._worker = value
 
+    def append_graph(self, graph_key, op_info):
+        from ..graph import GraphActor
+
+        graph_ref = self.get_actor_ref(GraphActor.gen_uid(self._session_id, graph_key))
+        self._graph_refs.append(graph_ref)
+
+        self._pred_keys.update(op_info['io_meta']['predecessors'])
+        self._succ_keys.update(op_info['io_meta']['successors'])
+
+        if self.state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
+            if op_info['state'] == OperandState.UNSCHEDULED and set(self._pred_keys) == self._finish_preds:
+                self.start_operand(OperandState.READY)
+            else:
+                self.state = op_info['state']
+                logger.debug('State of %s(%s) reset to %s', self._op_key, self._op_name, self.state)
+        else:
+            # make sure states synchronized among graphs
+            logger.debug('State of %s(%s) kept as %s', self._op_key, self._op_name, self.state)
+            self.state = self.state
+
     def get_state(self):
         return self._state
 

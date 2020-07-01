@@ -336,13 +336,13 @@ class Session(object):
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
             raise exc_info[1].with_traceback(exc_info[2])
-        graph_key_hex, tensor_key, tensor_id, tensor_meta = json.loads(resp.text)
-        self._executed_tileables[tensor_key] = uuid.UUID(graph_key_hex), {tensor_id}
+        graph_key_hex, tileable_key, tensor_id, tensor_meta = json.loads(resp.text)
+        self._executed_tileables[tileable_key] = uuid.UUID(graph_key_hex), {tensor_id}
 
         # # Construct Tensor on the fly.
         shape, dtype, chunk_size, chunk_keys, _ = tensor_meta
         return create_fetch_tensor(chunk_size, shape, numpy_dtype_from_descr_json(dtype),
-                                   tensor_key=tensor_key, chunk_keys=chunk_keys)
+                                   tensor_key=tileable_key, chunk_keys=chunk_keys)
 
     def _get_tileable_nsplits(self, tileable_key):
         session_url = self._endpoint + '/api/session/' + self._session_id
