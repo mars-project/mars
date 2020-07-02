@@ -188,8 +188,11 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
         test_df = pd.read_sql(query, engine_or_conn, index_col=self._index_col,
                               coerce_float=self._coerce_float,
                               parse_dates=self._parse_dates)
-        self._row_memory_usage = \
-            test_df.memory_usage(deep=True, index=True).sum() / test_rows
+        if len(test_df) == 0:
+            self._row_memory_usage = None
+        else:
+            self._row_memory_usage = \
+                test_df.memory_usage(deep=True, index=True).sum() / len(test_df)
 
         if self._method == 'offset':
             # fetch size
@@ -272,10 +275,15 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
     def _tile_offset(cls, op: 'DataFrameReadSQL'):
         df = op.outputs[0]
 
-        chunk_size = df.extra_params.raw_chunk_size or options.chunk_size
-        if chunk_size is None:
-            chunk_size = (int(options.chunk_store_limit / op.row_memory_usage), df.shape[1])
-        row_chunk_sizes = normalize_chunk_sizes(df.shape, chunk_size)[0]
+        if op.row_memory_usage is not None:
+            # Data selected
+            chunk_size = df.extra_params.raw_chunk_size or options.chunk_size
+            if chunk_size is None:
+                chunk_size = (int(options.chunk_store_limit / op.row_memory_usage), df.shape[1])
+            row_chunk_sizes = normalize_chunk_sizes(df.shape, chunk_size)[0]
+        else:
+            # No data selected
+            row_chunk_sizes = (0,)
         offsets = np.cumsum((0,) + row_chunk_sizes)
 
         out_chunks = []
