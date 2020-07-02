@@ -244,15 +244,26 @@ class KubernetesCluster:
 
     def _wait_services_ready(self):
         min_worker_num = int(self._min_worker_num or self._worker_num)
+        readies = [0, 0, 0]
         limits = [self._scheduler_num, min_worker_num, self._web_num]
         selectors = [
             'name=' + MarsSchedulersConfig.rc_name,
             'name=' + MarsWorkersConfig.rc_name,
             'name=' + MarsWebsConfig.rc_name,
-            ]
-        wait_services_ready(selectors, limits,
-                            lambda sel: self._get_ready_pod_count(sel),
-                            timeout=self._timeout)
+        ]
+        start_time = time.time()
+        while True:
+            all_satisfy = True
+            for idx, selector in enumerate(selectors):
+                if readies[idx] < limits[idx]:
+                    all_satisfy = False
+                    readies[idx] = self._get_ready_pod_count(selector)
+                    break
+            if all_satisfy:
+                break
+            if self._timeout and self._timeout + start_time < time.time():
+                raise TimeoutError('Wait kubernetes cluster start timeout')
+            time.sleep(1)
         logger.info('All service pods ready.')
 
     def _load_cluster_logs(self):
