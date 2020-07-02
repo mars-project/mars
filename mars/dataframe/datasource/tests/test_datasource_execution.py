@@ -505,6 +505,11 @@ class Test(TestBase):
             result = self.executor.execute_dataframe(r, concat=True)[0]
             pd.testing.assert_frame_equal(result, test_df[test_df.b > 's5'].set_index('d'))
 
+            # test SQL that return no result
+            r = md.read_sql_query('select * from test where a > 1000', uri)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            pd.testing.assert_frame_equal(result, pd.DataFrame(columns=test_df.columns))
+
             engine = sa.create_engine(uri)
             m = sa.MetaData()
             try:
