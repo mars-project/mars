@@ -85,7 +85,7 @@ class DataFrameIndexAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
         if getattr(self, '_index_min', None) is None:
             return None
         return self._index_min, self._index_min_close, \
-               self._index_max, self._index_max_close
+            self._index_max, self._index_max_close
 
     @property
     def index_shuffle_size(self):
@@ -112,7 +112,7 @@ class DataFrameIndexAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
         if getattr(self, '_column_min', None) is None:
             return None
         return self._column_min, self._column_min_close, \
-               self._column_max, self._column_max_close
+            self._column_max, self._column_max_close
 
     @property
     def column_shuffle_size(self):
@@ -462,8 +462,8 @@ def _need_align_map(input_chunk, index_min_max, column_min_max,
 def _is_index_identical(left, right):
     if len(left) != len(right):
         return False
-    for l, r in zip(left, right):
-        if l.key != r.key:
+    for left_item, right_item in zip(left, right):
+        if left_item.key != right_item.key:
             return False
     return True
 

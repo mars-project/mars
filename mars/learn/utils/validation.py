@@ -103,7 +103,7 @@ def check_consistent_length(*arrays, session=None, run_kwargs=None):
     uniques = np.unique(lengths)
     if len(uniques) > 1:
         raise ValueError("Found input variables with inconsistent numbers of"
-                         " samples: %r" % [int(l) for l in lengths])
+                         " samples: %r" % [int(length) for length in lengths])
 
 
 def _make_indexable(iterable):

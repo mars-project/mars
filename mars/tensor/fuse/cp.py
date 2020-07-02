@@ -59,7 +59,7 @@ CP_UNARYOP_TO_STRING = {
 
 
 def _evaluate(chunk):
-    letters = iter(l for l in ascii_letters if l not in 'ni')
+    letters = iter(letter for letter in ascii_letters if letter not in 'ni')
 
     input_types = [i.dtype.name for i in chunk.op.inputs]
     input_names = {i: next(letters) for i in chunk.op.inputs}

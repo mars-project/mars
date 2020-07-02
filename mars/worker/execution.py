@@ -298,7 +298,7 @@ class ExecutionActor(WorkerActor):
 
         @log_unhandled
         def _finish_fetch(*_):
-            locations = set(l[1] for l in storage_client.get_data_locations(session_id, [chunk_key])[0])
+            locations = set(locs[1] for locs in storage_client.get_data_locations(session_id, [chunk_key])[0])
             if DataStorageDevice.PROC_MEMORY not in locations:
                 self._pin_shared_data_keys(session_id, graph_key, [chunk_key])
                 self._mem_quota_ref.release_quotas(

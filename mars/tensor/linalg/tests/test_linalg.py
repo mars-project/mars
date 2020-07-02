@@ -226,56 +226,56 @@ class Test(unittest.TestCase):
 
     def testLU(self):
         a = mt.random.randint(1, 10, (6, 6), chunk_size=3)
-        p, l, u = mt.linalg.lu(a)
+        p, l_, u = mt.linalg.lu(a)
 
-        l = l.tiles()
+        l_ = l_.tiles()
         p, u = get_tiled(p), get_tiled(u)
 
-        self.assertEqual(l.shape, (6, 6))
+        self.assertEqual(l_.shape, (6, 6))
         self.assertEqual(u.shape, (6, 6))
         self.assertEqual(p.shape, (6, 6))
 
         a = mt.random.randint(1, 10, (6, 6), chunk_size=(3, 2))
-        p, l, u = mt.linalg.lu(a)
-        l = l.tiles()
+        p, l_, u = mt.linalg.lu(a)
+        l_ = l_.tiles()
         p, u = get_tiled(p), get_tiled(u)
 
-        self.assertEqual(l.shape, (6, 6))
+        self.assertEqual(l_.shape, (6, 6))
         self.assertEqual(u.shape, (6, 6))
         self.assertEqual(p.shape, (6, 6))
 
         self.assertEqual(p.nsplits, ((3, 3), (3, 3)))
-        self.assertEqual(l.nsplits, ((3, 3), (3, 3)))
+        self.assertEqual(l_.nsplits, ((3, 3), (3, 3)))
         self.assertEqual(u.nsplits, ((3, 3), (3, 3)))
 
         a = mt.random.randint(1, 10, (7, 7), chunk_size=4)
-        p, l, u = mt.linalg.lu(a)
-        l = l.tiles()
+        p, l_, u = mt.linalg.lu(a)
+        l_ = l_.tiles()
         p, u = get_tiled(p), get_tiled(u)
 
-        self.assertEqual(l.shape, (7, 7))
+        self.assertEqual(l_.shape, (7, 7))
         self.assertEqual(u.shape, (7, 7))
         self.assertEqual(p.shape, (7, 7))
 
         self.assertEqual(p.nsplits, ((4, 3), (4, 3)))
-        self.assertEqual(l.nsplits, ((4, 3), (4, 3)))
+        self.assertEqual(l_.nsplits, ((4, 3), (4, 3)))
         self.assertEqual(u.nsplits, ((4, 3), (4, 3)))
 
         a = mt.random.randint(1, 10, (7, 5), chunk_size=4)
-        p, l, u = mt.linalg.lu(a)
-        l = l.tiles()
+        p, l_, u = mt.linalg.lu(a)
+        l_ = l_.tiles()
         p, u = get_tiled(p), get_tiled(u)
 
-        self.assertEqual(l.shape, (7, 5))
+        self.assertEqual(l_.shape, (7, 5))
         self.assertEqual(u.shape, (5, 5))
         self.assertEqual(p.shape, (7, 7))
 
         a = mt.random.randint(1, 10, (5, 7), chunk_size=4)
-        p, l, u = mt.linalg.lu(a)
-        l = l.tiles()
+        p, l_, u = mt.linalg.lu(a)
+        l_ = l_.tiles()
         p, u = get_tiled(p), get_tiled(u)
 
-        self.assertEqual(l.shape, (5, 5))
+        self.assertEqual(l_.shape, (5, 5))
         self.assertEqual(u.shape, (5, 7))
         self.assertEqual(p.shape, (5, 5))
 
@@ -287,19 +287,19 @@ class Test(unittest.TestCase):
                                [7, 0, 6, 1, 7, 0],
                                [0, 0, 0, 7, 0, 8]])
         t = mt.tensor(data, chunk_size=3)
-        p, l, u = mt.linalg.lu(t)
+        p, l_, u = mt.linalg.lu(t)
 
         self.assertTrue(p.op.sparse)
         self.assertIsInstance(p, SparseTensor)
-        self.assertTrue(l.op.sparse)
-        self.assertIsInstance(l, SparseTensor)
+        self.assertTrue(l_.op.sparse)
+        self.assertIsInstance(l_, SparseTensor)
         self.assertTrue(u.op.sparse)
         self.assertIsInstance(u, SparseTensor)
 
         p = p.tiles()
-        l, u = get_tiled(l), get_tiled(u)
+        l_, u = get_tiled(l_), get_tiled(u)
         self.assertTrue(all(c.is_sparse() for c in p.chunks))
-        self.assertTrue(all(c.is_sparse() for c in l.chunks))
+        self.assertTrue(all(c.is_sparse() for c in l_.chunks))
         self.assertTrue(all(c.is_sparse() for c in u.chunks))
 
     def testSolve(self):

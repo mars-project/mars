@@ -344,7 +344,7 @@ class Test(WorkerCase):
             with self.run_actor_test(pool) as test_actor:
                 self.waitp(
                     test_actor.storage_client.put_objects(
-                        session_id, [modified_chunk.key], [mock_data], [DataStorageDevice.PROC_MEMORY]) \
+                            session_id, [modified_chunk.key], [mock_data], [DataStorageDevice.PROC_MEMORY])
                         .then(lambda *_: test_actor.storage_client.copy_to(
                             session_id, [modified_chunk.key], [DataStorageDevice.DISK]))
                 )

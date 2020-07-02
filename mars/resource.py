@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import subprocess  # nosec
 import sys
@@ -22,6 +23,8 @@ from collections import namedtuple
 import psutil
 
 from .lib import nvutils
+
+logger = logging.getLogger(__name__)
 
 CGROUP_CPU_STAT_FILE = '/sys/fs/cgroup/cpuacct/cpuacct.stat'
 CGROUP_MEM_STAT_FILE = '/sys/fs/cgroup/memory/memory.stat'
@@ -65,8 +68,8 @@ def _read_cgroup_stat_file():
     with open(CGROUP_MEM_STAT_FILE, 'r') as cg_file:
         contents = cg_file.read()
     kvs = dict()
-    for l in contents.splitlines():
-        parts = l.split(' ')
+    for line in contents.splitlines():
+        parts = line.split(' ')
         if len(parts) == 2:
             kvs[parts[0]] = int(parts[1])
     return kvs
@@ -194,7 +197,7 @@ def cpu_percent():
             time_delta = sts[pid] - old_sts[pid]
 
             if time_delta < 1e-2:
-                return _last_cpu_percent
+                return _last_cpu_percent or 0
             percents.append((delta_proc / time_delta) * 100)
         _last_proc_cpu_measure = (pts, sts)
         _last_cpu_percent = round(sum(percents), 1)

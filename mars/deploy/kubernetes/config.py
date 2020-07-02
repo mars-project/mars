@@ -17,7 +17,6 @@ from ... import __version__ as mars_version
 from ...utils import parse_readable_size
 
 DEFAULT_IMAGE = 'marsproject/mars:v' + mars_version
-DEFAULT_SERVICE_PORT = 7103
 
 
 def _remove_nones(cfg):
@@ -104,7 +103,7 @@ class ServiceConfig:
         self._protocol = protocol or 'TCP'
         self._selector = selector
         self._port = port
-        self._target_port = target_port or DEFAULT_SERVICE_PORT
+        self._target_port = target_port
 
     def build(self):
         return {
@@ -147,7 +146,7 @@ class PortConfig:
     Configuration builder for Kubernetes ports definition for containers
     """
     def __init__(self, container_port):
-        self._container_port = container_port
+        self._container_port = int(container_port)
 
     def build(self):
         return {
@@ -219,7 +218,7 @@ class ContainerEnvConfig:
     def build(self):
         result = dict(name=self._name)
         if self._value is not None:
-            result['value'] = self._value
+            result['value'] = str(self._value)
         elif self._field_path is not None:  # pragma: no branch
             result['valueFrom'] = {'fieldRef': {'fieldPath': self._field_path}}
         return result
@@ -377,12 +376,10 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
     rc_name = None
 
     def __init__(self, replicas, cpu=None, memory=None, limit_resources=False,
-                 image=None, modules=None, volumes=None, stat_type='cgroup', **kwargs):
+                 image=None, modules=None, volumes=None, service_port=None, **kwargs):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
-
-        self._stat_type = stat_type
 
         if isinstance(modules, str):
             self._modules = modules.split(',')
@@ -391,13 +388,15 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
 
         res = ResourceConfig(cpu, memory) if cpu or memory else None
 
+        self._service_port = service_port
+
         super().__init__(
             self.rc_name, image or DEFAULT_IMAGE, replicas,
             resource_request=res, resource_limit=res if limit_resources else None,
             readiness_probe=self.config_readiness_probe(), **kwargs
         )
-
-        self.add_port(DEFAULT_SERVICE_PORT)
+        if service_port:
+            self.add_port(service_port)
 
         for vol in volumes or ():
             self.add_volume(vol)
@@ -406,14 +405,16 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
         self.add_env('MARS_K8S_POD_NAME', field_path='metadata.name')
         self.add_env('MARS_K8S_POD_NAMESPACE', field_path='metadata.namespace')
         self.add_env('MARS_K8S_POD_IP', field_path='status.podIP')
-        self.add_env('MARS_K8S_SERVICE_PORT', str(DEFAULT_SERVICE_PORT))
+
+        if self._service_port:
+            self.add_env('MARS_K8S_SERVICE_PORT', str(self._service_port))
 
         self.add_env('MARS_CONTAINER_IP', field_path='status.podIP')
 
         if self._cpu:
             self.add_env('MKL_NUM_THREADS', str(self._cpu))
             self.add_env('MARS_CPU_TOTAL', str(self._cpu))
-            if self._stat_type == 'cgroup':
+            if getattr(self, 'stat_type', 'cgroup') == 'cgroup':
                 self.add_env('MARS_USE_CGROUP_STAT', '1')
 
         if self._memory:
@@ -443,10 +444,12 @@ class MarsSchedulersConfig(MarsReplicationControllerConfig):
         return ExecProbeConfig(readiness_cmd, timeout=5, failure_thresh=3)
 
     def build_container_command(self):
-        return [
+        cmd = [
             '/srv/entrypoint.sh', self.get_local_app_module('scheduler'),
-            '-p', str(DEFAULT_SERVICE_PORT),
         ]
+        if self._service_port:
+            cmd += ['-p', str(self._service_port)]
+        return cmd
 
 
 class MarsWorkersConfig(MarsReplicationControllerConfig):
@@ -487,10 +490,12 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
         return ExecProbeConfig(readiness_cmd, timeout=60, failure_thresh=3)
 
     def build_container_command(self):
-        return [
+        cmd = [
             '/srv/entrypoint.sh', self.get_local_app_module('worker'),
-            '-p', str(DEFAULT_SERVICE_PORT),
         ]
+        if self._service_port:
+            cmd += ['-p', str(self._service_port)]
+        return cmd
 
 
 class MarsWebsConfig(MarsReplicationControllerConfig):
@@ -500,10 +505,13 @@ class MarsWebsConfig(MarsReplicationControllerConfig):
     rc_name = 'marsweb'
 
     def config_readiness_probe(self):
-        return TcpProbeConfig(DEFAULT_SERVICE_PORT, timeout=60, failure_thresh=3)
+        if self._service_port:
+            return TcpProbeConfig(self._service_port, timeout=60, failure_thresh=3)
 
     def build_container_command(self):
-        return [
+        cmd = [
             '/srv/entrypoint.sh', self.get_local_app_module('web'),
-            '-p', str(DEFAULT_SERVICE_PORT),
         ]
+        if self._service_port:
+            cmd += ['-p', str(self._service_port)]
+        return cmd
