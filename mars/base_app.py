@@ -153,28 +153,24 @@ class BaseApplication(object):
 
     def config_logging(self):
         import logging.config
+        import mars
         log_conf = self.args.log_conf or 'logging.conf'
 
         conf_file_paths = [
-            '', os.path.abspath('.'),
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            '', os.path.abspath('.'), os.path.dirname(os.path.dirname(mars.__file__))
         ]
         log_configured = False
         for path in conf_file_paths:
-            conf_path = log_conf
-            if path:
-                conf_path = os.path.join(conf_path)
+            conf_path = os.path.join(path, log_conf) if path else log_conf
             if os.path.exists(conf_path):
                 logging.config.fileConfig(conf_path, disable_existing_loggers=False)
                 log_configured = True
+                break
 
         if not log_configured:
             log_level = self.args.log_level or self.args.level
             log_format = self.args.log_format or self.args.format
-            if not log_level:
-                level = logging.INFO
-            else:
-                level = getattr(logging, log_level.upper())
+            level = getattr(logging, log_level.upper()) if log_level else logging.INFO
             logging.getLogger('mars').setLevel(level)
             logging.basicConfig(format=log_format)
 

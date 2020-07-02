@@ -51,10 +51,9 @@ class K8SPodsIPWatcher(object):
     def __reduce__(self):
         return type(self), (self._k8s_config, self._k8s_namespace, self._label_selector)
 
-    @staticmethod
-    def _extract_pod_name_ep(obj_data):
-        svc_port = obj_data['spec']['containers'][0]['ports'][0]['container_port']
-        return obj_data['metadata']['name'], '%s:%s' % (obj_data['status']['pod_ip'], svc_port)
+    def _extract_pod_name_ep(self, pod_data):
+        svc_port = pod_data['spec']['containers'][0]['ports'][0]['container_port']
+        return pod_data['metadata']['name'], '%s:%s' % (pod_data['status']['pod_ip'], svc_port)
 
     @staticmethod
     def _extract_pod_ready(obj_data):
@@ -71,7 +70,7 @@ class K8SPodsIPWatcher(object):
         result = dict()
         for el in query['items']:
             name, pod_ep = self._extract_pod_name_ep(el)
-            if not self._extract_pod_ready(el):
+            if pod_ep is not None and not self._extract_pod_ready(el):
                 pod_ep = None
             result[name] = pod_ep
         return result
@@ -130,7 +129,7 @@ class ReadinessActor(FunctionActor):
         return 'k:0:%s' % cls.__name__
 
 
-class K8SServiceMixin(object):
+class K8SServiceMixin:
     @staticmethod
     def write_pid_file():
         with open('/tmp/mars-service.pid', 'w') as pid_file:
