@@ -296,7 +296,7 @@ class KubernetesCluster:
                     break
                 else:
                     time.sleep(1)
-                    if time.time() - start_time > timeout:  # pragma: no cover
+                    if timeout and time.time() - start_time > timeout:  # pragma: no cover
                         raise TimeoutError
 
 

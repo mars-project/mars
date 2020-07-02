@@ -90,11 +90,11 @@ def lu_sparse_matrix(a):
     a = naked(a)
     a = a.tocsc()
     super_lu = splinalg.splu(a, permc_spec="NATURAL", diag_pivot_thresh=0, options={"SymmetricMode": True})
-    l = super_lu.L
+    l_ = super_lu.L
     u = super_lu.U
     p = sps.lil_matrix(a.shape)
     p[super_lu.perm_r.copy(), np.arange(a.shape[1])] = 1
-    return SparseMatrix(p), SparseMatrix(l), SparseMatrix(u),
+    return SparseMatrix(p), SparseMatrix(l_), SparseMatrix(u),
 
 
 def solve_triangular_sparse_matrix(a, b, lower=False, sparse=True):

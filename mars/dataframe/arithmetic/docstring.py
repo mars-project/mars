@@ -182,12 +182,12 @@ fill_value : None or float value, default None (NaN)
 level : int or name
     Broadcast across a level, matching Index values on the
     passed MultiIndex level.
-    
+
 Returns
 -------
 Series
     The result of the operation.
-    
+
 See Also
 --------
 Series.{reverse}
@@ -231,12 +231,12 @@ axis : {{0 or 'index', 1 or 'columns'}}, default 'columns'
 level : int or label
     Broadcast across a level, matching Index values on the passed
     MultiIndex level.
-    
+
 Returns
 -------
 DataFrame of bool
     Result of the comparison.
-    
+
 See Also
 --------
 DataFrame.eq : Compare DataFrames for equality elementwise.
@@ -249,7 +249,7 @@ DataFrame.ge : Compare DataFrames for greater than inequality
     or equality elementwise.
 DataFrame.gt : Compare DataFrames for strictly greater than
     inequality elementwise.
-    
+
 Notes
 -----
 Mismatched indices will be unioned together.
@@ -376,7 +376,7 @@ fill_value : None or float value, default None (NaN)
 level : int or name
     Broadcast across a level, matching Index values on the
     passed MultiIndex level.
-    
+
 Returns
 -------
 Series

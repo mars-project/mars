@@ -36,7 +36,7 @@ class _TileablePlaceholder:
         fetch_tileable = self.tileable
         chunk_infos = [(type(c.op), c.key, c.id, c.params) for c in fetch_tileable.chunks]
         return type(fetch_op), fetch_op.id, fetch_tileable.params, \
-               fetch_tileable.nsplits, chunk_infos
+            fetch_tileable.nsplits, chunk_infos
 
     def __setstate__(self, state):
         fetch_op_type, fetch_op_id, params, nsplits, chunk_infos = state
@@ -210,7 +210,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
             if not isinstance(result, Iterable):
                 raise TypeError('Specifying n_output={}, '
                                 'but result is not iterable, got {}'.format(
-                    op.n_output, result))
+                                 op.n_output, result))
             result = list(result)
             if len(result) != op.n_output:
                 raise ValueError('Length of return value should be {}, '

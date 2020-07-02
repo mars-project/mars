@@ -155,6 +155,11 @@ class K8SServiceMixin:
                 SchedulerClusterInfoActor.default_uid(), address=random.choice(kube_schedulers))
             cluster_info_schedulers = cluster_info.get_schedulers()
             if set(cluster_info_schedulers) == set(kube_schedulers):
+                from ...cluster_info import INITIAL_SCHEDULER_FILE
+                with open(INITIAL_SCHEDULER_FILE, 'w') as scheduler_file:
+                    scheduler_file.write(','.join(cluster_info_schedulers))
+
+                logger.debug('Scheduler detection finished. Result: %r', kube_schedulers)
                 break
             sleep_fun(1)  # pragma: no cover
 

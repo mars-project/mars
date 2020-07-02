@@ -1006,10 +1006,10 @@ def register_default(op_cls):
 
 
 # import to register operands
-from . import tensor
-from . import dataframe
-from . import optimizes
-from . import learn
-from . import remote
+from . import tensor  # noqa: E402
+from . import dataframe  # noqa: E402
+from . import optimizes  # noqa: E402
+from . import learn  # noqa: E402
+from . import remote  # noqa: E402
 
 del tensor, dataframe, optimizes, learn, remote

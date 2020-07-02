@@ -111,7 +111,7 @@ class CompressType(_EnumTagMixin, Enum):
     NONE = 'none'
     LZ4 = 'lz4'
     GZIP = 'gzip'
-CompressType._tags = {
+CompressType._tags = {  # noqa: E305
     CompressType.NONE: 0,
     CompressType.LZ4: 1,
     CompressType.GZIP: 2,
@@ -121,7 +121,7 @@ CompressType._tags = {
 class SerialType(_EnumTagMixin, Enum):
     ARROW = 'arrow'
     PICKLE = 'pickle'
-SerialType._tags = {
+SerialType._tags = {  # noqa: E305
     SerialType.ARROW: 0,
     SerialType.PICKLE: 1,
 }

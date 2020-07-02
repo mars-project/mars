@@ -1421,7 +1421,7 @@ class Test(TestBase):
                                 except Exception as e:  # pragma: no cover
                                     raise AssertionError('failed when method={}, subset={}, '
                                                          'keep={}, ignore_index={}'.format(
-                                        method, subset, keep, ignore_index)) from e
+                                                          method, subset, keep, ignore_index)) from e
 
             # test series and index
             s = raw['c3']

@@ -101,8 +101,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                                          if c.index[1] == 0]
             value_chunk_index_values = [v.index_value for v in value.chunks]
             is_identical = len(target_chunk_index_values) == len(target_chunk_index_values) and \
-                           all(c.key == v.key for c, v
-                               in zip(target_chunk_index_values, value_chunk_index_values))
+                all(c.key == v.key for c, v in zip(target_chunk_index_values, value_chunk_index_values))
             if not is_identical:
                 # do rechunk
                 if any(np.isnan(s) for s in target.nsplits[0]) or \
@@ -135,8 +134,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                                                shape=(c.shape[0], c.shape[1] + 1),
                                                dtypes=dtypes,
                                                index_value=c.index_value,
-                                               columns_value=parse_index(dtypes.index,
-                                                                         store_data=True),
+                                               columns_value=parse_index(dtypes.index, store_data=True),
                                                index=c.index)
                     out_chunks.append(chunk)
         else:

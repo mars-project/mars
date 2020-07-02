@@ -77,7 +77,7 @@ class Node1(Serializable):
     i = ListField('i', ValueType.reference('self'))
     j = ReferenceField('j', None)
     k = ListField('k', ValueType.reference(None))
-    l = FunctionField('l')
+    l = FunctionField('l')  # noqa: E741
     m = TZInfoField('m')
     n = IntervalArrayField('n')
 
@@ -169,7 +169,7 @@ class Node4(AttributeAsDict):
     i = TupleField('j', ValueType.slice)
     j = ReferenceField('k', Node5)
     k = ListField('l', ValueType.reference('Node5'))
-    l = OneOfField('m', n5=Node5, n6=Node6)
+    l = OneOfField('m', n5=Node5, n6=Node6)  # noqa: E741
     m = ReferenceField('n', None)
     n = ListField('o', ValueType.reference(None))
     w = IndexField('v')
