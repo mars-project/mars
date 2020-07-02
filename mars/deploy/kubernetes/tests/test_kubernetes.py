@@ -95,27 +95,27 @@ class Test(unittest.TestCase):
         api_client = k8s_config.new_client_from_config()
         kube_api = k8s_client.CoreV1Api(api_client)
 
-        cluster = None
+        cluster_client = None
         try:
             extra_vol_config = HostPathVolumeConfig('mars-src-path', '/mnt/mars', MARS_ROOT)
-            cluster = new_cluster(api_client, image=self._docker_image,
-                                  worker_spill_paths=[temp_spill_dir],
-                                  extra_volumes=[extra_vol_config],
-                                  pre_stop_command=['rm', '/tmp/stopping.tmp'],
-                                  timeout=600, log_when_fail=True)
-            self.assertIsNotNone(cluster.endpoint)
+            cluster_client = new_cluster(api_client, image=self._docker_image,
+                                         worker_spill_paths=[temp_spill_dir],
+                                         extra_volumes=[extra_vol_config],
+                                         pre_stop_command=['rm', '/tmp/stopping.tmp'],
+                                         timeout=600, log_when_fail=True)
+            self.assertIsNotNone(cluster_client.endpoint)
 
-            pod_items = kube_api.list_namespaced_pod(cluster.namespace).to_dict()
+            pod_items = kube_api.list_namespaced_pod(cluster_client.namespace).to_dict()
 
             log_processes = []
             for item in pod_items['items']:
-                log_processes.append(subprocess.Popen(['kubectl', 'logs', '-f', '-n', cluster.namespace,
+                log_processes.append(subprocess.Popen(['kubectl', 'logs', '-f', '-n', cluster_client.namespace,
                                                       item['metadata']['name']]))
 
             a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
             b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
             c = (a * b * 2 + 1).sum()
-            r = cluster.session.run(c, timeout=600)
+            r = cluster_client.session.run(c, timeout=600)
 
             expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
             assert_array_equal(r, expected.sum())
@@ -123,7 +123,7 @@ class Test(unittest.TestCase):
             # turn off service processes with grace to get coverage data
             procs = []
             for item in pod_items['items']:
-                p = subprocess.Popen(['kubectl', 'exec', '-n', cluster.namespace,
+                p = subprocess.Popen(['kubectl', 'exec', '-n', cluster_client.namespace,
                                      item['metadata']['name'], '/srv/graceful_stop.sh'])
                 procs.append(p)
             for p in procs:
@@ -132,9 +132,9 @@ class Test(unittest.TestCase):
             [p.terminate() for p in log_processes]
         finally:
             shutil.rmtree(temp_spill_dir)
-            if cluster:
+            if cluster_client:
                 try:
-                    cluster.stop(wait=True, timeout=20)
+                    cluster_client.stop(wait=True, timeout=20)
                 except TimeoutError:
                     pass
             self._remove_docker_image(False)

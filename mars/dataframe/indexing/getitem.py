@@ -366,7 +366,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                                    columns_value=parse_index(pd.Index(columns),
                                                                              store_data=True))
                     out_chunks[j].append(out_chunk)
-            out_chunks = [item for l in out_chunks for item in l]
+            out_chunks = [item for cl in out_chunks for item in cl]
             new_op = op.copy()
             nsplits = (in_df.nsplits[0], tuple(column_nsplits))
             return new_op.new_dataframes(op.inputs, shape=out_df.shape, dtypes=out_df.dtypes,

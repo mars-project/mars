@@ -615,7 +615,7 @@ def series_drop_duplicates(series, keep='first', inplace=False, method='auto'):
     """
     if method not in ('auto', 'tree', 'shuffle', None):
         raise ValueError("method could only be one of "
-                         "'auto', 'tree', 'shuffle' or None" )
+                         "'auto', 'tree', 'shuffle' or None")
     op = DataFrameDropDuplicates(keep=keep, method=method)
     return op(series, inplace=inplace)
 

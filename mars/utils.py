@@ -130,17 +130,27 @@ def parse_readable_size(value):
         raise ValueError('Unknown limitation value: {0}'.format(value))
 
 
-def readable_size(size):
+def readable_size(size, trunc=False):
     if size < 1024:
-        return size
+        ret_size = size
+        size_unit = ''
     elif 1024 <= size < 1024 ** 2:
-        return '{0:.2f}K'.format(size * 1.0 / 1024)
+        ret_size = size * 1.0 / 1024
+        size_unit = 'K'
     elif 1024 ** 2 <= size < 1024 ** 3:
-        return '{0:.2f}M'.format(size * 1.0 / (1024 ** 2))
+        ret_size = size * 1.0 / (1024 ** 2)
+        size_unit = 'M'
     elif 1024 ** 3 <= size < 1024 ** 4:
-        return '{0:.2f}G'.format(size * 1.0 / (1024 ** 3))
+        ret_size = size * 1.0 / (1024 ** 3)
+        size_unit = 'G'
     else:
-        return '{0:.2f}T'.format(size * 1.0 / (1024 ** 4))
+        ret_size = size * 1.0 / (1024 ** 4)
+        size_unit = 'T'
+
+    if not trunc:
+        return '{0:.2f}{1}'.format(ret_size, size_unit)
+    else:
+        return '{0}{1}'.format(int(ret_size), size_unit)
 
 
 _commit_hash, _commit_ref = None, None

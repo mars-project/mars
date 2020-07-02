@@ -442,7 +442,7 @@ class Test(unittest.TestCase):
 
         try:
             raise ValueError
-        except:
+        except:  # noqa: E722
             exc = sys.exc_info()[1]
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,

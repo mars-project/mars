@@ -32,11 +32,10 @@ logger = logging.getLogger(__name__)
 
 
 class KubernetesClusterClient(object):
-    def __init__(self, kube_api_client, namespace, endpoint):
-        self._kube_api_client = kube_api_client
-        self._namespace = namespace
-        self._endpoint = endpoint
-        self._session = new_session(endpoint).as_default()
+    def __init__(self, cluster):
+        self._cluster = cluster
+        self._endpoint = None
+        self._session = None
 
     @property
     def endpoint(self):
@@ -44,15 +43,246 @@ class KubernetesClusterClient(object):
 
     @property
     def namespace(self):
-        return self._namespace
+        return self._cluster.namespace
 
     @property
     def session(self):
         return self._session
 
+    def start(self):
+        self._endpoint = self._cluster.start()
+        self._session = new_session(self._endpoint)
+
+    def stop(self, wait=False, timeout=0):
+        self._cluster.stop(wait=wait, timeout=timeout)
+
+
+class KubernetesCluster:
+    _scheduler_config_cls = MarsSchedulersConfig
+    _worker_config_cls = MarsWorkersConfig
+    _web_config_cls = MarsWebsConfig
+    _default_service_port = 7103
+
+    def __init__(self, kube_api_client=None, image=None, namespace=None,
+                 scheduler_num=1, scheduler_cpu=None, scheduler_mem=None,
+                 worker_num=1, worker_cpu=None, worker_mem=None,
+                 worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
+                 web_num=1, web_cpu=None, web_mem=None, service_type=None,
+                 timeout=None, **kwargs):
+        from kubernetes import client as kube_client
+
+        self._api_client = kube_api_client
+        self._core_api = kube_client.CoreV1Api(kube_api_client)
+        self._rbac_api = kube_client.RbacAuthorizationV1Api(kube_api_client)
+
+        self._namespace = namespace
+        self._image = image
+        self._timeout = timeout
+        self._service_type = service_type or 'NodePort'
+        self._extra_volumes = kwargs.pop('extra_volumes', ())
+        self._pre_stop_command = kwargs.pop('pre_stop_command', None)
+        self._log_when_fail = kwargs.pop('log_when_fail', False)
+
+        extra_modules = kwargs.pop('extra_modules', None) or []
+        extra_modules = extra_modules.split(',') if isinstance(extra_modules, str) \
+            else extra_modules
+        extra_envs = kwargs.pop('extra_env', None) or dict()
+        service_port = kwargs.pop('service_port', None) or self._default_service_port
+
+        def _override_modules(updates):
+            modules = set(extra_modules)
+            updates = updates.split(',') if isinstance(updates, str) \
+                else updates
+            modules.update(updates)
+            return sorted(modules)
+
+        def _override_envs(updates):
+            ret = extra_envs.copy()
+            ret.update(updates)
+            return ret
+
+        self._scheduler_num = scheduler_num
+        self._scheduler_cpu = scheduler_cpu
+        self._scheduler_mem = scheduler_mem
+        self._scheduler_extra_modules = _override_modules(kwargs.pop('scheduler_extra_modules', []))
+        self._scheduler_extra_env = _override_envs(kwargs.pop('scheduler_extra_env', None) or dict())
+        self._scheduler_service_port = kwargs.pop('scheduler_service_port', None) or service_port
+
+        self._worker_num = worker_num
+        self._worker_cpu = worker_cpu
+        self._worker_mem = worker_mem
+        self._worker_spill_paths = worker_spill_paths
+        self._worker_cache_mem = worker_cache_mem
+        self._min_worker_num = min_worker_num
+        self._worker_extra_modules = _override_modules(kwargs.pop('worker_extra_modules', []))
+        self._worker_extra_env = _override_envs(kwargs.pop('worker_extra_env', None) or dict())
+        self._worker_service_port = kwargs.pop('worker_service_port', None) or service_port
+
+        self._web_num = web_num
+        self._web_cpu = web_cpu
+        self._web_mem = web_mem
+        self._web_extra_modules = _override_modules(kwargs.pop('web_extra_modules', []))
+        self._web_extra_env = _override_envs(kwargs.pop('web_extra_env', None) or dict())
+        self._web_service_port = kwargs.pop('web_service_port', None) or service_port
+
+    @property
+    def namespace(self):
+        return self._namespace
+
+    def _get_free_namespace(self):
+        while True:
+            namespace = 'mars-ns-%s' % uuid.uuid4().hex
+            try:
+                self._core_api.read_namespace(namespace)
+            except K8SApiException as ex:
+                if ex.status != 404:  # pragma: no cover
+                    raise
+                return namespace
+
+    def _create_kube_service(self):
+        """
+        :type kube_api: kubernetes.client.CoreV1Api
+        """
+        if self._service_type != 'NodePort':  # pragma: no cover
+            raise NotImplementedError('Service type %s not supported' % self._service_type)
+
+        service_config = ServiceConfig(
+            'marsservice', service_type='NodePort', port=self._web_service_port,
+            selector=dict(name=MarsWebsConfig.rc_name),
+        )
+        self._core_api.create_namespaced_service(self._namespace, service_config.build())
+
+        time.sleep(1)
+
+        svc_data = self._core_api.read_namespaced_service('marsservice', self._namespace).to_dict()
+        port = svc_data['spec']['ports'][0]['node_port']
+
+        web_pods = self._core_api.list_namespaced_pod(
+            self._namespace, label_selector='name=' + MarsWebsConfig.rc_name).to_dict()
+        host_ip = random.choice(web_pods['items'])['status']['host_ip']
+
+        # docker desktop use a VM to hold docker processes, hence
+        # we need to use API address instead
+        desktop_nodes = self._core_api.list_node(field_selector='metadata.name=docker-desktop').to_dict()
+        if desktop_nodes['items']:  # pragma: no cover
+            addresses = set(
+                addr_info['address']
+                for addr_info in desktop_nodes['items'][0].get('status', {}).get('addresses', ())
+            )
+            if host_ip in addresses:
+                host_ip = urlparse(self._core_api.api_client.configuration.host).netloc.split(':', 1)[0]
+        return 'http://%s:%s' % (host_ip, port)
+
+    def _get_ready_pod_count(self, label_selector):
+        query = self._core_api.list_namespaced_pod(
+            namespace=self._namespace, label_selector=label_selector).to_dict()
+        cnt = 0
+        for el in query['items']:
+            if el['status']['phase'] in ('Error', 'Failed'):
+                raise SystemError(el['status']['message'])
+            if 'status' not in el or 'conditions' not in el['status']:
+                cnt += 1
+            if any(cond['type'] == 'Ready' and cond['status'] == 'True'
+                   for cond in el['status'].get('conditions') or ()):
+                cnt += 1
+        return cnt
+
+    def _create_namespace(self):
+        if self._namespace is None:
+            namespace = self._namespace = self._get_free_namespace()
+        else:
+            namespace = self._namespace
+
+        self._core_api.create_namespace(NamespaceConfig(namespace).build())
+
+    def _create_roles_and_bindings(self):
+        # create role and binding
+        role_config = RoleConfig('mars-pod-reader', self._namespace, '', 'pods', 'get,watch,list')
+        self._rbac_api.create_namespaced_role(self._namespace, role_config.build())
+        role_binding_config = RoleBindingConfig(
+            'mars-pod-reader-binding', self._namespace, 'mars-pod-reader', 'default')
+        self._rbac_api.create_namespaced_role_binding(self._namespace, role_binding_config.build())
+
+    def _create_schedulers(self):
+        schedulers_config = self._scheduler_config_cls(
+            self._scheduler_num, image=self._image, cpu=self._scheduler_cpu,
+            memory=self._scheduler_mem, modules=self._scheduler_extra_modules,
+            volumes=self._extra_volumes, service_port=self._scheduler_service_port,
+            pre_stop_command=self._pre_stop_command,
+        )
+        schedulers_config.add_simple_envs(self._scheduler_extra_env)
+        self._core_api.create_namespaced_replication_controller(
+            self._namespace, schedulers_config.build())
+
+    def _create_workers(self):
+        workers_config = self._worker_config_cls(
+            self._worker_num, image=self._image, cpu=self._worker_cpu,
+            memory=self._worker_mem, spill_volumes=self._worker_spill_paths,
+            modules=self._worker_extra_modules, volumes=self._extra_volumes,
+            worker_cache_mem=self._worker_cache_mem,
+            service_port=self._worker_service_port,
+            pre_stop_command=self._pre_stop_command,
+        )
+        workers_config.add_simple_envs(self._worker_extra_env)
+        self._core_api.create_namespaced_replication_controller(
+            self._namespace, workers_config.build())
+
+    def _create_webs(self):
+        webs_config = self._web_config_cls(
+            self._web_num, image=self._image, cpu=self._web_cpu, memory=self._web_mem,
+            modules=self._web_extra_modules, volumes=self._extra_volumes,
+            service_port=self._web_service_port, pre_stop_command=self._pre_stop_command,
+        )
+        webs_config.add_simple_envs(self._web_extra_env)
+        self._core_api.create_namespaced_replication_controller(
+            self._namespace, webs_config.build())
+
+    def _create_services(self):
+        self._create_schedulers()
+        self._create_workers()
+        self._create_webs()
+
+    def _wait_services_ready(self):
+        min_worker_num = int(self._min_worker_num or self._worker_num)
+        limits = [self._scheduler_num, min_worker_num, self._web_num]
+        selectors = [
+            'name=' + MarsSchedulersConfig.rc_name,
+            'name=' + MarsWorkersConfig.rc_name,
+            'name=' + MarsWebsConfig.rc_name,
+            ]
+        wait_services_ready(selectors, limits,
+                            lambda sel: self._get_ready_pod_count(sel),
+                            timeout=self._timeout)
+        logger.info('All service pods ready.')
+
+    def _load_cluster_logs(self):
+        log_dict = dict()
+        pod_items = self._core_api.list_namespaced_pod(self._namespace).to_dict()
+        for item in pod_items['items']:
+            log_dict[item['metadata']['name']] = self._core_api.read_namespaced_pod_log(
+                name=item['metadata']['name'], namespace=self._namespace)
+        return log_dict
+
+    def start(self):
+        try:
+            self._create_namespace()
+            self._create_roles_and_bindings()
+
+            self._create_services()
+
+            self._wait_services_ready()
+            return self._create_kube_service()
+        except:  # noqa: E722
+            if self._log_when_fail:  # pargma: no cover
+                logger.error('Error when creating cluster')
+                for name, log in self._load_cluster_logs():
+                    logger.error('Error logs for %s:\n%s', name, log)
+            self.stop()
+            raise
+
     def stop(self, wait=False, timeout=0):
         from kubernetes.client import CoreV1Api
-        api = CoreV1Api(self._kube_api_client)
+        api = CoreV1Api(self._api_client)
         api.delete_namespace(self._namespace)
         if wait:
             start_time = time.time()
@@ -65,67 +295,8 @@ class KubernetesClusterClient(object):
                     break
                 else:
                     time.sleep(1)
-                    if time.time() - start_time > timeout:  # pragma: no cover
+                    if timeout and time.time() - start_time > timeout:  # pragma: no cover
                         raise TimeoutError
-
-
-def _get_free_namespace(kube_api):
-    while True:
-        namespace = 'mars-ns-%s' % uuid.uuid4().hex
-        try:
-            kube_api.read_namespace(namespace)
-        except K8SApiException as ex:
-            if ex.status != 404:  # pragma: no cover
-                raise
-            return namespace
-
-
-def _create_node_port_service(kube_api, namespace):
-    """
-    :type kube_api: kubernetes.client.CoreV1Api
-    """
-    from .config import DEFAULT_SERVICE_PORT
-    service_config = ServiceConfig(
-        'marsservice', service_type='NodePort', port=DEFAULT_SERVICE_PORT,
-        selector=dict(name=MarsWebsConfig.rc_name),
-    )
-    kube_api.create_namespaced_service(namespace, service_config.build())
-
-    time.sleep(1)
-
-    svc_data = kube_api.read_namespaced_service('marsservice', namespace).to_dict()
-    port = svc_data['spec']['ports'][0]['node_port']
-
-    web_pods = kube_api.list_namespaced_pod(
-        namespace, label_selector='name=' + MarsWebsConfig.rc_name).to_dict()
-    host_ip = random.choice(web_pods['items'])['status']['host_ip']
-
-    # docker desktop use a VM to hold docker processes, hence
-    # we need to use API address instead
-    desktop_nodes = kube_api.list_node(field_selector='metadata.name=docker-desktop').to_dict()
-    if desktop_nodes['items']:  # pragma: no cover
-        addresses = set(
-            addr_info['address']
-            for addr_info in desktop_nodes['items'][0].get('status', {}).get('addresses', ())
-        )
-        if host_ip in addresses:
-            host_ip = urlparse(kube_api.api_client.configuration.host).netloc.split(':', 1)[0]
-    return 'http://%s:%s' % (host_ip, port)
-
-
-def _get_ready_pod_count(kube_api, label_selector, namespace):
-    query = kube_api.list_namespaced_pod(
-        namespace=namespace, label_selector=label_selector).to_dict()
-    cnt = 0
-    for el in query['items']:
-        if el['status']['phase'] in ('Error', 'Failed'):
-            raise SystemError(el['status']['message'])
-        if 'status' not in el or 'conditions' not in el['status']:
-            cnt += 1
-        if any(cond['type'] == 'Ready' and cond['status'] == 'True'
-               for cond in el['status'].get('conditions') or ()):
-            cnt += 1
-    return cnt
 
 
 def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu=None,
@@ -151,111 +322,13 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
     :param service_type: Type of Kubernetes Service, currently only ``NodePort`` supported
     :param timeout: Timeout when creating clusters
     """
-    from kubernetes import client as kube_client
-
-    core_api = kube_client.CoreV1Api(kube_api_client)
-    rbac_api = kube_client.RbacAuthorizationV1Api(kube_api_client)
-
-    def _override_envs(src, updates):
-        ret = src.copy()
-        ret.update(updates)
-        return ret
-
-    service_type = service_type or 'NodePort'
-    extra_volumes = kwargs.pop('extra_volumes', ())
-    pre_stop_command = kwargs.pop('pre_stop_command', None)
-    scheduler_extra_modules = kwargs.pop('scheduler_extra_modules', None)
-    worker_extra_modules = kwargs.pop('worker_extra_modules', None)
-    web_extra_modules = kwargs.pop('web_extra_modules', None)
-
-    extra_envs = kwargs.pop('extra_volumes', dict())
-    scheduler_extra_env = _override_envs(extra_envs, kwargs.pop('scheduler_extra_env', dict()))
-    worker_extra_env = _override_envs(extra_envs, kwargs.pop('worker_extra_env', dict()))
-    web_extra_env = _override_envs(extra_envs, kwargs.pop('web_extra_env', dict()))
-
-    namespace = None
-    try:
-        # create namespace
-        namespace = _get_free_namespace(core_api)
-        core_api.create_namespace(NamespaceConfig(namespace).build())
-
-        # create role and binding
-        role_config = RoleConfig('mars-pod-reader', namespace, '', 'pods', 'get,watch,list')
-        rbac_api.create_namespaced_role(namespace, role_config.build())
-        role_binding_config = RoleBindingConfig(
-            'mars-pod-reader-binding', namespace, 'mars-pod-reader', 'default')
-        rbac_api.create_namespaced_role_binding(namespace, role_binding_config.build())
-
-        # create replication controller of schedulers
-        schedulers_config = MarsSchedulersConfig(
-            scheduler_num, image=image, cpu=scheduler_cpu, memory=scheduler_mem,
-            modules=scheduler_extra_modules, volumes=extra_volumes,
-            pre_stop_command=pre_stop_command,
-        )
-        schedulers_config.add_simple_envs(scheduler_extra_env)
-        core_api.create_namespaced_replication_controller(
-            namespace, schedulers_config.build())
-
-        # create replication controller of workers
-        workers_config = MarsWorkersConfig(
-            worker_num, image=image, cpu=worker_cpu, memory=worker_mem,
-            spill_volumes=worker_spill_paths, modules=worker_extra_modules,
-            volumes=extra_volumes, worker_cache_mem=worker_cache_mem,
-            pre_stop_command=pre_stop_command,
-        )
-        workers_config.add_simple_envs(worker_extra_env)
-        core_api.create_namespaced_replication_controller(
-            namespace, workers_config.build())
-
-        # create replication controller of webs
-        webs_config = MarsWebsConfig(
-            web_num, image=image, cpu=web_cpu, memory=web_mem, modules=web_extra_modules,
-            volumes=extra_volumes, pre_stop_command=pre_stop_command,
-        )
-        webs_config.add_simple_envs(web_extra_env)
-        core_api.create_namespaced_replication_controller(
-            namespace, webs_config.build())
-
-        # create service
-        if service_type != 'NodePort':  # pragma: no cover
-            raise NotImplementedError('Service type %s not supported' % service_type)
-
-        # wait until schedulers and expected num of workers are ready
-        min_worker_num = int(min_worker_num or worker_num)
-        readies = [0, 0, 0]
-        limits = [scheduler_num, min_worker_num, web_num]
-        selectors = [
-            'name=' + MarsSchedulersConfig.rc_name,
-            'name=' + MarsWorkersConfig.rc_name,
-            'name=' + MarsWebsConfig.rc_name,
-        ]
-        start_time = time.time()
-        while True:
-            all_satisfy = True
-            for idx, selector in enumerate(selectors):
-                if readies[idx] < limits[idx]:
-                    all_satisfy = False
-                    readies[idx] = _get_ready_pod_count(core_api, selector, namespace)
-                    break
-            if all_satisfy:
-                break
-            if timeout and timeout + start_time < time.time():
-                raise TimeoutError('Wait kubernetes cluster start timeout')
-            time.sleep(1)
-
-        web_ep = _create_node_port_service(core_api, namespace)
-        return KubernetesClusterClient(kube_api_client, namespace, web_ep)
-    except:  # noqa: E722
-        if log_when_fail:  # pargma: no cover
-            pod_items = core_api.list_namespaced_pod(namespace).to_dict()
-            for item in pod_items['items']:
-                log_resp = core_api.read_namespaced_pod_log(
-                    name=item['metadata']['name'], namespace=namespace)
-                logger.error('Error when creating cluster:\n%s', log_resp)
-
-        if namespace is not None:
-            try:
-                core_api.delete_namespace(namespace)
-            except K8SApiException:  # pragma: no cover
-                pass
-        raise
+    cluster_cls = kwargs.pop('cluster_cls', KubernetesCluster)
+    cluster = cluster_cls(
+        kube_api_client, image=image, scheduler_num=scheduler_num, scheduler_cpu=scheduler_cpu,
+        scheduler_mem=scheduler_mem, worker_num=worker_num, worker_cpu=worker_cpu,
+        worker_mem=worker_mem, worker_spill_paths=worker_spill_paths, worker_cache_mem=worker_cache_mem,
+        min_worker_num=min_worker_num, web_num=web_num, web_cpu=web_cpu, web_mem=web_mem,
+        service_type=service_type, timeout=timeout, **kwargs)
+    client = KubernetesClusterClient(cluster)
+    client.start()
+    return client

@@ -163,7 +163,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def _align_input_and_by(cls, op, inp, by):
         align_method = partial(align_dataframe_series, axis='index') \
             if op.is_dataframe_obj else align_series_series
-        nsplits, _, inp_chunks, by_chunks =  align_method(inp, by)
+        nsplits, _, inp_chunks, by_chunks = align_method(inp, by)
 
         inp_params = inp.params
         inp_params['chunks'] = inp_chunks
@@ -223,7 +223,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
                 chunk_by = []
                 for k in by:
                     if isinstance(k, SERIES_TYPE):
-                        by_chunk = k.cix[chunk.index[0],]
+                        by_chunk = k.cix[chunk.index[0], ]
                         chunk_by.append(by_chunk)
                         chunk_inputs.append(by_chunk)
                     else:

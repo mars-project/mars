@@ -16,6 +16,7 @@
 
 import logging
 import os
+import sys
 
 from . import kvstore
 from .actors import FunctionActor
@@ -25,6 +26,7 @@ from .utils import to_str
 
 
 SCHEDULER_PATH = '/schedulers'
+INITIAL_SCHEDULER_FILE = '/tmp/mars-initial-schedulers.tmp'
 logger = logging.getLogger(__name__)
 
 
@@ -160,7 +162,13 @@ class HasClusterInfoActor(PromiseActor):
         super().__init__()
 
         # the scheduler list
-        self._schedulers = None
+        if sys.platform.startswith('linux') and os.path.exists(INITIAL_SCHEDULER_FILE):
+            # there is predefined scheduler list, read first
+            with open(INITIAL_SCHEDULER_FILE, 'r') as scheduler_file:
+                self._schedulers = scheduler_file.read().strip().split(',')
+        else:
+            self._schedulers = None
+        logger.warning('HasClusterInfoActor._schedulers = %r', self._schedulers)
         self._hash_ring = None
 
         self._cluster_info_ref = None
