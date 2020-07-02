@@ -27,6 +27,8 @@ from mars.tests.core import patch_method, create_actor_pool
 
 
 @patch_method(ResourceActor._broadcast_sessions)
+@patch_method(GraphActor._get_worker_slots,
+              new=lambda *_: {'localhost:12345': 1, 'localhost:23456': 1})
 class Test(unittest.TestCase):
     @contextlib.contextmanager
     def prepare_graph_in_pool(self, expr, clean_io_meta=True, compose=False):
