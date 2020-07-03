@@ -15,8 +15,9 @@
 try:
     import scipy
 
-    from .gammaln import gammaln, TensorGammaln
-    from .erf import erf, TensorErf
-    from .entr import entr, TensorEntr
+    from .gammaln import gammaln, TensorGammaLnUnary
+    from .erf import erf, TensorErfUnary
+    from .entr import entr, TensorEntrUnary
+    from .rel_entr import rel_entr, TensorRelEntrUnary
 except ImportError:  # pragma: no cover
     pass

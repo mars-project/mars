@@ -67,6 +67,7 @@ from . import fft
 from . import linalg
 from . import lib
 from . import special
+from . import stats
 
 # types
 from .core import Tensor, MutableTensor

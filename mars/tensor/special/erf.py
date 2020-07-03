@@ -21,11 +21,11 @@ from ... import opcodes as OperandDef
 from ...utils import require_not_none
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype
-from .core import TensorSpecialOp
+from .core import TensorSpecialUnaryOp
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorErf(TensorSpecialOp):
+class TensorErfUnary(TensorSpecialUnaryOp):
     _op_type_ = OperandDef.ERF
     _func_name = 'erf'
 
@@ -78,5 +78,5 @@ def erf(x, out=None, where=None, **kwargs):
     >>> plt.ylabel('$erf(x)$')
     >>> plt.show()
     """
-    op = TensorErf(**kwargs)
+    op = TensorErfUnary(**kwargs)
     return op(x, out=out, where=where)

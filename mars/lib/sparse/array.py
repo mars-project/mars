@@ -47,13 +47,17 @@ class SparseNDArray(object):
 def call_sparse_binary_scalar(method, left, right, **kwargs):
     if isinstance(left, SparseNDArray):
         spmatrix = left.spmatrix
-        xp = get_array_module(spmatrix)
-        new_data = getattr(xp, method)(spmatrix.data, right, **kwargs)
+        if isinstance(method, str):
+            xp = get_array_module(spmatrix)
+            method = getattr(xp, method)
+        new_data = method(spmatrix.data, right, **kwargs)
         shape = left.shape
     else:
         spmatrix = right.spmatrix
-        xp = get_array_module(spmatrix)
-        new_data = getattr(xp, method)(left, spmatrix.data, **kwargs)
+        if isinstance(method, str):
+            xp = get_array_module(spmatrix)
+            method = getattr(xp, method)
+        new_data = method(left, spmatrix.data, **kwargs)
         shape = right.shape
     new_spmatrix = get_sparse_module(spmatrix).csr_matrix(
         (new_data, spmatrix.indices, spmatrix.indptr), spmatrix.shape)
@@ -606,6 +610,30 @@ class SparseArray(SparseNDArray):
 
     def entr(self):
         return self._scipy_unary('entr')
+
+    def rel_entr(self, other):
+        try:
+            naked_other = naked(other)
+        except TypeError:  # pragma: no cover
+            return NotImplemented
+
+        xp = get_array_module(self.spmatrix)
+
+        if xp is np:
+            from scipy.special import rel_entr
+        else:  # pragma: no cover
+            from cupyx.scipy.special import rel_entr
+
+        if get_array_module(naked_other).isscalar(naked_other):  # pragma: no cover
+            return call_sparse_binary_scalar(rel_entr, self, naked_other)
+        else:
+            if issparse(naked_other):  # pragma: no cover
+                naked_other = other.toarray()
+            x = get_sparse_module(self.spmatrix).csr_matrix(
+                rel_entr(self.toarray(), naked_other))
+        if issparse(x):
+            return SparseNDArray(x, shape=self.shape)
+        return get_array_module(x).asarray(x)
 
     def __eq__(self, other):
         try:

@@ -255,6 +255,10 @@ def entr(x, **kw):
     return _call_unary('entr', x, **kw)
 
 
+def rel_entr(x1, x2, **kw):
+    return _call_bin('rel_entr', x1, x2, **kw)
+
+
 def equal(a, b, **_):
     try:
         return a == b
