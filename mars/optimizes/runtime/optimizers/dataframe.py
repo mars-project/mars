@@ -48,48 +48,55 @@ class DataFrameRuntimeOptimizer:
                     rule.apply(c, self._graph, keys)
 
 
-class ReadCSVHeadRule(DataFrameRuntimeOptimizeRule):
+class DataSourceHeadRule(DataFrameRuntimeOptimizeRule):
     @staticmethod
     def match(chunk, graph, keys):
-        from ....dataframe.indexing.iloc import DataFrameIlocGetItem
         from ....dataframe.datasource.read_csv import DataFrameReadCSV
+        from ....dataframe.datasource.read_sql import DataFrameReadSQL
+        from ....dataframe.indexing.iloc import DataFrameIlocGetItem
 
         op = chunk.op
         inputs = graph.predecessors(chunk)
         if len(inputs) == 1 and isinstance(op, DataFrameIlocGetItem) and \
-                op.is_head() and isinstance(inputs[0].op, DataFrameReadCSV) and \
+                op.is_head() and isinstance(inputs[0].op, (DataFrameReadCSV, DataFrameReadSQL)) and \
                 inputs[0].key not in keys:
             return True
         return False
 
     @staticmethod
     def apply(chunk, graph, keys):
-        read_csv_chunk = graph.predecessors(chunk)[0]
-        nrows = read_csv_chunk.op.nrows or 0
+        from ....dataframe.utils import parse_index
+
+        data_source_chunk = graph.predecessors(chunk)[0]
+        nrows = data_source_chunk.op.nrows or 0
         head = chunk.op.indexes[0].stop
         # delete read_csv from graph
-        graph.remove_node(read_csv_chunk)
+        graph.remove_node(data_source_chunk)
 
-        head_read_csv_chunk_op = read_csv_chunk.op.copy().reset_key()
-        head_read_csv_chunk_op._nrows = max(nrows, head)
-        head_read_csv_chunk_params = read_csv_chunk.params
-        head_read_csv_chunk_params['_key'] = chunk.key
-        head_read_csv_chunk = head_read_csv_chunk_op.new_chunk(
-            read_csv_chunk.inputs, kws=[head_read_csv_chunk_params]).data
-        graph.add_node(head_read_csv_chunk)
+        head_data_source_chunk_op = data_source_chunk.op.copy().reset_key()
+        head_data_source_chunk_op._nrows = max(nrows, head)
+        head_data_source_chunk_params = data_source_chunk.params
+        head_data_source_chunk_params['_key'] = chunk.key
+        head_data_source_chunk_params['shape'] = (head,) + chunk.shape[1:]
+        if chunk.index_value.has_value():
+            pd_index = chunk.index_value.to_pandas()[:head]
+            head_data_source_chunk_params['index_value'] = parse_index(pd_index)
+        head_data_source_chunk = head_data_source_chunk_op.new_chunk(
+            data_source_chunk.inputs, kws=[head_data_source_chunk_params]).data
+        graph.add_node(head_data_source_chunk)
 
         for succ in list(graph.iter_successors(chunk)):
             succ_inputs = succ.inputs
             new_succ_inputs = []
             for succ_input in succ_inputs:
                 if succ_input is chunk:
-                    new_succ_inputs.append(head_read_csv_chunk)
+                    new_succ_inputs.append(head_data_source_chunk)
                 else:
                     new_succ_inputs.append(succ_input)
             succ.inputs = new_succ_inputs
-            graph.add_edge(head_read_csv_chunk, succ)
+            graph.add_edge(head_data_source_chunk, succ)
 
         graph.remove_node(chunk)
 
 
-DataFrameRuntimeOptimizer.register_rule(ReadCSVHeadRule)
+DataFrameRuntimeOptimizer.register_rule(DataSourceHeadRule)

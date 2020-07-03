@@ -22,6 +22,7 @@ import pandas as pd
 import mars.dataframe as md
 import mars.tensor as mt
 from mars.dataframe.datasource.read_csv import DataFrameReadCSV
+from mars.dataframe.datasource.read_sql import DataFrameReadSQL
 from mars.executor import register, Executor
 from mars.tests.core import TestBase, ExecutorForTest
 
@@ -596,24 +597,26 @@ class Test(TestBase):
 
     @staticmethod
     @contextlib.contextmanager
-    def _inject_execute_read_csv(limit):
-        def _execute_read_csv(ctx, op):
-            DataFrameReadCSV.execute(ctx, op)
+    def _inject_execute_data_source(limit, op_cls):
+        def _execute_data_source(ctx, op):
+            op_cls.execute(ctx, op)
             result = ctx[op.outputs[0].key]
             if len(result) > limit:
                 raise RuntimeError('have data more than expected')  # pragma: no cover
 
         try:
-            register(DataFrameReadCSV, _execute_read_csv)
+            register(op_cls, _execute_data_source)
             yield
         finally:
-            del Executor._op_runners[DataFrameReadCSV]
+            del Executor._op_runners[op_cls]
 
     def testOptimizedHeadTail(self):
+        import sqlalchemy as sa
+
         with tempfile.TemporaryDirectory() as tempdir:
             executor = ExecutorForTest(storage=self.executor.storage)
 
-            filename = os.path.join(tempdir, 'test_fetch.csv')
+            filename = os.path.join(tempdir, 'test_head.csv')
             rs = np.random.RandomState(0)
             pd_df = pd.DataFrame({'a': rs.randint(1000, size=(100,)).astype(np.int64),
                                   'b': rs.randint(1000, size=(100,)).astype(np.int64),
@@ -629,7 +632,7 @@ class Test(TestBase):
             # test DataFrame.head
             r = df.head(3)
 
-            with self._inject_execute_read_csv(3):
+            with self._inject_execute_data_source(3, DataFrameReadCSV):
                 result = executor.execute_tileables([r])[0]
                 expected = pd_df.head(3)
                 pd.testing.assert_frame_equal(result, expected)
@@ -657,3 +660,18 @@ class Test(TestBase):
             expected = pd_df.tail(99)
             pd.testing.assert_frame_equal(result.reset_index(drop=True),
                                           expected.reset_index(drop=True))
+
+            filename = os.path.join(tempdir, 'test_sql.db')
+            conn = sa.create_engine('sqlite:///' + filename)
+            pd_df.to_sql('test_sql', conn)
+
+            df = md.read_sql('test_sql', conn, index_col='index', chunk_size=20)
+
+            # test DataFrame.head
+            r = df.head(3)
+
+            with self._inject_execute_data_source(3, DataFrameReadSQL):
+                result = executor.execute_tileables([r])[0]
+                result.index.name = None
+                expected = pd_df.head(3)
+                pd.testing.assert_frame_equal(result, expected)

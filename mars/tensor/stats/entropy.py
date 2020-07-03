@@ -49,7 +49,7 @@ def entropy(pk, qk=None, base=None):
 
     """
     pk = astensor(pk)
-    pk = 1.0*pk / mt.sum(pk, axis=0)
+    pk = 1.0 * pk / mt.sum(pk, axis=0)
     if qk is None:
         vec = entr(pk)
     else:
