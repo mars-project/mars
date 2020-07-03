@@ -273,7 +273,7 @@ class Test(TestBase):
         tempdir = tempfile.mkdtemp()
         file_path = os.path.join(tempdir, 'test.csv')
         try:
-            df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+            df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.int64), columns=['a', 'b', 'c'])
             df.to_csv(file_path)
 
             pdf = pd.read_csv(file_path, index_col=0)
@@ -284,6 +284,8 @@ class Test(TestBase):
                                                    concat=True)[0]
             pd.testing.assert_frame_equal(pdf, mdf2)
 
+            mdf = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0, nrows=1), concat=True)[0]
+            pd.testing.assert_frame_equal(df[:1], mdf)
         finally:
             shutil.rmtree(tempdir)
 

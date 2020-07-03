@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from numbers import Integral
 from typing import Dict
 
 import numpy as np
@@ -69,8 +70,41 @@ class DataFrameLoc:
     def __init__(self, obj):
         self._obj = obj
 
+    def _use_iloc(self, indexes):
+        # for RangeIndex from 0, use iloc instead of loc
+        index_value = self._obj.index_value.value
+        if len(indexes) == 2:
+            if not isinstance(indexes[1], slice):
+                return False
+            elif indexes[1] != slice(None):
+                return False
+        if not isinstance(index_value, IndexValue.RangeIndex):
+            return False
+        if index_value.slice.start != 0 and index_value.slice.start is not None:
+            return False
+        if not isinstance(indexes[0], (Integral, slice)):
+            return False
+        if isinstance(indexes[0], Integral):
+            if indexes[0] < 0:
+                return False
+        else:
+            for v in (indexes[0].start, indexes[0].stop, indexes[0].step):
+                if v is None:
+                    continue
+                if not isinstance(v, Integral):
+                    return False
+                if v < 0:
+                    return False
+        return True
+
     def __getitem__(self, indexes):
-        op = DataFrameLocGetItem(indexes=process_loc_indexes(self._obj, indexes))
+        indexes = process_loc_indexes(self._obj, indexes)
+
+        if self._use_iloc(indexes):
+            # use iloc instead
+            return self._obj.iloc[tuple(indexes)]
+
+        op = DataFrameLocGetItem(indexes=indexes)
         return op(self._obj)
 
 
