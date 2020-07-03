@@ -26,6 +26,8 @@ from numpy.testing import assert_allclose
 
 from mars import tensor as mt
 from mars.actors.core import new_client
+from mars.errors import ExecutionFailed
+from mars.session import new_session
 from mars.scheduler.graph import GraphState
 from mars.scheduler.resource import ResourceActor
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
@@ -467,3 +469,18 @@ class Test(SchedulerIntegratedTest):
         result = session_ref.fetch_result(graph_key, r3.key)
         expected = (raw1 + 1) * (raw2 + 1) * (raw1 + 1 + raw2 + 1)
         assert_allclose(loads(result), expected)
+
+    def testNoWorkerException(self):
+        self.start_processes(etcd=False, n_workers=0)
+
+        a = mt.ones((10, 10))
+        b = mt.ones((10, 10))
+        c = (a + b)
+
+        endpoint = self.scheduler_endpoints[0]
+        sess = new_session(endpoint)
+
+        try:
+            c.execute(session=sess)
+        except ExecutionFailed as e:
+            self.assertIsInstance(e.__cause__, RuntimeError)

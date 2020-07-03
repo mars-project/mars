@@ -753,6 +753,9 @@ class GraphActor(SchedulerActor):
                 operand_infos[k]['optimize']['successor_size'] = succ_size
 
         worker_slots = self._get_worker_slots()
+        if not worker_slots:
+            raise RuntimeError('No worker attached for execution')
+
         self._assigned_workers = set(worker_slots)
         analyzer = GraphAnalyzer(chunk_graph, worker_slots)
 
