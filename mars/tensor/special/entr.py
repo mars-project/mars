@@ -25,7 +25,7 @@ from .core import TensorSpecialUnaryOp
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorEntrUnary(TensorSpecialUnaryOp):
+class TensorEntr(TensorSpecialUnaryOp):
     _op_type_ = OperandDef.ENTR
     _func_name = 'entr'
 
@@ -56,5 +56,5 @@ def entr(x, out=None, where=None, **kwargs):
     -----
     This function is concave.
     """
-    op = TensorEntrUnary(**kwargs)
+    op = TensorEntr(**kwargs)
     return op(x, out=out, where=where)

@@ -24,8 +24,8 @@ try:
     import scipy
     from scipy.special import gammaln as scipy_gammaln, erf as scipy_erf
 
-    from mars.tensor.special.gammaln import gammaln, TensorGammaLnUnary
-    from mars.tensor.special.erf import erf, TensorErfUnary
+    from mars.tensor.special.gammaln import gammaln, TensorGammaln
+    from mars.tensor.special.erf import erf, TensorErf
 except ImportError:
     scipy = None
 
@@ -47,7 +47,7 @@ class Test(unittest.TestCase):
 
         self.assertEqual(r.nsplits, t.nsplits)
         for c in r.chunks:
-            self.assertIsInstance(c.op, TensorGammaLnUnary)
+            self.assertIsInstance(c.op, TensorGammaln)
             self.assertEqual(c.index, c.inputs[0].index)
             self.assertEqual(c.shape, c.inputs[0].shape)
 
@@ -66,6 +66,6 @@ class Test(unittest.TestCase):
 
         self.assertEqual(r.nsplits, t.nsplits)
         for c in r.chunks:
-            self.assertIsInstance(c.op, TensorErfUnary)
+            self.assertIsInstance(c.op, TensorErf)
             self.assertEqual(c.index, c.inputs[0].index)
             self.assertEqual(c.shape, c.inputs[0].shape)

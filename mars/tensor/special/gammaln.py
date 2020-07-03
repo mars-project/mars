@@ -25,7 +25,7 @@ from .core import TensorSpecialUnaryOp
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorGammaLnUnary(TensorSpecialUnaryOp):
+class TensorGammaln(TensorSpecialUnaryOp):
     _op_type_ = OperandDef.GAMMALN
     _func_name = 'gammaln'
 
@@ -68,5 +68,5 @@ def gammaln(x, out=None, where=None, **kwargs):
 
     For complex-valued log-gamma, use `loggamma` instead of `gammaln`.
     """
-    op = TensorGammaLnUnary(**kwargs)
+    op = TensorGammaln(**kwargs)
     return op(x, out=out, where=where)

@@ -23,7 +23,7 @@ from ..utils import infer_dtype
 from .core import TensorSpecialBinOp
 
 
-class TensorRelEntrUnary(TensorSpecialBinOp):
+class TensorRelEntr(TensorSpecialBinOp):
     _op_type_ = OperandDef.REL_ENTR
     _func_name = 'rel_entr'
 
@@ -61,5 +61,5 @@ def rel_entr(x1, x2, out=None, where=None, **kwargs):
     -----
     This function is jointly convex in x and y.
     """
-    op = TensorRelEntrUnary(**kwargs)
+    op = TensorRelEntr(**kwargs)
     return op(x1, x2, out=out, where=where)
