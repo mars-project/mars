@@ -273,7 +273,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
 
 
 def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer',
-             dtype=None, usecols=None, chunk_bytes='64M', gpu=None, head_bytes='100k',
+             dtype=None, usecols=None, nrows=None, chunk_bytes='64M', gpu=None, head_bytes='100k',
              head_lines=None, incremental_index=False, storage_options=None, **kwargs):
     r"""
     Read a comma-separated values (csv) file into DataFrame.
@@ -579,5 +579,8 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
                           incremental_index=incremental_index, storage_options=storage_options,
                           **kwargs)
     chunk_bytes = chunk_bytes or options.chunk_store_limit
-    return op(index_value=index_value, columns_value=columns_value,
-              dtypes=mini_df.dtypes, chunk_bytes=chunk_bytes)
+    ret = op(index_value=index_value, columns_value=columns_value,
+             dtypes=mini_df.dtypes, chunk_bytes=chunk_bytes)
+    if nrows is not None:
+        return ret.head(nrows)
+    return ret
