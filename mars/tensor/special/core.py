@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..arithmetic.core import TensorUnaryOp
+from ..arithmetic.core import TensorUnaryOp, TensorBinOp
 from ..array_utils import np, cp, sparse
 
 
-class TensorSpecialOp(TensorUnaryOp):
-
+class TensorSpecialOperandMixin:
     @classmethod
     def _get_func(cls, xp):
         if xp is np:
@@ -29,3 +28,11 @@ class TensorSpecialOp(TensorUnaryOp):
         else:
             assert xp is sparse
             return getattr(sparse, cls._func_name)
+
+
+class TensorSpecialUnaryOp(TensorSpecialOperandMixin, TensorUnaryOp):
+    pass
+
+
+class TensorSpecialBinOp(TensorSpecialOperandMixin, TensorBinOp):
+    pass

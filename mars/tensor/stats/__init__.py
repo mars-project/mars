@@ -12,12 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    import scipy
-
-    from .gammaln import gammaln, TensorGammaln
-    from .erf import erf, TensorErf
-    from .entr import entr, TensorEntr
-    from .rel_entr import rel_entr, TensorRelEntr
-except ImportError:  # pragma: no cover
-    pass
+from .entropy import entropy
