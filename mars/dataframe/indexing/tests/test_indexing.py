@@ -21,6 +21,7 @@ from mars.tests.core import TestBase
 from mars.dataframe.core import SERIES_CHUNK_TYPE, Series, DataFrame, DATAFRAME_CHUNK_TYPE
 from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, \
     IndexingError, HeadTailOptimizedOperandMixin
+from mars.dataframe.indexing.loc import DataFrameLocGetItem
 
 
 class Test(TestBase):
@@ -493,6 +494,37 @@ class Test(TestBase):
 
         with self.assertRaises(KeyError):
             _ = df.loc[:, ['non_exist']]
+
+    def testLocUseIloc(self):
+        raw = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
+                           columns=['x', 'y', 'z'])
+        df = md.DataFrame(raw, chunk_size=2)
+
+        self.assertIsInstance(df.loc[:3].op, DataFrameIlocGetItem)
+        self.assertIsInstance(df.loc[1:3].op, DataFrameIlocGetItem)
+        self.assertIsInstance(df.loc[1].op, DataFrameIlocGetItem)
+        # negative
+        self.assertIsInstance(df.loc[:-3].op, DataFrameLocGetItem)
+        with self.assertRaises(KeyError):
+            _ = df.loc[-3]
+        # index 1 not None
+        self.assertIsInstance(df.loc[:3, :'y'].op, DataFrameLocGetItem)
+        # index 1 not slice
+        self.assertIsInstance(df.loc[:3, [True, False, True]].op, DataFrameLocGetItem)
+        self.assertIsInstance(df.loc[[True, False, True]].op, DataFrameLocGetItem)
+
+        raw2 = raw.copy()
+        raw2.index = pd.RangeIndex(1, 4)
+        df2 = md.DataFrame(raw2, chunk_size=2)
+
+        self.assertIsInstance(df2.loc[:3].op, DataFrameLocGetItem)
+        self.assertIsInstance(df2.loc['a3':].op, DataFrameLocGetItem)
+
+        raw2 = raw.copy()
+        raw2.index = ['a%d' % i for i in range(3)]
+        df2 = md.DataFrame(raw2, chunk_size=2)
+
+        self.assertIsInstance(df2.loc[:3].op, DataFrameLocGetItem)
 
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
