@@ -94,20 +94,23 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
                 "Binary operand's inputs should less than or equal 4, got {0}".format(len(inputs)))
 
     @classmethod
-    def _execute_gpu(cls, op, xp, lhs, rhs, **kw):
+    def _get_func(cls, xp):
         func_name = getattr(cls, '_func_name')
+        return getattr(xp, func_name)
+
+    @classmethod
+    def _execute_gpu(cls, op, xp, lhs, rhs, **kw):
         if kw.get('out') is not None:
             kw['out'] = xp.asarray(kw['out'])
-        r = getattr(xp, func_name)(lhs, rhs, **kw)
+        r = cls._get_func(xp)(lhs, rhs, **kw)
         return convert_order(r, op.outputs[0].order.value)
 
     @classmethod
     def _execute_cpu(cls, op, xp, lhs, rhs, **kw):
         kw['order'] = op.order
-        func_name = getattr(cls, '_func_name')
         if kw.get('out') is not None:
             kw['out'] = np.asarray(kw['out'])
-        return getattr(xp, func_name)(lhs, rhs, **kw)
+        return cls._get_func(xp)(lhs, rhs, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

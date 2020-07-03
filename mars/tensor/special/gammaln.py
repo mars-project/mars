@@ -21,11 +21,11 @@ from ... import opcodes as OperandDef
 from ...utils import require_not_none
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype
-from .core import TensorSpecialOp
+from .core import TensorSpecialUnaryOp
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorGammaln(TensorSpecialOp):
+class TensorGammaln(TensorSpecialUnaryOp):
     _op_type_ = OperandDef.GAMMALN
     _func_name = 'gammaln'
 
