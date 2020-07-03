@@ -17,5 +17,6 @@ try:
 
     from .gammaln import gammaln, TensorGammaln
     from .erf import erf, TensorErf
+    from .entr import entr, TensorEntr
 except ImportError:  # pragma: no cover
     pass

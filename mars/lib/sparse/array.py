@@ -604,6 +604,9 @@ class SparseArray(SparseNDArray):
     def erf(self):
         return self._scipy_unary('erf')
 
+    def entr(self):
+        return self._scipy_unary('entr')
+
     def __eq__(self, other):
         try:
             naked_other = naked(other)

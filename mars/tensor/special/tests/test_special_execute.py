@@ -23,9 +23,10 @@ from mars.tests.core import ExecutorForTest
 try:
     import scipy
     import scipy.sparse as sps
-    from scipy.special import gammaln as scipy_gammaln, erf as scipy_erf
+    from scipy.special import gammaln as scipy_gammaln, \
+        erf as scipy_erf, entr as scipy_entr
 
-    from mars.tensor.special import gammaln, erf
+    from mars.tensor.special import gammaln, erf, entr
 except ImportError:
     scipy = None
 
@@ -79,6 +80,30 @@ class Test(unittest.TestCase):
         result = self.executor.execute_tensor(r, concat=True)[0]
 
         data = scipy_erf(raw.data)
+        expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
+
+        np.testing.assert_array_equal(result.toarray(), expected.toarray())
+
+    def testEntrExecution(self):
+        raw = np.random.rand(10, 8, 6)
+        a = tensor(raw, chunk_size=3)
+
+        r = entr(a)
+
+        result = self.executor.execute_tensor(r, concat=True)[0]
+        expected = scipy_entr(raw)
+
+        np.testing.assert_array_equal(result, expected)
+
+        # test sparse
+        raw = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
+        a = tensor(raw, chunk_size=3)
+
+        r = entr(a)
+
+        result = self.executor.execute_tensor(r, concat=True)[0]
+
+        data = scipy_entr(raw.data)
         expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
 
         np.testing.assert_array_equal(result.toarray(), expected.toarray())

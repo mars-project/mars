@@ -251,6 +251,10 @@ def erf(x, **kw):
     return _call_unary('erf', x, **kw)
 
 
+def entr(x, **kw):
+    return _call_unary('entr', x, **kw)
+
+
 def equal(a, b, **_):
     try:
         return a == b

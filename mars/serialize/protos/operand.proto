@@ -209,6 +209,7 @@ message OperandDef {
         // special
         GAMMALN = 200;
         ERF = 201;
+        ENTR = 202;
 
         // spatial
         PDIST = 231;
