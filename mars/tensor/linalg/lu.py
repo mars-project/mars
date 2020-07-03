@@ -266,19 +266,19 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
         if raw_in_tensor.shape[0] == raw_in_tensor.shape[1]:
             return new_op.new_tensors(op.inputs, kws=kws)
 
-        p, l, u = new_op.new_tensors(op.inputs, kws=kws)
+        p, l_, u = new_op.new_tensors(op.inputs, kws=kws)
         if raw_in_tensor.shape[0] > raw_in_tensor.shape[1]:
-            l = l[:, :raw_in_tensor.shape[1]]._inplace_tile()
+            l_ = l_[:, :raw_in_tensor.shape[1]]._inplace_tile()
             u = u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]]._inplace_tile()
         else:
             p = p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
-            l = l[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
+            l_ = l_[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
             u = u[:raw_in_tensor.shape[0], :]._inplace_tile()
         kws = [
             {'chunks': p.chunks, 'nsplits': p.nsplits, 'dtype': P.dtype,
              'shape': p.shape, 'order': p.order},
-            {'chunks': l.chunks, 'nsplits': l.nsplits, 'dtype': l.dtype,
-             'shape': l.shape, 'order': l.order},
+            {'chunks': l_.chunks, 'nsplits': l_.nsplits, 'dtype': l_.dtype,
+             'shape': l_.shape, 'order': l_.order},
             {'chunks': u.chunks, 'nsplits': u.nsplits, 'dtype': u.dtype,
              'shape': u.shape, 'order': u.order}
         ]

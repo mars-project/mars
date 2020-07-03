@@ -902,8 +902,7 @@ class Test(TestBase):
 
             expected = sps.rand(1, 100, density=0.05)
             with tiledb.SparseArray(uri=tempdir, ctx=ctx, mode='w') as arr:
-                I = expected.col + 1
-                arr[I] = expected.data
+                arr[expected.col + 1] = expected.data
 
             a = fromtiledb(tempdir, ctx=ctx)
             result = self.executor.execute_tensor(a, concat=True)[0]

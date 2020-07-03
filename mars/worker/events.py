@@ -103,8 +103,8 @@ class EventsActor(WorkerActor):
         self._purge_old_events(category)
 
         class ItemWrapper(object):
-            def __init__(self, l):
-                self._l = l
+            def __init__(self, tl):
+                self._l = tl
 
             def __getitem__(self, item):
                 return self._l[item][0]

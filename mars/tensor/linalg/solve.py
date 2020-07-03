@@ -64,11 +64,11 @@ def solve(a, b, sym_pos=False, sparse=None):
     a = astensor(a)
     b = astensor(b)
     if sym_pos:
-        l = cholesky(a, lower=True)
-        u = l.T
+        l_ = cholesky(a, lower=True)
+        u = l_.T
     else:
-        p, l, u = lu(a)
+        p, l_, u = lu(a)
         b = p.T.dot(b)
     sparse = sparse if sparse is not None else a.issparse()
-    uy = solve_triangular(l, b, lower=True, sparse=sparse)
+    uy = solve_triangular(l_, b, lower=True, sparse=sparse)
     return solve_triangular(u, uy, sparse=sparse)
