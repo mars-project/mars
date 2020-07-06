@@ -144,7 +144,7 @@ class HeadTailOptimizedOperandMixin(DataFrameOperandMixin):
         if not isinstance(index0, slice):
             # have to be slice
             return False
-        if index0.step is not None:
+        if index0.step is not None and index0.step != 1:
             return False
         if len(indexes) == 2 and indexes[1] != slice(None):
             return False
