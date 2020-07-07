@@ -168,7 +168,6 @@ class HasClusterInfoActor(PromiseActor):
                 self._schedulers = scheduler_file.read().strip().split(',')
         else:
             self._schedulers = None
-        logger.warning('HasClusterInfoActor._schedulers = %r', self._schedulers)
         self._hash_ring = None
 
         self._cluster_info_ref = None
