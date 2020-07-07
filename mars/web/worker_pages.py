@@ -175,7 +175,7 @@ class WorkerTimelineHandler(MarsRequestHandler):
         ))
 
     @staticmethod
-    def timeline_app(scheduler_ip, doc):
+    def timeline_app(doc, scheduler_ip=None):
         from ..worker.events import EventCategory, ProcedureEventType
 
         worker_ep = to_str(doc.session_context.request.arguments.get('endpoint')[0])

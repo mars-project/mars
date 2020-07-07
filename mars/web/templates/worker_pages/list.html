@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% set active_page = 'worker_list' %}
+{% block custom_head %}
+    <script type="text/javascript" src="/static/js/bootstrap-table.min.js"></script>
+{% endblock %}
 {% block page_nav %}
     <h2>Worker List</h2>
 {% endblock %}

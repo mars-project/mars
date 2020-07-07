@@ -191,7 +191,8 @@ class MarsWeb(object):
 
         handlers = dict()
         for p, h in _bokeh_apps.items():
-            handlers[p] = Application(FunctionHandler(functools.partial(h, self._scheduler_ip)))
+            handlers[p] = Application(FunctionHandler(
+                functools.partial(h, scheduler_ip=self._scheduler_ip)))
 
         handler_kwargs = {'scheduler_ip': self._scheduler_ip}
         extra_patterns = [
