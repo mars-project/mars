@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
 
 import numpy as np
@@ -30,6 +31,7 @@ from mars.session import new_session
 
 
 @unittest.skipIf(sklearn is None, 'sklearn not installed')
+@unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
 class Test(LearnIntegrationTestBase):
     def testRocCurveAuc(self):
         service_ep = 'http://127.0.0.1:' + self.web_port

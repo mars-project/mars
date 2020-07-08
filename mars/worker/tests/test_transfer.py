@@ -119,6 +119,10 @@ class MockReceiverWorkerActor(WorkerActor):
             if end_mark:
                 finished_keys.append(chunk_key)
                 meta.status = ReceiveStatus.RECEIVED
+                self.storage_client.put_objects(
+                    session_id, [chunk_key], [self.get_result_data(session_id, chunk_key)],
+                    [DataStorageDevice.PROC_MEMORY]
+                )
         if self._receiver_manager_ref:
             self._receiver_manager_ref.notify_keys_finish(session_id, finished_keys, _tell=True)
 
@@ -310,9 +314,8 @@ class Test(WorkerCase):
         session_id = str(uuid.uuid4())
 
         mock_data = np.array([1, 2, 3, 4])
-        serialized_arrow_data = dataserializer.serialize(mock_data)
-        data_size = serialized_arrow_data.total_bytes
-        serialized_mock_data = serialized_arrow_data.to_buffer()
+        serialized_data = dataserializer.dumps(mock_data)
+        data_size = len(serialized_data)
 
         chunk_key1 = str(uuid.uuid4())
         chunk_key2 = str(uuid.uuid4())
@@ -330,9 +333,9 @@ class Test(WorkerCase):
 
             # SCENARIO 1: test transferring existing keys
             self.waitp(
-                storage_client.create_writer(session_id, chunk_key1, serialized_arrow_data.total_bytes,
+                storage_client.create_writer(session_id, chunk_key1, data_size,
                                              [DataStorageDevice.DISK])
-                    .then(lambda writer: promise.finished().then(lambda *_: writer.write(serialized_arrow_data))
+                    .then(lambda writer: promise.finished().then(lambda *_: writer.write(serialized_data))
                           .then(lambda *_: writer.close()))
             )
             result = self.waitp(receiver_manager_ref.create_data_writers(
@@ -363,8 +366,8 @@ class Test(WorkerCase):
             # add listener and finish transfer
             receiver_manager_ref.add_keys_callback(session_id, [chunk_key1, chunk_key2], _promise=True) \
                 .then(lambda *s: test_actor.set_result(s))
-            mock_receiver_ref.receive_data_part(session_id, [chunk_key2], [True], serialized_mock_data)
-            mock_receiver_ref.receive_data_part(session_id, [chunk_key3], [True], serialized_mock_data)
+            mock_receiver_ref.receive_data_part(session_id, [chunk_key2], [True], serialized_data)
+            mock_receiver_ref.receive_data_part(session_id, [chunk_key3], [True], serialized_data)
             self.get_result(5)
 
             # SCENARIO 3: test listening on multiple transfers
@@ -375,11 +378,11 @@ class Test(WorkerCase):
             # add listener
             receiver_manager_ref.add_keys_callback(session_id, [chunk_key4, chunk_key5], _promise=True) \
                 .then(lambda *s: test_actor.set_result(s))
-            mock_receiver_ref.receive_data_part(session_id, [chunk_key4], [True], serialized_mock_data)
+            mock_receiver_ref.receive_data_part(session_id, [chunk_key4], [True], serialized_data)
             # when some chunks are not transferred, promise will not return
             with self.assertRaises(TimeoutError):
                 self.get_result(0.5)
-            mock_receiver_ref.receive_data_part(session_id, [chunk_key5], [True], serialized_mock_data)
+            mock_receiver_ref.receive_data_part(session_id, [chunk_key5], [True], serialized_data)
             self.get_result(5)
 
             # SCENARIO 4: test listening on transfer with errors
@@ -397,6 +400,20 @@ class Test(WorkerCase):
                 session_id, [chunk_key7], [data_size], test_actor, use_promise=False)
             self.assertIsNone(statuses[0])
             self.assertEqual(ref.uid, mock_receiver_ref.uid)
+
+            # SCENARIO 6: test transferring lost keys
+            storage_client.delete(session_id, [chunk_key1])
+
+            result = self.waitp(receiver_manager_ref.create_data_writers(
+                session_id, [chunk_key1], [data_size], test_actor, _promise=True))
+            self.assertEqual(result[0].uid, mock_receiver_ref.uid)
+            self.assertIsNone(result[1][0])
+
+            # add listener and finish transfer
+            receiver_manager_ref.add_keys_callback(session_id, [chunk_key1], _promise=True) \
+                .then(lambda *s: test_actor.set_result(s))
+            mock_receiver_ref.receive_data_part(session_id, [chunk_key1], [True], serialized_data)
+            self.get_result(5)
 
     def testReceiverWorker(self):
         pool_addr = 'localhost:%d' % get_next_port()

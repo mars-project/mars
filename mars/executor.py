@@ -947,7 +947,7 @@ class Executor(object):
             if key not in self.stored_tileables:
                 # check if the tileable is executed before
                 raise ValueError(
-                    'Tileable object {} to fetch must be executed first'.format(tileable))
+                    'Tileable object {} must be executed first before being fetched'.format(tileable.key))
 
         # if chunk executed, fetch chunk mechanism will be triggered in execute_tileables
         result = self.execute_tileables(tileables, **kw)

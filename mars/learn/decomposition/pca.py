@@ -548,13 +548,13 @@ class PCA(_BasePCA):
 
         return U, S, V
 
-    def _score_samples(self, X):
+    def _score_samples(self, X, session=None):
         check_is_fitted(self, 'mean_')
 
         X = check_array(X)
         Xr = X - self.mean_
         n_features = X.shape[1]
-        precision = self.get_precision().fetch()
+        precision = self.get_precision().fetch(session=session)
         log_like = -.5 * (Xr * (mt.dot(Xr, precision))).sum(axis=1)
         log_like -= .5 * (n_features * log(2. * mt.pi) -
                           fast_logdet(precision))
@@ -577,7 +577,7 @@ class PCA(_BasePCA):
         ll : tensor, shape (n_samples,)
             Log-likelihood of each sample under the current model
         """
-        log_like = self._score_samples(X)
+        log_like = self._score_samples(X, session=session)
         log_like.execute(session=session)
         return log_like
 

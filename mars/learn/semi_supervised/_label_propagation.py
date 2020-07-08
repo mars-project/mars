@@ -221,7 +221,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             # clear
             to_run = []
 
-            if cond.fetch():
+            if cond.fetch(session=session):
                 break
 
             l_previous = self.label_distributions_
