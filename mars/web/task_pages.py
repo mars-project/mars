@@ -57,7 +57,7 @@ class TaskHandler(MarsRequestHandler):
         ))
 
     @staticmethod
-    def task_progress_app(scheduler_ip, doc):
+    def task_progress_app(doc, scheduler_ip=None):
         session_id = to_str(doc.session_context.request.arguments.get('session_id')[0])
         task_id = to_str(doc.session_context.request.arguments.get('task_id')[0])
         web_api = MarsWebAPI(scheduler_ip)
@@ -65,7 +65,7 @@ class TaskHandler(MarsRequestHandler):
         states = list(OperandState.__members__.values())
 
         ops, stats, progress = web_api.get_task_detail(session_id, task_id)
-        source = ColumnDataSource(stats)
+        source = ColumnDataSource(data=stats)
         cols = list(stats)[1:]
         p = figure(y_range=ops, plot_height=500, plot_width=800, x_range=(0, 100),
                    title="Total Progress: %0.2f%%" % progress)
