@@ -73,12 +73,12 @@ def auc(x, y, session=None, run_kwargs=None):
     all_dx_le_0 = mt.all(dx <= 0)
     mt.ExecutableTuple([x, any_dx_lt_0, all_dx_le_0]).execute(
         session=session, **(run_kwargs or dict()))
-    if any_dx_lt_0.fetch():
-        if all_dx_le_0.fetch():
+    if any_dx_lt_0.fetch(session=session):
+        if all_dx_le_0.fetch(session=session):
             direction = -1
         else:
             raise ValueError("x is neither increasing nor decreasing "
-                             ": {}.".format(x.fetch()))
+                             ": {}.".format(x.fetch(session=session)))
 
     area = direction * mt.trapz(y, x)
     return area.execute(session=session, **(run_kwargs or dict()))
