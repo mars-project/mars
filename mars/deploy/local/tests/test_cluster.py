@@ -544,6 +544,16 @@ class Test(unittest.TestCase):
             r2 = session.fetch(df6)
             pd.testing.assert_series_equal(r1, r2)
 
+            raw = pd.DataFrame(np.random.rand(100, 3), columns=list('abc'))
+            df = md.DataFrame(raw)
+            bins = [0.006 * i for i in range(0, 101)]
+            cut = md.cut(df['a'], bins)
+            cut.execute()
+            # test fetch replacement
+            r = cut.iloc[:3].execute()
+            expected = pd.cut(raw['a'], bins).iloc[:3]
+            pd.testing.assert_series_equal(r.fetch(), expected)
+
     def testMultiSessionDecref(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
