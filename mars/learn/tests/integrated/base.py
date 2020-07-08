@@ -55,7 +55,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
     def _start_distributed_env(self, n_workers=2):
         scheduler_port = self.scheduler_port = str(get_next_port())
         self.proc_workers = []
-        for _ in range(n_workers):
+        for idx in range(n_workers):
             worker_port = str(get_next_port())
             proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                             '-a', '127.0.0.1',
@@ -64,7 +64,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
                                             '--cache-mem', '10m',
                                             '--schedulers', '127.0.0.1:' + scheduler_port,
                                             '--log-level', 'debug',
-                                            '--log-format', 'WOR %(asctime)-15s %(message)s',
+                                            '--log-format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
                                             '--ignore-avail-mem'])
 
             self.proc_workers.append(proc_worker)
@@ -135,7 +135,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
             for proc_worker in self.proc_workers:
                 if proc_worker.poll() is not None:
                     raise ProcessRequirementUnmetError(
-                        'Worker not started. exit code %s' % self.proc_worker.poll())
+                        'Worker not started. exit code %s' % proc_worker.poll())
             if time.time() - check_time > 20:
                 raise ProcessRequirementUnmetError('Check meta_timestamp timeout')
 

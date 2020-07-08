@@ -523,7 +523,6 @@ class GraphActor(SchedulerActor):
 
     def _clear_for_iteration(self):
         self._tileable_to_fetch.clear()
-        self._operand_infos.clear()
         self._op_key_to_chunk.clear()
         self._terminal_chunk_op_key_to_tileable_key.clear()
         self._terminal_tileable_key_to_chunk_op_keys.clear()
@@ -1082,10 +1081,7 @@ class GraphActor(SchedulerActor):
         op_info['state'] = state
         self._graph_meta_ref.update_op_state(op_key, op_info['op_name'], state,
                                              _tell=True, _wait=False)
-        try:
-            del op_info['failover_state']
-        except KeyError:
-            pass
+        op_info.pop('failover_state', None)
 
     def get_operand_target_worker(self, op_key):
         return self._operand_infos[op_key]['target_worker']
@@ -1107,10 +1103,7 @@ class GraphActor(SchedulerActor):
         if worker:
             op_info['worker'] = worker
         else:
-            try:
-                del op_info['worker']
-            except KeyError:
-                pass
+            op_info.pop('worker', None)
         self._graph_meta_ref.update_op_worker(op_key, op_info['op_name'], worker,
                                               _tell=True, _wait=False)
 
