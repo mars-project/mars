@@ -51,9 +51,9 @@ class DataFrameRuntimeOptimizer:
 class DataSourceHeadRule(DataFrameRuntimeOptimizeRule):
     @staticmethod
     def match(chunk, graph, keys):
-        from ....dataframe.datasource.read_csv import DataFrameReadCSV
-        from ....dataframe.datasource.read_sql import DataFrameReadSQL
-        from ....dataframe.indexing.iloc import DataFrameIlocGetItem
+        from ...dataframe.datasource.read_csv import DataFrameReadCSV
+        from ...dataframe.datasource.read_sql import DataFrameReadSQL
+        from ...dataframe.indexing.iloc import DataFrameIlocGetItem
 
         op = chunk.op
         inputs = graph.predecessors(chunk)
@@ -65,7 +65,7 @@ class DataSourceHeadRule(DataFrameRuntimeOptimizeRule):
 
     @staticmethod
     def apply(chunk, graph, keys):
-        from ....dataframe.utils import parse_index
+        from ...dataframe.utils import parse_index
 
         data_source_chunk = graph.predecessors(chunk)[0]
         nrows = data_source_chunk.op.nrows or 0

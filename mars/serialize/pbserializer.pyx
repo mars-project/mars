@@ -535,10 +535,12 @@ cdef class ProtobufSerializeProvider(Provider):
         cdef object field_obj
 
         if model is None:
-            if type(value_pb) is Value:
+            if type(value_pb) is Value and not hasattr(value, 'cls'):
                 value_pb.typed.type_id = value.__serializable_index__
                 value.serialize(self, value_pb.typed.value)
             else:
+                if type(value_pb) is Value:
+                    value_pb = value_pb.any_ref
                 field_obj = value.cls(self)()
                 value.serialize(self, obj=field_obj)
                 value_pb.type_id = value.__serializable_index__
@@ -821,12 +823,12 @@ cdef class ProtobufSerializeProvider(Provider):
         cdef object f_obj
 
         if model is None:
-            if type(value_pb) is Value:
-                if value_pb.typed.type_id == 0:
-                    return None
+            if type(value_pb) is Value and value_pb.typed.type_id != 0:
                 model = get_serializable_by_index(value_pb.typed.type_id)
                 f_obj = value_pb.typed.value
             else:
+                if type(value_pb) is Value:
+                    value_pb = value_pb.any_ref
                 if value_pb.type_id == 0:
                     return None
                 model = get_serializable_by_index(value_pb.type_id)

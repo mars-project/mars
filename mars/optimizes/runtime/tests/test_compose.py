@@ -20,7 +20,7 @@ from mars.executor import Executor
 from mars.tensor.arithmetic import TensorTreeAdd
 from mars.tensor.indexing import TensorSlice
 from mars.graph import DirectedGraph
-from mars.optimizes.runtime.optimizers.ne import NeRuntimeOptimizer
+from mars.optimizes.runtime.ne import NeRuntimeOptimizer
 
 
 class Test(unittest.TestCase):

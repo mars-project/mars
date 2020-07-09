@@ -142,6 +142,7 @@ class ShuffleProxyActor(BaseOperandActor):
                           if k in self._mapper_op_to_chunk]
         self.chunk_meta.batch_delete_meta(
             self._session_id, inp_chunk_keys, _tell=True, _wait=False)
+        self._finish_preds = set()
         [f.result() for f in futures]
 
         self.ref().start_operand(OperandState.FREED, _tell=True)

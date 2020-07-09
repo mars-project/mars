@@ -20,7 +20,7 @@ from mars.executor import Executor
 from mars.tensor.fuse.cp import _evaluate
 from mars.tensor.datasource import ones
 from mars.tensor import sqrt
-from mars.optimizes.runtime.optimizers.core import RuntimeOptimizer
+from mars.optimizes.runtime.core import RuntimeOptimizer
 
 
 class Test(unittest.TestCase):
@@ -37,4 +37,4 @@ class Test(unittest.TestCase):
         self.assertTrue(any(n.op.__class__.__name__ == 'TensorCpFuseChunk' for n in g))
 
         c = next(n for n in g if n.op.__class__.__name__ == 'TensorCpFuseChunk')
-        print(_evaluate(c))
+        self.assertGreater(len(_evaluate(c)), 1)

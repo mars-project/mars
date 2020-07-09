@@ -25,7 +25,10 @@ try:
 except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
-import mars.dataframe as md
+from mars import dataframe as md
+from mars import opcodes
+from mars.core import build_mode
+from mars.graph import DAG
 from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like, dot
 from mars.tensor.datasource import array, fromtiledb, TensorTileDBDataSource, fromdense
 from mars.tensor.datasource.tri import TensorTriu, TensorTril
@@ -36,10 +39,9 @@ from mars.tensor.datasource.ones import TensorOnes, TensorOnesLike
 from mars.tensor.fuse.core import TensorFuseChunk
 from mars.tensor.core import Tensor, SparseTensor, TensorChunk
 from mars.tensor.datasource.from_dataframe import from_dataframe
-from mars.graph import DAG
-from mars.core import build_mode
-from mars import opcodes
 from mars.tests.core import TestBase
+from mars.tiles import get_tiled
+from mars.utils import build_fuse_chunk
 
 
 class Test(TestBase):
@@ -104,44 +106,44 @@ class Test(TestBase):
         self.assertEqual(chunk.shape, chunk2.shape)
         self.assertTrue(np.array_equal(chunk.op.data, chunk2.op.data))
 
-        t = (tensor(np.random.random((10, 3)), chunk_size=(5, 2)) + 1).tiles()
+        t1 = tensor(np.random.random((10, 3)), chunk_size=(5, 2))
+        t2 = (t1 + 1).tiles()
 
         # pb
-        chunk1 = t.chunks[0]
-        chunk2 = t.chunks[1]
-        fuse_op = TensorFuseChunk()
-        composed_chunk = fuse_op.new_chunk(chunk1.inputs, shape=chunk2.shape,
-                                           _key=chunk2.key, _composed=[chunk1.data, chunk2.data])
+        chunk1 = get_tiled(t1).chunks[0]
+        chunk2 = t2.chunks[0]
+
+        composed_chunk = build_fuse_chunk([chunk1.data, chunk2.data], TensorFuseChunk)
         serials = self._pb_serial(composed_chunk)
         op, pb = serials[composed_chunk.op, composed_chunk.data]
 
         self.assertEqual(pb.key, composed_chunk.key)
         self.assertEqual(int(op.type.split('.', 1)[1]), opcodes.FUSE)
-        self.assertEqual(len(pb.composed), 2)
 
         composed_chunk2 = self._pb_deserial(serials)[composed_chunk.data]
 
         self.assertEqual(composed_chunk.key, composed_chunk2.key)
         self.assertEqual(type(composed_chunk.op), type(composed_chunk2.op))
-        self.assertEqual(composed_chunk.composed[0].inputs[0].key,
-                         composed_chunk2.composed[0].inputs[0].key)
-        self.assertEqual(composed_chunk.inputs[-1].key, composed_chunk2.inputs[-1].key)
+        self.assertEqual(composed_chunk.composed[0].key,
+                         composed_chunk2.composed[0].key)
+        self.assertEqual(composed_chunk.composed[-1].key,
+                         composed_chunk2.composed[-1].key)
 
         # json
-        chunk1 = t.chunks[0]
-        chunk2 = t.chunks[1]
-        fuse_op = TensorFuseChunk()
-        composed_chunk = fuse_op.new_chunk(chunk1.inputs, shape=chunk2.shape, _key=chunk2.key,
-                                           _composed=[chunk1.data, chunk2.data])
+        chunk1 = get_tiled(t1).chunks[0]
+        chunk2 = t2.chunks[0]
+
+        composed_chunk = build_fuse_chunk([chunk1.data, chunk2.data], TensorFuseChunk)
         serials = self._json_serial(composed_chunk)
 
         composed_chunk2 = self._json_deserial(serials)[composed_chunk.data]
 
         self.assertEqual(composed_chunk.key, composed_chunk2.key)
         self.assertEqual(type(composed_chunk.op), type(composed_chunk2.op))
-        self.assertEqual(composed_chunk.composed[0].inputs[0].key,
-                         composed_chunk2.composed[0].inputs[0].key)
-        self.assertEqual(composed_chunk.inputs[-1].key, composed_chunk2.inputs[-1].key)
+        self.assertEqual(composed_chunk.composed[0].key,
+                         composed_chunk2.composed[0].key)
+        self.assertEqual(composed_chunk.composed[-1].key,
+                         composed_chunk2.composed[-1].key)
 
         t1 = ones((10, 3), chunk_size=2)
         t2 = ones((3, 5), chunk_size=2)

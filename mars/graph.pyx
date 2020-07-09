@@ -176,30 +176,6 @@ cdef class DirectedGraph:
                 result += 1
         return result
 
-    def traverse(self, visit_predicate=None):
-        cdef:
-            set visited = set()
-
-        def _default_visit_predicate(n, visited):
-            preds = self.predecessors(n)
-            return not preds or all(pred in visited for pred in preds)
-
-        q = deque(self.iter_indep())
-        visit_predicate = visit_predicate or _default_visit_predicate
-
-        while q:
-            node = q.popleft()
-            if node in visited:
-                continue
-            preds = self.predecessors(node)
-            if visit_predicate(node, visited):
-                yield node
-                visited.add(node)
-                q.extend(n for n in self[node] if n not in visited)
-            else:
-                q.extend(n for n in preds if n not in visited)
-                q.append(node)
-
     def dfs(self, start=None, visit_predicate=None, successors=None, reverse=False):
         cdef:
             set visited = set()
@@ -421,18 +397,22 @@ cdef class DirectedGraph:
 
     @classmethod
     def deserialize(cls, s_graph):
-        cdef DirectedGraph graph = cls()
+        cdef:
+            DirectedGraph graph = cls()
+            list nodes = []
 
         from .core import ChunkData, TileableData
 
         node_type = TileableData if s_graph.level == SerializableGraph.Level.ENTITY else ChunkData
-        for node in s_graph.nodes:
-            if isinstance(node, node_type):
-                graph._add_node(node)
-                if node.inputs:
-                    for inode in node.inputs:
+        nodes = [node for node in s_graph.nodes if isinstance(node, node_type)]
+        nodes_set = set(nodes)
+        for node in nodes:
+            graph._add_node(node)
+            for inode in node.inputs or []:
+                if inode in nodes_set:
+                    if inode not in graph:
                         graph._add_node(inode)
-                        graph._add_edge(inode, node)
+                    graph._add_edge(inode, node)
 
         return graph
 

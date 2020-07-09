@@ -277,9 +277,6 @@ class DataFrameFuseChunkMixin(FuseChunkMixin, DataFrameOperandMixin):
 
 
 class DataFrameFuseChunk(Fuse, DataFrameFuseChunkMixin):
-    def __init__(self, sparse=False, **kwargs):
-        super().__init__(_sparse=sparse, **kwargs)
-
     @property
     def output_types(self):
-        return self._operands[-1].output_types
+        return self.outputs[-1].chunk.op.output_types

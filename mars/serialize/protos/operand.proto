@@ -510,7 +510,6 @@ message OperandDef {
     }
 
     string type = 1;
-    map<string, Value> attr = 2;
-    repeated OperandDef operands = 3;
-    string id = 4;
+    string id = 2;
+    map<string, Value> attr = 3;
 }

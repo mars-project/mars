@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import deque
-
+from ...core import FuseChunkData
 from ...operands import Fuse, VirtualOperand, Fetch
+from ...utils import replace_inputs, build_fuse_chunk
 
 
 class Fusion:
@@ -28,13 +28,13 @@ class Fusion:
         return self._graph
 
     def _compose_graph(self, composes):
-        from ...utils import build_fuse_chunk
         composed_nodes = []
 
         for c in composes:
             head_node = c[0]
             tail_node = c[-1]
-            fuse_chunk = build_fuse_chunk(c)
+            fuse_chunk = build_fuse_chunk(
+                c, tail_node.op.get_fuse_op_cls(tail_node), None, None)
             self._graph.add_node(fuse_chunk)
             for node in self._graph.iter_successors(tail_node):
                 self._graph.add_edge(fuse_chunk, node)
@@ -96,53 +96,50 @@ class Fusion:
                 composes.append(list(selected))
         return self._compose_graph(composes)
 
-    def _decompose_node(self, node):
-        def get_node(n):
-            if n.composed:
-                return n.composed[-1]
-            return n
+    def _decompose_node(self, node: FuseChunkData):
+        fuse_graph = node.op.fuse_graph
 
-        composed_nodes = node.composed
-        nodes_set = set(composed_nodes)
-        tail_node = composed_nodes[-1]
-        self._graph.add_node(tail_node)
-        q = deque()
-        q.append(tail_node)
-        while len(q) > 0:
-            cur_node = q.pop()
-            if not cur_node.inputs:
-                continue
-            inputs = cur_node.inputs
-            for pre in inputs:
-                pre = get_node(pre)
-                if pre in nodes_set:
-                    self._graph.add_node(pre)
-                if pre in self._graph:
-                    self._graph.add_edge(pre, cur_node)
-                if pre in nodes_set:
-                    q.appendleft(pre)
-        for n in self._graph.iter_successors(node):
-            self._graph.add_edge(composed_nodes[-1], n)
+        # put subgraph back into graph
+        for n in fuse_graph.topological_iter():
+            if n not in self._graph:
+                self._graph.add_node(n)
+            for inp in n.inputs:
+                if inp not in fuse_graph and inp not in self._graph:
+                    # if input not in fused subgraph,
+                    # and not in the graph, just skip
+                    continue
+                if inp not in self._graph:
+                    self._graph.add_node(inp)
+                self._graph.add_edge(inp, n)
+
+        # replace successors' inputs
+        for succ in self._graph.iter_successors(node):
+            self._graph.add_edge(node.chunk, succ)
+
             # replace inputs for successors
-            n_inputs = n.inputs
-            new_n_inputs = []
             node_data = getattr(node, 'data') if hasattr(node, 'data') else node
-            for inp in n_inputs:
-                if inp is node_data:
-                    new_n_inputs.append(composed_nodes[-1])
-                else:
-                    new_n_inputs.append(inp)
-            # replace inputs first
-            n.inputs = new_n_inputs
+            replace_inputs(succ, node_data, node.chunk)
             # if the successor is a fuse,
-            # replace the first compose node as well
-            if isinstance(n.op, Fuse):
-                n.composed[0].inputs = new_n_inputs
+            # replace the independent fused node as well
+            if isinstance(succ.op, Fuse):
+                for indep_n in succ.op.fuse_graph.iter_indep():
+                    replace_inputs(indep_n, node_data, node.chunk)
+
+        # delete node
         self._graph.remove_node(node)
+
+    @staticmethod
+    def check_graph(graph):  # pragma: no cover
+        for c in graph:
+            if isinstance(c.op, Fuse):
+                raise RuntimeError('cannot have fuse')
+            for inp in c.inputs:
+                if isinstance(inp.op, Fuse):
+                    raise RuntimeError('cannot have fuse')
 
     def decompose(self, nodes=None):
         if nodes is None:
-            nodes = list(self._graph.traverse())
+            nodes = list(self._graph.topological_iter())
         for v in nodes:
             if isinstance(v.op, Fuse):
                 self._decompose_node(v)

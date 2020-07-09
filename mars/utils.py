@@ -596,19 +596,6 @@ def build_fetch(entity):
         raise TypeError('Type %s not supported' % type(entity).__name__)
 
 
-def build_fuse_chunk(fused_chunks, **kwargs):
-    head_chunk = fused_chunks[0]
-    tail_chunk = fused_chunks[-1]
-    chunk_op = tail_chunk.op
-    params = tail_chunk.params.copy()
-
-    fuse_op = chunk_op.get_fuse_op_cls(tail_chunk)(
-        sparse=chunk_op.sparse, _key=chunk_op.key, _gpu=tail_chunk.op.gpu,
-        _operands=[c.op for c in fused_chunks])
-    return fuse_op.new_chunk(
-        head_chunk.inputs, kws=[params], _key=tail_chunk.key, _composed=fused_chunks, **kwargs)
-
-
 def get_chunk_shuffle_key(chunk):
     op = chunk.op
     try:
@@ -899,8 +886,8 @@ def stack_back(flattened, raw):
     return _stack(result, raw)
 
 
-def recursive_tile(tensor):
-    q = [tensor]
+def recursive_tile(tileable):
+    q = [tileable]
     while q:
         t = q[-1]
         cs = [c for c in t.inputs if c.is_coarse()]
@@ -910,7 +897,37 @@ def recursive_tile(tensor):
         t._inplace_tile()
         q.pop()
 
-    return tensor
+    return tileable
+
+
+def replace_inputs(obj, old, new):
+    new_inputs = []
+    for inp in obj.inputs or []:
+        if inp is old:
+            new_inputs.append(new)
+        else:
+            new_inputs.append(inp)
+    obj.inputs = new_inputs
+
+
+def build_fuse_chunk(fused_chunks, fuse_op_cls, op_kw=None, chunk_kw=None):
+    from .graph import DAG
+
+    fuse_graph = DAG()
+    for i, fuse_chunk in enumerate(fused_chunks):
+        fuse_graph.add_node(fuse_chunk)
+        if i > 0:
+            fuse_graph.add_edge(fused_chunks[i - 1], fuse_chunk)
+
+    head_chunk = fused_chunks[0]
+    tail_chunk = fused_chunks[-1]
+    tail_chunk_op = tail_chunk.op
+    fuse_op = fuse_op_cls(sparse=tail_chunk_op.sparse, gpu=tail_chunk_op.gpu,
+                          _key=tail_chunk_op.key, fuse_graph=fuse_graph,
+                          **(op_kw or dict()))
+    return fuse_op.new_chunk(
+        head_chunk.inputs, kws=[tail_chunk.params], _key=tail_chunk.key,
+        _chunk=tail_chunk, **(chunk_kw or dict()))
 
 
 def adapt_mars_docstring(doc):
