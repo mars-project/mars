@@ -14,10 +14,10 @@
 
 import operator
 
-from ...serialize.core import TupleField, ValueType, Int8Field
+from ...serialize.core import TupleField, ValueType, Int8Field, AnyField
 from ...operands import Fetch, FetchShuffle, FetchMixin
 from ...utils import on_serialize_shape, on_deserialize_shape
-from ..operands import DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperandMixin, ObjectType, on_deserialize_object_type, on_serialize_object_type
 
 
 class DataFrameFetchMixin(DataFrameOperandMixin, FetchMixin):
@@ -28,8 +28,8 @@ class DataFrameFetch(Fetch, DataFrameFetchMixin):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
-                             on_deserialize=ObjectType)
+    _object_type = AnyField('object_type', on_serialize=on_serialize_object_type,
+                            on_deserialize=on_deserialize_object_type)
 
     def __init__(self, to_fetch_key=None, sparse=False, object_type=None, **kw):
         super().__init__(
