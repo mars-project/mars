@@ -359,6 +359,7 @@ message OperandDef {
         MELT = 729;
         SET_LABEL = 730;
         RENAME = 731;
+        INSERT = 732;
 
         FUSE = 801;
 

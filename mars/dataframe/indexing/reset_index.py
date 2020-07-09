@@ -20,8 +20,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...serialize import BoolField, AnyField, StringField
-from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
 from ..core import IndexValue
+from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
 from ..utils import parse_index, build_empty_df, build_empty_series, standardize_range_index
 
 

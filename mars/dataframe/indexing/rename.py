@@ -14,10 +14,10 @@
 
 import warnings
 
-from ..core import SERIES_TYPE
 from ... import opcodes
 from ...core import get_output_types, OutputType
 from ...serialize import AnyField, Int64Field, StringField
+from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, build_empty_series, validate_axis, parse_index
 
