@@ -93,16 +93,19 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     _size = Int64Field('size')
     _nrows = Int64Field('nrows')
     _incremental_index = BoolField('incremental_index')
+    _keep_usecols_order = BoolField('keep_usecols_order')
 
     _storage_options = DictField('storage_options')
 
     def __init__(self, path=None, names=None, sep=None, header=None, index_col=None,
                  compression=None, usecols=None, offset=None, size=None, nrows=None,
-                 gpu=None, incremental_index=None, storage_options=None, **kw):
+                 gpu=None, keep_usecols_order=None, incremental_index=None,
+                 storage_options=None, **kw):
         super().__init__(_path=path, _names=names, _sep=sep, _header=header,
                          _index_col=index_col, _compression=compression,
                          _usecols=usecols, _offset=offset, _size=size, _nrows=nrows,
                          _gpu=gpu, _incremental_index=incremental_index,
+                         _keep_usecols_order=keep_usecols_order,
                          _storage_options=storage_options,
                          _output_types=[OutputType.dataframe], **kw)
 
@@ -149,6 +152,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     @property
     def incremental_index(self):
         return self._incremental_index
+
+    @property
+    def keep_usecols_order(self):
+        return self._keep_usecols_order
 
     @property
     def storage_options(self):
@@ -225,26 +232,39 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         start, end = _find_chunk_start_end(f, op.offset, op.size)
         f.seek(start)
         b = FixedSizeFileObject(f, end - start)
+        if hasattr(out_df, 'dtypes'):
+            dtypes = out_df.dtypes
+        else:
+            # Output will be a Series in some optimize rules.
+            dtypes = pd.Series([out_df.dtype], index=[out_df.name])
         if end == start:
             # the last chunk may be empty
-            df = build_empty_df(out_df.dtypes)
+            df = build_empty_df(dtypes)
         else:
             if start == 0:
                 # The first chunk contains header
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
-            df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col, usecols=op.usecols,
-                             dtype=out_df.dtypes.to_dict(), nrows=op.nrows, **csv_kwargs)
+            if op.usecols:
+                usecols = op.usecols if isinstance(op.usecols, list) else [op.usecols]
+            else:
+                usecols = op.usecols
+            df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col, usecols=usecols,
+                             dtype=dtypes.to_dict(), nrows=op.nrows, **csv_kwargs)
         return df
 
     @classmethod
     def _cudf_read_csv(cls, op):
+        if op.usecols:
+            usecols = op.usecols if isinstance(op.usecols, list) else [op.usecols]
+        else:
+            usecols = op.usecols
         csv_kwargs = op.extra_params
         if op.offset == 0:
-            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, usecols=op.usecols, **csv_kwargs)
+            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, usecols=usecols, **csv_kwargs)
         else:
             df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, names=op.names,
-                               usecols=op.usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
+                               usecols=usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
                                nrows=op.nrows, **csv_kwargs)
         return df
 
@@ -264,6 +284,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
             else:
                 df = cls._cudf_read_csv(op) if op.gpu else cls._pandas_read_csv(f, op)
 
+        if op._keep_usecols_order:
+            df = df[op.usecols]
         ctx[out_df.key] = df
 
     def __call__(self, index_value=None, columns_value=None, dtypes=None, chunk_bytes=None):

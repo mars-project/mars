@@ -504,6 +504,25 @@ class Test(TestBase):
         pd.testing.assert_series_equal(
             self.executor.execute_dataframe(series5, concat=True)[0], data[selected])
 
+        data = pd.Series(np.random.rand(10,))
+        series = md.Series(data, chunk_size=3)
+        selected = series[:2]
+        pd.testing.assert_series_equal(
+            self.executor.execute_dataframe(selected, concat=True)[0], data[:2])
+
+        selected = series[2:8:2]
+        pd.testing.assert_series_equal(
+            self.executor.execute_dataframe(selected, concat=True)[0], data[2:8:2])
+
+        data = pd.Series(np.random.rand(9), index=['c' + str(i) for i in range(9)])
+        series = md.Series(data, chunk_size=3)
+        selected = series[:'c2']
+        pd.testing.assert_series_equal(
+            self.executor.execute_dataframe(selected, concat=True)[0], data[:'c2'])
+        selected = series['c2':'c9']
+        pd.testing.assert_series_equal(
+            self.executor.execute_dataframe(selected, concat=True)[0], data['c2':'c9'])
+
     def testHead(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
         df = md.DataFrame(data, chunk_size=2)
@@ -809,6 +828,43 @@ class Test(TestBase):
         finally:
             del Executor._op_runners[op_cls]
 
+    @staticmethod
+    @contextlib.contextmanager
+    def _inject_execute_data_source_usecols(usecols, op_cls):
+        def _execute_data_source(ctx, op):
+            op_cls.execute(ctx, op)
+            result = ctx[op.outputs[0].key]
+            if not isinstance(usecols, list):
+                if not isinstance(result, pd.Series):
+                    raise RuntimeError('Out data should be a Series')
+            elif len(result.columns) > len(usecols):
+                raise RuntimeError('have data more than expected')  # pragma: no cover
+
+        try:
+            register(op_cls, _execute_data_source)
+            yield
+        finally:
+            del Executor._op_runners[op_cls]
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _inject_execute_data_source_mixed(limit, usecols, op_cls):
+        def _execute_data_source(ctx, op):
+            op_cls.execute(ctx, op)
+            result = ctx[op.outputs[0].key]
+            if not isinstance(usecols, list):
+                if not isinstance(result, pd.Series):
+                    raise RuntimeError('Out data should be a Series')
+            elif len(result.columns) > len(usecols):
+                raise RuntimeError('have data more than expected')  # pragma: no cover
+            if len(result) > limit:
+                raise RuntimeError('have data more than expected')
+        try:
+            register(op_cls, _execute_data_source)
+            yield
+        finally:
+            del Executor._op_runners[op_cls]
+
     def testOptimizedHeadTail(self):
         import sqlalchemy as sa
 
@@ -827,6 +883,35 @@ class Test(TestBase):
             chunk_bytes = size / 3
 
             df = md.read_csv(filename, chunk_bytes=chunk_bytes)
+
+            cols = ['b', 'a', 'c']
+            r = df[cols]
+            with self._inject_execute_data_source_usecols(cols, DataFrameReadCSV):
+                result = executor.execute_tileables([r])[0]
+                expected = pd_df[cols]
+                result.reset_index(drop=True, inplace=True)
+                pd.testing.assert_frame_equal(result, expected)
+
+            cols = ['b', 'a', 'b']
+            r = df[cols].head(20)
+            with self._inject_execute_data_source_usecols(cols, DataFrameReadCSV):
+                result = executor.execute_tileables([r])[0]
+                expected = pd_df[cols].head(20)
+                result.reset_index(drop=True, inplace=True)
+                pd.testing.assert_frame_equal(result, expected)
+
+            r = df['c']
+            with self._inject_execute_data_source_usecols('c', DataFrameReadCSV):
+                result = executor.execute_tileables([r])[0]
+                expected = pd_df['c']
+                result.reset_index(drop=True, inplace=True)
+                pd.testing.assert_series_equal(result, expected)
+
+            r = df['d'].head(3)
+            with self._inject_execute_data_source_mixed(3, 'd', DataFrameReadCSV):
+                result = executor.execute_tileables([r])[0]
+                expected = pd_df['d'].head(3)
+                pd.testing.assert_series_equal(result, expected)
 
             # test DataFrame.head
             r = df.head(3)
