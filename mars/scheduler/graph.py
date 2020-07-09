@@ -1012,8 +1012,6 @@ class GraphActor(SchedulerActor):
                 self._graph_meta_ref.set_graph_end(_tell=True)
             else:
                 self._execute_graph(compose=self._chunk_graph_builder.is_compose)
-        else:
-            logger.debug('REMAINING CHUNKS: %r', self._terminal_chunk_keys - self._terminated_chunk_keys)
 
     def _update_tileable_and_its_chunk_shapes(self):
         need_update_tileable_to_tiled = dict()
