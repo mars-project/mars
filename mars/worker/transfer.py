@@ -339,6 +339,7 @@ class ReceiverManagerActor(WorkerActor):
         slot_ref = self.promise_ref(self._dispatch_ref.get_hash_slot('receiver', repr(data_keys)))
         for chunk_key, data_size in zip(data_keys, data_sizes):
             session_chunk_key = (session_id, chunk_key)
+
             try:
                 data_meta = self._data_meta_cache[session_chunk_key]
             except KeyError:
@@ -346,16 +347,20 @@ class ReceiverManagerActor(WorkerActor):
                     ReceiverDataMeta(chunk_size=data_size, source_address=sender_address,
                                      status=ReceiveStatus.NOT_STARTED)
 
-            if data_locations.get(chunk_key) or data_meta.status == ReceiveStatus.RECEIVED:
+            if data_locations.get(chunk_key):
                 data_meta.status = ReceiveStatus.RECEIVED
                 statuses.append(ReceiveStatus.RECEIVED)
                 self._update_data_meta(session_id, chunk_key, status=ReceiveStatus.RECEIVED)
                 continue
-            if data_meta.status == ReceiveStatus.RECEIVING:
+            elif data_meta.status == ReceiveStatus.RECEIVING:
                 # data transfer already started
                 logger.debug('Chunk %s already started transmission', chunk_key)
                 statuses.append(ReceiveStatus.RECEIVING)
                 continue
+            elif data_meta.status == ReceiveStatus.RECEIVED:
+                data_meta = self._data_meta_cache[session_chunk_key] = \
+                    ReceiverDataMeta(chunk_size=data_size, source_address=sender_address,
+                                     status=ReceiveStatus.NOT_STARTED)
 
             data_meta.start_time = time.time()
             data_meta.receiver_worker_uid = slot_ref.uid

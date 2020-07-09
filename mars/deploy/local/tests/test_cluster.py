@@ -1089,8 +1089,6 @@ class Test(unittest.TestCase):
     def testLearnInLocalCluster(self, *_):
         from mars.learn.neighbors import NearestNeighbors
         from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
-        from mars.learn.metrics import roc_curve, auc
-        from sklearn.metrics import roc_curve as sklearn_roc_curve, auc as sklearn_auc
 
         with new_cluster(scheduler_n_process=2, worker_n_process=3, shared_memory='20M') as cluster:
             rs = np.random.RandomState(0)
@@ -1111,19 +1109,3 @@ class Test(unittest.TestCase):
             result = [r.fetch() for r in ret]
             np.testing.assert_almost_equal(result[0], expected[0])
             np.testing.assert_almost_equal(result[1], expected[1])
-
-            rs = np.random.RandomState(0)
-            raw = pd.DataFrame({'a': rs.randint(0, 10, (10,)),
-                                'b': rs.rand(10)})
-
-            df = md.DataFrame(raw)
-            y = df['a'].to_tensor().astype('int')
-            pred = df['b'].to_tensor().astype('float')
-            fpr, tpr, thresholds = roc_curve(y, pred, pos_label=2)
-            m = auc(fpr, tpr)
-
-            sk_fpr, sk_tpr, sk_threshod = sklearn_roc_curve(raw['a'].to_numpy().astype('int'),
-                                                            raw['b'].to_numpy().astype('float'),
-                                                            pos_label=2)
-            expect_m = sklearn_auc(sk_fpr, sk_tpr)
-            self.assertAlmostEqual(m.fetch(), expect_m)
