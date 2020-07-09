@@ -370,6 +370,10 @@ class GraphActor(SchedulerActor):
         with self._open_dump_file('graph') as outf:  # pragma: no cover
             succ_op_keys = dict()
             graph = self._chunk_graph_cache
+
+            outf.write('DOT:\n%s\n\n' % graph.to_dot())
+            outf.write('CONNECTIONS:\n')
+
             chunks = list(graph)
             for n in graph:
                 succ_op_keys[n.key] = succ_op_keys.get(n.key, set()) \
