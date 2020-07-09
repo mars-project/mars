@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....utils import lazy_import
-from ....tensor import arithmetic
-from ....tensor.fuse import TensorCpFuseChunk
+from ...tensor import arithmetic
+from ...tensor.fuse import TensorCpFuseChunk
+from ...utils import lazy_import, build_fuse_chunk
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 CP_INSTALLED = cp is not None
@@ -49,8 +49,8 @@ class CpRuntimeOptimizer:
             head_node = c[0]
             tail_node = c[-1]
 
-            op = TensorCpFuseChunk(dtype=tail_node.dtype)
-            composed_chunk = op(c).data
+            composed_chunk = build_fuse_chunk(
+                c, TensorCpFuseChunk, op_kw={'dtype': tail_node.dtype}).data
             graph.add_node(composed_chunk)
             for node in graph.iter_successors(tail_node):
                 graph.add_edge(composed_chunk, node)

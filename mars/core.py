@@ -26,7 +26,7 @@ import numpy as np
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
     on_deserialize_shape, on_serialize_nsplits, enter_build_mode, build_mode
 from .serialize import HasKey, HasData, ValueType, ProviderType, Serializable, AttributeAsDict, \
-    TupleField, ListField, DictField, KeyField, BoolField, StringField, ReferenceField
+    TupleField, ListField, DictField, KeyField, BoolField, StringField
 from .tiles import Tileable, handler
 
 
@@ -250,10 +250,6 @@ class ChunkData(EntityData):
         return getattr(self, '_cached', None)
 
     @property
-    def composed(self):
-        return getattr(self, '_composed', None)
-
-    @property
     def device(self):
         return self.op.device
 
@@ -297,28 +293,30 @@ class ObjectChunk(Chunk):
     _allow_data_type_ = (ObjectChunkData,)
 
 
-def _on_serialize_composed(composed):
-    return [c.data if isinstance(c, Entity) else c for c in composed]
-
-
 class FuseChunkData(ChunkData):
     __slots__ = '_inited',
 
-    class ChunkRef(Serializable):
-        _chunk = ReferenceField('chunk', None)
-
-        @property
-        def chunk(self):
-            return self._chunk
-
-    _composed = ListField('composed', ValueType.reference(None),
-                          on_serialize=_on_serialize_composed)
+    _chunk = KeyField('chunk',
+                      on_serialize=lambda x: x.data if hasattr(x, 'data') else x)
 
     def __init__(self, *args, **kwargs):
         self._inited = False
         super().__init__(*args, **kwargs)
         self._extra_params = {}
         self._inited = True
+
+    @property
+    def chunk(self):
+        return self._chunk
+
+    @property
+    def composed(self):
+        # for compatibility, just return the topological ordering,
+        # once we apply optimization on the subgraph,
+        # `composed` is not needed any more and should be removed then.
+        assert getattr(self._op, 'fuse_graph', None) is not None
+        fuse_graph = self._op.fuse_graph
+        return list(fuse_graph.topological_iter())
 
     @classmethod
     def cls(cls, provider):
@@ -327,17 +325,15 @@ class FuseChunkData(ChunkData):
             return FuseChunkDef
         return super().cls(provider)
 
-    @property
-    def params(self):
-        # params return the properties which useful to rebuild a new chunk
-        return self.composed[-1].params
-
     def __getattr__(self, attr):
         if not self._inited:
             return object.__getattribute__(self, attr)
         if attr in self._extra_params:
             return self._extra_params[attr]
-        return getattr(self.composed[-1], attr)
+        try:
+            return getattr(self._chunk, attr)
+        except AttributeError:
+            return object.__getattribute__(self, attr)
 
     @property
     def nbytes(self):

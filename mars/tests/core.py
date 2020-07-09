@@ -31,7 +31,8 @@ import pandas as pd
 from mars.context import LocalContext
 from mars.core import OBJECT_TYPE
 from mars.executor import Executor, GraphExecution
-from mars.optimizes.runtime.optimizers.core import RuntimeOptimizer
+from mars.graph import SerializableGraph
+from mars.optimizes.chunk_graph.fuse import Fusion
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
 from mars.utils import lazy_import
@@ -142,7 +143,6 @@ class TestBase(unittest.TestCase):
                 serial(ob.op)
             elif isinstance(ob, ChunkData):
                 to_serials.add(ob)
-                [serial(c) for c in (ob.composed or [])]
                 serial(ob.op)
             else:
                 assert isinstance(ob, Operand)
@@ -191,6 +191,8 @@ class TestBase(unittest.TestCase):
                 return obj1.key == obj2.key
             elif isinstance(obj1, ReferenceType) and isinstance(obj2, ReferenceType):
                 return cmp(obj1(), obj2())
+            elif isinstance(obj1, SerializableGraph) and isinstance(obj2, SerializableGraph):
+                return cmp(obj1.nodes, obj2.nodes)
             else:
                 return obj1 == obj2
 
@@ -632,7 +634,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                 # due to the reason that, now after fuse,
                 # the inputs of node's op may be fuse,
                 # call optimize to decompose back
-                RuntimeOptimizer(raw_graph, self._engine).optimize(keys=keys)
+                raw_graph.decompose()
+                Fusion.check_graph(raw_graph)
 
         # record shapes generated in tile
         for n in graph:

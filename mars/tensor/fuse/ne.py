@@ -146,7 +146,7 @@ def _handle_unary(chunk):
 
 def _decompose(chunk):
     expr = _VAR_FLAG + chunk.key
-    for node, op in zip(reversed(chunk.composed), reversed(chunk.op.operands)):
+    for node in reversed(chunk.composed):
         _expr = _evaluate(node)
         expr = expr.replace(_VAR_FLAG + node.key, '({})'.format(_expr))
     return expr

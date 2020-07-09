@@ -14,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....tensor import arithmetic
-from ....tensor import reduction
-from ....tensor.fuse import TensorNeFuseChunk
-from ....tensor.fuse.ne import NUMEXPR_INSTALLED
+from ...tensor import arithmetic
+from ...tensor import reduction
+from ...tensor.fuse import TensorNeFuseChunk
+from ...tensor.fuse.ne import NUMEXPR_INSTALLED
+from ...utils import build_fuse_chunk
 
 REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
                 reduction.TensorMax, reduction.TensorMin}
@@ -108,8 +109,9 @@ class NeRuntimeOptimizer:
             head_node = c[0]
             tail_node = c[-1]
 
-            op = TensorNeFuseChunk(dtype=tail_node.dtype)
-            composed_chunk = op(c).data
+            composed_chunk = build_fuse_chunk(
+                c, TensorNeFuseChunk,
+                op_kw={'dtype': tail_node.dtype}).data
             graph.add_node(composed_chunk)
             for node in graph.iter_successors(tail_node):
                 graph.add_edge(composed_chunk, node)

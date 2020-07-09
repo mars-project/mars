@@ -21,8 +21,8 @@ from typing import TypeVar, Union, List
 import numpy as np
 
 from . import opcodes as OperandDef
-from .serialize import SerializableMetaclass, ValueType, ProviderType, \
-    IdentityField, ListField, DictField, Int32Field, BoolField, StringField
+from .serialize import SerializableMetaclass, ValueType, ProviderType, IdentityField, \
+    ListField, DictField, Int32Field, BoolField, StringField, ReferenceField
 from .core import Entity, Chunk, Tileable, AttributeAsDictKey, ExecutableTuple, \
     FuseChunkData, FuseChunk, OutputType, get_chunk_types, get_tileable_types
 from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode
@@ -571,16 +571,29 @@ class FetchMixin(TileableOperandMixin):
 
 
 class Fuse(Operand):
+    __slots__ = '_fuse_graph',
     _op_type_ = OperandDef.FUSE
 
-    _operands = ListField('operands', ValueType.key)
+    _serializable_fuse_graph = ReferenceField('serializable_fuse_graph', None)
+
+    def __init__(self, fuse_graph=None, serialiable_fuse_graph=None,
+                 gpu=None, sparse=None, **kw):
+        self._fuse_graph = fuse_graph
+        super().__init__(_serializable_fuse_graph=serialiable_fuse_graph,
+                         _gpu=gpu, _sparse=sparse, **kw)
+        if self._serializable_fuse_graph is None and self._fuse_graph is not None:
+            self._serializable_fuse_graph = self._fuse_graph.serialize()
 
     @property
-    def operands(self):
-        return self._operands
+    def fuse_graph(self):
+        from .graph import DAG
+
+        if self._fuse_graph is None:
+            self._fuse_graph = DAG.deserialize(self._serializable_fuse_graph)
+        return self._fuse_graph
 
 
-class FuseChunkMixin(object):
+class FuseChunkMixin:
     __slots__ = ()
 
     def _create_chunk(self, output_idx, index, **kw):
@@ -590,13 +603,6 @@ class FuseChunkMixin(object):
     @classmethod
     def tile(cls, op):
         raise NotSupportTile('FuseChunk is a chunk operand which does not support tile')
-
-    def __call__(self, fuse_chunks):
-        head_chunk = fuse_chunks[0]
-        tail_chunk = fuse_chunks[-1]
-        setattr(self, '_operands', [c.op for c in fuse_chunks])
-        return self.new_chunk(head_chunk.inputs, shape=tail_chunk.shape, order=tail_chunk.order,
-                              _composed=fuse_chunks, _key=tail_chunk.key)
 
 
 class FetchShuffle(Operand):

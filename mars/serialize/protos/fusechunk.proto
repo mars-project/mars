@@ -10,7 +10,7 @@ message FuseChunkDef {
     repeated int64 shape = 3;
     Value op = 4;  // just store key here
     bool cached = 5;
-    repeated AnyReference composed = 7;
+    Value chunk = 7;
     Value extra_params = 8;
     string id = 9;
 }

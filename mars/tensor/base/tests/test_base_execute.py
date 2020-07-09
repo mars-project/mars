@@ -34,7 +34,7 @@ class Test(TestBase):
         self.executor = ExecutorForTest('numpy')
 
     def testRechunkExecution(self):
-        raw = np.random.random((11, 8))
+        raw = np.random.RandomState(0).random((11, 8))
         arr = tensor(raw, chunk_size=3)
         arr2 = arr.rechunk(4)
 
