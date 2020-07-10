@@ -19,7 +19,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from mars.tests.core import create_actor_pool
-from mars.errors import StorageDataExists, StorageFull
+from mars.errors import StorageDataExists, StorageFull, SerializationFailed
 from mars.utils import get_next_port
 from mars.worker.storage import PlasmaKeyMapActor
 from mars.worker.storage.sharedstore import PlasmaSharedStore
@@ -78,7 +78,7 @@ class Test(unittest.TestCase):
             self.assertIsNone(km_ref.get(session_id, fake_data_key))
             store.delete(session_id, fake_data_key)
 
-            with self.assertRaises(Exception):
+            with self.assertRaises(SerializationFailed):
                 non_serial = type('non_serial', (object,), dict(nbytes=10))
                 store.put(session_id, fake_data_key, non_serial())
             self.assertIsNone(km_ref.get(session_id, fake_data_key))
