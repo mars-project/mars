@@ -15,14 +15,17 @@
 
 def _install():
     from pandas.util import cache_readonly
-    from .iloc import iloc, head, tail
-    from .loc import loc
-    from .iat import iat
     from .at import at
-    from .set_index import set_index
     from .getitem import dataframe_getitem, series_getitem
+    from .iat import iat
+    from .iloc import iloc, head, tail
+    from .insert import df_insert
+    from .loc import loc
+    from .rename import df_rename, series_rename, index_rename
+    from .reset_index import df_reset_index, series_reset_index
+    from .set_index import set_index
     from .setitem import dataframe_setitem
-    from ..operands import DATAFRAME_TYPE, SERIES_TYPE
+    from ..operands import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 
     for cls in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(cls, 'iloc', cache_readonly(iloc))
@@ -36,8 +39,17 @@ def _install():
         setattr(cls, 'set_index', set_index)
         setattr(cls, '__getitem__', dataframe_getitem)
         setattr(cls, '__setitem__', dataframe_setitem)
+        setattr(cls, 'insert', df_insert)
+        setattr(cls, 'reset_index', df_reset_index)
+        setattr(cls, 'rename', df_rename)
+
     for cls in SERIES_TYPE:
         setattr(cls, '__getitem__', series_getitem)
+        setattr(cls, 'reset_index', series_reset_index)
+        setattr(cls, 'rename', series_rename)
+
+    for cls in INDEX_TYPE:
+        setattr(cls, 'rename', index_rename)
 
 
 _install()

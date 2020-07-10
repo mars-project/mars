@@ -15,7 +15,7 @@
 import logging
 
 from ...actors import FunctionActor
-from ...errors import StorageFull, StorageDataExists
+from ...errors import StorageFull, StorageDataExists, SerializationFailed
 
 try:
     import pyarrow
@@ -32,8 +32,14 @@ try:
         from pyarrow.plasma import PlasmaStoreFull
     except ImportError:  # pragma: no cover
         from pyarrow.lib import PlasmaStoreFull
+
+    try:
+        from pyarrow.serialization import SerializationCallbackError
+    except ImportError:
+        from pyarrow.lib import SerializationCallbackError
 except ImportError:  # pragma: no cover
     pyarrow, plasma, PlasmaObjectNotFound, PlasmaStoreFull = None, None, None, None
+    SerializationCallbackError = None
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +224,12 @@ class PlasmaSharedStore(object):
                 obj_id = self._new_object_id(session_id, data_key)
 
         try:
-            serialized = pyarrow.serialize(value, self._serialize_context)
+            try:
+                serialized = pyarrow.serialize(value, self._serialize_context)
+            except SerializationCallbackError:
+                self._mapper_ref.delete(session_id, data_key)
+                raise SerializationFailed(obj=value) from None
+
             del value
             data_size = serialized.total_bytes
             try:

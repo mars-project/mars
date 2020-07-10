@@ -20,11 +20,10 @@ import numpy as np
 import pandas as pd
 
 from mars.config import options, option_context
-from mars.dataframe.base import to_gpu, to_cpu, df_reset_index, series_reset_index, cut
+from mars.dataframe.base import to_gpu, to_cpu, cut
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
-from mars.session import new_session
 from mars.tensor import tensor
 from mars.tests.core import TestBase, require_cudf
 from mars.utils import lazy_import
@@ -110,108 +109,6 @@ class Test(TestBase):
         index2 = index.rechunk(1)
         res = self.executor.execute_dataframe(index2, concat=True)[0]
         pd.testing.assert_index_equal(data, res)
-
-    def testResetIndexExecution(self):
-        data = pd.DataFrame([('bird',    389.0),
-                             ('bird',     24.0),
-                             ('mammal',   80.5),
-                             ('mammal', np.nan)],
-                            index=['falcon', 'parrot', 'lion', 'monkey'],
-                            columns=('class', 'max_speed'))
-        df = from_pandas_df(data)
-        df2 = df_reset_index(df)
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        expected = data.reset_index()
-        pd.testing.assert_frame_equal(result, expected)
-
-        df = from_pandas_df(data, chunk_size=2)
-        df2 = df_reset_index(df)
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        expected = data.reset_index()
-        pd.testing.assert_frame_equal(result, expected)
-
-        df = from_pandas_df(data, chunk_size=1)
-        df2 = df_reset_index(df, drop=True)
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        expected = data.reset_index(drop=True)
-        pd.testing.assert_frame_equal(result, expected)
-
-        index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
-                                           ('bird', 'parrot'),
-                                           ('mammal', 'lion'),
-                                           ('mammal', 'monkey')],
-                                          names=['class', 'name'])
-        data = pd.DataFrame([('bird',    389.0),
-                             ('bird',     24.0),
-                             ('mammal',   80.5),
-                             ('mammal', np.nan)],
-                            index=index,
-                            columns=('type', 'max_speed'))
-        df = from_pandas_df(data, chunk_size=1)
-        df2 = df_reset_index(df, level='class')
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        expected = data.reset_index(level='class')
-        pd.testing.assert_frame_equal(result, expected)
-
-        columns = pd.MultiIndex.from_tuples([('speed', 'max'), ('species', 'type')])
-        data.columns = columns
-        df = from_pandas_df(data, chunk_size=2)
-        df2 = df_reset_index(df, level='class', col_level=1, col_fill='species')
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        expected = data.reset_index(level='class', col_level=1, col_fill='species')
-        pd.testing.assert_frame_equal(result, expected)
-
-        # Test Series
-
-        s = pd.Series([1, 2, 3, 4], name='foo',
-                      index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
-
-        series = from_pandas_series(s)
-        s2 = series_reset_index(series, name='bar')
-        result = self.executor.execute_dataframe(s2, concat=True)[0]
-        expected = s.reset_index(name='bar')
-        pd.testing.assert_frame_equal(result, expected)
-
-        series = from_pandas_series(s, chunk_size=2)
-        s2 = series_reset_index(series, drop=True)
-        result = self.executor.execute_dataframe(s2, concat=True)[0]
-        expected = s.reset_index(drop=True)
-        pd.testing.assert_series_equal(result, expected)
-
-        # Test Unknown shape
-        sess = new_session()
-        data1 = pd.DataFrame(np.random.rand(10, 3), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9])
-        df1 = from_pandas_df(data1, chunk_size=5)
-        data2 = pd.DataFrame(np.random.rand(10, 3), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
-        df2 = from_pandas_df(data2, chunk_size=6)
-        df = (df1 + df2).reset_index()
-        result = sess.run(df)
-        pd.testing.assert_index_equal(result.index, pd.RangeIndex(12))
-        # Inconsistent with Pandas when input dataframe's shape is unknown.
-        result = result.sort_values(by=result.columns[0])
-        expected = (data1 + data2).reset_index()
-        np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
-
-        data1 = pd.Series(np.random.rand(10,), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9])
-        series1 = from_pandas_series(data1, chunk_size=3)
-        data2 = pd.Series(np.random.rand(10,), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
-        series2 = from_pandas_series(data2, chunk_size=3)
-        df = (series1 + series2).reset_index()
-        result = sess.run(df)
-        pd.testing.assert_index_equal(result.index, pd.RangeIndex(12))
-        # Inconsistent with Pandas when input dataframe's shape is unknown.
-        result = result.sort_values(by=result.columns[0])
-        expected = (data1 + data2).reset_index()
-        np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
-
-        # case from https://github.com/mars-project/mars/issues/1286
-        data = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
-        df = from_pandas_df(data, chunk_size=3)
-
-        r = df.sort_values('a').reset_index(drop=True)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = data.sort_values('a').reset_index(drop=True)
-        pd.testing.assert_frame_equal(result, expected)
 
     def testSeriesMapExecution(self):
         raw = pd.Series(np.arange(10))
@@ -1456,74 +1353,3 @@ class Test(TestBase):
             result = self.executor.execute_dataframe(series, concat=True)[0]
             expected = s.drop_duplicates()
             pd.testing.assert_series_equal(result, expected)
-
-    def testSetColumns(self):
-        rs = np.random.RandomState(0)
-        raw = pd.DataFrame(rs.rand(10, 4))
-
-        df = from_pandas_df(raw, chunk_size=3)
-        df.columns = ['a', 'b', 'c', 'd']
-
-        result = self.executor.execute_dataframe(df, concat=True)[0]
-        expected = raw.copy()
-        expected.columns = ['a', 'b', 'c', 'd']
-        pd.testing.assert_frame_equal(result, expected)
-
-        with self.assertRaises(ValueError):
-            df.columns = ['1', '2', '3']
-
-    def testDataFrameRename(self):
-        rs = np.random.RandomState(0)
-        raw = pd.DataFrame(rs.rand(10, 4), columns=['A', 'B', 'C', 'D'])
-        df = from_pandas_df(raw, chunk_size=3)
-
-        with self.assertWarns(Warning):
-            df.rename(str, errors='raise')
-
-        with self.assertRaises(NotImplementedError):
-            df.rename({"A": "a", "B": "b"}, axis=1, copy=False)
-
-        r = df.rename(str)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.rename(str))
-
-        r = df.rename({"A": "a", "B": "b"}, axis=1)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.rename({"A": "a", "B": "b"}, axis=1))
-
-        df.rename({"A": "a", "B": "b"}, axis=1, inplace=True)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
-                                      raw.rename({"A": "a", "B": "b"}, axis=1))
-
-        raw = pd.DataFrame(rs.rand(10, 4),
-                           columns=pd.MultiIndex.from_tuples((('A', 'C'), ('A', 'D'), ('B', 'E'), ('B', 'F'))))
-        df = from_pandas_df(raw, chunk_size=3)
-
-        r = df.rename({"C": "a", "D": "b"}, level=1, axis=1)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.rename({"C": "a", "D": "b"}, level=1, axis=1))
-
-        raw = pd.Series(rs.rand(10), name='series')
-        series = from_pandas_series(raw, chunk_size=3)
-
-        r = series.rename('new_series')
-        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                       raw.rename('new_series'))
-
-        r = series.rename(lambda x: 2 ** x)
-        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                       raw.rename(lambda x: 2 ** x))
-
-        with self.assertRaises(TypeError):
-            series.name = {1: 10, 2: 20}
-
-        series.name = 'new_series'
-        pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
-                                       raw.rename('new_series'))
-
-        raw = pd.MultiIndex.from_frame(pd.DataFrame(rs.rand(10, 2), columns=['A', 'B']))
-        idx = from_pandas_index(raw)
-
-        r = idx.rename(['C', 'D'])
-        pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.rename(['C', 'D']))

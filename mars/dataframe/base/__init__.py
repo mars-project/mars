@@ -16,7 +16,6 @@ from .map import map_
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 from .rechunk import rechunk
-from .reset_index import df_reset_index, series_reset_index
 from .describe import describe
 from .apply import df_apply, series_apply
 from .fillna import fillna, ffill, bfill
@@ -33,8 +32,6 @@ from .drop import df_drop, df_pop, series_drop, index_drop
 from .drop_duplicates import df_drop_duplicates, \
     series_drop_duplicates, index_drop_duplicates
 from .melt import melt
-from .rename import df_rename, series_rename, index_rename
-from .set_label import DataFrameSetLabel
 
 
 def _install():
@@ -47,7 +44,6 @@ def _install():
         setattr(t, 'to_gpu', to_gpu)
         setattr(t, 'to_cpu', to_cpu)
         setattr(t, 'rechunk', rechunk)
-        setattr(t, 'reset_index', df_reset_index)
         setattr(t, 'describe', describe)
         setattr(t, 'apply', df_apply)
         setattr(t, 'transform', df_transform)
@@ -68,13 +64,11 @@ def _install():
         setattr(t, '__delitem__', lambda df, items: df_drop(df, items, axis=1, inplace=True))
         setattr(t, 'drop_duplicates', df_drop_duplicates)
         setattr(t, 'melt', melt)
-        setattr(t, 'rename', df_rename)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
         setattr(t, 'to_cpu', to_cpu)
         setattr(t, 'rechunk', rechunk)
-        setattr(t, 'reset_index', series_reset_index)
         setattr(t, 'map', map_)
         setattr(t, 'describe', describe)
         setattr(t, 'apply', series_apply)
@@ -95,13 +89,11 @@ def _install():
         setattr(t, 'astype', astype)
         setattr(t, 'drop', series_drop)
         setattr(t, 'drop_duplicates', series_drop_duplicates)
-        setattr(t, 'rename', series_rename)
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
         setattr(t, 'drop', index_drop)
         setattr(t, 'drop_duplicates', index_drop_duplicates)
-        setattr(t, 'rename', index_rename)
 
     for method in _string_method_to_handlers:
         if not hasattr(StringAccessor, method):

@@ -805,7 +805,7 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
 
     @name.setter
     def name(self, val):
-        from .base.rename import DataFrameRename
+        from .indexing.rename import DataFrameRename
         op = DataFrameRename(new_name=val, output_types=[OutputType.series])
         new_series = op(self)
         self.data = new_series.data
@@ -1197,7 +1197,7 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
 
     @columns.setter
     def columns(self, new_columns):
-        from .base import DataFrameSetLabel
+        from .indexing.set_label import DataFrameSetLabel
 
         op = DataFrameSetLabel(axis=1, value=new_columns)
         new_df = op(self)

@@ -29,13 +29,19 @@ try:
 except ImportError:  # pragma: no cover
     sps = None
 
+from ..errors import SerializationFailed
 from ..lib.sparse import SparseNDArray
 from ..lib.groupby_wrapper import GroupByWrapper
 
 try:
     import pyarrow
+    try:
+        from pyarrow.serialization import SerializationCallbackError
+    except ImportError:
+        from pyarrow.lib import SerializationCallbackError
 except ImportError:  # pragma: no cover
     pyarrow = None
+    SerializationCallbackError = Exception
 
 
 try:
@@ -256,7 +262,7 @@ def dump(obj, file, *, serial_type=None, compress=None, pickle_protocol=None):
         compress = CompressType.NONE
     try:
         if serial_type == SerialType.ARROW:
-            serialized = pyarrow.serialize(obj, mars_serialize_context())
+            serialized = serialize(obj)
             data_size = serialized.total_bytes
             write_file_header(file, file_header(serial_type, SERIAL_VERSION, data_size, compress))
             file = open_compression_file(file, compress)
@@ -281,7 +287,10 @@ def dumps(obj, *, serial_type=None, compress=None, pickle_protocol=None):
 
 
 def serialize(data):
-    return pyarrow.serialize(data, mars_serialize_context())
+    try:
+        return pyarrow.serialize(data, mars_serialize_context())
+    except SerializationCallbackError:
+        raise SerializationFailed(obj=data) from None
 
 
 def deserialize(data):
