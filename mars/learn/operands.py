@@ -16,7 +16,7 @@ from enum import Enum
 
 from ..operands import Operand, TileableOperandMixin, Fetch, FetchMixin, \
     Fuse, FuseChunkMixin, MapReduceOperand, ShuffleProxy
-from ..serialize import ValueType, ListField, BoolField
+from ..serialize import ValueType, ListField
 from ..tensor.core import TensorChunkData, TensorChunk, TensorData, Tensor, \
     TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ..tensor.operands import TensorOperandMixin
