@@ -131,6 +131,7 @@ Reindexing / selection / label manipulation
    DataFrame.drop
    DataFrame.drop_duplicates
    DataFrame.head
+   DataFrame.insert
    DataFrame.rename
    DataFrame.reset_index
    DataFrame.set_index

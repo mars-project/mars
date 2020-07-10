@@ -41,6 +41,7 @@ from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
 from mars.core import Base, Entity
+from mars.errors import SerializationFailed
 from mars.tests.core import assert_groupby_equal
 from mars.utils import to_binary, to_text
 
@@ -627,6 +628,12 @@ class Test(unittest.TestCase):
             array = np.float64(0.2345)
             assert_array_equal(array, dataserializer.loads(
                 dataserializer.dumps(array, serial_type=type_, compress=compress)))
+
+        # test non-serializable object
+        if pyarrow:
+            non_serial = type('non_serial', (object,), dict(nbytes=10))
+            with self.assertRaises(SerializationFailed):
+                dataserializer.dumps(non_serial())
 
         # test structured arrays.
         rec_dtype = np.dtype([('a', 'int64'), ('b', 'double'), ('c', '<U8')])
