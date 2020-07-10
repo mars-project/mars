@@ -16,12 +16,12 @@
 # import torch first, or some issue emerges,
 # see https://github.com/pytorch/pytorch/issues/2575
 from .contrib import pytorch, tensorflow, xgboost, lightgbm
-from .utils.shuffle import shuffle
 from .metrics import pairwise
 from . import preprocessing
 from . import neighbors
+from . import utils
 
 for _mod in [xgboost, tensorflow, pytorch, lightgbm, neighbors]:
     _mod.register_op()
 
-del _mod, shuffle, pairwise, preprocessing
+del _mod, pairwise, preprocessing, utils

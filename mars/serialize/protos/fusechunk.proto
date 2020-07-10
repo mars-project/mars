@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-import "mars/serialize/protos/anyref.proto";
 import "mars/serialize/protos/value.proto";
 
 
