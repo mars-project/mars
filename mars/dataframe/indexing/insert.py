@@ -17,9 +17,9 @@ import pandas as pd
 
 from ... import opcodes
 from ...serialize import AnyField, BoolField, Int64Field
-from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
+from ...tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
-from ..operands import DataFrameOperand, DataFrameOperandMixin
+from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import build_empty_df, parse_index
 
 
@@ -72,6 +72,8 @@ class DataFrameInsert(DataFrameOperand, DataFrameOperandMixin):
         params['columns_value'] = parse_index(empty_df.columns, store_data=True)
         params['dtypes'] = empty_df.dtypes
         params['shape'] = (df.shape[0], df.shape[1] + 1)
+
+        self._object_type = ObjectType.dataframe
         return self.new_dataframe(inputs, **params)
 
     @classmethod
