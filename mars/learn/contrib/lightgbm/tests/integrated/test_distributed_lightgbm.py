@@ -33,8 +33,11 @@ class Test(LearnIntegrationTestBase):
         n_columns = 10
         chunk_size = 20
         rs = mt.random.RandomState(0)
-        self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-        self.y = rs.rand(n_rows, chunk_size=chunk_size)
+        X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+        y = rs.rand(n_rows, chunk_size=chunk_size)
+        filter = rs.rand(n_rows, chunk_size=chunk_size) < 0.8
+        self.X = X[filter]
+        self.y = y[filter]
         super().setUp()
 
     def testDistributedLGBMClassifier(self):

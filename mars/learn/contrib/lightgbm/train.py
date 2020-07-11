@@ -309,7 +309,9 @@ def train(params, train_set, eval_sets=None, **kwargs):
 
     evals_result = kwargs.pop('evals_result', dict())
     session = kwargs.pop('session', None)
-    run_kwargs = kwargs.pop('run_kwargs', dict())
+    run_kwargs = kwargs.pop('run_kwargs', None)
+    if run_kwargs is None:
+        run_kwargs = dict()
     timeout = kwargs.pop('timeout', 120)
     base_port = kwargs.pop('base_port', None)
 
