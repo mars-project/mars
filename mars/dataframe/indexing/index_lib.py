@@ -33,7 +33,7 @@ from ...tensor.indexing.index_lib import IndexHandlerContext, IndexHandler, \
 from ...tensor.utils import split_indexes_into_chunks, calc_pos, \
     filter_inputs, slice_split, calc_sliced_size, to_numpy
 from ...utils import check_chunks_unknown_shape, classproperty
-from ..core import SERIES_CHUNK_TYPE, IndexValue
+from ..core import SERIES_CHUNK_TYPE, SERIES_TYPE, IndexValue
 from ..operands import ObjectType
 from ..utils import parse_index
 from .utils import convert_labels_into_positions
@@ -211,7 +211,10 @@ class LabelSliceIndexHandler(IndexHandler):
                    context: IndexHandlerContext) -> None:
         tileable = context.tileable
         input_axis = index_info.input_axis
-        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        if isinstance(tileable, SERIES_TYPE):
+            index_value = tileable.index_value
+        else:
+            index_value = [tileable.index_value, tileable.columns_value][input_axis]
 
         # check if chunks have unknown shape
         check = False
@@ -325,7 +328,10 @@ class LabelSliceIndexHandler(IndexHandler):
                 context: IndexHandlerContext) -> None:
         tileable = context.tileable
         input_axis = index_info.input_axis
-        index_value = [tileable.index_value, tileable.columns_value][input_axis]
+        if isinstance(tileable, SERIES_TYPE):
+            index_value = tileable.index_value
+        else:
+            index_value = [tileable.index_value, tileable.columns_value][input_axis]
 
         if index_value.has_value() or self._slice_all(index_info.raw_index):
             self._process_has_value_index(tileable, index_info,

@@ -195,10 +195,13 @@ class HeadTailOptimizedOperandMixin(DataFrameOperandMixin):
             for i in range(new_size):
                 in_chunks = chunks[combine_size * i: combine_size * (i + 1)]
                 chunk_index = (i, 0) if in_chunks[0].ndim == 2 else (i,)
+                if len(inp.shape) == 1:
+                    shape = (sum(c.shape[0] for c in in_chunks),)
+                else:
+                    shape = (sum(c.shape[0] for c in in_chunks), in_chunks[0].shape[1])
                 concat_chunk = DataFrameConcat(
                     axis=0, object_type=in_chunks[0].op.object_type).new_chunk(
-                    in_chunks, index=chunk_index,
-                    shape=(sum(c.shape[0] for c in in_chunks), in_chunks[0].shape[1]))
+                    in_chunks, index=chunk_index, shape=shape)
                 chunk_op = op.copy().reset_key()
                 params = out.params
                 params['index'] = chunk_index
@@ -210,6 +213,10 @@ class HeadTailOptimizedOperandMixin(DataFrameOperandMixin):
         params['nsplits'] = tuple((s,) for s in out.shape)
         params['chunks'] = chunks
         return new_op.new_tileables(op.inputs, kws=[params])
+
+    def is_head(self):
+        return self._is_indexes_head_or_tail(self._indexes) and \
+               self._is_head(self._indexes[0])
 
     @classmethod
     def tile(cls, op):
@@ -233,10 +240,6 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     @property
     def indexes(self):
         return self._indexes
-
-    def is_head(self):
-        return self._is_indexes_head_or_tail(self._indexes) and \
-               self._is_head(self._indexes[0])
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -417,7 +420,7 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         ctx[chunk.key] = r
 
 
-class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
+class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     _op_module_ = 'series'
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
@@ -451,6 +454,10 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        tileds = super().tile(op)
+        if tileds is not None:
+            return tileds
+
         handler = DataFrameIlocIndexesHandler()
         return [handler.handle(op)]
 
@@ -477,7 +484,8 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
             shape = tuple(calc_shape(series.shape, self.indexes))
             index_value = indexing_index_value(series.index_value, self.indexes[0])
             inputs = [series] + [index for index in self._indexes if isinstance(index, (Base, Entity))]
-            return self.new_series(inputs, shape=shape, dtype=series.dtype, index_value=index_value)
+            return self.new_series(inputs, shape=shape, dtype=series.dtype,
+                                   index_value=index_value, name=series.name)
 
 
 class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):

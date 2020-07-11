@@ -31,7 +31,7 @@ import pandas as pd
 from mars.context import LocalContext
 from mars.core import OBJECT_TYPE
 from mars.executor import Executor, GraphExecution
-from mars.optimizes.runtime.optimizers.core import RuntimeOptimizer
+from mars.optimizes.runtime.core import RuntimeOptimizer
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
 from mars.utils import lazy_import
