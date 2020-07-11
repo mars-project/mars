@@ -102,8 +102,7 @@ class DataSourceGetitemRule(DataFrameRuntimeOptimizeRule):
         getitem_data_source_chunk_params = data_source_chunk.params
         dtypes = getitem_data_source_chunk_params.pop('dtypes')
         getitem_data_source_chunk_params['_key'] = chunk.key
-        if len(usecols) == 1:
-            # if the number of usecols is 1, output type should be Series
+        if chunk.ndim == 1:
             getitem_data_source_chunk_op._usecols = usecols[0]
             name = usecols[0]
             getitem_data_source_chunk_params['shape'] = (data_source_chunk.shape[0],)

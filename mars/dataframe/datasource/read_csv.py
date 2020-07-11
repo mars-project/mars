@@ -259,7 +259,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         return df
 
     @classmethod
-    def _cudf_read_csv(cls, op):
+    def _cudf_read_csv(cls, op):  # pragma: no cover
         if op.usecols:
             usecols = op.usecols if isinstance(op.usecols, list) else [op.usecols]
         else:
