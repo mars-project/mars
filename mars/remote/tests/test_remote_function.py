@@ -15,8 +15,11 @@
 from collections import defaultdict
 
 import numpy as np
+import pandas as pd
 
+from mars import dataframe as md
 from mars import tensor as mt
+from mars.learn.utils import shuffle
 from mars.remote import spawn, ExecutableTuple
 from mars.session import new_session, Session
 from mars.lib.mmh3 import hash as mmh3_hash
@@ -132,3 +135,18 @@ class Test(TestBase):
         result = s.execute(session=sess).fetch(session=sess)
         expected = (raw.sum(axis=0) * 3).sum()
         self.assertAlmostEqual(result, expected)
+
+        df1 = md.DataFrame(raw, chunk_size=3)
+        df1.execute(session=sess)
+        df2 = shuffle(df1)
+        df2.execute(session=sess)
+
+        def f2(input_df):
+            return input_df.sum().to_pandas()
+
+        for df in [df1, df2]:
+            s = spawn(f2, args=(df,))
+
+            result = s.execute(session=sess).fetch(session=sess)
+            expected = pd.DataFrame(raw).sum()
+            pd.testing.assert_series_equal(result, expected)
