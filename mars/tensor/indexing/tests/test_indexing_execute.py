@@ -69,7 +69,7 @@ class Test(TestBase):
     def testFancyIndexingNumpyExecution(self):
         # test fancy index of type numpy ndarray
         raw = np.random.random((11, 8, 12, 14))
-        arr = tensor(raw, chunk_size=(2, 3, 2, 3))
+        arr = tensor(raw, chunk_size=(2, 5, 7, 8))
 
         index = [9, 10, 3, 1, 8, 10]
         arr2 = arr[index]
@@ -123,7 +123,7 @@ class Test(TestBase):
         # test fancy index of type tensor
 
         raw = np.random.random((11, 8, 12, 14))
-        arr = tensor(raw, chunk_size=(2, 3, 2, 3))
+        arr = tensor(raw, chunk_size=(6, 5, 7, 8))
 
         raw_index = [8, 10, 3, 1, 9, 10]
         index = tensor(raw_index, chunk_size=4)

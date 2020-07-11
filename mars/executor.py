@@ -31,7 +31,7 @@ from .operands import Fetch, ShuffleProxy
 from .graph import DAG, DirectedGraph
 from .config import options
 from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
-from .optimizes.runtime.optimizers.core import RuntimeOptimizer
+from .optimizes.runtime.core import RuntimeOptimizer
 from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTileableGraphBuilder
 from .graph_builder import TileableGraphBuilder
 from .context import LocalContext

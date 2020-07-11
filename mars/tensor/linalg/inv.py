@@ -19,6 +19,7 @@ from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
+from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..core import TensorOrder
@@ -35,6 +36,20 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
     def __call__(self, a):
         a = astensor(a)
         return self.new_tensor([a], a.shape, order=TensorOrder.C_ORDER)
+
+    @classmethod
+    def _tile_one_chunk(cls, op):
+        out = op.outputs[0]
+        chunk_op = op.copy().reset_key()
+        chunk_params = out.params
+        chunk_params['index'] = (0,) * out.ndim
+        out_chunk = chunk_op.new_chunk(op.inputs[0].chunks, kws=[chunk_params])
+
+        new_op = op.copy()
+        params = out.params
+        params['nsplits'] = tuple((s,) for s in out.shape)
+        params['chunks'] = [out_chunk]
+        return new_op.new_tensors(op.inputs, kws=[params])
 
     @classmethod
     def tile(cls, op):
@@ -54,6 +69,9 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
         from .solve_triangular import solve_triangular
         in_tensor = op.input
         is_sparse = in_tensor.is_sparse()
+
+        if len(in_tensor.chunks) == 1:
+            return cls._tile_one_chunk(op)
 
         b_eye = eye(in_tensor.shape[0], chunk_size=in_tensor.nsplits, sparse=is_sparse)
         b_eye._inplace_tile()
@@ -76,6 +94,13 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
         a_inv = solve_triangular(u, uy, sparse=op.sparse)
         a_inv._inplace_tile()
         return [a_inv]
+
+    def execute(cls, ctx, op):
+        (inp,), device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        with device(device_id):
+            ctx[op.outputs[0].key] = xp.linalg.inv(inp)
 
 
 def inv(a, sparse=None):

@@ -178,7 +178,7 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(a.execute(), npa)
 
     def testViewDataOnReshape(self):
-        data = np.random.random((3, 4, 5))
+        data = np.random.RandomState(0).random((3, 4, 5))
         a = tensor(data.copy(), chunk_size=2)
         b = a.reshape((5, 4, 3))
         b[:3] = 10
@@ -190,7 +190,7 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(b.execute(), npb)
         np.testing.assert_array_equal(a.execute(), npa)
 
-        data = np.random.random((4, 5))
+        data = np.random.RandomState(0).random((4, 5))
         a2 = tensor(data.copy(), chunk_size=2)
         b2 = a2.reshape((5, 4), order='F')
         b2[:3] = 10

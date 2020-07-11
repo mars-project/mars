@@ -755,7 +755,7 @@ cpdef serializes(Provider provider, objects):
 
 cpdef list deserializes(Provider provider, list models, list objects):
     cdef list callbacks
-    cdef dict key_to_instances
+    cdef dict key_to_instance
     cdef list objs
 
     callbacks = []

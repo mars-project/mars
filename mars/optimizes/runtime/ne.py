@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....tensor import arithmetic
-from ....tensor import reduction
-from ....tensor.fuse import TensorNeFuseChunk
-from ....tensor.fuse.ne import NUMEXPR_INSTALLED
+from ...tensor import arithmetic
+from ...tensor import reduction
+from ...tensor.fuse import TensorNeFuseChunk
+from ...tensor.fuse.ne import NUMEXPR_INSTALLED
 
 REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
                 reduction.TensorMax, reduction.TensorMin}
