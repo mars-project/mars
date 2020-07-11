@@ -1076,6 +1076,18 @@ class Test(unittest.TestCase):
             r = session3.run(d, timeout=_exec_timeout)
             np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
 
+            # test tileable that executed
+            session4 = new_session(cluster.endpoint)
+            df1 = md.DataFrame(raw, chunk_size=3)
+            session4.run(df1)
+
+            def f4(input_df):
+                return input_df.sum().to_pandas()
+
+            d = mr.spawn(f4, args=(df1,), retry_when_fail=False)
+            r = session4.run(d, timeout=_exec_timeout)
+            pd.testing.assert_series_equal(r, pd.DataFrame(raw).sum())
+
     def testLearnInLocalCluster(self, *_):
         from mars.learn.neighbors import NearestNeighbors
         from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors

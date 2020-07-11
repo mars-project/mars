@@ -150,8 +150,12 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
                 if not no_shuffle and chunk_shape[0] > 1:
                     shape_c[0] = np.nan
             params['shape'] = tuple(shape_c)
-            params['dtypes'] = output.dtypes
-            params['columns_value'] = output.columns_value
+            if 1 not in axes:
+                params['dtypes'] = in_chunk.dtypes
+                params['columns_value'] = in_chunk.columns_value
+            else:
+                params['dtypes'] = output.dtypes
+                params['columns_value'] = output.columns_value
             params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value)
         else:
             assert output_type == OutputType.series
