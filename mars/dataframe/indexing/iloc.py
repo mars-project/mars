@@ -214,6 +214,10 @@ class HeadTailOptimizedOperandMixin(DataFrameOperandMixin):
         params['chunks'] = chunks
         return new_op.new_tileables(op.inputs, kws=[params])
 
+    def is_head(self):
+        return self._is_indexes_head_or_tail(self._indexes) and \
+               self._is_head(self._indexes[0])
+
     @classmethod
     def tile(cls, op):
         if cls._need_tile_head_tail(op):
@@ -238,10 +242,6 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     @property
     def indexes(self):
         return self._indexes
-
-    def is_head(self):
-        return self._is_indexes_head_or_tail(self._indexes) and \
-               self._is_head(self._indexes[0])
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -454,10 +454,6 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
             else:
                 indexes.append(index)
         self._indexes = tuple(indexes)
-
-    def is_head(self):
-        return self._is_indexes_head_or_tail(self._indexes) and \
-               self._is_head(self._indexes[0])
 
     @classmethod
     def tile(cls, op):

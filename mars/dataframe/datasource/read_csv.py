@@ -240,6 +240,9 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         if end == start:
             # the last chunk may be empty
             df = build_empty_df(dtypes)
+            if op.keep_usecols_order and not isinstance(op.usecols, list):
+                # convert to Series, if usecols is a scalar
+                df = df[op.usecols]
         else:
             if start == 0:
                 # The first chunk contains header
@@ -251,6 +254,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 usecols = op.usecols
             df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col, usecols=usecols,
                              dtype=dtypes.to_dict(), nrows=op.nrows, **csv_kwargs)
+            if op.keep_usecols_order:
+                df = df[op.usecols]
         return df
 
     @classmethod
@@ -266,6 +271,9 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
             df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, names=op.names,
                                usecols=usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
                                nrows=op.nrows, **csv_kwargs)
+
+        if op.keep_usecols_order:
+            df = df[op.usecols]
         return df
 
     @classmethod
@@ -281,11 +289,11 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 df = xdf.read_csv(f, sep=op.sep, names=op.names, index_col=op.index_col,
                                   usecols=op.usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
                                   nrows=op.nrows, **csv_kwargs)
+                if op.keep_usecols_order:
+                    df = df[op.usecols]
             else:
                 df = cls._cudf_read_csv(op) if op.gpu else cls._pandas_read_csv(f, op)
 
-        if op._keep_usecols_order:
-            df = df[op.usecols]
         ctx[out_df.key] = df
 
     def __call__(self, index_value=None, columns_value=None, dtypes=None, chunk_bytes=None):

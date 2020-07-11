@@ -831,14 +831,19 @@ class Test(TestBase):
     @staticmethod
     @contextlib.contextmanager
     def _inject_execute_data_source_usecols(usecols, op_cls):
-        def _execute_data_source(ctx, op):
+        def _execute_data_source(ctx, op):  # pragma: no cover
             op_cls.execute(ctx, op)
             result = ctx[op.outputs[0].key]
             if not isinstance(usecols, list):
                 if not isinstance(result, pd.Series):
-                    raise RuntimeError('Out data should be a Series')
+                    raise RuntimeError('Out data should be a Series, '
+                                       'got {}'.format(type(result)))
             elif len(result.columns) > len(usecols):
-                raise RuntimeError('have data more than expected')  # pragma: no cover
+                params = dict((k, getattr(op, k, None)) for k in op._keys_
+                              if k not in op._no_copy_attrs_)
+                raise RuntimeError('have data more than expected, '
+                                   'got {}, result {}, op params {}'.format(
+                    result.columns, result, params))
 
         try:
             register(op_cls, _execute_data_source)
@@ -849,14 +854,14 @@ class Test(TestBase):
     @staticmethod
     @contextlib.contextmanager
     def _inject_execute_data_source_mixed(limit, usecols, op_cls):
-        def _execute_data_source(ctx, op):
+        def _execute_data_source(ctx, op):  # pragma: no cover
             op_cls.execute(ctx, op)
             result = ctx[op.outputs[0].key]
             if not isinstance(usecols, list):
                 if not isinstance(result, pd.Series):
                     raise RuntimeError('Out data should be a Series')
             elif len(result.columns) > len(usecols):
-                raise RuntimeError('have data more than expected')  # pragma: no cover
+                raise RuntimeError('have data more than expected')
             if len(result) > limit:
                 raise RuntimeError('have data more than expected')
         try:
@@ -865,7 +870,7 @@ class Test(TestBase):
         finally:
             del Executor._op_runners[op_cls]
 
-    def testOptimizedHeadTail(self):
+    def testOptimization(self):
         import sqlalchemy as sa
 
         with tempfile.TemporaryDirectory() as tempdir:
@@ -880,7 +885,7 @@ class Test(TestBase):
             pd_df.to_csv(filename, index=False)
 
             size = os.path.getsize(filename)
-            chunk_bytes = size / 3
+            chunk_bytes = size / 3 - 2
 
             df = md.read_csv(filename, chunk_bytes=chunk_bytes)
 

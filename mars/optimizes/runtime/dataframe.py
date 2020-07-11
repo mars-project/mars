@@ -14,6 +14,7 @@
 
 from ...dataframe.utils import parse_index
 from ...operands import OutputType
+from ...utils import replace_inputs
 
 
 class DataFrameRuntimeOptimizeRule:
@@ -30,14 +31,7 @@ class DataFrameRuntimeOptimizeRule:
         graph.add_node(new_chunk)
 
         for succ in list(graph.iter_successors(chunk)):
-            succ_inputs = succ.inputs
-            new_succ_inputs = []
-            for succ_input in succ_inputs:
-                if succ_input is chunk:
-                    new_succ_inputs.append(new_chunk)
-                else:
-                    new_succ_inputs.append(succ_input)
-            succ.inputs = new_succ_inputs
+            replace_inputs(succ, chunk, new_chunk)
             graph.add_edge(new_chunk, succ)
 
         graph.remove_node(chunk)
