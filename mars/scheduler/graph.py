@@ -400,8 +400,11 @@ class GraphActor(SchedulerActor):
             self.analyze_graph()
             self._detect_cancel()
 
-            self.create_operand_actors()
-            self._detect_cancel(self.stop_graph)
+            if self.state == GraphState.SUCCEEDED:
+                self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
+            else:
+                self.create_operand_actors()
+                self._detect_cancel(self.stop_graph)
         except ExecutionInterrupted:
             pass
         except:  # noqa: E722
@@ -411,10 +414,6 @@ class GraphActor(SchedulerActor):
             self.state = GraphState.FAILED
             self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
             raise
-
-        if len(self._chunk_graph_cache) == 0:
-            self.state = GraphState.SUCCEEDED
-            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
 
     @log_unhandled
     def stop_graph(self):
@@ -743,6 +742,7 @@ class GraphActor(SchedulerActor):
                     chunk_graph.remove_node(c)
 
         if len(chunk_graph) == 0:
+            self.state = GraphState.SUCCEEDED
             return
 
         for n in chunk_graph:

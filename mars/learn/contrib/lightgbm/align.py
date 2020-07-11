@@ -16,6 +16,8 @@ from .... import opcodes
 from ....context import get_context, RunningMode
 from ....core import ExecutableTuple, get_output_types
 from ....serialize import AnyField
+from ....tiles import TilesError
+from ....utils import check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
 
 
@@ -73,6 +75,9 @@ class LGBMAlign(LearnOperand, LearnOperandMixin):
     def tile(cls, op: "LGBMAlign"):
         inputs = [d for d in [op.data, op.label, op.sample_weight, op.init_score] if d is not None]
         data = op.data
+
+        # check inputs to make sure no unknown chunk shape exists
+        check_chunks_unknown_shape(inputs, TilesError)
 
         ctx = get_context()
         if ctx.running_mode != RunningMode.distributed:
