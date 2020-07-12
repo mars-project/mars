@@ -82,8 +82,8 @@ with open(os.path.join(repo_root, 'requirements-dev.txt'), 'r') as f:
 
 long_description = None
 if os.path.exists(os.path.join(repo_root, 'README.rst')):
-    with open(os.path.join(repo_root, 'README.rst'), 'rb') as f:
-        long_description = f.read().decode()
+    with open(os.path.join(repo_root, 'README.rst'), encoding='utf-8') as f:
+        long_description = f.read()
 
 
 if os.path.exists(os.path.join(repo_root, '.git')):
@@ -170,6 +170,7 @@ setup_options = dict(
     version=version,
     description='MARS: a tensor-based unified framework for large-scale data computation.',
     long_description=long_description,
+    long_description_content_type='text/x-rst',
     author='Qin Xuye',
     author_email='qin@qinxuye.me',
     maintainer='Qin Xuye',
