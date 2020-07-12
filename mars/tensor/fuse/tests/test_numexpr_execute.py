@@ -16,7 +16,6 @@
 
 import unittest
 
-import itertools
 import numpy as np
 
 from mars.executor import Executor
@@ -62,6 +61,13 @@ class Test(unittest.TestCase):
         self.assertEqual(sum(s[0] for s in res4_size), arr4.nbytes)
         self.assertTrue(np.array_equal(res4[0], res4_cmp[0]))
 
+    @staticmethod
+    def _gen_pairs(seq):
+        test_seq = np.random.RandomState(0).permutation(seq)
+        for i in range(0, len(seq), 2):
+            j = (i + 1) % len(seq)
+            yield test_seq[i], test_seq[j]
+
     @ignore_warning
     def testUnaryExecution(self):
         from mars.tensor.arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj
@@ -73,16 +79,18 @@ class Test(unittest.TestCase):
         def _normalize_by_sin(func1, func2, arr):
             return func1(abs(sin((func2(arr)))))
 
-        for i, j in itertools.permutations(range(len(_new_unary_ufunc)), 2):
+        tested = set()
+        for func1, func2 in self._gen_pairs(_new_unary_ufunc):
             raw = np.random.random((8, 8, 8))
             arr1 = tensor(raw, chunk_size=4)
 
-            func1 = _new_unary_ufunc[i]
-            func2 = _new_unary_ufunc[j]
             arr2 = _normalize_by_sin(func1, func2, arr1)
             res = executor_numexpr.execute_tensor(arr2, concat=True)
             res_cmp = self.executor.execute_tensor(arr2, concat=True)
             np.testing.assert_allclose(res[0], res_cmp[0])
+            tested.update([func1, func2])
+        # make sure all functions tested
+        self.assertEqual(tested, set(_new_unary_ufunc))
 
         raw = np.random.randint(100, size=(8, 8, 8))
         arr1 = tensor(raw, chunk_size=4)
@@ -100,27 +108,31 @@ class Test(unittest.TestCase):
         _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})
         executor_numexpr = Executor()
 
-        for i, j in itertools.permutations(range(len(_new_bin_ufunc)), 2):
+        tested = set()
+        for func1, func2 in self._gen_pairs(_new_bin_ufunc):
             raw = np.random.random((9, 9, 9))
             arr1 = tensor(raw, chunk_size=5)
 
-            func1 = _new_bin_ufunc[i]
-            func2 = _new_bin_ufunc[j]
             arr2 = func1(1, func2(2, arr1))
             res = executor_numexpr.execute_tensor(arr2, concat=True)
             res_cmp = self.executor.execute_tensor(arr2, concat=True)
             self.assertTrue(np.allclose(res[0], res_cmp[0]))
+            tested.update([func1, func2])
+        # make sure all functions tested
+        self.assertEqual(tested, set(_new_bin_ufunc))
 
-        for i, j in itertools.permutations(range(len(_sp_bin_ufunc)), 2):
+        tested = set()
+        for func1, func2 in self._gen_pairs(_sp_bin_ufunc):
             raw = np.random.randint(1, 100, size=(10, 10, 10))
             arr1 = tensor(raw, chunk_size=3)
 
-            func1 = _sp_bin_ufunc[i]
-            func2 = _sp_bin_ufunc[j]
             arr2 = func1(10, func2(arr1, 5))
             res = executor_numexpr.execute_tensor(arr2, concat=True)
             res_cmp = self.executor.execute_tensor(arr2, concat=True)
             self.assertTrue(np.allclose(res[0], res_cmp[0]))
+            tested.update([func1, func2])
+        # make sure all functions tested
+        self.assertEqual(tested, set(_sp_bin_ufunc))
 
     def testReductionExecution(self):
         raw1 = np.random.randint(5, size=(8, 8, 8))

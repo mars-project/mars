@@ -115,8 +115,8 @@ class Test(unittest.TestCase):
         data1 = np.random.randint(2, 10, size=(10, 10, 10))
         data2 = np.random.randint(2, 10, size=(10, 10, 10))
         rand = np.random.randint(1, 10)
-        arr1 = tensor(data1, chunk_size=3)
-        arr2 = tensor(data2, chunk_size=3)
+        arr1 = tensor(data1, chunk_size=6)
+        arr2 = tensor(data2, chunk_size=6)
 
         for func in _sp_unary_ufunc:
             res_tensor = func(arr1)

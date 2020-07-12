@@ -899,8 +899,8 @@ def stack_back(flattened, raw):
     return _stack(result, raw)
 
 
-def recursive_tile(tensor):
-    q = [tensor]
+def recursive_tile(tileable):
+    q = [tileable]
     while q:
         t = q[-1]
         cs = [c for c in t.inputs if c.is_coarse()]
@@ -910,7 +910,17 @@ def recursive_tile(tensor):
         t._inplace_tile()
         q.pop()
 
-    return tensor
+    return tileable
+
+
+def replace_inputs(obj, old, new):
+    new_inputs = []
+    for inp in obj.inputs or []:
+        if inp is old:
+            new_inputs.append(new)
+        else:
+            new_inputs.append(inp)
+    obj.inputs = new_inputs
 
 
 def adapt_mars_docstring(doc):

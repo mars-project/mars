@@ -738,6 +738,15 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(A.dot(inv_A), concat=True)[0]
         self.assertTrue(np.allclose(res, np.eye(data.shape[0], dtype=float)))
 
+        # test 1 chunk
+        A = tensor(data, chunk_size=20)
+        inv_A = inv(A)
+
+        res = self.executor.execute_tensor(inv_A, concat=True)[0]
+        self.assertTrue(np.allclose(res, scipy.linalg.inv(data)))
+        res = self.executor.execute_tensor(A.dot(inv_A), concat=True)[0]
+        self.assertTrue(np.allclose(res, np.eye(data.shape[0], dtype=float)))
+
         B = A.T.dot(A)
         inv_B = inv(B)
         res = self.executor.execute_tensor(inv_B, concat=True)[0]

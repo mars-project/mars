@@ -427,5 +427,11 @@ def series_getitem(series, labels, combine_size=None):
         return op(series, name=series.name)
     elif isinstance(labels, _list_like_types) and astensor(labels).dtype == np.bool:
         return series.loc[labels]
+    elif isinstance(labels, slice):
+        edge = labels.start if labels.start is not None else labels.stop
+        if isinstance(edge, Integral):
+            return series.iloc[labels]
+        else:
+            return series.loc[labels]
     else:
         raise NotImplementedError('type %s is not support for getitem' % type(labels))

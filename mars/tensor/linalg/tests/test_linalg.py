@@ -25,6 +25,7 @@ from mars.tensor import ones, tensor, dot, empty
 from mars.graph import DirectedGraph
 from mars.tensor.core import SparseTensor, Tensor
 from mars.tensor.linalg import matmul
+from mars.tensor.linalg.inv import TensorInv
 from mars.tiles import get_tiled
 
 
@@ -347,6 +348,14 @@ class Test(unittest.TestCase):
         a_inv = mt.linalg.inv(a).tiles()
 
         self.assertEqual(a_inv.shape, (20, 20))
+
+        # test 1 chunk
+        a = mt.random.randint(1, 10, (20, 20), chunk_size=20)
+        a_inv = mt.linalg.inv(a).tiles()
+
+        self.assertEqual(a_inv.shape, (20, 20))
+        self.assertEqual(len(a_inv.chunks), 1)
+        self.assertIsInstance(a_inv.chunks[0].op, TensorInv)
 
         a = mt.random.randint(1, 10, (20, 20), chunk_size=11)
         a_inv = mt.linalg.inv(a).tiles()

@@ -336,11 +336,11 @@ class Test(TestBase):
 
         # test multi chunk, 2-d
         raw = np.random.rand(20, 10)
-        a = tensor(raw, chunk_size=(3, 4))
+        a = tensor(raw, chunk_size=(12, 6))
 
         raw2 = raw.copy()
         raw2.flat[np.random.RandomState(0).randint(raw.size, size=3)] = np.nan
-        a2 = tensor(raw2, chunk_size=(3, 4))
+        a2 = tensor(raw2, chunk_size=(12, 6))
 
         for q in [np.random.RandomState(0).rand(), np.random.RandomState(0).rand(5)]:
             for interpolation in INTERPOLATION_TYPES:
