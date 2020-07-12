@@ -31,22 +31,35 @@ class _TileablePlaceholder:
     def __init__(self, tileable):
         self.tileable = build_fetch_tileable(tileable)
 
+    @classmethod
+    def _get_output_types(cls, op):
+        if hasattr(op, 'output_types'):
+            return {'output_types': op.output_types}
+        elif hasattr(op, 'object_type'):
+            return {'object_type': op.object_type}
+        else:
+            return dict()
+
     def __getstate__(self):
         fetch_op = self.tileable.op
         fetch_tileable = self.tileable
-        chunk_infos = [(type(c.op), c.key, c.id, c.params) for c in fetch_tileable.chunks]
-        return type(fetch_op), fetch_op.id, fetch_tileable.params, \
-            fetch_tileable.nsplits, chunk_infos
+        chunk_infos = [(type(c.op), self._get_output_types(c.op), c.key, c.id, c.params)
+                       for c in fetch_tileable.chunks]
+        return type(fetch_op), fetch_op.id, self._get_output_types(fetch_op), \
+               fetch_tileable.params, fetch_tileable.nsplits, chunk_infos
 
     def __setstate__(self, state):
-        fetch_op_type, fetch_op_id, params, nsplits, chunk_infos = state
+        fetch_op_type, fetch_op_id, output_types, params, nsplits, chunk_infos = state
         params['nsplits'] = nsplits
         chunks = []
         for ci in chunk_infos:
-            chunk = ci[0]().new_chunk(None, _key=ci[1], _id=ci[2], kws=[ci[3]])
+            chunk_op_type, chunk_op_output_types, chunk_key, chunk_id, chunk_params = ci
+            chunk = chunk_op_type(**chunk_op_output_types).new_chunk(
+                None, _key=chunk_key, _id=chunk_id, kws=[chunk_params])
             chunks.append(chunk)
         params['chunks'] = chunks
-        self.tileable = fetch_op_type(_id=fetch_op_id).new_tileable(None, kws=[params])
+        self.tileable = fetch_op_type(
+            _id=fetch_op_id, **output_types).new_tileable(None, kws=[params])
 
     def __mars_tokenize__(self):
         return self.__getstate__()
@@ -219,7 +232,7 @@ class RemoteFunction(ObjectOperand, RemoteOperandMixin):
                 ctx[out.key] = r
 
 
-def spawn(func, args=(), kwargs=None, retry_when_fail=True, n_output=None):
+def spawn(func, args=(), kwargs=None, retry_when_fail=False, n_output=None):
     """
     Spawn a function and return a Mars Object which can be executed later.
 
@@ -231,7 +244,7 @@ def spawn(func, args=(), kwargs=None, retry_when_fail=True, n_output=None):
        Args to pass to function
     kwargs: dict
        Kwargs to pass to function
-    retry_when_fail: bool, default True
+    retry_when_fail: bool, default False
        If True, retry when function failed.
     n_output: int
        Count of outputs for the function
