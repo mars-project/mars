@@ -201,20 +201,21 @@ class LGBMTrain(MergeDictOperand):
                             getattr(op, arg).chunks, workers).items():
                         worker_to_args[worker][arg] = chunk
 
-            eval_workers_list = [cls._get_data_chunks_workers(ctx, d) for d in op.eval_datas]
-            extra_workers = reduce(operator.or_, (set(w) for w in eval_workers_list)) - set(workers)
-            worker_remap = dict(zip(extra_workers, itertools.cycle(workers)))
-            if worker_remap:
-                eval_workers_list = [[worker_remap.get(w, w) for w in wl] for wl in eval_workers_list]
+            if op.eval_datas:
+                eval_workers_list = [cls._get_data_chunks_workers(ctx, d) for d in op.eval_datas]
+                extra_workers = reduce(operator.or_, (set(w) for w in eval_workers_list)) - set(workers)
+                worker_remap = dict(zip(extra_workers, itertools.cycle(workers)))
+                if worker_remap:
+                    eval_workers_list = [[worker_remap.get(w, w) for w in wl] for wl in eval_workers_list]
 
-            for arg in ['_eval_datas', '_eval_labels', '_eval_sample_weights', '_eval_init_scores']:
-                if getattr(op, arg):
-                    for tileable, eval_workers in zip(getattr(op, arg), eval_workers_list):
-                        for worker, chunk in cls._concat_chunks_by_worker(
-                                tileable.chunks, eval_workers).items():
-                            if arg not in worker_to_args[worker]:
-                                worker_to_args[worker][arg] = []
-                            worker_to_args[worker][arg].append(chunk)
+                for arg in ['_eval_datas', '_eval_labels', '_eval_sample_weights', '_eval_init_scores']:
+                    if getattr(op, arg):
+                        for tileable, eval_workers in zip(getattr(op, arg), eval_workers_list):
+                            for worker, chunk in cls._concat_chunks_by_worker(
+                                    tileable.chunks, eval_workers).items():
+                                if arg not in worker_to_args[worker]:
+                                    worker_to_args[worker][arg] = []
+                                worker_to_args[worker][arg].append(chunk)
 
             out_chunks = []
             for worker in workers:
