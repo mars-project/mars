@@ -49,6 +49,15 @@ class Test(LearnIntegrationTestBase):
             X, y = self.X, self.y
             y = (y * 10).astype(mt.int32)
             classifier = LGBMClassifier(n_estimators=2)
+            classifier.fit(X, y, session=sess, run_kwargs=run_kwargs)
+            prediction = classifier.predict(X, session=sess, run_kwargs=run_kwargs)
+
+            self.assertEqual(prediction.ndim, 1)
+            self.assertEqual(prediction.shape[0], len(self.X))
+
+            self.assertIsInstance(prediction, mt.Tensor)
+
+            classifier = LGBMClassifier(n_estimators=2)
             classifier.fit(X, y, eval_set=[(X, y)], session=sess, run_kwargs=run_kwargs)
             prediction = classifier.predict(X, session=sess, run_kwargs=run_kwargs)
 
