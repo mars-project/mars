@@ -656,7 +656,7 @@ class ChunksIndexer(object):
         raise ValueError('Cannot get {0} chunk by {1}'.format(type(self._tileable).__name__, item))
 
 
-class ExecutableTuple(tuple, _ExecutableMixin):
+class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
     def __init__(self, *_):
         super().__init__()
         self._executed_sessions = []

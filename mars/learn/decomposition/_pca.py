@@ -66,12 +66,12 @@ def _assess_dimension(spectrum, rank, n_samples):
     xp = get_array_module(spectrum, nosparse=True)
 
     n_features = spectrum.shape[0]
-    if not 1 <= rank < n_features:
+    if not 1 <= rank < n_features:  # pragma: no cover
         raise ValueError("the tested rank should be in [1, n_features - 1]")
 
     eps = 1e-15
 
-    if spectrum[rank - 1] < eps:
+    if spectrum[rank - 1] < eps:  # pragma: no cover
         # When the tested rank is associated with a small eigenvalue, there's
         # no point in computing the log-likelihood: it's going to be very
         # small and won't be the max anyway. Also, it can lead to numerical

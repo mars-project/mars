@@ -101,7 +101,7 @@ class Test(TestBase):
             rs.append(r)
 
         result = dict()
-        for wc in ExecutableTuple(rs).execute().fetch():
+        for wc in ExecutableTuple(rs).to_object():
             result.update(wc)
 
         self.assertEqual(result, {'word1': 2, 'word2': 3, 'word3': 2})
