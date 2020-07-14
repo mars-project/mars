@@ -142,11 +142,12 @@ class Test(TestBase):
         df2.execute(session=sess)
 
         def f2(input_df):
-            return input_df.sum().to_pandas()
+            bonus = input_df.iloc[:, 0].fetch().sum()
+            return input_df.sum().to_pandas() + bonus
 
         for df in [df1, df2]:
             s = spawn(f2, args=(df,))
 
             result = s.execute(session=sess).fetch(session=sess)
-            expected = pd.DataFrame(raw).sum()
+            expected = pd.DataFrame(raw).sum() + raw[:, 0].sum()
             pd.testing.assert_series_equal(result, expected)

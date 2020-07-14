@@ -80,21 +80,19 @@ We can shuffle the sequence of the data, and separate the data into train and te
 
 .. code-block:: ipython
 
-   In [7]: from mars.learn.utils import shuffle
-   In [8]: X, y = shuffle(data, boston.target)
-   In [9]: train_size = int(X.shape[0] * 0.7)
-   In [10]: X_train, X_test = X[:train_size], X[train_size:]
-   In [11]: y_train, y_test = y[:train_size], y[train_size:]
+   In [7]: from mars.learn.model_selection import train_test_split
+   In [8]: X_train, X_test, y_train, y_test = \
+      ...:     train_test_split(data, boston.target, train_size=0.7, random_state=0)
 
 Now we can create a :class:`MarsDMatrix` which is very similar to
 `xgboost.DMatrix <https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.DMatrix>`_.
 
 .. code-block:: ipython
 
-   In [12]: from mars.learn.contrib import xgboost as xgb
+   In [9]: from mars.learn.contrib import xgboost as xgb
 
-   In [13]: train_dmatrix = xgb.MarsDMatrix(data=X_train, label=y_train)
-   In [14]: test_dmatrix = xgb.MarsDMatrix(data=X_test, label=y_test)
+   In [10]: train_dmatrix = xgb.MarsDMatrix(data=X_train, label=y_train)
+   In [11]: test_dmatrix = xgb.MarsDMatrix(data=X_test, label=y_test)
 
 Training
 --------
@@ -108,20 +106,20 @@ For :meth:`train`, you can run the snippet.
 
 .. code-block:: ipython
 
-   In [15]: params = {'objective': 'reg:squarederror','colsample_bytree': 0.3,'learning_rate': 0.1,
+   In [12]: params = {'objective': 'reg:squarederror','colsample_bytree': 0.3,'learning_rate': 0.1,
        ...:           'max_depth': 5, 'alpha': 10, 'n_estimators': 10}
 
-   In [16]: booster = xgb.train(dtrain=train_dmatrix, params=params)
+   In [13]: booster = xgb.train(dtrain=train_dmatrix, params=params)
 
 On the other hand, run the snippet below for scikit-learn API.
 
 .. code-block:: ipython
 
-   In [17]: xg_reg = xgb.XGBRegressor(objective='reg:squarederror', colsample_bytree=0.3,
+   In [14]: xg_reg = xgb.XGBRegressor(objective='reg:squarederror', colsample_bytree=0.3,
        ...:                           learning_rate=0.1, max_depth=5, alpha=10, n_estimators=10)
 
-   In [18]: xg_reg.fit(X_train, y_train)
-   Out[18]:
+   In [15]: xg_reg.fit(X_train, y_train)
+   Out[15]:
    XGBRegressor(alpha=10, base_score=0.5, booster='gbtree', colsample_bylevel=1,
                 colsample_bynode=1, colsample_bytree=0.3, gamma=0,
                 importance_type='gain', learning_rate=0.1, max_delta_step=0,
@@ -143,8 +141,8 @@ For :meth:`predict`, we call it with trained model.
 
 .. code-block:: ipython
 
-   In [19]: xgb.predict(booster, X_test)
-   Out[19]:
+   In [16]: xgb.predict(booster, X_test)
+   Out[16]:
    476    12.694860
    490     9.062592
    304    19.793633
@@ -162,8 +160,8 @@ For :meth:`XGBRegressor.predict`, you can run the snippet.
 
 .. code-block:: ipython
 
-   In [46]: xg_reg.predict(X_test)
-   Out[46]:
+   In [17]: xg_reg.predict(X_test)
+   Out[17]:
    476    12.059338
    490     8.448854
    304    20.644527

@@ -25,10 +25,11 @@ import numpy as np
 
 from .core import Entity, Base
 from .context import LocalContext
+from .operands import Fetch
 from .tiles import get_tiled
 from .executor import Executor
 from .config import options
-from .utils import classproperty
+from .utils import classproperty, calc_nsplits
 try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
@@ -316,6 +317,12 @@ class ClusterSession(object):
         else:
             return self.fetch(*tileables)
 
+    def _is_executed(self, tileable):
+        # if tileble.key in executed tileables
+        # or it's a fetch already
+        return tileable.key in self._executed_tileables or \
+               isinstance(tileable.op, Fetch)
+
     def fetch(self, *tileables):
         from .utils import sort_dataframe_result
         from .serialize import dataserializer
@@ -325,24 +332,41 @@ class ClusterSession(object):
         tileable_results = []
         for tileable in tileables:
             # TODO: support DataFrame getitem
-            if tileable.key not in self._executed_tileables and \
+            if not self._is_executed(tileable) and \
                     isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem, SeriesIlocGetItem)):
-                key = tileable.inputs[0].key
+                to_fetch_tileable = tileable.inputs[0]
+
                 indexes = tileable.op.indexes
                 if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
                     raise ValueError('Only support fetch data slices')
             else:
-                key = tileable.key
+                to_fetch_tileable = tileable
                 indexes = None
-            if key not in self._executed_tileables:
+            if not self._is_executed(to_fetch_tileable):
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
-            graph_key = self._get_tileable_graph_key(key)
+            key = to_fetch_tileable.key
             compressions = dataserializer.get_supported_compressions()
-            result = self._api.fetch_data(self._session_id, graph_key, key, index_obj=indexes,
-                                          compressions=compressions)
-            result_data = dataserializer.loads(result)
-            tileable_results.append(sort_dataframe_result(tileable, result_data))
+            if getattr(to_fetch_tileable, 'chunks', None) is not None:
+                # fetch which owns fetch chunks inside remote
+                chunk_indexes = [c.index for c in to_fetch_tileable.chunks]
+                chunk_keys = [c.key for c in to_fetch_tileable.chunks]
+                nsplits = to_fetch_tileable.nsplits
+                if any(np.isnan(np.sum(ns)) for ns in nsplits):
+                    # unknown chunk shape exists
+                    # try to calculate nsplits
+                    chunk_metas = self._api.get_chunk_metas(self._session_id, chunk_keys)
+                    chunk_idx_to_shape = {idx: cm.chunk_shape for idx, cm in
+                                          zip(chunk_indexes, chunk_metas)}
+                    nsplits = calc_nsplits(chunk_idx_to_shape)
+                result = self._api.fetch_chunks_data(
+                    self._session_id, chunk_indexes, chunk_keys, nsplits,
+                    serial=False, index_obj=indexes, compressions=compressions)
+            else:
+                graph_key = self._get_tileable_graph_key(key)
+                result = self._api.fetch_data(self._session_id, graph_key, key, serial=False,
+                                              index_obj=indexes, compressions=compressions)
+            tileable_results.append(sort_dataframe_result(tileable, result))
         return tileable_results
 
     def decref(self, *keys):

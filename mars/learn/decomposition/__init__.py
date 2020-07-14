@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .pca import PCA
-from .truncated_svd import TruncatedSVD
+from ._pca import PCA
+from ._truncated_svd import TruncatedSVD

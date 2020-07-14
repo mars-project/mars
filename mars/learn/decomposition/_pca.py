@@ -22,6 +22,9 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.utils.extmath import fast_logdet
 
 from ... import tensor as mt
+from ... import remote as mr
+from ...core import Base, Entity
+from ...tensor.array_utils import get_array_module
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.utils import check_random_state
 from ...tensor.linalg import randomized_svd
@@ -29,25 +32,25 @@ from ...tensor.linalg.randomized_svd import svd_flip
 from ...lib.sparse import issparse
 from ...core import ExecutableTuple
 from ..utils import check_array
-from .base import _BasePCA
+from ._base import _BasePCA
 
 
-def _assess_dimension_(spectrum, rank, n_samples, n_features):
-    """Compute the likelihood of a rank ``rank`` dataset
+def _assess_dimension(spectrum, rank, n_samples):
+    """Compute the log-likelihood of a rank ``rank`` dataset.
 
     The dataset is assumed to be embedded in gaussian noise of shape(n,
     dimf) having spectrum ``spectrum``.
 
     Parameters
     ----------
-    spectrum : array of shape (n)
+    spectrum : array of shape (n_features)
         Data spectrum.
     rank : int
-        Tested rank value.
+        Tested rank value. It should be strictly lower than n_features,
+        otherwise the method isn't specified (division by zero in equation
+        (31) from the paper).
     n_samples : int
         Number of samples.
-    n_features : int
-        Number of features.
 
     Returns
     -------
@@ -59,49 +62,63 @@ def _assess_dimension_(spectrum, rank, n_samples, n_features):
     This implements the method of `Thomas P. Minka:
     Automatic Choice of Dimensionality for PCA. NIPS 2000: 598-604`
     """
-    if rank > len(spectrum):
-        raise ValueError("The tested rank cannot exceed the rank of the"
-                         " dataset")
+
+    xp = get_array_module(spectrum, nosparse=True)
+
+    n_features = spectrum.shape[0]
+    if not 1 <= rank < n_features:
+        raise ValueError("the tested rank should be in [1, n_features - 1]")
+
+    eps = 1e-15
+
+    if spectrum[rank - 1] < eps:
+        # When the tested rank is associated with a small eigenvalue, there's
+        # no point in computing the log-likelihood: it's going to be very
+        # small and won't be the max anyway. Also, it can lead to numerical
+        # issues below when computing pa, in particular in log((spectrum[i] -
+        # spectrum[j]) because this will take the log of something very small.
+        return -np.inf
 
     pu = -rank * log(2.)
-    for i in range(rank):
-        pu += (gammaln((n_features - i) / 2.) -
-               log(mt.pi) * (n_features - i) / 2.)
+    for i in range(1, rank + 1):
+        pu += (gammaln((n_features - i + 1) / 2.) -
+               log(np.pi) * (n_features - i + 1) / 2.)
 
-    pl = mt.sum(mt.log(spectrum[:rank]))
+    pl = xp.sum(xp.log(spectrum[:rank]))
     pl = -pl * n_samples / 2.
 
-    if rank == n_features:
-        pv = 0
-        v = 1
-    else:
-        v = mt.sum(spectrum[rank:]) / (n_features - rank)
-        pv = -mt.log(v) * n_samples * (n_features - rank) / 2.
+    v = max(eps, xp.sum(spectrum[rank:]) / (n_features - rank))
+    pv = -xp.log(v) * n_samples * (n_features - rank) / 2.
 
     m = n_features * rank - rank * (rank + 1.) / 2.
-    pp = log(2. * mt.pi) * (m + rank + 1.) / 2.
+    pp = log(2. * np.pi) * (m + rank) / 2.
 
     pa = 0.
     spectrum_ = spectrum.copy()
     spectrum_[rank:n_features] = v
     for i in range(rank):
         for j in range(i + 1, len(spectrum)):
-            pa += mt.log((spectrum[i] - spectrum[j]) *
-                         (1. / spectrum_[j] - 1. / spectrum_[i])) + log(n_samples)
+            pa += log((spectrum[i] - spectrum[j]) *
+                      (1. / spectrum_[j] - 1. / spectrum_[i])) + log(n_samples)
 
     ll = pu + pl + pv + pp - pa / 2. - rank * log(n_samples) / 2.
+
     return ll
 
 
-def _infer_dimension_(spectrum, n_samples, n_features):
-    """Infers the dimension of a dataset of shape (n_samples, n_features)
+def _infer_dimension(spectrum, n_samples):
+    """Infers the dimension of a dataset with a given spectrum.
 
-    The dataset is described by its spectrum `spectrum`.
+    The returned value will be in [1, n_features - 1].
     """
-    n_spectrum = len(spectrum)
-    ll = mt.empty(n_spectrum)
-    for rank in range(n_spectrum):
-        ll[rank] = _assess_dimension_(spectrum, rank, n_samples, n_features)
+    if isinstance(spectrum, (Base, Entity)):
+        spectrum = spectrum.fetch()
+    xp = get_array_module(spectrum, nosparse=True)
+
+    ll = xp.empty_like(spectrum)
+    ll[0] = -np.inf  # we don't want to return n_components = 0
+    for rank in range(1, spectrum.shape[0]):
+        ll[rank] = _assess_dimension(spectrum, rank, n_samples)
     return ll.argmax()
 
 
@@ -410,7 +427,7 @@ class PCA(_BasePCA):
             self._run(ret, session=session, run_kwargs=run_kwargs)
         return ret
 
-    def _fit_full(self, X, n_components, session=None):
+    def _fit_full(self, X, n_components, session=None, run_kwargs=None):
         """Fit the model by computing full SVD on X"""
         n_samples, n_features = X.shape
 
@@ -448,16 +465,16 @@ class PCA(_BasePCA):
 
         # Postprocess the number of components required
         if n_components == 'mle':
-            n_components = \
-                _infer_dimension_(explained_variance_, n_samples, n_features)\
-                    .to_numpy(session=session)
+            n_components = mr.spawn(_infer_dimension, args=(explained_variance_, n_samples))
+            ExecutableTuple([n_components, U, V]).execute(session=session, **(run_kwargs or dict()))
+            n_components = n_components.fetch()
         elif 0 < n_components < 1.0:
             # number of components for which the cumulated explained
             # variance percentage is superior to the desired threshold
             # ratio_cumsum = stable_cumsum(explained_variance_ratio_)
             ratio_cumsum = explained_variance_ratio_.cumsum()
             n_components = (mt.searchsorted(ratio_cumsum, n_components) + 1)\
-                .to_numpy(session=session)
+                .to_numpy(session=session, **(run_kwargs or dict()))
 
         # Compute noise covariance using Probabilistic PCA model
         # The sigma2 maximum likelihood (cf. eq. 12.46)

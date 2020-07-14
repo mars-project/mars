@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from ..core import ChunkData, Chunk, TileableEntity, HasShapeTileableData, \
-    HasShapeTileableEnity, OutputType, register_output_types
+    HasShapeTileableEnity, OutputType, register_output_types, _ExecuteAndFetchMixin
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
@@ -360,11 +360,11 @@ def _on_deserialize_index_value(index_value):
         return
 
 
-class _ToPandasMixin:
+class _ToPandasMixin(_ExecuteAndFetchMixin):
     __slots__ = ()
 
     def to_pandas(self, session=None, **kw):
-        return self.execute(session=session, **kw).fetch(session=session)
+        return self._execute_and_fetch(session=session, **kw)
 
 
 class IndexData(HasShapeTileableData, _ToPandasMixin):
