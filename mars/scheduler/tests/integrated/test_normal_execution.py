@@ -16,6 +16,7 @@ import logging
 import operator
 import os
 import sys
+import time
 import unittest
 from functools import reduce
 
@@ -282,6 +283,7 @@ class Test(SchedulerIntegratedTest):
         expected = (raw.sum(axis=0) * 3).sum()
         self.assertAlmostEqual(result, expected)
 
+        time.sleep(1)
         for worker_ip in worker_ips:
             ref = sess._api.actor_client.actor_ref(DispatchActor.default_uid(), address=worker_ip)
             self.assertEqual(len(ref.get_slots('cpu')), 1)

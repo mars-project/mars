@@ -281,7 +281,7 @@ class GraphActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._assigner_actor_ref = self.get_actor_ref(AssignerActor.gen_uid(self._session_id))
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_uid())
-        self._session_ref = self.ctx.actor_ref(SessionActor.gen_uid(self._session_id))
+        self._session_ref = self.get_actor_ref(SessionActor.gen_uid(self._session_id))
 
         uid = GraphMetaActor.gen_uid(self._session_id, self._graph_key)
         self._graph_meta_ref = self.ctx.create_actor(

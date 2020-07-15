@@ -150,5 +150,5 @@ class DispatchActor(WorkerActor):
 
     @log_unhandled
     def remove_slot(self, uid, queue_name):
-        self._free_slots[queue_name].pop(uid)
-        self._all_slots[queue_name].pop(uid)
+        self._free_slots[queue_name].pop(uid, None)
+        self._all_slots[queue_name].pop(uid, None)

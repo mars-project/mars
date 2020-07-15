@@ -46,7 +46,7 @@ class BaseCalcActor(WorkerActor):
         self._status_ref = None
         self._resource_ref = None
 
-        self._executing = False
+        self._executing_set = set()
         self._marked_as_destroy = False
 
         self._execution_pool = None
@@ -244,7 +244,7 @@ class BaseCalcActor(WorkerActor):
         :param chunk_targets: keys of target chunks
         :param callback: promise callback, returns the uid of InProcessCacheActor
         """
-        self._executing = True
+        self._executing_set.add(graph_key)
         graph = deserialize_graph(ser_graph)
         chunk_targets = set(chunk_targets)
         keys_to_fetch = self._get_keys_to_fetch(graph)
@@ -256,7 +256,9 @@ class BaseCalcActor(WorkerActor):
             return self._calc_results(session_id, graph_key, graph, context_dict, chunk_targets)
 
         def _finalize(keys, exc_info):
-            self._dispatch_ref.register_free_slot(self.uid, self._slot_name, _tell=True, _wait=False)
+            if not self._marked_as_destroy:
+                self._dispatch_ref.register_free_slot(self.uid, self._slot_name, _tell=True, _wait=False)
+
             keys_to_delete = []
             keys_to_release = []
 
@@ -311,9 +313,10 @@ class BaseCalcActor(WorkerActor):
             self._release_local_quotas(session_id, keys_to_store)
 
         def _finalize(*_):
-            self._executing = False
-            if self._marked_as_destroy:
-                self._destroy_self()
+            self._executing_set.remove(graph_key)
+            if self._marked_as_destroy and not self._executing_set:
+                # delay destroying to allow requests to enter
+                self.ref().destroy_self(_tell=True, _delay=0.5)
 
         return storage_client.copy_to(session_id, keys_to_store, self._calc_dest_devices) \
             .then(_delete_keys) \
@@ -322,7 +325,10 @@ class BaseCalcActor(WorkerActor):
                   lambda *exc: self.tell_promise(callback, *exc, _accept=False)) \
             .then(_finalize)
 
-    def _destroy_self(self):
+    def destroy_self(self):
+        if self._executing_set:
+            return
+
         from .daemon import WorkerDaemonActor
         daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
         if self.ctx.has_actor(daemon_ref):
@@ -332,10 +338,11 @@ class BaseCalcActor(WorkerActor):
 
     @log_unhandled
     def mark_destroy(self):
-        if not self._executing:
-            self._destroy_self()
-        else:
-            self._marked_as_destroy = True
+        self._marked_as_destroy = True
+        self._dispatch_ref.remove_slot(self.uid, self._slot_name)
+        if not self._executing_set:
+            # delay destroying to allow requests to enter
+            self.ref().destroy_self(_tell=True, _delay=0.5)
 
 
 class CpuCalcActor(BaseCalcActor):
