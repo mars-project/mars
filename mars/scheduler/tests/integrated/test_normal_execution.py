@@ -268,7 +268,8 @@ class Test(SchedulerIntegratedTest):
         np.testing.assert_allclose(result, expected)
 
         def f(t, x):
-            return (t * x).sum().to_numpy()
+            mul = (t * x).execute()
+            return mul.sum().to_numpy()
 
         rs = np.random.RandomState(0)
         raw = rs.rand(5, 4)

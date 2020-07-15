@@ -452,9 +452,9 @@ class DistributedDictContext(DistributedContext, dict):
         dict.__init__(self)
 
     def yield_execution_pool(self):
-        actor_cls = self.pop('_actor_cls', None)
-        actor_uid = self.pop('_actor_uid', None)
-        op_key = self.pop('_op_key', None)
+        actor_cls = self.get('_actor_cls')
+        actor_uid = self.get('_actor_uid')
+        op_key = self.get('_op_key')
         if not actor_cls or not actor_uid:  # pragma: no cover
             return
 
