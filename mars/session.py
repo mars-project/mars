@@ -24,7 +24,7 @@ from numbers import Integral
 import numpy as np
 
 from .core import Entity, Base
-from .context import LocalContext
+from .context import get_context, LocalContext
 from .operands import Fetch
 from .tiles import get_tiled
 from .executor import Executor
@@ -288,26 +288,35 @@ class ClusterSession(object):
         self._api.submit_graph(self._session_id, json.dumps(graph.to_json(), separators=(',', ':')),
                                graph_key, targets, compose=compose, names=name)
 
-        exec_start_time = time.time()
-        time_elapsed = 0
-        check_interval = options.check_interval
-        while timeout <= 0 or time_elapsed < timeout:
-            timeout_val = min(check_interval, timeout - time_elapsed) if timeout > 0 else check_interval
-            self._api.wait_graph_finish(self._session_id, graph_key, timeout=timeout_val)
-            graph_state = self._api.get_graph_state(self._session_id, graph_key)
-            if graph_state == GraphState.SUCCEEDED:
-                break
-            if graph_state == GraphState.FAILED:
-                exc_info = self._api.get_graph_exc_info(self._session_id, graph_key)
-                if exc_info is not None:
-                    exc = exc_info[1].with_traceback(exc_info[2])
-                    raise ExecutionFailed('Graph execution failed.') from exc
-                else:
-                    raise ExecutionFailed('Graph execution failed with unknown reason')
-            time_elapsed = time.time() - exec_start_time
+        ctx = get_context()
+        yield_info = None
+        if ctx is not None:
+            yield_info = ctx.yield_execution_pool()
 
-        if 0 < timeout < time.time() - exec_start_time:
-            raise TimeoutError
+        try:
+            exec_start_time = time.time()
+            time_elapsed = 0
+            check_interval = options.check_interval
+            while timeout <= 0 or time_elapsed < timeout:
+                timeout_val = min(check_interval, timeout - time_elapsed) if timeout > 0 else check_interval
+                self._api.wait_graph_finish(self._session_id, graph_key, timeout=timeout_val)
+                graph_state = self._api.get_graph_state(self._session_id, graph_key)
+                if graph_state == GraphState.SUCCEEDED:
+                    break
+                if graph_state == GraphState.FAILED:
+                    exc_info = self._api.get_graph_exc_info(self._session_id, graph_key)
+                    if exc_info is not None:
+                        exc = exc_info[1].with_traceback(exc_info[2])
+                        raise ExecutionFailed('Graph execution failed.') from exc
+                    else:
+                        raise ExecutionFailed('Graph execution failed with unknown reason')
+                time_elapsed = time.time() - exec_start_time
+
+            if 0 < timeout < time.time() - exec_start_time:
+                raise TimeoutError
+        finally:
+            if ctx is not None:
+                ctx.acquire_execution_pool(yield_info)
 
         for t in tileables:
             self._set_tileable_graph_key(t, graph_key)

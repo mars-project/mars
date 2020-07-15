@@ -64,9 +64,9 @@ class DispatchActor(WorkerActor):
                 self.ref().register_free_slot(slot, queue_name, _tell=True)
 
     @log_unhandled
-    def get_free_slot(self, queue_name, callback=None):
+    def acquire_free_slot(self, queue_name, callback=None):
         """
-        Get uid of a free actor when available
+        Acquire uid of a free actor when available
         :param queue_name: queue name
         :param callback: promise callback
         """
@@ -147,3 +147,8 @@ class DispatchActor(WorkerActor):
         if self._status_ref is not None:
             self._status_ref.update_slots({queue_name: len(self._free_slots[queue_name])},
                                           _tell=True, _wait=False)
+
+    @log_unhandled
+    def remove_slot(self, uid, queue_name):
+        self._free_slots[queue_name].pop(uid, None)
+        self._all_slots[queue_name].pop(uid, None)
