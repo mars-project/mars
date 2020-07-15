@@ -940,11 +940,12 @@ class Executor(object):
         for tileable in tileables:
             if tileable.key not in self.stored_tileables and \
                     isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem, SeriesIlocGetItem)):
-                key = tileable.inputs[0].key
+                to_fetch_tileable = tileable.inputs[0]
                 to_release_tileables.append(tileable)
             else:
-                key = tileable.key
-            if key not in self.stored_tileables:
+                to_fetch_tileable = tileable
+            key = to_fetch_tileable.key
+            if key not in self.stored_tileables and not isinstance(to_fetch_tileable.op, Fetch):
                 # check if the tileable is executed before
                 raise ValueError(
                     'Tileable object {} must be executed first before being fetched'.format(tileable.key))

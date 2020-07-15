@@ -383,6 +383,25 @@ class _ExecutableMixin:
         self._executed_sessions.append(session)
 
 
+class _ExecuteAndFetchMixin:
+    __slots__ = ()
+
+    def _execute_and_fetch(self, session=None, **kw):
+        try:
+            # fetch first, to reduce the potential cost of submitting a graph
+            return self.fetch(session=session)
+        except ValueError:
+            # not execute before
+            return self.execute(session=session, **kw).fetch(session=session)
+
+
+class _ToObjectMixin(_ExecuteAndFetchMixin):
+    __slots__ = ()
+
+    def to_object(self, session=None, **kw):
+        return self._execute_and_fetch(session=session, **kw)
+
+
 class TileableData(EntityData, Tileable, _ExecutableMixin):
     __slots__ = '_cix', '_entities', '_executed_sessions'
     _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
@@ -562,7 +581,7 @@ class HasShapeTileableEnity(TileableEntity):
         return self
 
 
-class ObjectData(TileableData):
+class ObjectData(TileableData, _ToObjectMixin):
     __slots__ = ()
 
     # optional fields
@@ -590,7 +609,7 @@ class ObjectData(TileableData):
         }
 
 
-class Object(Entity):
+class Object(Entity, _ToObjectMixin):
     __slots__ = ()
     _allow_data_type_ = (ObjectData,)
 
@@ -640,7 +659,7 @@ class ChunksIndexer(object):
         raise ValueError('Cannot get {0} chunk by {1}'.format(type(self._tileable).__name__, item))
 
 
-class ExecutableTuple(tuple, _ExecutableMixin):
+class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
     def __init__(self, *_):
         super().__init__()
         self._executed_sessions = []
