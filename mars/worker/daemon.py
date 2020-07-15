@@ -44,6 +44,12 @@ class WorkerDaemonActor(WorkerActor):
         self._proc_actors[proc_idx][ref_key] = (ref_key, args, kwargs, False)
         return ref
 
+    def destroy_actor(self, ref):
+        proc_idx = self.ctx.distributor.distribute(ref.uid)
+        ref_key = (ref.uid, ref.address)
+        self._proc_actors[proc_idx].pop(ref_key, None)
+        self.ctx.destroy_actor(ref)
+
     def register_child_actor(self, actor_ref):
         proc_idx = self.ctx.distributor.distribute(actor_ref.uid)
         ref_key = (actor_ref.uid, actor_ref.address)

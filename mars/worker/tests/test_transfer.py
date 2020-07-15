@@ -580,7 +580,7 @@ class Test(WorkerCase):
                                     session_id, chunk_key, targets, _promise=True)
                                       .then(lambda remote_data: assert_array_equal(local_data, remote_data))) \
 
-                        remote_dispatch_ref.get_free_slot('sender', _promise=True) \
+                        remote_dispatch_ref.acquire_free_slot('sender', _promise=True) \
                             .then(_call_send_data) \
                             .then(_test_data_exist) \
                             .then(

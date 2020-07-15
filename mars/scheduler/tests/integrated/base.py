@@ -47,6 +47,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
 
         options.worker.spill_directory = os.path.join(tempfile.gettempdir(), 'mars_test_spill')
         cls._kv_store = kvstore.get(options.kv_store)
+        cls.timeout = int(os.environ.get('CHECK_TIMEOUT', 120))
 
     @classmethod
     def tearDownClass(cls):
@@ -115,7 +116,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
 
     def _start_processes(self, n_schedulers=2, n_workers=2, etcd=False, cuda=False, modules=None,
                          log_scheduler=True, log_worker=True, env=None, scheduler_args=None,
-                         worker_args=None):
+                         worker_args=None, worker_cpu=1):
         old_not_errors = gevent.hub.Hub.NOT_ERROR
         gevent.hub.Hub.NOT_ERROR = (Exception,)
 
@@ -161,7 +162,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
         self.proc_workers = [
             subprocess.Popen([sys.executable, '-m', 'mars.worker',
                               '-a', '127.0.0.1',
-                              '--cpu-procs', '1',
+                              '--cpu-procs', str(worker_cpu),
                               '--log-level', 'debug' if log_worker else 'warning',
                               '--log-format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
                               '--cache-mem', '16m',

@@ -346,7 +346,7 @@ class ExecutionActor(WorkerActor):
             ).then(_finish_fetch)
 
         return promise.finished() \
-            .then(lambda *_: remote_disp_ref.get_free_slot('sender', _promise=True, _timeout=timeout)) \
+            .then(lambda *_: remote_disp_ref.acquire_free_slot('sender', _promise=True, _timeout=timeout)) \
             .then(_fetch_step) \
             .catch(_handle_network_error)
 
@@ -543,7 +543,7 @@ class ExecutionActor(WorkerActor):
                 .then(lambda *_: self._mem_quota_ref.request_batch_quota(
                     quota_request, _promise=True) if quota_request else None) \
                 .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
-                .then(lambda *_: self._dispatch_ref.get_free_slot(calc_device, _promise=True)) \
+                .then(lambda *_: self._dispatch_ref.acquire_free_slot(calc_device, _promise=True)) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
                 .then(lambda saved_keys: self._store_results(session_id, graph_key, saved_keys)) \
                 .then(_handle_success, _handle_rejection)
@@ -766,7 +766,7 @@ class ExecutionActor(WorkerActor):
             if target == self.address:
                 continue
             promises.append(promise.finished()
-                            .then(lambda: self._dispatch_ref.get_free_slot('sender', _promise=True))
+                            .then(lambda: self._dispatch_ref.acquire_free_slot('sender', _promise=True))
                             .then(functools.partial(_send_chunk, data_keys=keys, target_addr=target))
                             .catch(lambda *_: None))
 
