@@ -453,18 +453,23 @@ class DistributedDictContext(DistributedContext, dict):
 
     def yield_execution_pool(self):
         actor_cls = self.pop('_actor_cls', None)
+        actor_uid = self.pop('_actor_uid', None)
         op_key = self.pop('_op_key', None)
-        proc_id = self._extra_info.get('proc_id')
-        if not actor_cls or not proc_id:  # pragma: no cover
+        if not actor_cls or not actor_uid:  # pragma: no cover
             return
 
         from .actors import new_client
         from .worker.daemon import WorkerDaemonActor
         client = new_client()
 
-        daemon_ref = client.actor_ref(WorkerDaemonActor.default_uid(), address=self.get_local_address())
-        uid = 'w:%d:mars-cpu-calc-backup-%d-%s-%d' % (proc_id, os.getpid(), op_key, random.randint(-1, 9999))
-        ref = daemon_ref.create_actor(actor_cls, uid=uid)
+        worker_addr = self.get_local_address()
+        if client.has_actor(client.actor_ref(WorkerDaemonActor.default_uid(), address=worker_addr)):
+            holder = client.actor_ref(WorkerDaemonActor.default_uid(), address=worker_addr)
+        else:
+            holder = client
+        uid = 'w:%d:mars-cpu-calc-backup-%d-%s-%d' % (0, os.getpid(), op_key, random.randint(-1, 9999))
+        uid = self._actor_ctx.distributor.make_same_process(uid, actor_uid)
+        ref = holder.create_actor(actor_cls, uid=uid, address=worker_addr)
         return ref
 
     def acquire_execution_pool(self, yield_info):

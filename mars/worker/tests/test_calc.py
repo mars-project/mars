@@ -191,3 +191,48 @@ class Test(WorkerCase):
                         .then(lambda *_: calc_ref.store_results(
                             session_id, add_chunk.op.key, [add_chunk.key], None, _promise=True))
                 )
+
+    def testDestroyCalcActor(self):
+        import gevent.event
+
+        with self._start_calc_pool() as (_pool, test_actor):
+            calc_ref = _pool.actor_ref(CpuCalcActor.default_uid())
+            calc_ref.mark_destroy()
+            self.assertFalse(_pool.has_actor(calc_ref))
+
+        with self._start_calc_pool() as (_pool, test_actor):
+            calc_ref = test_actor.promise_ref(CpuCalcActor.default_uid())
+
+            session_id = str(uuid.uuid4())
+            data_list = [np.random.random((10, 10)) for _ in range(2)]
+            exec_graph, fetch_chunks, add_chunk = self._build_test_graph(data_list)
+
+            storage_client = test_actor.storage_client
+
+            for fetch_chunk, d in zip(fetch_chunks, data_list):
+                self.waitp(
+                    storage_client.put_objects(
+                        session_id, [fetch_chunk.key], [d], [DataStorageDevice.SHARED_MEMORY]),
+                )
+
+            orig_calc_results = CpuCalcActor._calc_results
+
+            start_event = gevent.event.Event()
+
+            def _mock_calc_delayed(actor_obj, *args, **kwargs):
+                actor_obj._executing = True
+                start_event.set()
+                gevent.sleep(1)
+                return orig_calc_results(actor_obj, *args, **kwargs)
+
+            with patch_method(CpuCalcActor._calc_results, _mock_calc_delayed):
+                p = calc_ref.calc(session_id, add_chunk.op.key, serialize_graph(exec_graph),
+                                  [add_chunk.key], _promise=True) \
+                        .then(lambda *_: calc_ref.store_results(
+                            session_id, add_chunk.op.key, [add_chunk.key], None, _promise=True))
+                start_event.wait()
+                calc_ref.mark_destroy()
+                self.assertTrue(_pool.has_actor(calc_ref._ref))
+                self.waitp(p)
+
+            self.assertFalse(_pool.has_actor(calc_ref._ref))

@@ -78,7 +78,7 @@ class BaseCalcActor(WorkerActor):
 
     def pre_destroy(self):
         logger.debug('Destroying actor %s', self.uid)
-        self._dispatch_ref.remove_slot(self.uid, self._slot_name, _tell=True)
+        self._dispatch_ref.remove_slot(self.uid, self._slot_name, _tell=True, _wait=False)
         super().pre_destroy()
 
     @staticmethod
@@ -169,8 +169,9 @@ class BaseCalcActor(WorkerActor):
 
         local_context_dict = DistributedDictContext(
             self.get_scheduler(self.default_uid()), session_id, actor_ctx=self.ctx,
-            address=self.address, proc_id=self.proc_id, n_cpu=self._get_n_cpu())
+            address=self.address, n_cpu=self._get_n_cpu())
         local_context_dict['_actor_cls'] = type(self)
+        local_context_dict['_actor_uid'] = self.uid
         local_context_dict['_op_key'] = graph_key
         local_context_dict.update(context_dict)
         context_dict.clear()
@@ -312,9 +313,7 @@ class BaseCalcActor(WorkerActor):
         def _finalize(*_):
             self._executing = False
             if self._marked_as_destroy:
-                from .daemon import WorkerDaemonActor
-                daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
-                daemon_ref.destroy_actor(self.ref(), _tell=True)
+                self._destroy_self()
 
         return storage_client.copy_to(session_id, keys_to_store, self._calc_dest_devices) \
             .then(_delete_keys) \
@@ -323,12 +322,18 @@ class BaseCalcActor(WorkerActor):
                   lambda *exc: self.tell_promise(callback, *exc, _accept=False)) \
             .then(_finalize)
 
+    def _destroy_self(self):
+        from .daemon import WorkerDaemonActor
+        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
+        if self.ctx.has_actor(daemon_ref):
+            daemon_ref.destroy_actor(self.ref(), _tell=True)
+        else:
+            self.ctx.destroy_actor(self.ref())
+
     @log_unhandled
     def mark_destroy(self):
         if not self._executing:
-            from .daemon import WorkerDaemonActor
-            daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
-            daemon_ref.destroy_actor(self.ref(), _tell=True)
+            self._destroy_self()
         else:
             self._marked_as_destroy = True
 
