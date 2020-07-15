@@ -83,11 +83,9 @@ test parts.
 
 .. code-block:: ipython
 
-   In [7]: from mars.learn.utils import shuffle
-   In [8]: X, y = shuffle(data, boston.target)
-   In [9]: train_size = int(X.shape[0] * 0.7)
-   In [10]: X_train, X_test = X[:train_size], X[train_size:]
-   In [11]: y_train, y_test = y[:train_size], y[train_size:]
+   In [7]: from mars.learn.model_selection import train_test_split
+   In [8]: X_train, X_test, y_train, y_test = \
+      ...:     train_test_split(data, boston.target, train_size=0.7, random_state=0)
 
 Training
 --------
@@ -97,12 +95,12 @@ LightGBM.
 
 .. code-block:: ipython
 
-   In [12]: from mars.learn.contrib import lightgbm as lgb
-   In [13]: lg_reg = lgb.LGBMRegressor(colsample_bytree=0.3, learning_rate=0.1,
+   In [9]: from mars.learn.contrib import lightgbm as lgb
+   In [10]: lg_reg = lgb.LGBMRegressor(colsample_bytree=0.3, learning_rate=0.1,
        ...:                            max_depth=5, reg_alpha=10, n_estimators=10)
 
-   In [14]: lg_reg.fit(X_train, y_train)
-   Out[14]:
+   In [11]: lg_reg.fit(X_train, y_train)
+   Out[11]:
    LGBMRegressor(boosting_type='gbdt', class_weight=None, colsample_bytree=0.3,
                  importance_type='split', learning_rate=0.1, max_depth=5,
                  min_child_samples=20, min_child_weight=0.001, min_split_gain=0.0,
@@ -118,8 +116,8 @@ For prediction, scikit-learn API can also be used.
 
 .. code-block:: ipython
 
-   In [15]: lg_reg.predict(X_test)
-   Out[15]:
+   In [12]: lg_reg.predict(X_test)
+   Out[12]:
    476    20.044731
    490    18.540266
    304    26.985506

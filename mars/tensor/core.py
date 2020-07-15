@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import logging
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
@@ -24,13 +24,13 @@ from operator import attrgetter
 import numpy as np
 
 from ..core import Entity, HasShapeTileableEnity, ChunkData, Chunk, HasShapeTileableData, \
-    build_mode, Serializable, OutputType, register_output_types
+    build_mode, Serializable, OutputType, register_output_types, _ExecuteAndFetchMixin
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape, is_eager_mode
 from .utils import get_chunk_slices, fetch_corner_data
 
-import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,7 +122,7 @@ class TensorChunk(Chunk):
         return len(self._data)
 
 
-class TensorData(HasShapeTileableData):
+class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     __slots__ = ()
 
     # required fields
@@ -291,7 +291,7 @@ class TensorData(HasShapeTileableData):
         return flatiter(self)
 
     def to_numpy(self, session=None, **kw):
-        return self.execute(session=session, **kw).fetch(session=session)
+        return self._execute_and_fetch(session=session, **kw)
 
 
 class Tensor(HasShapeTileableEnity):

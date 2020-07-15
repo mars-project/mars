@@ -27,7 +27,7 @@ try:
     from sklearn.utils import check_random_state
     from sklearn.utils._testing import assert_array_almost_equal, assert_array_less
 
-    from mars.learn.decomposition.truncated_svd import TruncatedSVD
+    from mars.learn.decomposition import TruncatedSVD
 except ImportError:
     sklearn = None
 
