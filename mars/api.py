@@ -224,6 +224,8 @@ class MarsAPI(object):
 
     def fetch_chunk_data(self, session_id, chunk_key, index_obj=None):
         endpoints = self.chunk_meta_client.get_workers(session_id, chunk_key)
+        if endpoints is None:
+            raise KeyError('Chunk key %s not exist in cluster' % chunk_key)
         sender_ref = self.actor_client.actor_ref(ResultSenderActor.default_uid(),
                                                  address=random.choice(endpoints))
         return sender_ref.fetch_data(session_id, chunk_key, index_obj, _wait=False)

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import copy
+import os
+import random
 import sys
 import threading
-import random
 from collections import namedtuple, defaultdict
 from enum import Enum
 from typing import List
@@ -76,9 +77,9 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
-    # ---------------
-    # Meta relative
-    # ---------------
+    # ------------
+    # Meta related
+    # ------------
 
     def get_chunk_metas(self, chunk_keys, filter_fields=None):
         """
@@ -90,9 +91,9 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
-    # -----------------
-    # Cluster relative
-    # -----------------
+    # ---------------
+    # Cluster related
+    # ---------------
 
     def get_scheduler_addresses(self):
         """
@@ -132,9 +133,9 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
-    # ---------------
-    # Graph relative
-    # ---------------
+    # -------------
+    # Graph related
+    # -------------
 
     def submit_chunk_graph(self, graph, result_keys):
         """
@@ -156,9 +157,22 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
-    # ----------------
-    # Result relative
-    # ----------------
+    # -----------------------
+    # Pool occupation related
+    # -----------------------
+
+    def yield_execution_pool(self):
+        """
+        Yields current execution pool to allow running other tasks
+        """
+        pass
+
+    def acquire_execution_pool(self, yield_info):
+        pass
+
+    # --------------
+    # Result related
+    # --------------
 
     def get_chunk_results(self, chunk_keys: List[str]) -> List:
         """
@@ -290,10 +304,10 @@ class DistributedContext(ContextBase):
         is_distributed = self._cluster_info.is_distributed()
         self._running_mode = RunningMode.local_cluster \
             if not is_distributed else RunningMode.distributed
-        self._address = kw.pop('address', None)
         self._resource_actor_ref = self._actor_ctx.actor_ref(
             ResourceActor.default_uid(), address=scheduler_address)
 
+        self._address = kw.pop('address', None)
         self._extra_info = kw
 
     @property
@@ -436,3 +450,28 @@ class DistributedDictContext(DistributedContext, dict):
     def __init__(self, *args, **kwargs):
         DistributedContext.__init__(self, *args, **kwargs)
         dict.__init__(self)
+
+    def yield_execution_pool(self):
+        actor_cls = self.pop('_actor_cls', None)
+        op_key = self.pop('_op_key', None)
+        proc_id = self._extra_info.get('proc_id')
+        if not actor_cls or not proc_id:  # pragma: no cover
+            return
+
+        from .actors import new_client
+        from .worker.daemon import WorkerDaemonActor
+        client = new_client()
+
+        daemon_ref = client.actor_ref(WorkerDaemonActor.default_uid(), address=self.get_local_address())
+        uid = 'w:%d:mars-cpu-calc-backup-%d-%s-%d' % (proc_id, os.getpid(), op_key, random.randint(-1, 9999))
+        ref = daemon_ref.create_actor(actor_cls, uid=uid)
+        return ref
+
+    def acquire_execution_pool(self, yield_info):
+        if yield_info is None:
+            return
+
+        from .actors import new_client
+        client = new_client()
+        calc_ref = client.actor_ref(yield_info, address=self.get_local_address())
+        calc_ref.mark_destroy()

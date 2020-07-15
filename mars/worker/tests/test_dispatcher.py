@@ -65,11 +65,13 @@ class Test(WorkerCase):
             self.assertEqual(dispatch_ref.get_hash_slot('g1', 'hash_str'),
                              dispatch_ref.get_hash_slot('g1', 'hash_str'))
 
-            dispatch_ref.get_free_slot('g1', callback=(('NonExist', mock_scheduler_addr), '_non_exist', {}))
+            dispatch_ref.acquire_free_slot('g1', callback=(('NonExist', mock_scheduler_addr), '_non_exist', {}))
             self.assertEqual(dispatch_ref.get_free_slots_num().get('g1'), group_size)
 
             # tasks within [0, group_size - 1] will run almost simultaneously,
             # while the last one will be delayed due to lack of slots
+
+            delay = 0.5
 
             with self.run_actor_test(pool) as test_actor:
                 p = promise.finished()
@@ -79,15 +81,15 @@ class Test(WorkerCase):
                     if uid is None:
                         call_records[key] = 'NoneUID'
                     else:
-                        test_actor.promise_ref(uid).queued_call(key, 2, _tell=True)
+                        test_actor.promise_ref(uid).queued_call(key, delay, _tell=True)
 
                 for idx in range(group_size + 1):
-                    p = p.then(lambda *_: _dispatch_ref.get_free_slot('g1', _promise=True)) \
+                    p = p.then(lambda *_: _dispatch_ref.acquire_free_slot('g1', _promise=True)) \
                         .then(partial(_call_on_dispatched, key='%d_1' % idx)) \
-                        .then(lambda *_: _dispatch_ref.get_free_slot('g2', _promise=True)) \
+                        .then(lambda *_: _dispatch_ref.acquire_free_slot('g2', _promise=True)) \
                         .then(partial(_call_on_dispatched, key='%d_2' % idx))
 
-                p.then(lambda *_: _dispatch_ref.get_free_slot('g3', _promise=True)) \
+                p.then(lambda *_: _dispatch_ref.acquire_free_slot('g3', _promise=True)) \
                     .then(partial(_call_on_dispatched, key='N_1')) \
                     .then(lambda *_: test_actor.set_result(None))
 
@@ -95,8 +97,8 @@ class Test(WorkerCase):
 
             self.assertEqual(call_records['N_1'], 'NoneUID')
             self.assertLess(sum(abs(call_records['%d_1' % idx] - call_records['0_1'])
-                                for idx in range(group_size)), 1)
-            self.assertGreater(call_records['%d_1' % group_size] - call_records['0_1'], 1)
-            self.assertLess(call_records['%d_1' % group_size] - call_records['0_1'], 3)
+                                for idx in range(group_size)), delay * 0.5)
+            self.assertGreater(call_records['%d_1' % group_size] - call_records['0_1'], delay * 0.5)
+            self.assertLess(call_records['%d_1' % group_size] - call_records['0_1'], delay * 1.5)
 
             dispatch_ref.destroy()

@@ -46,6 +46,9 @@ class BaseCalcActor(WorkerActor):
         self._status_ref = None
         self._resource_ref = None
 
+        self._executing = False
+        self._marked_as_destroy = False
+
         self._execution_pool = None
         self._n_cpu = None
 
@@ -72,6 +75,11 @@ class BaseCalcActor(WorkerActor):
             self._events_ref = None
 
         self._execution_pool = self.ctx.threadpool(1)
+
+    def pre_destroy(self):
+        logger.debug('Destroying actor %s', self.uid)
+        self._dispatch_ref.remove_slot(self.uid, self._slot_name, _tell=True)
+        super().pre_destroy()
 
     @staticmethod
     def _get_keys_to_fetch(graph):
@@ -161,7 +169,9 @@ class BaseCalcActor(WorkerActor):
 
         local_context_dict = DistributedDictContext(
             self.get_scheduler(self.default_uid()), session_id, actor_ctx=self.ctx,
-            address=self.address, n_cpu=self._get_n_cpu())
+            address=self.address, proc_id=self.proc_id, n_cpu=self._get_n_cpu())
+        local_context_dict['_actor_cls'] = type(self)
+        local_context_dict['_op_key'] = graph_key
         local_context_dict.update(context_dict)
         context_dict.clear()
 
@@ -233,6 +243,7 @@ class BaseCalcActor(WorkerActor):
         :param chunk_targets: keys of target chunks
         :param callback: promise callback, returns the uid of InProcessCacheActor
         """
+        self._executing = True
         graph = deserialize_graph(ser_graph)
         chunk_targets = set(chunk_targets)
         keys_to_fetch = self._get_keys_to_fetch(graph)
@@ -298,11 +309,28 @@ class BaseCalcActor(WorkerActor):
                     session_id, keys_to_store, [self._calc_intermediate_device], _tell=True)
             self._release_local_quotas(session_id, keys_to_store)
 
+        def _finalize(*_):
+            self._executing = False
+            if self._marked_as_destroy:
+                from .daemon import WorkerDaemonActor
+                daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
+                daemon_ref.destroy_actor(self.ref(), _tell=True)
+
         return storage_client.copy_to(session_id, keys_to_store, self._calc_dest_devices) \
             .then(_delete_keys) \
             .then(lambda *_: meta_future.result()) \
             .then(lambda *_: self.tell_promise(callback),
-                  lambda *exc: self.tell_promise(callback, *exc, _accept=False))
+                  lambda *exc: self.tell_promise(callback, *exc, _accept=False)) \
+            .then(_finalize)
+
+    @log_unhandled
+    def mark_destroy(self):
+        if not self._executing:
+            from .daemon import WorkerDaemonActor
+            daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
+            daemon_ref.destroy_actor(self.ref(), _tell=True)
+        else:
+            self._marked_as_destroy = True
 
 
 class CpuCalcActor(BaseCalcActor):
