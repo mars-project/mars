@@ -178,11 +178,9 @@ class MarsAPI(object):
         graph_meta_ref = self.get_graph_meta_ref(session_id, graph_key)
         self.actor_client.actor_ref(graph_meta_ref.get_wait_ref()).wait(timeout)
 
-    def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None,
-                   serial_type=None, compressions=None, pickle_protocol=None):
-        graph_uid = GraphActor.gen_uid(session_id, graph_key)
-        graph_ref = self.get_actor_ref(graph_uid)
-        nsplits, chunk_keys, chunk_indexes = graph_ref.get_tileable_metas([tileable_key])[0]
+    def fetch_chunks_data(self, session_id, chunk_indexes, chunk_keys, nsplits,
+                          index_obj=None, serial=True, serial_type=None,
+                          compressions=None, pickle_protocol=None):
         chunk_index_to_key = dict((index, key) for index, key in zip(chunk_indexes, chunk_keys))
         if not index_obj:
             chunk_results = dict((idx, self.fetch_chunk_data(session_id, k)) for
@@ -209,15 +207,29 @@ class MarsAPI(object):
             ret = chunk_results[0][1]
         else:
             ret = merge_chunks(chunk_results)
+        if not serial:
+            return ret
         compressions = max(compressions) if compressions else dataserializer.CompressType.NONE
         return dataserializer.dumps(ret, serial_type=serial_type, compress=compressions,
                                     pickle_protocol=pickle_protocol)
+
+    def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None,
+                   serial=True, serial_type=None, compressions=None, pickle_protocol=None):
+        graph_uid = GraphActor.gen_uid(session_id, graph_key)
+        graph_ref = self.get_actor_ref(graph_uid)
+        nsplits, chunk_keys, chunk_indexes = graph_ref.get_tileable_metas([tileable_key])[0]
+        return self.fetch_chunks_data(session_id, chunk_indexes, chunk_keys, nsplits,
+                                      index_obj=index_obj, serial=serial, serial_type=serial_type,
+                                      compressions=compressions, pickle_protocol=pickle_protocol)
 
     def fetch_chunk_data(self, session_id, chunk_key, index_obj=None):
         endpoints = self.chunk_meta_client.get_workers(session_id, chunk_key)
         sender_ref = self.actor_client.actor_ref(ResultSenderActor.default_uid(),
                                                  address=random.choice(endpoints))
         return sender_ref.fetch_data(session_id, chunk_key, index_obj, _wait=False)
+
+    def get_chunk_metas(self, session_id, chunk_keys):
+        return self.chunk_meta_client.batch_get_chunk_meta(session_id, chunk_keys)
 
     def delete_data(self, session_id, graph_key, tileable_key, wait=False):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)

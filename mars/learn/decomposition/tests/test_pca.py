@@ -28,7 +28,7 @@ try:
     from sklearn.utils._testing import assert_array_almost_equal, \
         assert_almost_equal, assert_raises_regex, assert_raise_message, assert_raises
 
-    from mars.learn.decomposition.pca import PCA, _assess_dimension_, _infer_dimension_
+    from mars.learn.decomposition._pca import PCA, _assess_dimension, _infer_dimension
 except ImportError:
     sklearn = None
 
@@ -420,8 +420,8 @@ class Test(unittest.TestCase):
              mt.array([1, 0, 7, 4, 6]))
         pca = PCA(n_components=p, svd_solver='full')
         pca.fit(X)
-        spect = pca.explained_variance_
-        ll = mt.array([_assess_dimension_(spect, k, n, p) for k in range(p)]).to_numpy()
+        spect = pca.explained_variance_.to_numpy()
+        ll = np.array([_assess_dimension(spect, k, n) for k in range(1, p)])
         self.assertGreater(ll[1], ll.max() - .01 * n)
 
     def test_infer_dim_2(self):
@@ -434,8 +434,8 @@ class Test(unittest.TestCase):
         X[10:20] += mt.array([6, 0, 7, 2, -1])
         pca = PCA(n_components=p, svd_solver='full')
         pca.fit(X)
-        spect = pca.explained_variance_
-        self.assertGreater(_infer_dimension_(spect, n, p).to_numpy(), 1)
+        spect = pca.explained_variance_.fetch()
+        self.assertGreater(_infer_dimension(spect, n), 1)
 
     def test_infer_dim_3(self):
         n, p = 100, 5
@@ -446,8 +446,8 @@ class Test(unittest.TestCase):
         X[30:40] += 2 * mt.array([-1, 1, -1, 1, -1])
         pca = PCA(n_components=p, svd_solver='full')
         pca.fit(X)
-        spect = pca.explained_variance_
-        self.assertGreater(_infer_dimension_(spect, n, p).to_numpy(), 2)
+        spect = pca.explained_variance_.fetch()
+        self.assertGreater(_infer_dimension(spect, n), 2)
 
     def test_infer_dim_by_explained_variance(self):
         X = self.iris
@@ -653,9 +653,9 @@ class Test(unittest.TestCase):
         X = mt.tensor(rng.rand(10, 10))
 
         for solver in self.solver_list:
-            transformed_X = mt.zeros((20, 2))
+            transformed_X = np.zeros((20, 2))
             for i in range(20):
                 pca = PCA(n_components=2, svd_solver=solver, random_state=rng)
-                transformed_X[i, :] = pca.fit_transform(X)[0]
+                transformed_X[i, :] = pca.fit_transform(X)[0].fetch()
             np.testing.assert_allclose(
-                transformed_X.to_numpy(), mt.tile(transformed_X[0, :], 20).reshape(20, 2).to_numpy())
+                transformed_X, np.tile(transformed_X[0, :], 20).reshape(20, 2))

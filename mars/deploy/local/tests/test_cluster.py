@@ -1089,14 +1089,16 @@ class Test(unittest.TestCase):
             # test tileable that executed
             session4 = new_session(cluster.endpoint)
             df1 = md.DataFrame(raw, chunk_size=3)
-            session4.run(df1)
+            df1 = df1[df1.iloc[:, 0] < 1.5]
 
             def f4(input_df):
-                return input_df.sum().to_pandas()
+                bonus = input_df.iloc[:, 0].fetch().sum()
+                return input_df.sum().to_pandas() + bonus
 
             d = mr.spawn(f4, args=(df1,), retry_when_fail=False)
             r = session4.run(d, timeout=_exec_timeout)
-            pd.testing.assert_series_equal(r, pd.DataFrame(raw).sum())
+            expected = pd.DataFrame(raw).sum() + raw[:, 0].sum()
+            pd.testing.assert_series_equal(r, expected)
 
     def testLearnInLocalCluster(self, *_):
         from mars.learn.neighbors import NearestNeighbors

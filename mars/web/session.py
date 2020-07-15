@@ -27,6 +27,7 @@ import numpy as np
 from ..config import options
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
+from ..operands import Fetch
 from ..serialize import dataserializer
 from ..tensor.core import Indexes
 from ..utils import build_tileable_graph, sort_dataframe_result, numpy_dtype_from_descr_json
@@ -206,6 +207,12 @@ class Session(object):
         else:
             return self.fetch(*tileables)
 
+    def _is_executed(self, tileable):
+        # if tileble.key in executed tileables
+        # or it's a fetch already
+        return tileable.key in self._executed_tileables or \
+               isinstance(tileable.op, Fetch)
+
     def fetch(self, *tileables, **kw):
         from ..tensor.indexing import TensorIndex
         from ..dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
@@ -218,17 +225,18 @@ class Session(object):
         for tileable in tileables:
             if tileable.key not in self._executed_tileables and \
                     isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem, SeriesIlocGetItem)):
-                key = tileable.inputs[0].key
+                to_fetch_tileable = tileable.inputs[0]
                 indexes = tileable.op.indexes
                 if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
                     raise ValueError('Only support fetch data slices')
             else:
-                key = tileable.key
+                to_fetch_tileable = tileable
                 indexes = []
 
-            if key not in self._executed_tileables:
+            if not self._is_executed(to_fetch_tileable):
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
+            key = to_fetch_tileable.key
             indexes_str = json.dumps(Indexes(indexes).to_json(), separators=(',', ':'))
 
             session_url = self._endpoint + '/api/session/' + self._session_id
