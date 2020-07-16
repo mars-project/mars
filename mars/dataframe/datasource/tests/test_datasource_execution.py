@@ -454,6 +454,10 @@ class Test(TestBase):
 
             mdf2 = sess.run(md.read_csv(file_path, incremental_index=True, chunk_bytes=10))
             pd.testing.assert_frame_equal(pdf, mdf2)
+
+            mdf3 = md.read_csv(file_path, incremental_index=True, chunk_bytes=15)
+            r = sess.run(mdf3.sort_values(by='a'))
+            pd.testing.assert_frame_equal(pdf.sort_values(by='a'), r)
         finally:
             shutil.rmtree(tempdir)
 
