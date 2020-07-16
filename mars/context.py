@@ -81,6 +81,15 @@ class ContextBase(object):
     # Meta related
     # ------------
 
+    def get_tileable_metas(session_id, tileable_keys, filter_fields: List[str] = None) -> List:
+        """
+        get tileable metas. Tileable includes tensor, DataFrame, mutable tensor and mutable DataFrame.
+        :param tileable_keys: tileable keys
+        :param filter_fields: filter the fields in meta
+        :return: List of tileable metas
+        """
+        raise NotImplementedError
+
     def get_chunk_metas(self, chunk_keys, filter_fields=None):
         """
         Get chunk metas according to the given chunk keys.
@@ -244,8 +253,6 @@ class LocalContext(ContextBase, dict):
         return self._ncores
 
     def get_chunk_metas(self, chunk_keys, filter_fields=None):
-        if filter_fields is not None:  # pragma: no cover
-            raise NotImplementedError("Local context doesn't support filter fields now")
         metas = []
         for chunk_key in chunk_keys:
             chunk_data = self.get(chunk_key)
@@ -267,6 +274,24 @@ class LocalContext(ContextBase, dict):
 
             metas.append(ChunkMeta(chunk_size=size, chunk_shape=shape, workers=None))
 
+        selected_metas = []
+        for chunk_meta in metas:
+            if filter_fields is not None:
+                chunk_meta = [getattr(chunk_meta, field) for field in filter_fields]
+            selected_metas.append(chunk_meta)
+        return selected_metas
+
+    def get_tileable_metas(self, tileable_keys, filter_fields: List[str] = None) -> List:
+        metas = []
+        for key in tileable_keys:
+            tileable = self._local_session.executor.stored_tileables[key]
+            nsplits = tileable.nsplits
+            chunk_keys = [c.key for c in tileable]
+            chunk_indexes = [c.index for c in tileable]
+            metas.append(dict(nsplits=nsplits, chunk_keys=chunk_keys, chunk_indexes=chunk_indexes))
+
+        if filter_fields is not None:
+            metas = [[meta[name] for name in filter_fields] for meta in metas]
         return metas
 
     def get_chunk_results(self, chunk_keys: List[str]) -> List:

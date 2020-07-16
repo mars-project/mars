@@ -89,7 +89,7 @@ class Test(TestBase):
         df = pd.DataFrame({'a': np.random.choice([2, 3, 4], size=(20,)),
                            'b': np.random.choice([2, 3, 4], size=(20,))})
         mdf = md.DataFrame(df, chunk_size=3)
-        r = mdf.groupby('a').agg('sum')
+        r = mdf.groupby('a').agg('sum', method='tree')
         self.assertIsInstance(r.op, DataFrameGroupByAgg)
         self.assertIsInstance(r, DataFrame)
         self.assertEqual(r.op.method, 'tree')

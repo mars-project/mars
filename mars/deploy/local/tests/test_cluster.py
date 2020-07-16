@@ -1008,87 +1008,104 @@ class Test(unittest.TestCase):
                          shared_memory='20M', modules=[__name__], web=True) as cluster:
             session = cluster.session
 
-            def f(x):
-                return x + 1
+            # def f(x):
+            #     return x + 1
+            #
+            # def g(x, y):
+            #     return x * y
+            #
+            # a = mr.spawn(f, 3)
+            # b = mr.spawn(f, 4)
+            # c = mr.spawn(g, (a, b))
+            #
+            # r = session.run(c, timeout=_exec_timeout)
+            # self.assertEqual(r, 20)
+            #
+            # e = mr.spawn(f, mr.spawn(f, 2))
+            #
+            # r = session.run(e, timeout=_exec_timeout)
+            # self.assertEqual(r, 4)
+            #
+            # session2 = new_session(cluster.endpoint)
+            # expect_session_id = session2.session_id
+            #
+            # def f2():
+            #     session = Session.default
+            #     assert isinstance(session._sess, ClusterSession)
+            #     assert session._sess.session_id == expect_session_id
+            #
+            #     t = mt.ones((3, 2))
+            #     return t.sum().to_numpy()
+            #
+            # self.assertEqual(cloudpickle.loads(cloudpickle.dumps(Session.default)).session_id,
+            #                  session.session_id)
+            # self.assertIsInstance(serialize_function(f2), bytes)
+            #
+            # d = mr.spawn(f2, retry_when_fail=False)
+            #
+            # r = session2.run(d, timeout=_exec_timeout)
+            # self.assertEqual(r, 6)
+            #
+            # # test input tileable
+            # def f(t, x):
+            #     return (t * x).sum().to_numpy()
+            #
+            # rs = np.random.RandomState(0)
+            # raw = rs.rand(5, 4)
+            #
+            # t1 = mt.tensor(raw, chunk_size=3)
+            # t2 = t1.sum(axis=0)
+            # s = mr.spawn(f, args=(t2, 3), retry_when_fail=False)
+            #
+            # r = session.run(s, timeout=_exec_timeout)
+            # expected = (raw.sum(axis=0) * 3).sum()
+            # self.assertAlmostEqual(r, expected)
+            #
+            # # test named tileable
+            # session3 = new_session(cluster.endpoint)
+            # t = mt.ones((10, 10), chunk_size=3)
+            # session3.run(t, name='t_name')
+            #
+            # def f3():
+            #     import mars.tensor as mt
+            #
+            #     s = mt.named_tensor(name='t_name')
+            #     return (s + 1).to_numpy()
+            #
+            # d = mr.spawn(f3, retry_when_fail=False)
+            # r = session3.run(d, timeout=_exec_timeout)
+            # np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
+            #
+            # # test tileable that executed
+            # session4 = new_session(cluster.endpoint)
+            # df1 = md.DataFrame(raw, chunk_size=3)
+            # df1 = df1[df1.iloc[:, 0] < 1.5]
+            #
+            # def f4(input_df):
+            #     bonus = input_df.iloc[:, 0].fetch().sum()
+            #     return input_df.sum().to_pandas() + bonus
+            #
+            # d = mr.spawn(f4, args=(df1,), retry_when_fail=False)
+            # r = session4.run(d, timeout=_exec_timeout)
+            # expected = pd.DataFrame(raw).sum() + raw[:, 0].sum()
+            # pd.testing.assert_series_equal(r, expected)
+            #
+            # test tileable has unknown shape
+            session5 = new_session(cluster.endpoint)
 
-            def g(x, y):
-                return x * y
-
-            a = mr.spawn(f, 3)
-            b = mr.spawn(f, 4)
-            c = mr.spawn(g, (a, b))
-
-            r = session.run(c, timeout=_exec_timeout)
-            self.assertEqual(r, 20)
-
-            e = mr.spawn(f, mr.spawn(f, 2))
-
-            r = session.run(e, timeout=_exec_timeout)
-            self.assertEqual(r, 4)
-
-            session2 = new_session(cluster.endpoint)
-            expect_session_id = session2.session_id
-
-            def f2():
-                session = Session.default
-                assert isinstance(session._sess, ClusterSession)
-                assert session._sess.session_id == expect_session_id
-
-                t = mt.ones((3, 2))
-                return t.sum().to_numpy()
-
-            self.assertEqual(cloudpickle.loads(cloudpickle.dumps(Session.default)).session_id,
-                             session.session_id)
-            self.assertIsInstance(serialize_function(f2), bytes)
-
-            d = mr.spawn(f2, retry_when_fail=False)
-
-            r = session2.run(d, timeout=_exec_timeout)
-            self.assertEqual(r, 6)
-
-            # test input tileable
-            def f(t, x):
-                return (t * x).sum().to_numpy()
+            def f5(t, x):
+                assert all(not np.isnan(s) for s in t.shape)
+                return (t * x).sum().to_numpy(check_nsplits=False)
 
             rs = np.random.RandomState(0)
             raw = rs.rand(5, 4)
 
             t1 = mt.tensor(raw, chunk_size=3)
-            t2 = t1.sum(axis=0)
-            s = mr.spawn(f, args=(t2, 3), retry_when_fail=False)
-
-            r = session.run(s, timeout=_exec_timeout)
-            expected = (raw.sum(axis=0) * 3).sum()
-            self.assertAlmostEqual(r, expected)
-
-            # test named tileable
-            session3 = new_session(cluster.endpoint)
-            t = mt.ones((10, 10), chunk_size=3)
-            session3.run(t, name='t_name')
-
-            def f3():
-                import mars.tensor as mt
-
-                s = mt.named_tensor(name='t_name')
-                return (s + 1).to_numpy()
-
-            d = mr.spawn(f3, retry_when_fail=False)
-            r = session3.run(d, timeout=_exec_timeout)
-            np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
-
-            # test tileable that executed
-            session4 = new_session(cluster.endpoint)
-            df1 = md.DataFrame(raw, chunk_size=3)
-            df1 = df1[df1.iloc[:, 0] < 1.5]
-
-            def f4(input_df):
-                bonus = input_df.iloc[:, 0].fetch().sum()
-                return input_df.sum().to_pandas() + bonus
-
-            d = mr.spawn(f4, args=(df1,), retry_when_fail=False)
-            r = session4.run(d, timeout=_exec_timeout)
-            expected = pd.DataFrame(raw).sum() + raw[:, 0].sum()
-            pd.testing.assert_series_equal(r, expected)
+            t2 = t1[t1 < 0.5]
+            s = mr.spawn(f5, args=(t2, 3))
+            result = session5.run(s, timeout=_exec_timeout)
+            expected = (raw[raw < 0.5] * 3).sum()
+            self.assertAlmostEqual(result, expected)
 
     def testLearnInLocalCluster(self, *_):
         from mars.learn.neighbors import NearestNeighbors

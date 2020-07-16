@@ -151,3 +151,22 @@ class Test(TestBase):
             result = s.execute(session=sess).fetch(session=sess)
             expected = pd.DataFrame(raw).sum() + raw[:, 0].sum()
             pd.testing.assert_series_equal(result, expected)
+
+    def testUnknownShapeInputs(self):
+        def f(t, x):
+            assert all(not np.isnan(s) for s in t.shape)
+            return (t * x).sum().to_numpy(check_nsplits=False)
+
+        rs = np.random.RandomState(0)
+        raw = rs.rand(5, 4)
+
+        t1 = mt.tensor(raw, chunk_size=3)
+        t2 = t1[t1 < 0.5]
+        s = spawn(f, args=(t2, 3))
+
+        sess = new_session()
+        sess._sess._executor = ExecutorForTest('numpy', storage=sess._context)
+
+        result = s.execute(session=sess).fetch(session=sess)
+        expected = (raw[raw < 0.5] * 3).sum()
+        self.assertAlmostEqual(result, expected)

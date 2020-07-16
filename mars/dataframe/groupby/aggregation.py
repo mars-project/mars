@@ -473,9 +473,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op: "DataFrameGroupByAgg"):
-        ctx = get_context()
-
         if op.method == 'auto':
+            ctx = get_context()
             if ctx.running_mode == RunningMode.distributed:
                 return cls._tile_with_shuffle(op)
             else:
