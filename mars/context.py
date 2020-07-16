@@ -312,7 +312,6 @@ class LocalContext(ContextBase, dict):
 class DistributedContext(ContextBase):
     def __init__(self, scheduler_address, session_id, actor_ctx=None, **kw):
         from .worker.api import WorkerAPI
-        from .scheduler.api import MetaAPI
         from .scheduler.resource import ResourceActor
         from .scheduler.utils import SchedulerClusterInfoActor
         from .actors import new_client
@@ -320,7 +319,7 @@ class DistributedContext(ContextBase):
         self._session_id = session_id
         self._scheduler_address = scheduler_address
         self._worker_api = WorkerAPI()
-        self._meta_api = MetaAPI(actor_ctx=actor_ctx, scheduler_endpoint=scheduler_address)
+        self._meta_api_thread_local = threading.local()
 
         self._running_mode = None
         self._actor_ctx = actor_ctx or new_client()
@@ -334,6 +333,16 @@ class DistributedContext(ContextBase):
 
         self._address = kw.pop('address', None)
         self._extra_info = kw
+
+    @property
+    def meta_api(self):
+        from .scheduler.api import MetaAPI
+        try:
+            return self._meta_api_thread_local._meta_api
+        except AttributeError:
+            meta_api = self._meta_api_thread_local._meta_api \
+                = MetaAPI(scheduler_endpoint=self._scheduler_address)
+            return meta_api
 
     @property
     def running_mode(self):
@@ -381,13 +390,13 @@ class DistributedContext(ContextBase):
 
     # Meta API
     def get_tileable_metas(self, tileable_keys, filter_fields: List[str] = None) -> List:
-        return self._meta_api.get_tileable_metas(self._session_id, tileable_keys, filter_fields)
+        return self.meta_api.get_tileable_metas(self._session_id, tileable_keys, filter_fields)
 
     def get_chunk_metas(self, chunk_keys, filter_fields: List[str] = None) -> List:
-        return self._meta_api.get_chunk_metas(self._session_id, chunk_keys, filter_fields)
+        return self.meta_api.get_chunk_metas(self._session_id, chunk_keys, filter_fields)
 
     def get_named_tileable_infos(self, name: str):
-        tileable_key = self._meta_api.get_tileable_key_by_name(self._session_id, name)
+        tileable_key = self.meta_api.get_tileable_key_by_name(self._session_id, name)
         nsplits = self.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
         shape = tuple(sum(s) for s in nsplits)
         return TileableInfos(tileable_key, shape)
