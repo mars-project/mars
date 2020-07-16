@@ -190,8 +190,19 @@ class ExecutionActor(WorkerActor):
 
     def _estimate_calc_memory(self, session_id, graph_key):
         graph_record = self._graph_records[(session_id, graph_key)]
-        size_ctx = dict((k, (v.chunk_size, v.chunk_size))
-                        for k, v in graph_record.data_metas.items())
+        data_metas = graph_record.data_metas
+        size_ctx = dict((k, (v.chunk_size, v.chunk_size)) for k, v in data_metas.items())
+
+        # update shapes
+        for n in graph_record.graph:
+            if isinstance(n.op, Fetch):
+                try:
+                    meta = data_metas[n.key]
+                    if hasattr(n, '_shape') and meta.chunk_shape is not None:
+                        n._shape = meta.chunk_shape
+                except KeyError:
+                    pass
+
         executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
         res = executor.execute_graph(graph_record.graph, graph_record.chunk_targets, mock=True)
 

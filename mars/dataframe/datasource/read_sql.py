@@ -174,12 +174,15 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                     selectable = sa.Table(self._table_or_sql, m, autoload=True,
                                           autoload_with=engine_or_conn, schema=self._schema)
                 except NoSuchTableError:
-                    temp_table_name = 'temp_' + binascii.b2a_hex(uuid.uuid4().bytes).decode()
+                    temp_name_1 = 't1_' + binascii.b2a_hex(uuid.uuid4().bytes).decode()
+                    temp_name_2 = 't2_' + binascii.b2a_hex(uuid.uuid4().bytes).decode()
                     if columns:
-                        selectable = sql.text(self._table_or_sql).columns(*[sql.column(c) for c in columns])
+                        selectable = sql.text(self._table_or_sql).columns(*[sql.column(c) for c in columns]) \
+                            .alias(temp_name_2)
                     else:
                         selectable = sql.select(
-                            '*', from_obj=sql.text('(%s) AS %s' % (self._table_or_sql, temp_table_name)))
+                            '*', from_obj=sql.text('(%s) AS %s' % (self._table_or_sql, temp_name_1))) \
+                            .alias(temp_name_2)
                     self._selectable = selectable
         return selectable
 
