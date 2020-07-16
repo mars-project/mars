@@ -148,7 +148,7 @@ class WorkerCase(unittest.TestCase):
         if accept:
             return r
         else:
-            raise r[1].with_traceback(r[2]) from None
+            raise r[1].with_traceback(r[2])
 
     @staticmethod
     def rm_spill_dirs(spill_dirs=None):
