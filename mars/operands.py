@@ -155,8 +155,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         return True
 
     def get_dependent_data_keys(self):
-        return [dep.key for dep, has_dep
-                in zip(self.inputs or (), self.prepare_inputs) if has_dep]
+        return [dep.key for dep in self.inputs or ()]
 
     @property
     def gpu(self):
@@ -548,8 +547,13 @@ class MapReduceOperand(Operand):
     def get_dependent_data_keys(self):
         if self.stage == OperandStage.reduce:
             inputs = self.inputs or ()
-            return [(chunk.key, self._shuffle_key)
-                    for proxy in inputs for chunk in proxy.inputs or ()]
+            deps = []
+            for inp in inputs:
+                if isinstance(inp.op, ShuffleProxy):
+                    deps.extend([(chunk.key, self._shuffle_key) for chunk in inp.inputs or ()])
+                else:
+                    deps.append(inp.key)
+            return deps
         return super().get_dependent_data_keys()
 
 

@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
+from mars.operands import ShuffleProxy
 from mars.tests.core import TestBase, ExecutorForTest, assert_groupby_equal
 
 
@@ -279,6 +280,11 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r14, concat=True)[0].sort_index(),
                                       df2.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
 
+        # test auto method
+        r15 = mdf2.groupby('c2').agg('prod')
+        self.assertEqual(r15.op.method, 'auto')
+        self.assertTrue(all((not isinstance(c.op, ShuffleProxy)) for c in r15.build_graph(tiled=True)))
+
     def testSeriesGroupByAgg(self):
         rs = np.random.RandomState(0)
         series1 = pd.Series(rs.rand(10))
@@ -364,32 +370,6 @@ class Test(TestBase):
         r11 = ms1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0].sort_index(),
                                       series1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount']).sort_index())
-
-    def testGroupByAuto(self):
-        rs = np.random.RandomState(0)
-        df2 = pd.DataFrame({'c1': np.arange(10).astype(np.int64),
-                            'c2': rs.choice(['a', 'b', 'c'], (10,)),
-                            'c3': rs.rand(10)})
-        mdf2 = md.DataFrame(df2, chunk_size=2)
-
-        r1 = mdf2.groupby('c2').agg('prod')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
-                                      df2.groupby('c2').agg('prod'))
-        r2 = mdf2.groupby('c2').agg('max')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r2, concat=True)[0],
-                                      df2.groupby('c2').agg('max'))
-        r3 = mdf2.groupby('c2').agg('count')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
-                                      df2.groupby('c2').agg('count'))
-        r4 = mdf2.groupby('c2').agg('mean')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r4, concat=True)[0],
-                                      df2.groupby('c2').agg('mean'))
-        r5 = mdf2.groupby('c2').agg('var')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r5, concat=True)[0],
-                                      df2.groupby('c2').agg('var'))
-        r6 = mdf2.groupby('c2').agg('std')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r6, concat=True)[0],
-                                      df2.groupby('c2').agg('std'))
 
     def testGroupByApply(self):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
