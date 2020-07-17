@@ -325,7 +325,10 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
     def execute(cls, ctx, op):
         a = ctx[op.inputs[0].key]
 
-        ctx[op.outputs[0].key] = res = execute_sort_values(a, op)
+        if op.sort_type == 'sort_values':
+            ctx[op.outputs[0].key] = res = execute_sort_values(a, op)
+        else:
+            ctx[op.outputs[0].key] = res = execute_sort_index(a, op)
 
         n = op.n_partition
         if a.shape[op.axis] < n:
