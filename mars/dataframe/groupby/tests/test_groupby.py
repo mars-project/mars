@@ -62,6 +62,10 @@ class Test(TestBase):
         with self.assertRaises(TypeError):
             ms.groupby(lambda x: x + 1, as_index=False)
 
+        df = md.DataFrame(pd.DataFrame(np.random.rand(100, 3), columns=list('abc')))
+        grouped = df.groupby(['a', 'b'])
+        self.assertIn('DataFrameGroupBy', repr(grouped))
+
     def testGroupByGetItem(self):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                             'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
