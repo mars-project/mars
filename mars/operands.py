@@ -21,18 +21,19 @@ from typing import TypeVar, Union, List
 import numpy as np
 
 from . import opcodes as OperandDef
-from .serialize import SerializableMetaclass, ValueType, ProviderType, \
-    IdentityField, ListField, DictField, Int32Field, BoolField, StringField
+from .context import RunningMode, get_context
 from .core import Entity, Chunk, Tileable, AttributeAsDictKey, ExecutableTuple, \
     FuseChunkData, FuseChunk, ObjectChunkData, ObjectChunk, ObjectData, Object
-from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode
+from .serialize import SerializableMetaclass, ValueType, ProviderType, IdentityField, \
+    ListField, DictField, Int32Field, BoolField, StringField
 from .tiles import NotSupportTile
-from .context import RunningMode, get_context
+from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode, is_object_dtype
 
 
 operand_type_to_oprand_cls = {}
 OP_TYPE_KEY = '_op_type_'
 OP_MODULE_KEY = '_op_module_'
+OBJECT_FIELD_OVERHEAD = 50
 T = TypeVar('T')
 
 
@@ -373,6 +374,8 @@ class TileableOperandMixin(object):
 
     @classmethod
     def estimate_size(cls, ctx, op):
+        from .dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
+
         exec_size = 0
         outputs = op.outputs
         if all(not c.is_sparse() and hasattr(c, 'nbytes') and not np.isnan(c.nbytes) for c in outputs):
@@ -381,7 +384,17 @@ class TileableOperandMixin(object):
 
         for inp in op.inputs or ():
             try:
-                exec_size += ctx[inp.key][0]
+                # execution size of a specific data chunk may be
+                # larger than stored type due to objects
+                obj_overhead = n_strings = 0
+                if getattr(inp, 'shape', None) and not np.isnan(inp.shape[0]):
+                    if isinstance(inp, DATAFRAME_CHUNK_TYPE) and inp.dtypes is not None:
+                        n_strings = len([dt for dt in inp.dtypes if is_object_dtype(dt)])
+                    elif isinstance(inp, (INDEX_CHUNK_TYPE, SERIES_CHUNK_TYPE)) and inp.dtype is not None:
+                        n_strings = 1 if is_object_dtype(inp.dtype) else 0
+                    obj_overhead += n_strings * inp.shape[0] * OBJECT_FIELD_OVERHEAD
+
+                exec_size += ctx[inp.key][0] + obj_overhead
             except KeyError:
                 if not op.sparse:
                     inp_size = calc_data_size(inp)
@@ -400,6 +413,7 @@ class TileableOperandMixin(object):
                 total_out_size += chunk_size
             except (AttributeError, TypeError, ValueError):
                 pass
+
         exec_size = max(exec_size, total_out_size)
         for out in outputs:
             if out.key in ctx:
