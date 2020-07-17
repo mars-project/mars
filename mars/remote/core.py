@@ -200,9 +200,10 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
                         shape = ctx.get_chunk_metas([chunk.key], filter_fields=['chunk_shape'])[0][0]
                         chunk._shape = shape
                     chunk_index_to_shape[chunk.index] = chunk.shape
-                nsplits = calc_nsplits(chunk_index_to_shape)
-                tileable._nsplits = nsplits
-                tileable._shape = tuple(sum(ns) for ns in nsplits)
+                if any(any(np.isnan(s) for s in ns) for ns in tileable._nsplits):
+                    nsplits = calc_nsplits(chunk_index_to_shape)
+                    tileable._nsplits = nsplits
+                    tileable._shape = tuple(sum(ns) for ns in nsplits)
                 mapping[ph] = tileable
 
         function = op.function

@@ -23,7 +23,7 @@ class NoPrepareOperand(TensorAdd):
     @classmethod
     def execute(cls, ctx, op):
         input_keys = [c.key for c in op.inputs]
-        has_all_data = all(k in ctx for k in input_keys)
+        has_all_data = all(((k in ctx) and (ctx[k] is not None)) for k in input_keys)
         if has_all_data:
             raise ValueError('Unexpected behavior')
         ctx[op.outputs[0].key] = np.array((len(op.inputs), 1))
