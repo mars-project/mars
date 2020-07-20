@@ -33,7 +33,7 @@ class Test(unittest.TestCase):
         chunk_size = 20
         rs = mt.random.RandomState(0)
         self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-        self.y = rs.rand(n_rows, chunk_size=chunk_size)
+        self.y = rs.randint(0, 10, n_rows, chunk_size=chunk_size)
 
         self.session = new_session().as_default()
         self._old_executor = self.session._sess._executor
@@ -53,6 +53,8 @@ class Test(unittest.TestCase):
         self.assertEqual(prediction.shape[0], len(self.X))
 
         self.assertIsInstance(prediction, mt.Tensor)
+        result = prediction.fetch()
+        self.assertEqual(prediction.dtype, result.dtype)
 
         # test weight
         weight = mt.random.rand(X.shape[0])
@@ -62,3 +64,5 @@ class Test(unittest.TestCase):
 
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))
+        result = prediction.fetch()
+        self.assertEqual(prediction.dtype, result.dtype)
