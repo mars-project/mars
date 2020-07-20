@@ -15,7 +15,10 @@
 from collections.abc import Iterable
 from functools import partial
 
+import numpy as np
+
 from .. import opcodes
+from ..utils import calc_nsplits
 from ..context import ContextBase
 from ..core import Entity, Base, ChunkData
 from ..serialize import FunctionField, ListField, DictField, BoolField, Int32Field
@@ -190,7 +193,18 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         for to_search in [op.function_args, op.function_kwargs]:
             tileable_placeholders = find_objects(to_search, _TileablePlaceholder)
             for ph in tileable_placeholders:
-                mapping[ph] = ph.tileable
+                tileable = ph.tileable
+                chunk_index_to_shape = dict()
+                for chunk in tileable.chunks:
+                    if any(np.isnan(s) for s in chunk.shape):
+                        shape = ctx.get_chunk_metas([chunk.key], filter_fields=['chunk_shape'])[0][0]
+                        chunk._shape = shape
+                    chunk_index_to_shape[chunk.index] = chunk.shape
+                if any(any(np.isnan(s) for s in ns) for ns in tileable._nsplits):
+                    nsplits = calc_nsplits(chunk_index_to_shape)
+                    tileable._nsplits = nsplits
+                    tileable._shape = tuple(sum(ns) for ns in nsplits)
+                mapping[ph] = tileable
 
         function = op.function
         function_args = replace_inputs(op.function_args, mapping)
