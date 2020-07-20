@@ -518,6 +518,12 @@ class Test(unittest.TestCase):
 
         self.assertIn('DatetimeIndex', repr(ind.execute()))
 
+        # test groupby repr
+        df = md.DataFrame(pd.DataFrame(np.random.rand(100, 3), columns=list('abc')))
+        grouped = df.groupby(['a', 'b']).execute()
+
+        self.assertIn('DataFrameGroupBy', repr(grouped))
+
     def testDataFrameIter(self):
         raw_data = pd.DataFrame(np.random.randint(1000, size=(20, 10)))
         df = md.DataFrame(raw_data, chunk_size=5)
