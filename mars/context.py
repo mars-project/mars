@@ -281,19 +281,6 @@ class LocalContext(ContextBase, dict):
             selected_metas.append(chunk_meta)
         return selected_metas
 
-    def get_tileable_metas(self, tileable_keys, filter_fields: List[str] = None) -> List:
-        metas = []
-        for key in tileable_keys:
-            tileable = self._local_session.executor.stored_tileables[key]
-            nsplits = tileable.nsplits
-            chunk_keys = [c.key for c in tileable]
-            chunk_indexes = [c.index for c in tileable]
-            metas.append(dict(nsplits=nsplits, chunk_keys=chunk_keys, chunk_indexes=chunk_indexes))
-
-        if filter_fields is not None:
-            metas = [[meta[name] for name in filter_fields] for meta in metas]
-        return metas
-
     def get_chunk_results(self, chunk_keys: List[str]) -> List:
         # As the context is actually holding the data,
         # so for the local context, we just fetch data from itself
