@@ -18,13 +18,19 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
+from mars.operands import ShuffleProxy
 from mars.tests.core import TestBase, ExecutorForTest, assert_groupby_equal
 
 
 class Test(TestBase):
     def setUp(self):
         super().setUp()
-        self.executor = ExecutorForTest()
+        self.executor = ExecutorForTest('numpy')
+        self.ctx, self.executor = self._create_test_context(self.executor)
+        self.ctx.__enter__()
+
+    def tearDown(self) -> None:
+        self.ctx.__exit__(None, None, None)
 
     def testGroupBy(self):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
@@ -92,7 +98,7 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
                              df1.groupby(level=0)[['a', 'b']], with_selection=True)
 
-        r = mdf.groupby(level=0)[['a', 'b']].sum()
+        r = mdf.groupby(level=0)[['a', 'b']].sum(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       df1.groupby(level=0)[['a', 'b']].sum())
 
@@ -108,15 +114,15 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
                              df1.groupby('b')[['a', 'c']], with_selection=True)
 
-        r = mdf.groupby('b')[['a', 'b']].sum()
+        r = mdf.groupby('b')[['a', 'b']].sum(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       df1.groupby('b')[['a', 'b']].sum())
 
-        r = mdf.groupby('b')[['a', 'b']].agg(['sum', 'count'])
+        r = mdf.groupby('b')[['a', 'b']].agg(['sum', 'count'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       df1.groupby('b')[['a', 'b']].agg(['sum', 'count']))
 
-        r = mdf.groupby('b')[['a', 'c']].agg(['sum', 'count'])
+        r = mdf.groupby('b')[['a', 'c']].agg(['sum', 'count'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       df1.groupby('b')[['a', 'c']].agg(['sum', 'count']))
 
@@ -136,11 +142,11 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
                              df1.groupby('b').a, with_selection=True)
 
-        r = mdf.groupby('b').a.sum()
+        r = mdf.groupby('b').a.sum(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                        df1.groupby('b').a.sum())
 
-        r = mdf.groupby('b').a.agg(['sum', 'mean', 'var'])
+        r = mdf.groupby('b').a.agg(['sum', 'mean', 'var'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       df1.groupby('b').a.agg(['sum', 'mean', 'var']))
 
@@ -222,57 +228,62 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                           df2.groupby(df2['c2']).sum())
 
-        r8 = mdf2.groupby('c2').size()
+        r8 = mdf2.groupby('c2').size(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r8, concat=True)[0],
                                        df2.groupby('c2').size())
 
-        r4 = mdf2.groupby('c2').sum()
+        r4 = mdf2.groupby('c2').sum(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r4, concat=True)[0],
                                       df2.groupby('c2').sum())
 
-        r5 = mdf2.groupby('c2').prod()
+        r5 = mdf2.groupby('c2').prod(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r5, concat=True)[0],
                                       df2.groupby('c2').prod())
 
-        r6 = mdf2.groupby('c2').min()
+        r6 = mdf2.groupby('c2').min(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r6, concat=True)[0],
                                       df2.groupby('c2').min())
 
-        r7 = mdf2.groupby('c2').max()
+        r7 = mdf2.groupby('c2').max(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r7, concat=True)[0],
                                       df2.groupby('c2').max())
 
-        r8 = mdf2.groupby('c2').count()
+        r8 = mdf2.groupby('c2').count(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r8, concat=True)[0],
                                       df2.groupby('c2').count())
 
-        r9 = mdf2.groupby('c2').mean()
+        r9 = mdf2.groupby('c2').mean(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r9, concat=True)[0],
                                       df2.groupby('c2').mean())
 
-        r10 = mdf2.groupby('c2').var()
+        r10 = mdf2.groupby('c2').var(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r10, concat=True)[0],
                                       df2.groupby('c2').var())
 
-        r11 = mdf2.groupby('c2').std()
+        r11 = mdf2.groupby('c2').std(method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0],
                                       df2.groupby('c2').std())
 
         # test as_index=False
-        r12 = mdf2.groupby('c2', as_index=False).agg('mean')
+        r12 = mdf2.groupby('c2', as_index=False).agg('mean', method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r12, concat=True)[0],
                                       df2.groupby('c2', as_index=False).agg('mean'))
         self.assertFalse(r12.op.groupby_params['as_index'])
 
         # test as_index=False takes no effect
-        r13 = mdf2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count'])
+        r13 = mdf2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r13, concat=True)[0],
                                       df2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
         self.assertTrue(r13.op.groupby_params['as_index'])
 
-        r14 = mdf2.groupby('c2').agg(['cumsum', 'cumcount'])
+        r14 = mdf2.groupby('c2').agg(['cumsum', 'cumcount'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r14, concat=True)[0].sort_index(),
                                       df2.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
+
+        # test auto method
+        r15 = mdf2.groupby('c2').agg('prod')
+        self.assertEqual(r15.op.method, 'auto')
+        self.assertTrue(all((not isinstance(c.op, ShuffleProxy)) for c in r15.build_graph(tiled=True)))
 
     def testSeriesGroupByAgg(self):
         rs = np.random.RandomState(0)
@@ -320,43 +331,43 @@ class Test(TestBase):
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                            series1.groupby(series1).sum())
 
-        r4 = ms1.groupby(lambda x: x % 2).size()
+        r4 = ms1.groupby(lambda x: x % 2).size(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r4, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).size())
 
-        r4 = ms1.groupby(lambda x: x % 2).sum()
+        r4 = ms1.groupby(lambda x: x % 2).sum(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r4, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).sum())
 
-        r5 = ms1.groupby(lambda x: x % 2).prod()
+        r5 = ms1.groupby(lambda x: x % 2).prod(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r5, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).prod())
 
-        r6 = ms1.groupby(lambda x: x % 2).min()
+        r6 = ms1.groupby(lambda x: x % 2).min(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r6, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).min())
 
-        r7 = ms1.groupby(lambda x: x % 2).max()
+        r7 = ms1.groupby(lambda x: x % 2).max(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r7, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).max())
 
-        r8 = ms1.groupby(lambda x: x % 2).count()
+        r8 = ms1.groupby(lambda x: x % 2).count(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r8, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).count())
 
-        r9 = ms1.groupby(lambda x: x % 2).mean()
+        r9 = ms1.groupby(lambda x: x % 2).mean(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r9, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).mean())
 
-        r10 = ms1.groupby(lambda x: x % 2).var()
+        r10 = ms1.groupby(lambda x: x % 2).var(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r10, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).var())
 
-        r11 = ms1.groupby(lambda x: x % 2).std()
+        r11 = ms1.groupby(lambda x: x % 2).std(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r11, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).std())
 
-        r11 = ms1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount'])
+        r11 = ms1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0].sort_index(),
                                       series1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount']).sort_index())
 

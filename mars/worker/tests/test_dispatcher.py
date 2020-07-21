@@ -71,7 +71,7 @@ class Test(WorkerCase):
             # tasks within [0, group_size - 1] will run almost simultaneously,
             # while the last one will be delayed due to lack of slots
 
-            delay = 0.5
+            delay = 1
 
             with self.run_actor_test(pool) as test_actor:
                 p = promise.finished()
@@ -81,7 +81,7 @@ class Test(WorkerCase):
                     if uid is None:
                         call_records[key] = 'NoneUID'
                     else:
-                        test_actor.promise_ref(uid).queued_call(key, delay, _tell=True)
+                        test_actor.promise_ref(uid).queued_call(key, delay, _tell=True, _wait=False)
 
                 for idx in range(group_size + 1):
                     p = p.then(lambda *_: _dispatch_ref.acquire_free_slot('g1', _promise=True)) \

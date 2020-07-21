@@ -931,6 +931,10 @@ class Test(unittest.TestCase):
                 r3 = f.iloc[:3].to_pandas()
                 pd.testing.assert_frame_equal(r3, df[df.a > df.a].reset_index(drop=True))
 
+                mdf3 = md.read_csv(file_path, chunk_bytes=15, incremental_index=True)
+                r4 = mdf3.to_pandas()
+                pd.testing.assert_frame_equal(df, r4.reset_index(drop=True))
+
     def testDataFrameShuffle(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.merge.merge import merge
@@ -1099,6 +1103,23 @@ class Test(unittest.TestCase):
             r = session4.run(d, timeout=_exec_timeout)
             expected = pd.DataFrame(raw).sum() + raw[:, 0].sum()
             pd.testing.assert_series_equal(r, expected)
+
+            # test tileable has unknown shape
+            session5 = new_session(cluster.endpoint)
+
+            def f5(t, x):
+                assert all(not np.isnan(s) for s in t.shape)
+                return (t * x).sum().to_numpy()
+
+            rs = np.random.RandomState(0)
+            raw = rs.rand(5, 4)
+
+            t1 = mt.tensor(raw, chunk_size=3)
+            t2 = t1[t1 < 0.5]
+            s = mr.spawn(f5, args=(t2, 3))
+            result = session5.run(s, timeout=_exec_timeout)
+            expected = (raw[raw < 0.5] * 3).sum()
+            self.assertAlmostEqual(result, expected)
 
     def testLearnInLocalCluster(self, *_):
         from mars.learn.neighbors import NearestNeighbors

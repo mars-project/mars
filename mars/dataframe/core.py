@@ -955,6 +955,61 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
                          _chunks=chunks, **kw)
         self._accessors = dict()
 
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtypes': self.dtypes,
+            'index_value': self.index_value,
+            'columns_value': self.columns_value
+        }
+
+    @property
+    def dtypes(self):
+        dt = getattr(self, '_dtypes', None)
+        if dt is not None:
+            return dt
+        return getattr(self.op, 'dtypes', None)
+
+    @property
+    def index_value(self):
+        return self._index_value
+
+    @property
+    def columns_value(self):
+        return self._columns_value
+
+    def to_tensor(self, dtype=None):
+        from ..tensor.datasource.from_dataframe import from_dataframe
+        return from_dataframe(self, dtype=dtype)
+
+    @staticmethod
+    def from_tensor(in_tensor, index=None, columns=None):
+        from .datasource.from_tensor import dataframe_from_tensor
+        return dataframe_from_tensor(in_tensor, index=index, columns=columns)
+
+    @staticmethod
+    def from_records(records, **kw):
+        from .datasource.from_records import from_records
+        return from_records(records, **kw)
+
+    @property
+    def index(self):
+        from .datasource.index import from_tileable
+
+        return from_tileable(self)
+
+    @property
+    def columns(self):
+        from .datasource.index import from_pandas as from_pandas_index
+
+        return from_pandas_index(self.dtypes.index)
+
+
+class DataFrameData(BaseDataFrameData):
+    _type_name = 'DataFrame'
+
     def _to_str(self, representation=False):
         if build_mode().is_build_mode or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
@@ -1024,61 +1079,6 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
             buf.write('</div>')
 
         return buf.getvalue()
-
-    @property
-    def params(self):
-        # params return the properties which useful to rebuild a new tileable object
-        return {
-            'shape': self.shape,
-            'dtypes': self.dtypes,
-            'index_value': self.index_value,
-            'columns_value': self.columns_value
-        }
-
-    @property
-    def dtypes(self):
-        dt = getattr(self, '_dtypes', None)
-        if dt is not None:
-            return dt
-        return getattr(self.op, 'dtypes', None)
-
-    @property
-    def index_value(self):
-        return self._index_value
-
-    @property
-    def columns_value(self):
-        return self._columns_value
-
-    def to_tensor(self, dtype=None):
-        from ..tensor.datasource.from_dataframe import from_dataframe
-        return from_dataframe(self, dtype=dtype)
-
-    @staticmethod
-    def from_tensor(in_tensor, index=None, columns=None):
-        from .datasource.from_tensor import dataframe_from_tensor
-        return dataframe_from_tensor(in_tensor, index=index, columns=columns)
-
-    @staticmethod
-    def from_records(records, **kw):
-        from .datasource.from_records import from_records
-        return from_records(records, **kw)
-
-    @property
-    def index(self):
-        from .datasource.index import from_tileable
-
-        return from_tileable(self)
-
-    @property
-    def columns(self):
-        from .datasource.index import from_pandas as from_pandas_index
-
-        return from_pandas_index(self.dtypes.index)
-
-
-class DataFrameData(BaseDataFrameData):
-    _type_name = 'DataFrame'
 
     @classmethod
     def cls(cls, provider):

@@ -24,6 +24,7 @@ from pandas.core.groupby import SeriesGroupBy
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import Base, Entity
+from ...context import get_context, RunningMode
 from ...operands import OperandStage
 from ...serialize import ValueType, AnyField, StringField, ListField, DictField
 from ..merge import DataFrameConcat
@@ -474,6 +475,12 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op: "DataFrameGroupByAgg"):
+        if op.method == 'auto':
+            ctx = get_context()
+            if ctx is not None and ctx.running_mode == RunningMode.distributed:  # pragma: no cover
+                return cls._tile_with_shuffle(op)
+            else:
+                return cls._tile_with_tree(op)
         if op.method == 'shuffle':
             return cls._tile_with_shuffle(op)
         elif op.method == 'tree':
@@ -619,13 +626,14 @@ def _check_if_func_available(func):
     return True
 
 
-def agg(groupby, func, method='tree', *args, **kwargs):
+def agg(groupby, func, method='auto', *args, **kwargs):
     """
     Aggregate using one or more operations on grouped data.
     :param groupby: Groupby data.
     :param func: Aggregation functions.
     :param method: 'shuffle' or 'tree', 'tree' method provide a better performance, 'shuffle' is recommended
-    if aggregated result is very large.
+    if aggregated result is very large, 'auto' will use 'shuffle' method in distributed mode and use 'tree'
+    in local mode.
     :return: Aggregated result.
     """
 
@@ -634,7 +642,7 @@ def agg(groupby, func, method='tree', *args, **kwargs):
     if not isinstance(groupby, GROUPBY_TYPE):
         raise TypeError('Input should be type of groupby, not %s' % type(groupby))
 
-    if method not in ['shuffle', 'tree']:
+    if method not in ['shuffle', 'tree', 'auto']:
         raise ValueError("Method %s is not available, "
                          "please specify 'tree' or 'shuffle" % method)
 

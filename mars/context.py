@@ -81,6 +81,15 @@ class ContextBase(object):
     # Meta related
     # ------------
 
+    def get_tileable_metas(session_id, tileable_keys, filter_fields: List[str] = None) -> List:
+        """
+        get tileable metas. Tileable includes tensor, DataFrame, mutable tensor and mutable DataFrame.
+        :param tileable_keys: tileable keys
+        :param filter_fields: filter the fields in meta
+        :return: List of tileable metas
+        """
+        raise NotImplementedError
+
     def get_chunk_metas(self, chunk_keys, filter_fields=None):
         """
         Get chunk metas according to the given chunk keys.
@@ -244,8 +253,6 @@ class LocalContext(ContextBase, dict):
         return self._ncores
 
     def get_chunk_metas(self, chunk_keys, filter_fields=None):
-        if filter_fields is not None:  # pragma: no cover
-            raise NotImplementedError("Local context doesn't support filter fields now")
         metas = []
         for chunk_key in chunk_keys:
             chunk_data = self.get(chunk_key)
@@ -267,7 +274,12 @@ class LocalContext(ContextBase, dict):
 
             metas.append(ChunkMeta(chunk_size=size, chunk_shape=shape, workers=None))
 
-        return metas
+        selected_metas = []
+        for chunk_meta in metas:
+            if filter_fields is not None:
+                chunk_meta = [getattr(chunk_meta, field) for field in filter_fields]
+            selected_metas.append(chunk_meta)
+        return selected_metas
 
     def get_chunk_results(self, chunk_keys: List[str]) -> List:
         # As the context is actually holding the data,
@@ -287,7 +299,6 @@ class LocalContext(ContextBase, dict):
 class DistributedContext(ContextBase):
     def __init__(self, scheduler_address, session_id, actor_ctx=None, **kw):
         from .worker.api import WorkerAPI
-        from .scheduler.api import MetaAPI
         from .scheduler.resource import ResourceActor
         from .scheduler.utils import SchedulerClusterInfoActor
         from .actors import new_client
@@ -295,7 +306,7 @@ class DistributedContext(ContextBase):
         self._session_id = session_id
         self._scheduler_address = scheduler_address
         self._worker_api = WorkerAPI()
-        self._meta_api = MetaAPI(actor_ctx=actor_ctx, scheduler_endpoint=scheduler_address)
+        self._meta_api_thread_local = threading.local()
 
         self._running_mode = None
         self._actor_ctx = actor_ctx or new_client()
@@ -309,6 +320,16 @@ class DistributedContext(ContextBase):
 
         self._address = kw.pop('address', None)
         self._extra_info = kw
+
+    @property
+    def meta_api(self):
+        from .scheduler.api import MetaAPI
+        try:
+            return self._meta_api_thread_local._meta_api
+        except AttributeError:
+            meta_api = self._meta_api_thread_local._meta_api \
+                = MetaAPI(scheduler_endpoint=self._scheduler_address)
+            return meta_api
 
     @property
     def running_mode(self):
@@ -356,13 +377,13 @@ class DistributedContext(ContextBase):
 
     # Meta API
     def get_tileable_metas(self, tileable_keys, filter_fields: List[str] = None) -> List:
-        return self._meta_api.get_tileable_metas(self._session_id, tileable_keys, filter_fields)
+        return self.meta_api.get_tileable_metas(self._session_id, tileable_keys, filter_fields)
 
     def get_chunk_metas(self, chunk_keys, filter_fields: List[str] = None) -> List:
-        return self._meta_api.get_chunk_metas(self._session_id, chunk_keys, filter_fields)
+        return self.meta_api.get_chunk_metas(self._session_id, chunk_keys, filter_fields)
 
     def get_named_tileable_infos(self, name: str):
-        tileable_key = self._meta_api.get_tileable_key_by_name(self._session_id, name)
+        tileable_key = self.meta_api.get_tileable_key_by_name(self._session_id, name)
         nsplits = self.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
         shape = tuple(sum(s) for s in nsplits)
         return TileableInfos(tileable_key, shape)
