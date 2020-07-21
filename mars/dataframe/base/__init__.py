@@ -36,6 +36,7 @@ from .melt import melt
 
 def _install():
     from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+    from .standardize_range_index import ChunkStandardizeRangeIndex
     from .string_ import _string_method_to_handlers
     from .datetimes import _datetime_method_to_handlers
     from .accessor import StringAccessor, DatetimeAccessor, CachedAccessor

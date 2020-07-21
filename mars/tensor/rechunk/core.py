@@ -61,7 +61,8 @@ def plan_rechunks(tileable, new_chunk_size, itemsize, threshold=None, chunk_size
 
     steps = []
 
-    chunk_size_limit /= itemsize
+    if itemsize > 0:
+        chunk_size_limit /= itemsize
     chunk_size_limit = max([int(chunk_size_limit),
                             _largest_chunk_size(tileable.nsplits),
                             _largest_chunk_size(new_chunk_size)])

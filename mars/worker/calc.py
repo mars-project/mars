@@ -167,6 +167,11 @@ class BaseCalcActor(WorkerActor):
         logger.debug('Start calculating operand %s in %s.', graph_key, self.uid)
         start_time = time.time()
 
+        for chunk in graph:
+            for inp, prepare_inp in zip(chunk.inputs, chunk.op.prepare_inputs):
+                if not prepare_inp:
+                    context_dict[inp.key] = None
+
         local_context_dict = DistributedDictContext(
             self.get_scheduler(self.default_uid()), session_id, actor_ctx=self.ctx,
             address=self.address, n_cpu=self._get_n_cpu())

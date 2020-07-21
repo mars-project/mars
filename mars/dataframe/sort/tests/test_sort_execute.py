@@ -140,6 +140,15 @@ class Test(unittest.TestCase):
 
         pd.testing.assert_frame_equal(result, df)
 
+        # test unknown shape
+        df = pd.DataFrame({'a': list(range(10)),
+                           'b': np.random.random(10)})
+        mdf = DataFrame(df, chunk_size=4)
+        filtered = mdf[mdf['a'] > 2]
+        result = self.executor.execute_dataframe(filtered.sort_values(by='b'), concat=True)[0]
+
+        pd.testing.assert_frame_equal(result, df[df['a'] > 2].sort_values(by='b'))
+
         # test Sereis.sort_values
         raw = pd.Series(np.random.rand(10))
         series = Series(raw)
