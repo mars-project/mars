@@ -581,6 +581,23 @@ class Test(TestBase):
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = s_raw.transform(['cumsum', lambda x: x + 1])
             pd.testing.assert_frame_equal(result, expected)
+
+            # test transform on string dtype
+            df_raw = pd.DataFrame({'col1': ['str'] * 10, 'col2': ['string'] * 10})
+            df = from_pandas_df(df_raw, chunk_size=3)
+
+            with self.assertRaises(TypeError):
+                df['col1'].transform(lambda x: x + '_suffix')
+
+            r = df.transform(lambda x: x + '_suffix')
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw.transform(lambda x: x + '_suffix')
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df['col2'].transform(lambda x: x + '_suffix', dtype=np.dtype('str'))
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw['col2'].transform(lambda x: x + '_suffix')
+            pd.testing.assert_series_equal(result, expected)
         finally:
             options.chunk_store_limit = old_chunk_store_limit
 
