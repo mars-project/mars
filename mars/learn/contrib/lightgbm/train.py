@@ -294,7 +294,10 @@ class LGBMTrain(MergeDictOperand):
                       eval_set=eval_set, eval_sample_weight=eval_sample_weight,
                       eval_init_score=eval_init_score, **op.kwds)
 
-            if hasattr(label_val, 'dtype'):
+            if op.model_type == LGBMModelType.RANKER or \
+                    op.model_type == LGBMModelType.REGRESSOR:
+                model.set_params(out_dtype_=np.dtype('float'))
+            elif hasattr(label_val, 'dtype'):
                 model.set_params(out_dtype_=label_val.dtype)
             else:
                 model.set_params(out_dtype_=label_val.dtypes[0])
