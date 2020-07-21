@@ -54,6 +54,8 @@ class Test(unittest.TestCase):
         self.assertEqual(prediction.shape[0], len(self.X))
 
         self.assertIsInstance(prediction, mt.Tensor)
+        result = prediction.fetch()
+        self.assertEqual(prediction.dtype, result.dtype)
 
         # test weight
         weight = mt.random.rand(X.shape[0])
@@ -63,3 +65,6 @@ class Test(unittest.TestCase):
 
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))
+
+        result = prediction.fetch()
+        self.assertEqual(prediction.dtype, result.dtype)
