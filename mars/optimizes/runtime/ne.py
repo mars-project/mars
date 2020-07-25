@@ -129,7 +129,7 @@ class NeRuntimeOptimizer:
         keys = set(keys or [])
 
         graph = self._graph
-        for v in graph.bfs():
+        for v in graph.topological_iter():
             if v.op.gpu or v.op.sparse:
                 # break out
                 return []

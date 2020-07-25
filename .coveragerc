@@ -19,6 +19,7 @@ omit =
     mars/lib/uhashring/*
     mars/serialize/protos/*
     mars/learn/contrib/xgboost/tracker.py
+    mars/learn/utils/_cython_blas.*
     mars/tensor/einsum/einsumfunc.py
     *.html
     *.pxd

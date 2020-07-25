@@ -36,6 +36,11 @@ class TensorClip(TensorOperand, TensorElementWise):
     _a_max = AnyField('a_max')
     _out = KeyField('out')
 
+    def __init__(self, a=None, a_min=None, a_max=None, out=None,
+                 sparse=None, gpu=None, dtype=None, **kw):
+        super().__init__(_a=a, _a_min=a_min, _a_max=a_max, _out=out,
+                         _sparse=sparse, _gpu=gpu, _dtype=dtype, **kw)
+
     @property
     def a(self):
         return self._a
@@ -72,24 +77,28 @@ class TensorClip(TensorOperand, TensorElementWise):
             if a_min > 0:
                 sparse = False
             a_min_dtype = np.array(a_min).dtype
-        else:
+        elif a_min is not None:
             a_min = astensor(a_min)
             tensors.append(a_min)
             if not a_min.issparse():
                 sparse = False
             a_min_dtype = a_min.dtype
+        else:
+            a_min_dtype = None
         self._a_min = a_min
 
         if isinstance(a_max, Number):
             if a_max < 0:
                 sparse = False
             a_max_dtype = np.array(a_max).dtype
-        else:
+        elif a_max is not None:
             a_max = astensor(a_max)
             tensors.append(a_max)
             if not a_max.issparse():
                 sparse = False
             a_max_dtype = a_max.dtype
+        else:
+            a_max_dtype = None
         self._a_max = a_max
 
         if out is not None:
@@ -98,7 +107,8 @@ class TensorClip(TensorOperand, TensorElementWise):
             else:
                 raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
 
-        dtype = np.result_type(a.dtype, a_min_dtype, a_max_dtype)
+        dtypes = [dt for dt in [a.dtype, a_min_dtype, a_max_dtype] if dt is not None]
+        dtype = np.result_type(*dtypes)
         # check broadcast
         shape = broadcast_shape(*[t.shape for t in tensors])
 
@@ -190,5 +200,5 @@ def clip(a, a_min, a_max, out=None):
     array([3, 4, 2, 3, 4, 5, 6, 7, 8, 8])
 
     """
-    op = TensorClip()
+    op = TensorClip(a=a, a_min=a_min, a_max=a_max, out=out)
     return op(a, a_min, a_max, out=out)
