@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
 
 import numpy as np
@@ -29,6 +30,7 @@ from mars.session import new_session
 
 
 @unittest.skipIf(KMeans is None, 'scikit-learn not installed')
+@unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(LearnIntegrationTestBase):
     def testDistributedKMeans(self):
         service_ep = 'http://127.0.0.1:' + self.web_port

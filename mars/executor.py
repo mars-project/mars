@@ -846,7 +846,7 @@ class Executor(object):
             # build tileable graph
             tileable_graph_builder = _get_tileable_graph_builder(
                 node_processor=_generate_fetch_tileable,
-            inputs_selector=_skip_executed_tileables)
+                inputs_selector=_skip_executed_tileables)
             tileable_graph = tileable_graph_builder.build(tileables)
             chunk_graph_builder = IterativeChunkGraphBuilder(
                 graph_cls=DAG, node_processor=_generate_fetch_if_executed,

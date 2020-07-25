@@ -447,7 +447,7 @@ def dot(a, b, sparse=True, **_):
             return ret
         else:
             xps = get_sparse_module(ret)
-            return SparseNDArray(xps.csr_matrix(ret))
+            return SparseNDArray(xps.csr_matrix(ret), shape=ret.shape)
 
     return a.dot(b, sparse=sparse)
 

@@ -202,7 +202,7 @@ def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
 
     # execute X, centers and tol first
     tol = mt.asarray(tol)
-    mt.ExecutableTuple([X, sample_weight, centers, tol]).execute(
+    mt.ExecutableTuple([X, sample_weight, centers, x_squared_norms, tol]).execute(
         session=session, **(run_kwargs or dict()))
     tol = tol.fetch()
 
@@ -283,8 +283,8 @@ def _kmeans_single_lloyd(X, sample_weight, n_clusters, max_iter=300,
 
     # execute X, centers and tol first
     tol = mt.asarray(tol)
-    mt.ExecutableTuple([X, centers, tol]).execute(session=session,
-                                                  **(run_kwargs or dict()))
+    mt.ExecutableTuple([X, centers, x_squared_norms, tol]).execute(
+        session=session, **(run_kwargs or dict()))
     tol = tol.fetch()
 
     if verbose:
@@ -650,7 +650,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         """
 
         if y is None:
-            if self._get_tags()['requires_y']:
+            if hasattr(self, '_get_tags') and self._get_tags().get('requires_y', False):
                 raise ValueError(
                     "This {} estimator requires y to be passed, "
                     "but the target y is None.".format(self.__class__.__name__)
@@ -670,7 +670,8 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
                 X, y = check_X_y(X, y, **check_params)
             out = X, y
 
-        if check_params.get('ensure_2d', True):
+        if check_params.get('ensure_2d', True) and \
+                hasattr(self, '_check_n_features'):
             self._check_n_features(X, reset=reset)
 
         return out

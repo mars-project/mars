@@ -17,7 +17,7 @@ import numpy as np
 from ... import opcodes
 from ... import tensor as mt
 from ...operands import OutputType
-from ...serialize import KeyField, Int32Field, TupleField, BoolField
+from ...serialize import KeyField, Int32Field, TupleField
 from ...tensor.array_utils import as_same_device, device
 from ...tensor.core import TensorOrder
 from ...tensor.random.core import _on_serialize_random_state, \
@@ -36,15 +36,12 @@ class KMeansInit(LearnOperand, LearnOperandMixin):
     _state = TupleField('state', on_serialize=_on_serialize_random_state,
                         on_deserialize=_on_deserialize_random_state)
     _n_local_trials = Int32Field('n_local_trials')
-    # True means scalable kmeans++ a.k.a kmeans||
-    _scalable = BoolField('scalable')
 
     def __init__(self, x=None, n_clusters=None, x_squared_norms=None,
-                 state=None, n_local_trials=None, output_types=None,
-                 stage=None, scalable=None, **kw):
+                 state=None, n_local_trials=None, output_types=None, **kw):
         super().__init__(_x=x, _n_clusters=n_clusters, _x_squared_norms=x_squared_norms,
-                         _state=state, _n_local_trials=n_local_trials, _scalable=scalable,
-                         _output_types=output_types, _stage=stage, **kw)
+                         _state=state, _n_local_trials=n_local_trials,
+                         _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor]
 
@@ -67,10 +64,6 @@ class KMeansInit(LearnOperand, LearnOperandMixin):
     @property
     def n_local_trials(self):
         return self._n_local_trials
-
-    @property
-    def scalable(self):
-        return self._scalable
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -109,13 +102,12 @@ class KMeansInit(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op: "KMeansInit"):
-        if not op.scalable:
-            if len(op.x.chunks) == 1:
-                if op.x_squared_norms is not None:
-                    assert len(op.x_squared_norms.chunks) == 1
-                return cls._tile_one_chunk(op)
-            else:
-                return cls._tile_k_init(op)
+        if len(op.x.chunks) == 1:
+            if op.x_squared_norms is not None:
+                assert len(op.x_squared_norms.chunks) == 1
+            return cls._tile_one_chunk(op)
+        else:
+            return cls._tile_k_init(op)
 
     @classmethod
     def _tile_k_init(cls, op: "KMeansInit"):
@@ -186,18 +178,17 @@ class KMeansInit(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op: "KMeansInit"):
-        if not op.scalable:
-            try:
-                from sklearn.cluster._kmeans import _k_init
-            except ImportError:  # pragma: no cover
-                from sklearn.cluster.k_means_ import _k_init
+        try:
+            from sklearn.cluster._kmeans import _k_init
+        except ImportError:  # pragma: no cover
+            from sklearn.cluster.k_means_ import _k_init
 
-            (x, x_squared_norms), device_id, _ = as_same_device(
-                [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+        (x, x_squared_norms), device_id, _ = as_same_device(
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
 
-            with device(device_id):
-                ctx[op.outputs[0].key] = _k_init(x, op.n_clusters, x_squared_norms,
-                                                 op.state, op.n_local_trials)
+        with device(device_id):
+            ctx[op.outputs[0].key] = _k_init(x, op.n_clusters, x_squared_norms,
+                                             op.state, op.n_local_trials)
 
 
 ###############################################################################
