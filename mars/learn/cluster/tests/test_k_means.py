@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from io import StringIO
 
 import numpy as np
 import pytest
@@ -20,11 +22,11 @@ import scipy.sparse as sp
 try:
     from sklearn.datasets import make_blobs
     from sklearn.metrics.cluster import v_measure_score
-    from sklearn.utils._testing import assert_raise_message
+    from sklearn.utils._testing import assert_raise_message, assert_warns
 except ImportError:
     pass
 
-from mars.learn.cluster import KMeans
+from mars.learn.cluster import KMeans, k_means
 from mars.session import new_session
 from mars.tests.core import TestBase, ExecutorForTest
 
@@ -107,9 +109,11 @@ class Test(TestBase):
 
             for tol in tols:
                 km_full = KMeans(algorithm='full', n_clusters=5,
-                                 random_state=0, n_init=1, tol=tol)
+                                 random_state=0, n_init=1, tol=tol,
+                                 init='k-means++')
                 km_elkan = KMeans(algorithm='elkan', n_clusters=5,
-                                  random_state=0, n_init=1, tol=tol)
+                                  random_state=0, n_init=1, tol=tol,
+                                  init='k-means++')
 
                 km_full.fit(X)
                 km_elkan.fit(X)
@@ -126,7 +130,7 @@ class Test(TestBase):
             X = rnd.normal(size=(5000, 10))
 
             km = KMeans(algorithm=algorithm, n_clusters=5, random_state=0, n_init=1,
-                        tol=0, max_iter=300).fit(X)
+                        tol=0, max_iter=300, init='k-means++').fit(X)
 
             self.assertLess(km.n_iter_, 300)
 
@@ -142,9 +146,10 @@ class Test(TestBase):
                 X, _ = make_blobs(n_samples=100, n_features=100, random_state=rnd)
                 X = sp.csr_matrix(X)
 
-            km_full = KMeans(algorithm='full', n_clusters=5, random_state=0, n_init=1)
+            km_full = KMeans(algorithm='full', n_clusters=5, random_state=0, n_init=1,
+                             init='k-means++')
             km_elkan = KMeans(algorithm='elkan', n_clusters=5,
-                              random_state=0, n_init=1)
+                              random_state=0, n_init=1, init='k-means++')
 
             km_full.fit(X)
             km_elkan.fit(X)
@@ -204,7 +209,7 @@ class Test(TestBase):
                                     cluster_std=1., random_state=42)
         X_csr = sp.csr_matrix(X)
         for data in [X, X_csr]:
-            for init in ['random', 'k-means++', centers.copy()]:
+            for init in ['random', 'k-means++', 'k-means||', centers.copy()]:
                 km = KMeans(init=init, n_clusters=n_clusters, random_state=42, n_init=1)
                 km.fit(data)
                 self._check_fitted_model(km, n_clusters, n_features, true_labels)
@@ -216,9 +221,9 @@ class Test(TestBase):
         # two regression tests on bad n_init argument
         # previous bug: n_init <= 0 threw non-informative TypeError (#3858)
         with pytest.raises(ValueError, match="n_init"):
-            KMeans(n_init=0).fit(X)
+            KMeans(n_init=0, init='k-means++').fit(X)
         with pytest.raises(ValueError, match="n_init"):
-            KMeans(n_init=-1).fit(X)
+            KMeans(n_init=-1, init='k-means++').fit(X)
 
     def testKMeansExplicitInitShape(self):
         # test for sensible errors when giving explicit init
@@ -277,7 +282,7 @@ class Test(TestBase):
                                random_state=rng)[0]
 
                 kmeans = KMeans(algorithm=algo, n_clusters=10, random_state=seed,
-                                tol=tol, max_iter=max_iter)
+                                tol=tol, max_iter=max_iter, init='k-means++')
 
                 labels_1 = kmeans.fit(X).predict(X)
                 labels_2 = kmeans.fit_predict(X)
@@ -287,3 +292,101 @@ class Test(TestBase):
                 # different between the 2 strategies but they should correspond to the same
                 # clustering.
                 self.assertEqual(v_measure_score(labels_1, labels_2), 1)
+
+    def testTransform(self):
+        centers = np.array([
+            [0.0, 5.0, 0.0, 0.0, 0.0],
+            [1.0, 1.0, 4.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0, 5.0, 1.0],
+        ])
+        n_samples = 100
+        n_clusters, n_features = centers.shape
+        X = make_blobs(n_samples=n_samples, centers=centers,
+                       cluster_std=1., random_state=42)[0]
+
+        km = KMeans(n_clusters=n_clusters, init='k-means++')
+        km.fit(X)
+        X_new = km.transform(km.cluster_centers_).fetch()
+
+        for c in range(n_clusters):
+            assert X_new[c, c] == 0
+            for c2 in range(n_clusters):
+                if c != c2:
+                    assert X_new[c, c2] > 0
+
+    def testFitTransform(self):
+        centers = np.array([
+            [0.0, 5.0, 0.0, 0.0, 0.0],
+            [1.0, 1.0, 4.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0, 5.0, 1.0],
+        ])
+        n_samples = 100
+        X = make_blobs(n_samples=n_samples, centers=centers,
+                       cluster_std=1., random_state=42)[0]
+        X1 = KMeans(n_clusters=3, random_state=51, init='k-means++').fit(X).transform(X)
+        X2 = KMeans(n_clusters=3, random_state=51, init='k-means++').fit_transform(X)
+        np.testing.assert_array_almost_equal(X1, X2)
+
+    def testScore(self):
+        centers = np.array([
+            [0.0, 5.0, 0.0, 0.0, 0.0],
+            [1.0, 1.0, 4.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0, 5.0, 1.0],
+        ])
+        n_samples = 100
+        n_clusters, n_features = centers.shape
+        X = make_blobs(n_samples=n_samples, centers=centers,
+                       cluster_std=1., random_state=42)[0]
+
+        for algo in ['full', 'elkan']:
+            # Check that fitting k-means with multiple inits gives better score
+            km1 = KMeans(n_clusters=n_clusters, max_iter=1, random_state=42, n_init=1,
+                         algorithm=algo, init='k-means++')
+            s1 = km1.fit(X).score(X).fetch()
+            km2 = KMeans(n_clusters=n_clusters, max_iter=10, random_state=42, n_init=1,
+                         algorithm=algo, init='k-means++')
+            s2 = km2.fit(X).score(X).fetch()
+            self.assertGreater(s2, s1)
+
+    def testKMeansFunction(self):
+        # test calling the k_means function directly
+
+        # non centered, sparse centers to check the
+        centers = np.array([
+            [0.0, 5.0, 0.0, 0.0, 0.0],
+            [1.0, 1.0, 4.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0, 5.0, 1.0],
+        ])
+        n_samples = 100
+        n_clusters, n_features = centers.shape
+        X, true_labels = make_blobs(n_samples=n_samples, centers=centers,
+                                    cluster_std=1., random_state=42)
+
+        # catch output
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        try:
+            cluster_centers, labels, inertia = k_means(X, n_clusters=n_clusters,
+                                                       sample_weight=None,
+                                                       verbose=True,
+                                                       init='k-means++')
+        finally:
+            sys.stdout = old_stdout
+        centers = cluster_centers
+        assert centers.shape == (n_clusters, n_features)
+
+        labels = labels.fetch()
+        assert np.unique(labels).shape[0] == n_clusters
+
+        # check that the labels assignment are perfect (up to a permutation)
+        assert v_measure_score(true_labels, labels) == 1.0
+        assert inertia > 0.0
+
+        # check warning when centers are passed
+        assert_warns(RuntimeWarning, k_means, X, n_clusters=n_clusters,
+                     sample_weight=None, init=centers)
+
+        # to many clusters desired
+        with pytest.raises(ValueError):
+            k_means(X, n_clusters=X.shape[0] + 1, sample_weight=None,
+                    init='k-means++')

@@ -378,6 +378,9 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
 
 
 def assert_all_finite(X, allow_nan=False, msg_dtype=None, check_only=True):
+    if isinstance(X.op, AssertAllFinite) and X.op.allow_nan == allow_nan:
+        return X
+
     if not isinstance(X, (Base, Entity)):
         X = mt.asarray(X)
     if check_only:

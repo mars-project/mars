@@ -13,17 +13,17 @@
 # limitations under the License.
 
 try:
-    from ._kmeans import KMeans
+    from ._kmeans import KMeans, k_means
 
     def _install():
         from ._k_means_common import KMeansInertia, KMeansRelocateEmptyClusters
         from ._k_means_elkan_iter import KMeansElkanInitBounds, \
             KMeansElkanUpdate, KMeansElkanPostprocess
-        from ._k_means_init import KMeansInit
+        from ._k_means_init import KMeansPlusPlusInit
         from ._k_means_lloyd_iter import KMeansLloydUpdate, KMeansLloydPostprocess
 
         del KMeansInertia, KMeansRelocateEmptyClusters, KMeansElkanInitBounds, \
-            KMeansElkanUpdate, KMeansElkanPostprocess, KMeansInit, \
+            KMeansElkanUpdate, KMeansElkanPostprocess, KMeansPlusPlusInit, \
             KMeansLloydUpdate, KMeansLloydPostprocess
 
 
@@ -31,4 +31,5 @@ try:
     del _install
 except ImportError:
     KMeans = None
+    k_means = None
 

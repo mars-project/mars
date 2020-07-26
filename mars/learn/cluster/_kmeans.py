@@ -26,7 +26,7 @@ from ..utils.validation import _check_sample_weight, check_array, \
     check_X_y, _num_samples, check_is_fitted
 from ._k_means_common import _inertia
 from ._k_means_elkan_iter import init_bounds, elkan_iter
-from ._k_means_init import _k_init
+from ._k_means_init import _k_init, _scalable_k_init
 from ._k_means_lloyd_iter import lloyd_iter
 
 
@@ -67,10 +67,11 @@ def _check_normalize_sample_weight(sample_weight, X):
     return sample_weight
 
 
-def k_means(X, n_clusters, sample_weight=None, init='k-means++',
-            precompute_distances='auto', n_init=10, max_iter=300,
-            verbose=False, tol=1e-4, random_state=None, copy_x=True,
-            n_jobs=None, algorithm="auto", return_n_iter=False):
+def k_means(X, n_clusters, sample_weight=None, init='k-means||',
+            n_init=10, max_iter=300, verbose=False, tol=1e-4,
+            random_state=None, copy_x=True,
+            algorithm="auto", oversampling_factor=2,
+            init_iter=5, return_n_iter=False):
     """K-means clustering algorithm.
 
     Parameters
@@ -88,12 +89,14 @@ def k_means(X, n_clusters, sample_weight=None, init='k-means++',
         The weights for each observation in X. If None, all observations
         are assigned equal weight (default: None)
 
-    init : {'k-means++', 'random', or ndarray, or a callable}, optional
-        Method for initialization, default to 'k-means++':
+    init : {'k-means++', 'k-means||', 'random', or tensor, or a callable}, optional
+        Method for initialization, default to 'k-means||':
 
         'k-means++' : selects initial cluster centers for k-mean
         clustering in a smart way to speed up convergence. See section
         Notes in k_init for more details.
+
+        'k-means||': scalable k-means++.
 
         'random': choose k observations (rows) at random from data for
         the initial centroids.
@@ -103,17 +106,6 @@ def k_means(X, n_clusters, sample_weight=None, init='k-means++',
 
         If a callable is passed, it should take arguments X, k and
         and a random state and return an initialization.
-
-    precompute_distances : {'auto', True, False}
-        Precompute distances (faster but takes more memory).
-
-        'auto' : do not precompute distances if n_samples * n_clusters > 12
-        million. This corresponds to about 100MB overhead per job using
-        double precision.
-
-        True : always precompute distances
-
-        False : never precompute distances
 
     n_init : int, optional, default: 10
         Number of time the k-means algorithm will be run with different
@@ -143,19 +135,17 @@ def k_means(X, n_clusters, sample_weight=None, init='k-means++',
         the data mean, in this case it will also not ensure that data is
         C-contiguous which may cause a significant slowdown.
 
-    n_jobs : int or None, optional (default=None)
-        The number of jobs to use for the computation. This works by computing
-        each of the n_init runs in parallel.
-
-        ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
-        ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
-        for more details.
-
     algorithm : "auto", "full" or "elkan", default="auto"
         K-means algorithm to use. The classical EM-style algorithm is "full".
         The "elkan" variation is more efficient by using the triangle
         inequality, but currently doesn't support sparse data. "auto" chooses
         "elkan" for dense data and "full" for sparse data.
+
+    oversampling_factor: int, default=2
+        Only work for kmeans||, used in each iteration in kmeans||.
+
+    init_iter: int, default=5
+        Only work for kmeans||, indicates how may iterations required.
 
     return_n_iter : bool, optional
         Whether or not to return the number of iterations.
@@ -180,9 +170,9 @@ def k_means(X, n_clusters, sample_weight=None, init='k-means++',
 
     est = KMeans(
         n_clusters=n_clusters, init=init, n_init=n_init, max_iter=max_iter,
-        verbose=verbose, precompute_distances=precompute_distances, tol=tol,
-        random_state=random_state, copy_x=copy_x, n_jobs=n_jobs,
-        algorithm=algorithm
+        verbose=verbose, tol=tol, random_state=random_state,
+        copy_x=copy_x, algorithm=algorithm,
+        oversampling_factor=oversampling_factor, init_iter=init_iter
     ).fit(X, sample_weight=sample_weight)
     if return_n_iter:
         return est.cluster_centers_, est.labels_, est.inertia_, est.n_iter_
@@ -192,13 +182,16 @@ def k_means(X, n_clusters, sample_weight=None, init='k-means++',
 
 def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
                          init='k-means++', verbose=False, x_squared_norms=None,
-                         random_state=None, tol=1e-4, session=None, run_kwargs=None):
+                         random_state=None, tol=1e-4, oversampling_factor=2,
+                         init_iter=5, session=None, run_kwargs=None):
     random_state = check_random_state(random_state)
     sample_weight = _check_normalize_sample_weight(sample_weight, X)
 
     # init
     centers = _init_centroids(X, n_clusters, init, random_state=random_state,
-                              x_squared_norms=x_squared_norms)
+                              x_squared_norms=x_squared_norms,
+                              oversampling_factor=oversampling_factor,
+                              init_iter=init_iter)
 
     # execute X, centers and tol first
     tol = mt.asarray(tol)
@@ -248,7 +241,7 @@ def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
 
         center_shift_tot = center_shift_tot.fetch()
         if center_shift_tot <= tol:
-            if verbose:
+            if verbose:  # pragma: no cover
                 print("Converged at iteration {0}: "
                       "center shift {1} within tolerance {2}"
                       .format(i, center_shift_tot, tol))
@@ -273,13 +266,16 @@ def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
 
 def _kmeans_single_lloyd(X, sample_weight, n_clusters, max_iter=300,
                          init='k-means++', verbose=False, x_squared_norms=None,
-                         random_state=None, tol=1e-4, session=None, run_kwargs=None):
+                         random_state=None, tol=1e-4, oversampling_factor=2,
+                         init_iter=5, session=None, run_kwargs=None):
     random_state = check_random_state(random_state)
     sample_weight = _check_normalize_sample_weight(sample_weight, X)
 
     # init
     centers = _init_centroids(X, n_clusters, init, random_state=random_state,
-                              x_squared_norms=x_squared_norms)
+                              x_squared_norms=x_squared_norms,
+                              oversampling_factor=oversampling_factor,
+                              init_iter=init_iter)
 
     # execute X, centers and tol first
     tol = mt.asarray(tol)
@@ -287,7 +283,7 @@ def _kmeans_single_lloyd(X, sample_weight, n_clusters, max_iter=300,
         session=session, **(run_kwargs or dict()))
     tol = tol.fetch()
 
-    if verbose:
+    if verbose:  # pragma: no cover
         print("Initialization complete")
 
     labels = mt.full(X.shape[0], -1, dtype=mt.int32)
@@ -311,12 +307,12 @@ def _kmeans_single_lloyd(X, sample_weight, n_clusters, max_iter=300,
 
         mt.ExecutableTuple(to_runs).execute(session=session, **(run_kwargs or dict()))
 
-        if verbose:
+        if verbose:  # pragma: no cover
             print("Iteration {0}, inertia {1}" .format(i, inertia.fetch()))
 
         center_shift_tot = center_shift_tot.fetch()
         if center_shift_tot <= tol:
-            if verbose:
+            if verbose:  # pragma: no cover
                 print("Converged at iteration {0}: "
                       "center shift {1} within tolerance {2}"
                       .format(i, center_shift_tot, tol))
@@ -387,7 +383,8 @@ def _labels_inertia(X, sample_weight, x_squared_norms, centers,
 
 
 def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
-                    x_squared_norms=None, init_size=None):
+                    x_squared_norms=None, init_size=None,
+                    oversampling_factor=2, init_iter=5):
     """Compute the initial centroids
 
     Parameters
@@ -399,7 +396,7 @@ def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
     n_clusters : int, default=8
         number of centroids.
 
-    init : {'k-means++', 'random', ndarray, callable}, default="k-means++"
+    init : {'k-means++', 'k-means||', 'random', tensor, callable}, default="k-means++"
         Method for initialization.
 
     random_state : int, RandomState instance, default=None
@@ -407,7 +404,7 @@ def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
         an int to make the randomness deterministic.
         See :term:`Glossary <random_state>`.
 
-    x_squared_norms : ndarray of shape (n_samples,), default=None
+    x_squared_norms : tensor of shape (n_samples,), default=None
         Squared euclidean norm of each data point. Pass it if you have it at
         hands already to avoid it being recomputed here. Default: None
 
@@ -427,7 +424,7 @@ def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
     if x_squared_norms is None:
         x_squared_norms = row_norms(X, squared=True)
 
-    if init_size is not None and init_size < n_samples:
+    if init_size is not None and init_size < n_samples:  # pragma: no cover
         if init_size < n_clusters:
             warnings.warn(
                 "init_size=%d should be larger than k=%d. "
@@ -446,6 +443,11 @@ def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
     if isinstance(init, str) and init == 'k-means++':
         centers = _k_init(X, n_clusters, random_state=random_state,
                           x_squared_norms=x_squared_norms)
+    elif isinstance(init, str) and init == 'k-means||':
+        centers = _scalable_k_init(X, n_clusters, random_state=random_state,
+                                   x_squared_norms=x_squared_norms,
+                                   oversampling_factor=oversampling_factor,
+                                   init_iter=init_iter)
     elif isinstance(init, str) and init == 'random':
         seeds = random_state.choice(n_samples, size=n_clusters, replace=False)
         centers = X[seeds]
@@ -456,9 +458,9 @@ def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
     elif callable(init):
         centers = init(X, n_clusters, random_state=random_state)
         centers = mt.asarray(centers, dtype=X.dtype)
-    else:
+    else:  # pragma: no cover
         raise ValueError("the init parameter for the k-means should "
-                         "be 'k-means++' or 'random' or an ndarray, "
+                         "be 'k-means++' or 'random' or a tensor, "
                          "'%s' (type '%s') was passed." % (init, type(init)))
 
     if centers.issparse():
@@ -480,18 +482,20 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         The number of clusters to form as well as the number of
         centroids to generate.
 
-    init : {'k-means++', 'random'} or ndarray of shape \
-            (n_clusters, n_features), default='k-means++'
-        Method for initialization, defaults to 'k-means++':
+    init : {'k-means++', 'random'} or tensor of shape \
+            (n_clusters, n_features), default='k-means||'
+        Method for initialization, defaults to 'k-means||':
 
         'k-means++' : selects initial cluster centers for k-mean
         clustering in a smart way to speed up convergence. See section
         Notes in k_init for more details.
 
+        'k-means||': scalable k-means++.
+
         'random': choose k observations (rows) at random from data for
         the initial centroids.
 
-        If an ndarray is passed, it should be of shape (n_clusters, n_features)
+        If a tensor is passed, it should be of shape (n_clusters, n_features)
         and gives the initial centers.
 
     n_init : int, default=10
@@ -529,14 +533,20 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         inequality, but currently doesn't support sparse data. "auto" chooses
         "elkan" for dense data and "full" for sparse data.
 
+    oversampling_factor: int, default=2
+        Only work for kmeans||, used in each iteration in kmeans||.
+
+    init_iter: int, default=5
+        Only work for kmeans||, indicates how may iterations required.
+
     Attributes
     ----------
-    cluster_centers_ : ndarray of shape (n_clusters, n_features)
+    cluster_centers_ : tensor of shape (n_clusters, n_features)
         Coordinates of cluster centers. If the algorithm stops before fully
         converging (see ``tol`` and ``max_iter``), these will not be
         consistent with ``labels_``.
 
-    labels_ : ndarray of shape (n_samples,)
+    labels_ : tensor of shape (n_samples,)
         Labels of each point
 
     inertia_ : float
@@ -592,9 +602,10 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
     array([[10.,  2.],
            [ 1.,  2.]])
     """
-    def __init__(self, n_clusters=8, init='k-means++', n_init=10,
+    def __init__(self, n_clusters=8, init='k-means||', n_init=10,
                  max_iter=300, tol=1e-4, verbose=0, random_state=None,
-                 copy_x=True, algorithm='auto'):
+                 copy_x=True, algorithm='auto',
+                 oversampling_factor=2, init_iter=5):
 
         self.n_clusters = n_clusters
         self.init = init
@@ -605,13 +616,15 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         self.random_state = random_state
         self.copy_x = copy_x
         self.algorithm = algorithm
+        self.oversampling_factor = oversampling_factor
+        self.init_iter = init_iter
 
     def _check_test_data(self, X):
         X = check_array(X, accept_sparse=True, dtype=[np.float64, np.float32],
                         order='C', accept_large_sparse=False)
         n_samples, n_features = X.shape
         expected_n_features = self.cluster_centers_.shape[1]
-        if not n_features == expected_n_features:
+        if not n_features == expected_n_features:  # pragma: no cover
             raise ValueError("Incorrect number of features. "
                              "Got %d features, expected %d" % (
                                  n_features, expected_n_features))
@@ -645,12 +658,13 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
 
         Returns
         -------
-        out : {ndarray, sparse matrix} or tuple of these
+        out : tensor or tuple of these
             The validated input. A tuple is returned if `y` is not None.
         """
 
         if y is None:
-            if hasattr(self, '_get_tags') and self._get_tags().get('requires_y', False):
+            if hasattr(self, '_get_tags') and \
+                    self._get_tags().get('requires_y', False):  # pragma: no cover
                 raise ValueError(
                     "This {} estimator requires y to be passed, "
                     "but the target y is None.".format(self.__class__.__name__)
@@ -707,7 +721,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
             raise ValueError("Invalid number of initializations."
                              " n_init=%d must be bigger than zero." % n_init)
 
-        if self.max_iter <= 0:
+        if self.max_iter <= 0:  # pragma: no cover
             raise ValueError(
                 'Number of iterations should be a positive number,'
                 ' got %d instead' % self.max_iter
@@ -723,7 +737,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
                                 accept_large_sparse=False)
         # verify that the number of samples given is larger than k
         n_samples = _num_samples(X)
-        if np.isnan(n_samples):
+        if np.isnan(n_samples):  # pragma: no cover
             X.execute(session=session, **(run_kwargs or dict()))
             n_samples = _num_samples(X)
         if n_samples < self.n_clusters:
@@ -738,7 +752,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
             init = check_array(init, dtype=X.dtype.type, copy=True, order='C')
             _validate_center_shape(X, self.n_clusters, init)
 
-            if n_init != 1:
+            if n_init != 1:  # pragma: no cover
                 warnings.warn(
                     'Explicit initial center position passed: '
                     'performing only one init in k-means instead of n_init=%d'
@@ -760,7 +774,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         best_labels, best_inertia, best_centers = None, None, None
 
         algorithm = self.algorithm
-        if algorithm == "elkan" and self.n_clusters == 1:
+        if algorithm == "elkan" and self.n_clusters == 1:  # pragma: no cover
             warnings.warn("algorithm='elkan' doesn't make sense for a single "
                           "cluster. Using 'full' instead.", RuntimeWarning)
             algorithm = "full"
@@ -772,7 +786,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
             kmeans_single = _kmeans_single_lloyd
         elif algorithm == "elkan":
             kmeans_single = _kmeans_single_elkan
-        else:
+        else:  # pragma: no cover
             raise ValueError("Algorithm must be 'auto', 'full' or 'elkan', got"
                              " {}".format(str(algorithm)))
 
@@ -784,7 +798,9 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
             labels, inertia, centers, n_iter_ = kmeans_single(
                 X, sample_weight, self.n_clusters, max_iter=self.max_iter,
                 init=init, verbose=self.verbose, tol=tol,
-                x_squared_norms=x_squared_norms, random_state=seed)
+                x_squared_norms=x_squared_norms, random_state=seed,
+                oversampling_factor=self.oversampling_factor,
+                init_iter=self.init_iter)
             inertia = inertia.fetch()
             # determine if these results are the best so far
             if best_inertia is None or inertia < best_inertia:
@@ -794,13 +810,13 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
                 best_n_iter = n_iter_
 
         if not X.issparse():
-            if not self.copy_x:
+            if not self.copy_x:  # pragma: no cover
                 X += X_mean
             best_centers += X_mean
             best_centers.execute(session=session, **(run_kwargs or dict()))
 
         distinct_clusters = len(set(best_labels.fetch()))
-        if distinct_clusters < self.n_clusters:
+        if distinct_clusters < self.n_clusters:  # pragma: no cover
             warnings.warn(
                 "Number of distinct clusters ({}) found smaller than "
                 "n_clusters ({}). Possibly due to duplicate points "
@@ -884,7 +900,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
 
         Returns
         -------
-        X_new : ndarray of shape (n_samples, n_clusters)
+        X_new : tensor of shape (n_samples, n_clusters)
             X transformed in the new space.
         """
         check_is_fitted(self)
@@ -895,7 +911,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
     def _transform(self, X, session=None, run_kwargs=None):
         """guts of transform method; no input validation"""
         return euclidean_distances(X, self.cluster_centers_).execute(
-            session=session, run_kwargs=run_kwargs)
+            session=session, **(run_kwargs or dict()))
 
     def predict(self, X, sample_weight=None, session=None, run_kwargs=None):
         """Predict the closest cluster each sample in X belongs to.
@@ -915,7 +931,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
 
         Returns
         -------
-        labels : ndarray of shape (n_samples,)
+        labels : tensor of shape (n_samples,)
             Index of the cluster each sample belongs to.
         """
         check_is_fitted(self)

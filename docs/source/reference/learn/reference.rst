@@ -11,6 +11,33 @@ This is the class and function reference of Mars learn.
 .. autosummary::
    :toctree: generated/
 
+.. _cluster_ref:
+
+Clustering
+==========
+
+.. automodule:: mars.learn.cluster
+   :no-members:
+   :no-inherited-members:
+
+Classes
+-------
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   cluster.KMeans
+
+Functions
+---------
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   cluster.k_means
+
 .. _datasets_ref:
 
 Datasets

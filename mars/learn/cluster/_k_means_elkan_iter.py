@@ -101,9 +101,6 @@ class KMeansElkanInitBounds(LearnOperand, LearnOperandMixin):
         check_chunks_unknown_shape(
             [op.centers, op.center_half_distances], TilesError)
         x = op.x
-        if op.x.chunk_shape[1] != 1:
-            check_chunks_unknown_shape([op.x], TilesError)
-            x = op.x.rechunk({1: op.x.shape[1]})._inplace_tile()
         centers = op.centers.rechunk(op.centers.shape)._inplace_tile()
         center_half_distances = op.center_half_distances.rechunk(
             op.center_half_distances.shape)._inplace_tile()

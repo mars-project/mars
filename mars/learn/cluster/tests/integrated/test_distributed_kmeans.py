@@ -45,9 +45,11 @@ class Test(LearnIntegrationTestBase):
             X = mt.tensor(X, chunk_size=50)
 
             km_elkan = KMeans(algorithm='elkan', n_clusters=5,
-                              random_state=0, n_init=1, tol=1e-4)
+                              random_state=0, n_init=1, tol=1e-4,
+                              init='k-means++')
             sk_km_elkan = SK_KMEANS(algorithm='elkan', n_clusters=5,
-                                    random_state=0, n_init=1, tol=1e-4)
+                                    random_state=0, n_init=1, tol=1e-4,
+                                    init='k-means++')
 
             km_elkan.fit(X, session=sess, run_kwargs=run_kwargs)
             sk_km_elkan.fit(raw)
@@ -56,3 +58,14 @@ class Test(LearnIntegrationTestBase):
             np.testing.assert_array_equal(km_elkan.labels_, sk_km_elkan.labels_)
 
             self.assertEqual(km_elkan.n_iter_, sk_km_elkan.n_iter_)
+
+        with new_session(service_ep) as sess2:
+            run_kwargs = {'timeout': timeout}
+
+            rnd = np.random.RandomState(0)
+            X, _ = make_blobs(random_state=rnd)
+            X = mt.tensor(X, chunk_size=50)
+
+            kmeans = KMeans(n_clusters=5, random_state=0, n_init=1,
+                            tol=1e-4, init='k-means||')
+            kmeans.fit(X, session=sess2, run_kwargs=run_kwargs)
