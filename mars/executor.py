@@ -774,6 +774,7 @@ class Executor(object):
         tileable_data_to_chunks = weakref.WeakKeyDictionary()
 
         node_to_fetch = weakref.WeakKeyDictionary()
+        skipped_tileables = set()
 
         def _generate_fetch_tileable(node):
             # Attach chunks to fetch tileables to skip tile.
@@ -796,6 +797,7 @@ class Executor(object):
                     except KeyError:
                         new_inps.append(inp)
                     else:
+                        skipped_tileables.add(inp)
                         continue
                 else:
                     new_inps.append(inp)
