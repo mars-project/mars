@@ -515,7 +515,7 @@ class TensorReduction(TensorHasInput):
     _axis = AnyField('axis')  # can be None or int or tuple of ints, just infer the data
     _dtype = DataTypeField('dtype')
     _keepdims = BoolField('keepdims')
-    _combine_size = Int32Field('combine_size')
+    _combine_size = AnyField('combine_size')
 
     @property
     def axis(self):

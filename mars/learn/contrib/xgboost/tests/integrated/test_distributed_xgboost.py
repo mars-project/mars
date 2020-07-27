@@ -15,10 +15,10 @@
 import os
 import unittest
 
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
 import mars.tensor as mt
 from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
+from mars.learn.tests.integrated.base import LearnIntegrationTestBase
 
 try:
     import xgboost

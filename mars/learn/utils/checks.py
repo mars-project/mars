@@ -380,6 +380,11 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
 def assert_all_finite(X, allow_nan=False, msg_dtype=None, check_only=True):
     if not isinstance(X, (Base, Entity)):
         X = mt.asarray(X)
+
+    if isinstance(X.op, AssertAllFinite) and X.op.allow_nan == allow_nan and \
+            X.op.msg_dtype == msg_dtype and X.op.check_only == check_only:
+        return X
+
     if check_only:
         output_types = [OutputType.tensor]
         sparse = False
