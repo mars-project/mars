@@ -28,7 +28,7 @@ from numbers import Integral
 import numpy as np
 
 from .operands import Fetch, ShuffleProxy
-from .graph import DAG, DirectedGraph
+from .graph import DAG
 from .config import options
 from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
 from .optimizes.runtime.core import RuntimeOptimizer
@@ -712,7 +712,7 @@ class Executor(object):
         chunk_result = self._chunk_result.copy()
         tileable_graph_builder = TileableGraphBuilder()
         tileable_graph = tileable_graph_builder.build([tileable])
-        chunk_graph_builder = ChunkGraphBuilder(graph_cls=DirectedGraph, compose=compose,
+        chunk_graph_builder = ChunkGraphBuilder(compose=compose,
                                                 on_tile_success=_on_tile_success)
         chunk_graph = chunk_graph_builder.build([tileable], tileable_graph=tileable_graph)
         ret = self.execute_graph(chunk_graph, result_keys, n_parallel=n_parallel or n_thread,
