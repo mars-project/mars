@@ -19,6 +19,7 @@ from .... import tensor as mt
 from ....serialize import KeyField, BoolField
 from ....tensor.core import TensorOrder
 from ....utils import recursive_tile
+from ...utils import check_array
 from ...utils.extmath import row_norms
 from .core import PairwiseDistances
 
@@ -78,8 +79,7 @@ class EuclideanDistances(PairwiseDistances):
         # float32, norms needs to be recomputed on upcast chunks.
         # TODO: use a float64 accumulator in row_norms to avoid the latter.
         if X_norm_squared is not None:
-            XX = mt.atleast_2d(X_norm_squared)
-
+            XX = check_array(X_norm_squared)
             if XX.shape == (1, X.shape[0]):
                 XX = XX.T
             elif XX.shape != (X.shape[0], 1):

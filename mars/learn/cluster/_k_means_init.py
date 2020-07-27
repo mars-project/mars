@@ -296,8 +296,8 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
     def tile(cls, op: "KMeansScalablePlusPlusInit"):
         check_chunks_unknown_shape(op.inputs, TilesError)
 
-        x = op.x
-        x_squared_norms = op.x_squared_norms
+        x = mt.tensor(op.x)
+        x_squared_norms = mt.atleast_2d(op.x_squared_norms)
         out = op.outputs[0]
 
         random_state = op.state
