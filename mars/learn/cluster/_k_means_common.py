@@ -119,9 +119,6 @@ class KMeansInertia(LearnOperand, LearnOperandMixin):
                 method = _inertia_dense
             elif xp is sparse:
                 method = _inertia_sparse
-                x = x.spmatrix
-                if any(not d.flags.writeable for d in [x.data, x.indices, x.indptr]):
-                    x = x.copy()
             else:  # pragma: no cover
                 raise NotImplementedError('Cannot run inertial on GPU')
 
