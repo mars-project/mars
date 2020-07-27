@@ -16,6 +16,7 @@
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, ListField
 from ..operands import TensorHasInput, TensorOperandMixin
+from ..array_utils import get_array_module
 from ..core import TensorOrder
 
 
@@ -58,6 +59,10 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        x = ctx[op.inputs[0].key][tuple(op.slices)]
+        inp = ctx[op.inputs[0].key]
+        if op.input.ndim == 0 and not hasattr(inp, 'shape'):
+            # scalar, but organize it into an array
+            inp = get_array_module(inp).array(inp)
+        x = inp[tuple(op.slices)]
         out = op.outputs[0]
         ctx[out.key] = x.astype(x.dtype, order=out.order.value, copy=False)

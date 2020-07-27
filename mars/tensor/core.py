@@ -27,9 +27,8 @@ from ..core import Entity, HasShapeTileableEnity, ChunkData, Chunk, HasShapeTile
     build_mode, Serializable, _ExecuteAndFetchMixin
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
-from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape, is_eager_mode
+from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .utils import get_chunk_slices, fetch_corner_data
-
 
 logger = logging.getLogger(__name__)
 
@@ -313,10 +312,7 @@ class Tensor(HasShapeTileableEnity):
         self._data = set_imag(self._data, new_imag).data
 
     def __array__(self, dtype=None):
-        if is_eager_mode():
-            return np.asarray(self.fetch(), dtype=dtype)
-        else:
-            return np.asarray(self.execute().fetch(), dtype=dtype)
+        return np.asarray(self.to_numpy(), dtype=dtype)
 
     def __array_function__(self, func, types, args, kwargs):
         from .. import tensor as module

@@ -17,9 +17,9 @@
 import unittest
 
 from mars.executor import Executor
+from mars.graph import DAG
 from mars.tensor.arithmetic import TensorTreeAdd
 from mars.tensor.indexing import TensorSlice
-from mars.graph import DirectedGraph
 from mars.optimizes.runtime.ne import NeRuntimeOptimizer
 
 
@@ -38,7 +38,7 @@ class Test(unittest.TestCase):
         @ --> @ --> @   ========>    #
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(3)]
-        graph = DirectedGraph()
+        graph = DAG()
         list(map(graph.add_node, chunks[:3]))
         graph.add_edge(chunks[0], chunks[1])
         graph.add_edge(chunks[1], chunks[2])
@@ -60,7 +60,7 @@ class Test(unittest.TestCase):
         @             @              @       @
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(6)]
-        graph = DirectedGraph()
+        graph = DAG()
         list(map(graph.add_node, chunks[:6]))
 
         chunks[2].op._inputs = [chunks[0], chunks[1]]
@@ -109,7 +109,7 @@ class Test(unittest.TestCase):
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(6)]
         chunk_slice = TensorSlice().new_chunk([None], None)
-        graph = DirectedGraph()
+        graph = DAG()
         list(map(graph.add_node, chunks[:6]))
         graph.add_node(chunk_slice)
         graph.add_edge(chunks[0], chunks[2])
@@ -130,7 +130,7 @@ class Test(unittest.TestCase):
         compose stopped at S, because numexpr don't support Slice op
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(4)]
-        graph = DirectedGraph()
+        graph = DAG()
         list(map(graph.add_node, chunks[:3]))
         graph.add_node(chunk_slice)
         graph.add_edge(chunks[0], chunks[1])
@@ -149,7 +149,7 @@ class Test(unittest.TestCase):
         compose stopped at S, because numexpr don't support Slice op
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(4)]
-        graph = DirectedGraph()
+        graph = DAG()
         list(map(graph.add_node, chunks[:4]))
         graph.add_node(chunk_slice)
         graph.add_edge(chunks[0], chunks[1])

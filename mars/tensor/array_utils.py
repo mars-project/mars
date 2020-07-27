@@ -82,7 +82,14 @@ def _most_nbytes_device(device_nbytes):
     return max(device_to_nbytes, key=lambda i: device_to_nbytes[i])
 
 
-def as_same_device(inputs, device=None, ret_extra=False):
+def _is_array_writeable(a):
+    if hasattr(a, 'flags') and hasattr(a.flags, 'writeable'):
+        return a.flags.writeable
+    # writeable as default
+    return True
+
+
+def as_same_device(inputs, device=None, ret_extra=False, copy_if_not_writeable=False):
     input_tensors = [i for i in inputs if hasattr(i, 'ndim') and i.ndim > 0]  # filter scalar
     has_sparse = any(issparse(i) for i in inputs)
 
@@ -97,6 +104,22 @@ def as_same_device(inputs, device=None, ret_extra=False):
         outputs = [_get(i) for i in inputs]
     else:
         outputs = [move_to_device(i, device) for i in inputs]
+
+    if copy_if_not_writeable:
+        new_outputs = []
+        for out in outputs:
+            if not _is_array_writeable(out):
+                new_outputs.append(out.copy())
+            elif isinstance(out, (sparse.SparseMatrix, sparse.SparseVector)):
+                if not _is_array_writeable(out.data) or \
+                        not _is_array_writeable(out.indices) or \
+                        not _is_array_writeable(out.indptr):
+                    new_outputs.append(type(out)(out.spmatrix.copy(), shape=out.shape))
+                else:
+                    new_outputs.append(out)
+            else:
+                new_outputs.append(out)
+        outputs = new_outputs
 
     if not ret_extra:
         return outputs
