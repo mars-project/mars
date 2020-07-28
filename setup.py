@@ -119,6 +119,10 @@ cy_extensions = [
     Extension('mars.serialize.core', ['mars/serialize/core.pyx'], **cy_extension_kw),
     Extension('mars.serialize.pbserializer', ['mars/serialize/pbserializer.pyx'], **cy_extension_kw),
     Extension('mars.serialize.jsonserializer', ['mars/serialize/jsonserializer.pyx'], **cy_extension_kw),
+    Extension('mars.learn.cluster._k_means_fast', ['mars/learn/cluster/_k_means_fast.pyx'], **cy_extension_kw),
+    Extension('mars.learn.cluster._k_means_elkan', ['mars/learn/cluster/_k_means_elkan.pyx'], **cy_extension_kw),
+    Extension('mars.learn.cluster._k_means_lloyd', ['mars/learn/cluster/_k_means_lloyd.pyx'], **cy_extension_kw),
+    Extension('mars.learn.utils._cython_blas', ['mars/learn/utils/_cython_blas.pyx'], **cy_extension_kw),
 ]
 
 extensions = cythonize(cy_extensions, **cythonize_kw) + \

@@ -195,7 +195,7 @@ jobs:
 
       - name: Collect coverage data
         run: |
-          pip install numpy cython gevent coverage
+          pip install numpy scipy cython gevent coverage
           pip install codecov
           CYTHON_TRACE=1 python setup.py sdist
           export DEFAULT_VENV=$VIRTUAL_ENV

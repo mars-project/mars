@@ -68,7 +68,7 @@ class CpRuntimeOptimizer:
         keys = set(keys or [])
 
         graph = self._graph
-        for v in graph.bfs():
+        for v in graph.topological_iter():
             if type(v.op) not in CP_OP:
                 continue
             if v in explored:

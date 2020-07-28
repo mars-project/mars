@@ -57,17 +57,12 @@ class Fusion:
         return composed_nodes
 
     def compose(self, keys=None):
-        def _visit_predicate(n, visited):
-            cond = any if getattr(n.op, '_loose_require', False) else all
-            preds = self._graph.predecessors(n)
-            return not preds or cond(pred in visited for pred in preds)
-
         composes = []
         explored = set()
         # for those chunk in result sets, we should not do any fuse
         keys_set = set(keys or [])
 
-        for v in self._graph.bfs(visit_predicate=_visit_predicate):
+        for v in self._graph.topological_iter():
             if v in explored or v.key in keys_set:
                 continue
             if self._graph.count_successors(v) != 1:

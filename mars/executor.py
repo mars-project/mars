@@ -28,7 +28,7 @@ from numbers import Integral
 import numpy as np
 
 from .operands import Fetch, ShuffleProxy
-from .graph import DAG, DirectedGraph
+from .graph import DAG
 from .config import options
 from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
 from .optimizes.runtime.core import RuntimeOptimizer
@@ -712,7 +712,7 @@ class Executor(object):
         chunk_result = self._chunk_result.copy()
         tileable_graph_builder = TileableGraphBuilder()
         tileable_graph = tileable_graph_builder.build([tileable])
-        chunk_graph_builder = ChunkGraphBuilder(graph_cls=DirectedGraph, compose=compose,
+        chunk_graph_builder = ChunkGraphBuilder(compose=compose,
                                                 on_tile_success=_on_tile_success)
         chunk_graph = chunk_graph_builder.build([tileable], tileable_graph=tileable_graph)
         ret = self.execute_graph(chunk_graph, result_keys, n_parallel=n_parallel or n_thread,
@@ -774,6 +774,7 @@ class Executor(object):
         tileable_data_to_chunks = weakref.WeakKeyDictionary()
 
         node_to_fetch = weakref.WeakKeyDictionary()
+        skipped_tileables = set()
 
         def _generate_fetch_tileable(node):
             # Attach chunks to fetch tileables to skip tile.
@@ -785,6 +786,22 @@ class Executor(object):
                     setattr(node, '_' + param, v)
 
             return node
+
+        def _skip_executed_tileables(inps):
+            # skip the input that executed, and not gc collected
+            new_inps = []
+            for inp in inps:
+                if inp.key in self.stored_tileables:
+                    try:
+                        get_tiled(inp)
+                    except KeyError:
+                        new_inps.append(inp)
+                    else:
+                        skipped_tileables.add(inp)
+                        continue
+                else:
+                    new_inps.append(inp)
+            return new_inps
 
         def _generate_fetch_if_executed(nd):
             # node processor that if the node is executed
@@ -830,7 +847,8 @@ class Executor(object):
         with self._gen_local_context(chunk_result):
             # build tileable graph
             tileable_graph_builder = _get_tileable_graph_builder(
-                node_processor=_generate_fetch_tileable)
+                node_processor=_generate_fetch_tileable,
+                inputs_selector=_skip_executed_tileables)
             tileable_graph = tileable_graph_builder.build(tileables)
             chunk_graph_builder = IterativeChunkGraphBuilder(
                 graph_cls=DAG, node_processor=_generate_fetch_if_executed,

@@ -442,7 +442,12 @@ def dot(a, b, sparse=True, **_):
     from .core import issparse
 
     if not issparse(a):
-        return a.dot(b)
+        ret = a.dot(b)
+        if not sparse:
+            return ret
+        else:
+            xps = get_sparse_module(ret)
+            return SparseNDArray(xps.csr_matrix(ret), shape=ret.shape)
 
     return a.dot(b, sparse=sparse)
 

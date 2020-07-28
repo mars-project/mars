@@ -138,10 +138,11 @@ class EuclideanDistances(PairwiseDistances):
         distances += YY
         distances = mt.maximum(distances, 0)
 
-        if X is Y:
+        if X is Y or X.key == Y.key:
             mt.fill_diagonal(distances, 0)
 
         distances = distances if op.squared else mt.sqrt(distances)
+        distances = distances.astype(op.outputs[0].dtype, copy=False)
         return [recursive_tile(distances)]
 
 
@@ -212,8 +213,17 @@ def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,
     --------
     paired_distances : distances betweens pairs of elements of X and Y.
     """
+    if X.dtype == np.float32:
+        if Y is None:
+            dtype = X.dtype
+        elif Y.dtype == np.float32:
+            dtype = np.float32
+        else:
+            dtype = np.float64
+    else:
+        dtype = np.float64
     op = EuclideanDistances(x=X, y=Y, x_norm_squared=X_norm_squared,
                             y_norm_squared=Y_norm_squared, squared=squared,
-                            dtype=np.dtype(np.float64))
+                            dtype=np.dtype(dtype))
     return op(X, Y=Y, Y_norm_squared=Y_norm_squared,
               X_norm_squared=X_norm_squared)

@@ -19,7 +19,7 @@ from .core import issparse, get_array_module, \
     get_sparse_module, cp, cps, np, naked, is_cupy
 
 
-class SparseNDArray(object):
+class SparseNDArray:
     __slots__ = '__weakref__',
     __array_priority__ = 21
 

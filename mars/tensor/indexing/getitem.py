@@ -264,9 +264,11 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
             indexed_arrays.append(index_array)
             poses.append(pos)
 
-        concat_array = np.concatenate(indexed_arrays, axis=fancy_index_axis)
-        concat_pos = np.hstack(poses)
-        select_pos = calc_pos(fancy_index_shape, concat_pos)
+        concat_array = get_array_module(indexed_arrays[0]).concatenate(
+            indexed_arrays, axis=fancy_index_axis)
+        concat_pos = get_array_module(poses[0]).hstack(poses)
+        select_pos = calc_pos(fancy_index_shape, concat_pos,
+                              xp=get_array_module(poses[0]))
         select = (slice(None),) * fancy_index_axis + (select_pos,)
         ctx[op.outputs[0].key] = concat_array[select]
 
