@@ -207,7 +207,7 @@ class Test(WorkerCase):
 
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
 
-                def _validate(_):
+                def _validate(*_):
                     data = test_actor.shared_store.get(session_id, arr2.chunks[0].key)
                     assert_array_equal(data, 2 * np.ones((10, 8)))
 
@@ -223,7 +223,7 @@ class Test(WorkerCase):
             with self.run_actor_test(pool) as test_actor:
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
 
-                def _validate(_):
+                def _validate(*_):
                     data = test_actor.shared_store.get(session_id, arr2.chunks[0].key)
                     assert_array_equal(data, 2 * np.ones((10, 8)))
 
@@ -351,7 +351,7 @@ class Test(WorkerCase):
                 test_actor.storage_client.delete(session_id, [modified_chunk.key],
                                                  [DataStorageDevice.PROC_MEMORY])
 
-                def _validate(_):
+                def _validate(*_):
                     data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)
                     assert_array_equal(data, mock_data + np.ones((4,)))
 
@@ -514,7 +514,7 @@ class Test(WorkerCase):
                 mock_data.nbytes, mock_data.shape,
                 ('0.0.0.0:1234', pool_address.replace('127.0.0.1', 'localhost')))
             with self.run_actor_test(pool) as test_actor:
-                def _validate(_):
+                def _validate(*_):
                     data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)
                     assert_array_equal(data, mock_data + np.ones((4,)))
 
@@ -550,7 +550,7 @@ class Test(WorkerCase):
 
             pool.create_actor(MockSenderActor, [mock_data + np.ones((4,))], 'out', uid='w:mock_sender')
             with self.run_actor_test(pool) as test_actor:
-                def _validate(_):
+                def _validate(*_):
                     data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)
                     assert_array_equal(data, mock_data + np.ones((4,)))
 
@@ -587,7 +587,7 @@ class Test(WorkerCase):
 
             result_tensor = get_tiled(result_tensor)
 
-            def _validate(_):
+            def _validate(*_):
                 data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)
                 assert_array_equal(data, mock_data + np.ones((4,)))
 

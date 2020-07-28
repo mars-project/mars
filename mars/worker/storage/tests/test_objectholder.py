@@ -183,7 +183,7 @@ class Test(WorkerCase):
             expect_spills = key_list[2:4]
 
             shared_holder_ref.lift_data_keys(session_id, [key_list[0]])
-            shared_handler.spill_size(data_size * 1.5) \
+            shared_handler.spill_size(data_size * 2) \
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
 

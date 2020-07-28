@@ -135,6 +135,13 @@ class Test(SchedulerIntegratedTest):
         result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
         pd.testing.assert_frame_equal(result, raw1 + raw2)
 
+        raw1 = pd.DataFrame(np.random.rand(10, 10))
+        raw1[0] = raw1[0].apply(str)
+        df1 = md.DataFrame(raw1, chunk_size=5)
+        r = df1.sort_values(0)
+        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        pd.testing.assert_frame_equal(result, raw1.sort_values(0))
+
         s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
         series1 = md.Series(s1, chunk_size=6)
         result = series1.execute(session=sess, timeout=self.timeout).fetch(session=sess)

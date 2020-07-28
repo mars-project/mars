@@ -87,9 +87,9 @@ class FakeExecutionActor(SchedulerActor):
         for tk in rec.data_targets:
             for n in key_to_chunks[tk]:
                 self.chunk_meta.add_worker(session_id, n.key, 'localhost:12345')
-        self._results[graph_key] = ((dict(),), dict())
+        self._results[graph_key] = ((dict(),), dict(), dict())
         for cb in rec.finish_callbacks:
-            self.tell_promise(cb, {})
+            self.tell_promise(cb, {}, {})
         rec.finish_callbacks = []
 
     @log_unhandled

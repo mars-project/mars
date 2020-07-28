@@ -46,11 +46,12 @@ class LearnIntegrationTestBase(unittest.TestCase):
                 self._start_distributed_env(*args, **kwargs)
                 break
             except ProcessRequirementUnmetError:
-                fail_count += 1
-                if fail_count >= 3:
-                    raise
-                logger.error('Failed to start service, retrying')
                 self.terminate_processes()
+                fail_count += 1
+                if fail_count >= 10:
+                    raise
+                time.sleep(5)
+                logger.error('Failed to start service, retrying')
 
     def _start_distributed_env(self, n_workers=2):
         scheduler_port = self.scheduler_port = str(get_next_port())

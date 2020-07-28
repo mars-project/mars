@@ -151,13 +151,15 @@ class Test(unittest.TestCase):
 
     def setUp(self):
         self.proc_scheduler = self.proc_worker = self.proc_web = None
-        for attempt in range(3):
+        retrys = 10
+        for attempt in range(retrys):
             try:
                 self._start_service()
                 break
             except:  # noqa: E722
                 self._stop_service()
-                if attempt == 2:
+                time.sleep(5)
+                if attempt == retrys - 1:
                     raise
 
     def tearDown(self):

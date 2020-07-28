@@ -236,7 +236,7 @@ class BaseOperandActor(SchedulerActor):
     def add_running_predecessor(self, op_key, worker):
         self._running_preds.add(op_key)
 
-    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
+    def add_finished_predecessor(self, op_key, worker, output_sizes=None, output_shapes=None):
         self._finish_preds.add(op_key)
 
     def add_finished_successor(self, op_key, worker):
