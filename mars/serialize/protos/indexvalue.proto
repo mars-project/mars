@@ -24,6 +24,7 @@ message IndexValue {
     message RangeIndex {
         Value name = 1;
         Value slice = 2;
+        Value dtype = 3;
         // public fields
         string key = 51;
         bool is_monotonic_increasing = 52;

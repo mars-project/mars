@@ -25,7 +25,7 @@ from ..errors import PinDataKeyFailed, WorkerProcessStopped, WorkerDead, \
 from ..executor import Executor
 from ..operands import Fetch, FetchShuffle
 from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_info, \
-    calc_data_size, get_chunk_shuffle_key
+    calc_data_size, get_chunk_shuffle_key, calc_object_overhead
 from .storage import DataStorageDevice
 from .transfer import ReceiverManagerActor
 from .utils import WorkerActor, ExpiringCache, ExecutionState, concat_operand_keys, \
@@ -40,14 +40,14 @@ class GraphExecutionRecord(object):
     """
     __slots__ = ('graph', 'graph_serialized', '_state', 'op_string', 'data_targets',
                  'chunk_targets', 'io_meta', 'data_metas', 'shared_input_chunks',
-                 'state_time', 'mem_request', 'pinned_keys', 'est_finish_time',
-                 'calc_actor_uid', 'send_addresses', 'retry_delay', 'retry_pending',
-                 'finish_callbacks', 'stop_requested', 'calc_device',
+                 'state_time', 'mem_request', 'pinned_keys', 'mem_overhead_keys',
+                 'est_finish_time', 'calc_actor_uid', 'send_addresses', 'retry_delay',
+                 'retry_pending', 'finish_callbacks', 'stop_requested', 'calc_device',
                  'preferred_data_device', 'resource_released', 'no_prepare_chunk_keys')
 
     def __init__(self, graph_serialized, state, chunk_targets=None, data_targets=None,
-                 io_meta=None, data_metas=None, mem_request=None,
-                 shared_input_chunks=None, pinned_keys=None, est_finish_time=None,
+                 io_meta=None, data_metas=None, mem_request=None, shared_input_chunks=None,
+                 pinned_keys=None, mem_overhead_keys=None, est_finish_time=None,
                  calc_actor_uid=None, send_addresses=None, retry_delay=None,
                  finish_callbacks=None, stop_requested=False, calc_device=None,
                  preferred_data_device=None, resource_released=False,
@@ -65,6 +65,7 @@ class GraphExecutionRecord(object):
         self.shared_input_chunks = shared_input_chunks or set()
         self.mem_request = mem_request or dict()
         self.pinned_keys = set(pinned_keys or [])
+        self.mem_overhead_keys = set(mem_overhead_keys or [])
         self.est_finish_time = est_finish_time or time.time()
         self.calc_actor_uid = calc_actor_uid
         self.send_addresses = send_addresses
@@ -93,18 +94,19 @@ class GraphResultRecord(object):
     """
     Execution result of a graph
     """
-    __slots__ = 'data_sizes', 'exc', 'succeeded'
+    __slots__ = 'data_sizes', 'data_shapes', 'exc', 'succeeded'
 
     def __init__(self, *args, **kwargs):
         succeeded = self.succeeded = kwargs.pop('succeeded', True)
         if succeeded:
             self.data_sizes = args[0]
+            self.data_shapes = args[1]
         else:
             self.exc = args
 
     def build_args(self):
         if self.succeeded:
-            return (self.data_sizes,), {}
+            return (self.data_sizes, self.data_shapes), {}
         else:
             return self.exc, dict(_accept=False)
 
@@ -202,6 +204,11 @@ class ExecutionActor(WorkerActor):
                         n._shape = meta.chunk_shape
                 except KeyError:
                     pass
+            elif isinstance(n.op, FetchShuffle):
+                shuffle_key = get_chunk_shuffle_key(graph_record.graph.successors(n)[0])
+                shapes = [data_metas.get((k, shuffle_key)).chunk_shape for k in n.op.to_fetch_keys]
+                n.extra_params['_shapes'] = \
+                    dict(((k, shuffle_key), v) for k, v in zip(n.op.to_fetch_keys, shapes))
 
         executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
         res = executor.execute_graph(graph_record.graph, graph_record.chunk_targets, mock=True)
@@ -244,16 +251,21 @@ class ExecutionActor(WorkerActor):
         else:
             memory_estimations = dict()
 
+        graph_record.mem_overhead_keys = set()
         # collect potential allocation sizes
         for chunk in graph:
             op = chunk.op
+            overhead_keys_and_shapes = []
+
             if isinstance(op, Fetch):
                 if chunk.key in graph_record.no_prepare_chunk_keys:
                     continue
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = input_data_sizes.get(chunk.key) or calc_data_size(chunk)
+                overhead_keys_and_shapes = [(chunk.key, getattr(chunk, 'shape', None))]
             elif isinstance(op, FetchShuffle):
                 shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
+                overhead_keys_and_shapes = chunk.extra_params.get('_shapes', dict()).items()
                 for k in op.to_fetch_keys:
                     part_key = (k, shuffle_key)
                     try:
@@ -270,15 +282,24 @@ class ExecutionActor(WorkerActor):
                 if not isinstance(chunk.key, tuple):
                     alloc_cache_batch[chunk.key] = cache_batch
 
+            for key, shape in overhead_keys_and_shapes:
+                overhead = calc_object_overhead(chunk, shape)
+                if overhead:
+                    graph_record.mem_overhead_keys.add(key)
+                    quota_key = build_quota_key(session_id, key, owner=graph_key)
+                    alloc_mem_batch[quota_key] = overhead
+
         keys_to_pin = list(input_chunk_keys.keys())
         graph_record.pinned_keys = set()
         self._pin_shared_data_keys(session_id, graph_key, keys_to_pin)
 
-        load_chunk_sizes = dict((k, v) for k, v in input_chunk_keys.items()
-                                if k not in graph_record.pinned_keys)
-        alloc_mem_batch.update((build_quota_key(session_id, k, owner=graph_key), v)
-                               for k, v in load_chunk_sizes.items()
-                               if k not in graph_record.shared_input_chunks)
+        for k, v in input_chunk_keys.items():
+            quota_key = build_quota_key(session_id, k, owner=graph_key)
+            if quota_key not in alloc_mem_batch:
+                if k in graph_record.pinned_keys or k in graph_record.shared_input_chunks:
+                    continue
+            alloc_mem_batch[quota_key] = alloc_mem_batch.get(quota_key, 0) + v
+
         if alloc_cache_batch:
             storage_client.spill_size(sum(alloc_cache_batch.values()), [graph_record.preferred_data_device])
 
@@ -312,8 +333,9 @@ class ExecutionActor(WorkerActor):
             locations = set(locs[1] for locs in storage_client.get_data_locations(session_id, [chunk_key])[0])
             if DataStorageDevice.PROC_MEMORY not in locations:
                 self._pin_shared_data_keys(session_id, graph_key, [chunk_key])
-                self._mem_quota_ref.release_quotas(
-                    [build_quota_key(session_id, chunk_key, owner=graph_key)], _tell=True, _wait=False)
+                if chunk_key not in graph_record.mem_overhead_keys:
+                    self._mem_quota_ref.release_quotas(
+                        [build_quota_key(session_id, chunk_key, owner=graph_key)], _tell=True, _wait=False)
                 if graph_record.preferred_data_device not in locations:
                     return storage_client.copy_to(session_id, [chunk_key], [graph_record.preferred_data_device])
 
@@ -525,13 +547,15 @@ class ExecutionActor(WorkerActor):
             self._invoke_finish_callbacks(session_id, graph_key)
 
         # collect target data already computed
-        sizes = self.storage_client.get_data_sizes(session_id, graph_record.data_targets)
-        save_sizes = dict((k, v) for k, v in zip(graph_record.data_targets, sizes) if v)
+        attrs = self.storage_client.get_data_attrs(session_id, graph_record.data_targets)
+        save_attrs = dict((k, v) for k, v in zip(graph_record.data_targets, attrs) if v)
 
         # when all target data are computed, report success directly
-        if all(k in save_sizes for k in graph_record.data_targets):
+        if all(k in save_attrs for k in graph_record.data_targets):
             logger.debug('All predecessors of graph %s already computed, call finish directly.', graph_key)
-            self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
+            sizes = dict((k, v.size) for k, v in save_attrs.items())
+            shapes = dict((k, v.shape) for k, v in save_attrs.items())
+            self._result_cache[(session_id, graph_key)] = GraphResultRecord(sizes, shapes)
             _handle_success()
         else:
             try:
@@ -558,6 +582,16 @@ class ExecutionActor(WorkerActor):
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
                 .then(lambda saved_keys: self._store_results(session_id, graph_key, saved_keys)) \
                 .then(_handle_success, _handle_rejection)
+
+    def _release_shared_store_quotas(self, session_id, graph_key, keys):
+        graph_record = self._graph_records[(session_id, graph_key)]
+        quota_keys_to_release = [
+            build_quota_key(session_id, k, owner=graph_key) for k in keys
+            if k not in graph_record.mem_overhead_keys
+        ]
+        for quota_key in quota_keys_to_release:
+            graph_record.mem_request.pop(quota_key, None)
+        self._mem_quota_ref.release_quotas(quota_keys_to_release, _tell=True)
 
     @log_unhandled
     def _prepare_graph_inputs(self, session_id, graph_key):
@@ -600,8 +634,7 @@ class ExecutionActor(WorkerActor):
         remote_keys = [k for k in non_local_keys if k not in copy_keys]
 
         # handle local keys
-        self._mem_quota_ref.release_quotas(
-            [build_quota_key(session_id, k, owner=graph_key) for k in local_keys], _tell=True)
+        self._release_shared_store_quotas(session_id, graph_key, local_keys)
         # handle move keys
         prepare_promises.extend(
             self._prepare_copy_keys(session_id, graph_key, copy_keys))
@@ -624,17 +657,15 @@ class ExecutionActor(WorkerActor):
 
         def _release_copied_keys(keys):
             actual_moved_keys = self._pin_shared_data_keys(session_id, graph_key, keys)
-            self._mem_quota_ref.release_quotas(
-                [build_quota_key(session_id, k, owner=graph_key) for k in actual_moved_keys],
-                _tell=True)
+            self._release_shared_store_quotas(session_id, graph_key, actual_moved_keys)
 
         if ensure_shared_keys:
             promises.append(
                 self.storage_client.copy_to(
                     session_id, ensure_shared_keys, [graph_record.preferred_data_device],
                     ensure=True, pin_token=graph_key)
-                .then(lambda *_: _release_copied_keys(better_shared_keys),
-                      lambda *_: _release_copied_keys(better_shared_keys))
+                .then(lambda *_: _release_copied_keys(ensure_shared_keys),
+                      lambda *_: _release_copied_keys(ensure_shared_keys))
             )
         if better_shared_keys:
             promises.append(
@@ -690,7 +721,6 @@ class ExecutionActor(WorkerActor):
         :param graph_key: key of the execution graph
         :param calc_uid: uid of the allocated CpuCalcActor
         """
-        storage_client = self.storage_client
         try:
             graph_record = self._graph_records[(session_id, graph_key)]
 
@@ -698,20 +728,6 @@ class ExecutionActor(WorkerActor):
                 raise ExecutionInterrupted
 
             graph_record.calc_actor_uid = calc_uid
-
-            # get allocation for calc, in case that memory exhausts
-            target_allocs = dict()
-            for chunk in graph_record.graph:
-                quota_key = None
-                if isinstance(chunk.op, Fetch):
-                    locations = storage_client.get_data_locations(session_id, [chunk.key])[0]
-                    if (0, graph_record.preferred_data_device) not in locations:
-                        quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)
-                elif chunk.key in graph_record.chunk_targets:
-                    quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)
-
-                if quota_key is not None and quota_key in graph_record.mem_request:
-                    target_allocs[quota_key] = graph_record.mem_request[quota_key]
 
             self._update_state(session_id, graph_key, ExecutionState.CALCULATING)
             calc_ref = self.promise_ref(calc_uid)
@@ -732,9 +748,10 @@ class ExecutionActor(WorkerActor):
             raise
 
         # make sure that memory suffices before actually run execution
-        if target_allocs:
-            logger.debug('Ensuring resource %r for graph %s', target_allocs, graph_key)
-            return self._mem_quota_ref.request_batch_quota(target_allocs, process_quota=True, _promise=True) \
+        mem_request = graph_record.mem_request
+        if mem_request:
+            logger.debug('Ensuring resource %r for graph %s', mem_request, graph_key)
+            return self._mem_quota_ref.request_batch_quota(mem_request, process_quota=True, _promise=True) \
                 .then(lambda *_: self._deallocate_scheduler_resource(session_id, graph_key, delay=2)) \
                 .then(_start_calc)
         else:
@@ -828,7 +845,8 @@ class ExecutionActor(WorkerActor):
 
         def _cache_result(*_):
             save_sizes = dict((k, v.size) for k, v in zip(saved_keys, data_attrs) if v)
-            self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
+            save_shapes = dict((k, v.shape) for k, v in zip(saved_keys, data_attrs) if v)
+            self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes, save_shapes)
 
         if not send_addresses:
             # no endpoints to send, dump keys into shared memory and return

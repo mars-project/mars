@@ -54,6 +54,7 @@ class OperandActor(BaseOperandActor):
         self._pred_workers = set()
 
         self._data_sizes = None
+        self._data_shapes = None
 
         self._input_worker_scores = dict()
         self._worker_scores = dict()
@@ -118,13 +119,14 @@ class OperandActor(BaseOperandActor):
         self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
 
     @log_unhandled
-    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
+    def add_finished_predecessor(self, op_key, worker, output_sizes=None, output_shapes=None):
         """
         This function shall return whether current node is ready. The return values will
         be collected by the predecessor to judge if a node with lower-priority can be
         scheduled.
         """
-        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
+        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes,
+                                         output_shapes=output_shapes)
         if all(k in self._finish_preds for k in self._pred_keys):
             # all predecessors done, the operand can be executed now
             if self.state == OperandState.UNSCHEDULED:
@@ -411,7 +413,7 @@ class OperandActor(BaseOperandActor):
                 self._op_key, self.worker, _tell=True, _wait=False)
 
         @log_unhandled
-        def _acceptor(data_sizes):
+        def _acceptor(data_sizes, data_shapes):
             self._allocated = False
             if not self._is_worker_alive():
                 return
@@ -419,6 +421,7 @@ class OperandActor(BaseOperandActor):
                 self._session_id, self._op_key, self.worker, _tell=True, _wait=False)
 
             self._data_sizes = data_sizes
+            self._data_shapes = data_shapes
             self._io_meta['data_targets'] = list(data_sizes)
             self.start_operand(OperandState.FINISHED)
 
@@ -482,7 +485,8 @@ class OperandActor(BaseOperandActor):
         # record if successors can be executed
         for out_key in self._succ_keys:
             succ_futures.append(self._get_operand_actor(out_key).add_finished_predecessor(
-                self._op_key, self.worker, output_sizes=self._data_sizes, _wait=False))
+                self._op_key, self.worker, output_sizes=self._data_sizes,
+                output_shapes=self._data_shapes, _wait=False))
 
         pred_futures = []
         for in_key in self._pred_keys:

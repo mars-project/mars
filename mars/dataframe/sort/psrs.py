@@ -16,9 +16,10 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
+from ...context import RunningMode
 from ...utils import lazy_import, get_shuffle_input_keys_idxes
 from ...operands import OperandStage
-from ...serialize import ValueType, Int32Field, ListField, StringField, BoolField
+from ...serialize import Int32Field, ListField, StringField, BoolField
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..utils import standardize_range_index
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameShuffleProxy, \
@@ -254,7 +255,7 @@ class DataFramePSRSChunkOperand(DataFrameOperand):
     _sort_type = StringField('sort_type')
 
     _axis = Int32Field('axis')
-    _by = ListField('by', ValueType.string)
+    _by = ListField('by')
     _ascending = BoolField('ascending')
     _inplace = BoolField('inplace')
     _kind = StringField('kind')
@@ -381,7 +382,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     # for shuffle map
     _axis = Int32Field('axis')
-    _by = ListField('by', ValueType.string)
+    _by = ListField('by')
     _ascending = BoolField('ascending')
     _inplace = BoolField('inplace')
     _na_position = StringField('na_position')
@@ -459,6 +460,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
                 poses = records.searchsorted(p_records, side='right')
             else:
                 poses = len(records) - records[::-1].searchsorted(p_records, side='right')
+            del records, p_records
 
             poses = (None,) + tuple(poses) + (None,)
             for i in range(op.n_partition):
@@ -529,6 +531,12 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
         xdf = pd if isinstance(raw_inputs[0], (pd.DataFrame, pd.Series)) else cudf
         concat_values = xdf.concat(raw_inputs, axis=op.axis)
+
+        del raw_inputs[:]
+        if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
+            for input_key in input_keys:
+                ctx.pop((input_key, op.shuffle_key), None)
+
         if op.sort_type == 'sort_values':
             ctx[op.outputs[0].key] = execute_sort_values(concat_values, op)
         else:

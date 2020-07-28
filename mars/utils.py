@@ -47,6 +47,7 @@ from .lib.tblib import Traceback
 logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
 
+OBJECT_FIELD_OVERHEAD = 50
 
 # make flake8 happy by referencing these imports
 tokenize = tokenize
@@ -295,23 +296,31 @@ def deserialize_graph(ser_graph, graph_cls=None):
     return graph_cls.from_json(json_obj)
 
 
-def calc_data_size(dt):
+def calc_data_size(dt, shape=None):
     if dt is None:
         return 0
 
     if isinstance(dt, tuple):
         return sum(calc_data_size(c) for c in dt)
 
+    shape = getattr(dt, 'shape', None) or shape
+    if hasattr(dt, 'memory_usage') or hasattr(dt, 'groupby_obj'):
+        return sys.getsizeof(dt)
     if hasattr(dt, 'nbytes'):
         return max(sys.getsizeof(dt), dt.nbytes)
     if hasattr(dt, 'shape') and len(dt.shape) == 0:
         return 0
-    if hasattr(dt, 'memory_usage') or hasattr(dt, 'groupby_obj'):
-        return sys.getsizeof(dt)
-    if hasattr(dt, 'dtypes') and hasattr(dt, 'shape'):
-        return dt.shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
-    if hasattr(dt, 'dtype') and hasattr(dt, 'shape'):
-        return dt.shape[0] * dt.dtype.itemsize
+    if hasattr(dt, 'dtypes') and shape is not None:
+        size = shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
+        try:
+            index_value_value = dt.index_value.value
+            if hasattr(index_value_value, 'dtype'):
+                size += calc_data_size(index_value_value, shape=shape)
+        except AttributeError:
+            pass
+        return size
+    if hasattr(dt, 'dtype') and shape is not None:
+        return shape[0] * dt.dtype.itemsize
 
     # object chunk
     return sys.getsizeof(dt)
@@ -1049,10 +1058,33 @@ class FixedSizeFileObject:
         return getattr(self._file_obj, item)
 
 
-def is_object_dtype(dtype):
-    try:
-        return np.issubdtype(dtype, np.object_) \
-            or np.issubdtype(dtype, np.unicode_) \
-            or np.issubdtype(dtype, np.bytes_)
-    except TypeError:  # pragma: no cover
-        return False
+def calc_object_overhead(chunk, shape):
+    from .dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
+
+    def is_object_dtype(dtype):
+        try:
+            return np.issubdtype(dtype, np.object_) \
+                   or np.issubdtype(dtype, np.unicode_) \
+                   or np.issubdtype(dtype, np.bytes_)
+        except TypeError:  # pragma: no cover
+            return False
+
+    if not shape or np.isnan(shape[0]) or getattr(chunk, 'dtypes', None) is None:
+        return 0
+
+    if isinstance(chunk, DATAFRAME_CHUNK_TYPE) \
+            and chunk.dtypes is not None:
+        n_strings = len([dt for dt in chunk.dtypes if is_object_dtype(dt)])
+        if is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
+            n_strings += 1
+    elif isinstance(chunk, SERIES_CHUNK_TYPE) \
+            and chunk.dtype is not None:
+        n_strings = 1 if is_object_dtype(chunk.dtype) else 0
+        if is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
+            n_strings += 1
+    elif isinstance(chunk, INDEX_CHUNK_TYPE) \
+            and chunk.dtype is not None:
+        n_strings = 1 if is_object_dtype(chunk.dtype) else 0
+    else:
+        n_strings = 0
+    return n_strings * shape[0] * OBJECT_FIELD_OVERHEAD

@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import logging
+import os
+import sys
 
 try:
     from pyarrow import plasma
@@ -119,6 +120,21 @@ class WorkerService(object):
         return 1 + self._n_cpu_process + self._n_cuda_process + self._n_net_process \
                + (1 if self._spill_dirs else 0)
 
+    def _get_plasma_limit(self):
+        if sys.platform == 'win32':  # pragma: no cover
+            return
+        elif sys.platform == 'darwin':
+            default_plasma_dir = '/tmp'
+        else:
+            default_plasma_dir = '/dev/shm'
+
+        fd = os.open(self._plasma_dir or default_plasma_dir, os.O_RDONLY)
+        stats = os.fstatvfs(fd)
+        os.close(fd)
+        size = stats.f_bsize * stats.f_bavail
+        # keep some safety margin for allocator fragmentation
+        return 9 * size // 10
+
     def _calc_memory_limits(self):
         def _calc_size_limit(limit_str, total_size):
             if limit_str is None:
@@ -144,6 +160,10 @@ class WorkerService(object):
         self._cache_mem_limit = _calc_size_limit(self._cache_mem_limit, self._total_mem)
         if self._cache_mem_limit is None:
             self._cache_mem_limit = mem_stats.free // 2
+
+        plasma_limit = self._get_plasma_limit()
+        if plasma_limit is not None:
+            self._cache_mem_limit = min(plasma_limit, self._cache_mem_limit)
 
         self._soft_mem_limit = _calc_size_limit(self._soft_mem_limit, self._total_mem)
         actual_used = self._total_mem - mem_stats.available
@@ -293,9 +313,11 @@ class WorkerService(object):
         self._status_ref.enable_status_upload(_tell=True)
 
     def handle_process_down(self, pool, proc_indices):
-        logger.debug('Process %r halt. Trying to recover.', proc_indices)
-        for pid in proc_indices:
-            pool.restart_process(pid)
+        proc_id_to_pid = dict((proc_id, pool.processes[proc_id].pid) for proc_id in proc_indices)
+        exit_codes = [pool.processes[proc_id].exitcode for proc_id in proc_indices]
+        logger.warning('Process %r halt, exitcodes=%r. Trying to recover.', proc_id_to_pid, exit_codes)
+        for proc_id in proc_indices:
+            pool.restart_process(proc_id)
         self._daemon_ref.handle_process_down(proc_indices, _tell=True)
 
     def stop(self):
