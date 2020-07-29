@@ -50,13 +50,7 @@ jobs:
       run: |
         source ./.github/workflows/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
-        if [[ $UNAME == "darwin" ]] && [[ "$PYTHON" =~ "3.7" ]]; then
-          # workaround of https://issues.apache.org/jira/browse/ARROW-8684
-          pip install pyarrow==0.15.1
-        fi
-        if [[ "$PYTHON" =~ "3.8" ]]; then
-          conda install -n test --quiet --yes python=$PYTHON numpy
-        fi
+
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
         if [[ $UNAME == "windows" ]]; then
