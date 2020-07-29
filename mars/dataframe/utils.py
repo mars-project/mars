@@ -237,6 +237,7 @@ def parse_index(index_value, *args, store_data=False, key=None):
                 '_max_val_close': False,
                 '_key': key or _tokenize_index(index, *args),
                 '_name': index.name,
+                '_dtype': index.dtype,
             }
         else:
             properties = _extract_property(index, IndexValue.RangeIndex, False)

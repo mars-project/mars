@@ -41,8 +41,9 @@ class ShuffleProxyActor(BaseOperandActor):
         self._mapper_op_to_chunk = dict()
         self._reducer_to_mapper = defaultdict(dict)
 
-    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
-        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
+    def add_finished_predecessor(self, op_key, worker, output_sizes=None, output_shapes=None):
+        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes,
+                                         output_shapes=output_shapes)
 
         from ..chunkmeta import WorkerMeta
         chunk_key = next(iter(output_sizes.keys()))[0]
@@ -62,7 +63,8 @@ class ShuffleProxyActor(BaseOperandActor):
         for (chunk_key, shuffle_key), data_size in output_sizes.items() or ():
             succ_op_key = shuffle_keys_to_op[shuffle_key]
             meta = self._reducer_to_mapper[succ_op_key][op_key] = \
-                WorkerMeta(chunk_size=data_size, workers=(worker,))
+                WorkerMeta(chunk_size=data_size, workers=(worker,),
+                           chunk_shape=output_shapes.get((chunk_key, shuffle_key)))
             reducer_worker = reducer_workers.get(succ_op_key)
             if reducer_worker and reducer_worker != worker:
                 data_to_addresses[(chunk_key, shuffle_key)] = [reducer_worker]

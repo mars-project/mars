@@ -108,11 +108,12 @@ class SchedulerIntegratedTest(unittest.TestCase):
                 self._start_processes(*args, **kwargs)
                 break
             except ProcessRequirementUnmetError:
-                fail_count += 1
-                if fail_count >= 3:
-                    raise
-                logger.error('Failed to start service, retrying')
                 self.terminate_processes()
+                fail_count += 1
+                if fail_count >= 10:
+                    raise
+                time.sleep(5)
+                logger.error('Failed to start service, retrying')
 
     def _start_processes(self, n_schedulers=2, n_workers=2, etcd=False, cuda=False, modules=None,
                          log_scheduler=True, log_worker=True, env=None, scheduler_args=None,

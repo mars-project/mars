@@ -36,22 +36,29 @@ class TensorRelEntr(TensorSpecialBinOp):
 @require_not_none(scipy_rel_entr)
 @infer_dtype(scipy_rel_entr)
 def rel_entr(x1, x2, out=None, where=None, **kwargs):
-    """
+    r"""
     Elementwise function for computing relative entropy.
 
-    .. math:: \mathrm{rel\_entr}(x, y) = \begin{cases} x \log(x / y) & x > 0, y > 0 \\ 0 & x = 0, y \ge 0 \\ \infty & \text{otherwise} \end{cases}
+    .. math::
+
+        \mathrm{rel\_entr}(x, y) =
+            \begin{cases}
+                x \log(x / y) & x > 0, y > 0 \\
+                0 & x = 0, y \ge 0 \\
+                \infty & \text{otherwise}
+            \end{cases}
 
     Parameters
     ----------
-    x : Tensor
-        First input tensor.
-    y : ndarray
-        Second input tensor.
+    x, y : array_like
+        Input arrays
+    out : ndarray, optional
+        Optional output array for the function results
 
     Returns
     -------
-    res : Tensor
-        Output tensor.
+    scalar or ndarray
+        Relative entropy of the inputs
 
     See Also
     --------
@@ -60,6 +67,24 @@ def rel_entr(x1, x2, out=None, where=None, **kwargs):
     Notes
     -----
     This function is jointly convex in x and y.
+
+    The origin of this function is in convex programming; see
+    [1]_. Given two discrete probability distributions :math:`p_1,
+    \ldots, p_n` and :math:`q_1, \ldots, q_n`, to get the relative
+    entropy of statistics compute the sum
+
+    .. math::
+
+        \sum_{i = 1}^n \mathrm{rel\_entr}(p_i, q_i).
+
+    See [2]_ for details.
+
+    References
+    ----------
+    .. [1] Grant, Boyd, and Ye, "CVX: Matlab Software for Disciplined Convex
+        Programming", http://cvxr.com/cvx/
+    .. [2] Kullback-Leibler divergence,
+        https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence
     """
     op = TensorRelEntr(**kwargs)
     return op(x1, x2, out=out, where=where)

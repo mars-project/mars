@@ -42,6 +42,7 @@ except ImportError:  # pragma: no cover
     SerializationCallbackError = None
 
 logger = logging.getLogger(__name__)
+PAGE_SIZE = 64 * 1024
 
 
 class PlasmaKeyMapActor(FunctionActor):
@@ -81,7 +82,7 @@ class PlasmaSharedStore(object):
         from ...serialize.dataserializer import mars_serialize_context
 
         self._plasma_client = plasma_client
-        self._actual_size = None
+        self._size_limit = None
         self._serialize_context = mars_serialize_context()
 
         self._mapper_ref = mapper_ref
@@ -92,31 +93,28 @@ class PlasmaSharedStore(object):
         Get actual capacity of plasma store
         :return: actual storage size in bytes
         """
-        if self._actual_size is None:
-            bufs = []
-            left_size = store_limit
-            total_size = 0
-            alloc_fraction = 0.9
-            while left_size:
-                allocate_size = int(left_size * alloc_fraction)
-                if allocate_size < 1 * 1024 ** 2:
-                    break
+        try:
+            store_limit = min(store_limit, self._plasma_client.store_capacity())
+        except AttributeError:  # pragma: no cover
+            pass
 
+        if self._size_limit is None:
+            left_size = store_limit
+            alloc_fraction = 1
+            while True:
+                allocate_size = int(left_size * alloc_fraction / PAGE_SIZE) * PAGE_SIZE
                 try:
                     obj_id = plasma.ObjectID.from_random()
-                    bufs.append(self._plasma_client.create(obj_id, allocate_size))
+                    buf = [self._plasma_client.create(obj_id, allocate_size)]
                     self._plasma_client.seal(obj_id)
-                    total_size += allocate_size
-                    left_size -= allocate_size
-                    alloc_fraction = 0.9
+                    del buf[:]
+                    break
                 except PlasmaStoreFull:
-                    alloc_fraction -= 0.1
-                    if alloc_fraction < 1e-6:
-                        break
-            del bufs
-            self._plasma_client.evict(total_size)
-            self._actual_size = total_size
-        return self._actual_size
+                    alloc_fraction *= 0.99
+                finally:
+                    self._plasma_client.evict(allocate_size)
+            self._size_limit = allocate_size
+        return self._size_limit
 
     def _new_object_id(self, session_id, data_key):
         """
@@ -137,7 +135,6 @@ class PlasmaSharedStore(object):
 
     def create(self, session_id, data_key, size):
         obj_id = self._new_object_id(session_id, data_key)
-
         try:
             self._plasma_client.evict(size)
             buffer = self._plasma_client.create(obj_id, size)
@@ -152,8 +149,7 @@ class PlasmaSharedStore(object):
             raise
 
         if exc_type is PlasmaStoreFull:
-            raise StorageFull(request_size=size, capacity=self._actual_size,
-                              affected_keys=[data_key])
+            raise StorageFull(request_size=size, capacity=self._size_limit, affected_keys=[data_key])
 
     def seal(self, session_id, data_key):
         obj_id = self._get_object_id(session_id, data_key)
@@ -251,7 +247,7 @@ class PlasmaSharedStore(object):
             raise
 
         if exc is PlasmaStoreFull:
-            raise StorageFull(request_size=data_size, capacity=self._actual_size,
+            raise StorageFull(request_size=data_size, capacity=self._size_limit,
                               affected_keys=[data_key])
 
     def contains(self, session_id, data_key):
