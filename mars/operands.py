@@ -27,13 +27,12 @@ from .core import Entity, Chunk, Tileable, AttributeAsDictKey, ExecutableTuple, 
 from .serialize import SerializableMetaclass, ValueType, ProviderType, IdentityField, \
     ListField, DictField, Int32Field, BoolField, StringField
 from .tiles import NotSupportTile
-from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode, is_object_dtype
+from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode, calc_object_overhead
 
 
 operand_type_to_oprand_cls = {}
 OP_TYPE_KEY = '_op_type_'
 OP_MODULE_KEY = '_op_module_'
-OBJECT_FIELD_OVERHEAD = 50
 T = TypeVar('T')
 
 
@@ -373,27 +372,26 @@ class TileableOperandMixin(object):
 
     @classmethod
     def estimate_size(cls, ctx, op):
-        from .dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
-
         exec_size = 0
         outputs = op.outputs
         if all(not c.is_sparse() and hasattr(c, 'nbytes') and not np.isnan(c.nbytes) for c in outputs):
             for out in outputs:
                 ctx[out.key] = (out.nbytes, out.nbytes)
 
+        all_overhead = 0
         for inp in op.inputs or ():
             try:
+                if isinstance(inp.op, FetchShuffle):
+                    keys_and_shapes = inp.extra_params.get('_shapes', dict()).items()
+                else:
+                    keys_and_shapes = [(inp.key, getattr(inp, 'shape', None))]
+
                 # execution size of a specific data chunk may be
                 # larger than stored type due to objects
-                obj_overhead = n_strings = 0
-                if getattr(inp, 'shape', None) and not np.isnan(inp.shape[0]):
-                    if isinstance(inp, DATAFRAME_CHUNK_TYPE) and inp.dtypes is not None:
-                        n_strings = len([dt for dt in inp.dtypes if is_object_dtype(dt)])
-                    elif isinstance(inp, (INDEX_CHUNK_TYPE, SERIES_CHUNK_TYPE)) and inp.dtype is not None:
-                        n_strings = 1 if is_object_dtype(inp.dtype) else 0
-                    obj_overhead += n_strings * inp.shape[0] * OBJECT_FIELD_OVERHEAD
-
-                exec_size += ctx[inp.key][0] + obj_overhead
+                for key, shape in keys_and_shapes:
+                    overhead = calc_object_overhead(inp, shape)
+                    all_overhead += overhead
+                    exec_size += ctx[key][0] + overhead
             except KeyError:
                 if not op.sparse:
                     inp_size = calc_data_size(inp)
@@ -405,7 +403,10 @@ class TileableOperandMixin(object):
         chunk_sizes = dict()
         for out in outputs:
             try:
-                chunk_size = calc_data_size(out) if not out.is_sparse() else exec_size
+                if not out.is_sparse():
+                    chunk_size = calc_data_size(out) + all_overhead // len(outputs)
+                else:
+                    chunk_size = exec_size
                 if np.isnan(chunk_size):
                     raise TypeError
                 chunk_sizes[out.key] = chunk_size

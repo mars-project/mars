@@ -31,11 +31,12 @@ class SuccessorsExclusiveOperandActor(BaseOperandActor):
         self._finished_sucessors = set()
         self._is_successor_running = False
 
-    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
-        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
+    def add_finished_predecessor(self, op_key, worker, output_sizes=None, output_shapes=None):
+        super().add_finished_predecessor(op_key, worker, output_sizes=output_sizes,
+                                         output_shapes=output_shapes)
 
         from ..chunkmeta import WorkerMeta
-        data_meta = {k: WorkerMeta(chunk_size=v, workers=(worker,))
+        data_meta = {k: WorkerMeta(chunk_size=v, workers=(worker,), chunk_shape=output_shapes.get(k))
                      for k, v in output_sizes.items()}
         sucessor_op_key = self._predecessors_to_sucessors[op_key]
         self._ready_successors_queue.append((sucessor_op_key, data_meta))

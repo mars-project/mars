@@ -137,7 +137,7 @@ class BaseCalcActor(WorkerActor):
                         inproc_quota_keys.append(quota_key)
 
                 if shared_quota_keys:
-                    self._mem_quota_ref.release_quotas(shared_quota_keys, _tell=True, _wait=False)
+                    self._mem_quota_ref.hold_quotas(shared_quota_keys, _tell=True)
                 if inproc_keys:
                     self._mem_quota_ref.hold_quotas(inproc_quota_keys, _tell=True)
                     if self._remove_intermediate:

@@ -105,10 +105,15 @@ class IndexValue(Serializable):
     class RangeIndex(IndexBase):
         _name = AnyField('name')
         _slice = SliceField('slice')
+        _dtype = DataTypeField('dtype')
 
         @property
         def slice(self):
             return self._slice
+
+        @property
+        def dtype(self):
+            return getattr(self, '_dtype', np.dtype(np.intc))
 
         def to_pandas(self):
             slc = self._slice

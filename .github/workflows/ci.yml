@@ -83,7 +83,7 @@ jobs:
               conda install -n test --quiet --yes -c pytorch python=$PYTHON faiss-cpu
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
-              pip install tensorflow
+              pip install tensorflow\<2.3.0
               pip install torch torchvision
               pip install tsfresh
             fi
@@ -112,7 +112,7 @@ jobs:
       run: |
         source ./.github/workflows/reload-env.sh
         # stop the build if there are Python syntax errors or undefined names
-        flake8 mars --count --select=E9,E111,E225,E302,E303,E901,E999,F7,F63,F82,F401,F821,F822,F823,F841,W291,W292,W391 --show-source --statistics
+        flake8 mars --count --select=E9,E111,E225,E302,E303,E901,E999,F7,F63,F82,F401,F821,F822,F823,F841,W291,W292,W391,W605 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 mars --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 

@@ -288,7 +288,7 @@ class KMeansRelocateEmptyClusters(LearnOperand, LearnOperandMixin):
         ctx[op.outputs[1].key] = out_weight_in_clusters
 
 
-def _relocate_empty_clusters(X ,sample_weight, centers_old, centers_new,
+def _relocate_empty_clusters(X, sample_weight, centers_old, centers_new,
                              weight_in_clusters, labels, to_run=None,
                              session=None, run_kwargs=None):
     to_run = to_run or list()
