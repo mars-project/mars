@@ -9,9 +9,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hadoop, 3.8-cython]
+        python-version: [3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hadoop, 3.8-cython]
         include:
-          - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m" }
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
           - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38" }
@@ -55,6 +54,10 @@ jobs:
           # workaround of https://issues.apache.org/jira/browse/ARROW-8684
           pip install pyarrow==0.15.1
         fi
+
+        # Limit pandas version to avoid case error. This shall be fixed later.
+        pip install pandas\<1.1.0
+
         if [[ "$PYTHON" =~ "3.8" ]]; then
           conda install -n test --quiet --yes python=$PYTHON numpy
         fi
@@ -69,12 +72,12 @@ jobs:
               pip install h5py zarr
               pip install matplotlib
             fi
-            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
+            if [ $UNAME == "linux" ]; then
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
                 "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
               conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
             fi
-            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
+            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
                 libxgboost py-xgboost xgboost lightgbm
             fi

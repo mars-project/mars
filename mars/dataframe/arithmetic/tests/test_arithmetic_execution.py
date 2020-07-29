@@ -29,23 +29,8 @@ from mars.dataframe.arithmetic.tests.test_arithmetic import comp_func
 
 binary_functions = dict(
     add=dict(func=operator.add, func_name='add', rfunc_name='radd'),
-    subtract=dict(func=operator.sub, func_name='sub', rfunc_name='rsub'),
-    multiply=dict(func=operator.mul, func_name='mul', rfunc_name='rmul'),
-    floordiv=dict(func=operator.floordiv, func_name='floordiv',
-                  rfunc_name='rfloordiv'),
-    truediv=dict(func=operator.truediv, func_name='truediv',
-                 rfunc_name='rtruediv'),
-    mod=dict(func=operator.mod, func_name='mod', rfunc_name='rmod'),
-    power=dict(func=operator.pow, func_name='pow', rfunc_name='rpow'),
     equal=dict(func=comp_func('eq', 'eq'), func_name='eq', rfunc_name='eq'),
-    not_equal=dict(func=comp_func('ne', 'ne'), func_name='ne', rfunc_name='ne'),
-    greater=dict(func=comp_func('gt', 'lt'), func_name='gt', rfunc_name='lt'),
-    less=dict(func=comp_func('lt', 'gt'), func_name='lt', rfunc_name='gt'),
-    greater_equal=dict(func=comp_func('ge', 'le'), func_name='ge', rfunc_name='le'),
-    less_equal=dict(func=comp_func('le', 'ge'), func_name='le', rfunc_name='ge'),
     logical_and=dict(func=operator.and_, func_name='__and__', rfunc_name='__rand__'),
-    logical_or=dict(func=operator.or_, func_name='__or__', rfunc_name='__ror__'),
-    logical_xor=dict(func=operator.xor, func_name='__xor__', rfunc_name='__rxor__'),
 )
 
 
