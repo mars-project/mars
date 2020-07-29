@@ -6,6 +6,5 @@ psutil>=4.0.0
 lz4>=1.0.0
 protobuf>=3.6
 gevent>=1.2.0,<20.5.0
-bokeh>=1.0.0; python_version >= '3.6'
-bokeh>=1.0.0,<2.0.0; python_version < '3.6'
+bokeh>=1.0.0
 jinja2>=2.0
