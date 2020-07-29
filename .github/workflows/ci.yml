@@ -54,10 +54,6 @@ jobs:
           # workaround of https://issues.apache.org/jira/browse/ARROW-8684
           pip install pyarrow==0.15.1
         fi
-
-        # Limit pandas version to avoid case error. This shall be fixed later.
-        pip install pandas\<1.1.0
-
         if [[ "$PYTHON" =~ "3.8" ]]; then
           conda install -n test --quiet --yes python=$PYTHON numpy
         fi

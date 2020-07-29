@@ -589,7 +589,7 @@ class ReceiverWorkerActor(WorkerActor):
                     _handle_accept_key(chunk_key, _writer)
                     return self.address, None
                 except:  # noqa: E722
-                    _handle_reject_key(*sys.exc_info())
+                    _handle_reject_key(chunk_key, *sys.exc_info())
                     raise
 
         promise.all_(promises).then(lambda *_: self.tell_promise(callback))
