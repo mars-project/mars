@@ -34,8 +34,10 @@ except ImportError:  # for pandas < 1.0
 
 try:
     import pyarrow as pa
+    pa_null = pa.NULL
 except ImportError:  # pragma: no cover
     pa = None
+    pa_null = None
 
 
 @register_extension_dtype
@@ -69,7 +71,7 @@ class ArrowStringDtype(ExtensionDtype):
     type = str
     kind = "U"
     name = "arrow_string"
-    na_value = pa.NULL
+    na_value = pa_null
 
     @classmethod
     def construct_from_string(cls, string):
