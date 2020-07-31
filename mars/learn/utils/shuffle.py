@@ -193,8 +193,8 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
             rs = np.random.RandomState(op.seeds[i])
             size = len(ax_nsplit[ax])
             if size > 1:
-                mapper_seeds[i] = gen_random_seeds(size, rs)
-                reducer_seeds[i] = gen_random_seeds(size, rs)
+                mapper_seeds[i] = tuple(gen_random_seeds(size, rs).tolist())
+                reducer_seeds[i] = tuple(gen_random_seeds(size, rs).tolist())
             else:
                 mapper_seeds[i] = reducer_seeds[i] = [op.seeds[i]] * size
         out_chunks = []
@@ -419,8 +419,8 @@ def shuffle(*arrays, **options):
                         'keyword argument {0}'.format(next(iter(options))))
 
     max_ndim = max(ar.ndim for ar in arrays)
-    axes = tuple(np.unique([validate_axis(max_ndim, ax) for ax in axes]))
-    seeds = gen_random_seeds(len(axes), random_state)
+    axes = tuple(np.unique([validate_axis(max_ndim, ax) for ax in axes]).tolist())
+    seeds = tuple(gen_random_seeds(len(axes), random_state).tolist())
 
     # verify shape
     for ax in axes:
@@ -428,7 +428,7 @@ def shuffle(*arrays, **options):
         if len(shapes) > 1:
             raise ValueError('arrays do not have same shape on axis {0}'.format(ax))
 
-    op = LearnShuffle(axes=axes, seeds=tuple(seeds),
+    op = LearnShuffle(axes=axes, seeds=seeds,
                       output_types=get_output_types(*arrays))
     shuffled_arrays = op(arrays)
     if len(arrays) == 1:

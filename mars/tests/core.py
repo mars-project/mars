@@ -16,6 +16,7 @@
 import functools
 import itertools
 import os
+import json
 import logging
 import shutil
 import subprocess
@@ -627,7 +628,7 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
             raw_graph = graph
-            graph = type(graph).from_json(graph.to_json())
+            graph = type(graph).from_json(json.loads(json.dumps(graph.to_json())))
             graph = type(graph).from_pb(graph.to_pb())
             if kw.get('compose', True):
                 # decompose the raw graph
