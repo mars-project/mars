@@ -49,6 +49,7 @@ del DataFrameFetch, DataFrameFetchShuffle
 
 # noinspection PyUnresolvedReferences
 from ..core import ExecutableTuple
+from .arrays import ArrowStringDtype, ArrowStringArray
 
 # noinspection PyUnresolvedReferences
 from pandas import Timedelta, Timestamp, offsets, NaT, Interval
