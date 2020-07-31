@@ -48,6 +48,8 @@ message OperandDef {
         INDEX_DATA_SOURCE = 33;
         DATE_RANGE = 34;
         TIMEDELTA_RANGE = 35;
+        // misc
+        MEMORY_USAGE = 36;
 
         // GPU
         TO_GPU = 30;

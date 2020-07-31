@@ -26,6 +26,7 @@ Attributes
    Series.shape
    Series.ndim
    Series.name
+   Series.memory_usage
 
 Conversion
 ----------
