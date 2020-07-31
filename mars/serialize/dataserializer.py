@@ -354,6 +354,15 @@ def _deserialize_pandas_categorical_dtype(data):
     return pd.CategoricalDtype(data[0], data[1])
 
 
+def _serialize_arrow_string_array(obj):
+    return obj._arrow_array.chunks
+
+
+def _deserialize_arrow_string_array(obj):
+    from ..dataframe.arrays import ArrowStringArray
+    return ArrowStringArray(pyarrow.chunked_array(obj))
+
+
 _serialize_context = None
 
 
@@ -436,6 +445,8 @@ def _apply_pyarrow_serialization_patch(serialization_context):  # pragma: no cov
 
 
 def mars_serialize_context():
+    from ..dataframe.arrays import ArrowStringArray
+
     global _serialize_context
     if _serialize_context is None:
         ctx = pyarrow.default_serialization_context()
@@ -454,6 +465,9 @@ def mars_serialize_context():
         ctx.register_type(pd.CategoricalDtype, 'pandas.CategoricalDtype',
                           custom_serializer=_serialize_pandas_categorical_dtype,
                           custom_deserializer=_deserialize_pandas_categorical_dtype)
+        ctx.register_type(ArrowStringArray, 'mars.dataframe.ArrowStringArray',
+                          custom_serializer=_serialize_arrow_string_array,
+                          custom_deserializer=_deserialize_arrow_string_array)
         _apply_pyarrow_serialization_patch(ctx)
         if vineyard is not None:  # pragma: no cover
             vineyard.register_vineyard_serialize_context(ctx)
