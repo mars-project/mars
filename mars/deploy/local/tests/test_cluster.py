@@ -32,6 +32,10 @@ try:
     import h5py
 except ImportError:
     h5py = None
+try:
+    import sklearn
+except ImportError:
+    sklearn = None
 
 from mars import tensor as mt
 from mars import dataframe as md
@@ -1111,8 +1115,11 @@ class Test(unittest.TestCase):
             expected = (raw[raw < 0.5] * 3).sum()
             self.assertAlmostEqual(result, expected)
 
+    @unittest.skipIf(sklearn is None, 'sklearn not installed')
     def testLearnInLocalCluster(self, *_):
+        from mars.learn.cluster import KMeans
         from mars.learn.neighbors import NearestNeighbors
+        from sklearn.cluster import KMeans as SK_KMEANS
         from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
 
         with new_cluster(scheduler_n_process=2, worker_n_process=3, shared_memory='20M') as cluster:
@@ -1134,3 +1141,10 @@ class Test(unittest.TestCase):
             result = [r.fetch() for r in ret]
             np.testing.assert_almost_equal(result[0], expected[0])
             np.testing.assert_almost_equal(result[1], expected[1])
+
+            raw = np.array([[1, 2], [1, 4], [1, 0],
+                            [10, 2], [10, 4], [10, 0]])
+            X = mt.array(raw)
+            kmeans = KMeans(n_clusters=2, random_state=0, init='k-means++').fit(X)
+            sk_km_elkan = SK_KMEANS(n_clusters=2, random_state=0, init='k-means++').fit(raw)
+            np.testing.assert_allclose(kmeans.cluster_centers_, sk_km_elkan.cluster_centers_)
