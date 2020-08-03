@@ -187,7 +187,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
             aggregate_size = max(inp.chunk_shape[op.axis] // options.combine_size, 1)
 
         unique_on_chunk_sizes = inp.nsplits[op.axis]
-        start_poses = np.cumsum((0,) + unique_on_chunk_sizes)[:-1]
+        start_poses = np.cumsum((0,) + unique_on_chunk_sizes).tolist()[:-1]
         map_chunks = []
         for c in inp.chunks:
             map_op = TensorUnique(stage=OperandStage.map,
