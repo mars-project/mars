@@ -67,7 +67,7 @@ class RandomState(object):
         if size is None:
             return size
         try:
-            return tuple(size)
+            return tuple(int(s) for s in size)
         except TypeError:
             return size,
 
