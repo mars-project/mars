@@ -293,7 +293,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
         else:
             # No data selected
             row_chunk_sizes = (0,)
-        offsets = np.cumsum((0,) + row_chunk_sizes)
+        offsets = np.cumsum((0,) + row_chunk_sizes).tolist()
 
         out_chunks = []
         for i, row_size in enumerate(row_chunk_sizes):

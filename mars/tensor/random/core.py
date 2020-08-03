@@ -67,7 +67,7 @@ class RandomState(object):
         if size is None:
             return size
         try:
-            return tuple(size)
+            return tuple(int(s) for s in size)
         except TypeError:
             return size,
 
@@ -143,7 +143,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                 size = shape
 
             chunk_op = op.copy().reset_key()
-            chunk_op._seed = seed
+            chunk_op._seed = int(seed)
             chunk_op._state = None
             chunk_op._size = size
             out_chunk = chunk_op.new_chunk(inputs, shape=shape, index=idx,

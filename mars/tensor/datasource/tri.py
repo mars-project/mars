@@ -52,7 +52,7 @@ class TensorTri(TensorHasInput):
 
         fx = lambda x, y: x - y + k
         nsplits = m.nsplits
-        cum_size = [np.cumsum(s) for s in nsplits]
+        cum_size = [np.cumsum(s).tolist() for s in nsplits]
 
         out_chunks = []
         for out_idx in itertools.product(*[range(len(s)) for s in nsplits]):

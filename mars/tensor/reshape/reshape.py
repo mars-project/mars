@@ -127,13 +127,13 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                     # e.g. ((2, 2, 2), [(3, 3), (4, 4))] -> [6, 8]
                     rechunk_nsplists[i] = (old_shape[i],)
 
-                chunk_reduce = np.prod([len(c) for c in nsplits[left_old_idx + 1: old_idx + 1]])
+                chunk_reduce = np.prod([len(c) for c in nsplits[left_old_idx + 1: old_idx + 1]]).item()
                 # cause the higher dimension has been concatenated,
                 # the lowest dimension should be expanded to reduce size
                 rechunk_nsplists[left_old_idx] = \
                     TensorReshape._expand_nsplit_by_reduce(nsplits[left_old_idx], chunk_reduce)
 
-                size_reduce = np.prod(old_shape[left_old_idx + 1: old_idx + 1])
+                size_reduce = np.prod(old_shape[left_old_idx + 1: old_idx + 1]).item()
                 reshape_nsplists[new_idx] = tuple(size_reduce * c for c in rechunk_nsplists[left_old_idx])
 
                 old_idx = left_old_idx - 1
@@ -147,7 +147,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 if np.prod(new_shape[lef_new_idx: new_idx + 1]) != old_dim_size:
                     raise ValueError('shapes not compatible')
 
-                chunk_expand = np.prod(new_shape[lef_new_idx + 1: new_idx + 1])
+                chunk_expand = np.prod(new_shape[lef_new_idx + 1: new_idx + 1]).item()
                 rechunk_nsplists[old_idx] = TensorReshape._reduce_nsplit_by_expand(nsplits[old_idx], chunk_expand)
 
                 for i in range(lef_new_idx + 1, new_idx + 1):

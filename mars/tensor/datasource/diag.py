@@ -71,7 +71,7 @@ class TensorDiagBase(object):
         nsplits = op._get_nsplits(op)
 
         fx = lambda x, y: x - y + k
-        cum_size = [np.cumsum(s) for s in nsplits]
+        cum_size = [np.cumsum(s).tolist() for s in nsplits]
         out_chunks = []
         for out_idx in itertools.product(*[range(len(s)) for s in nsplits]):
             i, j = out_idx
@@ -155,7 +155,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
 
             fx = lambda x, y: x - y + k
             in_nsplits = v.nsplits
-            cum_size = [np.cumsum(s) for s in in_nsplits]
+            cum_size = [np.cumsum(s).tolist() for s in in_nsplits]
             for c in v.chunks:
                 i, j = c.index
                 ld_pos = cum_size[0][i] - 1, cum_size[1][j] - in_nsplits[1][j]

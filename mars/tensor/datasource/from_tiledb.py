@@ -146,7 +146,7 @@ def fromtiledb(uri, ctx=None, key=None, timestamp=None, gpu=False):
     if tiledb_arr.nattr > 1:
         raise NotImplementedError('Does not supported TileDB array schema '
                                   'with more than 1 attr')
-    tiledb_dim_starts = tuple(tiledb_arr.domain.dim(j).domain[0]
+    tiledb_dim_starts = tuple(tiledb_arr.domain.dim(j).domain[0].item()
                               for j in range(tiledb_arr.ndim))
     if any(isinstance(s, float) for s in tiledb_dim_starts):
         raise ValueError('Does not support TileDB array schema '

@@ -72,7 +72,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
                 elif a.shape[ax] == 1:
                     size = repeats = int(repeats.sum())
                 else:
-                    size = repeats.sum()
+                    size = int(repeats.sum())
             else:
                 size = np.nan
             if not isinstance(repeats, Integral):
@@ -130,7 +130,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
                 start = ax_cum_count[ax_idx]
                 stop = ax_cum_count[ax_idx + 1]
                 rp = repeats[start: stop]
-                size = rp.sum()
+                size = int(rp.sum())
             elif not isinstance(repeats, Integral):
                 rp = repeats.cix[ax_idx, ]
                 size = np.nan
