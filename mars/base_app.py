@@ -49,6 +49,7 @@ class BaseApplication(object):
     def __init__(self):
         self.args = None
         self.endpoint = None
+        self.advertise_endpoint = None
         self.scheduler_discoverer = None
         self.pool = None
         self.n_process = None
@@ -132,8 +133,9 @@ class BaseApplication(object):
         except StartArgumentError as ex:
             parser.error('Failed to start application: %s' % ex)
 
+        self.advertise_endpoint = None
         if getattr(self, 'require_pool', True):
-            self.endpoint, self.pool = self._try_create_pool(
+            self.endpoint, self.pool, self.advertise_endpoint = self._try_create_pool(
                 endpoint=endpoint, host=host, port=port, advertise_address=args.advertise)
             self.service_logger.info('%s started at %s.', self.service_description, self.endpoint)
 
@@ -199,7 +201,13 @@ class BaseApplication(object):
                         use_port = None
                     else:
                         raise
-        return endpoint, pool
+
+        if advertise_address is not None:
+            advertise_endpoint = advertise_address.split(':', 1)[0] + ':' + endpoint.rsplit(':', 1)[-1]
+        else:
+            advertise_endpoint = endpoint
+
+        return endpoint, pool, advertise_endpoint
 
     def create_pool(self, *args, **kwargs):
         kwargs.update(dict(n_process=self.n_process, backend='gevent'))
