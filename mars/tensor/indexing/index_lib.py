@@ -439,7 +439,7 @@ class NDArrayBoolIndexHandler(_BoolIndexHandler):
             # but for now, setitem will keep them, thus we cannot record
             # index or shape for this one
             output_axis_index = None if not is_first_bool_index else output_axis_index
-            output_size = None if not is_first_bool_index else index.sum()
+            output_size = None if not is_first_bool_index else int(index.sum())
 
             self.set_chunk_index_info(context, index_info, chunk_index,
                                       chunk_index_info, output_axis_index,

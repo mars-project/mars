@@ -192,7 +192,7 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
         else:
             assert axis == 0
             if isinstance(index, np.ndarray):
-                param['shape'] = index.sum()
+                param['shape'] = int(index.sum())
             else:
                 param['shape'] = np.nan
             param['index_value'] = parse_index(pd_index, inp, index,

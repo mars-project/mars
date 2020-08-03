@@ -168,7 +168,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
 
         chunk_size = in_tensor.chunk_shape[0]
         map_chunks = []
-        axis_0_cum_size = np.cumsum(in_tensor.nsplits[0])
+        axis_0_cum_size = np.cumsum(in_tensor.nsplits[0]).tolist()
         for i in range(chunk_size):
             for j in range(i, chunk_size):
                 kw = {
