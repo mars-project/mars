@@ -1370,3 +1370,72 @@ class Test(TestBase):
             result = self.executor.execute_dataframe(series, concat=True)[0]
             expected = s.drop_duplicates()
             pd.testing.assert_series_equal(result, expected)
+
+    def testMemoryUsageExecution(self):
+        dtypes = ['int64', 'float64', 'complex128', 'object', 'bool']
+        data = dict([(t, np.ones(shape=500).astype(t))
+                     for t in dtypes])
+        raw = pd.DataFrame(data)
+
+        df = from_pandas_df(raw, chunk_size=(500, 2))
+        r = df.memory_usage(index=False)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.memory_usage(index=False))
+
+        df = from_pandas_df(raw, chunk_size=(500, 2))
+        r = df.memory_usage(index=True)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.memory_usage(index=True))
+
+        df = from_pandas_df(raw, chunk_size=(100, 3))
+        r = df.memory_usage(index=False)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.memory_usage(index=False))
+
+        r = df.memory_usage(index=True)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.memory_usage(index=True))
+
+        raw = pd.DataFrame(data, index=np.arange(500).astype('object'))
+
+        df = from_pandas_df(raw, chunk_size=(100, 3))
+        r = df.memory_usage(index=True)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.memory_usage(index=True))
+
+        raw = pd.Series(np.ones(shape=500).astype('object'), name='s')
+
+        series = from_pandas_series(raw)
+        r = series.memory_usage(index=True)
+        self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
+                         raw.memory_usage(index=True))
+
+        series = from_pandas_series(raw, chunk_size=100)
+        r = series.memory_usage(index=False)
+        self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
+                         raw.memory_usage(index=False))
+
+        series = from_pandas_series(raw, chunk_size=100)
+        r = series.memory_usage(index=True)
+        self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
+                         raw.memory_usage(index=True))
+
+        raw = pd.Series(np.ones(shape=500).astype('object'),
+                        index=np.arange(500).astype('object'), name='s')
+
+        series = from_pandas_series(raw, chunk_size=100)
+        r = series.memory_usage(index=True)
+        self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
+                         raw.memory_usage(index=True))
+
+        raw = pd.Index(np.arange(500), name='s')
+
+        index = from_pandas_index(raw)
+        r = index.memory_usage()
+        self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
+                         raw.memory_usage())
+
+        index = from_pandas_index(raw, chunk_size=100)
+        r = index.memory_usage()
+        self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
+                         raw.memory_usage())

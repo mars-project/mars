@@ -28,6 +28,7 @@ Attributes and underlying data
    DataFrame.dtypes
    DataFrame.ndim
    DataFrame.shape
+   DataFrame.memory_usage
 
 Conversion
 ~~~~~~~~~~

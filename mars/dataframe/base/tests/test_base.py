@@ -839,3 +839,50 @@ class Test(TestBase):
         s = df['c7']
         with self.assertRaises(ValueError):
             s.drop_duplicates(method='unknown')
+
+    def testMemoryUsage(self):
+        dtypes = ['int64', 'float64', 'complex128', 'object', 'bool']
+        data = dict([(t, np.ones(shape=500).astype(t))
+                    for t in dtypes])
+        raw = pd.DataFrame(data)
+
+        df = from_pandas_df(raw, chunk_size=(500, 2))
+        r = df.memory_usage().tiles()
+
+        self.assertIsInstance(r, SERIES_TYPE)
+        self.assertEqual(r.shape, (6,))
+        self.assertEqual(len(r.chunks), 3)
+        self.assertIsNone(r.chunks[0].op.stage)
+
+        df = from_pandas_df(raw, chunk_size=(100, 3))
+        r = df.memory_usage(index=True).tiles()
+
+        self.assertIsInstance(r, SERIES_TYPE)
+        self.assertEqual(r.shape, (6,))
+        self.assertEqual(len(r.chunks), 2)
+        self.assertEqual(r.chunks[0].op.stage, OperandStage.reduce)
+
+        r = df.memory_usage(index=False).tiles()
+
+        self.assertIsInstance(r, SERIES_TYPE)
+        self.assertEqual(r.shape, (5,))
+        self.assertEqual(len(r.chunks), 2)
+        self.assertEqual(r.chunks[0].op.stage, OperandStage.reduce)
+
+        raw = pd.Series(np.ones(shape=500).astype('object'), name='s')
+
+        series = from_pandas_series(raw)
+        r = series.memory_usage().tiles()
+
+        self.assertIsInstance(r, TENSOR_TYPE)
+        self.assertEqual(r.shape, ())
+        self.assertEqual(len(r.chunks), 1)
+        self.assertIsNone(r.chunks[0].op.stage)
+
+        series = from_pandas_series(raw, chunk_size=100)
+        r = series.memory_usage().tiles()
+
+        self.assertIsInstance(r, TENSOR_TYPE)
+        self.assertEqual(r.shape, ())
+        self.assertEqual(len(r.chunks), 1)
+        self.assertEqual(r.chunks[0].op.stage, OperandStage.reduce)
