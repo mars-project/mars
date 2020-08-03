@@ -193,8 +193,8 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
             rs = np.random.RandomState(op.seeds[i])
             size = len(ax_nsplit[ax])
             if size > 1:
-                mapper_seeds[i] = tuple(gen_random_seeds(size, rs).tolist())
-                reducer_seeds[i] = tuple(gen_random_seeds(size, rs).tolist())
+                mapper_seeds[i] = gen_random_seeds(size, rs)
+                reducer_seeds[i] = gen_random_seeds(size, rs)
             else:
                 mapper_seeds[i] = reducer_seeds[i] = [op.seeds[i]] * size
         out_chunks = []
@@ -420,7 +420,7 @@ def shuffle(*arrays, **options):
 
     max_ndim = max(ar.ndim for ar in arrays)
     axes = tuple(np.unique([validate_axis(max_ndim, ax) for ax in axes]).tolist())
-    seeds = tuple(gen_random_seeds(len(axes), random_state).tolist())
+    seeds = gen_random_seeds(len(axes), random_state)
 
     # verify shape
     for ax in axes:
