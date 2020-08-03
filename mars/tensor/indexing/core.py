@@ -36,7 +36,7 @@ def calc_shape(tensor_shape, index):
     for ind in index:
         if isinstance(ind, TENSOR_TYPE + CHUNK_TYPE + (np.ndarray,)) and ind.dtype == np.bool_:
             # bool
-            shape.append(np.nan if not isinstance(ind, np.ndarray) else ind.sum())
+            shape.append(np.nan if not isinstance(ind, np.ndarray) else int(ind.sum()))
             for i, t_size, size in zip(itertools.count(0), ind.shape, tensor_shape[in_axis:ind.ndim + in_axis]):
                 if not np.isnan(t_size) and not np.isnan(size) and t_size != size:
                     raise IndexError(

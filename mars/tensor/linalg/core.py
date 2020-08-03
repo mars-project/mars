@@ -142,7 +142,7 @@ class TSQR(object):
 
         # stage 3, map phase
         # split stage2_q_chunk into the same size as stage1_q_chunks
-        q_splits = np.cumsum([c.shape[1] for c in stage1_q_chunks])
+        q_splits = np.cumsum([c.shape[1] for c in stage1_q_chunks]).tolist()
         q_slices = [slice(q_splits[i]) if i == 0 else slice(q_splits[i-1], q_splits[i])
                     for i in range(len(q_splits))]
         stage2_q_chunks = []
