@@ -336,7 +336,7 @@ class StorageClient(object):
     def delete(self, session_id, data_keys, devices=None, _tell=False):
         if not devices:
             devices = functools.reduce(
-                operator.ior, self._manager_ref.get_data_locations(session_id, data_keys), set())
+                operator.or_, self._manager_ref.get_data_locations(session_id, data_keys), set())
         else:
             devices = self._normalize_devices(devices)
 
@@ -352,7 +352,7 @@ class StorageClient(object):
     def pin_data_keys(self, session_id, data_keys, token, devices=None):
         if not devices:
             devices = functools.reduce(
-                operator.ior, self._manager_ref.get_data_locations(session_id, data_keys), set())
+                operator.or_, self._manager_ref.get_data_locations(session_id, data_keys), set())
         else:
             devices = self._normalize_devices(devices)
 
@@ -368,7 +368,7 @@ class StorageClient(object):
     def unpin_data_keys(self, session_id, data_keys, token, devices=None):
         if not devices:
             devices = functools.reduce(
-                operator.ior, self._manager_ref.get_data_locations(session_id, data_keys), set())
+                operator.or_, self._manager_ref.get_data_locations(session_id, data_keys), set())
         else:
             devices = self._normalize_devices(devices)
 

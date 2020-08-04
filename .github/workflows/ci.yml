@@ -131,7 +131,7 @@ jobs:
             ' $cf
           done
         fi
-        python setup.py build_ext -i -j 2
+        retry python setup.py build_ext -i -j 2
         pip install -e ".[dev]"
 
     - name: Test with pytest
