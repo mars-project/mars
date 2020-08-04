@@ -212,6 +212,13 @@ class Test(unittest.TestCase):
         # test repr
         self.assertIn('ArrowStringArray', repr(arrow_array))
 
+        # test concat empty
+        arrow_array5 = ArrowStringArray(pa.chunked_array([], type=pa.string()))
+        concatenated = ArrowStringArray._concat_same_type([arrow_array5, arrow_array5])
+        self.assertEqual(len(concatenated._arrow_array.chunks), 1)
+        pd.testing.assert_series_equal(pd.Series(arrow_array5), pd.Series(concatenated))
+
+    @unittest.skipIf(pd.__version__ < '1.0', 'pandas version should be at least 1.0')
     def testToPandas(self):
         rs = np.random.RandomState(0)
         df = pd.DataFrame({'a': rs.rand(100),
@@ -222,6 +229,9 @@ class Test(unittest.TestCase):
         batches = [pa.RecordBatch.from_pandas(df[i * batch_size: (i + 1) * batch_size])
                    for i in range(n_batch)]
         table = pa.Table.from_batches(batches)
+
+        df1 = arrow_table_to_pandas_dataframe(table, use_arrow_dtype=False)
+        self.assertEqual(df1.dtypes.iloc[1], np.dtype('O'))
 
         df2 = arrow_table_to_pandas_dataframe(table)
         self.assertEqual(df2.dtypes.iloc[1], ArrowStringDtype())

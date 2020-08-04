@@ -142,6 +142,17 @@ class Test(SchedulerIntegratedTest):
         result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
         pd.testing.assert_frame_equal(result, raw1.sort_values(0))
 
+        rs = np.random.RandomState(0)
+        raw2 = pd.DataFrame({'a': rs.rand(10),
+                            'b': ['s%d' % rs.randint(1000) for _ in range(10)]
+                            })
+        raw2['b'] = raw2['b'].astype(md.ArrowStringDtype())
+        mdf = md.DataFrame(raw2, chunk_size=3)
+        df2 = mdf.sort_values(by='b')
+        result = df2.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        expected = raw2.sort_values(by='b')
+        pd.testing.assert_frame_equal(result, expected)
+
         s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
         series1 = md.Series(s1, chunk_size=6)
         result = series1.execute(session=sess, timeout=self.timeout).fetch(session=sess)

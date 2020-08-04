@@ -821,8 +821,8 @@ def create_sa_connection(con, **kwargs):
             engine.dispose()
 
 
-def arrow_table_to_pandas_dataframe(arrow_table, use_arrow_string=True, **kw):
-    if not use_arrow_string:
+def arrow_table_to_pandas_dataframe(arrow_table, use_arrow_dtype=True, **kw):
+    if not use_arrow_dtype:
         # if not use arrow string, just return
         return arrow_table.to_pandas(**kw)
 
