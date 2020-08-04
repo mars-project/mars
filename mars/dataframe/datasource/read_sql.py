@@ -159,7 +159,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
     def _get_selectable(self, engine_or_conn, columns=None):
         import sqlalchemy as sa
         from sqlalchemy import sql
-        from sqlalchemy.exc import NoSuchTableError
+        from sqlalchemy.exc import DatabaseError
 
         # process table_name
         if self._selectable is not None:
@@ -173,7 +173,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                 try:
                     selectable = sa.Table(self._table_or_sql, m, autoload=True,
                                           autoload_with=engine_or_conn, schema=self._schema)
-                except NoSuchTableError:
+                except DatabaseError:
                     temp_name_1 = 't1_' + binascii.b2a_hex(uuid.uuid4().bytes).decode()
                     temp_name_2 = 't2_' + binascii.b2a_hex(uuid.uuid4().bytes).decode()
                     if columns:
