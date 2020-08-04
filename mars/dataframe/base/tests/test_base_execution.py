@@ -1398,10 +1398,11 @@ class Test(TestBase):
 
         raw = pd.DataFrame(data, index=np.arange(500).astype('object'))
 
-        df = from_pandas_df(raw, chunk_size=(100, 3))
-        r = df.memory_usage(index=True)
-        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                       raw.memory_usage(index=True))
+        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+            df = from_pandas_df(raw, chunk_size=(100, 3))
+            r = df.memory_usage(index=True)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                           raw.memory_usage(index=True))
 
         raw = pd.Series(np.ones(shape=500).astype('object'), name='s')
 
@@ -1423,19 +1424,21 @@ class Test(TestBase):
         raw = pd.Series(np.ones(shape=500).astype('object'),
                         index=np.arange(500).astype('object'), name='s')
 
-        series = from_pandas_series(raw, chunk_size=100)
-        r = series.memory_usage(index=True)
-        self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
-                         raw.memory_usage(index=True))
+        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+            series = from_pandas_series(raw, chunk_size=100)
+            r = series.memory_usage(index=True)
+            self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
+                             raw.memory_usage(index=True))
 
         raw = pd.Index(np.arange(500), name='s')
 
-        index = from_pandas_index(raw)
-        r = index.memory_usage()
-        self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
-                         raw.memory_usage())
+        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+            index = from_pandas_index(raw)
+            r = index.memory_usage()
+            self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
+                             raw.memory_usage())
 
-        index = from_pandas_index(raw, chunk_size=100)
-        r = index.memory_usage()
-        self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
-                         raw.memory_usage())
+            index = from_pandas_index(raw, chunk_size=100)
+            r = index.memory_usage()
+            self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
+                             raw.memory_usage())
