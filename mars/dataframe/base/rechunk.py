@@ -70,7 +70,7 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
         new_chunk_size = op.chunk_size
         if isinstance(out, DATAFRAME_TYPE):
-            itemsize = max(dt.itemsize for dt in out.dtypes)
+            itemsize = max(getattr(dt, 'itemsize', 8) for dt in out.dtypes)
         else:
             itemsize = out.dtype.itemsize
         steps = plan_rechunks(op.inputs[0], new_chunk_size, itemsize,
@@ -84,7 +84,7 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
 
 def rechunk(a, chunk_size, threshold=None, chunk_size_limit=None):
     if isinstance(a, DATAFRAME_TYPE):
-        itemsize = max(dt.itemsize for dt in a.dtypes)
+        itemsize = max(getattr(dt, 'itemsize', 8) for dt in a.dtypes)
     else:
         itemsize = a.dtype.itemsize
     chunk_size = get_nsplits(a, chunk_size, itemsize)
