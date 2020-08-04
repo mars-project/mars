@@ -202,7 +202,8 @@ class Promise(object):
                 if acceptor and acceptor._accept_handler:
                     # remove the handler in promise in case that
                     # function closure is not freed
-                    handler, acceptor._accept_handler = acceptor._accept_handler, None
+                    handler, acceptor._accept_handler, acceptor._reject_handler = \
+                        acceptor._accept_handler, None, None
                     next_call = handler(*args, **kwargs)
                 else:
                     acceptor._accepted = accept
@@ -214,7 +215,8 @@ class Promise(object):
                 if rejecter and rejecter._reject_handler:
                     # remove the handler in promise in case that
                     # function closure is not freed
-                    handler, rejecter._reject_handler = rejecter._reject_handler, None
+                    handler, rejecter._reject_handler, rejecter._accept_handler = \
+                        rejecter._reject_handler, None, None
                     next_call = handler(*args, **kwargs)
                 else:
                     rejecter._accepted = accept
@@ -478,6 +480,7 @@ class PromiseActor(FunctionActor):
         return obj()
 
     def delete_promise(self, promise_id):
+        _promise_pool.pop(promise_id, None)
         if promise_id not in self._promises:
             return
         ref_key = self._promise_ref_keys[promise_id]

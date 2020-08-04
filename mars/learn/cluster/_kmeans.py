@@ -183,7 +183,7 @@ def k_means(X, n_clusters, sample_weight=None, init='k-means||',
 def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
                          init='k-means++', verbose=False, x_squared_norms=None,
                          random_state=None, tol=1e-4, oversampling_factor=2,
-                         init_iter=5, session=None, run_kwargs=None):
+                         init_iter=5, X_mean=None, session=None, run_kwargs=None):
     random_state = check_random_state(random_state)
     sample_weight = _check_normalize_sample_weight(sample_weight, X)
 
@@ -195,9 +195,11 @@ def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
 
     # execute X, centers and tol first
     tol = mt.asarray(tol)
-    mt.ExecutableTuple([X, sample_weight, centers, x_squared_norms, tol]).execute(
-        session=session, **(run_kwargs or dict()))
-    tol = tol.fetch()
+    to_run = [X, sample_weight, centers, x_squared_norms, tol]
+    if X_mean is not None:
+        to_run.append(X_mean)
+    mt.ExecutableTuple(to_run).execute(session=session, **(run_kwargs or dict()))
+    tol = tol.fetch(session=session)
 
     if verbose:
         print('Initialization complete')
@@ -237,9 +239,9 @@ def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
         mt.ExecutableTuple(to_runs).execute(session=session, **(run_kwargs or dict()))
 
         if verbose:
-            print("Iteration {0}, inertia {1}" .format(i, inertia.fetch()))
+            print("Iteration {0}, inertia {1}" .format(i, inertia.fetch(session=session)))
 
-        center_shift_tot = center_shift_tot.fetch()
+        center_shift_tot = center_shift_tot.fetch(session=session)
         if center_shift_tot <= tol:
             if verbose:  # pragma: no cover
                 print("Converged at iteration {0}: "
@@ -267,7 +269,7 @@ def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
 def _kmeans_single_lloyd(X, sample_weight, n_clusters, max_iter=300,
                          init='k-means++', verbose=False, x_squared_norms=None,
                          random_state=None, tol=1e-4, oversampling_factor=2,
-                         init_iter=5, session=None, run_kwargs=None):
+                         init_iter=5, X_mean=None, session=None, run_kwargs=None):
     random_state = check_random_state(random_state)
     sample_weight = _check_normalize_sample_weight(sample_weight, X)
 
@@ -279,9 +281,11 @@ def _kmeans_single_lloyd(X, sample_weight, n_clusters, max_iter=300,
 
     # execute X, centers and tol first
     tol = mt.asarray(tol)
-    mt.ExecutableTuple([X, centers, x_squared_norms, tol]).execute(
-        session=session, **(run_kwargs or dict()))
-    tol = tol.fetch()
+    to_run = [X, centers, x_squared_norms, tol]
+    if X_mean is not None:
+        to_run.append(X_mean)
+    mt.ExecutableTuple(to_run).execute(session=session, **(run_kwargs or dict()))
+    tol = tol.fetch(session=session)
 
     if verbose:  # pragma: no cover
         print("Initialization complete")
@@ -308,9 +312,9 @@ def _kmeans_single_lloyd(X, sample_weight, n_clusters, max_iter=300,
         mt.ExecutableTuple(to_runs).execute(session=session, **(run_kwargs or dict()))
 
         if verbose:  # pragma: no cover
-            print("Iteration {0}, inertia {1}" .format(i, inertia.fetch()))
+            print("Iteration {0}, inertia {1}" .format(i, inertia.fetch(session=session)))
 
-        center_shift_tot = center_shift_tot.fetch()
+        center_shift_tot = center_shift_tot.fetch(session=session)
         if center_shift_tot <= tol:
             if verbose:  # pragma: no cover
                 print("Converged at iteration {0}: "
@@ -760,6 +764,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
                 n_init = 1
 
         # subtract of mean of x for more accurate distance computations
+        X_mean = None
         if not X.issparse():
             X_mean = X.mean(axis=0)
             # The copy was already done above
@@ -800,8 +805,9 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
                 init=init, verbose=self.verbose, tol=tol,
                 x_squared_norms=x_squared_norms, random_state=seed,
                 oversampling_factor=self.oversampling_factor,
-                init_iter=self.init_iter)
-            inertia = inertia.fetch()
+                init_iter=self.init_iter, X_mean=X_mean,
+                session=session, run_kwargs=run_kwargs)
+            inertia = inertia.fetch(session=session)
             # determine if these results are the best so far
             if best_inertia is None or inertia < best_inertia:
                 best_labels = labels
@@ -815,7 +821,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
             best_centers += X_mean
             best_centers.execute(session=session, **(run_kwargs or dict()))
 
-        distinct_clusters = len(set(best_labels.fetch()))
+        distinct_clusters = len(set(best_labels.fetch(session=session)))
         if distinct_clusters < self.n_clusters:  # pragma: no cover
             warnings.warn(
                 "Number of distinct clusters ({}) found smaller than "

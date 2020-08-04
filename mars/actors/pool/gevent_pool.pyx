@@ -123,9 +123,10 @@ class GeventThreadPool:
 
         def inner(*args, **kwargs):
             event = gevent.event.Event()
-            gevent.spawn(check, event)
+            greenlet = gevent.spawn(check, event)
             result = fn(*args, **kwargs)
             event.set()
+            greenlet.join()
             return result
 
         return inner
