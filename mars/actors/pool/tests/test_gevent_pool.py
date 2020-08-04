@@ -117,7 +117,7 @@ class DummyActor(Actor):
             return future.result()
         elif message[0] == 'tell_delay':
             actor_ref = self.ctx.actor_ref(message[1])
-            return actor_ref.tell(message[2:-1], delay=message[-1])
+            actor_ref.tell(message[2:-1], delay=message[-1])
         elif message[0] == 'send_unpickled':
             actor_ref = self.ctx.actor_ref(message[1])
             return actor_ref.send(lambda x: x)

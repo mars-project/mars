@@ -120,7 +120,7 @@ class BaseApplication(object):
         for mods in tuple(args.load_modules or ()) + (os.environ.get('MARS_LOAD_MODULES'),):
             if mods:
                 load_modules.extend(mods.split(','))
-        load_modules.append('mars.executor')
+        load_modules.extend(['mars.executor', 'mars.serialize.protos'])
         for m in load_modules:
             __import__(m, globals(), locals(), [])
         self.service_logger.info('Modules %s loaded', ','.join(load_modules))

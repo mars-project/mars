@@ -30,3 +30,12 @@ if [ -n "$WITH_HADOOP" ] && [ -d /usr/local/hadoop ]; then
 fi
 
 export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.version_info[:3]))")
+
+function retry {
+  r=0
+  until [ "$r" -ge 5 ]; do
+    $@ && break
+    r=$((r+1))
+    sleep 1
+  done
+}
