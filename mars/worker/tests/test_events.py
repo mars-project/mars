@@ -69,4 +69,5 @@ class Test(WorkerCase):
                               ProcedureEventType.CPU_CALC, 'test_owner3'):
                 proc_events = events_ref.query_by_time(EventCategory.PROCEDURE)
                 self.assertIsNone(proc_events[-1].time_end)
+            proc_events = events_ref.query_by_time(EventCategory.PROCEDURE)
             self.assertIsNotNone(proc_events[-1].time_end)

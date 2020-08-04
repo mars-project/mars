@@ -173,7 +173,11 @@ class ExpiringCache(dict):
             else:
                 break
         for k in clean_keys:
-            del self[k]
+            self.pop(k, None)
+
+    def __delitem__(self, item):
+        self._insert_times.pop(item, None)
+        self.pop(item, None)
 
 
 def concat_operand_keys(graph, sep=','):

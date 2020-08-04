@@ -294,7 +294,7 @@ class WorkerService(object):
 
         # create ProcessHelperActor
         for proc_id in range(pool.cluster_info.n_process - process_start_index):
-            uid = 'w:%d:mars-process-helper-%d-%d' % (proc_id, os.getpid(), proc_id)
+            uid = 'w:%d:mars-process-helper' % proc_id
             actor = actor_holder.create_actor(ProcessHelperActor, uid=uid)
             self._process_helper_actors.append(actor)
 
