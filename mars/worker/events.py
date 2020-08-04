@@ -25,28 +25,28 @@ from .utils import WorkerActor
 
 
 class EventCategory(Enum):
-    RESOURCE = 'RESOURCE'
-    PROCEDURE = 'PROCEDURE'
+    RESOURCE = 0
+    PROCEDURE = 1
 
 
 class EventLevel(Enum):
-    NORMAL = 'NORMAL'
-    WARNING = 'WARNING'
-    ERROR = 'ERROR'
-    CRITICAL = 'CRITICAL'
+    NORMAL = 0
+    WARNING = 1
+    ERROR = 2
+    CRITICAL = 3
 
 
 class ResourceEventType(Enum):
-    MEM_HIGH = 'MEM_HIGH'
+    MEM_HIGH = 0
 
 
 class ProcedureEventType(Enum):
     __order__ = 'CPU_CALC GPU_CALC DISK_IO NETWORK'
 
-    CPU_CALC = 'CPU_CALC'
-    GPU_CALC = 'GPU_CALC'
-    DISK_IO = 'DISK_IO'
-    NETWORK = 'NETWORK'
+    CPU_CALC = 0
+    GPU_CALC = 1
+    DISK_IO = 2
+    NETWORK = 3
 
 
 class WorkerEvent(object):

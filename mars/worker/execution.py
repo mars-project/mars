@@ -909,6 +909,7 @@ class ExecutionActor(WorkerActor):
         if self._status_ref:
             self._status_ref.remove_progress(session_id, graph_key, _tell=True, _wait=False)
         del self._graph_records[(session_id, graph_key)]
+        self.ref().delete_result_cache(session_id, graph_key, _tell=True, _delay=20)
 
     @promise.reject_on_exception
     @log_unhandled
@@ -1001,6 +1002,9 @@ class ExecutionActor(WorkerActor):
         for cb in callbacks:
             self.tell_promise(cb, *args, **kwargs)
         self._cleanup_graph(session_id, graph_key)
+
+    def delete_result_cache(self, session_id, graph_key):
+        del self._result_cache[(session_id, graph_key)]
 
     def _dump_execution_states(self):
         if logger.getEffectiveLevel() <= logging.DEBUG:

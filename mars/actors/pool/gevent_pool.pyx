@@ -608,9 +608,8 @@ cdef class ActorRemoteHelper:
     cpdef tell(self, ActorRef actor_ref, object message, object delay=None,
                       bint wait=True, object callback=None):
         if delay is not None:
-            gevent.spawn_later(delay, self._send, actor_ref, message, wait_response=False,
-                               wait=wait, callback=callback)
-            return
+            return gevent.spawn_later(delay, self._send, actor_ref, message, wait_response=False,
+                                      wait=wait, callback=callback)
 
         return self._send(actor_ref, message, wait_response=False, wait=wait, callback=callback)
 
@@ -776,9 +775,8 @@ cdef class Communicator(AsyncHandler):
     cpdef tell(self, ActorRef actor_ref, object message, object delay=None,
                bint wait=True, object callback=None):
         if delay is not None:
-            gevent.spawn_later(delay, self._send, actor_ref, message, wait_response=False,
-                               wait=wait, callback=callback)
-            return
+            return gevent.spawn_later(delay, self._send, actor_ref, message, wait_response=False,
+                                      wait=wait, callback=callback)
 
         return self._send(actor_ref, message, wait_response=False, wait=wait, callback=callback)
 
@@ -1174,9 +1172,8 @@ cdef class Dispatcher(AsyncHandler):
     cpdef object tell(self, ActorRef actor_ref, object message, object delay=None,
                       bint wait=True, object callback=None):
         if delay is not None:
-            gevent.spawn_later(delay, self._send, actor_ref, message, wait_response=False,
-                               wait=wait, callback=callback)
-            return
+            return gevent.spawn_later(delay, self._send, actor_ref, message, wait_response=False,
+                                      wait=wait, callback=callback)
 
         return self._send(actor_ref, message, wait_response=False, wait=wait, callback=callback)
 

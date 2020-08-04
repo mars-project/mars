@@ -28,7 +28,7 @@ from ..scheduler.chunkmeta import WorkerMeta
 from ..utils import log_unhandled, build_exc_info
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .storage import DataStorageDevice
-from .utils import WorkerActor, ExpiringCache
+from .utils import WorkerActor
 
 logger = logging.getLogger(__name__)
 
@@ -303,7 +303,7 @@ class ReceiverDataMeta(object):
 class ReceiverManagerActor(WorkerActor):
     def __init__(self):
         super().__init__()
-        self._data_meta_cache = ExpiringCache()
+        self._data_metas = dict()
         self._max_callback_id = 0
         self._callback_id_to_callbacks = dict()
         self._callback_id_to_keys = dict()
@@ -318,9 +318,9 @@ class ReceiverManagerActor(WorkerActor):
 
     def _update_data_meta(self, session_id, data_key, **kwargs):
         try:
-            self._data_meta_cache[(session_id, data_key)].update(**kwargs)
+            self._data_metas[(session_id, data_key)].update(**kwargs)
         except KeyError:
-            self._data_meta_cache[(session_id, data_key)] = ReceiverDataMeta(**kwargs)
+            self._data_metas[(session_id, data_key)] = ReceiverDataMeta(**kwargs)
 
     @promise.reject_on_exception
     @log_unhandled
@@ -341,9 +341,9 @@ class ReceiverManagerActor(WorkerActor):
             session_chunk_key = (session_id, chunk_key)
 
             try:
-                data_meta = self._data_meta_cache[session_chunk_key]
+                data_meta = self._data_metas[session_chunk_key]
             except KeyError:
-                data_meta = self._data_meta_cache[session_chunk_key] = \
+                data_meta = self._data_metas[session_chunk_key] = \
                     ReceiverDataMeta(chunk_size=data_size, source_address=sender_address,
                                      status=ReceiveStatus.NOT_STARTED)
 
@@ -358,7 +358,7 @@ class ReceiverManagerActor(WorkerActor):
                 statuses.append(ReceiveStatus.RECEIVING)
                 continue
             elif data_meta.status == ReceiveStatus.RECEIVED:
-                data_meta = self._data_meta_cache[session_chunk_key] = \
+                data_meta = self._data_metas[session_chunk_key] = \
                     ReceiverDataMeta(chunk_size=data_size, source_address=sender_address,
                                      status=ReceiveStatus.NOT_STARTED)
 
@@ -390,8 +390,8 @@ class ReceiverManagerActor(WorkerActor):
     def register_pending_keys(self, session_id, data_keys):
         for key in data_keys:
             session_data_key = (session_id, key)
-            if session_data_key not in self._data_meta_cache \
-                    or self._data_meta_cache[session_data_key].status == ReceiveStatus.ERROR:
+            if session_data_key not in self._data_metas \
+                    or self._data_metas[session_data_key].status == ReceiveStatus.ERROR:
                 self._update_data_meta(session_id, key, status=ReceiveStatus.PENDING,
                                        callback_args=(), callback_kwargs={})
 
@@ -400,7 +400,7 @@ class ReceiverManagerActor(WorkerActor):
         receiving_status = (ReceiveStatus.PENDING, ReceiveStatus.RECEIVING)
         for k in data_keys:
             try:
-                if self._data_meta_cache[(session_id, k)].status in receiving_status:
+                if self._data_metas[(session_id, k)].status in receiving_status:
                     keys.append(k)
             except KeyError:
                 pass
@@ -415,7 +415,7 @@ class ReceiverManagerActor(WorkerActor):
         args, kwargs = (), {}
         for k in data_keys:
             session_data_key = (session_id, k)
-            data_meta = self._data_meta_cache[session_data_key]  # type: ReceiverDataMeta
+            data_meta = self._data_metas[session_data_key]  # type: ReceiverDataMeta
             if data_meta.status in receiving_status:
                 registered_session_keys.append(session_data_key)
                 data_meta.callback_ids.append(cb_id)
@@ -431,37 +431,47 @@ class ReceiverManagerActor(WorkerActor):
             self.tell_promise(callback, *args, **kwargs)
 
     def notify_keys_finish(self, session_id, data_keys, *args, **kwargs):
+        keys_to_clear = []
         for data_key in data_keys:
             session_data_key = (session_id, data_key)
             try:
-                data_meta = self._data_meta_cache[session_data_key]  # type: ReceiverDataMeta
+                data_meta = self._data_metas[session_data_key]  # type: ReceiverDataMeta
             except KeyError:
                 logger.debug('Record of %s not found.', data_key)
                 continue
 
-            data_meta.callback_args = args
-            data_meta.callback_kwargs = kwargs
-            if kwargs.get('_accept', True):
-                data_meta.status = ReceiveStatus.RECEIVED
-            else:
-                data_meta.status = ReceiveStatus.ERROR
+            try:
+                data_meta.callback_args = args
+                data_meta.callback_kwargs = kwargs
+                if kwargs.get('_accept', True):
+                    data_meta.status = ReceiveStatus.RECEIVED
+                else:
+                    data_meta.status = ReceiveStatus.ERROR
 
-            cb_ids = data_meta.callback_ids
-            data_meta.callback_ids = []
-            if not cb_ids:
-                continue
+                cb_ids = data_meta.callback_ids
+                data_meta.callback_ids = []
+                if not cb_ids:
+                    continue
 
-            kwargs['_wait'] = False
-            notified = 0
-            for cb_id in cb_ids:
-                cb_keys = self._callback_id_to_keys[cb_id]
-                cb_keys.remove(session_data_key)
-                if not cb_keys:
-                    del self._callback_id_to_keys[cb_id]
-                    cb = self._callback_id_to_callbacks.pop(cb_id)
-                    notified += 1
-                    self.tell_promise(cb, *args, **kwargs)
-            logger.debug('%d transfer listeners of %s notified.', notified, data_key)
+                kwargs['_wait'] = False
+                notified = 0
+                for cb_id in cb_ids:
+                    cb_keys = self._callback_id_to_keys[cb_id]
+                    cb_keys.remove(session_data_key)
+                    if not cb_keys:
+                        del self._callback_id_to_keys[cb_id]
+                        cb = self._callback_id_to_callbacks.pop(cb_id)
+                        notified += 1
+                        self.tell_promise(cb, *args, **kwargs)
+                logger.debug('%d transfer listeners of %s notified.', notified, data_key)
+            finally:
+                if data_meta.status == ReceiveStatus.RECEIVED:
+                    keys_to_clear.append(data_key)
+        self.ref().clear_keys(session_id, keys_to_clear, _tell=True, _delay=5)
+
+    def clear_keys(self, session_id, keys):
+        for k in keys:
+            self._data_metas.pop((session_id, k), None)
 
 
 class ReceiverWorkerActor(WorkerActor):
@@ -478,7 +488,7 @@ class ReceiverWorkerActor(WorkerActor):
 
         self._data_writers = dict()
         self._writing_futures = dict()
-        self._data_meta_cache = ExpiringCache()
+        self._data_metas = dict()
 
     def post_create(self):
         from .events import EventsActor
@@ -573,7 +583,7 @@ class ReceiverWorkerActor(WorkerActor):
             self.ref().handle_receive_timeout(session_id, chunk_keys, _delay=timeout, _tell=True)
 
         for chunk_key, data_size in zip(chunk_keys, data_sizes):
-            self._data_meta_cache[(session_id, chunk_key)] = ReceiverDataMeta(
+            self._data_metas[(session_id, chunk_key)] = ReceiverDataMeta(
                 start_time=time.time(), chunk_size=data_size, source_address=source_address)
             if use_promise:
                 promises.append(self.storage_client.create_writer(
@@ -618,7 +628,7 @@ class ReceiverWorkerActor(WorkerActor):
                 self._wait_unfinished_writing(session_id, chunk_key)
                 session_chunk_key = (session_id, chunk_key)
                 try:
-                    data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
+                    data_meta = self._data_metas[session_chunk_key]  # type: ReceiverDataMeta
 
                     # if error occurred, interrupts
                     if data_meta.status == ReceiveStatus.ERROR:
@@ -641,7 +651,7 @@ class ReceiverWorkerActor(WorkerActor):
             if finished_keys:
                 for chunk_key in finished_keys:
                     session_chunk_key = (session_id, chunk_key)
-                    data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
+                    data_meta = self._data_metas[session_chunk_key]  # type: ReceiverDataMeta
 
                     self._wait_unfinished_writing(session_id, chunk_key)
                     # update transfer speed stats
@@ -664,7 +674,7 @@ class ReceiverWorkerActor(WorkerActor):
     def _is_receive_running(self, session_id, chunk_key):
         receive_done_statuses = (ReceiveStatus.ERROR, ReceiveStatus.RECEIVED)
         try:
-            return self._data_meta_cache[(session_id, chunk_key)].status not in receive_done_statuses
+            return self._data_metas[(session_id, chunk_key)].status not in receive_done_statuses
         except KeyError:
             return False
 
@@ -699,7 +709,7 @@ class ReceiverWorkerActor(WorkerActor):
         exc_info = build_exc_info(WorkerDead)
         session_to_keys = defaultdict(set)
         for session_chunk_key in self._data_writers.keys():
-            if self._data_meta_cache[session_chunk_key].source_address in dead_workers:
+            if self._data_metas[session_chunk_key].source_address in dead_workers:
                 session_to_keys[session_chunk_key[0]].add(session_chunk_key[1])
         for session_id, data_keys in session_to_keys.items():
             self.ref().cancel_receive(session_id, list(data_keys), exc_info=exc_info, _tell=True)
@@ -733,7 +743,7 @@ class ReceiverWorkerActor(WorkerActor):
                 pass
 
             try:
-                data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
+                data_meta = self._data_metas[session_chunk_key]  # type: ReceiverDataMeta
                 data_meta.status = ReceiveStatus.ERROR
             except KeyError:
                 pass
@@ -744,7 +754,7 @@ class ReceiverWorkerActor(WorkerActor):
         # invoke registered callbacks for chunk
         for k in chunk_keys:
             try:
-                data_meta = self._data_meta_cache[(session_id, k)]  # type: ReceiverDataMeta
+                data_meta = self._data_metas.pop((session_id, k))  # type: ReceiverDataMeta
             except KeyError:
                 continue
 

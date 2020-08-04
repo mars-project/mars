@@ -316,12 +316,20 @@ class PromiseRefWrapper(object):
             if not kwargs.pop('_promise', False):
                 return ref_fun(*args, **kwargs)
 
-            p = Promise()
-            promise_id = p.id
-            self._caller.register_promise(p, self._ref)
-
             timeout = kwargs.pop('_timeout', 0)
             spawn = kwargs.pop('_spawn', True)
+
+            p = Promise()
+            promise_id = p.id
+
+            if timeout and timeout > 0:
+                # add a callback that triggers some times later to deal with timeout
+                timeout_coro = self._caller.ref().handle_promise_timeout(
+                    promise_id, _tell=True, _delay=timeout)
+            else:
+                timeout_coro = None
+
+            self._caller.register_promise(p, self._ref, timeout_coro)
 
             kwargs['callback'] = ((self._caller.uid, self._caller.address),
                                   'handle_promise', promise_id)
@@ -338,10 +346,6 @@ class PromiseRefWrapper(object):
                 self._caller.async_group.spawn(_promise_runner)
             else:
                 ref_fun(*args, **kwargs)
-
-            if timeout and timeout > 0:
-                # add a callback that triggers some times later to deal with timeout
-                self._caller.ref().handle_promise_timeout(promise_id, _tell=True, _delay=timeout)
 
             return p
 
@@ -390,6 +394,7 @@ class PromiseActor(FunctionActor):
         if not hasattr(self, '_promises'):
             self._promises = dict()
             self._promise_ref_keys = dict()
+            self._promise_timeout_coros = dict()
             self._ref_key_promises = dict()
 
     def promise_ref(self, *args, **kwargs):
@@ -442,12 +447,13 @@ class PromiseActor(FunctionActor):
             del args, kwargs
         return p
 
-    def register_promise(self, promise, ref):
+    def register_promise(self, promise, ref, timeout_coro=None):
         """
         Register a promise into the actor with referrer info
 
         :param Promise promise: promise object to register
         :param ActorRef ref: ref
+        :param timeout_coro: coroutine of timeout
         """
         promise_id = promise.id
 
@@ -457,6 +463,8 @@ class PromiseActor(FunctionActor):
         self._promises[promise_id] = weakref.ref(promise, _weak_callback)
         ref_key = (ref.uid, ref.address)
         self._promise_ref_keys[promise_id] = ref_key
+        if timeout_coro is not None:
+            self._promise_timeout_coros[promise_id] = timeout_coro
         try:
             self._ref_key_promises[ref_key].add(promise_id)
         except KeyError:
@@ -532,6 +540,10 @@ class PromiseActor(FunctionActor):
                 logger.warning('Promise %r reentered or not registered in %s', promise_id, self.uid)
                 return
             self.get_promise(promise_id).step_next([args, kwargs])
+
+            timeout_coro = self._promise_timeout_coros.pop(promise_id, None)
+            if timeout_coro is not None:
+                timeout_coro.kill()
         finally:
             self.delete_promise(promise_id)
 
@@ -547,6 +559,7 @@ class PromiseActor(FunctionActor):
                 return
 
             p.step_next([build_exc_info(PromiseTimeout), dict(_accept=False)])
+            self._promise_timeout_coros.pop(promise_id, None)
         finally:
             self.delete_promise(promise_id)
 
@@ -558,31 +571,34 @@ def all_(promises):
     :param promises: collection of promises
     :return: the new promise
     """
-    promises = [p for p in promises if isinstance(p, Promise)]
+    promises = list(promises)
+
+    promise_refs = [weakref.ref(p) for p in promises if isinstance(p, Promise)]
     new_promise = Promise()
-    finish_set = set()
+    running_ids = set(ref().id for ref in promise_refs)
 
-    def _build_then(promise):
+    def _build_then_reject(promise_ref):
+        ref_id = promise_ref().id
+
         def _then(*_, **__):
-            finish_set.add(promise.id)
-            if all(p.id in finish_set for p in promises):
-                for p in promises:
-                    _promise_pool.pop(p.id, None)
+            _promise_pool.pop(ref_id, None)
+            running_ids.difference_update([ref_id])
+            if not running_ids:
                 new_promise.step_next()
-        return _then
 
-    def _handle_reject(*args, **kw):
-        if new_promise._accepted is not None:
-            return
-        for p in promises:
-            _promise_pool.pop(p.id, None)
-        kw['_accept'] = False
-        new_promise.step_next([args, kw])
+        def _reject(*args, **kw):
+            _promise_pool.pop(ref_id, None)
+            if new_promise._accepted is not None:
+                return
+            kw['_accept'] = False
+            new_promise.step_next([args, kw])
 
-    for p in promises:
-        p.then(_build_then(p), _handle_reject)
+        return _then, _reject
 
-    if promises:
+    for ref in promise_refs:
+        ref().then(*_build_then_reject(ref))
+
+    if promise_refs:
         return new_promise
     else:
         new_promise.step_next()
