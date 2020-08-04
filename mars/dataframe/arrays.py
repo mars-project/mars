@@ -181,9 +181,9 @@ class ArrowStringArray(StringArrayBase):
         return self.to_numpy()
 
     @staticmethod
-    def _process_pos(pos, length):
+    def _process_pos(pos, length, is_start):
         if pos is None:
-            return 0
+            return 0 if is_start else length
         return pos + length if pos < 0 else pos
 
     def __getitem__(self, item):
@@ -195,8 +195,8 @@ class ArrowStringArray(StringArrayBase):
             elif self._can_process_slice_via_arrow(item):
                 length = len(self)
                 start, stop = item.start, item.stop
-                start = self._process_pos(start, length)
-                stop = self._process_pos(stop, length)
+                start = self._process_pos(start, length, True)
+                stop = self._process_pos(stop, length, False)
                 return ArrowStringArray(
                     self._arrow_array.slice(offset=start,
                                             length=stop - start))
@@ -320,6 +320,8 @@ class ArrowStringArray(StringArrayBase):
         cls, to_concat: Sequence["ArrowStringArray"]) -> "ArrowStringArray":
         chunks = list(itertools.chain.from_iterable(x._arrow_array.chunks
                                                     for x in to_concat))
+        if len(chunks) == 0:
+            chunks = [pa.array([], type=pa.string())]
         return cls(pa.chunked_array(chunks))
 
     def value_counts(self, dropna=False):
@@ -405,6 +407,11 @@ class ArrowStringArray(StringArrayBase):
         cls.__ge__ = cls._create_comparison_method(operator.ge)
 
     _create_comparison_method = _create_arithmetic_method
+
+    def __mars_tokenize__(self):
+        return [memoryview(x) for chunk in self._arrow_array.chunks
+                for x in chunk.buffers()
+                if x is not None]
 
 
 ArrowStringArray._add_arithmetic_ops()
