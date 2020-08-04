@@ -81,7 +81,7 @@ class ContextBase(object):
     # Meta related
     # ------------
 
-    def get_tileable_metas(session_id, tileable_keys, filter_fields: List[str] = None) -> List:
+    def get_tileable_metas(self, tileable_keys, filter_fields: List[str] = None) -> List:
         """
         get tileable metas. Tileable includes tensor, DataFrame, mutable tensor and mutable DataFrame.
         :param tileable_keys: tileable keys

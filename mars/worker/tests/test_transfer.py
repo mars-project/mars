@@ -498,10 +498,10 @@ class Test(WorkerCase):
             self.waitp(receiver_ref.create_data_writers(
                 session_id, [chunk_key7], [data_size], test_actor, timeout=1, _promise=True))
             receiver_ref.cancel_receive(session_id, [chunk_key2, chunk_key7])
-            with self.assertRaises(ExecutionInterrupted):
+            with self.assertRaises(KeyError):
                 receiver_ref.receive_data_part(session_id, [chunk_key7], [False],
                                                dumped_mock_data[:len(dumped_mock_data) // 2])
-            with self.assertRaises(ExecutionInterrupted):
+            with self.assertRaises(KeyError):
                 self.waitp(receiver_manager_ref.add_keys_callback(session_id, [chunk_key7], _promise=True))
 
             # SCENARIO 5: sender halt and receiver is notified (reusing previous unsuccessful key)
