@@ -1144,6 +1144,14 @@ class Test(TestBase):
         expected = raw.astype({'c1': 'int32', 'c2': 'float', 'c8': 'str'})
         pd.testing.assert_frame_equal(expected, result)
 
+        # test arrow_string dtype
+        df = from_pandas_df(raw, chunk_size=8)
+        r = df.astype({'c1': 'arrow_string'})
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype({'c1': 'arrow_string'})
+        pd.testing.assert_frame_equal(expected, result)
+
         # test series
         s = pd.Series(rs.randint(5, size=20))
         series = from_pandas_series(s)
@@ -1151,6 +1159,13 @@ class Test(TestBase):
 
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = s.astype('int32')
+        pd.testing.assert_series_equal(result, expected)
+
+        series = from_pandas_series(s, chunk_size=6)
+        r = series.astype('arrow_string')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s.astype('arrow_string')
         pd.testing.assert_series_equal(result, expected)
 
         # multiply chunks

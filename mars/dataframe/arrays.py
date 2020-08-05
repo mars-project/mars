@@ -191,6 +191,9 @@ class ArrowStringArray(StringArrayBase):
                    for x in chunk.buffers()
                    if x is not None)
 
+    def memory_usage(self, deep=True) -> int:
+        return self.nbytes
+
     @staticmethod
     def _can_process_slice_via_arrow(slc):
         if not isinstance(slc, slice):

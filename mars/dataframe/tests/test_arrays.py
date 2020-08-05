@@ -162,6 +162,10 @@ class Test(unittest.TestCase):
         self.assertLess(arrow_array.nbytes,
                         pd.Series(string_array).memory_usage(deep=True))
 
+        # test memory_usage
+        self.assertEqual(arrow_array.memory_usage(deep=True),
+                         arrow_array.nbytes)
+
         # test isna
         np.testing.assert_array_equal(has_na_arrow_array.isna(),
                                       has_na_string_array.isna())
