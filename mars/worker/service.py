@@ -133,7 +133,7 @@ class WorkerService(object):
         os.close(fd)
         size = stats.f_bsize * stats.f_bavail
         # keep some safety margin for allocator fragmentation
-        return 9 * size // 10
+        return 8 * size // 10
 
     def _calc_memory_limits(self):
         def _calc_size_limit(limit_str, total_size):

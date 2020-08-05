@@ -42,6 +42,10 @@ try:
 except ImportError:  # pragma: no cover
     pyarrow = None
     SerializationCallbackError = Exception
+try:
+    from pyarrow.lib import ArrowNotImplementedError
+except ImportError:
+    ArrowNotImplementedError = type('ArrowNotImplementedError', (Exception,), {})
 
 
 try:
@@ -289,8 +293,10 @@ def dumps(obj, *, serial_type=None, compress=None, pickle_protocol=None):
 def serialize(data):
     try:
         return pyarrow.serialize(data, mars_serialize_context())
-    except SerializationCallbackError:
-        raise SerializationFailed(obj=data) from None
+    except (ArrowNotImplementedError, SerializationCallbackError):
+        if isinstance(data, (complex, np.complexfloating)):
+            return pyarrow.serialize(_ComplexWrapper(data), mars_serialize_context())
+        raise SerializationFailed(obj=data)
 
 
 def deserialize(data):
@@ -298,6 +304,24 @@ def deserialize(data):
 
 
 _FreezeGrouping = namedtuple('_FreezeGrouping', 'name codes grouper ')
+
+
+class _ComplexWrapper:
+    def __init__(self, cmplx):
+        if isinstance(cmplx, complex):
+            self.dtype, self.real, self.imag = None, cmplx.real, cmplx.imag
+        else:
+            self.dtype, self.real, self.imag = cmplx.dtype.str, cmplx.real, cmplx.imag
+
+    def serialize(self):
+        return self.dtype, self.real, self.imag
+
+    @classmethod
+    def deserialize(cls, serialized):
+        if serialized[0] is None:
+            return complex(*serialized[1:])
+        else:
+            return np.dtype(serialized[0]).type(np.complex(*serialized[1:]))
 
 
 def _serialize_groupby_wrapper(obj: GroupByWrapper):
@@ -450,6 +474,9 @@ def mars_serialize_context():
     global _serialize_context
     if _serialize_context is None:
         ctx = pyarrow.default_serialization_context()
+        ctx.register_type(_ComplexWrapper, 'mars.ComplexWrapper',
+                          custom_serializer=_ComplexWrapper.serialize,
+                          custom_deserializer=_ComplexWrapper.deserialize)
         ctx.register_type(SparseNDArray, 'mars.SparseNDArray',
                           custom_serializer=_serialize_sparse_nd_array,
                           custom_deserializer=_deserialize_sparse_nd_array)

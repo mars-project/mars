@@ -731,6 +731,17 @@ class Test(unittest.TestCase):
         dest_s = dataserializer.loads((dataserializer.dumps(s)))
         pd.testing.assert_index_equal(s, dest_s)
 
+        # test complex
+        s = complex(10 + 5j)
+        dest_s = dataserializer.loads((dataserializer.dumps(s)))
+        self.assertIs(type(s), type(dest_s))
+        self.assertEqual(s, dest_s)
+
+        s = np.complex64(10 + 5j)
+        dest_s = dataserializer.loads((dataserializer.dumps(s)))
+        self.assertIs(type(s), type(dest_s))
+        self.assertEqual(s, dest_s)
+
     @unittest.skipIf(pyarrow is None, 'PyArrow is not installed.')
     def testArrowSerialize(self):
         array = np.random.rand(1000, 100)
