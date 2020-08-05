@@ -15,6 +15,7 @@
 
 import logging
 import os
+import sys
 import uuid
 from collections import namedtuple
 from ctypes import c_char, c_char_p, c_int, c_uint, c_ulonglong, byref,\
@@ -172,7 +173,11 @@ def _init_nvml():
     if _init_pid == os.getpid():
         return
 
-    _nvml_lib = _load_nv_library('libnvidia-ml.so', 'libnvidia-ml.dylib', 'nvml.dll')
+    nvml_paths = ['libnvidia-ml.so', 'libnvidia-ml.so.1', 'libnvidia-ml.dylib', 'nvml.dll']
+    if sys.platform[:3] == "win":
+        nvml_paths.append(os.path.join(os.getenv("ProgramFiles", "C:/Program Files"),
+                                       "NVIDIA Corporation/NVSMI/nvml.dll"))
+    _nvml_lib = _load_nv_library(*nvml_paths)
 
     if _nvml_lib is None:
         return
