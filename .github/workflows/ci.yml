@@ -73,13 +73,13 @@ jobs:
                 libxgboost py-xgboost xgboost lightgbm
             fi
             if [[ $UNAME == "linux" ]] && [[ "$PYTHON" =~ "3.6" ]]; then
-              retry pip install torch==1.4.0 torchvision==0.5.0
+              pip install torch==1.4.0 torchvision==0.5.0
               conda install -n test --quiet --yes -c pytorch python=$PYTHON faiss-cpu
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
-              retry pip install tensorflow\<2.3.0
-              retry pip install torch torchvision
-              retry pip install tsfresh
+              pip install tensorflow\<2.3.0
+              pip install torch torchvision
+              pip install tsfresh
             fi
             virtualenv testenv && source testenv/bin/activate
             pip install -r requirements.txt && pip install pytest pytest-timeout
