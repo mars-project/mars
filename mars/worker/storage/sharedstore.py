@@ -16,6 +16,7 @@ import logging
 
 from ...actors import FunctionActor
 from ...errors import StorageFull, StorageDataExists, SerializationFailed
+from ...serialize import dataserializer
 
 try:
     import pyarrow
@@ -221,7 +222,7 @@ class PlasmaSharedStore(object):
 
         try:
             try:
-                serialized = pyarrow.serialize(value, self._serialize_context)
+                serialized = dataserializer.serialize(value)
             except SerializationCallbackError:
                 self._mapper_ref.delete(session_id, data_key)
                 raise SerializationFailed(obj=value) from None
