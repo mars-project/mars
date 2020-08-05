@@ -38,4 +38,5 @@ function retry {
     sleep 1
   done
 }
-alias pip='retry pip'
+alias pip="retry pip"
+shopt -s expand_aliases

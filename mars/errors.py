@@ -107,7 +107,7 @@ class SpillSizeExceeded(MarsError):
 class SerializationFailed(MarsError):
     def __init__(self, msg=None, **kwargs):
         obj = kwargs.pop('obj', None)
-        if obj:
+        if obj is not None:
             msg = (msg or '') + ' type=%s repr=%s' % (type(obj), repr(obj))
         super().__init__(msg)
 
