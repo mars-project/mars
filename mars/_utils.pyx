@@ -199,6 +199,10 @@ cdef list tokenize_pandas_categorical(ob):
     return iterative_tokenize(l)
 
 
+cdef list tokenize_pd_extension_dtype(ob):
+    return iterative_tokenize([ob.name])
+
+
 cdef list tokenize_categories_dtype(ob):
     return iterative_tokenize([ob.categories, ob.ordered])
 
@@ -275,6 +279,8 @@ tokenize_handler.register(pd.arrays.DatetimeArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.TimedeltaArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.PeriodArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.IntervalArray, tokenize_pandas_interval_arrays)
+tokenize_handler.register(pd.api.extensions.ExtensionDtype, tokenize_pd_extension_dtype)
+
 if SATypeEngine is not None:
     tokenize_handler.register(SATypeEngine, tokenize_sqlalchemy_data_type)
 if SASelectable is not None:
