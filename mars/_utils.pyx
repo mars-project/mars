@@ -25,7 +25,8 @@ import pandas as pd
 import cloudpickle
 cimport cython
 
-from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
+from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes, \
+    hash_from_buffer as mmh3_hash_from_buffer
 
 try:
     from sqlalchemy.sql import Selectable as SASelectable
@@ -262,6 +263,7 @@ tokenize_handler.register(dict, lambda ob: iterative_tokenize(sorted(ob.items())
 tokenize_handler.register(set, lambda ob: iterative_tokenize(sorted(ob)))
 tokenize_handler.register(np.random.RandomState, lambda ob: iterative_tokenize(ob.get_state()))
 tokenize_handler.register(Enum, lambda ob: iterative_tokenize((type(ob), ob.name)))
+tokenize_handler.register(memoryview, lambda ob: mmh3_hash_from_buffer(ob))
 tokenize_handler.register(pd.Index, tokenize_pandas_index)
 tokenize_handler.register(pd.Series, tokenize_pandas_series)
 tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)

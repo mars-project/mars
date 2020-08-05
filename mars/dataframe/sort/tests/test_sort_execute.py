@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from mars.tests.core import ExecutorForTest
-from mars.dataframe import DataFrame, Series
+from mars.dataframe import DataFrame, Series, ArrowStringDtype
 from mars.session import new_session
 
 
@@ -250,3 +250,16 @@ class Test(unittest.TestCase):
         result = self.executor.execute_dataframe(series.sort_index(ascending=False), concat=True)[0]
         expected = raw.sort_index(ascending=False)
         pd.testing.assert_series_equal(result, expected)
+
+    def testArrowStringSortValues(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame({'a': rs.rand(10),
+                            'b': ['s%d' % rs.randint(1000) for _ in range(10)]
+                            })
+        raw['b'] = raw['b'].astype(ArrowStringDtype())
+        mdf = DataFrame(raw, chunk_size=3)
+
+        df = mdf.sort_values(by='b')
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = raw.sort_values(by='b')
+        pd.testing.assert_frame_equal(result, expected)

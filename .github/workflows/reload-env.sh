@@ -33,8 +33,9 @@ export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.versio
 function retry {
   r=0
   until [ "$r" -ge 5 ]; do
-    $@ && break
+    $@ && break || true
     r=$((r+1))
     sleep 1
   done
 }
+alias pip='retry pip'
