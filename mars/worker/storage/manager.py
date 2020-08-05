@@ -70,7 +70,7 @@ class StorageManagerActor(WorkerActor):
             location_set.add(location)
             try:
                 attrs = self._data_attrs[session_data_key]
-                attrs.size = max(size, attrs.size)
+                attrs.size = size
                 if shape:
                     attrs.shape = shape
             except KeyError:

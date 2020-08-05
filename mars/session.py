@@ -96,7 +96,8 @@ class LocalSession(object):
                     # GPU
                     cnt = cuda_count() if cuda_count is not None else 0
                     if cnt == 0:
-                        raise RuntimeError('No GPU found for execution')
+                        raise RuntimeError('No GPU found for execution. '
+                                           'Make sure NVML library is in your library path.')
                     kw['n_parallel'] = cnt
                 else:
                     # CPU
