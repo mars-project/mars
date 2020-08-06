@@ -141,18 +141,18 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
             return [self._shared_store.get(session_id, k) for k in data_keys]
 
     @wrap_promised
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
-                    pin_token=None, _promise=False):
+    def put_objects(self, session_id, data_keys, objs, sizes=None, shapes=None,
+                    serialize=False, pin_token=None, _promise=False):
         succ_keys, succ_shapes = [], []
         affected_keys = []
         request_size, capacity = 0, 0
 
         objs = [self._deserial(obj) if serialize else obj for obj in objs]
+        shapes = shapes or [getattr(obj, 'shape', None) for obj in objs]
         obj_refs = []
         obj = None
         try:
-            for key, obj in zip(data_keys, objs):
-                shape = getattr(obj, 'shape', None)
+            for key, obj, shape in zip(data_keys, objs, shapes):
                 try:
                     obj_refs.append(self._shared_store.put(session_id, key, obj))
                     succ_keys.append(key)

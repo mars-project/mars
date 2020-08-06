@@ -19,7 +19,8 @@ from collections import defaultdict
 from .. import promise
 from ..config import options
 from ..executor import Executor
-from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size, \
+from ..serialize import dataserializer
+from ..utils import to_str, deserialize_graph, log_unhandled, \
     get_chunk_shuffle_key
 from ..context import DistributedDictContext
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
@@ -44,7 +45,7 @@ class BaseCalcActor(WorkerActor):
         self._mem_quota_ref = None
         self._events_ref = None
         self._status_ref = None
-        self._resource_ref = None
+        self._execution_ref = None
 
         self._executing_set = set()
         self._marked_as_destroy = False
@@ -55,11 +56,11 @@ class BaseCalcActor(WorkerActor):
     def post_create(self):
         super().post_create()
 
-        from .quota import MemQuotaActor
         from .dispatcher import DispatchActor
+        from .execution import ExecutionActor
         from .events import EventsActor
+        from .quota import MemQuotaActor
         from .status import StatusActor
-        from ..scheduler import ResourceActor
 
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
@@ -68,7 +69,7 @@ class BaseCalcActor(WorkerActor):
         status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         self._status_ref = status_ref if self.ctx.has_actor(status_ref) else None
 
-        self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
+        self._execution_ref = self.ctx.actor_ref(ExecutionActor.default_uid())
 
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
         if not self.ctx.has_actor(self._events_ref):
@@ -181,6 +182,9 @@ class BaseCalcActor(WorkerActor):
         local_context_dict.update(context_dict)
         context_dict.clear()
 
+        self._execution_ref.deallocate_scheduler_resource(
+            session_id, graph_key, delay=0.5, _tell=True, _wait=False)
+
         # start actual execution
         executor = Executor(storage=local_context_dict)
         with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
@@ -192,10 +196,10 @@ class BaseCalcActor(WorkerActor):
 
         # collect results
         result_keys = []
-        result_values = []
-        result_sizes = []
+        result_values, result_sizes, result_shapes = [], [], []
         collected_chunk_keys = set()
-        for k, v in local_context_dict.items():
+        for k in list(local_context_dict.keys()):
+            v = local_context_dict[k]
             if isinstance(k, tuple):
                 k = tuple(to_str(i) for i in k)
             else:
@@ -204,11 +208,12 @@ class BaseCalcActor(WorkerActor):
             chunk_key = get_chunk_key(k)
             if chunk_key in chunk_targets:
                 result_keys.append(k)
-                result_values.append(v)
-                result_sizes.append(calc_data_size(v))
+                result_values.append(dataserializer.serialize(v))
+                result_sizes.append(result_values[-1].total_bytes)
+                result_shapes.append(getattr(v, 'shape', None))
                 collected_chunk_keys.add(chunk_key)
 
-        local_context_dict.clear()
+            local_context_dict.pop(k)
 
         # check if all targets generated
         if any(k not in collected_chunk_keys for k in chunk_targets):
@@ -234,7 +239,8 @@ class BaseCalcActor(WorkerActor):
         logger.debug('Finish calculating operand %s.', graph_key)
 
         return self.storage_client.put_objects(
-            session_id, result_keys, result_values, [self._calc_intermediate_device], sizes=result_sizes) \
+            session_id, result_keys, result_values, [self._calc_intermediate_device],
+            sizes=result_sizes, shapes=result_shapes) \
             .then(lambda *_: result_keys)
 
     @promise.reject_on_exception

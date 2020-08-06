@@ -113,6 +113,25 @@ class Session(object):
         else:
             self._executed_tileables[tileable_key] = graph_key, {tileable_id}
 
+    @staticmethod
+    def _handle_json_response(resp, allow_empty=True, raises=True):
+        try:
+            resp_txt = resp.text
+            if allow_empty:
+                resp_txt = resp_txt or '{}'
+            resp_json = json.loads(resp_txt)
+        except json.JSONDecodeError:
+            text_part = resp.text
+            if len(text_part) > 200:
+                text_part = text_part[:200] + '...'
+            raise ResponseMalformed('Failed to parse server response. Status=%s Response="%s"'
+                                    % (resp.status_code, text_part))
+
+        if raises and resp.status_code >= 400:
+            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
+            raise exc_info[1].with_traceback(exc_info[2])
+        return resp_json
+
     def _check_response_finished(self, graph_url, timeout=None):
         import requests
         try:
@@ -129,11 +148,8 @@ class Session(object):
         if resp.status_code >= 400:
             raise SystemError('Failed to obtain execution status. Code: %d, Reason: %s, Content:\n%s' %
                               (resp.status_code, resp.reason, resp.text))
-        try:
-            resp_json = json.loads(resp.text)
-        except ValueError:
-            raise ResponseMalformed('Response malformed. Code: %d, Content:\n%s' %
-                                    (resp.status_code, resp.text))
+
+        resp_json = self._handle_json_response(resp, raises=False)
         if resp_json['state'] == 'succeeded':
             return True
         elif resp_json['state'] in ('running', 'preparing'):
@@ -261,7 +277,7 @@ class Session(object):
         if resp.status_code >= 400:  # pragma: no cover
             raise ValueError('Failed to get tileable key from server. Code: %d, Reason: %s, Content:\n%s' %
                              (resp.status_code, resp.reason, resp.text))
-        tileable_key = json.loads(resp.text)['tileable_key']
+        tileable_key = self._handle_json_response(resp)['tileable_key']
         nsplits = self._get_tileable_nsplits(tileable_key)
         shape = tuple(sum(s) for s in nsplits)
         return TileableInfos(tileable_key, shape)
@@ -284,11 +300,7 @@ class Session(object):
             'chunk_size': chunk_size,
         }
         resp = self._req_session.post(tensor_url, json=tensor_json)
-        if resp.status_code >= 400:
-            resp_json = json.loads(resp.text)
-            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            raise exc_info[1].with_traceback(exc_info[2])
-        shape, dtype, chunk_size, chunk_keys, chunk_eps = json.loads(resp.text)
+        shape, dtype, chunk_size, chunk_keys, chunk_eps = self._handle_json_response(resp)
         return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype),
                                      chunk_keys, chunk_eps)
 
@@ -297,11 +309,7 @@ class Session(object):
         session_url = self._endpoint + '/api/session/' + self._session_id
         tensor_url = session_url + '/mutable-tensor/%s' % name
         resp = self._req_session.get(tensor_url)
-        if resp.status_code >= 400:
-            resp_json = json.loads(resp.text)
-            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            raise exc_info[1].with_traceback(exc_info[2])
-        shape, dtype, chunk_size, chunk_keys, chunk_eps = json.loads(resp.text)
+        shape, dtype, chunk_size, chunk_keys, chunk_eps = self._handle_json_response(resp)
         return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype),
                                      chunk_keys, chunk_eps)
 
@@ -330,21 +338,14 @@ class Session(object):
         tensor_url = session_url + '/mutable-tensor/%s' % tensor.name
         resp = self._req_session.put(tensor_url, data=bio.getvalue(),
                                      headers={'Content-Type': 'application/octet-stream'})
-        if resp.status_code >= 400:
-            resp_json = json.loads(resp.text)
-            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            raise exc_info[1].with_traceback(exc_info[2])
+        self._handle_json_response(resp)
 
     def seal(self, tensor):
         from ..tensor.utils import create_fetch_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
         tensor_url = session_url + '/mutable-tensor/%s?action=seal' % tensor.name
         resp = self._req_session.post(tensor_url)
-        if resp.status_code >= 400:
-            resp_json = json.loads(resp.text)
-            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            raise exc_info[1].with_traceback(exc_info[2])
-        graph_key_hex, tileable_key, tensor_id, tensor_meta = json.loads(resp.text)
+        graph_key_hex, tileable_key, tensor_id, tensor_meta = self._handle_json_response(resp)
         self._executed_tileables[tileable_key] = uuid.UUID(graph_key_hex), {tensor_id}
 
         # # Construct Tensor on the fly.
@@ -357,7 +358,7 @@ class Session(object):
         url = session_url + '/graph/%s/data/%s?type=nsplits' % (
             self._get_tileable_graph_key(tileable_key), tileable_key)
         resp = self._req_session.get(url)
-        new_nsplits = json.loads(resp.text)
+        new_nsplits = self._handle_json_response(resp)
         return new_nsplits
 
     def _update_tileable_shape(self, tileable):
@@ -404,22 +405,12 @@ class Session(object):
             names=names,
             compose='1' if compose else '0'
         ))
-        if resp.status_code >= 400:
-            resp_json = json.loads(resp.text)
-            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            raise exc_info[1].with_traceback(exc_info[2])
-        resp_json = json.loads(resp.text)
-        return resp_json
+        return self._handle_json_response(resp)
 
     def get_graph_states(self):
         session_url = self._endpoint + '/api/session/' + self._session_id
         resp = self._req_session.get(session_url + '/graph')
-        if resp.status_code >= 400:
-            resp_json = json.loads(resp.text)
-            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            raise exc_info[1].with_traceback(exc_info[2])
-        resp_json = json.loads(resp.text)
-        return resp_json
+        return self._handle_json_response(resp)
 
     def close(self):
         for key in list(self._executed_tileables.keys()):
@@ -440,15 +431,15 @@ class Session(object):
 
     def count_workers(self):
         resp = self._req_session.get(self._endpoint + '/api/worker?action=count', timeout=1)
-        return json.loads(resp.text)
+        return self._handle_json_response(resp)
 
     def get_workers_meta(self):
         resp = self._req_session.get(self._endpoint + '/api/worker', timeout=1)
-        return json.loads(resp.text)
+        return self._handle_json_response(resp)
 
     def get_task_count(self):
         resp = self._req_session.get(self._endpoint + '/api/session/{0}/graph'.format(self._session_id))
-        return len(json.loads(resp.text))
+        return len(self._handle_json_response(resp))
 
     def __enter__(self):
         return self

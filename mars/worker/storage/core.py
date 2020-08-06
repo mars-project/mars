@@ -376,8 +376,8 @@ class ObjectStorageMixin(object):
     def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
         raise NotImplementedError
 
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False, pin_token=False,
-                    _promise=False):
+    def put_objects(self, session_id, data_keys, objs, sizes=None, shapes=None,
+                    serialize=False, pin_token=False, _promise=False):
         raise NotImplementedError
 
 

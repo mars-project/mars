@@ -343,7 +343,8 @@ class QuotaActor(WorkerActor):
                 self._hold_sizes[key] = quota_size
             except KeyError:
                 pass
-            self._log_allocate('Quota key %s applied on %s. Diff: %s,', key, self.uid, size_diff)
+            self._log_allocate('Quota key %s applied on %s. Old Size: %s, Diff: %s,',
+                               key, self.uid, old_size, size_diff)
 
         if process_quota:
             self.process_quotas([key])

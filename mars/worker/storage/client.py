@@ -253,12 +253,17 @@ class StorageClient(object):
                 data_dict.clear()
                 raise
 
-    def put_objects(self, session_id, data_keys, objs, device_order, sizes=None, serialize=False):
+    def put_objects(self, session_id, data_keys, objs, device_order, sizes=None,
+                    shapes=None, serialize=False):
         device_order = self._normalize_devices(device_order)
         if sizes:
             sizes_dict = dict(zip(data_keys, sizes))
         else:
             sizes_dict = dict((k, calc_data_size(obj)) for k, obj in zip(data_keys, objs))
+        if shapes:
+            shapes_dict = dict(zip(data_keys, shapes))
+        else:
+            shapes_dict = dict((k, getattr(obj, 'shape', None)) for k, obj in zip(data_keys, objs))
 
         data_dict = dict(zip(data_keys, objs))
         del objs
@@ -266,9 +271,10 @@ class StorageClient(object):
         def _action(h, keys):
             objects = [data_dict[k] for k in keys]
             data_sizes = [sizes_dict[k] for k in keys]
+            data_shapes = [shapes_dict[k] for k in keys]
             try:
-                return h.put_objects(session_id, keys, objects, sizes=data_sizes, serialize=serialize,
-                                     _promise=True)
+                return h.put_objects(session_id, keys, objects, sizes=data_sizes, shapes=data_shapes,
+                                     serialize=serialize, _promise=True)
             finally:
                 del objects
 
