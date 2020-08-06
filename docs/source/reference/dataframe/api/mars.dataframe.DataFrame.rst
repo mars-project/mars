@@ -50,6 +50,7 @@ mars.dataframe.DataFrame
       ~DataFrame.groupby
       ~DataFrame.gt
       ~DataFrame.head
+      ~DataFrame.insert
       ~DataFrame.isna
       ~DataFrame.isnull
       ~DataFrame.iterrows
@@ -60,6 +61,7 @@ mars.dataframe.DataFrame
       ~DataFrame.max
       ~DataFrame.mean
       ~DataFrame.melt
+      ~DataFrame.memory_usage
       ~DataFrame.merge
       ~DataFrame.min
       ~DataFrame.mod
@@ -77,6 +79,7 @@ mars.dataframe.DataFrame
       ~DataFrame.radd
       ~DataFrame.rdiv
       ~DataFrame.rechunk
+      ~DataFrame.rename
       ~DataFrame.reset_index
       ~DataFrame.rfloordiv
       ~DataFrame.rmod
