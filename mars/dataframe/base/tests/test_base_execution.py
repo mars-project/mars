@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 from mars.config import options, option_context
-from mars.dataframe.base import to_gpu, to_cpu, cut
+from mars.dataframe.base import to_gpu, to_cpu, cut, qcut
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
@@ -942,6 +942,46 @@ class Test(TestBase):
             s3[-1] = np.inf
             with self.assertRaises(ValueError):
                 executor.execute_dataframes([cut(s3, 3)])
+
+    def testQCutExecution(self):
+        rs = np.random.RandomState(0)
+        raw = rs.random(15) * 1000
+        s = pd.Series(raw, index=['i{}'.format(i) for i in range(15)])
+
+        series = from_pandas_series(s)
+        r = qcut(series, 3)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = pd.qcut(s, 3)
+        pd.testing.assert_series_equal(result, expected)
+
+        series = from_pandas_series(s)
+        r = qcut(series, [0.3, 0.5, 0.7])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = pd.qcut(s, [0.3, 0.5, 0.7])
+        pd.testing.assert_series_equal(result, expected)
+
+        r = qcut(range(5), 3)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = pd.qcut(range(5), 3)
+        self.assertIsInstance(result, type(expected))
+        pd.testing.assert_series_equal(pd.Series(result),
+                                       pd.Series(expected))
+
+        r = qcut(range(5), [0.2, 0.5])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = pd.qcut(range(5), [0.2, 0.5])
+        self.assertIsInstance(result, type(expected))
+        pd.testing.assert_series_equal(pd.Series(result),
+                                       pd.Series(expected))
+
+        ctx, executor = self._create_test_context(self.executor)
+        with ctx:
+            r = qcut(range(5), tensor([0.2, 0.5]))
+            result = self.executor.execute_dataframes([r])[0]
+            expected = pd.qcut(range(5), [0.2, 0.5])
+            self.assertIsInstance(result, type(expected))
+            pd.testing.assert_series_equal(pd.Series(result),
+                                           pd.Series(expected))
 
     def testShiftExecution(self):
         # test dataframe
