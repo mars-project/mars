@@ -785,12 +785,24 @@ class Test(TestBase):
         raw = pd.DataFrame(rs.randint(1000, size=(20, 8)),
                            columns=['c' + str(i + 1) for i in range(8)])
 
-        df = from_pandas_df(raw, chunk_size=3)
+        df = from_pandas_df(raw, chunk_size=8)
 
         with self.assertRaises(KeyError):
             df.drop(columns=['c9'])
         with self.assertRaises(NotImplementedError):
             df.drop(columns=from_pandas_series(pd.Series(['c9'])))
+
+        r = df.drop(columns=['c1'])
+        pd.testing.assert_index_equal(r.index_value.to_pandas(), raw.index)
+
+        tiled = r.tiles()
+        start = 0
+        for c in tiled.chunks:
+            raw_index = raw.index[start: start + c.shape[0]]
+            start += c.shape[0]
+            pd.testing.assert_index_equal(raw_index, c.index_value.to_pandas())
+
+        df = from_pandas_df(raw, chunk_size=3)
 
         columns = ['c2', 'c4', 'c5', 'c6']
         index = [3, 6, 7]
