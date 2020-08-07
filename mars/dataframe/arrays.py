@@ -298,7 +298,7 @@ class ArrowStringArray(StringArrayBase):
             return pd.isna(self._arrow_array.to_pandas()).to_numpy()
 
     def take(self, indices, allow_fill=False, fill_value=None):
-        if allow_fill is False:
+        if allow_fill is False or (allow_fill and fill_value == self.dtype.na_value):
             return ArrowStringArray(self[indices])
 
         string_array = self._arrow_array.to_pandas().to_numpy()
@@ -310,6 +310,7 @@ class ArrowStringArray(StringArrayBase):
 
         result = take(string_array, indices, fill_value=fill_value,
                       allow_fill=allow_fill)
+        del string_array
         if replace:
             # pyarrow cannot recognize pa.NULL
             result[result == self.dtype.na_value] = None

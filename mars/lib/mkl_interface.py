@@ -48,6 +48,7 @@ class MKLVersion(ctypes.Structure):
 
 mkl_free_buffers = None
 mkl_get_version = None
+mkl_mem_stat = None
 
 mkl_rt = _load_mkl_rt('mkl_rt')
 if mkl_rt:
@@ -55,6 +56,18 @@ if mkl_rt:
         mkl_free_buffers = mkl_rt.mkl_free_buffers
         mkl_free_buffers.argtypes = []
         mkl_free_buffers.restype = None
+    except AttributeError:
+        pass
+
+    try:
+        _mkl_mem_stat = mkl_rt.mkl_mem_stat
+        _mkl_mem_stat.argtypes = [ctypes.POINTER(ctypes.c_int32)]
+        _mkl_mem_stat.restype = ctypes.c_int64
+
+        def mkl_mem_stat():
+            n_bufs = ctypes.c_int32(0)
+            size = _mkl_mem_stat(ctypes.pointer(n_bufs))
+            return size, n_bufs.value
     except AttributeError:
         pass
 
