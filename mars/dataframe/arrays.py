@@ -298,7 +298,7 @@ class ArrowStringArray(StringArrayBase):
             return pd.isna(self._arrow_array.to_pandas()).to_numpy()
 
     def take(self, indices, allow_fill=False, fill_value=None):
-        if allow_fill is False or (allow_fill and fill_value == self.dtype.na_value):
+        if allow_fill is False:
             return ArrowStringArray(self[indices])
 
         string_array = self._arrow_array.to_pandas().to_numpy()

@@ -70,6 +70,8 @@ class BaseCalcActor(WorkerActor):
         self._status_ref = status_ref if self.ctx.has_actor(status_ref) else None
 
         self._execution_ref = self.ctx.actor_ref(ExecutionActor.default_uid())
+        if not self.ctx.has_actor(self._execution_ref):
+            self._execution_ref = None
 
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
         if not self.ctx.has_actor(self._events_ref):
@@ -182,8 +184,9 @@ class BaseCalcActor(WorkerActor):
         local_context_dict.update(context_dict)
         context_dict.clear()
 
-        self._execution_ref.deallocate_scheduler_resource(
-            session_id, graph_key, delay=0.5, _tell=True, _wait=False)
+        if self._execution_ref:
+            self._execution_ref.deallocate_scheduler_resource(
+                session_id, graph_key, delay=0.5, _tell=True, _wait=False)
 
         # start actual execution
         executor = Executor(storage=local_context_dict)
