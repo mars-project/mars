@@ -121,9 +121,7 @@ class Session(object):
                 resp_txt = resp_txt or '{}'
             resp_json = json.loads(resp_txt)
         except json.JSONDecodeError:
-            text_part = resp.text
-            if len(text_part) > 200:
-                text_part = text_part[:200] + '...'
+            text_part = resp.text if len(resp.text) < 100 else resp.text[:100] + '...'
             raise ResponseMalformed('Failed to parse server response. Status=%s Response="%s"'
                                     % (resp.status_code, text_part))
 

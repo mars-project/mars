@@ -56,7 +56,7 @@ if mkl_rt:
         mkl_free_buffers = mkl_rt.mkl_free_buffers
         mkl_free_buffers.argtypes = []
         mkl_free_buffers.restype = None
-    except AttributeError:
+    except AttributeError:  # pragma: no cover
         pass
 
     try:
@@ -68,7 +68,7 @@ if mkl_rt:
             n_bufs = ctypes.c_int32(0)
             size = _mkl_mem_stat(ctypes.pointer(n_bufs))
             return size, n_bufs.value
-    except AttributeError:
+    except AttributeError:  # pragma: no cover
         pass
 
     try:
@@ -80,5 +80,5 @@ if mkl_rt:
             version = MKLVersion()
             _mkl_get_version(version)
             return version
-    except AttributeError:
+    except AttributeError:  # pragma: no cover
         pass
