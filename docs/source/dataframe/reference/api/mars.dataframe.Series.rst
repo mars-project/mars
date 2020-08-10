@@ -57,6 +57,7 @@ mars.dataframe.Series
       ~Series.map
       ~Series.max
       ~Series.mean
+      ~Series.memory_usage
       ~Series.min
       ~Series.mod
       ~Series.mul
@@ -72,6 +73,7 @@ mars.dataframe.Series
       ~Series.radd
       ~Series.rdiv
       ~Series.rechunk
+      ~Series.rename
       ~Series.reset_index
       ~Series.rfloordiv
       ~Series.rmod

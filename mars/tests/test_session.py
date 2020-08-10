@@ -524,6 +524,12 @@ class Test(unittest.TestCase):
 
         self.assertIn('DataFrameGroupBy', repr(grouped))
 
+        # test Categorical repr
+        c = md.qcut(range(5), 3)
+        self.assertIn('Categorical', repr(c))
+        self.assertIn('Categorical', str(c))
+        self.assertEqual(repr(c.execute()), repr(pd.qcut(range(5), 3)))
+
     def testDataFrameIter(self):
         raw_data = pd.DataFrame(np.random.randint(1000, size=(20, 10)))
         df = md.DataFrame(raw_data, chunk_size=5)

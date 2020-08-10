@@ -141,7 +141,11 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             inputs.append(self._bins)
             bins_unknown = True
         elif isinstance(self._bins, (Base, Entity)):
-            bins = np.asarray([2], dtype=self._bins.dtype)
+            if self._include_lowest:
+                # fix for pandas 0.23
+                bins = np.asarray([0, 2], dtype=self._bins.dtype)
+            else:
+                bins = np.asarray([2], dtype=self._bins.dtype)
             inputs.append(self._bins)
             bins_unknown = True
         else:

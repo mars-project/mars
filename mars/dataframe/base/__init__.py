@@ -24,6 +24,7 @@ from .isin import isin
 from .checkna import isna, notna, isnull, notnull
 from .dropna import df_dropna, series_dropna
 from .cut import cut
+from .qcut import qcut
 from .shift import shift, tshift
 from .diff import df_diff, series_diff
 from .value_counts import value_counts
