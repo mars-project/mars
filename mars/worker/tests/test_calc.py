@@ -15,7 +15,6 @@
 import contextlib
 import random
 import uuid
-import weakref
 
 import numpy as np
 
@@ -85,6 +84,7 @@ class Test(WorkerCase):
         return exec_graph, inputs, add_chunk
 
     def testCpuCalcSingleFetches(self):
+        import gc
         with self._start_calc_pool() as (_pool, test_actor):
             quota_ref = test_actor.promise_ref(MemQuotaActor.default_uid())
             calc_ref = test_actor.promise_ref(CpuCalcActor.default_uid())
@@ -131,12 +131,12 @@ class Test(WorkerCase):
                     raise StorageFull
                 return o_create(store, session_id, data_key, size)
 
-            ref_store = []
+            id_type_set = set()
 
             def _extract_value_ref(*_):
                 inproc_handler = storage_client.get_storage_handler((0, DataStorageDevice.PROC_MEMORY))
                 obj = inproc_handler.get_objects(session_id, [add_chunk.key])[0]
-                ref_store.append(weakref.ref(obj))
+                id_type_set.add((id(obj), type(obj)))
                 del obj
 
             with patch_method(PlasmaSharedStore.create, _mock_plasma_create):
@@ -148,7 +148,8 @@ class Test(WorkerCase):
                             session_id, add_chunk.op.key, [add_chunk.key], None, _promise=True))
                 )
 
-            self.assertIsNone(ref_store[-1]())
+            self.assertTrue(all((id(obj), type(obj)) not in id_type_set
+                                for obj in gc.get_objects()))
 
             quota_dump = quota_ref.dump_data()
             self.assertEqual(len(quota_dump.allocations), 0)

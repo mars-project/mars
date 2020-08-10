@@ -48,7 +48,11 @@ class ProcessHelperActor(WorkerActor):
         """
         Free MKL buffer
         """
-        from ..lib.mkl_interface import mkl_free_buffers
+        from ..lib.mkl_interface import mkl_free_buffers, mkl_mem_stat
         if mkl_free_buffers is None:
             return
+
+        size_before = mkl_mem_stat()
         mkl_free_buffers()
+        size_after = mkl_mem_stat()
+        logger.debug('free_mkl_buffers() called, %r -> %r', size_before, size_after)

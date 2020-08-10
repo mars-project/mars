@@ -34,11 +34,12 @@ from mars import tensor as mt
 from mars.actors import new_client
 from mars.actors.errors import ActorNotExist
 from mars.config import options
+from mars.errors import ResponseMalformed
 from mars.scheduler import ResourceActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps, SerialType
 from mars.tests.core import mock
-from mars.utils import get_next_port
+from mars.utils import get_next_port, build_exc_info
 
 logger = logging.getLogger(__name__)
 
@@ -333,14 +334,14 @@ class Test(unittest.TestCase):
 
 
 class MockResponse:
-    def __init__(self, status_code, json_text=None, data=None):
-        self._json_text = json_text
+    def __init__(self, status_code, text=None, json_data=None, data=None):
+        self._text = text if text is not None else json.dumps(json_data)
         self._content = data
         self._status_code = status_code
 
     @property
     def text(self):
-        return json.dumps(self._json_text)
+        return self._text
 
     @property
     def content(self):
@@ -367,9 +368,9 @@ class MockedServer(object):
     def mocked_requests_get(*arg, **_):
         url = arg[0]
         if '/worker' in url:
-            return MockResponse(200, json_text=1)
+            return MockResponse(200, json_data=1)
         if url.split('/')[-2] == 'graph':
-            return MockResponse(200, json_text={"state": 'succeeded'})
+            return MockResponse(200, json_data={"state": 'succeeded'})
         elif url.split('/')[-2] == 'data':
             data = dumps(np.ones((100, 100)) * 100)
             return MockResponse(200, data=data)
@@ -378,9 +379,9 @@ class MockedServer(object):
     def mocked_requests_post(*arg, **_):
         url = arg[0]
         if url.endswith('session'):
-            return MockResponse(200, json_text={"session_id": str(uuid.uuid4())})
+            return MockResponse(200, json_data={"session_id": str(uuid.uuid4())})
         elif url.endswith('graph'):
-            return MockResponse(200, json_text={"graph_key": str(uuid.uuid4())})
+            return MockResponse(200, json_data={"graph_key": str(uuid.uuid4())})
         else:
             return MockResponse(404)
 
@@ -407,6 +408,19 @@ class TestWithMockServer(unittest.TestCase):
 
             result = sess.run(c, timeout=timeout)
             assert_array_equal(result, np.ones((100, 100)) * 100)
+
+            mock_resp = MockResponse(200, text='{"ERR_STR":')
+            with mock.patch(
+                    'requests.Session.post', side_effect=lambda *_, **__: mock_resp):
+                with self.assertRaises(ResponseMalformed):
+                    sess.run(c, timeout=timeout)
+
+            mock_resp = MockResponse(400, json_data=dict(
+                exc_info=base64.b64encode(pickle.dumps(build_exc_info(ValueError))).decode()))
+            with mock.patch(
+                    'requests.Session.post', side_effect=lambda *_, **__: mock_resp):
+                with self.assertRaises(ValueError):
+                    sess.run(c, timeout=timeout)
 
             d = a * 100
             self.assertIsNone(sess.run(d, fetch=False, timeout=120))

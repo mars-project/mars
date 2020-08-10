@@ -976,11 +976,13 @@ class Test(unittest.TestCase):
             pd.testing.assert_frame_equal(pdf, result)
 
     def testTileContextInLocalCluster(self):
+        from mars.serialize import dataserializer
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', modules=[__name__], web=True) as cluster:
             session = cluster.session
 
             raw = np.random.rand(10, 20)
+            data_bytes = dataserializer.serialize(raw).total_bytes
             data = mt.tensor(raw)
 
             session.run(data)
@@ -988,7 +990,7 @@ class Test(unittest.TestCase):
             data2 = TileWithContextOperand().new_tensor([data], shape=data.shape)
 
             result = session.run(data2)
-            np.testing.assert_array_equal(raw * raw.nbytes, result)
+            np.testing.assert_array_equal(raw * data_bytes, result)
 
     @unittest.skipIf(h5py is None, 'h5py not installed')
     def testStoreHDF5ForLocalCluster(self):

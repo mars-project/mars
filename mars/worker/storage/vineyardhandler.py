@@ -163,10 +163,12 @@ class VineyardHandler(StorageHandler, ObjectStorageMixin):
         return self._client.get_object(data_ids)
 
     @wrap_promised
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
-                    pin_token=None, _promise=False):
+    def put_objects(self, session_id, data_keys, objs, sizes=None, shapes=None,
+                    serialize=False, pin_token=None, _promise=False):
         sizes, shapes = [], []
         for data_key, obj in zip(data_keys, objs):
+            if isinstance(obj, pyarrow.SerializedPyObject):
+                obj = obj.deserialize(dataserializer.mars_serialize_context())
             data_id, size, shape = self._client.put_object(obj)
             sizes.append(size)
             shapes.append(shape)

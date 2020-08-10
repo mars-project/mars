@@ -752,10 +752,8 @@ class ExecutionActor(WorkerActor):
         if mem_request:
             logger.debug('Ensuring resource %r for graph %s', mem_request, graph_key)
             return self._mem_quota_ref.request_batch_quota(mem_request, process_quota=True, _promise=True) \
-                .then(lambda *_: self._deallocate_scheduler_resource(session_id, graph_key, delay=2)) \
                 .then(_start_calc)
         else:
-            self._deallocate_scheduler_resource(session_id, graph_key, delay=2)
             return _start_calc()
 
     @log_unhandled
@@ -813,7 +811,7 @@ class ExecutionActor(WorkerActor):
         """
         storage_client = self.storage_client
 
-        self._deallocate_scheduler_resource(session_id, graph_key)
+        self.deallocate_scheduler_resource(session_id, graph_key)
 
         graph_record = self._graph_records[session_id, graph_key]
         chunk_keys = graph_record.chunk_targets
@@ -871,7 +869,7 @@ class ExecutionActor(WorkerActor):
                 .then(lambda *_: functools.partial(self._do_active_transfer,
                                                    session_id, graph_key, data_to_addresses))
 
-    def _deallocate_scheduler_resource(self, session_id, graph_key, delay=0):
+    def deallocate_scheduler_resource(self, session_id, graph_key, delay=0):
         try:
             graph_record = self._graph_records[(session_id, graph_key)]
             if not graph_record.resource_released:

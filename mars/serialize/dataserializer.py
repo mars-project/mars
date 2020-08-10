@@ -44,7 +44,7 @@ except ImportError:  # pragma: no cover
     SerializationCallbackError = Exception
 try:
     from pyarrow.lib import ArrowNotImplementedError
-except ImportError:
+except ImportError:  # pragma: no cover
     ArrowNotImplementedError = type('ArrowNotImplementedError', (Exception,), {})
 
 
@@ -291,6 +291,8 @@ def dumps(obj, *, serial_type=None, compress=None, pickle_protocol=None):
 
 
 def serialize(data):
+    if isinstance(data, pyarrow.SerializedPyObject):
+        return data
     try:
         return pyarrow.serialize(data, mars_serialize_context())
     except (ArrowNotImplementedError, SerializationCallbackError):
