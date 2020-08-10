@@ -18,6 +18,7 @@ mars.remote.ExecutableTuple
       ~ExecutableTuple.execute
       ~ExecutableTuple.fetch
       ~ExecutableTuple.index
+      ~ExecutableTuple.to_object
    
    
 

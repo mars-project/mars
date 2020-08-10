@@ -11,6 +11,7 @@ Data manipulations
    :toctree: api/
 
    cut
+   qcut
    concat
    melt
    merge

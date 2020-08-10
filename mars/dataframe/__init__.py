@@ -19,6 +19,7 @@ from .initializer import DataFrame, Series, Index, named_dataframe, named_series
 from .base.cut import cut
 from .base.checkna import isna, isnull, notna, notnull
 from .base.melt import melt
+from .base.qcut import qcut
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 from .datasource.from_records import from_records
 from .datasource.from_vineyard import from_vineyard

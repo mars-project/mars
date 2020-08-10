@@ -21,13 +21,13 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
-    is_eager_mode, build_mode, ceildiv
 from ..core import ChunkData, Chunk, TileableEntity, \
     HasShapeTileableData, HasShapeTileableEnity, _ExecuteAndFetchMixin
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
+from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
+    build_mode, ceildiv
 from .utils import fetch_corner_data, ReprSeries
 
 
@@ -1552,19 +1552,22 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
             'categories_value': self.categories_value,
         }
 
-    def __str__(self):
-        if is_eager_mode():  # pragma: no cover
-            return '{0}(op={1}, data=\n{2})'.format(self._type_name, self.op.__class__.__name__,
-                                                    str(self.fetch()))
+    def _to_str(self, representation=False):
+        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+            # in build mode, or not executed, just return representation
+            if representation:
+                return '{0} <op={1}, key={2}>'.format(self._type_name, self.op.__class__.__name__, self.key)
+            else:
+                return '{0}(op={1})'.format(self._type_name, self.op.__class__.__name__)
         else:
-            return '{0}(op={1})'.format(self._type_name, self.op.__class__.__name__)
+            data = self.fetch(session=self._executed_sessions[-1])
+            return repr(data) if repr(data) else str(data)
+
+    def __str__(self):
+        return self._to_str(representation=False)
 
     def __repr__(self):
-        if is_eager_mode():
-            return '{0} <op={1}, key={2}, data=\n{3}>'.format(self._type_name, self.op.__class__.__name__,
-                                                              self.key, repr(self.fetch()))
-        else:
-            return '{0} <op={1}, key={2}>'.format(self._type_name, self.op.__class__.__name__, self.key)
+        return self._to_str(representation=True)
 
     @classmethod
     def cls(cls, provider):
