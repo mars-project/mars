@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -56,68 +57,42 @@ class BaseApplication(object):
 
         self._running = False
 
-    def __call__(self, argv=None):
-        import json
-
-        if argv is None:
-            argv = sys.argv[1:]
+    @staticmethod
+    def _handle_options(argv=None, config=None):
+        argv = argv or sys.argv[1:]
         new_argv = []
+        config = config or options
         for a in argv:
             if not a.startswith('-D'):
                 new_argv.append(a)
                 continue
             conf, val = a[2:].split('=', 1)
             conf_parts = conf.split('.')
-            conf_obj = options
+            conf_obj = config
             for g in conf_parts[:-1]:
                 conf_obj = getattr(conf_obj, g)
             try:
                 setattr(conf_obj, conf_parts[-1], json.loads(val))
-            except:  # noqa: E722
+            except json.JSONDecodeError:
                 setattr(conf_obj, conf_parts[-1], val)
+        return new_argv
 
-        return self._main(new_argv)
+    def __call__(self, argv=None, config=None):
+        return self._main(self._handle_options(argv, config))
 
     def _main(self, argv=None):
         parser = argparse.ArgumentParser(description=self.service_description)
-        parser.add_argument('-a', '--advertise', help='advertise ip exposed to other services')
-        parser.add_argument('-e', '--endpoint', help='endpoint of the service')
-        parser.add_argument('-k', '--kv-store', help='address of kv store service, '
-                                                     'for instance, etcd://localhost:4001')
-        parser.add_argument('-s', '--schedulers', help='endpoint of schedulers, needed for workers '
-                                                       'and webs when kv-store argument is not available, '
-                                                       'or when you need to use multiple schedulers '
-                                                       'without kv-store')
-        parser.add_argument('-H', '--host', help='host of the service, needed when `endpoint` is absent')
-        parser.add_argument('-p', '--port', help='port of the service, needed when `endpoint` is absent')
-        parser.add_argument('--log-level', help='log level')
-        parser.add_argument('--level', help=argparse.SUPPRESS,
-                            action=arg_deprecated_action('--log-level'))
-        parser.add_argument('--log-format', help='log format')
-        parser.add_argument('--format', help=argparse.SUPPRESS,
-                            action=arg_deprecated_action('--log-format'))
-        parser.add_argument('--log-conf', help='log config file, logging.conf by default')
-        parser.add_argument('--log_conf', help=argparse.SUPPRESS,
-                            action=arg_deprecated_action('--log-conf'))
-        parser.add_argument('--load-modules', nargs='*', help='modules to import')
         self.config_args(parser)
-        args = parser.parse_args(argv)
-        args.advertise = args.advertise or os.environ.get('MARS_K8S_POD_IP')
-        self.args = args
+        args = self.args = self.parse_args(parser, argv)
 
         endpoint = args.endpoint
         host = args.host
         port = args.port
         options.kv_store = args.kv_store if args.kv_store else options.kv_store
 
-        load_modules = []
-        for mods in tuple(args.load_modules or ()) + (os.environ.get('MARS_LOAD_MODULES'),):
-            if mods:
-                load_modules.extend(mods.split(','))
-        load_modules.extend(['mars.executor', 'mars.serialize.protos'])
-        for m in load_modules:
+        for m in args.load_modules:
             __import__(m, globals(), locals(), [])
-        self.service_logger.info('Modules %s loaded', ','.join(load_modules))
+        self.service_logger.info('Modules %s loaded', ','.join(args.load_modules))
 
         self.n_process = 1
 
@@ -252,7 +227,45 @@ class BaseApplication(object):
         pass
 
     def config_args(self, parser):
-        raise NotImplementedError
+        parser.add_argument('-a', '--advertise', help='advertise ip exposed to other services')
+        parser.add_argument('-e', '--endpoint', help='endpoint of the service')
+        parser.add_argument('-k', '--kv-store', help='address of kv store service, '
+                                                     'for instance, etcd://localhost:4001')
+        parser.add_argument('-s', '--schedulers', help='endpoint of schedulers, needed for workers '
+                                                       'and webs when kv-store argument is not available, '
+                                                       'or when you need to use multiple schedulers '
+                                                       'without kv-store')
+        parser.add_argument('-H', '--host', help='host of the service, needed when `endpoint` is absent')
+        parser.add_argument('-p', '--port', help='port of the service, needed when `endpoint` is absent')
+        parser.add_argument('--log-level', help='log level')
+        parser.add_argument('--level', help=argparse.SUPPRESS,
+                            action=arg_deprecated_action('--log-level'))
+        parser.add_argument('--log-format', help='log format')
+        parser.add_argument('--format', help=argparse.SUPPRESS,
+                            action=arg_deprecated_action('--log-format'))
+        parser.add_argument('--log-conf', help='log config file, logging.conf by default')
+        parser.add_argument('--log_conf', help=argparse.SUPPRESS,
+                            action=arg_deprecated_action('--log-conf'))
+        parser.add_argument('--load-modules', nargs='*', help='modules to import')
+
+    def parse_args(self, parser, argv, environ=None):
+        environ = environ or os.environ
+        args = parser.parse_args(argv)
+
+        args.advertise = args.advertise or environ.get('MARS_CONTAINER_IP') or os.environ.get('MARS_K8S_POD_IP')
+        load_modules = []
+        for mods in tuple(args.load_modules or ()) + (environ.get('MARS_LOAD_MODULES'),):
+            load_modules.extend(mods.split(',') if mods else [])
+        load_modules.extend(['mars.executor', 'mars.serialize.protos'])
+        args.load_modules = tuple(load_modules)
+
+        if 'MARS_TASK_DETAIL' in environ:
+            task_detail = json.loads(environ['MARS_TASK_DETAIL'])
+            task_type, task_index = task_detail['task']['type'], task_detail['task']['index']
+
+            args.advertise = args.advertise or task_detail['cluster'][task_type][task_index]
+            args.schedulers = args.schedulers or ','.join(task_detail['cluster']['scheduler'])
+        return args
 
     def start(self):
         raise NotImplementedError

@@ -38,6 +38,7 @@ class WorkerApplication(BaseApplication):
         self._service = None
 
     def config_args(self, parser):
+        super().config_args(parser)
         parser.add_argument('--cpu-procs', help='number of processes used for cpu')
         parser.add_argument('--cuda-device', help='CUDA device to use, if not specified, will '
                                                   'use CPU only')
@@ -67,6 +68,15 @@ class WorkerApplication(BaseApplication):
                                  'can be selected from %s. %s by default'
                                  % (compress_types, options.worker.transfer_compression))
 
+    def parse_args(self, parser, argv, environ=None):
+        args = super().parse_args(parser, argv)
+        args.plasma_dir = args.plasma_dir or os.environ.get('MARS_PLASMA_DIRS')
+        args.spill_dir = args.spill_dir or os.environ.get('MARS_SPILL_DIRS')
+        args.cache_mem = args.cache_mem or os.environ.get('MARS_CACHE_MEM_SIZE')
+        args.lock_free_fileio = args.lock_free_fileio \
+            or bool(int(os.environ.get('MARS_LOCK_FREE_FILEIO', '0')))
+        return args
+
     def validate_arguments(self):
         if not self.args.advertise:
             raise StartArgumentError('advertise address is required.')
@@ -81,25 +91,22 @@ class WorkerApplication(BaseApplication):
         # here we create necessary actors on worker
         # and distribute them over processes
 
-        plasma_dir = self.args.plasma_dir or os.environ.get('MARS_PLASMA_DIRS')
-        lock_free_fileio = self.args.lock_free_fileio \
-            or bool(int(os.environ.get('MARS_LOCK_FREE_FILEIO', '0')))
         cuda_devices = [self.args.cuda_device] if self.args.cuda_device else None
         self._service = WorkerService(
             advertise_addr=self.args.advertise,
             n_cpu_process=self.args.cpu_procs,
             n_net_process=self.args.net_procs or self.args.io_procs,
             cuda_devices=cuda_devices,
-            spill_dirs=self.args.spill_dir or os.environ.get('MARS_SPILL_DIRS'),
-            lock_free_fileio=lock_free_fileio,
+            spill_dirs=self.args.spill_dir,
+            lock_free_fileio=self.args.lock_free_fileio,
             total_mem=self.args.phy_mem,
-            cache_mem_limit=self.args.cache_mem or os.environ.get('MARS_CACHE_MEM_SIZE'),
+            cache_mem_limit=self.args.cache_mem,
             ignore_avail_mem=self.args.ignore_avail_mem,
             min_mem_size=self.args.min_mem,
             disk_compression=self.args.disk_compression.lower(),
             transfer_compression=self.args.transfer_compression.lower(),
-            plasma_dir=plasma_dir,
-            use_ext_plasma_dir=bool(plasma_dir),
+            plasma_dir=self.args.plasma_dir,
+            use_ext_plasma_dir=bool(self.args.plasma_dir),
         )
         # start plasma
         self._service.start_plasma()
