@@ -2,11 +2,11 @@ numpy>=1.14.0
 pandas>=0.24.0,<1.1.0; python_version >= '3.6'
 pandas>=0.24.0,<1.0.0; python_version < '3.6'
 requests>=2.4.0
+cloudpickle>=1.0.0
 pyarrow>=0.11.0,!=0.16.*
 cython>=0.29
 pytest>=3.5.0
 pytest-cov>=2.5.0
 pytest-timeout>=1.2.0
 pytest-xdist>=1.15.0
-cloudpickle>=1.0.0
 sqlalchemy>=1.2.0

@@ -344,6 +344,7 @@ class ArrowStringArray(StringArrayBase):
 
         result = take(string_array, indices, fill_value=fill_value,
                       allow_fill=allow_fill)
+        del string_array
         if replace:
             # pyarrow cannot recognize pa.NULL
             result[result == self.dtype.na_value] = None
