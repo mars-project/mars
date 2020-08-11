@@ -206,6 +206,9 @@ class BaseApplication(object):
                     pass
                 finally:
                     self.stop()
+        except:
+            logger.exception('Unexpected error occurred in loop')
+            raise
         finally:
             self._running = False
 

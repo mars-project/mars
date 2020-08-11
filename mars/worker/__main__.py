@@ -124,7 +124,10 @@ class WorkerApplication(BaseApplication):
         self._service.start(self.endpoint, self.pool, discoverer=self.scheduler_discoverer)
 
     def handle_process_down(self, proc_indices):
-        self._service.handle_process_down(self.pool, proc_indices)
+        if options.worker.recover_dead_process and 0 not in proc_indices:
+            self._service.handle_process_down(self.pool, proc_indices)
+        else:
+            super().handle_process_down(proc_indices)
 
     def stop(self):
         self._service.stop()

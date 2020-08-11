@@ -254,8 +254,7 @@ class AssignEvaluationActor(SchedulerActor):
         self._assigner_ref = assigner_ref
         self._resource_ref = None
 
-        self._sufficient_operands = set()
-        self._operand_sufficient_time = dict()
+        self._session_last_assigns = dict()
 
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
@@ -319,6 +318,7 @@ class AssignEvaluationActor(SchedulerActor):
             if alloc_ep:
                 # assign successfully, we remove the application
                 self._assigner_ref.remove_apply(item.op_key, _tell=True)
+                self._session_last_assigns[item.session_id] = time.time()
                 assigned += 1
             else:
                 # put the unassigned item into unassigned list to add back to the queue later
@@ -372,22 +372,30 @@ class AssignEvaluationActor(SchedulerActor):
 
         # todo make more detailed allocation plans
         calc_device = op_info.get('calc_device', 'cpu')
+        mem_usage = sum(input_sizes.values())
         if calc_device == 'cpu':
-            alloc_dict = dict(cpu=options.scheduler.default_cpu_usage, memory=sum(input_sizes.values()))
+            alloc_dict = dict(cpu=options.scheduler.default_cpu_usage, mem_quota=mem_usage)
         elif calc_device == 'cuda':
-            alloc_dict = dict(cuda=options.scheduler.default_cuda_usage, memory=sum(input_sizes.values()))
+            alloc_dict = dict(cuda=options.scheduler.default_cuda_usage, mem_quota=mem_usage)
         else:  # pragma: no cover
             raise NotImplementedError('Calc device %s not supported.' % calc_device)
 
+        last_assign = self._session_last_assigns.get(session_id, time.time())
+        timeout_on_fail = time.time() - last_assign > options.scheduler.assign_timeout
+
         rejects = []
         for worker_ep in candidate_workers:
-            if self._resource_ref.allocate_resource(session_id, op_key, worker_ep, alloc_dict):
+            if self._resource_ref.allocate_resource(
+                    session_id, op_key, worker_ep, alloc_dict, log_fail=timeout_on_fail):
                 logger.debug('Operand %s(%s) allocated to run in %s', op_key, op_info['op_name'], worker_ep)
 
                 self.get_actor_ref(BaseOperandActor.gen_uid(session_id, op_key)) \
                     .submit_to_worker(worker_ep, input_metas, _tell=True, _wait=False)
                 return worker_ep, rejects
             rejects.append(worker_ep)
+
+        if timeout_on_fail:
+            raise TimeoutError('Assign resources to operand %s timed out' % op_key)
         return None, rejects
 
     def _get_chunks_meta(self, session_id, keys):
