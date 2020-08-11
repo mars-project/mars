@@ -1430,14 +1430,15 @@ cpdef object start_actor_server(ClusterInfo cluster_info, object sender):
     return s
 
 
-def start_local_pool(int index, ClusterInfo cluster_info,
-                     object pipe=None, Distributor distributor=None,
-                     object parallel=None, bint join=False):
+def start_local_pool(int index, ClusterInfo cluster_info, object pipe=None,
+                     Distributor distributor=None, object parallel=None, bint join=False,
+                     object post_start=None):
     # new process will pickle the numpy RandomState, we seed the random one
     import numpy as np
     np.random.seed()
 
-    # gevent.signal(signal.SIGINT, lambda *_: None)
+    if post_start is not None:
+        post_start(index)
 
     # all these work in a single process
     # we start a local pool to handle messages
@@ -1555,11 +1556,32 @@ cdef class ActorPool:
     def processes(self):
         return self._processes
 
+    @property
+    def address(self):
+        return self.cluster_info.address
+
+    @property
+    def advertise_address(self):
+        return self.cluster_info.advertise_address
+
+    def pre_process_start(self, idx):
+        pass
+
+    def post_process_start_parent(self, idx):
+        pass
+
+    def post_process_start_child(self, idx):
+        pass
+
     cpdef tuple _start_process(self, idx):
         comm_pipe, pool_pipe = gipc.pipe(True, encoder=_inaction_encoder, decoder=_inaction_decoder)
+        self.pre_process_start(idx)
         p = gipc.start_process(start_local_pool,
                                args=(idx, self.cluster_info, comm_pipe, self.distributor),
-                               kwargs={'parallel': self._parallel, 'join': True}, daemon=True)
+                               kwargs={'parallel': self._parallel, 'join': True,
+                                       'post_start': self.post_process_start_child},
+                               daemon=True)
+        self.post_process_start_parent(idx)
         return p, comm_pipe, pool_pipe
 
     cpdef restart_process(self, int idx):

@@ -95,10 +95,16 @@ class StatusReporterActor(WorkerActor):
             mem_quota_allocations = self._status_ref.get_mem_quota_allocations()
             mem_quota_total = mem_quota_allocations.get('total', 0)
             mem_quota_allocated = mem_quota_allocations.get('allocated', 0)
-            hw_metrics['mem_quota'] = int(mem_quota_total - mem_quota_allocated)
-            hw_metrics['mem_quota_used'] = int(mem_quota_allocated)
-            hw_metrics['mem_quota_total'] = int(mem_quota_total)
-            hw_metrics['mem_quota_hold'] = int(mem_quota_allocations.get('hold', 0))
+            if not mem_quota_allocations:
+                hw_metrics['mem_quota'] = hw_metrics['memory']
+                hw_metrics['mem_quota_used'] = hw_metrics['memory_used']
+                hw_metrics['mem_quota_total'] = hw_metrics['memory_total']
+                hw_metrics['mem_quota_hold'] = 0
+            else:
+                hw_metrics['mem_quota'] = int(mem_quota_total - mem_quota_allocated) or hw_metrics['memory']
+                hw_metrics['mem_quota_used'] = int(mem_quota_allocated)
+                hw_metrics['mem_quota_total'] = int(mem_quota_total)
+                hw_metrics['mem_quota_hold'] = int(mem_quota_allocations.get('hold', 0))
 
             if options.worker.spill_directory:
                 if isinstance(options.worker.spill_directory, str):

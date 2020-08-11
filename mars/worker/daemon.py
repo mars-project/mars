@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from collections import defaultdict
 
 import psutil
 
 from .utils import WorkerActor
 from ..utils import kill_process_tree
+
+logger = logging.getLogger(__name__)
 
 
 class WorkerDaemonActor(WorkerActor):

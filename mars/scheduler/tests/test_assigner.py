@@ -17,10 +17,13 @@ import uuid
 
 import gevent
 
+from mars.actors import FunctionActor, create_actor_pool
+from mars.config import options
 from mars.scheduler import ResourceActor, AssignerActor, ChunkMetaClient, \
     ChunkMetaActor, OperandActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
-from mars.actors import FunctionActor, create_actor_pool
+from mars.tests.core import patch_method
+from mars.worker.tests.base import WorkerCase
 from mars.utils import get_next_port
 
 
@@ -32,9 +35,9 @@ class MockOperandActor(FunctionActor):
         return getattr(self, '_worker_ep', None)
 
 
-class Test(unittest.TestCase):
-
-    def testAssignerActor(self):
+@patch_method(ResourceActor._broadcast_sessions)
+class Test(WorkerCase):
+    def testAssignerActor(self, *_):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=mock_scheduler_addr) as pool:
             cluster_info_ref = pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
@@ -44,14 +47,10 @@ class Test(unittest.TestCase):
 
             endpoint1 = 'localhost:12345'
             endpoint2 = 'localhost:23456'
-            res = dict(hardware=dict(cpu=4, memory=4096))
+            res = dict(hardware=dict(cpu=4, mem_quota=4096))
 
-            def write_mock_meta():
-                resource_ref.set_worker_meta(endpoint1, res)
-                resource_ref.set_worker_meta(endpoint2, res)
-
-            g = gevent.spawn(write_mock_meta)
-            g.join()
+            resource_ref.set_worker_meta(endpoint1, res)
+            resource_ref.set_worker_meta(endpoint2, res)
 
             assigner_ref = pool.create_actor(AssignerActor, uid=AssignerActor.default_uid())
 
@@ -85,3 +84,18 @@ class Test(unittest.TestCase):
             while not reply_ref.get_worker_ep():
                 gevent.sleep(0.1)
             self.assertEqual(reply_ref.get_worker_ep(), endpoint1)
+
+            with self.run_actor_test(pool) as test_actor, self.assertRaises(TimeoutError):
+                assigner_p_ref = test_actor.promise_ref(assigner_ref)
+
+                try:
+                    options.scheduler.assign_timeout = 1
+                    res = dict(hardware=dict(cpu=4, mem_quota=0))
+                    resource_ref.set_worker_meta(endpoint1, res)
+                    resource_ref.set_worker_meta(endpoint2, res)
+
+                    self.waitp(
+                        assigner_p_ref.apply_for_resource(session_id, op_key, op_info, _promise=True)
+                    )
+                finally:
+                    options.scheduler.assign_timeout = 600
