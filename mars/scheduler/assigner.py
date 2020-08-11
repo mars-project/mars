@@ -24,7 +24,7 @@ from collections import defaultdict
 from .. import promise
 from ..config import options
 from ..errors import DependencyMissing
-from ..utils import log_unhandled, build_exc_info
+from ..utils import log_unhandled
 from .operands import BaseOperandActor
 from .resource import ResourceActor
 from .utils import SchedulerActor

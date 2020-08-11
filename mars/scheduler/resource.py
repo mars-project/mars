@@ -174,9 +174,6 @@ class ResourceActor(SchedulerActor):
             self._broadcast_workers(ExecutionActor.handle_worker_change, [worker], [])
 
     def _broadcast_sessions(self, handler, *args, **kwargs):
-        if not options.scheduler.enable_failover:  # pragma: no cover
-            return
-
         if hasattr(handler, '__name__'):
             handler = handler.__name__
 
@@ -189,9 +186,6 @@ class ResourceActor(SchedulerActor):
 
     def _broadcast_workers(self, handler, *args, **kwargs):
         from ..worker.execution import ExecutionActor
-
-        if not options.scheduler.enable_failover:  # pragma: no cover
-            return
 
         if hasattr(handler, '__name__'):
             handler = handler.__name__

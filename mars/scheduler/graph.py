@@ -34,14 +34,14 @@ from .session import SessionActor
 from .utils import SchedulerActor, GraphState
 from ..actors.errors import ActorAlreadyExist
 from ..config import options
-from ..errors import ExecutionInterrupted, GraphNotExists
+from ..errors import ExecutionInterrupted, GraphNotExists, WorkerDead
 from ..graph import DAG
 from ..operands import Fetch, ShuffleProxy, VirtualOperand, SuccessorsExclusive
 from ..serialize import dataserializer
 from ..tiles import handler, IterativeChunkGraphBuilder, \
     TileableGraphBuilder, get_tiled
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
-    build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
+    build_exc_info, build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
     get_chunk_shuffle_key, enter_build_mode, has_unknown_shape
 from ..context import DistributedContext
 
@@ -1295,6 +1295,14 @@ class GraphActor(SchedulerActor):
 
         if all(ep in self._assigned_workers for ep in adds) \
                 and not any(ep in self._assigned_workers for ep in removes):
+            return
+
+        if not options.scheduler.enable_failover:
+            logger.exception('Failed as worker dead and fail-over not enabled.')
+            self._graph_meta_ref.set_exc_info(build_exc_info(WorkerDead), _tell=True, _wait=False)
+            self.stop_graph()
+            self.state = GraphState.FAILED
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
             return
 
         worker_slots = self._get_worker_slots()
