@@ -325,6 +325,7 @@ default_options.register_option('scheduler.enable_chunk_relocation', False, vali
 default_options.register_option('scheduler.check_interval', 1, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.default_cpu_usage', 1, validator=(is_integer, is_float), serialize=True)
 default_options.register_option('scheduler.default_cuda_usage', 0.5, validator=(is_integer, is_float), serialize=True)
+default_options.register_option('scheduler.assign_timeout', 600, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.execution_timeout', 600, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.retry_num', 4, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.fetch_limit', 10 * 1024 ** 2, validator=is_integer, serialize=True)
@@ -355,6 +356,7 @@ default_options.register_option('worker.transfer_compression', 'lz4', validator=
 default_options.register_option('worker.prepare_data_timeout', 600, validator=is_integer)
 default_options.register_option('worker.peer_blacklist_time', 3600, validator=is_numeric, serialize=True)
 default_options.register_option('worker.lock_free_fileio', False, validator=is_bool, serialize=True)
+default_options.register_option('worker.recover_dead_process', True, validator=is_bool, serialize=True)
 
 default_options.register_option('worker.plasma_socket', '/tmp/plasma', validator=is_string)
 

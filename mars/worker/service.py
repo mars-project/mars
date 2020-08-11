@@ -318,7 +318,7 @@ class WorkerService(object):
         logger.warning('Process %r halt, exitcodes=%r. Trying to recover.', proc_id_to_pid, exit_codes)
         for proc_id in proc_indices:
             pool.restart_process(proc_id)
-        self._daemon_ref.handle_process_down(proc_indices, _tell=True)
+        self._daemon_ref.handle_process_down(proc_indices)
 
     def stop(self):
         try:
