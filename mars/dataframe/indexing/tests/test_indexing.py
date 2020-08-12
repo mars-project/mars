@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
+import mars.tensor as mt
 from mars.tensor.core import TENSOR_CHUNK_TYPE, Tensor
 from mars.tests.core import TestBase
 from mars.dataframe.core import SERIES_CHUNK_TYPE, Series, DataFrame, DATAFRAME_CHUNK_TYPE
@@ -710,3 +711,14 @@ class Test(TestBase):
         self.assertFalse(HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[1:3].op))
         # slice 1 is not slice(None)
         self.assertFalse(HeadTailOptimizedOperandMixin._need_tile_head_tail(df2.iloc[:3, :2].op))
+
+    def testReindex(self):
+        raw = pd.DataFrame(np.random.rand(4, 3))
+
+        df = md.DataFrame(raw, chunk_size=2)
+
+        with self.assertRaises(TypeError):
+            df.reindex(unknown_arg=1)
+
+        with self.assertRaises(ValueError):
+            df.reindex([1, 2], fill_value=mt.tensor([1, 2]))

@@ -50,6 +50,7 @@ Indexing, iteration
    DataFrame.iat
    DataFrame.loc
    DataFrame.iloc
+   DataFrame.insert
    DataFrame.iterrows
    DataFrame.itertuples
    DataFrame.pop
@@ -132,7 +133,7 @@ Reindexing / selection / label manipulation
    DataFrame.drop
    DataFrame.drop_duplicates
    DataFrame.head
-   DataFrame.insert
+   DataFrame.reindex
    DataFrame.rename
    DataFrame.reset_index
    DataFrame.set_index

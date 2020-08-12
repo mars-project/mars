@@ -954,6 +954,11 @@ class Test(TestBase):
         expected = pd.qcut(s, 3)
         pd.testing.assert_series_equal(result, expected)
 
+        r = qcut(s, 3)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = pd.qcut(s, 3)
+        pd.testing.assert_series_equal(result, expected)
+
         series = from_pandas_series(s)
         r = qcut(series, [0.3, 0.5, 0.7])
         result = self.executor.execute_dataframe(r, concat=True)[0]
