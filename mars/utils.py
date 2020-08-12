@@ -1088,3 +1088,16 @@ def calc_object_overhead(chunk, shape):
     else:
         n_strings = 0
     return n_strings * shape[0] * OBJECT_FIELD_OVERHEAD
+
+
+def arrow_array_to_objects(obj):
+    from .dataframe.arrays import ArrowStringDtype
+
+    if isinstance(obj, pd.DataFrame):
+        for col_name, dtype in obj.dtypes.items():
+            if isinstance(dtype, ArrowStringDtype):
+                obj[col_name] = pd.Series(obj[col_name].to_numpy())
+    elif isinstance(obj, pd.Series):
+        if isinstance(obj.dtype, ArrowStringDtype):
+            obj = pd.Series(obj.to_numpy())
+    return obj

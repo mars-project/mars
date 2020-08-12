@@ -27,10 +27,11 @@ import unittest
 import uuid
 
 import numpy as np
+import pandas as pd
 import requests
-from numpy.testing import assert_array_equal
 
-from mars import tensor as mt
+import mars.dataframe as md
+import mars.tensor as mt
 from mars.actors import new_client
 from mars.actors.errors import ActorNotExist
 from mars.config import options
@@ -176,11 +177,11 @@ class Test(unittest.TestCase):
             b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
             value = sess.run(c, timeout=timeout)
-            assert_array_equal(value, np.ones((100, 100)) * 100)
+            np.testing.assert_array_equal(value, np.ones((100, 100)) * 100)
 
             # check resubmission
             value2 = sess.run(c, timeout=timeout)
-            assert_array_equal(value, value2)
+            np.testing.assert_array_equal(value, value2)
 
             # check when local compression libs are missing
             from mars.serialize import dataserializer
@@ -189,13 +190,13 @@ class Test(unittest.TestCase):
                 b = mt.ones((10, 10), chunk_size=30)
                 c = a.dot(b)
                 value = sess.run(c, timeout=timeout)
-                assert_array_equal(value, np.ones((10, 10)) * 10)
+                np.testing.assert_array_equal(value, np.ones((10, 10)) * 10)
 
                 dataserializer.decompressors[dataserializer.CompressType.LZ4] = None
                 dataserializer.decompressobjs[dataserializer.CompressType.LZ4] = None
                 dataserializer.compress_openers[dataserializer.CompressType.LZ4] = None
 
-                assert_array_equal(sess.fetch(c), np.ones((10, 10)) * 10)
+                np.testing.assert_array_equal(sess.fetch(c), np.ones((10, 10)) * 10)
             finally:
                 dataserializer.decompressors[dataserializer.CompressType.LZ4] = dataserializer.lz4_decompress
                 dataserializer.decompressobjs[dataserializer.CompressType.LZ4] = dataserializer.lz4_decompressobj
@@ -209,7 +210,20 @@ class Test(unittest.TestCase):
                 b = mt.ones((10, 10), chunk_size=30)
                 c = a.dot(b)
                 value = sess.run(c, timeout=timeout)
-                assert_array_equal(value, np.ones((10, 10)) * 10)
+                np.testing.assert_array_equal(value, np.ones((10, 10)) * 10)
+
+                raw = pd.DataFrame(np.random.rand(10, 5), columns=list('ABCDE'))
+                data = md.DataFrame(raw).astype({'E': 'arrow_string'})
+                ret_data = data.execute(session=sess).fetch(session=sess)
+                self.assertEqual(ret_data.dtypes['E'], np.dtype('O'))
+                pd.testing.assert_frame_equal(
+                    ret_data.astype({'E': 'float'}), raw, check_less_precise=True)
+
+                raw = pd.Series(np.random.rand(10))
+                data = md.Series(raw).astype('arrow_string')
+                ret_data = data.execute(session=sess).fetch(session=sess)
+                self.assertEqual(ret_data.dtype, np.dtype('O'))
+                pd.testing.assert_series_equal(ret_data.astype('float'), raw)
             finally:
                 sess._sess._serial_type = SerialType.ARROW
 
@@ -219,7 +233,7 @@ class Test(unittest.TestCase):
             b = mt.array(vb, chunk_size=30)
             c = a.dot(b)
             value = sess.run(c, timeout=timeout)
-            assert_array_equal(value, va.dot(vb))
+            np.testing.assert_array_equal(value, va.dot(vb))
 
             graphs = sess.get_graph_states()
 
@@ -407,7 +421,7 @@ class TestWithMockServer(unittest.TestCase):
             c = a.dot(b)
 
             result = sess.run(c, timeout=timeout)
-            assert_array_equal(result, np.ones((100, 100)) * 100)
+            np.testing.assert_array_equal(result, np.ones((100, 100)) * 100)
 
             mock_resp = MockResponse(200, text='{"ERR_STR":')
             with mock.patch(
@@ -424,4 +438,4 @@ class TestWithMockServer(unittest.TestCase):
 
             d = a * 100
             self.assertIsNone(sess.run(d, fetch=False, timeout=120))
-            assert_array_equal(sess.run(d, timeout=120), np.ones((100, 100)) * 100)
+            np.testing.assert_array_equal(sess.run(d, timeout=120), np.ones((100, 100)) * 100)
