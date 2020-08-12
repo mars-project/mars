@@ -180,11 +180,12 @@ class KubernetesCluster:
         cnt = 0
         for el in query['items']:
             if el['status']['phase'] in ('Error', 'Failed'):
-                raise SystemError(el['status']['message'])
+                logger.warning('Error in starting pod, message: %s', el['status']['message'])
+                continue
             if 'status' not in el or 'conditions' not in el['status']:
                 cnt += 1
-            if any(cond['type'] == 'Ready' and cond['status'] == 'True'
-                   for cond in el['status'].get('conditions') or ()):
+            elif any(cond['type'] == 'Ready' and cond['status'] == 'True'
+                     for cond in el['status'].get('conditions') or ()):
                 cnt += 1
         return cnt
 
