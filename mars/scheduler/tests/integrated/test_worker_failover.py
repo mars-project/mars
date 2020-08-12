@@ -23,6 +23,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 import mars.tensor as mt
+from mars.errors import ExecutionFailed, WorkerDead
 from mars.session import new_session
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 
@@ -38,6 +39,39 @@ class Test(SchedulerIntegratedTest):
 
         pool = ThreadPoolExecutor(1)
         return pool.submit(lambda: submitter())
+
+    def testFailoverDisabled(self):
+        delay_file = self.add_state_file('OP_DELAY_STATE_FILE')
+        open(delay_file, 'w').close()
+
+        terminate_file = self.add_state_file('OP_TERMINATE_STATE_FILE')
+
+        self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'],
+                             scheduler_args=['-Dscheduler.enable_failover=false'], log_worker=True)
+
+        np_a = np.random.random((100, 100))
+        np_b = np.random.random((100, 100))
+
+        a = mt.array(np_a, chunk_size=30) * 2 + 1
+        b = mt.array(np_b, chunk_size=30) * 2 + 1
+        c = a.dot(b) * 2 + 1
+
+        future = self._submit_tileable(c)
+
+        while not os.path.exists(terminate_file):
+            time.sleep(0.01)
+
+        self.kill_process_tree(self.proc_workers[0])
+        logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
+        self.proc_workers = self.proc_workers[1:]
+        os.unlink(delay_file)
+
+        try:
+            future.result(timeout=self.timeout)
+        except ExecutionFailed as ex:
+            self.assertIsInstance(ex.__cause__, WorkerDead)
+        else:
+            raise AssertionError('ExecutionFailed not raised')
 
     def testCommonOperandFailover(self):
         delay_file = self.add_state_file('OP_DELAY_STATE_FILE')

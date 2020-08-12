@@ -174,9 +174,6 @@ class ResourceActor(SchedulerActor):
             self._broadcast_workers(ExecutionActor.handle_worker_change, [worker], [])
 
     def _broadcast_sessions(self, handler, *args, **kwargs):
-        if not options.scheduler.enable_failover:  # pragma: no cover
-            return
-
         if hasattr(handler, '__name__'):
             handler = handler.__name__
 
@@ -190,9 +187,6 @@ class ResourceActor(SchedulerActor):
     def _broadcast_workers(self, handler, *args, **kwargs):
         from ..worker.execution import ExecutionActor
 
-        if not options.scheduler.enable_failover:  # pragma: no cover
-            return
-
         if hasattr(handler, '__name__'):
             handler = handler.__name__
 
@@ -201,13 +195,14 @@ class ResourceActor(SchedulerActor):
             ref = self.ctx.actor_ref(ExecutionActor.default_uid(), address=w)
             getattr(ref, handler)(*args, **kwargs)
 
-    def allocate_resource(self, session_id, op_key, endpoint, alloc_dict):
+    def allocate_resource(self, session_id, op_key, endpoint, alloc_dict, log_fail=False):
         """
         Try allocate resource for operands
         :param session_id: session id
         :param op_key: operand key
         :param endpoint: worker endpoint
         :param alloc_dict: allocation dict, listing resources needed by the operand
+        :param log_fail: log assign failure
         :return: True if allocated successfully
         """
         worker_stats = self._meta_cache[endpoint]['hardware']
@@ -232,6 +227,9 @@ class ResourceActor(SchedulerActor):
         for k, v in res_used.items():
             if res_used[k] > worker_stats.get(k, 0):
                 sufficient = False
+                if log_fail:
+                    logger.warning('Failed to assign %s resource for %s, res_used: %s, worker stat: %s',
+                                   k, op_key, res_used[k], worker_stats.get(k, 0))
                 break
 
         if sufficient:

@@ -958,7 +958,8 @@ class ExecutionActor(WorkerActor):
                 self._mem_quota_ref.cancel_requests(
                     tuple(graph_record.mem_request.keys()), build_exc_info(ExecutionInterrupted), _tell=True)
         elif graph_record.state == ExecutionState.CALCULATING:
-            if self._daemon_ref is not None and graph_record.calc_actor_uid is not None:
+            if options.worker.recover_dead_process \
+                    and self._daemon_ref is not None and graph_record.calc_actor_uid is not None:
                 self._daemon_ref.kill_actor_process(self.ctx.actor_ref(graph_record.calc_actor_uid), _tell=True)
 
     @log_unhandled

@@ -42,5 +42,6 @@ cdef class _FunctionActor(Actor):
 
 
 cpdef object create_actor_pool(str address=*, int n_process=*, object distributor=*,
-                               object parallel=*, str backend=*, str advertise_address=*)
+                               object parallel=*, str backend=*, str advertise_address=*,
+                               object pool_cls=*)
 cpdef object new_client(object parallel=*, str backend=*)

@@ -124,7 +124,8 @@ class FunctionActor(_FunctionActor):
 
 
 cpdef object create_actor_pool(str address=None, int n_process=0, object distributor=None,
-                               object parallel=None, str backend='gevent', str advertise_address=None):
+                               object parallel=None, str backend='gevent',
+                               str advertise_address=None, object pool_cls=None):
     cdef bint standalone
     cdef ClusterInfo cluster_info
 
@@ -132,6 +133,7 @@ cpdef object create_actor_pool(str address=None, int n_process=0, object distrib
         raise ValueError('Only gevent-based actor pool is supported for now')
 
     from .pool.gevent_pool import ActorPool
+    pool_cls = pool_cls or ActorPool
 
     standalone = address is None
     if n_process <= 0:
@@ -142,7 +144,7 @@ cpdef object create_actor_pool(str address=None, int n_process=0, object distrib
 
     cluster_info = ClusterInfo(standalone, n_process, address=address,
                                advertise_address=advertise_address)
-    pool = ActorPool(cluster_info, distributor=distributor, parallel=parallel)
+    pool = pool_cls(cluster_info, distributor=distributor, parallel=parallel)
     pool.run()
 
     return pool
