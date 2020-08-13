@@ -161,24 +161,22 @@ class WorkerService(object):
         self._cache_mem_limit = _calc_size_limit(self._cache_mem_limit, self._total_mem)
         if self._cache_mem_limit is None:
             self._cache_mem_limit = mem_stats.free // 2
-        max_cache_mem = self._cache_mem_limit
 
         plasma_limit = self._get_plasma_limit()
         if plasma_limit is not None:
             self._cache_mem_limit = min(plasma_limit, self._cache_mem_limit)
-        self._hard_mem_limit -= max_cache_mem - self._cache_mem_limit
 
         self._soft_mem_limit = _calc_size_limit(self._soft_mem_limit, self._total_mem)
         actual_used = self._total_mem - mem_stats.available
         if self._ignore_avail_mem:
             self._soft_quota_limit = self._soft_mem_limit
         else:
-            used_cache_size = 0 if self._use_ext_plasma_dir else max_cache_mem
+            used_cache_size = 0 if self._use_ext_plasma_dir else self._cache_mem_limit
             self._soft_quota_limit = self._soft_mem_limit - used_cache_size - actual_used
             if self._soft_quota_limit < self._min_mem_size:
                 raise MemoryError('Memory not enough. soft_limit=%s, cache_limit=%s, used=%s' %
                                   tuple(readable_size(k) for k in (
-                                      self._soft_mem_limit, max_cache_mem, actual_used)))
+                                      self._soft_mem_limit, self._cache_mem_limit, actual_used)))
 
         logger.info('Setting soft limit to %s.', readable_size(self._soft_quota_limit))
 
