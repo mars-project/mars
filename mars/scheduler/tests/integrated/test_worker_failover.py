@@ -47,7 +47,7 @@ class Test(SchedulerIntegratedTest):
         terminate_file = self.add_state_file('OP_TERMINATE_STATE_FILE')
 
         self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'],
-                             scheduler_args=['-Dscheduler.enable_failover=false'], log_worker=True)
+                             scheduler_args=['--disable-failover'], log_worker=True)
 
         np_a = np.random.random((100, 100))
         np_b = np.random.random((100, 100))

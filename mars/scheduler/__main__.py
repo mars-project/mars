@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 
 from .. import resource
 from ..base_app import BaseApplication
@@ -33,9 +34,18 @@ class SchedulerApplication(BaseApplication):
     def config_args(self, parser):
         super().config_args(parser)
         parser.add_argument('--nproc', help='number of processes')
+        parser.add_argument('--disable-failover', action='store_true',
+                            help='disable fail-over')
+
+    def parse_args(self, parser, argv, environ=None):
+        args = super().parse_args(parser, argv)
+        environ = environ or os.environ
+        args.disable_failover = args.disable_failover \
+            or bool(int(environ.get('MARS_DISABLE_FAILOVER', '0')))
+        return args
 
     def create_pool(self, *args, **kwargs):
-        self._service = SchedulerService()
+        self._service = SchedulerService(disable_failover=self.args.disable_failover)
         self.n_process = int(self.args.nproc or resource.cpu_count())
         kwargs['distributor'] = MarsDistributor(self.n_process, 's:h1:')
         return super().create_pool(*args, **kwargs)

@@ -26,7 +26,7 @@ from .scheduler.utils import SchedulerClusterInfoActor
 from .worker.transfer import ResultSenderActor, ReceiverManagerActor
 from .tensor.utils import slice_split
 from .serialize import dataserializer
-from .utils import tokenize, merge_chunks
+from .utils import tokenize, merge_chunks, arrow_array_to_objects
 
 logger = logging.getLogger(__name__)
 
@@ -210,6 +210,8 @@ class MarsAPI(object):
         if not serial:
             return ret
         compressions = max(compressions) if compressions else dataserializer.CompressType.NONE
+        if serial_type == dataserializer.SerialType.PICKLE:
+            ret = arrow_array_to_objects(ret)
         return dataserializer.dumps(ret, serial_type=serial_type, compress=compressions,
                                     pickle_protocol=pickle_protocol)
 

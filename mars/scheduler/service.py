@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class SchedulerService(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._cluster_info_ref = None
         self._session_manager_ref = None
         self._assigner_ref = None
@@ -40,6 +40,11 @@ class SchedulerService(object):
         self._kv_store_ref = None
         self._node_info_ref = None
         self._result_receiver_ref = None
+
+        options.scheduler.enable_failover = not (kwargs.pop('disable_failover', None) or False)
+
+        if kwargs:  # pragma: no cover
+            raise TypeError('Keyword arguments %r cannot be recognized.' % ', '.join(kwargs))
 
     def start(self, endpoint, discoverer, pool, distributed=True):
         """
