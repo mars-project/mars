@@ -158,6 +158,15 @@ class Test(SchedulerIntegratedTest):
         result = series1.execute(session=sess, timeout=self.timeout).fetch(session=sess)
         pd.testing.assert_series_equal(result, s1)
 
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df3 = md.DataFrame(data, chunk_size=4)
+
+        r = df3.reindex(index=mt.arange(10, 1, -1, chunk_size=3))
+
+        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        expected = data.reindex(index=np.arange(10, 1, -1))
+        pd.testing.assert_frame_equal(result, expected)
+
     def testIterativeTilingWithoutEtcd(self):
         self.start_processes(etcd=False)
         sess = new_session(self.session_manager_ref.address)

@@ -14,11 +14,15 @@
 
 import numpy as np
 import pandas as pd
+try:
+    import scipy.sparse as sps
+except ImportError:  # pragma: no cover
+    sps = None
 
 from ... import opcodes
 from ...core import Base, Entity
 from ...operands import OperandStage
-from ...serialize import KeyField, AnyField, StringField, Int64Field
+from ...serialize import KeyField, AnyField, StringField, Int64Field, BoolField
 from ...tensor import tensor as astensor
 from ...utils import lazy_import, recursive_tile
 from ..initializer import Index as asindex
@@ -40,12 +44,13 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
     _level = AnyField('level')
     _fill_value = AnyField('fill_value')
     _limit = Int64Field('limit')
+    _enable_sparse = BoolField('enable_sparse')
 
     def __init__(self, index=None, columns=None, method=None, level=None,
-                 fill_value=None, limit=None, stage=None, **kw):
+                 fill_value=None, limit=None, enable_sparse=None, stage=None, **kw):
         super().__init__(_index=index, _columns=columns, _method=method,
                          _level=level, _fill_value=fill_value, _limit=limit,
-                         _stage=stage, **kw)
+                         _enable_sparse=enable_sparse, _stage=stage, **kw)
 
     @property
     def input(self):
@@ -74,6 +79,10 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
     @property
     def limit(self):
         return self._limit
+
+    @property
+    def enable_sparse(self):
+        return self._enable_sparse
 
     @property
     def _indexes(self):
@@ -197,7 +206,47 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
         return obj
 
     @classmethod
-    def _reindex(cls, ctx, op, fill=True):
+    def _sparse_reindex(cls, inp, index=None, columns=None):
+        if inp.ndim == 2:
+            columns = inp.columns if columns is None else columns
+            index_shape = len(index) if index is not None else len(inp)
+            i_to_columns = dict()
+
+            for i, col in enumerate(columns):
+                if col in inp.dtypes:
+                    if index is None:
+                        i_to_columns[i] = inp[col]
+                    else:
+                        indexer = inp.index.reindex(index)[1]
+                        spmatrix = sps.lil_matrix((index_shape, 1), dtype=inp[col].dtype)
+                        cond = indexer >= 0
+                        available_indexer = indexer[cond]
+                        del indexer
+                        spmatrix[cond, 0] = inp[col].iloc[available_indexer].to_numpy()
+                        i_to_columns[i] = pd.DataFrame.sparse.from_spmatrix(
+                            spmatrix, index=index).iloc[:, 0]
+                else:
+                    ind = index if index is not None else inp.index
+                    i_to_columns[i] = pd.DataFrame.sparse.from_spmatrix(
+                        sps.coo_matrix((index_shape, 1), dtype=np.float64),
+                        index=ind).iloc[:, 0]
+
+            df = pd.DataFrame(i_to_columns)
+            df.columns = columns
+            return df
+        else:
+            indexer = inp.index.reindex(index)[1]
+            spmatrix = sps.lil_matrix((len(index), 1), dtype=inp.dtype)
+            cond = indexer >= 0
+            available_indexer = indexer[cond]
+            del indexer
+            spmatrix[cond, 0] = inp.iloc[available_indexer].to_numpy()
+            series = pd.DataFrame.sparse.from_spmatrix(spmatrix, index=index).iloc[:, 0]
+            series.name = inp.name
+            return series
+
+    @classmethod
+    def _reindex(cls, ctx, op, fill=True, try_sparse=None):
         inp = cls._convert_to_writable(ctx[op.input.key])
         index = cls._get_value(ctx, op.index)
         columns = cls._get_value(ctx, op.columns)
@@ -211,6 +260,38 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
             kw['fill_value'] = cls._get_value(ctx, op.fill_value)
             kw['limit'] = op.limit
 
+        if try_sparse and not fill and op.level is None and \
+                isinstance(inp, (pd.DataFrame, pd.Series)) and \
+                sps is not None:
+            # 1. sparse is used in map only
+            # 2. for MultiIndex, sparse is not needed as well
+            # 3. only consider cpu
+            # 4. scipy is installed
+
+            if op.enable_sparse is None:
+                # try to use sparse if estimated size > 2 * input_size
+                cur_size = inp.memory_usage(deep=True)
+                if inp.ndim == 2:
+                    cur_size = cur_size.sum()
+                element_size = cur_size / inp.size
+                shape = list(inp.shape)
+                if 'index' in kw:
+                    shape[0] = len(kw['index'])
+                if 'columns' in kw:
+                    shape[1] = len(kw['columns'])
+                estimate_size = np.prod(shape) * element_size
+
+                fitted = estimate_size > cur_size * 2
+            else:
+                # specified when op.enable_sparse == True
+                fitted = True
+
+            if fitted:
+                # use sparse instead
+                return cls._sparse_reindex(inp,
+                                           index=kw.get('index'),
+                                           columns=kw.get('columns'))
+
         return inp.reindex(**kw)
 
     @classmethod
@@ -219,30 +300,45 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _execute_map(cls, ctx, op):
-        ctx[op.outputs[0].key] = cls._reindex(ctx, op, fill=False)
+        if op.enable_sparse is not None:
+            try_sparse = op.enable_sparse
+        else:
+            try_sparse = True
+        ctx[op.outputs[0].key] = cls._reindex(ctx, op, fill=False,
+                                              try_sparse=try_sparse)
+
+    @classmethod
+    def _convert_to_dense(cls, series):
+        if isinstance(series.dtype, pd.SparseDtype):
+            return series.astype(pd.SparseDtype(series.dtype.subtype, np.nan)).sparse.to_dense()
+        return series
 
     @classmethod
     def _merge_chunks(cls, inputs):
+        xdf = cls._get_xdf(inputs[0])
+
         ndim = inputs[0].ndim
         if ndim == 2:
             columns = inputs[0].columns
-            result = inputs[0]
+            result = xdf.DataFrame(np.full(inputs[0].shape, np.nan),
+                                   columns=columns,
+                                   index=inputs[0].index)
         else:
             columns = [inputs[0].name]
             result = None
 
         for i in range(len(columns)):
             if ndim == 1:
-                curr = inputs[0].copy()
+                curr = cls._convert_to_dense(inputs[0]).copy()
             else:
-                curr = inputs[0].iloc[:, i].copy()
+                curr = cls._convert_to_dense(inputs[0].iloc[:, i]).copy()
             for j in range(len(inputs) - 1):
                 if ndim == 2:
-                    left = inputs[j].iloc[:, i]
-                    right = inputs[j + 1].iloc[:, i]
+                    left = cls._convert_to_dense(inputs[j].iloc[:, i])
+                    right = cls._convert_to_dense(inputs[j + 1].iloc[:, i])
                 else:
-                    left = inputs[j]
-                    right = inputs[j + 1]
+                    left = cls._convert_to_dense(inputs[j])
+                    right = cls._convert_to_dense(inputs[j + 1])
                 if ((~left.isna()) & (~right.isna())).sum() > 0:
                     raise ValueError('cannot reindex from a duplicate axis')
                 curr.loc[~left.isna()] = left
@@ -255,6 +351,11 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
         return result
 
     @classmethod
+    def _get_xdf(cls, obj):
+        return pd if isinstance(obj, (pd.DataFrame, pd.Series)) or \
+                     cudf is None else cudf
+
+    @classmethod
     def _execute_agg(cls, ctx, op):
         out = op.outputs[0]
 
@@ -262,8 +363,7 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
             # index is tensor
             inputs = [ctx[inp.key] for inp in op.inputs]
 
-            xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) or \
-                        cudf is None else cudf
+            xdf = cls._get_xdf(inputs[0])
 
             if inputs[0].index.nlevels > 1 and op.level is not None:
                 # multi index
@@ -536,6 +636,7 @@ def reindex(df_or_series, *args, **kwargs):
     limit = kwargs.pop("limit", None)
     tolerance = kwargs.pop("tolerance", None)
     fill_value = kwargs.pop("fill_value", None)
+    enable_sparse = kwargs.pop("enable_sparse", None)
 
     if kwargs:
         raise TypeError(
@@ -569,7 +670,8 @@ def reindex(df_or_series, *args, **kwargs):
         raise ValueError('fill_value must be a scalar')
 
     op = DataFrameReindex(index=index, columns=columns, method=method,
-                          level=level, fill_value=fill_value, limit=limit)
+                          level=level, fill_value=fill_value, limit=limit,
+                          enable_sparse=enable_sparse)
     ret = op(df_or_series)
 
     if copy:
