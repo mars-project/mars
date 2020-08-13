@@ -261,6 +261,9 @@ class BaseApplication(object):
         environ = environ or os.environ
         args = parser.parse_args(argv)
 
+        args.host = args.host or environ.get('MARS_BIND_HOST')
+        args.port = args.port or environ.get('MARS_BIND_PORT')
+        args.endpoint = args.endpoint or environ.get('MARS_BIND_ENDPOINT')
         args.advertise = args.advertise or environ.get('MARS_CONTAINER_IP')
         load_modules = []
         for mods in tuple(args.load_modules or ()) + (environ.get('MARS_LOAD_MODULES'),):
