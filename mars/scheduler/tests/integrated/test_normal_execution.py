@@ -313,8 +313,7 @@ class Test(SchedulerIntegratedTest):
         b = mt.ones((10, 10))
         c = (a + b)
 
-        endpoint = self.scheduler_endpoints[0]
-        sess = new_session(endpoint)
+        sess = new_session(self.session_manager_ref.address)
 
         try:
             c.execute(session=sess, timeout=self.timeout)

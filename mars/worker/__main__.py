@@ -50,8 +50,9 @@ class WorkerApplication(BaseApplication):
         parser.add_argument('--cache-mem', help='cache memory size limit')
         parser.add_argument('--min-mem', help='minimal free memory required to start worker')
         parser.add_argument('--spill-dir', help='spill directory')
-        parser.add_argument('--lock-free-fileio', action='store_true',
-                            help='make file io lock free, add this when using a mounted dfs')
+        parser.add_argument('--io-parallel-num', help='make file io lock free, add this when using a mounted dfs')
+        parser.add_argument('--disable-proc-recover', action='store_true',
+                            help='disable recovering failed processes')
         parser.add_argument('--plasma-dir', help='path of plasma directory. When specified, the size '
                                                  'of plasma store will not be taken into account when '
                                                  'managing host memory')
@@ -70,11 +71,17 @@ class WorkerApplication(BaseApplication):
 
     def parse_args(self, parser, argv, environ=None):
         args = super().parse_args(parser, argv)
-        args.plasma_dir = args.plasma_dir or os.environ.get('MARS_PLASMA_DIRS')
-        args.spill_dir = args.spill_dir or os.environ.get('MARS_SPILL_DIRS')
-        args.cache_mem = args.cache_mem or os.environ.get('MARS_CACHE_MEM_SIZE')
-        args.lock_free_fileio = args.lock_free_fileio \
-            or bool(int(os.environ.get('MARS_LOCK_FREE_FILEIO', '0')))
+        environ = environ or os.environ
+
+        args.plasma_dir = args.plasma_dir or environ.get('MARS_PLASMA_DIRS')
+        args.spill_dir = args.spill_dir or environ.get('MARS_SPILL_DIRS')
+        args.cache_mem = args.cache_mem or environ.get('MARS_CACHE_MEM_SIZE')
+        args.disable_proc_recover = args.disable_proc_recover \
+            or bool(int(environ.get('MARS_DISABLE_PROC_RECOVER', '0')))
+        args.io_parallel_num = args.io_parallel_num \
+            or int(environ.get('MARS_IO_PARALLEL_NUM', '1'))
+        if args.io_parallel_num == 1 and bool(int(environ.get('MARS_LOCK_FREE_FILEIO', '0'))):
+            args.io_parallel_num = 2 ** 16
         return args
 
     def validate_arguments(self):
@@ -98,7 +105,7 @@ class WorkerApplication(BaseApplication):
             n_net_process=self.args.net_procs or self.args.io_procs,
             cuda_devices=cuda_devices,
             spill_dirs=self.args.spill_dir,
-            lock_free_fileio=self.args.lock_free_fileio,
+            io_parallel_num=self.args.io_parallel_num,
             total_mem=self.args.phy_mem,
             cache_mem_limit=self.args.cache_mem,
             ignore_avail_mem=self.args.ignore_avail_mem,
@@ -107,6 +114,7 @@ class WorkerApplication(BaseApplication):
             transfer_compression=self.args.transfer_compression.lower(),
             plasma_dir=self.args.plasma_dir,
             use_ext_plasma_dir=bool(self.args.plasma_dir),
+            disable_proc_recover=self.args.disable_proc_recover,
         )
         # start plasma
         self._service.start_plasma()
