@@ -196,7 +196,8 @@ class SchedulerIntegratedTest(unittest.TestCase):
                 actor_address = self.cluster_info.get_scheduler(ResourceActor.default_uid())
                 resource_ref = actor_client.actor_ref(ResourceActor.default_uid(), address=actor_address)
 
-                if resource_ref.get_worker_count() < n_workers:
+                if not actor_client.has_actor(self.session_manager_ref) \
+                        or resource_ref.get_worker_count() < n_workers:
                     raise ProcessRequirementUnmetError('Workers does not met requirement: %d < %d.' % (
                         resource_ref.get_worker_count(), n_workers
                     ))

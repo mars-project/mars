@@ -33,13 +33,13 @@ class IORunnerActor(WorkerActor):
     def gen_uid(cls, proc_id):
         return 'w:%d:io_runner_inproc' % proc_id
 
-    def __init__(self, lock_free=False, dispatched=True):
+    def __init__(self, io_parallel_num=None, dispatched=True):
         super().__init__()
         self._work_items = deque()
         self._max_work_item_id = 0
         self._cur_work_items = dict()
 
-        self._lock_free = lock_free or options.worker.lock_free_fileio
+        self._io_parallel_num = io_parallel_num or options.worker.io_parallel_num
         self._lock_work_items = dict()
 
         self._dispatched = dispatched
@@ -58,13 +58,13 @@ class IORunnerActor(WorkerActor):
         logger.debug('Copying %r from %s into %s submitted in %s',
                      data_keys, src_device, dest_device, self.uid)
         self._work_items.append((dest_device, session_id, data_keys, src_device, False, callback))
-        if self._lock_free or not self._cur_work_items:
+        if len(self._cur_work_items) < self._io_parallel_num:
             self._submit_next()
 
     def lock(self, session_id, data_keys, callback):
         logger.debug('Requesting lock for %r on %s', data_keys, self.uid)
         self._work_items.append((None, session_id, data_keys, None, True, callback))
-        if self._lock_free or not self._cur_work_items:
+        if len(self._cur_work_items) < self._io_parallel_num:
             self._submit_next()
 
     def unlock(self, work_item_id):

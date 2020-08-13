@@ -96,7 +96,8 @@ class WorkerService(object):
             options.worker.disk_compression
         options.worker.transfer_compression = kwargs.pop('transfer_compression', None) or \
             options.worker.transfer_compression
-        options.worker.lock_free_fileio = kwargs.pop('lock_free_fileio', None) or False
+        options.worker.io_parallel_num = kwargs.pop('io_parallel_num', None) or False
+        options.worker.recover_dead_process = not (kwargs.pop('disable_proc_recover', None) or False)
 
         self._total_mem = kwargs.pop('total_mem', None)
         self._cache_mem_limit = kwargs.pop('cache_mem_limit', None)
@@ -256,7 +257,7 @@ class WorkerService(object):
             self._inproc_holder_actors.append(actor)
 
             actor = actor_holder.create_actor(
-                IORunnerActor, lock_free=True, dispatched=False, uid=IORunnerActor.gen_uid(cpu_id + 1))
+                IORunnerActor, dispatched=False, uid=IORunnerActor.gen_uid(cpu_id + 1))
             self._inproc_io_runner_actors.append(actor)
 
         start_pid = 1 + self._n_cpu_process
@@ -274,7 +275,7 @@ class WorkerService(object):
             self._cuda_holder_actors.append(actor)
 
             actor = actor_holder.create_actor(
-                IORunnerActor, lock_free=True, dispatched=False, uid=IORunnerActor.gen_uid(start_pid + cuda_id))
+                IORunnerActor, dispatched=False, uid=IORunnerActor.gen_uid(start_pid + cuda_id))
             self._inproc_io_runner_actors.append(actor)
 
         start_pid += self._n_cuda_process

@@ -88,13 +88,13 @@ class Test(WorkerCase):
     plasma_storage_size = 1024 * 1024 * 10
 
     def tearDown(self):
-        options.worker.lock_free_fileio = False
+        options.worker.io_parallel_num = 1
         super().tearDown()
 
     def testClientReadAndWrite(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
         with self.create_pool(n_process=1, address=test_addr) as pool:
-            options.worker.lock_free_fileio = True
+            options.worker.io_parallel_num = 1024
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
             pool.create_actor(StorageManagerActor, uid=StorageManagerActor.default_uid())
 
@@ -249,7 +249,7 @@ class Test(WorkerCase):
 
             pool.create_actor(InProcHolderActor, uid='w:1:InProcHolderActor1')
             pool.create_actor(InProcHolderActor, uid='w:2:InProcHolderActor2')
-            pool.create_actor(IORunnerActor, lock_free=True, dispatched=False, uid=IORunnerActor.gen_uid(1))
+            pool.create_actor(IORunnerActor, io_parallel_num=1024, dispatched=False, uid=IORunnerActor.gen_uid(1))
 
             test_ref = pool.create_actor(OtherProcessTestActor, uid='w:0:OtherProcTest')
 
