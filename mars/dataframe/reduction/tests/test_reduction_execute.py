@@ -17,9 +17,10 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from mars.tests.core import TestBase, parameterized, ExecutorForTest
+from mars.config import option_context
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+from mars.tests.core import TestBase, parameterized, ExecutorForTest
 
 
 reduction_functions = dict(
@@ -298,6 +299,26 @@ class TestCount(TestBase):
         result = self.executor.execute_dataframe(df.nunique(axis=1), concat=True)[0]
         expected = data1.nunique(axis=1)
         pd.testing.assert_series_equal(result, expected)
+
+    def testUseArrowDtypeNUnique(self):
+        with option_context({'dataframe.use_arrow_dtype': True, 'combine_size': 2}):
+            rs = np.random.RandomState(0)
+            data1 = pd.DataFrame({'a': rs.random(10),
+                                  'b': [f's{i}' for i in rs.randint(100, size=10)]})
+            data1['c'] = data1['b'].copy()
+            data1['d'] = data1['b'].copy()
+            data1['e'] = data1['b'].copy()
+
+            df = from_pandas_df(data1, chunk_size=(3, 2))
+            r = df.nunique(axis=0)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = data1.nunique(axis=0)
+            pd.testing.assert_series_equal(result, expected)
+
+            r = df.nunique(axis=1)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = data1.nunique(axis=1)
+            pd.testing.assert_series_equal(result, expected)
 
     def testUnique(self):
         data1 = pd.Series(np.random.randint(0, 5, size=(20,)))

@@ -22,7 +22,7 @@ try:
 except ImportError:
     pa = None
 
-from mars.dataframe import ArrowStringDtype, ArrowStringArray
+from mars.dataframe import ArrowStringDtype, ArrowStringArray, ArrowListDtype, ArrowListArray
 from mars.dataframe.utils import arrow_table_to_pandas_dataframe
 from mars.serialize import dataserializer
 
@@ -30,6 +30,32 @@ from mars.serialize import dataserializer
 @unittest.skipIf(pa is None, 'pyarrow not installed')
 @unittest.skipIf(sys.version_info[:2] == (3, 5), 'skip for Python 3.5')
 class Test(unittest.TestCase):
+    def testArrowDtype(self):
+        s = pa.array(['a', 'b'])
+        self.assertEqual(list(ArrowStringDtype().__from_arrow__(s)),
+                         list(ArrowStringArray(s)))
+
+        self.assertEqual(ArrowStringDtype(),
+                         ArrowStringDtype.construct_from_string('Arrow[string]'))
+
+        self.assertEqual(ArrowListDtype(ArrowListDtype('string')),
+                         ArrowListDtype.construct_from_string('Arrow[List[string]]'))
+
+        self.assertEqual(repr(ArrowListDtype(np.int8)), 'Arrow[List[int8]]')
+
+        with self.assertRaises(TypeError):
+            ArrowListDtype.construct_from_string('Arrow[string]')
+
+        self.assertTrue(ArrowListDtype.is_dtype('Arrow[List[uint8]]'))
+        self.assertFalse(ArrowListDtype.is_dtype('List[int8]'))
+        self.assertFalse(ArrowListDtype.is_dtype(ArrowStringDtype()))
+
+        self.assertNotEqual(ArrowListDtype(np.int8), ArrowStringDtype())
+        self.assertEqual(ArrowListDtype(np.int8).kind, np.dtype(np.int8).kind)
+
+        self.assertEqual(ArrowListDtype(np.int8).arrow_type,
+                         pa.list_(pa.int8()))
+
     def testArrowStringArrayCreation(self):
         # create from pandas Series
         series = pd.Series(['a', 'bc', 'de'])
@@ -68,10 +94,42 @@ class Test(unittest.TestCase):
 
         # test _from_sequence
         array = ArrowStringArray._from_sequence(['a', 'b', 'cc'])
-        self.assertIsNot(array._arrow_array, pa.ChunkedArray)
+        self.assertIsInstance(array._arrow_array, pa.ChunkedArray)
 
         # test _from_sequence_of_strings
         array = ArrowStringArray._from_sequence_of_strings(['a', 'b'])
+        self.assertIsInstance(array._arrow_array, pa.ChunkedArray)
+
+    def testArrowListArrayCreation(self):
+        # create from pandas Series
+        series = pd.Series([['a', 'b'], ['c'], ['d', 'e']])
+        array = ArrowListArray(series)
+        self.assertIsInstance(array.dtype, ArrowListDtype)
+        self.assertIsInstance(array.dtype.value_type, ArrowStringDtype)
+        self.assertIsInstance(array._arrow_array, pa.ChunkedArray)
+
+        # create from list
+        lst = [['a'], ['b', 'c'], ['d', 'e']]
+        array = ArrowListArray(lst)
+        self.assertIsInstance(array.dtype, ArrowListDtype)
+        self.assertIsInstance(array.dtype.value_type, ArrowStringDtype)
+        self.assertIsInstance(array._arrow_array, pa.ChunkedArray)
+
+        # create from pyarrow Array
+        a = pa.array([[1.], [2., 3.], [4.]])
+        array = ArrowListArray(a)
+        self.assertIsInstance(array.dtype, ArrowListDtype)
+        self.assertEqual(array.dtype.value_type, np.float64)
+        self.assertIsInstance(array._arrow_array, pa.ChunkedArray)
+
+        # create from ArrowListArray
+        array2 = ArrowListArray(array)
+        self.assertIsInstance(array2._arrow_array, pa.ChunkedArray)
+
+        # test _from_sequence
+        array = ArrowListArray._from_sequence([[1, 2], [3, 4], [5]])
+        self.assertIsInstance(array.dtype, ArrowListDtype)
+        self.assertEqual(array.dtype.value_type, np.int64)
         self.assertIsInstance(array._arrow_array, pa.ChunkedArray)
 
     @unittest.skipIf(pd.__version__ < '1.0', 'pandas version should be at least 1.0')
@@ -224,11 +282,96 @@ class Test(unittest.TestCase):
         self.assertEqual(len(concatenated._arrow_array.chunks), 1)
         pd.testing.assert_series_equal(pd.Series(arrow_array5), pd.Series(concatenated))
 
+    def testArrowListFunctions(self):
+        lst = np.array([['a, bc'], ['de'], ['e', 'ee'], ['中文', '中文2']], dtype=object)
+        arrow_array = ArrowListArray(lst)
+        has_na_lst = lst.copy()
+        has_na_lst[1] = None
+        has_na_arrow_array = ArrowListArray(has_na_lst)
+
+        # getitem, scalar
+        self.assertEqual(arrow_array[1], lst[1])
+        self.assertEqual(arrow_array[-1], lst[-1])
+        # getitem, slice
+        np.testing.assert_array_equal(arrow_array[:2].to_numpy(), lst[:2])
+
+        # setitem
+        arrow_array2 = arrow_array.copy()
+        lst2 = lst.copy()
+        for s in [['ss'], pd.Series(['ss'])]:
+            arrow_array2[0] = s
+            lst2[0] = ['ss']
+            np.testing.assert_array_equal(arrow_array2.to_numpy(), lst2)
+        arrow_array2[0] = None
+        lst2[0] = None
+        np.testing.assert_array_equal(arrow_array2.to_numpy(), lst2)
+        with self.assertRaises(ValueError):
+            # must set list like object
+            arrow_array2[0] = 'ss'
+
+        # test to_numpy
+        np.testing.assert_array_equal(arrow_array.to_numpy(), lst)
+        np.testing.assert_array_equal(arrow_array.to_numpy(copy=True), lst)
+        np.testing.assert_array_equal(has_na_arrow_array.to_numpy(na_value=1),
+                                      pd.Series(has_na_lst).fillna(1).to_numpy())
+
+        # test fillna
+        arrow_array3 = has_na_arrow_array.fillna(lst[1])
+        np.testing.assert_array_equal(arrow_array3.to_numpy(), lst)
+
+        # test astype
+        with self.assertRaises(TypeError):
+            arrow_array.astype(np.int64)
+        with self.assertRaises(TypeError):
+            arrow_array.astype(ArrowListDtype(np.int64))
+        arrow_array4 = ArrowListArray([[1, 2], [3]])
+        expected = np.array([['1', '2'], ['3']], dtype=object)
+        np.testing.assert_array_equal(arrow_array4.astype(ArrowListDtype(str)),
+                                      expected)
+        np.testing.assert_array_equal(arrow_array4.astype(ArrowListDtype(arrow_array4.dtype)),
+                                      arrow_array4)
+        np.testing.assert_array_equal(arrow_array4.astype(ArrowListDtype(arrow_array4.dtype), copy=False),
+                                      arrow_array4)
+
+        # test nbytes
+        self.assertLess(arrow_array.nbytes,
+                        pd.Series(lst).memory_usage(deep=True))
+
+        # test memory_usage
+        self.assertEqual(arrow_array.memory_usage(deep=True),
+                         arrow_array.nbytes)
+
+        # test isna
+        np.testing.assert_array_equal(has_na_arrow_array.isna(),
+                                      pd.Series(has_na_lst).isna())
+
+        # test take
+        self.assertListEqual(list(arrow_array.take([1, 2, -1])),
+                             list(pd.Series(lst).take([1, 2, -1])))
+
+        # test shift
+        self.assertListEqual(list(arrow_array.shift(2, fill_value=['aa'])),
+                             [['aa']] * 2 + lst[:-2].tolist())
+
+        # test all any
+        self.assertEqual(arrow_array.all(), lst.all())
+        self.assertEqual(arrow_array.any(), lst.any())
+
+        # test repr
+        self.assertIn('ArrowListArray', repr(arrow_array))
+
+        # test concat empty
+        arrow_array5 = ArrowListArray(pa.chunked_array([], type=pa.list_(pa.string())))
+        concatenated = ArrowListArray._concat_same_type([arrow_array5, arrow_array5])
+        self.assertEqual(len(concatenated._arrow_array.chunks), 1)
+        pd.testing.assert_series_equal(pd.Series(arrow_array5), pd.Series(concatenated))
+
     @unittest.skipIf(pd.__version__ < '1.0', 'pandas version should be at least 1.0')
     def testToPandas(self):
         rs = np.random.RandomState(0)
         df = pd.DataFrame({'a': rs.rand(100),
-                           'b': ['s' + str(i) for i in rs.randint(100, size=100)]})
+                           'b': ['s' + str(i) for i in rs.randint(100, size=100)],
+                           'c': [['ss0' + str(i), 'ss1' + str(i)] for i in rs.randint(100, size=100)]})
 
         batch_size = 15
         n_batch = len(df) // 15 + 1
@@ -238,15 +381,18 @@ class Test(unittest.TestCase):
 
         df1 = arrow_table_to_pandas_dataframe(table, use_arrow_dtype=False)
         self.assertEqual(df1.dtypes.iloc[1], np.dtype('O'))
+        self.assertEqual(df1.dtypes.iloc[2], np.dtype('O'))
 
         df2 = arrow_table_to_pandas_dataframe(table)
         self.assertEqual(df2.dtypes.iloc[1], ArrowStringDtype())
+        self.assertEqual(df2.dtypes.iloc[2], ArrowListDtype(str))
         self.assertLess(df2.memory_usage(deep=True).sum(),
                         df.memory_usage(deep=True).sum())
 
         # test serialize
         df3 = dataserializer.loads(dataserializer.dumps(df2))
         self.assertEqual(df2.dtypes.iloc[1], ArrowStringDtype())
+        self.assertEqual(df2.dtypes.iloc[2], ArrowListDtype(str))
         pd.testing.assert_frame_equal(df3, df2)
 
         # test df method

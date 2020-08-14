@@ -380,13 +380,18 @@ def _deserialize_pandas_categorical_dtype(data):
     return pd.CategoricalDtype(data[0], data[1])
 
 
-def _serialize_arrow_string_array(obj):
+def _serialize_arrow_array(obj):
     return obj._arrow_array.chunks
 
 
 def _deserialize_arrow_string_array(obj):
     from ..dataframe.arrays import ArrowStringArray
     return ArrowStringArray(pyarrow.chunked_array(obj))
+
+
+def _deserialize_arrow_list_array(obj):
+    from ..dataframe.arrays import ArrowListArray
+    return ArrowListArray(pyarrow.chunked_array(obj))
 
 
 def _serialize_sparse_array(obj):
@@ -491,7 +496,7 @@ def _apply_pyarrow_serialization_patch(serialization_context):  # pragma: no cov
 
 
 def mars_serialize_context():
-    from ..dataframe.arrays import ArrowStringArray
+    from ..dataframe.arrays import ArrowStringArray, ArrowListArray
 
     global _serialize_context
     if _serialize_context is None:
@@ -515,8 +520,11 @@ def mars_serialize_context():
                           custom_serializer=_serialize_pandas_categorical_dtype,
                           custom_deserializer=_deserialize_pandas_categorical_dtype)
         ctx.register_type(ArrowStringArray, 'mars.dataframe.ArrowStringArray',
-                          custom_serializer=_serialize_arrow_string_array,
+                          custom_serializer=_serialize_arrow_array,
                           custom_deserializer=_deserialize_arrow_string_array)
+        ctx.register_type(ArrowListArray, 'mars.dataframe.ArrowListArray',
+                          custom_serializer=_serialize_arrow_array,
+                          custom_deserializer=_deserialize_arrow_list_array)
         ctx.register_type(pd.arrays.SparseArray, 'pandas.arrays.SparseArray',
                           custom_serializer=_serialize_sparse_array,
                           custom_deserializer=_deserialzie_sparse_array)
