@@ -55,5 +55,5 @@ class StartTracker(LearnOperand, LearnOperandMixin):
         thread.daemon = True
         thread.start()
 
-        rabit_args = [to_binary('{0}={1}'.format(k, v)) for k, v in env.items()]
+        rabit_args = [to_binary(f'{k}={v}') for k, v in env.items()]
         ctx[op.outputs[0].key] = rabit_args

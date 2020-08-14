@@ -546,8 +546,8 @@ class GraphExecution(object):
         if self._print_progress:
             i, n = len(self._submitted_op_keys), len(self._op_key_to_ops)
             if i % 30 or i >= n:
-                logger.info('[{0}] {1:.2f}% percent of graph has been submitted'.format(
-                    str(datetime.datetime.now()), float(i) * 100 / n))
+                logger.info('[{0}] {1:.2f}% percent of graph has been submitted',
+                            datetime.datetime.now(), float(i) * 100 / n)
 
         if self._prefetch:
             # check the operand's outputs if any of its successor's predecessors can be prefetched
@@ -647,7 +647,7 @@ class Executor(object):
                     mapper[type(op)] = mapper[op_cls]
                     runner = mapper[op_cls]
                     return runner(results, op)
-            raise KeyError('No handler found for op: %s' % op)
+            raise KeyError(f'No handler found for op: {op}')
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
                       mock=False, no_intermediate=False, compose=True, retval=True,
@@ -966,7 +966,7 @@ class Executor(object):
             if key not in self.stored_tileables and not isinstance(to_fetch_tileable.op, Fetch):
                 # check if the tileable is executed before
                 raise ValueError(
-                    'Tileable object {} must be executed first before being fetched'.format(tileable.key))
+                    f'Tileable object {tileable.key} must be executed first before being fetched')
 
         # if chunk executed, fetch chunk mechanism will be triggered in execute_tileables
         result = self.execute_tileables(tileables, **kw)

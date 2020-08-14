@@ -123,7 +123,7 @@ class CheckNonNegative(CheckBase):
                          output_types=output_types,
                          gpu=gpu, **kw)
         if self._err_msg is None and self._whom is not None:
-            self._err_msg = "Negative values in data passed to %s" % self._whom
+            self._err_msg = f"Negative values in data passed to {self._whom}"
 
     @property
     def whom(self):

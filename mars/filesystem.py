@@ -418,8 +418,7 @@ class FSMap(MutableMapping):
         if check:
             if not self.fs.exists(root):
                 raise ValueError(
-                    "Path %s does not exist. Create "
-                    " with the ``create=True`` keyword" % root
+                    f"Path {root} does not exist. Create with the ``create=True`` keyword"
                 )
             with self.fs.open(fs.pathsep.join([root, "a"]), 'w'):
                 pass

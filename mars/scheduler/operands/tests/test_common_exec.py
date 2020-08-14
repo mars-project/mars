@@ -51,7 +51,7 @@ class FakeExecutionActor(SchedulerActor):
 
     @classmethod
     def gen_uid(cls, addr):
-        return 's:h1:%s$%s' % (cls.__name__, addr)
+        return f's:h1:{cls.__name__}${addr}'
 
     @log_unhandled
     def actual_exec(self, session_id, graph_key):
@@ -263,7 +263,7 @@ class Test(unittest.TestCase):
             mock_resource = dict(hardware=dict(cpu=4, cpu_total=4, memory=512))
 
             for idx in range(20):
-                resource_ref.set_worker_meta('localhost:%d' % (idx + 12345), mock_resource)
+                resource_ref.set_worker_meta(f'localhost:{idx + 12345}', mock_resource)
 
             graph_ref.prepare_graph(compose=False)
             fetched_graph = graph_ref.get_chunk_graph()

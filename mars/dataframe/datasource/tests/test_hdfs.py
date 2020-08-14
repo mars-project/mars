@@ -54,18 +54,18 @@ class TestHDFS(TestBase):
             self.hdfs.rm(TEST_DIR, recursive=True)
 
     def testReadCSVExecution(self):
-        with self.hdfs.open("{}/simple_test.csv".format(TEST_DIR), "wb", replication=1) as f:
+        with self.hdfs.open(f"{TEST_DIR}/simple_test.csv", "wb", replication=1) as f:
             f.write(b'name,amount,id\nAlice,100,1\nBob,200,2')
 
-        df = md.read_csv('hdfs://localhost:8020{}/simple_test.csv'.format(TEST_DIR))
+        df = md.read_csv(f'hdfs://localhost:8020{TEST_DIR}/simple_test.csv')
         expected = pd.read_csv(BytesIO(b'name,amount,id\nAlice,100,1\nBob,200,2'))
         res = df.to_pandas()
         pd.testing.assert_frame_equal(expected, res)
 
-        with self.hdfs.open("{}/chunk_test.csv".format(TEST_DIR), "wb", replication=1) as f:
+        with self.hdfs.open(f"{TEST_DIR}/chunk_test.csv", "wb", replication=1) as f:
             f.write(csv_content)
 
-        df = md.read_csv('hdfs://localhost:8020{}/chunk_test.csv'.format(TEST_DIR), chunk_bytes=50)
+        df = md.read_csv(f'hdfs://localhost:8020{TEST_DIR}/chunk_test.csv', chunk_bytes=50)
         expected = pd.read_csv(BytesIO(csv_content))
         res = df.to_pandas()
         pd.testing.assert_frame_equal(expected.reset_index(drop=True), res.reset_index(drop=True))

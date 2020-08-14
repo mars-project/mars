@@ -166,7 +166,7 @@ def gen_endpoint(address):
                 continue
             raise
 
-    return '{0}:{1}'.format(address, port)
+    return f'{address}:{port}'
 
 
 def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
@@ -309,10 +309,10 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
     web_process = None
     if web_endpoint:
         web_process = _start_web_process(endpoint, web_endpoint)
-        print('Web endpoint started at http://%s' % web_endpoint, file=sys.stderr)
+        print(f'Web endpoint started at http://{web_endpoint}', file=sys.stderr)
         if open_browser:
             import webbrowser
-            webbrowser.open_new_tab('http://%s' % web_endpoint)
+            webbrowser.open_new_tab(f'http://{web_endpoint}')
 
     client = LocalDistributedClusterClient(endpoint, web_endpoint, process, web_process)
     _local_cluster_clients[id(client)] = client

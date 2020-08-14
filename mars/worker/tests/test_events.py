@@ -32,7 +32,7 @@ class Test(WorkerCase):
         options.worker.event_preserve_time = self._old_event_preserve_time
 
     def testEvents(self, *_):
-        mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
+        mock_scheduler_addr = f'127.0.0.1:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent',
                                address=mock_scheduler_addr) as pool:
             events_ref = pool.create_actor(EventsActor)

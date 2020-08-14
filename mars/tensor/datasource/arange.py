@@ -178,7 +178,7 @@ def arange(*args, **kwargs):
         names = 'start', 'stop', 'step'
         for i, arg in enumerate(args):
             if kw_args[i] is not None:
-                raise TypeError("Argument given by name ('{0}') and position ({1})".format(names[i], i))
+                raise TypeError(f"Argument given by name ('{names[i]}') and position ({i})")
             kw_args[i] = arg
         start, stop, step = kw_args
 

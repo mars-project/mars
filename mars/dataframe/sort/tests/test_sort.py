@@ -30,8 +30,8 @@ class Test(unittest.TestCase):
                             'b': np.random.randint(1000, size=10),
                             'c': np.random.rand(10),
                             'd': [np.random.bytes(10) for _ in range(10)],
-                            'e': [pd.Timestamp('201{}'.format(i)) for i in range(10)],
-                            'f': [pd.Timedelta('{} days'.format(i)) for i in range(10)]
+                            'e': [pd.Timestamp(f'201{i}') for i in range(10)],
+                            'f': [pd.Timedelta(f'{i} days') for i in range(10)]
                             },)
         df = DataFrame(raw)
         sorted_df = dataframe_sort_values(df, by='c')

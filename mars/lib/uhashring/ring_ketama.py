@@ -39,7 +39,7 @@ class KetamaRing(object):
         ks = (node_conf['vnodes'] * len(self._nodes) *
               node_conf['weight']) // self._weight_sum
         for w in range(0, ks):
-            w_node_name = '%s-%s' % (node_name, w)
+            w_node_name = f'{node_name}-{w}'
             for i in range(0, self._replicas):
                 yield self.hashi(w_node_name, replica=i)
 
@@ -79,7 +79,7 @@ class KetamaRing(object):
         try:
             self._nodes.pop(node_name)
         except Exception:
-            raise KeyError('node \'{}\' not found, available nodes: {}'.format(
-                node_name, self._nodes.keys()))
+            raise KeyError(f"node '{node_name}' not found, "
+                           f"available nodes: {list(self._nodes.keys())}")
         else:
             self._create_ring(self._nodes)

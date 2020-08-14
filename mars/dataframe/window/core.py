@@ -30,8 +30,7 @@ class Window(Serializable):
         raise NotImplementedError
 
     def _repr(self, params):
-        kvs = ['{}={}'.format(k, v) for k, v in params.items()
-               if v is not None]
+        kvs = [f'{k}={v}' for k, v in params.items() if v is not None]
         return '{} [{}]'.format(self._repr_name(), ','.join(kvs))
 
     def _repr_name(self):
@@ -46,10 +45,10 @@ class Window(Serializable):
             item = list(item)
             for col in item:
                 if col not in columns:
-                    raise KeyError('Column not found: {}'.format(col))
+                    raise KeyError(f'Column not found: {col}')
         else:
             if item not in columns:
-                raise KeyError('Column not found: {}'.format(item))
+                raise KeyError(f'Column not found: {item}')
 
         return type(self)(input=self.input[item], **self.params)
 

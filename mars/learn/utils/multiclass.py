@@ -328,7 +328,7 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
         target = cls._execute(ctx, op)
         if op.checked_targets is not None and len(op.checked_targets) > 0:
             if target not in op.checked_targets:
-                raise ValueError('Unknown label type: {}'.format(target))
+                raise ValueError(f'Unknown label type: {target}')
         ctx[op.outputs[0].key] = target
 
 
@@ -402,8 +402,7 @@ def type_of_target(y):
              and not isinstance(y, str))
 
     if not valid:
-        raise ValueError('Expected array-like (array or non-string sequence), '
-                         'got %r' % y)
+        raise ValueError(f'Expected array-like (array or non-string sequence), got {y}')
 
     sparse_pandas = (y.__class__.__name__ in ['SparseSeries', 'SparseArray'])
     if sparse_pandas:  # pragma: no cover

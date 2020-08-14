@@ -37,7 +37,7 @@ class MockOperandActor(FunctionActor):
 @patch_method(ResourceActor._broadcast_sessions)
 class Test(WorkerCase):
     def testAssignerActor(self, *_):
-        mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
+        mock_scheduler_addr = f'127.0.0.1:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=mock_scheduler_addr) as pool:
             cluster_info_ref = pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
                                                  uid=SchedulerClusterInfoActor.default_uid())

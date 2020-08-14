@@ -700,7 +700,7 @@ class ExecutionActor(WorkerActor):
                 chunk_meta.workers = tuple(w for w in chunk_meta.workers if w != self.address)
 
             if chunk_meta is None or not chunk_meta.workers:
-                raise DependencyMissing('Dependency %r not met on sending.' % (input_key,))
+                raise DependencyMissing(f'Dependency {input_key} not met on sending')
             worker_results = list(chunk_meta.workers)
             random.shuffle(worker_results)
 

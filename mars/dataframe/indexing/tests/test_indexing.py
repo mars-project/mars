@@ -522,7 +522,7 @@ class Test(TestBase):
         self.assertIsInstance(df2.loc['a3':].op, DataFrameLocGetItem)
 
         raw2 = raw.copy()
-        raw2.index = ['a%d' % i for i in range(3)]
+        raw2.index = [f'a{i}' for i in range(3)]
         df2 = md.DataFrame(raw2, chunk_size=2)
 
         self.assertIsInstance(df2.loc[:3].op, DataFrameLocGetItem)

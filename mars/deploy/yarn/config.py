@@ -88,7 +88,7 @@ class AppContainerConfig:
         return _remove_nones(dict(
             resources=dict(
                 vcores=self._cpu,
-                memory=('%s MiB' % (self._memory // 1024 ** 2,)) if self._memory else None,
+                memory=f'{self._memory // 1024 ** 2} MiB' if self._memory else None,
             ),
             env=self._env,
             script=self.build_script(),
@@ -203,16 +203,16 @@ class MarsServiceConfig(AppServiceConfig):
             bash_lines.append('source mars_env/bin/activate')
             python_executable = 'mars_env/bin/python'
         elif self._env_scheme == 'conda':
-            bash_lines.append('conda activate "%s"' % self._env_path)
+            bash_lines.append(f'conda activate "{self._env_path}"')
             python_executable = 'python'
         elif self._env_scheme == 'venv':
-            bash_lines.append('source "%s/bin/activate"' % self._env_path)
+            bash_lines.append(f'source "{self._env_path}/bin/activate"')
             python_executable = self._env_path + '/bin/python'
         else:  # pragma: no cover
             python_executable = self._env_path
 
         cmd = self._cmd_tmpl.format(executable=python_executable)
-        bash_lines.append('%s -m %s %s' % (cmd, _get_local_app_module(self.service_name), self._extra_args))
+        bash_lines.append(f'{cmd} -m {_get_local_app_module(self.service_name)} {self._extra_args}')
         return '\n'.join(bash_lines) + '\n'
 
 

@@ -525,8 +525,7 @@ def cdist(XA, XB, metric='euclidean', **kwargs):
         vi = astensor(vi)
 
     if len(kwargs) > 0:
-        raise TypeError('`cdist` got an unexpected keyword argument \'{}\''.format(
-            next(n for n in kwargs)))
+        raise TypeError(f"`cdist` got an unexpected keyword argument '{next(iter(kwargs))}'")
 
     op = TensorCdist(metric=metric,
                      p=p, w=w, v=v, vi=vi, dtype=np.dtype(float))

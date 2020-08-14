@@ -29,7 +29,7 @@ from mars.tests.core import patch_method, create_actor_pool
 @unittest.skipIf(sys.platform == 'win32', 'does not run under windows')
 class Test(unittest.TestCase):
     def setUp(self):
-        endpoint = '127.0.0.1:%d' % get_next_port()
+        endpoint = f'127.0.0.1:{get_next_port()}'
         self.endpoint = endpoint
         self.pool = create_actor_pool(n_process=1, backend='gevent', address=endpoint)
         self.pool.create_actor(SchedulerClusterInfoActor, [endpoint],

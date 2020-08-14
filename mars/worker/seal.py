@@ -25,7 +25,7 @@ class SealActor(WorkerActor):
     """
     @staticmethod
     def gen_uid(session_id, chunk_key):
-        return 's:0:seal$%s$%s' % (session_id, chunk_key)
+        return f's:0:seal${session_id}${chunk_key}'
 
     def __init__(self):
         super().__init__()

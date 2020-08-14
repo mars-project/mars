@@ -39,7 +39,7 @@ class Test(unittest.TestCase):
         serialized_graph = serialize_graph(graph)
         chunked_graph = expr.build_graph(compose=compose, tiled=True)
 
-        addr = '127.0.0.1:%d' % get_next_port()
+        addr = f'127.0.0.1:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
             pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
                               uid=SchedulerClusterInfoActor.default_uid())
@@ -184,7 +184,7 @@ class Test(unittest.TestCase):
     def testEmptyGraph(self, *_):
         session_id = str(uuid.uuid4())
 
-        addr = '127.0.0.1:%d' % get_next_port()
+        addr = f'127.0.0.1:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
             pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
                               uid=SchedulerClusterInfoActor.default_uid())
@@ -206,7 +206,7 @@ class Test(unittest.TestCase):
     def testErrorOnPrepare(self, *_):
         session_id = str(uuid.uuid4())
 
-        addr = '127.0.0.1:%d' % get_next_port()
+        addr = f'127.0.0.1:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
             pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
                               uid=SchedulerClusterInfoActor.default_uid())

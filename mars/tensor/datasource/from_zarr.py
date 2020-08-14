@@ -71,7 +71,7 @@ def fromzarr(path, group=None, dataset=None, chunk_size=None):
     else:
         raise TypeError('`path` passed has wrong type, '
                         'expect str, or zarr.Array'
-                        'got {}'.format(type(path)))
+                        f'got {type(path)}')
 
     chunk_size = chunk_size if chunk_size is not None else arr.chunks
     op = TensorFromZarr(filename=path, group=group, dataset=dataset,

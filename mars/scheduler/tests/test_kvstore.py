@@ -35,7 +35,7 @@ class Test(unittest.TestCase):
     def testKVStoreActor(self):
         etcd_port = get_next_port()
         proc_helper = EtcdProcessHelper(port_range_start=etcd_port)
-        options.kv_store = 'etcd://127.0.0.1:%s' % etcd_port
+        options.kv_store = f'etcd://127.0.0.1:{etcd_port}'
         with proc_helper.run(), create_actor_pool(n_process=1, backend='gevent') as pool:
             store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())
 

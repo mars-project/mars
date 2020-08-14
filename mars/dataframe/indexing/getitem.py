@@ -107,7 +107,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                 return i
             elif label in index:
                 return i
-        raise TypeError("label %s doesn't exist" % label)
+        raise TypeError(f"label {label} doesn't exist")
 
     @classmethod
     def _tile_one_chunk(cls, op):
@@ -411,14 +411,14 @@ def dataframe_getitem(df, item):
     elif isinstance(item, list):
         for col_name in item:
             if col_name not in columns:
-                raise KeyError('%s not in columns' % col_name)
+                raise KeyError(f'{col_name} not in columns')
         op = DataFrameIndex(col_names=item, output_types=[OutputType.dataframe])
     elif isinstance(item, _list_like_types) or hasattr(item, 'dtypes'):
         # NB: don't enforce the dtype of `item` to be `bool` since it may be unknown
         op = DataFrameIndex(mask=item, output_types=[OutputType.dataframe])
     else:
         if item not in columns:
-            raise KeyError('%s not in columns' % item)
+            raise KeyError(f'{item} not in columns')
         op = DataFrameIndex(col_names=item)
     return op(df)
 
@@ -436,4 +436,4 @@ def series_getitem(series, labels, combine_size=None):
         else:
             return series.loc[labels]
     else:
-        raise NotImplementedError('type %s is not support for getitem' % type(labels))
+        raise NotImplementedError(f'type {type(labels)} is not support for getitem')

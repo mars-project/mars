@@ -416,7 +416,7 @@ def shuffle(*arrays, **options):
         options.pop('random_state', None)).to_numpy()
     if options:
         raise TypeError('shuffle() got an unexpected '
-                        'keyword argument {0}'.format(next(iter(options))))
+                        f'keyword argument {next(iter(options))}')
 
     max_ndim = max(ar.ndim for ar in arrays)
     axes = tuple(np.unique([validate_axis(max_ndim, ax) for ax in axes]).tolist())
@@ -426,7 +426,7 @@ def shuffle(*arrays, **options):
     for ax in axes:
         shapes = {ar.shape[ax] for ar in arrays if ax < ar.ndim}
         if len(shapes) > 1:
-            raise ValueError('arrays do not have same shape on axis {0}'.format(ax))
+            raise ValueError(f'arrays do not have same shape on axis {ax}')
 
     op = LearnShuffle(axes=axes, seeds=seeds,
                       output_types=get_output_types(*arrays))

@@ -72,7 +72,7 @@ cdef class DirectedGraph:
 
     def remove_node(self, node):
         if node not in self._nodes:
-            raise KeyError('Node %s does not exist in the directed graph' % node)
+            raise KeyError(f'Node {node} does not exist in the directed graph')
 
         del self._nodes[node]
 
@@ -99,9 +99,9 @@ cdef class DirectedGraph:
             dict u_succ, v_pred
 
         if u not in self._nodes:
-            raise KeyError('Node %s does not exist in the directed graph' % u)
+            raise KeyError(f'Node {u} does not exist in the directed graph')
         if v not in self._nodes:
-            raise KeyError('Node %s does not exist in the directed graph' % v)
+            raise KeyError(f'Node {v} does not exist in the directed graph')
 
         if edge_attr is None:
             edge_attr = dict()
@@ -122,7 +122,7 @@ cdef class DirectedGraph:
             del self._successors[u][v]
             del self._predecessors[v][u]
         except KeyError:
-            raise KeyError('Edge %s->%s does not exist in the directed graph' % (u, v))
+            raise KeyError(f'Edge {u}->{v} does not exist in the directed graph')
 
     def has_successor(self, u, v):
         return (u in self._successors) and (v in self._successors[u])
@@ -139,7 +139,7 @@ cdef class DirectedGraph:
         try:
             return iter(self._successors[n])
         except KeyError:
-            raise KeyError('Node %s does not exist in the directed graph' % n)
+            raise KeyError(f'Node {n} does not exist in the directed graph')
 
     cpdef list successors(self, n):
         return list(self._successors[n])
@@ -148,7 +148,7 @@ cdef class DirectedGraph:
         try:
             return iter(self._predecessors[n])
         except KeyError:
-            raise KeyError('Node %s does not exist in the directed graph' % n)
+            raise KeyError(f'Node {n} does not exist in the directed graph')
 
     cpdef list predecessors(self, n):
         return list(self._predecessors[n])
@@ -180,6 +180,7 @@ cdef class DirectedGraph:
         cdef:
             set visited = set()
             list stack
+            bint visit_all = False
 
         if reverse:
             pred_fun, succ_fun = self.successors, self.predecessors
@@ -199,6 +200,7 @@ cdef class DirectedGraph:
             return not preds or all(pred in visited for pred in preds)
 
         successors = successors or succ_fun
+        visit_all = (visit_predicate == 'all')
         visit_predicate = visit_predicate or _default_visit_predicate
 
         while stack:
@@ -206,7 +208,7 @@ cdef class DirectedGraph:
             if node in visited:
                 continue
             preds = self.predecessors(node)
-            if visit_predicate(node, visited):
+            if visit_all or visit_predicate(node, visited):
                 yield node
                 visited.add(node)
                 stack.extend(n for n in successors(node) if n not in visited)
@@ -330,7 +332,7 @@ cdef class DirectedGraph:
                     for c in node.composed:
                         nodes.append(c.op)
             else:
-                raise TypeError('Unknown node type to serialize: {0}'.format(type(node)))
+                raise TypeError(f'Unknown node type to serialize: {type(node)}')
 
         s_graph = SerializableGraph(_nodes=nodes)
         s_graph.level = level if level is not None else SerializableGraph.Level.CHUNK
@@ -341,7 +343,7 @@ cdef class DirectedGraph:
         if isinstance(val, bool):
             return 'true' if val else 'false'
         if isinstance(val, str):
-            return '"{0}"'.format(val)
+            return f'"{val}"'
         return val
 
     def to_dot(self, graph_attrs=None, node_attrs=None, trunc_key=5, result_chunk_keys=None):
@@ -352,12 +354,10 @@ cdef class DirectedGraph:
 
         if graph_attrs:
             sio.write('graph [{0}];\n'.format(
-                ' '.join('{0}={1}'.format(k, self._repr_in_dot(v))
-                         for k, v in graph_attrs.items())))
+                ' '.join(f'{k}={self._repr_in_dot(v)}' for k, v in graph_attrs.items())))
         if node_attrs:
             sio.write('node [{0}];\n'.format(
-                ' '.join('{0}={1}'.format(k, self._repr_in_dot(v))
-                         for k, v in node_attrs.items())))
+                ' '.join(f'{k}={self._repr_in_dot(v)}' for k, v in node_attrs.items())))
 
         chunk_style = '[shape=box]'
         operand_style = '[shape=circle]'
@@ -365,28 +365,29 @@ cdef class DirectedGraph:
         visited = set()
         for node in self.iter_nodes():
             op = node.op
+            op_name = type(op).__name__
             if op.key in visited:
                 continue
             for input_chunk in (op.inputs or []):
                 if input_chunk.key not in visited:
-                    sio.write('"Chunk:%s" %s\n' % (input_chunk.key[:trunc_key], chunk_style))
+                    sio.write(f'"Chunk:{input_chunk.key[:trunc_key]}" {chunk_style}\n')
                     visited.add(input_chunk.key)
                 if op.key not in visited:
-                    sio.write('"%s:%s" %s\n' % (type(op).__name__, op.key[:trunc_key], operand_style))
+                    sio.write(f'"{op_name}:{op.key[:trunc_key]}" {operand_style}\n')
                     visited.add(op.key)
-                sio.write('"Chunk:%s" -> "%s:%s"\n' % (input_chunk.key[:trunc_key], type(op).__name__, op.key[:5]))
+                sio.write(f'"Chunk:{input_chunk.key[:trunc_key]}" -> "{op_name}:{op.key[:5]}"\n')
 
             for output_chunk in (op.outputs or []):
                 if output_chunk.key not in visited:
                     tmp_chunk_style = chunk_style
                     if result_chunk_keys and output_chunk.key in result_chunk_keys:
                         tmp_chunk_style = '[shape=box,style=filled,fillcolor=cadetblue1]'
-                    sio.write('"Chunk:%s" %s\n' % (output_chunk.key[:trunc_key], tmp_chunk_style))
+                    sio.write(f'"Chunk:{output_chunk.key[:trunc_key]}" {tmp_chunk_style}\n')
                     visited.add(output_chunk.key)
                 if op.key not in visited:
-                    sio.write('"%s:%s" %s\n' % (type(op).__name__, op.key[:trunc_key], operand_style))
+                    sio.write(f'"{op_name}:{op.key[:trunc_key]}" {operand_style}\n')
                     visited.add(op.key)
-                sio.write('"%s:%s" -> "Chunk:%s"\n' % (type(op).__name__, op.key[:trunc_key], output_chunk.key[:5]))
+                sio.write(f'"{op_name}:{op.key[:trunc_key]}" -> "Chunk:{output_chunk.key[:5]}"\n')
 
         sio.write('}')
         return sio.getvalue()
@@ -425,7 +426,7 @@ cdef class DirectedGraph:
         try:
             return cls.deserialize(SerializableGraph.from_pb(pb_obj))
         except KeyError as e:
-            logger.error('Failed to deserialize graph, graph_def: {0}'.format(pb_obj))
+            logger.error(f'Failed to deserialize graph, graph_def: {pb_obj}')
             raise
 
     def to_json(self, json_obj=None, data_serial_type=None, pickle_protocol=None):

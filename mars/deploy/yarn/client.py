@@ -77,7 +77,7 @@ def new_cluster(environment=None, scheduler_num=1, scheduler_cpu=None, scheduler
         ret.update(updates)
         return ret
 
-    app_name = app_name or ('mars-app-%s' % uuid.uuid4())
+    app_name = app_name or f'mars-app-{uuid.uuid4()}'
 
     log_when_fail = kwargs.pop('log_when_fail', False)
 

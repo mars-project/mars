@@ -90,7 +90,7 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
     def check_inputs(self, inputs):
         if len(inputs) > 4:
             raise ValueError(
-                "Binary operand's inputs should less than or equal 4, got {0}".format(len(inputs)))
+                f"Binary operand's inputs should less than or equal 4, got {len(inputs)}")
 
     @classmethod
     def _get_func(cls, xp):
@@ -209,7 +209,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
             if isinstance(out, Tensor):
                 self._out = out
             else:
-                raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+                raise TypeError(f'out should be Tensor object, got {type(out)} instead')
         if where is True:
             where = None
         if where is not None:
@@ -278,7 +278,7 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
     def check_inputs(self, inputs):
         if len(inputs) > 3:
             raise ValueError(
-                "Binary operand's inputs should less than or equal 3, got {0}".format(len(inputs)))
+                f"Binary operand's inputs should less than or equal 3, got {len(inputs)}")
 
     @classmethod
     def _get_func(cls, xp):
@@ -381,7 +381,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
             if isinstance(out, Tensor):
                 self._out = out
             else:
-                raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+                raise TypeError(f'out should be Tensor object, got {type(out)} instead')
         if where is True:
             where = None
         if where is not None:
@@ -510,12 +510,12 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
             if isinstance(out1, Tensor):
                 self._out1 = out1
             else:
-                raise TypeError('out1 should be Tensor object, got {0} instead'.format(type(out1)))
+                raise TypeError(f'out1 should be Tensor object, got {type(out1)} instead')
         if out2 is not None:
             if isinstance(out2, Tensor):
                 self._out2 = out2
             else:
-                raise TypeError('out2 should be Tensor object, got {0} instead'.format(type(out2)))
+                raise TypeError(f'out2 should be Tensor object, got {type(out2)} instead')
         if where is True:
             where = None
         if where is not None:

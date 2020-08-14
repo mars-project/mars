@@ -642,7 +642,7 @@ class Test(unittest.TestCase):
         self.assertEqual(array.dtype, array_loaded.dtype)
         assert_array_equal(array, array_loaded)
 
-        fn = os.path.join(tempfile.gettempdir(), 'test_dump_file_%d.bin' % id(self))
+        fn = os.path.join(tempfile.gettempdir(), f'test_dump_file_{id(self)}.bin')
         try:
             array = np.random.rand(1000, 100).T  # test non c-contiguous
             with open(fn, 'wb') as dump_file:

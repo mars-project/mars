@@ -92,7 +92,7 @@ class Session(object):
         else:
             resp = self._req_session.get(self._endpoint + '/api/session/' + self._session_id, params=args)
             if resp.status_code == 404:
-                raise ValueError('The session with id = %s doesn\'t exist' % self._session_id)
+                raise ValueError(f'The session with id = {self._session_id} doesn\'t exist')
             if resp.status_code >= 400:
                 raise SystemError('Failed to check mars session.')
 
@@ -122,8 +122,8 @@ class Session(object):
             resp_json = json.loads(resp_txt)
         except json.JSONDecodeError:
             text_part = resp.text if len(resp.text) < 100 else resp.text[:100] + '...'
-            raise ResponseMalformed('Failed to parse server response. Status=%s Response="%s"'
-                                    % (resp.status_code, text_part))
+            raise ResponseMalformed(f'Failed to parse server response. Status={resp.status_code} '
+                                    f'Response="{text_part}"')
 
         if raises and resp.status_code >= 400:
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
@@ -144,8 +144,8 @@ class Session(object):
             logging.debug('Gateway Time-out, try again')
             return False
         if resp.status_code >= 400:
-            raise SystemError('Failed to obtain execution status. Code: %d, Reason: %s, Content:\n%s' %
-                              (resp.status_code, resp.reason, resp.text))
+            raise SystemError(f'Failed to obtain execution status. Code: {resp.status_code}, '
+                              f'Reason: {resp.reason}, Content:\n{resp.text}')
 
         resp_json = self._handle_json_response(resp, raises=False)
         if resp_json['state'] == 'succeeded':
@@ -161,8 +161,7 @@ class Session(object):
                 raise ExecutionFailed('Graph execution failed.') from exc
             else:
                 raise ExecutionFailed('Graph execution failed with unknown reason.')
-        raise ExecutionStateUnknown(
-            'Unknown graph execution state %s' % resp_json['state'])
+        raise ExecutionStateUnknown('Unknown graph execution state ' + resp_json['state'])
 
     def run(self, *tileables, **kw):
         timeout = kw.pop('timeout', -1)
@@ -170,7 +169,7 @@ class Session(object):
         fetch = kw.pop('fetch', True)
         name = kw.pop('name', None)
         if kw:
-            raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
+            raise TypeError(f'run got unexpected key arguments {kw!r}')
 
         # those executed tileables should fetch data directly, submit the others
         run_tileables = [t for t in tileables if t.key not in self._executed_tileables]
@@ -191,7 +190,7 @@ class Session(object):
 
         resp_json = self._submit_graph(graph_json, targets_join, names=name or '', compose=compose)
         graph_key = resp_json['graph_key']
-        graph_url = '%s/graph/%s' % (session_url, graph_key)
+        graph_url = f'{session_url}/graph/{graph_key}'
 
         exec_start_time = time.time()
         time_elapsed = 0
@@ -205,8 +204,8 @@ class Session(object):
                 resp = self._req_session.delete(graph_url)
                 if resp.status_code >= 400:
                     raise ExecutionNotStopped(
-                        'Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
-                        (resp.status_code, resp.reason, resp.text))
+                        f'Failed to stop graph execution. Code: {resp.status_code}, '
+                        f'Reason: {resp.reason}, Content:\n{resp.text}')
             finally:
                 time_elapsed = time.time() - exec_start_time
 
@@ -233,7 +232,7 @@ class Session(object):
 
         timeout = kw.pop('timeout', None)
         if kw:
-            raise TypeError('fetch got unexpected key arguments {0}'.format(', '.join(kw.keys())))
+            raise TypeError(f'fetch got unexpected key arguments {kw!r}')
 
         results = list()
         for tileable in tileables:
@@ -253,15 +252,15 @@ class Session(object):
             key = to_fetch_tileable.key
             indexes_str = json.dumps(Indexes(indexes).to_json(), separators=(',', ':'))
 
-            session_url = self._endpoint + '/api/session/' + self._session_id
+            session_url = f'{self._endpoint}/api/session/{self._session_id}'
             compression_str = ','.join(v.value for v in dataserializer.get_supported_compressions())
             params = dict(compressions=compression_str, slices=indexes_str,
                           serial_type=self._serial_type.value, pickle_protocol=self._pickle_protocol)
-            data_url = session_url + '/graph/%s/data/%s' % (self._get_tileable_graph_key(key), key)
+            data_url = f'{session_url}/graph/{self._get_tileable_graph_key(key)}/data/{key}'
             resp = self._req_session.get(data_url, params=params, timeout=timeout)
             if resp.status_code >= 400:
-                raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
-                                 (resp.status_code, resp.reason, resp.text))
+                raise ValueError(f'Failed to fetch data from server. Code: {resp.status_code}, '
+                                 f'Reason: {resp.reason}, Content:\n{resp.text}')
             result_data = dataserializer.loads(resp.content)
             results.append(sort_dataframe_result(tileable, result_data))
         return results
@@ -269,12 +268,12 @@ class Session(object):
     def get_named_tileable_infos(self, name):
         from ..context import TileableInfos
 
-        url = self._endpoint + '/api/session/' + self._session_id
+        url = f'{self._endpoint}/api/session/{self._session_id}'
         params = dict(name=name)
         resp = self._req_session.get(url, params=params)
         if resp.status_code >= 400:  # pragma: no cover
-            raise ValueError('Failed to get tileable key from server. Code: %d, Reason: %s, Content:\n%s' %
-                             (resp.status_code, resp.reason, resp.text))
+            raise ValueError(f'Failed to get tileable key from server. Code: {resp.status_code}, '
+                             f'Reason: {resp.reason}, Content:\n{resp.text}')
         tileable_key = self._handle_json_response(resp)['tileable_key']
         nsplits = self._get_tileable_nsplits(tileable_key)
         shape = tuple(sum(s) for s in nsplits)
@@ -282,8 +281,8 @@ class Session(object):
 
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *_, **__):
         from ..tensor.utils import create_mutable_tensor
-        session_url = self._endpoint + '/api/session/' + self._session_id
-        tensor_url = session_url + '/mutable-tensor/%s?action=create' % name
+        session_url = f'{self._endpoint}/api/session/{self._session_id}'
+        tensor_url = f'{session_url}/mutable-tensor/{name}?action=create'
         if not isinstance(dtype, np.dtype):
             dtype = np.dtype(dtype)
         # avoid built-in scalar dtypes are made into one-field record type.
@@ -304,8 +303,8 @@ class Session(object):
 
     def get_mutable_tensor(self, name):
         from ..tensor.utils import create_mutable_tensor
-        session_url = self._endpoint + '/api/session/' + self._session_id
-        tensor_url = session_url + '/mutable-tensor/%s' % name
+        session_url = f'{self._endpoint}/api/session/{self._session_id}'
+        tensor_url = f'{session_url}/mutable-tensor/{name}'
         resp = self._req_session.get(tensor_url)
         shape, dtype, chunk_size, chunk_keys, chunk_eps = self._handle_json_response(resp)
         return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype),
@@ -332,16 +331,16 @@ class Session(object):
         bio.write(index_bytes)
         dataserializer.dump(value, bio)
 
-        session_url = self._endpoint + '/api/session/' + self._session_id
-        tensor_url = session_url + '/mutable-tensor/%s' % tensor.name
+        session_url = f'{self._endpoint}/api/session/{self._session_id}'
+        tensor_url = f'{session_url}/mutable-tensor/{tensor.name}'
         resp = self._req_session.put(tensor_url, data=bio.getvalue(),
                                      headers={'Content-Type': 'application/octet-stream'})
         self._handle_json_response(resp)
 
     def seal(self, tensor):
         from ..tensor.utils import create_fetch_tensor
-        session_url = self._endpoint + '/api/session/' + self._session_id
-        tensor_url = session_url + '/mutable-tensor/%s?action=seal' % tensor.name
+        session_url = f'{self._endpoint}/api/session/{self._session_id}'
+        tensor_url = f'{session_url}/mutable-tensor/{tensor.name}?action=seal'
         resp = self._req_session.post(tensor_url)
         graph_key_hex, tileable_key, tensor_id, tensor_meta = self._handle_json_response(resp)
         self._executed_tileables[tileable_key] = uuid.UUID(graph_key_hex), {tensor_id}
@@ -352,9 +351,9 @@ class Session(object):
                                    tensor_key=tileable_key, chunk_keys=chunk_keys)
 
     def _get_tileable_nsplits(self, tileable_key):
-        session_url = self._endpoint + '/api/session/' + self._session_id
-        url = session_url + '/graph/%s/data/%s?type=nsplits' % (
-            self._get_tileable_graph_key(tileable_key), tileable_key)
+        session_url = f'{self._endpoint}/api/session/{self._session_id}'
+        graph_key = self._get_tileable_graph_key(tileable_key)
+        url = f'{session_url}/graph/{graph_key}/data/{tileable_key}?type=nsplits'
         resp = self._req_session.get(url)
         new_nsplits = self._handle_json_response(resp)
         return new_nsplits
@@ -382,21 +381,21 @@ class Session(object):
         if tileable_key not in self._executed_tileables:
             return
         graph_key, _ids = self._executed_tileables[tileable_key]
-        data_url = '%s/api/session/%s/graph/%s/data/%s?wait=%d' % \
-                   (self._endpoint, self._session_id, graph_key, tileable_key, 1 if wait else 0)
+        data_url = f'{self._endpoint}/api/session/{self._session_id}/graph/{graph_key}' \
+                   f'/data/{tileable_key}?wait={1 if wait else 0}'
         self._req_session.delete(data_url)
         self._executed_tileables.pop(tileable_key, None)
 
     def stop(self, graph_key):
-        session_url = self._endpoint + '/api/session/' + self._session_id
+        session_url = f'{self._endpoint}/api/session/{self._session_id}'
         graph_url = session_url + '/graph/' + graph_key
         resp = self._req_session.delete(graph_url)
         if resp.status_code >= 400:
-            raise SystemError('Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
-                              (resp.status_code, resp.reason, resp.text))
+            raise SystemError(f'Failed to stop graph execution. Code: {resp.status_code}, '
+                              f'Reason: {resp.reason}, Content:\n{resp.text}')
 
     def _submit_graph(self, graph_json, targets, names=None, compose=True):
-        session_url = self._endpoint + '/api/session/' + self._session_id
+        session_url = f'{self._endpoint}/api/session/{self._session_id}'
         resp = self._req_session.post(session_url + '/graph', dict(
             graph=json.dumps(graph_json),
             target=targets,
@@ -406,14 +405,14 @@ class Session(object):
         return self._handle_json_response(resp)
 
     def get_graph_states(self):
-        session_url = self._endpoint + '/api/session/' + self._session_id
-        resp = self._req_session.get(session_url + '/graph')
+        resp = self._req_session.get(f'{self._endpoint}/api/session/{self._session_id}/graph')
         return self._handle_json_response(resp)
 
     def close(self):
+        session_url = f'{self._endpoint}/api/session/{self._session_id}'
         for key in list(self._executed_tileables.keys()):
             self.delete_data(key, wait=True)
-        resp = self._req_session.delete(self._endpoint + '/api/session/' + self._session_id)
+        resp = self._req_session.delete(session_url)
         if resp.status_code >= 400:
             raise SystemError('Failed to close mars session.')
 
@@ -436,7 +435,7 @@ class Session(object):
         return self._handle_json_response(resp)
 
     def get_task_count(self):
-        resp = self._req_session.get(self._endpoint + '/api/session/{0}/graph'.format(self._session_id))
+        resp = self._req_session.get(f'{self._endpoint}/api/session/{self._session_id}/graph')
         return len(self._handle_json_response(resp))
 
     def __enter__(self):

@@ -49,7 +49,7 @@ def broadcast_arrays(*args, **kwargs):
     """
     if kwargs:
         raise TypeError('broadcast_arrays() got an unexpected keyword '
-                        'argument {!r}'.format(next(iter(kwargs.keys()))))
+                        f'argument {next(iter(kwargs.keys()))!r}')
 
     args = [astensor(arg) for arg in args]
 

@@ -47,7 +47,7 @@ class TaskHandler(MarsRequestHandler):
 
         template = _jinja_env.get_template('task_pages/progress.html')
         task_progress_script = server_document(
-            '%s://%s/%s' % (self.request.protocol, self.request.host, PROGRESS_APP_NAME),
+            f'{self.request.protocol}://{self.request.host}/{PROGRESS_APP_NAME}',
             arguments=dict(session_id=session_id, task_id=graph_key))
         self.write(template.render(
             session_id=session_id,

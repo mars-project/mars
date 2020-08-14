@@ -29,7 +29,7 @@ from mars.utils import get_next_port
 
 class Test(WorkerCase):
     def testStatus(self):
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         old_spill_dir = options.worker.spill_directory
         dir_name = options.worker.spill_directory = tempfile.mkdtemp(prefix='temp-mars-spill-')
         try:

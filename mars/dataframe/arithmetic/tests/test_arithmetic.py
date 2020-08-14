@@ -1081,7 +1081,7 @@ class TestBinary(TestBase):
         class TestRFunc:
             pass
 
-        setattr(TestRFunc, '__%s__' % self.rfunc_name, lambda *_: 1)
+        setattr(TestRFunc, f'__{self.rfunc_name}__', lambda *_: 1)
         other = TestRFunc()
         ret = self.func(df, other)
         self.assertEqual(ret, 1)

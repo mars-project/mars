@@ -308,22 +308,16 @@ class Test(unittest.TestCase):
                         solver_reported = solver
 
                     assert_raises_regex(ValueError,
-                                        "n_components={}L? must be between "
-                                        r"{}L? and min\(n_samples, n_features\)="
-                                        "{}L? with svd_solver=\'{}\'"
-                                        .format(n_components,
-                                                lower_limit[solver],
-                                                smallest_d,
-                                                solver_reported),
-                                        PCA(n_components,
-                                            svd_solver=solver).fit, data)
+                                        f"n_components={n_components}L? must be between "
+                                        rf"{lower_limit[solver]}L? and min\(n_samples, n_features\)="
+                                        f"{smallest_d}L? with svd_solver=\'{solver_reported}\'",
+                                        PCA(n_components, svd_solver=solver).fit, data)
 
             n_components = 1.0
             type_ncom = type(n_components)
             assert_raise_message(ValueError,
-                                 "n_components={} must be of type int "
-                                 "when greater than or equal to 1, was of type={}"
-                                 .format(n_components, type_ncom),
+                                 f"n_components={n_components} must be of type int "
+                                 f"when greater than or equal to 1, was of type={type_ncom}",
                                  PCA(n_components, svd_solver=solver).fit, data)
 
     def test_n_components_none(self):
@@ -397,7 +391,7 @@ class Test(unittest.TestCase):
                 n_components_dict[solver] = pca.n_components_
             else:  # arpack/randomized solver
                 error_message = ("n_components='mle' cannot be a string with "
-                                 "svd_solver='{}'".format(solver))
+                                 f"svd_solver='{solver}'")
                 assert_raise_message(ValueError, error_message, pca.fit, X)
         self.assertEqual(n_components_dict['auto'], n_components_dict['full'])
 

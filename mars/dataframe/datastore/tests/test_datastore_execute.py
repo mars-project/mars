@@ -67,7 +67,7 @@ class Test(TestBase):
             r = df.to_csv(path)
             self.executor.execute_dataframe(r)
 
-            dfs = [pd.read_csv(os.path.join(base_path, 'out-{}.csv'.format(i)),
+            dfs = [pd.read_csv(os.path.join(base_path, f'out-{i}.csv'),
                                dtype=raw.dtypes.to_dict())
                    for i in range(4)]
             result = pd.concat(dfs, axis=0)
@@ -92,7 +92,7 @@ class Test(TestBase):
             r = series.to_csv(path)
             self.executor.execute_dataframe(r)
 
-            dfs = [pd.read_csv(os.path.join(base_path, 'out-{}.csv'.format(i)),
+            dfs = [pd.read_csv(os.path.join(base_path, f'out-{i}.csv'),
                                dtype=raw.dtypes.to_dict())
                    for i in range(4)]
             result = pd.concat(dfs, axis=0)

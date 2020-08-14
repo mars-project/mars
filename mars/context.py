@@ -288,7 +288,7 @@ class LocalContext(ContextBase, dict):
 
     def get_named_tileable_infos(self, name: str):
         if name not in self._local_session.executor._tileable_names:
-            raise ValueError("Name {} doesn't exist.".format(name))
+            raise ValueError(f"Name {name} doesn't exist.")
         tileable = self._local_session.executor._tileable_names[name]
         return TileableInfos(tileable.key, tileable.shape)
 
@@ -488,7 +488,7 @@ class DistributedDictContext(DistributedContext, dict):
             holder = client.actor_ref(WorkerDaemonActor.default_uid(), address=worker_addr)
         else:
             holder = client
-        uid = 'w:%d:mars-cpu-calc-backup-%d-%s-%d' % (0, os.getpid(), op_key, random.randint(-1, 9999))
+        uid = f'w:0:mars-cpu-calc-backup-{os.getpid()}-{op_key}-{random.randint(-1, 9999)}'
         uid = self._actor_ctx.distributor.make_same_process(uid, actor_uid)
         ref = holder.create_actor(actor_cls, uid=uid, address=worker_addr)
         return ref

@@ -157,12 +157,9 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
         if build_mode().is_build_mode or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return 'Tensor <op={}, shape={}, key={}'.format(self._op.__class__.__name__,
-                                                                self._shape,
-                                                                self._key)
+                return f'Tensor <op={type(self._op).__name__}, shape={self._shape}, key={self._key}'
             else:
-                return 'Tensor(op={}, shape={})'.format(self._op.__class__.__name__,
-                                                        self._shape)
+                return f'Tensor(op={type(self._op).__name__}, shape={self._shape})'
         else:
             print_options = np.get_printoptions()
             threshold = print_options['threshold']
@@ -261,7 +258,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
         order = kw.pop('order', 'C')
         if kw:
             raise TypeError(
-                "'{0}' is an invalid keyword argument for this function".format(tuple(kw)[0]))
+                f"'{next(iter(kw))}' is an invalid keyword argument for this function")
 
         if isinstance(shape, Iterable):
             shape = tuple(shape)
@@ -661,15 +658,10 @@ class MutableTensorData(TensorData):
         return super().cls(provider)
 
     def __str__(self):
-        return 'MutableTensor(op={0}, name={1}, shape={2})'.format(self.op.__class__.__name__,
-                                                                   self.name,
-                                                                   self.shape)
+        return f'MutableTensor(op={type(self.op).__name__}, name={self.name}, shape={self.shape})'
 
     def __repr__(self):
-        return 'MutableTensor <op={0}, name={1}, shape={2}, key={3}>'.format(self.op.__class__.__name__,
-                                                                             self.name,
-                                                                             self.shape,
-                                                                             self.key)
+        return f'MutableTensor <op={type(self.op).__name__}, name={self.name}, shape={self.shape}, key={self.key}>'
 
     @property
     def params(self):

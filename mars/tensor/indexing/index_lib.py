@@ -892,7 +892,7 @@ class IndexesHandler(ABC):
                         index_handler.parse(index, context))
                     break
             if not parsed:
-                raise TypeError('unable to parse index {}'.format(index))
+                raise TypeError(f'unable to parse index {index}')
 
         self._preprocess(context, index_infos)
         self._process(context, index_infos)

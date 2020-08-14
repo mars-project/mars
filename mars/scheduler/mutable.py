@@ -28,7 +28,7 @@ class MutableTensorActor(SchedulerActor):
     """
     @staticmethod
     def gen_uid(session_id, name):
-        return 's:0:mutable-tensor$%s$%s' % (session_id, name)
+        return f's:0:mutable-tensor${session_id}${name}'
 
     def __init__(self, session_id, name, shape, dtype, graph_key, fill_value=None, chunk_size=None, *args, **kwargs):
         super().__init__(*args, **kwargs)

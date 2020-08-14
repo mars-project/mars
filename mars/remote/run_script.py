@@ -145,7 +145,7 @@ class RunScript(MergeDictOperand):
                 os.environ.update(envs)
                 cls._execute_with_exec(op, cls._build_locals(ctx, op))
             else:  # pragma: no cover
-                raise TypeError('Unsupported mode {}'.format(op.mode))
+                raise TypeError(f'Unsupported mode {op.mode}')
 
             if op.rank == 0:
                 ctx[op.outputs[0].key] = {'status': 'ok'}
@@ -191,7 +191,7 @@ def run_script(script, n_workers=1, mode='spawn', command_argv=None,
         with open(os.path.abspath(script), 'rb') as f:
             code = f.read()
     if mode not in ['exec', 'spawn']:  # pragma: no cover
-        raise TypeError('Unsupported mode {}'.format(mode))
+        raise TypeError(f'Unsupported mode {mode}')
 
     op = RunScript(code=to_binary(code), mode=mode, world_size=n_workers,
                    retry_when_fail=retry_when_fail, command_args=command_argv)

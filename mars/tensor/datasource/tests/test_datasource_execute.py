@@ -987,7 +987,7 @@ class Test(TestBase):
             fromhdf5(object())
 
         with tempfile.TemporaryDirectory() as d:
-            filename = os.path.join(d, 'test_read_{}.hdf5'.format(int(time.time())))
+            filename = os.path.join(d, f'test_read_{int(time.time())}.hdf5')
             with h5py.File(filename, 'w') as f:
                 g = f.create_group(group_name)
                 g.create_dataset(dataset_name, chunks=(7, 4), data=test_array)
@@ -1019,7 +1019,7 @@ class Test(TestBase):
                     fromhdf5(f, dataset='non_exist')
 
                 # test dataset
-                ds = f['{}/{}'.format(group_name, dataset_name)]
+                ds = f[f'{group_name}/{dataset_name}']
                 r = fromhdf5(ds)
 
                 result = self.executor.execute_tensor(r, concat=True)[0]
@@ -1035,7 +1035,7 @@ class Test(TestBase):
             fromzarr(object())
 
         with tempfile.TemporaryDirectory() as d:
-            path = os.path.join(d, 'test_read_{}.zarr'.format(int(time.time())))
+            path = os.path.join(d, f'test_read_{int(time.time())}.zarr')
 
             group = zarr.group(path)
             arr = group.array(group_name + '/' + dataset_name, test_array, chunks=(7, 4))
@@ -1046,7 +1046,7 @@ class Test(TestBase):
             np.testing.assert_array_equal(result, test_array)
             self.assertGreater(len(get_tiled(r).chunks), 1)
 
-            arr = zarr.open_array('{}/{}/{}'.format(path, group_name, dataset_name))
+            arr = zarr.open_array(f'{path}/{group_name}/{dataset_name}')
             r = fromzarr(arr)
 
             result = self.executor.execute_tensor(r, concat=True)[0]

@@ -130,7 +130,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
             index = df.index_value.to_pandas()
             for item in other:
                 if not isinstance(item, DATAFRAME_TYPE):  # pragma: no cover
-                    raise ValueError('Invalid type {} to append'.format(type(item)))
+                    raise ValueError(f'Invalid type {type(item)} to append')
                 row_length += item.shape[0]
                 index = index.append(item.index_value.to_pandas())
             shape = (row_length, df.shape[1])
@@ -140,7 +140,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(index)
             inputs = [df] + other
         else:  # pragma: no cover
-            raise ValueError('Invalid type {} to append'.format(type(other)))
+            raise ValueError(f'Invalid type {type(other)} to append')
         return self.new_dataframe(inputs, shape=shape, dtypes=df.dtypes,
                                   index_value=index_value,
                                   columns_value=df.columns_value)
@@ -159,7 +159,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
             index = df.index_value.to_pandas()
             for item in other:
                 if not isinstance(item, SERIES_TYPE):  # pragma: no cover
-                    raise ValueError('Invalid type {} to append'.format(type(item)))
+                    raise ValueError(f'Invalid type {type(item)} to append')
                 row_length += item.shape[0]
                 index = index.append(item.index_value.to_pandas())
             shape = (row_length,)
@@ -169,7 +169,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(index)
             inputs = [df] + other
         else:  # pragma: no cover
-            raise ValueError('Invalid type {} to append'.format(type(other)))
+            raise ValueError(f'Invalid type {type(other)} to append')
         return self.new_series(inputs, shape=shape, dtype=df.dtype,
                                index_value=index_value, name=df.name)
 

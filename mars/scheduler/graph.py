@@ -54,7 +54,7 @@ class GraphMetaActor(SchedulerActor):
     """
     @staticmethod
     def gen_uid(session_id, graph_key):
-        return 's:0:graph_meta$%s$%s' % (session_id, graph_key)
+        return f's:0:graph_meta${session_id}${graph_key}'
 
     def __init__(self, session_id, graph_key):
         super().__init__()
@@ -109,7 +109,7 @@ class GraphMetaActor(SchedulerActor):
         self._state = state
         if self._kv_store_ref is not None:
             self._kv_store_ref.write(
-                '/sessions/%s/graph/%s/state' % (self._session_id, self._graph_key), state.name, _tell=True)
+                f'/sessions/{self._session_id}/graph/{self._graph_key}/state', state.name, _tell=True)
 
     def get_state(self):
         return self._state
@@ -127,7 +127,8 @@ class GraphMetaActor(SchedulerActor):
         self._final_state = state
         if self._kv_store_ref is not None:
             self._kv_store_ref.write(
-                '/sessions/%s/graph/%s/final_state' % (self._session_id, self._graph_key), state.name, _tell=True)
+                f'/sessions/{self._session_id}/graph/{self._graph_key}/final_state',
+                state.name, _tell=True)
 
     def get_final_state(self):
         return self._final_state
@@ -201,7 +202,7 @@ class GraphMetaActor(SchedulerActor):
 class GraphWaitActor(SchedulerActor):
     @staticmethod
     def gen_uid(session_id, graph_key):
-        return 's:0:graph_wait$%s$%s' % (session_id, graph_key)
+        return f's:0:graph_wait${session_id}${graph_key}'
 
     def __init__(self, graph_event):
         super().__init__()
@@ -217,7 +218,7 @@ class GraphActor(SchedulerActor):
     """
     @staticmethod
     def gen_uid(session_id, graph_key):
-        return 's:0:graph$%s$%s' % (session_id, graph_key)
+        return f's:0:graph${session_id}${graph_key}'
 
     def __init__(self, session_id, graph_key, serialized_tileable_graph,
                  target_tileables=None, serialized_chunk_graph=None,
@@ -300,7 +301,7 @@ class GraphActor(SchedulerActor):
     @contextlib.contextmanager
     def _open_dump_file(self, prefix):  # pragma: no cover
         if options.scheduler.dump_graph_data:
-            file_name = '%s-%s-%d.log' % (prefix, self._graph_key, int(time.time()))
+            file_name = f'{prefix}-{self._graph_key}-{int(time.time())}.log'
             yield open(file_name, 'w')
         else:
             try:
@@ -371,7 +372,7 @@ class GraphActor(SchedulerActor):
             succ_op_keys = dict()
             graph = self._chunk_graph_cache
 
-            outf.write('DOT:\n%s\n\n' % graph.to_dot())
+            outf.write(f'DOT:\n{graph.to_dot()}\n\n')
             outf.write('CONNECTIONS:\n')
 
             chunks = list(graph)
@@ -385,9 +386,9 @@ class GraphActor(SchedulerActor):
                             succ_op_keys[c.key] = set()
                         succ_op_keys[c.key].add(n.op.key)
             for n in chunks:
+                joined_op_keys = ','.join(sorted(succ_op_keys[n.key]))
                 outf.write(
-                    '%s(%s)[%s] -> %s\n' % (
-                        n.op.key, n.key, type(n.op).__name__, ','.join(sorted(succ_op_keys[n.key])))
+                    f'{n.op.key}({n.key})[{type(n.op).__name__}] -> {joined_op_keys}\n'
                 )
 
     def _execute_graph(self, compose=True):
@@ -575,7 +576,7 @@ class GraphActor(SchedulerActor):
                     assert cn.key in chunk_keys
                     self._terminal_chunk_keys.add(cn.key)
 
-        logger.debug('Terminal chunk keys: %r' % self._terminal_chunk_keys)
+        logger.debug(f'Terminal chunk keys: {self._terminal_chunk_keys}')
 
     @log_unhandled
     @enter_build_mode
@@ -881,7 +882,7 @@ class GraphActor(SchedulerActor):
                 operand_infos[op_key]['virtual'] = True
 
             op_name = type(op).__name__ if op.stage is None \
-                else '%s:%s' % (type(op).__name__, op.stage.name)
+                else f'{type(op).__name__}:{op.stage.name}'
             op_info = operand_infos[op_key]
             meta_op_info = meta_op_infos[op_key] = dict()
 
@@ -1131,8 +1132,8 @@ class GraphActor(SchedulerActor):
                 continue
             futures.append(self._get_operand_ref(chunk.op.key).free_data(
                 check=False, _tell=not wait, _wait=False))
-        logger.debug('Free tileable data: %s, chunk keys: %r' %
-                     (tileable_key, [c.key for c in tileable.chunks]))
+        logger.debug('Free tileable data: %s, chunk keys: %r',
+                     tileable_key, [c.key for c in tileable.chunks])
         [f.result() for f in futures]
 
     def get_tileable_metas(self, tileable_keys, filter_fields=None):
@@ -1146,7 +1147,7 @@ class GraphActor(SchedulerActor):
         filter_fields = filter_fields or meta_names
         for field in filter_fields:
             if field not in ['nsplits', 'chunk_keys', 'chunk_indexes']:
-                raise ValueError('Field {} is invalid'.format(field))
+                raise ValueError(f'Field {field} is invalid')
         ret_nsplits = 'nsplits' in filter_fields
         metas = []
         for tileable_key in tileable_keys:
@@ -1203,7 +1204,7 @@ class GraphActor(SchedulerActor):
         for chunk in tileable.chunks:
             endpoints = self.chunk_meta.get_workers(self._session_id, chunk.key)
             if endpoints is None:
-                raise KeyError('cannot fetch meta of chunk {}'.format(chunk))
+                raise KeyError(f'cannot fetch meta of chunk {chunk}')
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
             ctx[chunk.key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk.key))
 
@@ -1396,8 +1397,8 @@ class GraphActor(SchedulerActor):
                 outf.write(repr(c) + '\n')
             outf.write('\n\nOPERAND SNAPSHOT:\n')
             for key, op_info in self._operand_infos.items():
-                outf.write('Chunk: %s Worker: %r State: %s\n' %
-                           (key, op_info.get('worker'), op_info['state'].value))
+                outf.write(f'Chunk: {key} Worker: {op_info.get("worker")} '
+                           f'State: {op_info["state"].value}\n')
             outf.write('\n\nSTATE TRANSITIONS:\n')
             for key, state in new_states.items():
-                outf.write('%s -> %s\n' % (key, state.name))
+                outf.write(f'{key} -> {state.name}\n')

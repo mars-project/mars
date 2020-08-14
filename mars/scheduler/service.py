@@ -44,7 +44,7 @@ class SchedulerService(object):
         options.scheduler.enable_failover = not (kwargs.pop('disable_failover', None) or False)
 
         if kwargs:  # pragma: no cover
-            raise TypeError('Keyword arguments %r cannot be recognized.' % ', '.join(kwargs))
+            raise TypeError(f'Keyword arguments {kwargs!r} cannot be recognized.')
 
     def start(self, endpoint, discoverer, pool, distributed=True):
         """
@@ -55,7 +55,7 @@ class SchedulerService(object):
         2) if options.kv_store is not an etcd address, there will be only one scheduler
         """
         kv_store = kvstore.get(options.kv_store)
-        kv_store.write('/schedulers/%s' % endpoint, dir=True)
+        kv_store.write(f'/schedulers/{endpoint}', dir=True)
 
         if not isinstance(kv_store, kvstore.LocalKVStore):
             # set etcd as service discover
@@ -79,7 +79,7 @@ class SchedulerService(object):
         self._resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
         # create NodeInfoActor
         self._node_info_ref = pool.create_actor(NodeInfoActor, uid=NodeInfoActor.default_uid())
-        kv_store.write('/schedulers/%s/meta' % endpoint,
+        kv_store.write(f'/schedulers/{endpoint}/meta',
                        json.dumps(self._resource_ref.get_workers_meta()))
 
     def stop(self, pool):

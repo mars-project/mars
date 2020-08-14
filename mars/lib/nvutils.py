@@ -92,7 +92,7 @@ class NVError(Exception):
         super().__init__(msg or 'Unknown error', *args)
 
     def __str__(self):
-        return '(%s) %s' % (self._errno, super().__str__())
+        return f'({self._errno}) {super().__str__()}'
 
     @property
     def errno(self):
@@ -244,7 +244,7 @@ def get_driver_info():
 
     _driver_info = _nvml_driver_info(
         driver_version=version_buf.value.decode(),
-        cuda_version='%d.%d' % (cuda_version.value // 1000, cuda_version.value % 1000)
+        cuda_version='.'.join(str(v) for v in divmod(cuda_version.value, 1000))
     )
     return _driver_info
 

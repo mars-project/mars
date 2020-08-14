@@ -163,7 +163,7 @@ def predict(model, data, session=None, run_kwargs=None, run=True, **kwargs):
     from lightgbm import LGBMModel
 
     if not isinstance(model, LGBMModel):
-        raise TypeError('model has to be a lightgbm.LGBMModel, got {0} instead'.format(type(model)))
+        raise TypeError(f'model has to be a lightgbm.LGBMModel, got {type(model)} instead')
     model = model.to_local() if hasattr(model, 'to_local') else model
 
     proba = kwargs.pop('proba', hasattr(model, 'classes_'))

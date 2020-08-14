@@ -93,7 +93,7 @@ class RunTensorFlow(RunScript):
 
             for i in range(op.n_roles):
                 chunk_op = op.copy().reset_key()
-                addr = '{}:{}'.format(worker_addr, next(port_iter))
+                addr = f'{worker_addr}:{next(port_iter)}'
                 chunk_op._tf_task_type = tp = 'worker' if i < n_workers else 'ps'
                 chunk_op._tf_task_index = idx = i if i < n_workers else i - n_workers
                 cluster_conf[tp].append(addr)
@@ -108,7 +108,7 @@ class RunTensorFlow(RunScript):
             for i, worker in enumerate(picked_workers):
                 worker_addr = worker.rsplit(':', 1)[0]
                 chunk_op = op.copy().reset_key()
-                addr = '{}:{}'.format(worker_addr, next(worker_to_port_iter[worker_addr]))
+                addr = f'{worker_addr}:{next(worker_to_port_iter[worker_addr])}'
                 # tell graph actor that the chunk should be executed on the exact worker
                 chunk_op._expect_worker = worker
                 tp = 'worker' if i < n_workers else 'ps'

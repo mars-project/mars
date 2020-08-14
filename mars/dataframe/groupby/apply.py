@@ -140,8 +140,8 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
         for arg, desc in zip((self.output_types, dtypes, index_value),
                              ('output_types', 'dtypes', 'index')):
             if arg is None:
-                raise TypeError('Cannot determine %s by calculating with enumerate data, '
-                                'please specify it as arguments' % desc)
+                raise TypeError(f'Cannot determine {desc} by calculating with enumerate data, '
+                                'please specify it as arguments')
 
         if self.output_types[0] == OutputType.dataframe:
             new_shape = (np.nan, len(dtypes))

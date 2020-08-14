@@ -114,7 +114,7 @@ class WorkerService(object):
         self._calc_memory_limits()
 
         if kwargs:  # pragma: no cover
-            raise TypeError('Keyword arguments %r cannot be recognized.' % ', '.join(kwargs))
+            raise TypeError(f'Keyword arguments {kwargs!r} cannot be recognized.')
 
     @property
     def n_process(self):
@@ -174,9 +174,10 @@ class WorkerService(object):
             used_cache_size = 0 if self._use_ext_plasma_dir else self._cache_mem_limit
             self._soft_quota_limit = self._soft_mem_limit - used_cache_size - actual_used
             if self._soft_quota_limit < self._min_mem_size:
-                raise MemoryError('Memory not enough. soft_limit=%s, cache_limit=%s, used=%s' %
-                                  tuple(readable_size(k) for k in (
-                                      self._soft_mem_limit, self._cache_mem_limit, actual_used)))
+                raise MemoryError(
+                    f'Memory not enough. soft_limit={readable_size(self._soft_mem_limit)}, '
+                    f'cache_limit={readable_size(self._cache_mem_limit)}, '
+                    f'used={readable_size(actual_used)}')
 
         logger.info('Setting soft limit to %s.', readable_size(self._soft_quota_limit))
 
@@ -248,11 +249,11 @@ class WorkerService(object):
             self._n_cpu_process = pool.cluster_info.n_process - 1 - process_start_index
 
         for cpu_id in range(self._n_cpu_process):
-            uid = 'w:%d:mars-cpu-calc-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
+            uid = f'w:{cpu_id + 1}:mars-cpu-calc'
             actor = actor_holder.create_actor(CpuCalcActor, uid=uid)
             self._cpu_calc_actors.append(actor)
 
-            uid = 'w:%d:mars-inproc-holder-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
+            uid = f'w:{cpu_id + 1}:mars-inproc-holder'
             actor = actor_holder.create_actor(InProcHolderActor, uid=uid)
             self._inproc_holder_actors.append(actor)
 
@@ -265,11 +266,11 @@ class WorkerService(object):
         stats = resource.cuda_card_stats() if self._n_cuda_process else []
         for cuda_id, stat in enumerate(stats):
             for thread_no in range(options.worker.cuda_thread_num):
-                uid = 'w:%d:mars-cuda-calc-%d-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id, thread_no)
+                uid = f'w:{start_pid + cuda_id}:mars-cuda-calc-{cuda_id}-{thread_no}'
                 actor = actor_holder.create_actor(CudaCalcActor, uid=uid)
                 self._cuda_calc_actors.append(actor)
 
-            uid = 'w:%d:mars-cuda-holder-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id)
+            uid = f'w:{start_pid + cuda_id}:mars-cuda-holder-{cuda_id}'
             actor = actor_holder.create_actor(
                 CudaHolderActor, stat.fb_mem_info.total, device_id=stat.index, uid=uid)
             self._cuda_holder_actors.append(actor)
@@ -283,19 +284,19 @@ class WorkerService(object):
         if distributed:
             # create SenderActor and ReceiverActor
             for sender_id in range(self._n_net_process):
-                uid = 'w:%d:mars-sender-%d-%d' % (start_pid + sender_id, os.getpid(), sender_id)
+                uid = f'w:{start_pid + sender_id}:mars-sender-{sender_id}'
                 actor = actor_holder.create_actor(SenderActor, uid=uid)
                 self._sender_actors.append(actor)
 
         # Mutable requires ReceiverActor (with ClusterSession)
         for receiver_id in range(2 * self._n_net_process):
-            uid = 'w:%d:mars-receiver-%d-%d' % (start_pid + receiver_id // 2, os.getpid(), receiver_id)
+            uid = f'w:{start_pid + receiver_id // 2}:mars-receiver-{receiver_id}'
             actor = actor_holder.create_actor(ReceiverWorkerActor, uid=uid)
             self._receiver_actors.append(actor)
 
         # create ProcessHelperActor
         for proc_id in range(pool.cluster_info.n_process - process_start_index):
-            uid = 'w:%d:mars-process-helper' % proc_id
+            uid = f'w:{proc_id}:mars-process-helper'
             actor = actor_holder.create_actor(ProcessHelperActor, uid=uid)
             self._process_helper_actors.append(actor)
 
@@ -306,7 +307,7 @@ class WorkerService(object):
         start_pid = pool.cluster_info.n_process - 1
         if options.worker.spill_directory:
             for spill_id in range(len(options.worker.spill_directory)):
-                uid = 'w:%d:mars-global-io-runner-%d-%d' % (start_pid, os.getpid(), spill_id)
+                uid = f'w:{start_pid}:mars-global-io-runner-{spill_id}'
                 actor = actor_holder.create_actor(IORunnerActor, uid=uid)
                 self._spill_actors.append(actor)
 

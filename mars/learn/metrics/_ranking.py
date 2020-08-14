@@ -65,7 +65,7 @@ def auc(x, y, session=None, run_kwargs=None):
 
     if x.shape[0] < 2:
         raise ValueError('At least 2 points are needed to compute'
-                         ' area under curve, but x.shape = %s' % x.shape)
+                         f' area under curve, but x.shape = {x.shape}')
 
     direction = 1
     dx = mt.diff(x)
@@ -77,8 +77,8 @@ def auc(x, y, session=None, run_kwargs=None):
         if all_dx_le_0.fetch(session=session):
             direction = -1
         else:
-            raise ValueError("x is neither increasing nor decreasing "
-                             ": {}.".format(x.fetch(session=session)))
+            x_data = x.fetch(session=session)
+            raise ValueError(f"x is neither increasing nor decreasing : {x_data}.")
 
     area = direction * mt.trapz(y, x)
     return area.execute(session=session, **(run_kwargs or dict()))
@@ -123,7 +123,7 @@ def _binary_clf_curve(y_true, y_score, pos_label=None, sample_weight=None,
         session=session, **(run_kwargs or dict()))
     if not (y_type == "binary" or
             (y_type == "multiclass" and pos_label is not None)):
-        raise ValueError("{0} format is not supported".format(y_type))
+        raise ValueError(f"{y_type} format is not supported")
 
     check_consistent_length(y_true, y_score, sample_weight)
     y_true = column_or_1d(y_true)
@@ -148,10 +148,10 @@ def _binary_clf_curve(y_true, y_score, pos_label=None, sample_weight=None,
                  np.array_equal(classes, [-1]) or
                  np.array_equal(classes, [1])))):
         classes_repr = ", ".join(repr(c) for c in classes)
-        raise ValueError("y_true takes value in {{{classes_repr}}} and "
+        raise ValueError(f"y_true takes value in {{{classes_repr}}} and "
                          "pos_label is not specified: either make y_true "
                          "take value in {{0, 1}} or {{-1, 1}} or "
-                         "pass pos_label explicitly.".format(classes_repr=classes_repr))
+                         "pass pos_label explicitly.")
     elif pos_label is None:
         pos_label = 1.
 

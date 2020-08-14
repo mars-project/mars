@@ -93,6 +93,6 @@ def randn(random_state, *dn, **kw):
 
     for key in op.extra_params:
         if not key.startswith('_'):
-            raise ValueError('randn got unexpected key arguments {0}'.format(key))
+            raise ValueError(f'randn got unexpected key arguments {key}')
 
     return op(chunk_size=chunk_size)

@@ -41,12 +41,12 @@ def check_tiledb_array_with_tensor(tensor, tiledb_array):
     if tensor.ndim != tiledb_array.ndim:
         # ndim
         raise ValueError('ndim of TileDB Array to store is different to tensor, '
-                         'expect {0}, got {1}'.format(tensor.ndim, tiledb_array.ndim))
+                         f'expect {tensor.ndim}, got {tiledb_array.ndim}')
     if tensor.shape != tiledb_array.shape:
         # shape
         raise ValueError('shape of TileDB Array to store is different to tensor, '
-                         'expect {0}, got {1}'.format(tensor.shape, tiledb_array.shape))
+                         f'expect {tensor.shape}, got {tiledb_array.shape}')
     if tensor.dtype != tiledb_array.attr(0).dtype:
         # dtype
         raise ValueError('dtype of TileDB Array to store is different to tensor, '
-                         'expect {0}, got {1}'.format(tensor.dtype, tiledb_array.domain.dtype))
+                         f'expect {tensor.dtype}, got {tiledb_array.domain.dtype}')

@@ -273,7 +273,7 @@ class Test(unittest.TestCase):
             for _ in range(6)
         ]
         results = [
-            tuple(TensorTreeAdd(_key='%d_%d' % (i, j), dtype=np.float32()).new_chunk(None, shape=(10, 10))
+            tuple(TensorTreeAdd(_key=f'{i}_{j}', dtype=np.float32()).new_chunk(None, shape=(10, 10))
                   for j in range(2)) for i in range(6)
         ]
         for inp, outp in zip(inputs, results):
@@ -291,9 +291,9 @@ class Test(unittest.TestCase):
         op_states = dict()
         for idx in range(2):
             for i in range(2):
-                fixed_assigns[inputs[idx][i].op.key] = 'w%d' % (idx + 1)
+                fixed_assigns[inputs[idx][i].op.key] = f'w{idx + 1}'
                 op_states[results[idx][i].op.key] = OperandState.READY
-                fixed_assigns[results[idx][i].op.key] = 'w%d' % (idx + 1)
+                fixed_assigns[results[idx][i].op.key] = f'w{idx + 1}'
 
         for inp in inputs:
             for n in inp:
@@ -339,7 +339,7 @@ class Test(unittest.TestCase):
             for _ in range(6)
         ]
         results = [
-            tuple(TensorTreeAdd(_key='%d_%d' % (i, j), dtype=np.float32()).new_chunk(None, shape=(10, 10))
+            tuple(TensorTreeAdd(_key=f'{i}_{j}', dtype=np.float32()).new_chunk(None, shape=(10, 10))
                   for j in range(2)) for i in range(6)
         ]
         for inp, outp in zip(inputs, results):
@@ -357,9 +357,9 @@ class Test(unittest.TestCase):
         fixed_assigns = dict()
         for idx in range(4):
             for i in range(2):
-                fixed_assigns[inputs[idx][i].op.key] = 'w%d' % (idx % 2 + 1)
+                fixed_assigns[inputs[idx][i].op.key] = f'w{idx % 2 + 1}'
                 op_states[inputs[idx][i].op.key] = OperandState.FINISHED
-                fixed_assigns[results[idx][i].op.key] = 'w%d' % (idx % 2 + 1)
+                fixed_assigns[results[idx][i].op.key] = f'w{idx % 2 + 1}'
                 op_states[results[idx][i].op.key] = OperandState.READY
 
         for inp in inputs:

@@ -53,7 +53,7 @@ class K8SPodsIPWatcher(object):
 
     def _extract_pod_name_ep(self, pod_data):
         svc_port = pod_data['spec']['containers'][0]['ports'][0]['container_port']
-        return pod_data['metadata']['name'], '%s:%s' % (pod_data['status']['pod_ip'], svc_port)
+        return pod_data['metadata']['name'], f'{pod_data["status"]["pod_ip"]}:{svc_port}'
 
     @staticmethod
     def _extract_pod_ready(obj_data):
@@ -126,7 +126,7 @@ class ReadinessActor(FunctionActor):
     """
     @classmethod
     def default_uid(cls):
-        return 'k:0:%s' % cls.__name__
+        return f'k:0:{cls.__name__}'
 
 
 class K8SServiceMixin:

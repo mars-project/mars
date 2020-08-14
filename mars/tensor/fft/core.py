@@ -85,7 +85,7 @@ class TensorComplexFFTMixin(TensorFFTMixin):
 def validate_fft(tensor, axis=-1, norm=None):
     validate_axis(tensor.ndim, axis)
     if norm is not None and norm not in ('ortho',):
-        raise ValueError('Invalid norm value {0}, should be None or "ortho"'.format(norm))
+        raise ValueError(f'Invalid norm value {norm}, should be None or "ortho"')
 
 
 class TensorFFTNMixin(TensorFFTBaseMixin):
@@ -137,7 +137,7 @@ def validate_fftn(tensor, s=None, axes=None, norm=None):
             raise ValueError('Duplicate axes not allowed')
 
     if norm is not None and norm not in ('ortho',):
-        raise ValueError('Invalid norm value {0}, should be None or "ortho"'.format(norm))
+        raise ValueError(f'Invalid norm value {norm}, should be None or "ortho"')
 
     return axes
 

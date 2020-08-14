@@ -837,13 +837,12 @@ class Test(TestBase):
             if not isinstance(usecols, list):
                 if not isinstance(result, pd.Series):
                     raise RuntimeError('Out data should be a Series, '
-                                       'got {}'.format(type(result)))
+                                       f'got {type(result)}')
             elif len(result.columns) > len(usecols):
                 params = dict((k, getattr(op, k, None)) for k in op._keys_
                               if k not in op._no_copy_attrs_)
-                raise RuntimeError('have data more than expected, '
-                                   'got {}, result {}, op params {}'.format(
-                    result.columns, result, params))
+                raise RuntimeError(f'have data more than expected, got {result.columns}, '
+                                   f'result {result}, op params {params}')
 
         try:
             register(op_cls, _execute_data_source)
@@ -1073,7 +1072,7 @@ class Test(TestBase):
 
             # test series
             s_data = pd.Series(np.random.rand(10),
-                               index=['c{}'.format(i + 1) for i in range(10)])
+                               index=[f'c{i + 1}' for i in range(10)])
             series = md.Series(s_data, chunk_size=6)
 
             r = series.reindex(['c2', 'c11', 'c4'], copy=False,

@@ -131,7 +131,7 @@ class Test(TestBase):
         ctx, executor = self._create_test_context(self.executor)
         with ctx:
             with tempfile.TemporaryDirectory() as d:
-                filename = os.path.join(d, 'test_store_{}.hdf5'.format(int(time.time())))
+                filename = os.path.join(d, f'test_store_{int(time.time())}.hdf5')
 
                 # test 1 chunk
                 r = tohdf5(filename, t1, group=group_name, dataset=dataset_name)
@@ -139,7 +139,7 @@ class Test(TestBase):
                 executor.execute_tensor(r)
 
                 with h5py.File(filename, 'r') as f:
-                    result = np.asarray(f['{}/{}'.format(group_name, dataset_name)])
+                    result = np.asarray(f[f'{group_name}/{dataset_name}'])
                     np.testing.assert_array_equal(result, raw)
 
                 # test filename
@@ -152,7 +152,7 @@ class Test(TestBase):
                 self.assertEqual(len(rt.chunks[0].inputs[1].inputs), 0)
 
                 with h5py.File(filename, 'r') as f:
-                    result = np.asarray(f['{}/{}'.format(group_name, dataset_name)])
+                    result = np.asarray(f[f'{group_name}/{dataset_name}'])
                     np.testing.assert_array_equal(result, raw)
 
                 with self.assertRaises(ValueError):
@@ -165,7 +165,7 @@ class Test(TestBase):
                 executor.execute_tensor(r)
 
                 with h5py.File(filename, 'r') as f:
-                    result = np.asarray(f['{}/{}'.format(group_name, dataset_name)])
+                    result = np.asarray(f[f'{group_name}/{dataset_name}'])
                     np.testing.assert_array_equal(result, raw)
 
                 with self.assertRaises(ValueError):
@@ -174,14 +174,14 @@ class Test(TestBase):
 
                 with h5py.File(filename, 'r') as f:
                     # test dataset
-                    ds = f['{}/{}'.format(group_name, dataset_name)]
+                    ds = f[f'{group_name}/{dataset_name}']
                     # test file
                     r = tohdf5(ds, t2)
 
                 executor.execute_tensor(r)
 
                 with h5py.File(filename, 'r') as f:
-                    result = np.asarray(f['{}/{}'.format(group_name, dataset_name)])
+                    result = np.asarray(f[f'{group_name}/{dataset_name}'])
                     np.testing.assert_array_equal(result, raw)
 
     @unittest.skipIf(zarr is None, 'zarr not installed')
@@ -197,8 +197,8 @@ class Test(TestBase):
             tozarr(object(), t)
 
         with tempfile.TemporaryDirectory() as d:
-            filename = os.path.join(d, 'test_store_{}.zarr'.format(int(time.time())))
-            path = '{}/{}/{}'.format(filename, group_name, dataset_name)
+            filename = os.path.join(d, f'test_store_{int(time.time())}.zarr')
+            path = f'{filename}/{group_name}/{dataset_name}'
 
             r = tozarr(filename, t, group=group_name, dataset=dataset_name, compressor=Zstd(level=3))
             self.executor.execute_tensor(r)

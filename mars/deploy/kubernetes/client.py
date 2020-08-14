@@ -132,7 +132,7 @@ class KubernetesCluster:
 
     def _get_free_namespace(self):
         while True:
-            namespace = 'mars-ns-%s' % uuid.uuid4().hex
+            namespace = 'mars-ns-' + str(uuid.uuid4().hex)
             try:
                 self._core_api.read_namespace(namespace)
             except K8SApiException as ex:
@@ -145,7 +145,7 @@ class KubernetesCluster:
         :type kube_api: kubernetes.client.CoreV1Api
         """
         if self._service_type != 'NodePort':  # pragma: no cover
-            raise NotImplementedError('Service type %s not supported' % self._service_type)
+            raise NotImplementedError(f'Service type {self._service_type} not supported')
 
         service_config = ServiceConfig(
             'marsservice', service_type='NodePort', port=self._web_service_port,
@@ -172,7 +172,7 @@ class KubernetesCluster:
             )
             if host_ip in addresses:
                 host_ip = urlparse(self._core_api.api_client.configuration.host).netloc.split(':', 1)[0]
-        return 'http://%s:%s' % (host_ip, port)
+        return f'http://{host_ip}:{port}'
 
     def _get_ready_pod_count(self, label_selector):
         query = self._core_api.list_namespaced_pod(

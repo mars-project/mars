@@ -171,11 +171,11 @@ class PromiseTestActor(promise.PromiseActor):
             def __init__(self, s):
                 self.str = s
 
-        new_content = Intermediate('Content: %s' % (content,))
+        new_content = Intermediate(f'Content: {content}')
 
         def _acceptor(*_):
             ref.serve(weakref.ref(new_content))
-            return 'Processed: %s' % new_content.str
+            return f'Processed: {new_content.str}'
 
         ref.serve(0, delay=0.5, _promise=True) \
             .then(_acceptor) \

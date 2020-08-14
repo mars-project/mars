@@ -527,7 +527,7 @@ class Test(TestBase):
 
     def testReadSQL(self):
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                                'b': ['s%d' % i for i in range(10)]})
+                                'b': [f's{i}' for i in range(10)]})
 
         with tempfile.TemporaryDirectory() as d:
             table_name = 'test'

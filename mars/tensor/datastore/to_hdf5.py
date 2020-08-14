@@ -177,7 +177,7 @@ def tohdf5(hdf5_file, x, group=None, dataset=None, **kwds):
     else:
         raise TypeError('`hdf5_file` passed has wrong type, '
                         'expect str, h5py.File or h5py.Dataset, '
-                        'got {}'.format(type(hdf5_file)))
+                        f'got {type(hdf5_file)}')
 
     op = TensorHDF5DataStore(filename=filename, group=group, dataset=dataset,
                              dataset_kwds=kwds)

@@ -70,7 +70,7 @@ class MarsApiRequestHandler(MarsRequestHandler):
             arrow_version = args.pop('arrow_version', None)
             pickle_protocol = int(args.pop('pickle_protocol', pickle.HIGHEST_PROTOCOL))
         except ValueError as ex:
-            raise web.HTTPError(400, reason='Invalid version data: %s' % ex)
+            raise web.HTTPError(400, reason=f'Invalid version data: {ex}')
         if python_version[0] != sys.version_info[0]:
             raise web.HTTPError(400, reason='Python version not consistent')
 

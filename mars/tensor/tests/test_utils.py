@@ -92,4 +92,4 @@ class Test(unittest.TestCase):
             with np.printoptions(suppress=True):
                 repr_result = repr(arr)
             self.assertEqual(repr_corner_data, repr_result,
-                             'failed when size == {}'.format(i))
+                             f'failed when size == {i}')

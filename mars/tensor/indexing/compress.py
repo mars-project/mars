@@ -97,8 +97,8 @@ def compress(condition, a, axis=None, out=None):
     try:
         axis = validate_axis(a.ndim, axis)
     except ValueError:
-        raise np.AxisError('axis {0} is out of bounds '
-                           'for tensor of dimension {1}'.format(axis, a.ndim))
+        raise np.AxisError(f'axis {axis} is out of bounds '
+                           f'for tensor of dimension {a.ndim}')
 
     try:
         if len(condition) < a.shape[axis]:
@@ -108,13 +108,13 @@ def compress(condition, a, axis=None, out=None):
             return t
 
         if out is not None and not isinstance(out, Tensor):
-            raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+            raise TypeError(f'out should be Tensor object, got {type(out)} instead')
         if not np.can_cast(out.dtype, t.dtype, 'safe'):
-            raise TypeError('Cannot cast array data from dtype(\'{0}\') to dtype(\'{1}\') '
-                            'according to the rule \'safe\''.format(out.dtype, t.dtype))
+            raise TypeError(f'Cannot cast array data from dtype(\'{out.dtype}\') to dtype(\'{t.dtype}\') '
+                            'according to the rule \'safe\'')
         # skip shape check because out shape is unknown
         out.data = t.astype(out.dtype, order=out.order.value).data
         return out
     except IndexError:
-        raise np.AxisError('axis {0} is out of bounds '
-                           'for tensor of dimension 1'.format(len(condition)))
+        raise np.AxisError(f'axis {len(condition)} is out of bounds '
+                           'for tensor of dimension 1')

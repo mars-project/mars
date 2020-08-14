@@ -63,8 +63,8 @@ class ManhattanDistances(PairwiseDistances):
             self._y = Y
 
         if (X.issparse() or Y.issparse()) and not self._sum_over_features:
-            raise TypeError("sum_over_features=%r not supported"
-                            " for sparse matrices" % self._sum_over_features)
+            raise TypeError(f"sum_over_features={self._sum_over_features} not supported"
+                            " for sparse matrices")
 
         if not self._sum_over_features:
             shape = (X.shape[0] * Y.shape[0], X.shape[1])

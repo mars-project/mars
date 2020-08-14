@@ -27,10 +27,10 @@ def main():
     client = new_client()
     try:
         ref = client.actor_ref(ReadinessActor.default_uid(),
-                               address='127.0.0.1:%s' % os.environ['MARS_K8S_SERVICE_PORT'])
+                               address='127.0.0.1:' + os.environ['MARS_K8S_SERVICE_PORT'])
         sys.exit(0 if client.has_actor(ref) else 1)
     except (ActorNotExist, ConnectionRefusedError) as ex:  # noqa: E722
-        sys.stderr.write('Probe error: %s' % type(ex).__name__)
+        sys.stderr.write(f'Probe error: {ex}')
         sys.exit(1)
 
 

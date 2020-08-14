@@ -52,7 +52,7 @@ class Test(unittest.TestCase):
         mock_session_id = str(uuid.uuid4())
         mock_graph_key = str(uuid.uuid4())
         mock_chunk_key = str(uuid.uuid4())
-        addr = '127.0.0.1:%d' % get_next_port()
+        addr = f'127.0.0.1:{get_next_port()}'
         mock_worker_addr = '127.0.0.1:54132'
 
         options.scheduler.worker_blacklist_time = 0.5

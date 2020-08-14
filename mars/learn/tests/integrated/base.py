@@ -65,7 +65,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
                                             '--cache-mem', '10m',
                                             '--schedulers', '127.0.0.1:' + scheduler_port,
                                             '--log-level', 'debug',
-                                            '--log-format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
+                                            '--log-format', f'WOR{idx} %(asctime)-15s %(message)s',
                                             '--ignore-avail-mem'])
 
             self.proc_workers.append(proc_worker)
@@ -132,11 +132,11 @@ class LearnIntegrationTestBase(unittest.TestCase):
         while resource_ref.get_worker_count() < self.n_workers:
             if self.proc_scheduler.poll() is not None:
                 raise ProcessRequirementUnmetError(
-                    'Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+                    f'Scheduler not started. exit code {self.proc_scheduler.poll()}')
             for proc_worker in self.proc_workers:
                 if proc_worker.poll() is not None:
                     raise ProcessRequirementUnmetError(
-                        'Worker not started. exit code %s' % proc_worker.poll())
+                        f'Worker not started. exit code {proc_worker.poll()}')
             if time.time() - check_time > 20:
                 raise ProcessRequirementUnmetError('Check meta_timestamp timeout')
 

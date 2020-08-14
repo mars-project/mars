@@ -260,7 +260,7 @@ cdef class LocalActorPool:
         try:
             return self.actors[actor_uid][1]
         except KeyError:
-            raise ActorNotExist('Actor {0} does not exist'.format(actor_uid))
+            raise ActorNotExist(f'Actor {actor_uid} does not exist')
 
     def create_actor(self, object actor_cls, object uid, *args, **kw):
         cdef Actor actor
@@ -271,7 +271,7 @@ cdef class LocalActorPool:
         actor_execution_ctx = ActorExecutionContext(actor, self.comm)
         actor.ctx = ActorContext(actor_execution_ctx.comm)
         if uid in self.actors:
-            raise ActorAlreadyExist('Actor {0} already exist, cannot create'.format(actor.uid))
+            raise ActorAlreadyExist(f'Actor {actor.uid} already exist, cannot create')
         self.actors[uid] = (actor, actor_execution_ctx)
         actor.post_create()
         return ActorRef(self.address, uid)
@@ -287,7 +287,7 @@ cdef class LocalActorPool:
         try:
             actor, _ = self.actors[actor_uid]
         except KeyError:
-            raise ActorNotExist('Actor {0} does not exist'.format(actor_uid))
+            raise ActorNotExist(f'Actor {actor_uid} does not exist')
         actor.pre_destroy()
         del self.actors[actor_uid]
         return actor_uid
@@ -501,7 +501,7 @@ cdef class ActorRemoteHelper:
                 ActorRemoteHelper.index, UNKNOWN_TO_INDEX,
                 ActorRef(address, uid), actor_cls, args, kwargs)[1:]
         except (AttributeError, pickle.PickleError):
-            raise pickle.PicklingError('Unable to pickle {0}(*{1}, **{2})'.format(actor_cls, args, kwargs))
+            raise pickle.PicklingError(f'Unable to pickle {actor_cls}(*{args!r}, **{kwargs!r})')
 
         if wait:
             actor_ref = self._pool.apply(self._send_remote, (address, binaries))
@@ -594,7 +594,7 @@ cdef class ActorRemoteHelper:
             else:
                 binaries = pack_tell_message(ActorRemoteHelper.index, UNKNOWN_TO_INDEX, actor_ref, message)[1:]
         except (AttributeError, pickle.PickleError):
-            raise pickle.PicklingError('Unable to pickle message {0}'.format(message))
+            raise pickle.PicklingError(f'Unable to pickle message: {message!r}')
 
         if wait:
             return self._pool.apply(self._send_remote, (actor_ref.address, binaries))
@@ -741,7 +741,7 @@ cdef class Communicator(AsyncHandler):
                 msg = pack_tell_message(self.index, to_index, actor_ref, message)
             message_id, message = msg[0], msg[1:]
         except (AttributeError, pickle.PickleError):
-            raise pickle.PicklingError('Unable to pickle message {0}'.format(message))
+            raise pickle.PicklingError(f'Unable to pickle message: {message!r}')
 
         if wait:
             self.pipe.put(*message)
@@ -819,7 +819,7 @@ cdef class Communicator(AsyncHandler):
             message_id, message = pack_create_actor_message(
                 self.index, to_index, actor_ref, actor_cls, args, kwargs)
         except (AttributeError, pickle.PickleError):
-            raise pickle.PicklingError('Unable to pickle {0}(*{1}, **{2})'.format(actor_cls, args, kwargs))
+            raise pickle.PicklingError(f'Unable to pickle {actor_cls}(*{args!r}, **{kwargs!r})')
 
         if wait:
             self.pipe.put(message)
@@ -1150,7 +1150,7 @@ cdef class Dispatcher(AsyncHandler):
                 msg = pack_tell_message(self.index, to_index, actor_ref, message)
             message_id, messages = msg[0], msg[1:]
         except (AttributeError, pickle.PickleError):
-            raise pickle.PicklingError('Unable to pickle message: {0}'.format(message))
+            raise pickle.PicklingError(f'Unable to pickle message: {message!r}')
 
         if wait:
             self.pipes[to_index].put(*messages)
@@ -1201,7 +1201,7 @@ cdef class Dispatcher(AsyncHandler):
             message_id, message = pack_create_actor_message(
                 self.index, to_index, actor_ref, actor_cls, args, kwargs)
         except (AttributeError, pickle.PickleError):
-            raise pickle.PicklingError('Unable to pickle {0}(*{1}, **{2})'.format(actor_cls, args, kwargs))
+            raise pickle.PicklingError(f'Unable to pickle {actor_cls}(*{args!r}, **{kwargs!r})')
 
         if wait:
             self.pipes[to_index].put(message)

@@ -51,7 +51,7 @@ class HashRing(object):
         elif not isinstance(nodes, (dict, list)):
             raise ValueError(
                 'nodes configuration should be a list or a dict,'
-                ' got {}'.format(type(nodes)))
+                f' got {type(nodes)}')
 
         conf_changed = False
         for node in nodes:
@@ -84,7 +84,7 @@ class HashRing(object):
                 else:
                     raise ValueError(
                         'node configuration should be a dict or an int,'
-                        ' got {}'.format(type(node_conf)))
+                        f' got {type(node_conf)}')
             if self._weight_fn:
                 conf['weight'] = self._weight_fn(**conf)
             # changing the weight of a node trigger a ring update
@@ -262,12 +262,12 @@ class HashRing(object):
         """
         numpoints = len(self.runtime._keys)
         if numpoints:
-            print('Numpoints in continuum: {}'.format(numpoints))
+            print(f'Numpoints in continuum: {numpoints}')
         else:
             print('Continuum empty')
         for p in self.get_points():
             point, node = p
-            print('{} ({})'.format(node, point))
+            print(f'{node} ({point})')
 
     def range(self, key, size=None, unique=True):
         """Returns a generator of nodes' configuration available

@@ -51,7 +51,7 @@ def fromhdf5(hdf5_file, group=None, dataset=None, chunk_size=None):
         try:
             h5_dataset = hdf5_file[TensorHDF5DataSource.get_path(group, dataset)]
         except KeyError:
-            raise ValueError('dataset({}) does not exist'.format(dataset))
+            raise ValueError(f'dataset({dataset}) does not exist')
         chunk_size = chunk_size if chunk_size is not None else h5_dataset.chunks
         shape = h5_dataset.shape
         dtype = h5_dataset.dtype
@@ -67,11 +67,11 @@ def fromhdf5(hdf5_file, group=None, dataset=None, chunk_size=None):
                 shape = h5_dataset.shape
                 dtype = h5_dataset.dtype
         except KeyError:
-            raise ValueError('dataset({}) does not exist'.format(dataset))
+            raise ValueError(f'dataset({dataset}) does not exist')
     else:
         raise TypeError('`hdf5_file` passed has wrong type, '
                         'expect str, h5py.File or h5py.Dataset, '
-                        'got {}'.format(type(hdf5_file)))
+                        f'got {type(hdf5_file)}')
 
     op = TensorHDF5DataSource(filename=filename, group=group,
                               dataset=dataset, dtype=dtype)

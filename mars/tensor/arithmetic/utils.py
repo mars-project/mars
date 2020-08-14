@@ -60,7 +60,7 @@ def arithmetic_operand(cls=None, init=True, sparse_mode=None):
         if sparse_mode in _is_sparse_dict:
             cls._is_sparse = staticmethod(_is_sparse_dict[sparse_mode])
         elif sparse_mode is not None:  # pragma: no cover
-            raise ValueError('Unsupported sparse mode: %s' % sparse_mode)
+            raise ValueError(f'Unsupported sparse mode: {sparse_mode}')
 
         return cls
 

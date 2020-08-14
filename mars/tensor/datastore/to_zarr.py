@@ -166,7 +166,7 @@ def tozarr(path, x, group=None, dataset=None, **zarr_options):
     else:
         raise TypeError('`path` passed has wrong type, '
                         'expect str, or zarr.Array'
-                        'got {}'.format(type(path)))
+                        f'got {type(path)}')
 
     op = TensorToZarrDataStore(path=path, group=group, dataset=dataset,
                                zarr_options=ZarrOptions(zarr_options))

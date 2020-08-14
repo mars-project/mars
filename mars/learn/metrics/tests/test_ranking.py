@@ -199,8 +199,7 @@ class Test(TestBase):
         # x is not in order
         x = [2, 1, 3, 4]
         y = [5, 6, 7, 8]
-        error_message = ("x is neither increasing nor decreasing : "
-                         "{}".format(np.array(x)))
+        error_message = f"x is neither increasing nor decreasing : {np.array(x)}"
         with pytest.raises(ValueError, match=re.escape(error_message)):
             auc(x, y)
 

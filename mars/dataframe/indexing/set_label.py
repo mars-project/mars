@@ -56,15 +56,15 @@ class DataFrameSetLabel(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(self._value, (Base, Entity)):  # pragma: no cover
             label = 'index' if self._axis == 0 else 'columns'
             raise NotImplementedError(
-                'Cannot set {} with Mars object: {}'.format(label, self._value))
+                f'Cannot set {label} with Mars object: {self._value}')
 
         params = inp.params
         new_dtypes = inp.dtypes.copy()
         try:
             new_dtypes.index = self._value
         except ValueError:
-            raise ValueError('ValueError: Length mismatch: Expected axis has {} elements, '
-                             'new values have {} elements'.format(len(new_dtypes), len(self._value)))
+            raise ValueError(f'ValueError: Length mismatch: Expected axis has {len(new_dtypes)} elements, '
+                             f'new values have {len(self._value)} elements')
         params['dtypes'] = new_dtypes
         columns_value = parse_index(new_dtypes.index, store_data=True)
         params['columns_value'] = columns_value

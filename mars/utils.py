@@ -78,7 +78,7 @@ class AttributeDict(dict):
             return self[item]
         except KeyError:
             raise AttributeError(
-                "'AttributeDict' object has no attribute {0}".format(item))
+                f"'AttributeDict' object has no attribute {item}")
 
 
 def on_serialize_shape(shape):
@@ -128,7 +128,7 @@ def parse_readable_size(value):
     try:
         return float(value) * (1024 ** _memory_size_indices[suffix[:1]]), False
     except (ValueError, KeyError):
-        raise ValueError('Unknown limitation value: {0}'.format(value))
+        raise ValueError(f'Unknown limitation value: {value}')
 
 
 def readable_size(size, trunc=False):
@@ -151,7 +151,7 @@ def readable_size(size, trunc=False):
     if not trunc:
         return '{0:.2f}{1}'.format(ret_size, size_unit)
     else:
-        return '{0}{1}'.format(int(ret_size), size_unit)
+        return f'{int(ret_size)}{size_unit}'
 
 
 _commit_hash, _commit_ref = None, None
@@ -372,9 +372,9 @@ def log_unhandled(func):
             messages = []
             for k, v in kwcopy.items():
                 if 'key' in k:
-                    messages.append('%s=%r' % (k, v))
+                    messages.append(f'{k}={v}')
 
-            err_msg = 'Unexpected exception occurred in %s.' % func_name
+            err_msg = f'Unexpected exception occurred in {func_name}.'
             if messages:
                 err_msg += ' ' + ' '.join(messages)
             mod_logger.exception(err_msg)
@@ -602,7 +602,7 @@ def build_fetch(entity):
     elif hasattr(entity, 'tiles'):
         return build_fetch_tileable(entity)
     else:
-        raise TypeError('Type %s not supported' % type(entity).__name__)
+        raise TypeError(f'Type {type(entity)} not supported')
 
 
 def get_chunk_shuffle_key(chunk):
@@ -653,7 +653,7 @@ def merge_chunks(chunk_results):
             if result is None:
                 result = cr[1]
             else:
-                raise TypeError('unsupported type %s' % type(v))
+                raise TypeError(f'unsupported type {type(v)}')
         return result
 
 
@@ -703,8 +703,7 @@ def check_chunks_unknown_shape(tileables, error_cls):
     for t in tileables:
         for ns in t.nsplits:
             if any(np.isnan(s) for s in ns):
-                raise error_cls(
-                    'Input tileable {} has chunks with unknown shape'.format(t))
+                raise error_cls(f'Input tileable {t} has chunks with unknown shape')
 
 
 def has_unknown_shape(tiled):
@@ -763,8 +762,7 @@ def copy_tileables(tileables: List, **kwargs):
     copy_key = kwargs.pop('copy_key', True)
     copy_id = kwargs.pop('copy_id', True)
     if kwargs:
-        raise TypeError("got un unexpected "
-                        "keyword argument '{}'".format(next(iter(kwargs))))
+        raise TypeError(f"got un unexpected keyword argument '{next(iter(kwargs))}'")
     if len(tileables) > 1:
         # cannot handle tileables with different operands here
         # try to copy separately if so

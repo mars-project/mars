@@ -391,7 +391,7 @@ class ArrowStringArray(StringArrayBase):
                 return pd.arrays.BooleanArray(np.concatenate(chunks),
                                               np.concatenate(mask_chunks))
 
-        return set_function_name(method, "__{}__".format(op.__name__), cls)
+        return set_function_name(method, f"__{op.__name__}__", cls)
 
     @classmethod
     def _add_arithmetic_ops(cls):

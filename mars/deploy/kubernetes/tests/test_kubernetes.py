@@ -49,7 +49,7 @@ class Test(unittest.TestCase):
         if os.path.exists(dist_coverage_path):
             # change ownership of coverage files
             if find_executable('sudo'):
-                proc = subprocess.Popen(['sudo', '-n', 'chown', '-R', '%d:%d' % (os.geteuid(), os.getegid()),
+                proc = subprocess.Popen(['sudo', '-n', 'chown', '-R', f'{os.geteuid()}:{os.getegid()}',
                                          dist_coverage_path], shell=False)
                 proc.wait()
 

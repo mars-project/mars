@@ -120,15 +120,15 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
             y_type = {"multiclass"}
 
         if len(y_type) > 1:
-            raise ValueError("Classification metrics can't handle a mix of {0} "
-                             "and {1} targets".format(type_true, type_pred))
+            raise ValueError(f"Classification metrics can't handle a mix of {type_true} "
+                             f"and {type_pred} targets")
 
         # We can't have more than one value on y_type => The set is no more needed
         y_type = y_type.pop()
 
         # No metrics support "multiclass-multioutput" format
         if (y_type not in ["binary", "multiclass", "multilabel-indicator"]):
-            raise ValueError("{0} is not supported".format(y_type))
+            raise ValueError(f"{y_type} is not supported")
 
         if y_type in ["binary", "multiclass"]:
             y_true = column_or_1d(y_true)

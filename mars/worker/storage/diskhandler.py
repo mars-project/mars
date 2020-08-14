@@ -79,7 +79,7 @@ class DiskIO(BytesStorageIO):
                 exist_devs = self._storage_ctx.manager_ref.get_data_locations(session_id, [data_key])[0]
                 if (0, DataStorageDevice.DISK) in exist_devs:
                     self._closed = True
-                    raise StorageDataExists('File for data (%s, %s) already exists.' % (session_id, data_key))
+                    raise StorageDataExists(f'File for data ({session_id}, {data_key}) already exists')
                 else:
                     os.unlink(self._dest_filename)
 
@@ -111,7 +111,7 @@ class DiskIO(BytesStorageIO):
                 self._buf = dataserializer.open_decompression_file(buf, compress)
                 self._total_bytes = self._nbytes
         else:  # pragma: no cover
-            raise NotImplementedError('Mode %r not supported' % mode)
+            raise NotImplementedError(f'Mode {mode} not supported')
         if self._handler.events_ref:
             self._event_id = self._handler.events_ref.add_open_event(
                 EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.DISK_IO,
@@ -127,8 +127,8 @@ class DiskIO(BytesStorageIO):
         return self._dest_filename
 
     def get_io_pool(self, pool_name=None):
-        return super().get_io_pool(
-            '%s__%d' % (pool_name or '', _get_file_dir_id(self._session_id, self._data_key)))
+        file_dir_id = _get_file_dir_id(self._session_id, self._data_key)
+        return super().get_io_pool(f'{pool_name or ""}__{file_dir_id}')
 
     def read(self, size=-1):
         start = time.time()

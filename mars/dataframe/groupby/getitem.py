@@ -116,10 +116,10 @@ def df_groupby_getitem(df_groupby, item):
     elif isinstance(item, Iterable) and all(it in df_groupby.dtypes for it in item):
         output_types = [OutputType.dataframe_groupby]
     else:
-        raise NameError('Cannot slice groupby with %r' % item)
+        raise NameError(f'Cannot slice groupby with {item!r}')
 
     if df_groupby.selection:
-        raise IndexError('Column(s) %r already selected' % df_groupby.selection)
+        raise IndexError(f'Column(s) {df_groupby.selection!r} already selected')
 
     op = GroupByIndex(selection=item, output_types=output_types)
     return op(df_groupby)

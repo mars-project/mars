@@ -61,7 +61,7 @@ class WorkerHandler(MarsRequestHandler):
                 progresses[g['stage']]['total'] += 1
         for k in progresses:
             operands = sorted(progresses[k]['operands'].items(), key=lambda p: p[0])
-            progresses[k]['operands'] = ', '.join('%s (%d)' % (k, v) for k, v in operands)
+            progresses[k]['operands'] = ', '.join(f'{k} ({v})' for k, v in operands)
 
         template = _jinja_env.get_template('worker_pages/detail.html')
         self.write(template.render(
@@ -166,7 +166,7 @@ class WorkerTimelineHandler(MarsRequestHandler):
     def get(self, endpoint):
         template = _jinja_env.get_template('worker_pages/timeline.html')
         worker_timeline_script = server_document(
-            '%s://%s/%s' % (self.request.protocol, self.request.host, TIMELINE_APP_NAME),
+            f'{self.request.protocol}://{self.request.host}/{TIMELINE_APP_NAME}',
             arguments=dict(endpoint=endpoint))
         self.write(template.render(
             endpoint=endpoint,
@@ -208,7 +208,9 @@ class WorkerTimelineHandler(MarsRequestHandler):
             if x_range is None or y_range is None:
                 return
 
-            p.title.text = 'Event time range: (%s - %s)' % tuple(t.strftime('%Y-%m-%d %H:%M:%S') for t in x_range)
+            title_x_range = tuple(t.replace(microsecond=0) for t in x_range)
+            p.title.text = f'Event time range: ({title_x_range[0]} - {title_x_range[1]})'
+
             if set(updater.owner_to_ticker.keys()) - old_owners:
                 p.yaxis.ticker = list(range(1, 1 + len(updater.owner_to_ticker)))
                 p.yaxis.major_label_overrides = dict((v, k) for k, v in updater.owner_to_ticker.items())

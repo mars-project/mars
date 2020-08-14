@@ -294,7 +294,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
 def check_data(data):
     data = convert_to_tensor_or_dataframe(data)
     if data.ndim != 2:
-        raise ValueError('Expecting 2-d data, got: {0}-d'.format(data.ndim))
+        raise ValueError(f'Expecting 2-d data, got: {data.ndim}-d')
 
     return data
 
@@ -308,14 +308,14 @@ def to_dmatrix(data, label=None, missing=None, weight=None,
             label = label.iloc[:, 0]
         label = astensor(label)
         if label.ndim != 1:
-            raise ValueError('Expecting 1-d label, got: {0}-d'.format(label.ndim))
+            raise ValueError(f'Expecting 1-d label, got: {label.ndim}-d')
     if weight is not None:
         weight = convert_to_tensor_or_dataframe(weight)
         if isinstance(weight, DATAFRAME_TYPE):
             weight = weight.iloc[:, 0]
         weight = astensor(weight)
         if weight.ndim != 1:
-            raise ValueError('Expecting 1-d weight, got {0}-d'.format(weight.ndim))
+            raise ValueError(f'Expecting 1-d weight, got {weight.ndim}-d')
 
     op = ToDMatrix(data=data, label=label, missing=missing, weight=weight,
                    feature_names=feature_names, feature_types=feature_types,

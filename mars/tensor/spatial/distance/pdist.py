@@ -648,8 +648,7 @@ def pdist(X, metric='euclidean', **kwargs):
     aggregate_size = kwargs.pop('aggregate_size', None)
 
     if len(kwargs) > 0:
-        raise TypeError('`pdist` got an unexpected keyword argument \'{}\''.format(
-            next(n for n in kwargs)))
+        raise TypeError(f"`pdist` got an unexpected keyword argument '{next(iter(kwargs))}'")
 
     op = TensorPdist(metric=metric,
                      p=p, w=w, v=v, vi=vi, aggregate_size=aggregate_size,

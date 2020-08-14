@@ -239,14 +239,14 @@ def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
         mt.ExecutableTuple(to_runs).execute(session=session, **(run_kwargs or dict()))
 
         if verbose:
-            print("Iteration {0}, inertia {1}" .format(i, inertia.fetch(session=session)))
+            inertia_data = inertia.fetch(session=session)
+            print(f"Iteration {i}, inertia {inertia_data}")
 
         center_shift_tot = center_shift_tot.fetch(session=session)
         if center_shift_tot <= tol:
             if verbose:  # pragma: no cover
-                print("Converged at iteration {0}: "
-                      "center shift {1} within tolerance {2}"
-                      .format(i, center_shift_tot, tol))
+                print(f"Converged at iteration {i}: center shift {center_shift_tot} "
+                      f"within tolerance {tol}")
             break
 
         centers, centers_new = centers_new, centers
@@ -312,14 +312,14 @@ def _kmeans_single_lloyd(X, sample_weight, n_clusters, max_iter=300,
         mt.ExecutableTuple(to_runs).execute(session=session, **(run_kwargs or dict()))
 
         if verbose:  # pragma: no cover
-            print("Iteration {0}, inertia {1}" .format(i, inertia.fetch(session=session)))
+            inertia_data = inertia.fetch(session=session)
+            print(f"Iteration {i}, inertia {inertia_data}")
 
         center_shift_tot = center_shift_tot.fetch(session=session)
         if center_shift_tot <= tol:
             if verbose:  # pragma: no cover
-                print("Converged at iteration {0}: "
-                      "center shift {1} within tolerance {2}"
-                      .format(i, center_shift_tot, tol))
+                print(f"Converged at iteration {i}: center shift {center_shift_tot} "
+                      f"within tolerance {tol}")
             break
 
         centers, centers_new = centers_new, centers
@@ -431,8 +431,8 @@ def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
     if init_size is not None and init_size < n_samples:  # pragma: no cover
         if init_size < n_clusters:
             warnings.warn(
-                "init_size=%d should be larger than k=%d. "
-                "Setting it to 3*k" % (init_size, n_clusters),
+                f"init_size={init_size} should be larger than k={n_clusters}. "
+                "Setting it to 3*k",
                 RuntimeWarning, stacklevel=2)
             init_size = 3 * n_clusters
         init_indices = random_state.randint(0, n_samples, init_size)
@@ -441,8 +441,7 @@ def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
         n_samples = X.shape[0]
     elif n_samples < n_clusters:
         raise ValueError(
-            "n_samples={} should be larger than n_clusters={}"
-                .format(n_samples, n_clusters))
+            f"n_samples={n_samples} should be larger than n_clusters={n_clusters}")
 
     if isinstance(init, str) and init == 'k-means++':
         centers = _k_init(X, n_clusters, random_state=random_state,
@@ -465,7 +464,7 @@ def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
     else:  # pragma: no cover
         raise ValueError("the init parameter for the k-means should "
                          "be 'k-means++' or 'random' or a tensor, "
-                         "'%s' (type '%s') was passed." % (init, type(init)))
+                         f"'{init}' (type '{type(init)}') was passed.")
 
     if centers.issparse():
         centers = centers.todense()
@@ -629,9 +628,8 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         n_samples, n_features = X.shape
         expected_n_features = self.cluster_centers_.shape[1]
         if not n_features == expected_n_features:  # pragma: no cover
-            raise ValueError("Incorrect number of features. "
-                             "Got %d features, expected %d" % (
-                                 n_features, expected_n_features))
+            raise ValueError(f"Incorrect number of features. Got {n_features} features, "
+                             f"expected {expected_n_features}")
 
         return X
 
@@ -670,8 +668,8 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
             if hasattr(self, '_get_tags') and \
                     self._get_tags().get('requires_y', False):  # pragma: no cover
                 raise ValueError(
-                    "This {} estimator requires y to be passed, "
-                    "but the target y is None.".format(self.__class__.__name__)
+                    f"This {type(self).__name__} estimator requires y to be passed, "
+                    "but the target y is None."
                 )
             X = check_array(X, **check_params)
             out = X
@@ -722,13 +720,13 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
 
         n_init = self.n_init
         if n_init <= 0:
-            raise ValueError("Invalid number of initializations."
-                             " n_init=%d must be bigger than zero." % n_init)
+            raise ValueError("Invalid number of initializations. "
+                             f"n_init={n_init} must be bigger than zero.")
 
         if self.max_iter <= 0:  # pragma: no cover
             raise ValueError(
-                'Number of iterations should be a positive number,'
-                ' got %d instead' % self.max_iter
+                'Number of iterations should be a positive number, '
+                f'got {self.max_iter} instead'
             )
 
         expect_chunk_size_on_columns = mt.tensor(X).shape[1]
@@ -745,8 +743,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
             X.execute(session=session, **(run_kwargs or dict()))
             n_samples = _num_samples(X)
         if n_samples < self.n_clusters:
-            raise ValueError("n_samples=%d should be >= n_clusters=%d" % (
-                n_samples, self.n_clusters))
+            raise ValueError(f"n_samples={n_samples} should be >= n_clusters={self.n_clusters}")
 
         tol = _tolerance(X, self.tol)
 
@@ -792,8 +789,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         elif algorithm == "elkan":
             kmeans_single = _kmeans_single_elkan
         else:  # pragma: no cover
-            raise ValueError("Algorithm must be 'auto', 'full' or 'elkan', got"
-                             " {}".format(str(algorithm)))
+            raise ValueError(f"Algorithm must be 'auto', 'full' or 'elkan', got {algorithm}")
 
         # seeds for the initializations of the kmeans runs.
         seeds = random_state.randint(np.iinfo(np.int32).max, size=n_init)
@@ -824,9 +820,8 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         distinct_clusters = len(set(best_labels.fetch(session=session)))
         if distinct_clusters < self.n_clusters:  # pragma: no cover
             warnings.warn(
-                "Number of distinct clusters ({}) found smaller than "
-                "n_clusters ({}). Possibly due to duplicate points "
-                "in X.".format(distinct_clusters, self.n_clusters),
+                f"Number of distinct clusters ({distinct_clusters}) found smaller than "
+                f"n_clusters ({self.n_clusters}). Possibly due to duplicate points in X.",
                 ConvergenceWarning, stacklevel=2)
 
         self.cluster_centers_ = best_centers

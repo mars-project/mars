@@ -384,7 +384,7 @@ class Test(TestBase):
         try:
             df = pd.DataFrame(np.random.rand(300, 3), columns=['a', 'b', 'c'])
 
-            file_paths = [os.path.join(tempdir, 'test{}.csv'.format(i)) for i in range(3)]
+            file_paths = [os.path.join(tempdir, f'test{i}.csv') for i in range(3)]
             df[:100].to_csv(file_paths[0])
             df[100:200].to_csv(file_paths[1])
             df[200:].to_csv(file_paths[2])
@@ -404,7 +404,7 @@ class Test(TestBase):
         try:
             df = pd.DataFrame(np.random.rand(300, 3), columns=['a', 'b', 'c'])
 
-            file_paths = [os.path.join(tempdir, 'test{}.csv'.format(i)) for i in range(3)]
+            file_paths = [os.path.join(tempdir, f'test{i}.csv') for i in range(3)]
             df[:100].to_csv(file_paths[0])
             df[100:200].to_csv(file_paths[1])
             df[200:].to_csv(file_paths[2])
@@ -412,11 +412,11 @@ class Test(TestBase):
             # As we can not guarantee the order in which these files are processed,
             # the result may not keep the original order.
             mdf = self.executor.execute_dataframe(
-                md.read_csv('{}/*.csv'.format(tempdir), index_col=0), concat=True)[0]
+                md.read_csv(f'{tempdir}/*.csv', index_col=0), concat=True)[0]
             pd.testing.assert_frame_equal(df, mdf.sort_index())
 
             mdf2 = self.executor.execute_dataframe(
-                md.read_csv('{}/*.csv'.format(tempdir), index_col=0, chunk_bytes=50), concat=True)[0]
+                md.read_csv(f'{tempdir}/*.csv', index_col=0, chunk_bytes=50), concat=True)[0]
             pd.testing.assert_frame_equal(df, mdf2.sort_index())
 
         finally:
@@ -468,7 +468,7 @@ class Test(TestBase):
         import sqlalchemy as sa
 
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                                'b': ['s%d' % i for i in range(10)],
+                                'b': [f's{i}' for i in range(10)],
                                 'c': np.random.rand(10),
                                 'd': [datetime.fromtimestamp(time.time() + 3600 * (i - 5))
                                       for i in range(10)]})

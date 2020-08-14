@@ -450,7 +450,7 @@ cdef class JsonSerializeProvider(Provider):
         elif isinstance(tp, Dict):
             return self._serialize_dict(value, tp, weak_ref=weak_ref)
         else:
-            raise TypeError('Unknown type to serialize: {0}'.format(tp))
+            raise TypeError(f'Unknown type to serialize: {tp}')
 
     cdef inline object _serialize_untyped_value(self, value, bint weak_ref=False):
         if not isinstance(value, (list, tuple, dict)) and weak_ref:
@@ -509,7 +509,7 @@ cdef class JsonSerializeProvider(Provider):
         elif callable(value):
             return self._serialize_function(value)
         else:
-            raise TypeError('Unknown type to serialize: {0}'.format(type(value)))
+            raise TypeError(f'Unknown type to serialize: {type(value)}')
 
     cdef inline object _serialize_value(self, value, tp=None, bint weak_ref=False):
         if tp is None:
@@ -529,8 +529,8 @@ cdef class JsonSerializeProvider(Provider):
             new_obj['value'] = value.serialize(self, dict())
         else:
             if not isinstance(value, model):
-                raise TypeError('Does not match type for reference field {0}: '
-                                'expect {1}, got {2}'.format(tag, model, type(value)))
+                raise TypeError(f'Does not match type for reference field {tag}: '
+                                f'expect {model}, got {type(value)}')
             value.serialize(self, new_obj)
         return new_obj
 
@@ -564,14 +564,13 @@ cdef class JsonSerializeProvider(Provider):
                     if not has_val:
                         has_val = True
                     else:
-                        raise ValueError('Only one of attributes({0}) can be specified'.format(field.attrs))
+                        raise ValueError(f'Only one of attributes({field.attrs}) can be specified')
 
                     new_obj = obj[tag] = dict()
                     value.serialize(self, new_obj)
                     return
             if not has_val and value is not None:
-                raise ValueError('Value {0} cannot match any type for OneOfField `{1}`'.format(
-                    value, field.tag_name(self)))
+                raise ValueError(f'Value {value} cannot match any type for OneOfField `{field.tag_name(self)}`')
         elif isinstance(field, ListField) and type(field.type.type) == Reference:
             tag = field.tag_name(self)
             value = self._on_serial(field, getattr(model_instance, field.attr, None))
@@ -588,16 +587,16 @@ cdef class JsonSerializeProvider(Provider):
                 val = self._on_serial(field, getattr(model_instance, field.attr, None))
             except (AttributeError, TypeError):
                 tp, err, tb = sys.exc_info()
-                raise tp('Fail to serialize field `{}` for {}, reason: {}'.format(
-                    tag, model_instance, err)).with_traceback(tb) from err
+                raise tp(f'Fail to serialize field `{tag}` for {model_instance}, reason: {err}') \
+                    .with_traceback(tb) from err
             if val is None:
                 return
             try:
                 obj[tag] = self._serialize_value(val, field.type, weak_ref=field.weak_ref)
             except (TypeError, ValueError):
                 tp, err, tb = sys.exc_info()
-                raise tp('Fail to serialize field `{}` for {}, reason: {}'.format(
-                    tag, model_instance, err)).with_traceback(tb) from err
+                raise tp(f'Fail to serialize field `{tag}` for {model_instance}, reason: {err}') \
+                    .with_traceback(tb) from err
 
     cdef inline _deserialize_value(self, obj, list callbacks, bint weak_ref):
         if not isinstance(obj, dict):
@@ -637,7 +636,7 @@ cdef class JsonSerializeProvider(Provider):
         elif tp is ValueType.dict:
             return self._deserialize_dict(obj, callbacks, weak_ref)
         else:
-            raise TypeError('Unknown type to deserialize {0}'.format(obj['type']))
+            raise TypeError(f'Unknown type to deserialize {obj["type"]}')
 
     cdef inline _on_deserial(self, Field field, x):
         x = x if x is not None else field.default
@@ -647,7 +646,7 @@ cdef class JsonSerializeProvider(Provider):
         if model is None:
             model = get_serializable_by_index(val['type_id'])
             if model is None:
-                raise KeyError('Cannot find serializable class for type_id %s' % val['type_id'])
+                raise KeyError(f'Cannot find serializable class for type_id {val["type_id"]}')
             val = val['value']
         return model.deserialize(self, val, callbacks, key_to_instance)
 
@@ -676,7 +675,7 @@ cdef class JsonSerializeProvider(Provider):
                         has_val = True
                     else:
                         raise ValueError(
-                            'Only one of attributes({0}) can be specified'.format(field.attrs))
+                            f'Only one of attributes({field.attrs}) can be specified')
 
                     setattr(model_instance, f.attr,
                             self._on_deserial(field, f.type.model.deserialize(self, obj[tag],

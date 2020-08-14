@@ -65,10 +65,8 @@ def process_iloc_indexes(inp, indexes):
                         except IndexError:
                             pass
                         except TypeError:
-                            raise TypeError(
-                                'cannot do slice indexing on {} '
-                                'with these indexers [{}] '
-                                'of {}'.format(type(pd_index), val, type(val)))
+                            raise TypeError(f'cannot do slice indexing on {type(pd_index)} '
+                                            f'with these indexers [{val}] of {type(val)}')
             new_indexes.append(index)
         elif isinstance(index, (list, np.ndarray, pd.Series, Base, Entity)):
             if not isinstance(index, (Base, Entity)):
@@ -87,7 +85,7 @@ def process_iloc_indexes(inp, indexes):
                 index = index.astype(np.int64)
             if index.ndim != 1:
                 raise ValueError('Buffer has wrong number of dimensions '
-                                 '(expected 1, got {})'.format(index.ndim))
+                                 f'(expected 1, got {index.ndim})')
             new_indexes.append(index)
         elif isinstance(index, Integral):
             shape = inp.shape[ax]

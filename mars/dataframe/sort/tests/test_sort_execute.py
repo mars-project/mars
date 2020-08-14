@@ -83,8 +83,8 @@ class Test(unittest.TestCase):
                             'b': np.random.randint(1000, size=10),
                             'c': np.random.rand(10),
                             'd': [np.random.bytes(10) for _ in range(10)],
-                            'e': [pd.Timestamp('201{}'.format(i)) for i in range(10)],
-                            'f': [pd.Timedelta('{} days'.format(i)) for i in range(10)]
+                            'e': [pd.Timestamp(f'201{i}') for i in range(10)],
+                            'f': [pd.Timedelta(f'{i} days') for i in range(10)]
                             },)
         mdf = DataFrame(raw, chunk_size=3)
 
@@ -254,7 +254,7 @@ class Test(unittest.TestCase):
     def testArrowStringSortValues(self):
         rs = np.random.RandomState(0)
         raw = pd.DataFrame({'a': rs.rand(10),
-                            'b': ['s%d' % rs.randint(1000) for _ in range(10)]
+                            'b': [f's{rs.randint(1000)}' for _ in range(10)]
                             })
         raw['b'] = raw['b'].astype(ArrowStringDtype())
         mdf = DataFrame(raw, chunk_size=3)

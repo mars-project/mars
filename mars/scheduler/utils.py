@@ -40,7 +40,7 @@ class GraphState(Enum):
 class SchedulerClusterInfoActor(ClusterInfoActor):
     @classmethod
     def default_uid(cls):
-        return 's:h1:%s' % cls.__name__
+        return f's:h1:{cls.__name__}'
 
 
 class SchedulerHasClusterInfoActor(HasClusterInfoActor):
@@ -50,7 +50,7 @@ class SchedulerHasClusterInfoActor(HasClusterInfoActor):
 class SchedulerActor(SchedulerHasClusterInfoActor, PromiseActor):
     @classmethod
     def default_uid(cls):
-        return 's:h1:{0}'.format(cls.__name__)
+        return f's:h1:{cls.__name__}'
 
     @property
     def chunk_meta(self):

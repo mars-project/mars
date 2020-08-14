@@ -146,7 +146,7 @@ def _check_support(index):
         pass
     else:  # pragma: no cover
         raise NotImplementedError('Only slice, int, or bool indexing '
-                                  'supported by now, got {0}'.format(type(index)))
+                                  f'supported by now, got {type(index)}')
 
 
 def _setitem(a, item, value):

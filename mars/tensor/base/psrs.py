@@ -48,7 +48,7 @@ class PSRSOperandMixin:
             axis_chunk_shape = min(axis_chunk_shape, int(np.sqrt(axis_shape)))
             if np.isnan(axis_shape) or any(np.isnan(s) for s in in_data.nsplits[op.axis]):
                 raise TilesError('fail to tile because either the shape of '
-                                 'input data on axis {} has unknown shape or chunk shape'.format(op.axis))
+                                 f'input data on axis {op.axis} has unknown shape or chunk shape')
             chunk_size = int(axis_shape / axis_chunk_shape)
             chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]
             if axis_shape % chunk_size > 0:

@@ -63,7 +63,7 @@ class MarsDistributor(Distributor):
         if self._default_prefix is not None:
             return self.distribute(self._default_prefix + repr(uid).replace(':', '__'))
         else:
-            raise ValueError('Malformed actor uid: %s' % uid)
+            raise ValueError(f'Malformed actor uid: {uid}')
 
     def make_same_process(self, uid, uid_rel, delta=0):
         rel_proc_id = self.distribute(uid_rel)
@@ -75,4 +75,4 @@ class MarsDistributor(Distributor):
             return self.make_same_process(self._default_prefix + repr(uid).replace(':', '__'),
                                           uid_rel, delta)
         else:
-            raise ValueError('Malformed actor uid: %s' % uid)
+            raise ValueError(f'Malformed actor uid: {uid}')

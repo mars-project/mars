@@ -501,11 +501,11 @@ def reshape(a, newshape, order='C'):
     """
     a = astensor(a)
     if np.isnan(sum(a.shape)):
-        raise ValueError('tensor shape is unknown, {0}'.format(a.shape))
+        raise ValueError(f'tensor shape is unknown, {a.shape}')
 
     newshape = calc_shape(a.size, newshape)
     if a.size != np.prod(newshape):
-        raise ValueError('cannot reshape array of size {0} into shape {1}'.format(a.size, newshape))
+        raise ValueError(f'cannot reshape array of size {a.size} into shape {newshape}')
 
     tensor_order = get_order(order, a.order, available_options='CFA')
 

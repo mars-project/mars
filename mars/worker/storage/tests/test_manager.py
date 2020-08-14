@@ -22,7 +22,7 @@ from mars.worker.storage import StorageManagerActor, DataStorageDevice
 
 class Test(WorkerCase):
     def testStorageManager(self):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool:
             session_id = str(uuid.uuid4())
             data_key1 = str(uuid.uuid4())

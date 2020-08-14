@@ -66,8 +66,8 @@ class Test(TestBase):
                             'b': np.random.randint(1000, size=10),
                             'c': np.random.rand(10),
                             'd': [np.random.bytes(10) for _ in range(10)],
-                            'e': [pd.Timestamp('201{}'.format(i)) for i in range(10)],
-                            'f': [pd.Timedelta('{} days'.format(i)) for i in range(10)]
+                            'e': [pd.Timestamp(f'201{i}') for i in range(10)],
+                            'f': [pd.Timedelta(f'{i} days') for i in range(10)]
                             },
                            index=pd.RangeIndex(1, 11))
         df = DataFrame(raw, chunk_size=3)
@@ -122,7 +122,7 @@ class Test(TestBase):
         raw2 = pd.DataFrame({'a': np.random.rand(10),
                              'b': np.random.randint(1000, size=10),
                              'c': np.random.rand(10),
-                             'd': [pd.Timestamp('201{}'.format(i)) for i in range(10)],
+                             'd': [pd.Timestamp(f'201{i}') for i in range(10)],
                              }, index=pd.RangeIndex(1, 11))
         df2 = DataFrame(raw2, chunk_size=3)
 

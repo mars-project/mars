@@ -145,8 +145,8 @@ def inv(a, sparse=None):
     # TODO: using some parallel algorithm for matrix inversion.
     a = astensor(a)
     if a.ndim != 2:
-        raise LinAlgError('{0}-dimensional array given. '
-                          'Tensor must be two-dimensional'.format(a.ndim))
+        raise LinAlgError(f'{a.ndim}-dimensional array given. '
+                          'Tensor must be two-dimensional')
     if a.shape[0] != a.shape[1]:
         raise LinAlgError('Input must be square')
 

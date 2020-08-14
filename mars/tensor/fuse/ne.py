@@ -140,7 +140,7 @@ def _handle_unary(chunk):
         raise ValueError('unary operand inputs should be 1')
     data = chunk.inputs[0]
     unary_op = NE_UNARYOP_TO_STRING[type(chunk.op)]
-    _expr = '{}({})'.format(unary_op, _VAR_FLAG + data.key)
+    _expr = f'{unary_op}({_VAR_FLAG + data.key})'
     return _expr
 
 
@@ -148,7 +148,7 @@ def _decompose(chunk):
     expr = _VAR_FLAG + chunk.key
     for node in reversed(chunk.composed):
         _expr = _evaluate(node)
-        expr = expr.replace(_VAR_FLAG + node.key, '({})'.format(_expr))
+        expr = expr.replace(_VAR_FLAG + node.key, f'({_expr})')
     return expr
 
 
@@ -172,7 +172,7 @@ def _handle_tree(chunk):
 
 def _wrap_bool(data):
     if data.dtype == np.bool_:
-        return lambda x: 'where({0}, 1, 0)'.format(x)
+        return lambda x: f'where({x}, 1, 0)'
 
     return lambda x: x
 
@@ -183,9 +183,9 @@ def _handle_reduction(chunk):
     op_str = NE_REDUCTION_TO_STRING[type(chunk.op)]
     # TODO(hks): delete it if numexpr.sum fixed
     if len(ax) == data.ndim:
-        _expr = '{}({})'.format(op_str, _wrap_bool(data)(_VAR_FLAG + data.key))
+        _expr = f'{op_str}({_wrap_bool(data)(_VAR_FLAG + data.key)})'
     elif len(ax) == 1:
-        _expr = '{}({},axis={})'.format(op_str, _wrap_bool(data)(_VAR_FLAG + data.key), ax[0])
+        _expr = f'{op_str}({_wrap_bool(data)(_VAR_FLAG + data.key)},axis={ax[0]})'
     else:
         raise ValueError("numexpr cannot encode axis")
     return _expr
@@ -203,7 +203,7 @@ def _evaluate(chunk):
     elif type(chunk.op) == TensorNeFuseChunk:
         return _decompose(chunk)
     else:
-        raise TypeError("unsupported operator in numexpr: {}".format(chunk.op.__class__.__name__))
+        raise TypeError(f"unsupported operator in numexpr: {type(chunk.op).__name__}")
 
 
 def _maybe_keepdims(chunk, res):

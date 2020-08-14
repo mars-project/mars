@@ -92,7 +92,7 @@ class Test(WorkerCase):
         super().tearDown()
 
     def testClientReadAndWrite(self):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool:
             options.worker.io_parallel_num = 1024
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
@@ -171,7 +171,7 @@ class Test(WorkerCase):
                 self.assertFalse(os.path.exists(file_names[0]))
 
     def testClientPutAndGet(self):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
             pool.create_actor(StorageManagerActor, uid=StorageManagerActor.default_uid())
@@ -234,7 +234,7 @@ class Test(WorkerCase):
                 self.assertIsNone(ref())
 
     def testLoadStoreInOtherProcess(self):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=3, address=test_addr, distributor=MarsDistributor(3)) as pool:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
             pool.create_actor(StorageManagerActor, uid=StorageManagerActor.default_uid())
@@ -273,7 +273,7 @@ class Test(WorkerCase):
             _get_result()
 
     def testClientSpill(self, *_):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
             storage_manager_ref = pool.create_actor(
