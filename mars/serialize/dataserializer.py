@@ -389,6 +389,26 @@ def _deserialize_arrow_string_array(obj):
     return ArrowStringArray(pyarrow.chunked_array(obj))
 
 
+def _serialize_sparse_array(obj):
+    return obj.sp_index.__reduce__(), obj.sp_values, obj.dtype
+
+
+def _deserialzie_sparse_array(obj):
+    (sparse_index_type, sparse_index_args), sparse_values, dtype = obj
+    sparse_index = sparse_index_type(*sparse_index_args)
+    return pd.arrays.SparseArray(sparse_values, sparse_index=sparse_index,
+                                 dtype=dtype)
+
+
+def _serialize_sparse_dtype(obj):
+    return obj.subtype.str, obj.fill_value
+
+
+def _deserialize_sparse_dtype(obj):
+    dtype, fill_value = obj
+    return pd.SparseDtype(dtype=dtype, fill_value=fill_value)
+
+
 _serialize_context = None
 
 
@@ -497,6 +517,12 @@ def mars_serialize_context():
         ctx.register_type(ArrowStringArray, 'mars.dataframe.ArrowStringArray',
                           custom_serializer=_serialize_arrow_string_array,
                           custom_deserializer=_deserialize_arrow_string_array)
+        ctx.register_type(pd.arrays.SparseArray, 'pandas.arrays.SparseArray',
+                          custom_serializer=_serialize_sparse_array,
+                          custom_deserializer=_deserialzie_sparse_array)
+        ctx.register_type(pd.SparseDtype, 'pandas.SparseDtype',
+                          custom_serializer=_serialize_sparse_dtype,
+                          custom_deserializer=_deserialize_sparse_dtype)
         _apply_pyarrow_serialization_patch(ctx)
         if vineyard is not None:  # pragma: no cover
             vineyard.register_vineyard_serialize_context(ctx)

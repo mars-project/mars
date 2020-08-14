@@ -114,6 +114,13 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(
             result, pd.DataFrame(arr, index=pd.date_range('2020-1-1', periods=20)))
 
+        df = md.DataFrame({"prices": [100, 101, np.nan, 100, 89, 88]},
+                          index=md.date_range('1/1/2010', periods=6, freq='D'))
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        pd.testing.assert_frame_equal(
+            result, pd.DataFrame({"prices": [100, 101, np.nan, 100, 89, 88]},
+                                 index=pd.date_range('1/1/2010', periods=6, freq='D')))
+
         s = np.random.rand(20)
 
         ps = pd.Series(s, index=[np.arange(20), np.arange(20, 0, -1)], name='a')

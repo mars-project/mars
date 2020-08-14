@@ -964,3 +964,121 @@ class Test(TestBase):
                 result.index.name = None
                 expected = pd_df.head(3)
                 pd.testing.assert_frame_equal(result, expected)
+
+    def testReindexExecution(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df = md.DataFrame(data, chunk_size=4)
+
+        for enable_sparse in [True, False, None]:
+            r = df.reindex(index=mt.arange(10, 1, -1, chunk_size=3),
+                           enable_sparse=enable_sparse)
+
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = data.reindex(index=np.arange(10, 1, -1))
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.reindex(columns=['c5', 'c6', 'c2'],
+                           enable_sparse=enable_sparse)
+
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = data.reindex(columns=['c5', 'c6', 'c2'])
+            pd.testing.assert_frame_equal(result, expected)
+
+        for enable_sparse in [True, False]:
+            r = df.reindex(index=[5, 11, 1], columns=['c5', 'c6', 'c2'],
+                           enable_sparse=enable_sparse)
+
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = data.reindex(index=[5, 11, 1], columns=['c5', 'c6', 'c2'])
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.reindex(index=mt.tensor([2, 4, 10]),
+                           columns=['c2', 'c3', 'c5', 'c7'],
+                           method='bfill',
+                           enable_sparse=enable_sparse)
+
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = data.reindex(index=[2, 4, 10],
+                                    columns=['c2', 'c3', 'c5', 'c7'],
+                                    method='bfill')
+            pd.testing.assert_frame_equal(result, expected)
+
+            for fill_value, test_fill_value in \
+                    [(3, 3), (df.iloc[:, 0].max(), data.iloc[:, 0].max())]:
+                r = df.reindex(index=mt.tensor([2, 4, 10]),
+                               columns=['c2', 'c3', 'c5', 'c7'],
+                               fill_value=fill_value,
+                               enable_sparse=enable_sparse)
+
+                result = self.executor.execute_dataframe(r, concat=True)[0]
+                expected = data.reindex(index=[2, 4, 10],
+                                        columns=['c2', 'c3', 'c5', 'c7'],
+                                        fill_value=test_fill_value)
+                pd.testing.assert_frame_equal(result, expected)
+
+            # test date_range index
+            data = pd.DataFrame(np.random.rand(10, 5), index=pd.date_range('2020-1-1', periods=10))
+            df = md.DataFrame(data, chunk_size=5)
+
+            r = df.reindex(index=md.date_range('2020-1-6', periods=6),
+                           method='ffill', enable_sparse=enable_sparse)
+
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = data.reindex(index=pd.date_range('2020-1-6', periods=6),
+                                    method='ffill')
+            pd.testing.assert_frame_equal(result, expected)
+
+            # test MultiIndex
+            data = pd.DataFrame(np.random.rand(10, 5),
+                                index=pd.MultiIndex.from_arrays([np.arange(10),
+                                                                 np.arange(11, 1, -1)]))
+            df = md.DataFrame(data, chunk_size=5)
+
+            r = df.reindex([2, 4, 9, 12], level=1,
+                           enable_sparse=enable_sparse)
+
+            result = self.executor.execute_dataframe(r, concat=True, check_shape=False)[0]
+            expected = data.reindex([2, 4, 9, 12], level=1)
+            pd.testing.assert_frame_equal(result, expected)
+
+            r = df.reindex(mt.tensor([2, 4, 9, 12], chunk_size=2), level=1,
+                           enable_sparse=enable_sparse)
+
+            result = self.executor.execute_dataframe(r, concat=True, check_shape=False)[0]
+            expected = data.reindex([2, 4, 9, 12], level=1)
+            pd.testing.assert_frame_equal(result, expected)
+
+            # test duplicate index
+            index = np.arange(10)
+            index[-1] = 0
+            data = pd.DataFrame(np.random.rand(10, 5), index=index)
+            df = md.DataFrame(data, chunk_size=5)
+
+            with self.assertRaises(ValueError):
+                r = df.reindex([0, 1], enable_sparse=enable_sparse)
+                self.executor.execute_dataframe(r)
+
+            # test one chunk
+            data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+            df = md.DataFrame(data, chunk_size=10)
+
+            r = df.reindex(index=mt.arange(10, 1, -1, chunk_size=10),
+                           fill_value=df['c1'].max(),
+                           enable_sparse=enable_sparse)
+
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = data.reindex(index=np.arange(10, 1, -1),
+                                    fill_value=data['c1'].max())
+            pd.testing.assert_frame_equal(result, expected)
+
+            # test series
+            s_data = pd.Series(np.random.rand(10),
+                               index=['c{}'.format(i + 1) for i in range(10)])
+            series = md.Series(s_data, chunk_size=6)
+
+            r = series.reindex(['c2', 'c11', 'c4'], copy=False,
+                               enable_sparse=enable_sparse)
+
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = s_data.reindex(['c2', 'c11', 'c4'], copy=False)
+            pd.testing.assert_series_equal(result, expected)

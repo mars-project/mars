@@ -73,6 +73,7 @@ mars.dataframe.Series
       ~Series.radd
       ~Series.rdiv
       ~Series.rechunk
+      ~Series.reindex
       ~Series.rename
       ~Series.reset_index
       ~Series.rfloordiv

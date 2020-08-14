@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import numpy as np
+import pandas as pd
 from pandas.api.types import is_integer
 
 from ...core import Base, Entity
 from ...tensor import tensor as astensor
 from ...tensor.statistics.percentile import percentile
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
+from ..initializer import DataFrame, Series
 from .cut import cut
 
 
@@ -80,7 +82,8 @@ def qcut(x, q, labels=None, retbins=False, precision=3, duplicate='raise'):
     if is_integer(q):
         q = np.linspace(0, 1, q + 1)
 
-    if isinstance(x, (DATAFRAME_TYPE, SERIES_TYPE)):
+    if isinstance(x, (DATAFRAME_TYPE, SERIES_TYPE, pd.DataFrame, pd.Series)):
+        x = DataFrame(x) if x.ndim == 2 else Series(x)
         bins = x.quantile(q)
     else:
         x = astensor(x)
