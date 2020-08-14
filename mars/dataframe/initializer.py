@@ -22,7 +22,8 @@ from .core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DataFrame as _Frame, 
     Series as _Series, Index as _Index
 from .datasource.dataframe import from_pandas as from_pandas_df
 from .datasource.series import from_pandas as from_pandas_series
-from .datasource.index import from_pandas as from_pandas_index
+from .datasource.index import from_pandas as from_pandas_index, \
+    from_tileable as from_tileable_index
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
     dataframe_from_1d_tileables
 from .fetch import DataFrameFetch
@@ -35,9 +36,6 @@ class DataFrame(_Frame):
             if chunk_size is not None:
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
-        elif isinstance(index, (INDEX_TYPE, SERIES_TYPE)):
-            df = dataframe_from_tensor(astensor(data, chunk_size=chunk_size), index=index,
-                                       columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
             if not hasattr(data, 'data'):
                 # DataFrameData
@@ -48,6 +46,14 @@ class DataFrame(_Frame):
             # data is a dict and some value is tensor
             df = dataframe_from_1d_tileables(
                 data, index=index, columns=columns, gpu=gpu, sparse=sparse)
+        elif isinstance(index, (INDEX_TYPE, SERIES_TYPE)):
+            if isinstance(data, dict):
+                data = {k: astensor(v, chunk_size=chunk_size) for k, v in data.items()}
+                df = dataframe_from_1d_tileables(data, index=index, columns=columns,
+                                                 gpu=gpu, sparse=sparse)
+            else:
+                df = dataframe_from_tensor(astensor(data, chunk_size=chunk_size), index=index,
+                                           columns=columns, gpu=gpu, sparse=sparse)
         else:
             pdf = pd.DataFrame(data, index=index, columns=columns, dtype=dtype, copy=copy)
             df = from_pandas_df(pdf, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
@@ -90,13 +96,16 @@ class Index(_Index):
             else:
                 index = data
         else:
-            if not isinstance(data, pd.Index):
-                pd_index = pd.Index(data=data, dtype=dtype, copy=copy, name=name,
-                                    names=names, tupleize_cols=tupleize_cols)
+            if isinstance(data, (Base, Entity)):
+                index = from_tileable_index(data, dtype=dtype, name=name)
             else:
-                pd_index = data
-            index = from_pandas_index(pd_index, chunk_size=chunk_size,
-                                      gpu=gpu, sparse=sparse)
+                if not isinstance(data, pd.Index):
+                    pd_index = pd.Index(data=data, dtype=dtype, copy=copy, name=name,
+                                        tupleize_cols=tupleize_cols)
+                else:
+                    pd_index = data
+                index = from_pandas_index(pd_index, chunk_size=chunk_size,
+                                          gpu=gpu, sparse=sparse)
         super().__init__(index.data)
 
 

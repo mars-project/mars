@@ -126,6 +126,10 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
     def indexes(self):
         return self._indexes
 
+    @property
+    def can_index_miss(self):
+        return False
+
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)

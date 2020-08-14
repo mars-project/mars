@@ -398,6 +398,8 @@ message OperandDef {
 
         // reset index
         RESET_INDEX = 2028;
+        // reindex
+        REINDEX = 2029;
 
         // groupby
         GROUPBY = 2030;
