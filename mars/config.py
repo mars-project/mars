@@ -119,7 +119,7 @@ class AttributeDict(dict):
                 validate = target[key][1]
                 if validate is not None:
                     if not validate(value):
-                        raise ValueError('Cannot set value `%s`' % value)
+                        raise ValueError(f'Cannot set value `{value}`')
                 if isinstance(val[0], Redirection):
                     val[0].setvalue(value)
                 else:
@@ -177,14 +177,14 @@ class Config(object):
                 conf = val
             elif not isinstance(config, dict):
                 raise AttributeError(
-                    'Fail to set option: %s, conflict has encountered' % option)
+                    f'Fail to set option: {option}, conflict has encountered')
             else:
                 conf = config
 
         key = splits[-1]
         if conf.get(key) is not None:
             raise AttributeError(
-                'Fail to set option: %s, option has been set' % option)
+                f'Fail to set option: {option}, option has been set')
 
         conf.register(key, value, validator)
         if serialize:
@@ -201,13 +201,13 @@ class Config(object):
             config = conf.get(name)
             if not isinstance(config, dict):
                 raise AttributeError(
-                    'Fail to unregister option: %s, conflict has encountered' % option)
+                    f'Fail to unregister option: {option}, conflict has encountered')
             else:
                 conf = config
 
         key = splits[-1]
         if key not in conf:
-            raise AttributeError('Option %s not configured, thus failed to unregister.' % option)
+            raise AttributeError(f'Option {option} not configured, thus failed to unregister.')
         conf.unregister(key)
 
     def copy(self):

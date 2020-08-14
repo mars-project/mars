@@ -723,8 +723,7 @@ def validate_axis(axis, tileable=None):
         illegal = True
 
     if illegal:
-        raise ValueError('No axis named {} for '
-                         'object type {}'.format(axis, type(tileable)))
+        raise ValueError(f'No axis named {axis} for object type {type(tileable)}')
     return axis
 
 

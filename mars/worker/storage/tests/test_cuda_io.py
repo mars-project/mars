@@ -35,7 +35,7 @@ cudf = lazy_import('cudf', globals=globals())
 @require_cudf
 class Test(WorkerCase):
     def testCudaMemPutAndGet(self):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
@@ -80,7 +80,7 @@ class Test(WorkerCase):
                 handler.delete(session_id, [data_key2])
 
     def testCudaMemLoad(self):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())

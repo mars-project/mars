@@ -411,4 +411,4 @@ class Test(unittest.TestCase):
             corner_max_rows = max_rows if row <= max_rows else corner.shape[0] - 1
             self.assertEqual(corner.to_string(max_rows=corner_max_rows, min_rows=min_rows),
                              pdf.to_string(max_rows=max_rows, min_rows=min_rows),
-                             'failed when row == {}'.format(row))
+                             f'failed when row == {row}')

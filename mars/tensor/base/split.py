@@ -109,7 +109,7 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         if any(np.isnan(s.shape[axis]) for s in splits):
             # TODO(xuye.qin): when iterative tiling is ready and we can retrieve data from context,
             # this function would be available
-            raise ValueError('Tensor chunk sizes are unknown: {0}'.format(splits))
+            raise ValueError(f'Tensor chunk sizes are unknown: {splits}')
 
         acc_shapes = np.cumsum([s.shape[axis] for s in splits])
         out_kws = [dict() for _ in splits]

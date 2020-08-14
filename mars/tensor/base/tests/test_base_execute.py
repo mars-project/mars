@@ -1559,8 +1559,8 @@ class Test(TestBase):
                     result = self.executor.execute_tensor(r, concat=True)[0]
                     expected = np.trapz(raw, dx=dx)
                     np.testing.assert_almost_equal(result, expected,
-                                                   err_msg='failed when raw={}, chunk_size={}, '
-                                                           'dx={}'.format(raw, chunk_size, dx))
+                                                   err_msg=f'failed when raw={raw}, '
+                                                           f'chunk_size={chunk_size}, dx={dx}')
 
         # test x not None
         raw_ys = [np.random.rand(10),

@@ -39,7 +39,7 @@ class Test(TestBase):
                 array = np.random.randint(0, 256, 2500, dtype=np.uint8).reshape((50, 50))
                 raws.append(array)
                 im = Image.fromarray(array)
-                im.save(os.path.join(tempdir, 'random_{}.png'.format(i)))
+                im.save(os.path.join(tempdir, f'random_{i}.png'))
             # Single image
             t = imread(os.path.join(tempdir, 'random_0.png'))
             res = self.executor.execute_tensor(t, concat=True)[0]

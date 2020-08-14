@@ -348,7 +348,7 @@ def searchsorted(a, v, side='left', sorter=None, combine_size=None):
         # does not support sparse tensor
         raise ValueError('`a` should be a dense tensor')
     if side not in {'left', 'right'}:
-        raise ValueError("'{0}' is an invalid value for keyword 'side'".format(side))
+        raise ValueError(f"'{side}' is an invalid value for keyword 'side'")
 
     if not np.isscalar(v):
         v = astensor(v)

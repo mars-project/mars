@@ -44,14 +44,13 @@ def assert_is_valid_plot_return_object(objs):  # pragma: no cover
         for el in objs.ravel():
             msg = (
                 "one of 'objs' is not a matplotlib Axes instance, "
-                "type encountered {}".format(repr(type(el).__name__))
+                f"type encountered {type(el).__name__}"
             )
             assert isinstance(el, (plt.Axes, dict)), msg
     else:
         msg = (
             "objs is neither an ndarray of Artist instances nor a single "
-            "ArtistArtist instance, tuple, or dict, 'objs' is a {}".format(
-                repr(type(objs).__name__))
+            f"ArtistArtist instance, tuple, or dict, 'objs' is a {type(objs).__name__}"
         )
         assert isinstance(objs, (plt.Artist, tuple, dict)), msg
 

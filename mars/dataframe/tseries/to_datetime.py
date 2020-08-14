@@ -128,7 +128,7 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
             if sorted(columns) != sorted(['year', 'month', 'day']):
                 missing = ','.join(c for c in ['day', 'month', 'year'] if c not in columns)
                 raise ValueError('to assemble mappings requires at least '
-                                 'that [year, month, day] be specified: [{}] is missing'.format(missing))
+                                 f'that [year, month, day] be specified: [{missing}] is missing')
             return self.new_series([arg], shape=(arg.shape[0],),
                                    dtype=dtype, index_value=arg.index_value)
         elif isinstance(arg, (pd.Index, INDEX_TYPE)):

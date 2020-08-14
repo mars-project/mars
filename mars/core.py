@@ -130,7 +130,7 @@ class Entity(HasData):
 
     def _check_data(self, data):
         if data is not None and not isinstance(data, self._allow_data_type_):
-            raise TypeError('Expect {0}, got {1}'.format(self._allow_data_type_, type(data)))
+            raise TypeError(f'Expect {self._allow_data_type_}, got {type(data)}')
 
     @property
     def data(self):
@@ -229,10 +229,9 @@ class ChunkData(EntityData):
 
     def __repr__(self):
         if self.op.stage is None:
-            return 'Chunk <op={0}, key={1}>'.format(type(self.op).__name__, self.key)
+            return f'Chunk <op={type(self.op).__name__}, key={self.key}>'
         else:
-            return 'Chunk <op={0}, stage={1}, key={2}>'.format(
-                type(self.op).__name__, self.op.stage.name, self.key)
+            return f'Chunk <op={type(self.op).__name__}, stage={self.op.stage.name}, key={self.key}>'
 
     @classmethod
     def cls(cls, provider):
@@ -592,7 +591,7 @@ class ObjectData(TileableData, _ToObjectMixin):
         super().__init__(_op=op, _nsplits=nsplits, _chunks=chunks, **kw)
 
     def __repr__(self):
-        return 'Object <op={0}, key={1}>'.format(type(self.op).__name__, self.key)
+        return f'Object <op={type(self.op).__name__}, key={self.key}>'
 
     @classmethod
     def cls(cls, provider):
@@ -634,8 +633,7 @@ class ChunksIndexer(object):
             if len(item) == 0 and self._tileable.is_scalar():
                 return self._tileable.chunks[0]
             if len(item) != self._tileable.ndim:
-                raise ValueError('Cannot get chunk by %s, expect length %d' % (
-                    item, self._tileable.ndim))
+                raise ValueError(f'Cannot get chunk by {item}, expect length {self._tileable.ndim}')
             slices, singleton = [], True
             for it, dim in zip(item, self._tileable.chunk_shape):
                 if isinstance(it, slice):
@@ -644,8 +642,7 @@ class ChunksIndexer(object):
                 elif np.issubdtype(type(it), np.integer):
                     slices.append([it if it >= 0 else dim + it])
                 else:
-                    raise TypeError('Cannot get chunk by %s, invalid value has type %s' % (
-                        it, type(it)))
+                    raise TypeError(f'Cannot get chunk by {it}, invalid value has type {type(it)}')
 
             indexes = tuple(zip(*itertools.product(*slices)))
 
@@ -655,7 +652,7 @@ class ChunksIndexer(object):
             else:
                 return [self._tileable._chunks[idx] for idx in flat_index]
 
-        raise ValueError('Cannot get {0} chunk by {1}'.format(type(self._tileable).__name__, item))
+        raise ValueError(f'Cannot get {type(self._tileable).__name__} chunk by {item}')
 
 
 class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):

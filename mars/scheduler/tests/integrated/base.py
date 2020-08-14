@@ -97,7 +97,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
 
     def add_state_file(self, environ):
         fn = os.environ[environ] = os.path.join(
-            tempfile.gettempdir(), 'test-main-%s-%d-%d' % (environ.lower(), os.getpid(), id(self)))
+            tempfile.gettempdir(), f'test-main-{environ.lower()}-{os.getpid()}-{id(self)}')
         self.state_files[environ] = fn
         return fn
 
@@ -134,7 +134,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
             etcd_port = get_next_port()
             self.etcd_helper = EtcdProcessHelper(port_range_start=etcd_port)
             self.etcd_helper.run()
-            options.kv_store = 'etcd://127.0.0.1:%s' % etcd_port
+            options.kv_store = f'etcd://127.0.0.1:{etcd_port}'
             append_args.extend(['--kv-store', options.kv_store])
         else:
             append_args.extend(['--schedulers', ','.join(self.scheduler_endpoints)])
@@ -151,7 +151,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
                               '-H', '127.0.0.1',
                               '-p', p,
                               '--log-level', 'debug' if log_scheduler else 'warning',
-                              '--log-format', 'SCH%d %%(asctime)-15s %%(message)s' % idx,
+                              '--log-format', f'SCH{idx} %(asctime)-15s %(message)s'
                               '-Dscheduler.retry_delay=5',
                               '-Dscheduler.default_cpu_usage=0',
                               '-Dscheduler.status_timeout=10']
@@ -165,7 +165,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
                               '-a', '127.0.0.1',
                               '--cpu-procs', str(worker_cpu),
                               '--log-level', 'debug' if log_worker else 'warning',
-                              '--log-format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
+                              '--log-format', f'WOR{idx} %(asctime)-15s %(message)s',
                               '--cache-mem', '16m',
                               '--ignore-avail-mem',
                               '--cuda-device', str(cuda_devices[idx % cuda_count]) if cuda_count else '',
@@ -184,11 +184,10 @@ class SchedulerIntegratedTest(unittest.TestCase):
                 try:
                     started_schedulers = self.cluster_info.get_schedulers()
                 except Exception as e:
-                    raise ProcessRequirementUnmetError('Failed to get scheduler numbers, %s' % e)
+                    raise ProcessRequirementUnmetError(f'Failed to get scheduler numbers, {e}')
                 if len(started_schedulers) < n_schedulers:
-                    raise ProcessRequirementUnmetError('Schedulers does not met requirement: %d < %d.' % (
-                        len(started_schedulers), n_schedulers
-                    ))
+                    raise ProcessRequirementUnmetError(
+                        f'Schedulers does not met requirement: {len(started_schedulers)} < {n_schedulers}.')
                 actor_address = self.cluster_info.get_scheduler(SessionManagerActor.default_uid())
                 self.session_manager_ref = actor_client.actor_ref(
                     SessionManagerActor.default_uid(), address=actor_address)
@@ -198,9 +197,8 @@ class SchedulerIntegratedTest(unittest.TestCase):
 
                 if not actor_client.has_actor(self.session_manager_ref) \
                         or resource_ref.get_worker_count() < n_workers:
-                    raise ProcessRequirementUnmetError('Workers does not met requirement: %d < %d.' % (
-                        resource_ref.get_worker_count(), n_workers
-                    ))
+                    raise ProcessRequirementUnmetError(
+                        f'Workers does not met requirement: {resource_ref.get_worker_count()} < {n_workers}')
                 break
             except:  # noqa: E722
                 if time.time() - check_time > 20:
@@ -212,10 +210,12 @@ class SchedulerIntegratedTest(unittest.TestCase):
     def check_process_statuses(self):
         for scheduler_proc in self.proc_schedulers:
             if scheduler_proc.poll() is not None:
-                raise ProcessRequirementUnmetError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+                raise ProcessRequirementUnmetError(
+                    f'Scheduler not started. exit code {self.proc_scheduler.poll()}')
         for worker_proc in self.proc_workers:
             if worker_proc.poll() is not None and worker_proc.pid not in self.intentional_death_pids:
-                raise ProcessRequirementUnmetError('Worker not started. exit code %s' % worker_proc.poll())
+                raise ProcessRequirementUnmetError(
+                    f'Worker not started. exit code {worker_proc.poll()}')
 
     def wait_for_termination(self, actor_client, session_ref, graph_key):
         check_time = time.time()

@@ -456,19 +456,19 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     other_shape = other.shape
                 if tensor.ndim == 2 and tensor.shape != other_shape:
                     raise ValueError(
-                        'Unable to coerce to DataFrame, shape must be {}: '
-                        'given {}'.format(other_shape, tensor.shape))
+                        f'Unable to coerce to DataFrame, shape must be {other_shape}: '
+                        f'given {tensor.shape}')
                 elif tensor.ndim == 1 and tensor.shape[0] != other_shape[1]:
                     raise ValueError(
-                        'Unable to coerce to Series, length must be {}: given {}'.format(
-                            other_shape[1], tensor.shape[0]))
+                        f'Unable to coerce to Series, length must be {other_shape[1]}: '
+                        f'given {tensor.shape[0]}')
                 elif tensor.ndim > 2:
                     raise ValueError('Unable to coerce to Series/DataFrame, dim must be <= 2')
             if isinstance(other, SERIES_TYPE):
                 if tensor.ndim == 1 and (tensor.shape[0] != other.shape[0]):
                     raise ValueError(
-                        'Unable to coerce to Series, length must be {}: given {}'.format(
-                            other.shape[0], tensor.shape[0]))
+                        f'Unable to coerce to Series, length must be {other.shape[0]}: '
+                        f'given {tensor.shape[0]}')
                 elif tensor.ndim > 1:
                     raise ValueError('Unable to coerce to Series, dim must be 1')
 

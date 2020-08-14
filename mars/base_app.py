@@ -112,7 +112,7 @@ class BaseApplication(object):
         try:
             self.validate_arguments()
         except StartArgumentError as ex:
-            parser.error('Failed to start application: %s' % ex)
+            parser.error(f'Failed to start application: {ex}')
 
         self.advertise_endpoint = None
         if getattr(self, 'require_pool', True):
@@ -170,7 +170,7 @@ class BaseApplication(object):
             while use_port is None:
                 use_port = port or get_next_port()
                 try:
-                    endpoint = '{0}:{1}'.format(host, use_port)
+                    endpoint = f'{host}:{use_port}'
                     pool = self.create_pool(address=endpoint, advertise_address=advertise_address)
                     break
                 except:  # noqa: E722

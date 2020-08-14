@@ -56,8 +56,7 @@ def plan_rechunks(tileable, new_chunk_size, itemsize, threshold=None, chunk_size
     chunk_size_limit = chunk_size_limit or options.rechunk.chunk_size_limit
 
     if len(new_chunk_size) != tileable.ndim:
-        raise ValueError('Provided chunks should have %d dimensions, got %d' % (
-            tileable.ndim, len(new_chunk_size)))
+        raise ValueError(f'Provided chunks should have {tileable.ndim} dimensions, got {len(new_chunk_size)}')
 
     steps = []
 

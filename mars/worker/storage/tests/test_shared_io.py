@@ -40,7 +40,7 @@ class Test(WorkerCase):
     plasma_storage_size = 1024 * 1024 * 10
 
     def testSharedReadAndWrite(self, *_):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         io_size = dataserializer.HEADER_LENGTH * 2
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
@@ -116,7 +116,7 @@ class Test(WorkerCase):
             handler.delete(session_id, [data_key1])
 
     def testSharedReadAndWritePacked(self, *_):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         io_size = dataserializer.HEADER_LENGTH * 2
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
@@ -197,7 +197,7 @@ class Test(WorkerCase):
             handler.delete(session_id, [data_key1])
 
     def testSharedPutAndGet(self, *_):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
@@ -240,7 +240,7 @@ class Test(WorkerCase):
     def testSharedLoadFromBytes(self, *_):
         import logging
         logging.basicConfig(level=logging.DEBUG)
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
@@ -309,7 +309,7 @@ class Test(WorkerCase):
                     self.assertIsNotNone(size)
 
     def testSharedLoadFromObjects(self, *_):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
@@ -349,7 +349,7 @@ class Test(WorkerCase):
             handler.delete(session_id, [data_key1])
 
     def testSharedSpill(self, *_):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())

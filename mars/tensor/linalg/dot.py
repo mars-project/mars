@@ -152,7 +152,7 @@ def dot(a, b, out=None, sparse=None):
 
     # set to out
     if not isinstance(out, Tensor):
-        raise TypeError('`out` must be a Tensor, got {0} instead'.format(type(out)))
+        raise TypeError(f'`out` must be a Tensor, got {type(out)} instead')
     if out.shape != ret.shape:
         raise ValueError('output tensor has wrong dimensions')
     if not (out.dtype == ret.dtype and out.ndim == ret.ndim and out.order == TensorOrder.C_ORDER):

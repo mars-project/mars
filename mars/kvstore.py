@@ -32,13 +32,13 @@ class PathResult(object):
         self.children = children or []
 
     def __repr__(self):
-        arg_strs = ['key=%r' % self.key]
+        arg_strs = [f'key={self.key!r}']
         if self.value:
-            arg_strs.append('value=%r' % self.value)
+            arg_strs.append(f'value={self.value!r}')
         if self.dir:
-            arg_strs.append('dir=%r' % self.dir)
+            arg_strs.append(f'dir={self.dir!r}')
         if self.children:
-            arg_strs.append('children=%r' % self.children)
+            arg_strs.append(f'children={self.children!r}')
         return 'PathResult(' + ', '.join(arg_strs) + ')'
 
 
@@ -160,7 +160,7 @@ class LocalKVStore(object):
 
             path += '/' + s
             if path != key and path in self._store:
-                raise KeyError('Not a directory: %s' % key)
+                raise KeyError(f'Not a directory: {key}')
             parent = path
         if dir:
             self._children[key] = set()
@@ -272,7 +272,7 @@ class EtcdKVStore(object):
         except EtcdKeyError as ex:
             if dir and isinstance(ex, EtcdNotFile):
                 return
-            raise KeyError('%s not dir' % key)
+            raise KeyError(f'{key} not dir')
 
     def delete(self, key, dir=False, recursive=False):
         from etcd_gevent import EtcdKeyError, EtcdDirNotEmpty
@@ -282,7 +282,7 @@ class EtcdKVStore(object):
         except EtcdKeyError:
             raise KeyError(key)
         except EtcdDirNotEmpty:
-            raise KeyError('Dir %s not empty', key)
+            raise KeyError(f'Dir {key} not empty')
 
 
 def get(addr):
@@ -295,4 +295,4 @@ def get(addr):
         client = EtcdClient(host=hosts, allow_reconnect=True)
         return EtcdKVStore(client, parsed.path)
     else:  # pragma: no cover
-        raise ValueError('Scheme %s not supported.' % parsed.scheme)
+        raise ValueError(f'Scheme {parsed.scheme} not supported')

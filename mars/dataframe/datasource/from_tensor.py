@@ -92,7 +92,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 self._index = index
                 index = astensor(index)
                 if index.ndim != 1:
-                    raise ValueError('index should be 1-d, got {}-d'.format(index.ndim))
+                    raise ValueError(f'index should be 1-d, got {index.ndim}-d')
                 index_value = parse_index(pd.Index([], dtype=index.dtype), index, type(self).__name__)
                 inputs.append(index)
             else:
@@ -119,8 +119,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         if index is not None:
             if tileables[0].shape[0] != len(index):
                 raise ValueError(
-                    'index {} should have the same shape with tensor: {}'.format(
-                        index, input_1d_tileables[0].shape[0]))
+                    f'index {index} should have the same shape with tensor: {input_1d_tileables[0].shape[0]}')
             index_value = self._process_index(index, tileables)
         else:
             index_value = parse_index(pd.RangeIndex(0, tileables[0].shape[0]))
@@ -128,7 +127,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         if columns is not None:
             if len(input_1d_tileables) != len(columns):
                 raise ValueError(
-                    'columns {0} should have size {1}'.format(columns, len(input_1d_tileables)))
+                    f'columns {columns} should have size {len(input_1d_tileables)}')
             if not isinstance(columns, pd.Index):
                 if isinstance(columns, Base):
                     raise NotImplementedError('The columns value cannot be a tileable')
@@ -149,8 +148,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         if index is not None:
             if input_tensor.shape[0] != len(index):
                 raise ValueError(
-                    'index {0} should have the same shape with tensor: {1}'.format(
-                        index, input_tensor.shape[0]))
+                    f'index {index} should have the same shape with tensor: {input_tensor.shape[0]}')
             index_value = self._process_index(index, inputs)
         else:
             index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
@@ -159,8 +157,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             if not (input_tensor.ndim == 1 and len(columns) == 1 or
                     input_tensor.shape[1] == len(columns)):
                 raise ValueError(
-                    'columns {0} should have the same shape with tensor: {1}'.format(
-                        columns, input_tensor.shape[1]))
+                    f'columns {columns} should have the same shape with tensor: {input_tensor.shape[1]}')
             if not isinstance(columns, pd.Index):
                 if isinstance(columns, Base):
                     raise NotImplementedError('The columns value cannot be a tileable')
@@ -340,7 +337,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
 def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):
     if tensor.ndim > 2 or tensor.ndim <= 0:
-        raise TypeError('Not support create DataFrame from {0} dims tensor'.format(tensor.ndim))
+        raise TypeError(f'Not support create DataFrame from {tensor.ndim} dims tensor')
     try:
         col_num = tensor.shape[1]
     except IndexError:
@@ -453,7 +450,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
                     self._index = index
                     index = astensor(index)
                     if index.ndim != 1:
-                        raise ValueError('index should be 1-d, got {}-d'.format(index.ndim))
+                        raise ValueError(f'index should be 1-d, got {index.ndim}-d')
                     index_value = parse_index(pd.Index([], dtype=index.dtype), index, type(self).__name__)
                     inputs.append(index)
                 else:
@@ -469,7 +466,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
 def series_from_tensor(tensor, index=None, name=None, gpu=None, sparse=False):
     if tensor.ndim > 1 or tensor.ndim <= 0:
-        raise TypeError('Not support create DataFrame from {0} dims tensor', format(tensor.ndim))
+        raise TypeError(f'Not support create DataFrame from {tensor.ndim} dims tensor')
     gpu = tensor.op.gpu if gpu is None else gpu
     op = SeriesFromTensor(dtype=tensor.dtype, gpu=gpu, sparse=sparse)
     return op(tensor, index, name)

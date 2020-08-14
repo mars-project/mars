@@ -495,13 +495,13 @@ class Test(unittest.TestCase):
             result = repr(df.execute())
             expected = repr(pdf)
             self.assertEqual(result, expected,
-                             'failed repr for DataFrame when size = {}'.format(size))
+                             f'failed repr for DataFrame when size = {size}')
 
             # test DataFrame _repr_html_
             result = df.execute()._repr_html_()
             expected = pdf._repr_html_()
             self.assertEqual(result, expected,
-                             'failed repr html for DataFrame when size = {}'.format(size))
+                             f'failed repr html for DataFrame when size = {size}')
 
             # test Series repr
             ps = pdf[0]
@@ -510,7 +510,7 @@ class Test(unittest.TestCase):
             result = repr(s.execute())
             expected = repr(ps)
             self.assertEqual(result, expected,
-                             'failed repr for Series when size = {}'.format(size))
+                             f'failed repr for Series when size = {size}')
 
         # test Index repr
         pind = pd.date_range('2020-1-1', periods=10)

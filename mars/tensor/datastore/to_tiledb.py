@@ -181,7 +181,7 @@ class TensorTileDBConsolidate(TensorOperandMixin, Operand):
 
     @classmethod
     def tile(cls, op):
-        raise TypeError('{0} is a chunk op, cannot be tiled'.format(cls.__name__))
+        raise TypeError(f'{cls.__name__} is a chunk op, cannot be tiled')
 
     @classmethod
     def execute(cls, ctx, op):

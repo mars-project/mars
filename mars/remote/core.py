@@ -226,13 +226,12 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
             ctx[op.outputs[0].key] = result
         else:
             if not isinstance(result, Iterable):
-                raise TypeError('Specifying n_output={}, '
-                                'but result is not iterable, got {}'.format(
-                                 op.n_output, result))
+                raise TypeError(f'Specifying n_output={op.n_output}, '
+                                f'but result is not iterable, got {result}')
             result = list(result)
             if len(result) != op.n_output:
-                raise ValueError('Length of return value should be {}, '
-                                 'got {}'.format(op.n_output, len(result)))
+                raise ValueError(f'Length of return value should be {op.n_output}, '
+                                 f'got {len(result)}')
             for out, r in zip(op.outputs, result):
                 ctx[out.key] = r
 

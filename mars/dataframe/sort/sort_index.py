@@ -116,7 +116,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
 
     def _call_series(self, series):
         if self.axis != 0:  # pragma: no cover
-            raise TypeError('Invalid axis: {}'.format(self.axis))
+            raise TypeError(f'Invalid axis: {self.axis}')
         if self.ignore_index:
             index_value = parse_index(pd.RangeIndex(series.shape[0]))
         else:
@@ -176,7 +176,7 @@ def sort_index(a, axis=0, level=None, ascending=True, inplace=False, kind='quick
         DataFrame with sorted index if inplace=False, None otherwise.
     """
     if na_position not in ['last', 'first']:  # pragma: no cover
-        raise TypeError('Invalid na_position: {}'.format(na_position))
+        raise TypeError(f'Invalid na_position: {na_position}')
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     axis = validate_axis(axis, a)
     level = level if isinstance(level, (list, tuple)) else [level]

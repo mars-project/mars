@@ -94,6 +94,6 @@ def nan_to_num(x, copy=True, **kwargs):
 
     # set back, make sure x is a Tensor
     if not isinstance(x, Tensor):
-        raise ValueError('`x` must be a Tensor, got {0} instead'.format(type(x)))
+        raise ValueError(f'`x` must be a Tensor, got {type(x)} instead')
     x.data = ret.data
     return x

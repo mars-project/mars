@@ -177,8 +177,8 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
             storage_client_ref = pool.create_actor(StorageClientActor)
 
             for _ in range(2):
-                pool.create_actor(SenderActor, uid='%s' % str(uuid.uuid4()))
-                pool.create_actor(ReceiverWorkerActor, uid='%s' % str(uuid.uuid4()))
+                pool.create_actor(SenderActor, uid=str(uuid.uuid4()))
+                pool.create_actor(ReceiverWorkerActor, uid=str(uuid.uuid4()))
 
             for idx in range(0, len(chunk_keys) - 7):
                 data = np.ones((640 * 1024,), dtype=np.int16) * idx
@@ -222,9 +222,9 @@ class Test(WorkerCase):
         self.rm_spill_dirs(options.worker.spill_directory)
 
     def testSender(self):
-        send_pool_addr = 'localhost:%d' % get_next_port()
-        recv_pool_addr = 'localhost:%d' % get_next_port()
-        recv_pool_addr2 = 'localhost:%d' % get_next_port()
+        send_pool_addr = f'localhost:{get_next_port()}'
+        recv_pool_addr = f'localhost:{get_next_port()}'
+        recv_pool_addr2 = f'localhost:{get_next_port()}'
 
         options.worker.spill_directory = tempfile.mkdtemp(prefix='mars_test_sender_')
         session_id = str(uuid.uuid4())
@@ -310,7 +310,7 @@ class Test(WorkerCase):
                         session_id, [chunk_key6], [recv_pool_addr2], _promise=True))
 
     def testReceiverManager(self):
-        pool_addr = 'localhost:%d' % get_next_port()
+        pool_addr = f'localhost:{get_next_port()}'
         session_id = str(uuid.uuid4())
 
         mock_data = np.array([1, 2, 3, 4])
@@ -416,7 +416,7 @@ class Test(WorkerCase):
             self.get_result(5)
 
     def testReceiverWorker(self):
-        pool_addr = 'localhost:%d' % get_next_port()
+        pool_addr = f'localhost:{get_next_port()}'
         options.worker.spill_directory = tempfile.mkdtemp(prefix='mars_test_receiver_')
         session_id = str(uuid.uuid4())
 
@@ -531,8 +531,8 @@ class Test(WorkerCase):
     def testSimpleTransfer(self):
         session_id = str(uuid.uuid4())
 
-        local_pool_addr = 'localhost:%d' % get_next_port()
-        remote_pool_addr = 'localhost:%d' % get_next_port()
+        local_pool_addr = f'localhost:{get_next_port()}'
+        remote_pool_addr = f'localhost:{get_next_port()}'
         remote_chunk_keys = [str(uuid.uuid4()) for _ in range(9)]
         msg_queue = multiprocessing.Queue()
 

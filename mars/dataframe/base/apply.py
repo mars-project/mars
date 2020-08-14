@@ -222,8 +222,8 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         for arg, desc in zip((self.output_types, dtypes, index_value),
                              ('output_types', 'dtypes', 'index')):
             if arg is None:
-                raise TypeError('Cannot determine %s by calculating with enumerate data, '
-                                'please specify it as arguments' % desc)
+                raise TypeError(f'Cannot determine {desc} by calculating with enumerate data, '
+                                'please specify it as arguments')
 
         if index_value == 'inherit':
             index_value = df.index_value
@@ -297,8 +297,7 @@ def series_apply(series, func, convert_dtype=True, args=(), **kwds):
             return func_body(*args, **kwds)
         func = getattr(np, func, None)
         if func is None:
-            raise AttributeError("'%r' is not a valid function for '%s' object" %
-                                 (func, type(series).__name__))
+            raise AttributeError(f"'{func!r}' is not a valid function for '{type(series.__name__)}' object")
 
     op = ApplyOperand(func=func, convert_dtype=convert_dtype, args=args, kwds=kwds,
                       output_type=OutputType.series)

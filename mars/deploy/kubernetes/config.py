@@ -136,8 +136,8 @@ class ResourceConfig:
 
     def build(self):
         return {
-            'cpu': '%dm' % int(self._cpu * 1000),
-            'memory': '%d' % int(self._memory),
+            'cpu': f'{int(self._cpu * 1000)}m',
+            'memory': str(int(self._memory)),
         }
 
 
@@ -469,8 +469,8 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
         self._spill_volumes = []
         for idx, vol in enumerate(spill_volumes):
             if isinstance(vol, str):
-                path = '/mnt/hostpath%d' % idx
-                self.add_volume(HostPathVolumeConfig('host-path-vol-%d' % idx, path, vol))
+                path = f'/mnt/hostpath{idx}'
+                self.add_volume(HostPathVolumeConfig(f'host-path-vol-{idx}', path, vol))
                 self._spill_volumes.append(path)
             else:
                 self.add_volume(vol)

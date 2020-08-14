@@ -181,7 +181,7 @@ def dataframe_sort_values(df, by, axis=0, ascending=True, inplace=False, kind='q
 
     """
     if na_position not in ['last', 'first']:  # pragma: no cover
-        raise TypeError('invalid na_position: {}'.format(na_position))
+        raise TypeError(f'invalid na_position: {na_position}')
     axis = validate_axis(axis, df)
     if axis != 0:
         raise NotImplementedError('Only support sort on axis 0')
@@ -276,7 +276,7 @@ def series_sort_values(series, axis=0, ascending=True, inplace=False, kind='quic
     Sort values putting NAs first
     """
     if na_position not in ['last', 'first']:  # pragma: no cover
-        raise TypeError('invalid na_position: {}'.format(na_position))
+        raise TypeError(f'invalid na_position: {na_position}')
     axis = validate_axis(axis, series)
     if axis != 0:
         raise NotImplementedError('Only support sort on axis 0')

@@ -141,8 +141,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                 out_chunks.append(out_chunk)
         else:
             if np.isnan(np.sum(inp.nsplits[axis])):  # pragma: no cover
-                raise TilesError('input has unknown chunk shape '
-                                 'on axis {}'.format(axis))
+                raise TilesError(f'input has unknown chunk shape on axis {axis}')
 
             # shift data
             inc = op.periods > 0

@@ -829,7 +829,7 @@ class Test(TestBase):
     def testCutExecution(self):
         rs = np.random.RandomState(0)
         raw = rs.random(15) * 1000
-        s = pd.Series(raw, index=['i{}'.format(i) for i in range(15)])
+        s = pd.Series(raw, index=[f'i{i}' for i in range(15)])
         bins = [10, 100, 500]
         ii = pd.interval_range(10, 500, 3)
         labels = ['a', 'b']
@@ -946,7 +946,7 @@ class Test(TestBase):
     def testQCutExecution(self):
         rs = np.random.RandomState(0)
         raw = rs.random(15) * 1000
-        s = pd.Series(raw, index=['i{}'.format(i) for i in range(15)])
+        s = pd.Series(raw, index=[f'i{i}' for i in range(15)])
 
         series = from_pandas_series(s)
         r = qcut(series, 3)
@@ -1009,9 +1009,8 @@ class Test(TestBase):
                         pd.testing.assert_frame_equal(result, expected)
                     except AssertionError as e:  # pragma: no cover
                         raise AssertionError(
-                            'Failed when periods: {}, axis: {}, fill_value: {}'.format(
-                                periods, axis, fill_value
-                            )) from e
+                            f'Failed when periods: {periods}, axis: {axis}, fill_value: {fill_value}'
+                        ) from e
 
         raw2 = raw.copy()
         raw2.index = pd.date_range('2020-1-1', periods=10)
@@ -1033,9 +1032,7 @@ class Test(TestBase):
                         pd.testing.assert_frame_equal(result, expected)
                     except AssertionError as e:  # pragma: no cover
                         raise AssertionError(
-                            'Failed when periods: {}, axis: {}, fill_value: {}'.format(
-                                periods, axis, fill_value
-                            )) from e
+                            f'Failed when periods: {periods}, axis: {axis}, fill_value: {fill_value}') from e
 
         # test tshift
         r = df2.tshift(periods=1)
@@ -1060,9 +1057,7 @@ class Test(TestBase):
                     pd.testing.assert_series_equal(result, expected)
                 except AssertionError as e:  # pragma: no cover
                     raise AssertionError(
-                        'Failed when periods: {}, fill_value: {}'.format(
-                            periods, fill_value
-                        )) from e
+                        f'Failed when periods: {periods}, fill_value: {fill_value}') from e
 
         s2 = raw2.iloc[:, 0]
 
@@ -1078,9 +1073,7 @@ class Test(TestBase):
                     pd.testing.assert_series_equal(result, expected)
                 except AssertionError as e:  # pragma: no cover
                     raise AssertionError(
-                        'Failed when periods: {}, fill_value: {}'.format(
-                            periods, fill_value
-                        )) from e
+                        f'Failed when periods: {periods}, fill_value: {fill_value}') from e
 
     def testDiffExecution(self):
         rs = np.random.RandomState(0)
@@ -1393,9 +1386,9 @@ class Test(TestBase):
 
                                     pd.testing.assert_frame_equal(result, expected)
                                 except Exception as e:  # pragma: no cover
-                                    raise AssertionError('failed when method={}, subset={}, '
-                                                         'keep={}, ignore_index={}'.format(
-                                                          method, subset, keep, ignore_index)) from e
+                                    raise AssertionError(
+                                        f'failed when method={method}, subset={subset}, '
+                                        f'keep={keep}, ignore_index={ignore_index}') from e
 
             # test series and index
             s = raw['c3']
@@ -1421,8 +1414,7 @@ class Test(TestBase):
                                     if tp == 'series' else pd.testing.assert_index_equal
                                 cmp(result, expected)
                             except Exception as e:  # pragma: no cover
-                                raise AssertionError('failed when method={}, keep={}'.format(
-                                    method, keep)) from e
+                                raise AssertionError(f'failed when method={method}, keep={keep}') from e
 
             # test inplace
             series = from_pandas_series(s, chunk_size=11)

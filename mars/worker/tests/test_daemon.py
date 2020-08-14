@@ -63,7 +63,7 @@ class DaemonTestActor(WorkerActor):
 
 class Test(WorkerCase):
     def testDaemon(self):
-        mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
+        mock_scheduler_addr = f'127.0.0.1:{get_next_port()}'
         with create_actor_pool(n_process=2, backend='gevent', distributor=MarsDistributor(2, 'w:0:'),
                                address=mock_scheduler_addr) as pool:
             daemon_ref = pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())

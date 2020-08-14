@@ -109,7 +109,7 @@ def train_test_split(*arrays, **options):
     run_kwargs = options.pop('run_kwargs', None)
 
     if options:
-        raise TypeError("Invalid parameters passed: %s" % str(options))
+        raise TypeError(f"Invalid parameters passed: {options}")
 
     arrays = indexable(*arrays, session=session, run_kwargs=run_kwargs)
 
@@ -154,27 +154,26 @@ def _validate_shuffle_split(n_samples, test_size, train_size,
 
     if (test_size_type == 'i' and (test_size >= n_samples or test_size <= 0)
             or test_size_type == 'f' and (test_size <= 0 or test_size >= 1)):
-        raise ValueError('test_size={0} should be either positive and smaller'
-                         ' than the number of samples {1} or a float in the '
-                         '(0, 1) range'.format(test_size, n_samples))
+        raise ValueError(f'test_size={test_size} should be either positive and smaller'
+                         f' than the number of samples {n_samples} or a float in the '
+                         '(0, 1) range')
 
     if (train_size_type == 'i' and (train_size >= n_samples or train_size <= 0)
             or train_size_type == 'f' and (train_size <= 0 or train_size >= 1)):
-        raise ValueError('train_size={0} should be either positive and smaller'
-                         ' than the number of samples {1} or a float in the '
-                         '(0, 1) range'.format(train_size, n_samples))
+        raise ValueError(f'train_size={train_size} should be either positive and smaller'
+                         f' than the number of samples {n_samples} or a float in the '
+                         '(0, 1) range')
 
     if train_size is not None and train_size_type not in ('i', 'f'):  # pragma: no cover
-        raise ValueError("Invalid value for train_size: {}".format(train_size))
+        raise ValueError(f"Invalid value for train_size: {train_size}")
     if test_size is not None and test_size_type not in ('i', 'f'):
-        raise ValueError("Invalid value for test_size: {}".format(test_size))
+        raise ValueError(f"Invalid value for test_size: {test_size}")
 
     if (train_size_type == 'f' and test_size_type == 'f' and
             train_size + test_size > 1):
         raise ValueError(
-            'The sum of test_size and train_size = {}, should be in the (0, 1)'
-            ' range. Reduce test_size and/or train_size.'
-                .format(train_size + test_size))
+            f'The sum of test_size and train_size = {train_size + test_size}, '
+            'should be in the (0, 1) range. Reduce test_size and/or train_size.')
 
     if test_size_type == 'f':
         n_test = ceil(test_size * n_samples)
@@ -192,19 +191,17 @@ def _validate_shuffle_split(n_samples, test_size, train_size,
         n_test = n_samples - n_train
 
     if n_train + n_test > n_samples:  # pragma: no cover
-        raise ValueError('The sum of train_size and test_size = %d, '
-                         'should be smaller than the number of '
-                         'samples %d. Reduce test_size and/or '
-                         'train_size.' % (n_train + n_test, n_samples))
+        raise ValueError(f'The sum of train_size and test_size = {n_train + n_test}, '
+                         f'should be smaller than the number of samples {n_samples}. '
+                         'Reduce test_size and/or train_size.')
 
     n_train, n_test = int(n_train), int(n_test)
 
     if n_train == 0:  # pragma: no cover
         raise ValueError(
-            'With n_samples={}, test_size={} and train_size={}, the '
-            'resulting train set will be empty. Adjust any of the '
-            'aforementioned parameters.'.format(n_samples, test_size,
-                                                train_size)
+            f'With n_samples={n_samples}, test_size={test_size} and '
+            f'train_size={train_size}, the resulting train set will '
+            f'be empty. Adjust any of the aforementioned parameters.'
         )
 
     return n_train, n_test

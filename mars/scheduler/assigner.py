@@ -87,7 +87,7 @@ class ChunkPriorityItem(object):
         return self._op_info
 
     def __repr__(self):
-        return '<ChunkPriorityItem(%s(%s))>' % (self.op_key, self.op_info['op_name'])
+        return f'<ChunkPriorityItem({self.op_key}({self.op_info["op_name"]}))>'
 
     def __lt__(self, other):
         return self._priority > other._priority
@@ -100,7 +100,7 @@ class AssignerActor(SchedulerActor):
     """
     @staticmethod
     def gen_uid(session_id):
-        return 's:h1:assigner$%s' % session_id
+        return f's:h1:assigner${session_id}'
 
     def __init__(self):
         super().__init__()
@@ -243,7 +243,7 @@ class AssignEvaluationActor(SchedulerActor):
     """
     @classmethod
     def gen_uid(cls, session_id):
-        return 's:0:%s$%s' % (cls.__name__, session_id)
+        return f's:0:{cls.__name__}${session_id}'
 
     def __init__(self, assigner_ref):
         super().__init__()
@@ -356,7 +356,7 @@ class AssignEvaluationActor(SchedulerActor):
             input_metas = self._get_chunks_meta(session_id, input_data_keys)
             missing_keys = [k for k, m in input_metas.items() if m is None]
             if missing_keys:
-                raise DependencyMissing('Dependencies %r missing for operand %s' % (missing_keys, op_key))
+                raise DependencyMissing(f'Dependencies {missing_keys!r} missing for operand {op_key}')
 
             input_sizes = dict((k, meta.chunk_size) for k, meta in input_metas.items())
 
@@ -378,7 +378,7 @@ class AssignEvaluationActor(SchedulerActor):
         elif calc_device == 'cuda':
             alloc_dict = dict(cuda=options.scheduler.default_cuda_usage, mem_quota=mem_usage)
         else:  # pragma: no cover
-            raise NotImplementedError('Calc device %s not supported.' % calc_device)
+            raise NotImplementedError(f'Calc device {calc_device} not supported')
 
         last_assign = self._session_last_assigns.get(session_id, time.time())
         timeout_on_fail = time.time() - last_assign > options.scheduler.assign_timeout
@@ -395,7 +395,7 @@ class AssignEvaluationActor(SchedulerActor):
             rejects.append(worker_ep)
 
         if timeout_on_fail:
-            raise TimeoutError('Assign resources to operand %s timed out' % op_key)
+            raise TimeoutError(f'Assign resources to operand {op_key} timed out')
         return None, rejects
 
     def _get_chunks_meta(self, session_id, keys):

@@ -341,7 +341,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         p.daemon = daemon
     p.start()
     p.start = lambda *a, **b: sys.stderr.write(
-        "gipc WARNING: Redundant call to %s.start()\n" % p)
+        f"gipc WARNING: Redundant call to {p}.start()\n")
     # Close dispensable file handles in parent.
     for h in childhandles:
         log.debug("Invalidate %s in parent.", h)
@@ -565,13 +565,8 @@ class _GProcess(ForkProcess):
             if status == 0:
                 status = 'stopped'
             elif isinstance(status, int):
-                status = 'stopped[%s]' % exitcodedict.get(status, status)
-            return '<%s(%s, %s%s)>' % (
-                type(self).__name__,
-                self._name,
-                status,
-                self.daemon and ' daemon' or ''
-                )
+                status = f'stopped[{exitcodedict.get(status, status)}]'
+            return f'<{type(self).__name__}({self._name}, {status}{self.daemon and " daemon" or ""})>'
 
     def join(self, timeout=None):
         """
@@ -652,7 +647,7 @@ cdef class _GIPCHandle:
         self._validate()
         if not self._lock.acquire(blocking=False):
             raise GIPCLocked(
-                "Can't close handle %s: locked for I/O operation." % self)
+                f"Can't close handle {self}: locked for I/O operation.")
         log.debug("Invalidating %s ...", self)
         if self._fd is not None:
             os.close(self._fd)
@@ -681,8 +676,7 @@ cdef class _GIPCHandle:
                 "GIPCHandle has been closed before.")
         if os.getpid() != self._legit_pid:
             raise GIPCError(
-                "GIPCHandle %s not registered for current process %s." % (
-                    self, os.getpid()))
+                f"GIPCHandle {self} not registered for current process {os.getpid()}.")
 
     def _winapi_childhandle_prepare_transfer(self):
         """Prepare file descriptor for transfer to child process on Windows.
@@ -834,8 +828,8 @@ cdef class _GIPCHandle:
         except GIPCLocked:
             # Locked for I/O outside of context, which is not fine.
             raise GIPCLocked((
-                "Context manager can't close handle %s. It's locked for I/O "
-                "operation out of context." % self))
+                f"Context manager can't close handle {self}. It's locked for I/O "
+                "operation out of context."))
 
     def __str__(self):
         return self.__repr__()
@@ -843,8 +837,8 @@ cdef class _GIPCHandle:
     def __repr__(self):
         fd = self._fd
         if hasattr(self, "_ihfd"):
-            fd = "WIN_%s" % self._ihfd
-        return "<%s_%s fd: %s>" % (self.__class__.__name__, self._id, fd)
+            fd = f"WIN_{self._ihfd}"
+        return f"<{type(self).__name__}_{self._id} fd: {fd}>"
 
 cdef object _neti_pack = struct.Struct('!i').pack
 cdef object _neti_unpack = struct.Struct('!i').unpack
@@ -1074,7 +1068,7 @@ class _GIPCDuplexHandle(_PairContext):
         closed before.
         """
         if self._writer._closed and self._reader._closed:
-            raise GIPCClosed("Reader & writer in %s already closed." % (self,))
+            raise GIPCClosed(f"Reader & writer in {self} already closed.")
         # Close writer first. Otherwise, reader close would block on Win.
         if not self._writer._closed:
             self._writer.close()
@@ -1085,8 +1079,7 @@ class _GIPCDuplexHandle(_PairContext):
         return self.__repr__()
 
     def __repr__(self):
-        return "<%s(%r, %s)>" % (
-            self.__class__.__name__, self._reader, self._writer)
+        return f"<{type(self).__name__}({self._reader}, {self._writer})>"
 
 
 cdef object _read_nonblocking, _write_nonblocking

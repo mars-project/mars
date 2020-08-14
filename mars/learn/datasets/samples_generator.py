@@ -343,11 +343,11 @@ def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
             assert len(centers) == n_centers
         except TypeError:
             raise ValueError("Parameter `centers` must be array-like. "
-                             "Got {!r} instead".format(centers))
+                             f"Got {centers!r} instead")
         except AssertionError:
             raise ValueError("Length of `n_samples` not consistent"
-                             " with number of centers. Got n_samples = {} "
-                             "and centers = {}".format(n_samples, centers))
+                             f" with number of centers. Got n_samples = {n_samples} "
+                             f"and centers = {centers}")
         else:
             centers = check_array(centers)
             n_features = centers.shape[1]
@@ -358,8 +358,8 @@ def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
         if isinstance(centers.op, AssertAllFinite):
             centers = centers.op.inputs[0]
         raise ValueError("Length of `clusters_std` not consistent with "
-                         "number of centers. Got centers = {} "
-                         "and cluster_std = {}".format(centers, cluster_std))
+                         f"number of centers. Got centers = {centers} "
+                         f"and cluster_std = {cluster_std}")
 
     if isinstance(cluster_std, numbers.Real):
         cluster_std = mt.full(len(centers), cluster_std)

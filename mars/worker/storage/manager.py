@@ -30,8 +30,8 @@ class DataAttrs(object):
 
     def __repr__(self):  # pragma: no cover
         cls = type(self)
-        return '<%s.%s size=%r shape=%r at 0x%x>' \
-               % (cls.__module__, cls.__name__, self.size, self.shape, id(self))
+        return f'<{cls.__module__}.{cls.__name__} size={self.size} ' \
+               f'shape={self.shape} at {hex(id(self))}>'
 
 
 class StorageManagerActor(WorkerActor):

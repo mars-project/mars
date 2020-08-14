@@ -355,7 +355,7 @@ def _quantile_unchecked(a, q, axis=None, out=None, overwrite_input=False,
         raise ValueError('`q` should be a scalar or array of float')
 
     if out is not None and not isinstance(out, TENSOR_TYPE):
-        raise TypeError('`out` should be a tensor, got {}'.format(type(out)))
+        raise TypeError(f'`out` should be a tensor, got {type(out)}')
 
     if interpolation not in INTERPOLATION_TYPES:
         raise ValueError("interpolation can only be 'linear', 'lower' "
@@ -474,7 +474,7 @@ def quantile(a, q, axis=None, out=None, overwrite_input=False,
     handle_non_numeric = kw.pop('handle_non_numeric', None)
     if len(kw) > 0:  # pragma: no cover
         raise TypeError('quantile() got an unexpected keyword '
-                        'argument \'{}\''.format(next(iter(kw))))
+                        f'argument \'{next(iter(kw))}\'')
 
     if not isinstance(q, (Base, Entity)):
         q = np.asanyarray(q)

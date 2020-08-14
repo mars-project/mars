@@ -270,8 +270,7 @@ def _ravel_and_check_weights(a, weights):
 
     # Ensure that the array is a "subtractable" dtype
     if a.dtype == np.bool_:
-        warnings.warn("Converting input from {} to {} for compatibility."
-                      .format(a.dtype, np.uint8),
+        warnings.warn(f"Converting input from {a.dtype} to {np.uint8} for compatibility.",
                       RuntimeWarning, stacklevel=3)
         a = a.astype(np.uint8)
 
@@ -292,7 +291,7 @@ def _check_range(range):
             'max must be larger than min in range parameter.')
     if not (np.isfinite(first_edge) and np.isfinite(last_edge)):
         raise ValueError(
-            "supplied range of [{}, {}] is not finite".format(first_edge, last_edge))
+            f"supplied range of [{first_edge}, {last_edge}] is not finite")
     return first_edge, last_edge
 
 
@@ -469,7 +468,7 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             # this will replace it with the number of bins calculated
             if bin_name not in _hist_bin_selectors:
                 raise ValueError(
-                    "{!r} is not a valid estimator for `bins`".format(bin_name))
+                    f"{bin_name!r} is not a valid estimator for `bins`")
             if weights is not None:
                 raise TypeError("Automated estimation of the number of "
                                 "bins is not supported for weighted data")

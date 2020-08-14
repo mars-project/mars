@@ -138,7 +138,7 @@ class StorageClient(object):
                     session_id, data_key, packed=packed, packed_compression=packed_compression,
                     _promise=_promise)
             except AttributeError:  # pragma: no cover
-                raise IOError('Device %r does not support direct reading.' % src_dev)
+                raise IOError(f'Device {src_dev} does not support direct reading.')
 
         if _promise:
             return self.copy_to(session_id, [data_key], source_devices) \
@@ -301,7 +301,7 @@ class StorageClient(object):
         lift_reqs = defaultdict(list)
         for k, devices, size in zip(data_keys, existing_devs, data_sizes):
             if not devices or size is None:
-                err_msg = 'Data key (%s, %s) not exist, proc_id=%s' % (session_id, k, self.proc_id)
+                err_msg = f'Data key ({session_id}, {k}) not exist, proc_id={self.proc_id}'
                 return promise.finished(*build_exc_info(KeyError, err_msg), _accept=False)
 
             target = next((d for d in device_order if d in devices), None)

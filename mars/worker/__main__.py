@@ -90,9 +90,9 @@ class WorkerApplication(BaseApplication):
 
         compress_types = set(v.value for v in CompressType.__members__.values())
         if self.args.disk_compression.lower() not in compress_types:
-            raise StartArgumentError('illegal disk compression config %s.' % self.args.disk_compression)
+            raise StartArgumentError(f'illegal disk compression config {self.args.disk_compression}')
         if self.args.transfer_compression.lower() not in compress_types:
-            raise StartArgumentError('illegal transfer compression config %s.' % self.args.transfer_compression)
+            raise StartArgumentError(f'illegal transfer compression config {self.args.transfer_compression}')
 
     def create_pool(self, *args, **kwargs):
         # here we create necessary actors on worker

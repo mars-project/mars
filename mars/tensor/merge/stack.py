@@ -41,7 +41,7 @@ class TensorStack(TensorOperand, TensorOperandMixin):
 
     def __call__(self, tensors, out=None):
         if out is not None and not isinstance(out, Tensor):
-            raise TypeError('`out` must be a Tensor, got {0} instead'.format(type(out)))
+            raise TypeError(f'`out` must be a Tensor, got {type(out)} instead')
 
         shape = tensors[0].shape[:self._axis] + (len(tensors),) + tensors[0].shape[self._axis:]
         tensor_order = TensorOrder.C_ORDER if out is None else out.order
@@ -181,8 +181,8 @@ def stack(tensors, axis=0, out=None):
     if axis < 0:
         axis = ndim + axis + 1
     if axis > ndim or axis < 0:
-        raise np.AxisError('axis {0} is out of bounds for tensor '
-                           'of dimension {1}'.format(raw_axis, ndim))
+        raise np.AxisError(f'axis {raw_axis} is out of bounds for tensor '
+                           f'of dimension {ndim}')
 
     dtype = np.result_type(*[t.dtype for t in tensors])
     sparse = all(t.issparse() for t in tensors)

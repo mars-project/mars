@@ -66,11 +66,11 @@ class Test(unittest.TestCase):
         cache = ChunkMetaCache(9)
 
         for idx in range(10):
-            cache['c%d' % idx] = WorkerMeta(idx, (idx,), ('w0',))
+            cache[f'c{idx}'] = WorkerMeta(idx, (idx,), ('w0',))
         self.assertNotIn('c0', cache)
-        self.assertTrue(all('c%d' % idx in cache for idx in range(1, 10)))
+        self.assertTrue(all(f'c{idx}' in cache for idx in range(1, 10)))
         self.assertListEqual(sorted(cache.get_worker_chunk_keys('w0')),
-                             ['c%d' % idx for idx in range(1, 10)])
+                             [f'c{idx}' for idx in range(1, 10)])
 
         dup_cache = copy.deepcopy(cache)
         dup_cache.get('c1')
@@ -78,27 +78,27 @@ class Test(unittest.TestCase):
         self.assertIsNone(dup_cache.get('c0'))
         self.assertNotIn('c2', dup_cache)
         self.assertIn('c1', dup_cache)
-        self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
+        self.assertTrue(all(f'c{idx}' in dup_cache for idx in range(3, 11)))
 
         dup_cache = copy.deepcopy(cache)
         _ = dup_cache['c1']  # noqa: F841
         dup_cache['c10'] = WorkerMeta(10, (10,), ('w0',))
         self.assertNotIn('c2', dup_cache)
         self.assertIn('c1', dup_cache)
-        self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
+        self.assertTrue(all(f'c{idx}' in dup_cache for idx in range(3, 11)))
 
         dup_cache = copy.deepcopy(cache)
         dup_cache['c1'] = WorkerMeta(1, (1,), ('w0',))
         dup_cache['c10'] = WorkerMeta(10, (10,), ('w0',))
         self.assertNotIn('c2', dup_cache)
         self.assertIn('c1', dup_cache)
-        self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
+        self.assertTrue(all(f'c{idx}' in dup_cache for idx in range(3, 11)))
 
     @unittest.skipIf(sys.platform == 'win32', 'Currently not support multiple pools under Windows')
     @patch_method(ChunkMetaClient.get_scheduler)
     def testChunkMetaActors(self, *_):
         proc_count = 2
-        endpoints = ['127.0.0.1:%d' % get_next_port() for _ in range(proc_count)]
+        endpoints = [f'127.0.0.1:{get_next_port()}' for _ in range(proc_count)]
         keys = []
 
         def _mock_get_scheduler(key):
@@ -156,7 +156,7 @@ class Test(unittest.TestCase):
                 self.assertListEqual(client1.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
                 self.assertListEqual(client2.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
 
-                mock_endpoint = '127.0.0.1:%d' % get_next_port()
+                mock_endpoint = f'127.0.0.1:{get_next_port()}'
                 with create_actor_pool(n_process=1, backend='gevent', address=mock_endpoint) as pool3:
                     cluster_info3 = pool3.create_actor(SchedulerClusterInfoActor, endpoints,
                                                        uid=SchedulerClusterInfoActor.default_uid())
@@ -208,7 +208,7 @@ class Test(unittest.TestCase):
     @patch_method(ChunkMetaClient.get_scheduler)
     def testChunkBroadcast(self, *_):
         proc_count = 2
-        endpoints = ['127.0.0.1:%d' % get_next_port() for _ in range(proc_count)]
+        endpoints = [f'127.0.0.1:{get_next_port()}' for _ in range(proc_count)]
         keys = []
 
         def _mock_get_scheduler(key):

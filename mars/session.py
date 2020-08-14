@@ -49,7 +49,7 @@ class LocalSession(object):
 
         if kwargs:
             unexpected_keys = ', '.join(list(kwargs.keys()))
-            raise TypeError('Local session got unexpected arguments: %s' % unexpected_keys)
+            raise TypeError(f'Local session got unexpected arguments: {unexpected_keys}')
 
     @property
     def endpoint(self):
@@ -126,7 +126,7 @@ class LocalSession(object):
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
         from .tensor.core import MutableTensor, MutableTensorData
         if name in self._mut_tensor:
-            raise ValueError("The mutable tensor named '%s' already exists." % name)
+            raise ValueError(f"The mutable tensor named '{name}' already exists.")
         mut_tensor = MutableTensor(data=MutableTensorData(name=name, op=None, shape=shape, dtype=dtype))
         self._mut_tensor[name] = mut_tensor
         if fill_value is None:
@@ -137,19 +137,19 @@ class LocalSession(object):
 
     def get_mutable_tensor(self, name):
         if name not in self._mut_tensor:
-            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
+            raise ValueError(f"The mutable tensor named '{name}' doesn't exist, or has already been sealed.")
         return self._mut_tensor.get(name)
 
     def write_mutable_tensor(self, tensor, index, value):
         if tensor.name not in self._mut_tensor:
-            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % tensor.name)
+            raise ValueError(f"The mutable tensor named '{tensor.name}' doesn't exist, or has already been sealed.")
         tensor_data = self._mut_tensor_data.get(tensor.name)
         tensor_data[index] = value
 
     def seal(self, tensor):
         from .tensor.datasource.array import ArrayDataSource
         if tensor.name not in self._mut_tensor:
-            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % tensor.name)
+            raise ValueError(f"The mutable tensor named '{tensor.name}' doesn't exist, or has already been sealed.")
         mut_tensor = self._mut_tensor.pop(tensor.name)
         tensor_data = self._mut_tensor_data.pop(tensor.name)
         sealed_tensor = ArrayDataSource(tensor_data, dtype=mut_tensor.dtype)(shape=mut_tensor.shape)
@@ -188,13 +188,13 @@ class ClusterSession(object):
             # Get the session actor ref using given session_id
             self._session_id = session_id
             if not self._api.has_session(self._session_id):
-                raise ValueError('The session with id = %s doesn\'t exist' % self._session_id)
+                raise ValueError(f'The session with id = {self._session_id} doesn\'t exist')
 
         self._context = DistributedContext(endpoint, self._session_id)
 
         if kwargs:
             unexpected_keys = ', '.join(list(kwargs.keys()))
-            raise TypeError('Local cluster session got unexpected arguments: %s' % unexpected_keys)
+            raise TypeError(f'Local cluster session got unexpected arguments: {unexpected_keys}')
 
     @property
     def session_id(self):
@@ -276,7 +276,7 @@ class ClusterSession(object):
         if not isinstance(name, (tuple, list)):
             name = [name]
         if kw:
-            raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
+            raise TypeError(f'run got unexpected key arguments {kw!r}')
 
         # those executed tileables should fetch data directly, submit the others
         run_tileables = [t for t in tileables if t.key not in self._executed_tileables]

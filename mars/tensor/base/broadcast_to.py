@@ -124,8 +124,8 @@ def broadcast_to(tensor, shape):
         raise ValueError('input operand has more dimensions than allowed by the axis remapping')
     if any(o != n for o, n in zip(tensor.shape, shape[new_ndim:]) if o != 1):
         raise ValueError('operands could not be broadcast together '
-                         'with remapped shapes [original->remapped]: {0} '
-                         'and requested shape {1}'.format(tensor.shape, shape))
+                         f'with remapped shapes [original->remapped]: {tensor.shape} '
+                         f'and requested shape {shape}')
 
     op = TensorBroadcastTo(shape, dtype=tensor.dtype, sparse=tensor.issparse())
     return op(tensor, shape)

@@ -88,7 +88,7 @@ class MarsRandomSampler(Sampler):
 
         if not isinstance(self.replacement, bool):  # pragma: no cover
             raise ValueError("replacement should be a boolean value, but got "
-                             "replacement={}".format(self.replacement))
+                             f"replacement={self.replacement}")
 
         if self._num_samples is not None and not replacement:  # pragma: no cover
             raise ValueError("With replacement=False, num_samples should not be specified, "
@@ -96,7 +96,7 @@ class MarsRandomSampler(Sampler):
 
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:  # pragma: no cover
             raise ValueError("num_samples should be a positive integer "
-                             "value, but got num_samples={}".format(self.num_samples))
+                             f"value, but got num_samples={self.num_samples}")
 
     @property
     def num_samples(self):

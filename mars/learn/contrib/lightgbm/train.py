@@ -175,7 +175,8 @@ class LGBMTrain(MergeDictOperand):
         workers = set(workers)
         base_port = base_port or random.randint(10000, 65535 - len(workers))
         for idx, worker in enumerate(workers):
-            worker_to_endpoint[worker] = '%s:%d' % (worker.split(':', 1)[0], base_port + idx)
+            worker_host = worker.split(':', 1)[0]
+            worker_to_endpoint[worker] = f'{worker_host}:{base_port + idx}'
         return worker_to_endpoint
 
     @classmethod
@@ -283,8 +284,8 @@ class LGBMTrain(MergeDictOperand):
             params['local_listen_port'] = op.lgbm_port
 
             if (op.tree_learner or '').lower() not in {'data', 'feature', 'voting'}:
-                logger.warning('Parameter tree_learner not set or set to incorrect value %s, '
-                               'using "data" as default' % op.tree_learner)
+                logger.warning('Parameter tree_learner not set or set to incorrect value '
+                               f'{op.tree_learner}, using "data" as default')
                 params['tree_learner'] = 'data'
             else:
                 params['tree_learner'] = op.tree_learner

@@ -252,7 +252,7 @@ class EtcdProcessHelper(object):
         proc_args = proc_args or []
         if number > 1:
             initial_cluster = ",".join([
-                "test-node-{}={}127.0.0.1:{}".format(slot, 'http://', self.internal_port_range_start + slot)
+                f"test-node-{slot}=http://127.0.0.1:{self.internal_port_range_start + slot}"
                 for slot in range(0, number)
             ])
             proc_args.extend([
@@ -261,7 +261,7 @@ class EtcdProcessHelper(object):
             ])
         else:
             proc_args.extend([
-                '-initial-cluster', 'test-node-0=http://127.0.0.1:{}'.format(self.internal_port_range_start),
+                '-initial-cluster', f'test-node-0=http://127.0.0.1:{self.internal_port_range_start}',
                 '-initial-cluster-state', 'new'
             ])
 
@@ -277,16 +277,15 @@ class EtcdProcessHelper(object):
         log = logging.getLogger()
         directory = tempfile.mkdtemp(
             dir=self.base_directory,
-            prefix='etcd-gevent.%d-' % slot)
+            prefix=f'etcd-gevent.{slot}-')
 
-        log.debug('Created directory %s' % directory)
-        client = '%s127.0.0.1:%d' % (self.schema, self.port_range_start + slot)
-        peer = '%s127.0.0.1:%d' % ('http://', self.internal_port_range_start
-                                   + slot)
+        log.debug(f'Created directory {directory}')
+        client = f'{self.schema}127.0.0.1:{self.port_range_start + slot}'
+        peer = f'http://127.0.0.1:{self.internal_port_range_start + slot}'
         daemon_args = [
             self.proc_name,
             '-data-dir', directory,
-            '-name', 'test-node-%d' % slot,
+            '-name', f'test-node-{slot}',
             '-initial-advertise-peer-urls', peer,
             '-listen-peer-urls', peer,
             '-advertise-client-urls', client,
@@ -301,8 +300,8 @@ class EtcdProcessHelper(object):
             daemon_args.extend(proc_args)
 
         daemon = subprocess.Popen(daemon_args)
-        log.debug('Started %d' % daemon.pid)
-        log.debug('Params: %s' % daemon_args)
+        log.debug(f'Started {daemon.pid}')
+        log.debug(f'Params: {daemon_args}')
         time.sleep(2)
         self.processes[slot] = (directory, daemon)
 
@@ -311,9 +310,9 @@ class EtcdProcessHelper(object):
         data_dir, process = self.processes.pop(slot)
         process.kill()
         time.sleep(2)
-        log.debug('Killed etcd pid:%d', process.pid)
+        log.debug(f'Killed etcd pid: {process.pid}')
         shutil.rmtree(data_dir)
-        log.debug('Removed directory %s' % data_dir)
+        log.debug(f'Removed directory {data_dir}')
 
 
 def patch_method(method, *args, **kwargs):
@@ -358,7 +357,7 @@ def create_actor_pool(*args, **kwargs):
 
     for _ in range(5):
         try:
-            address = '{0}:{1}'.format(host, next(it))
+            address = f'{host}:{next(it)}'
             return new_actor_pool(address, *args, **kwargs)
         except (OSError, gevent.socket.error):
             continue
@@ -372,8 +371,7 @@ def assert_groupby_equal(left, right, sort_keys=False, with_selection=False):
         right = right.groupby_obj
 
     if type(left) is not type(right):
-        raise AssertionError('Type of groupby not consistent: %r != %r'
-                             % (type(left), type(right)))
+        raise AssertionError(f'Type of groupby not consistent: {type(left)} != {type(right)}')
 
     left_selection = getattr(left, '_selection', None)
     right_selection = getattr(right, '_selection', None)
@@ -384,13 +382,12 @@ def assert_groupby_equal(left, right, sort_keys=False, with_selection=False):
         left, right = list(left), list(right)
 
     if len(left) != len(right):
-        raise AssertionError('Count of groupby keys not consistent: %r != %r'
-                             % (len(left), len(right)))
+        raise AssertionError(f'Count of groupby keys not consistent: {len(left)} != {len(right)}')
 
     left_keys = [p[0] for p in left]
     right_keys = [p[0] for p in right]
     if left_keys != right_keys:
-        raise AssertionError('Group keys not consistent: %r != %r' % (left_keys, right_keys))
+        raise AssertionError(f'Group keys not consistent: {left_keys!r} != {right_keys!r}')
     for (left_key, left_frame), (right_key, right_frame) in zip(left, right):
         if with_selection:
             if left_selection and isinstance(left_frame, pd.DataFrame):
@@ -443,8 +440,8 @@ class MarsObjectCheckMixin:
         if isinstance(real, (str, int, bool, float, complex)):
             real = np.array([real])[0]
         if not isinstance(real, (np.generic, np.ndarray, SparseNDArray)):
-            raise AssertionError('Type of real value (%r) not one of '
-                                 '(np.generic, np.array, SparseNDArray)' % type(real))
+            raise AssertionError(f'Type of real value ({type(real)}) not one of '
+                                 '(np.generic, np.array, SparseNDArray)')
         if not hasattr(expected, 'dtype'):
             return
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
@@ -457,13 +454,13 @@ class MarsObjectCheckMixin:
             try:
                 pd.testing.assert_index_equal(expected_index, real_index)
             except AssertionError as e:
-                raise AssertionError('Index of real value (%r) not equal to (%r)' %
-                                     (expected_index, real_index)) from e
+                raise AssertionError(
+                    f'Index of real value ({expected_index}) not equal to ({real_index})') from e
 
     @classmethod
     def assert_dataframe_consistent(cls, expected, real):
         if not isinstance(real, pd.DataFrame):
-            raise AssertionError('Type of real value (%r) not DataFrame' % type(real))
+            raise AssertionError(f'Type of real value ({type(real)}) not DataFrame')
         cls.assert_shape_consistent(expected.shape, real.shape)
         if not np.isnan(expected.shape[1]):  # ignore when columns length is nan
             pd.testing.assert_index_equal(expected.dtypes.index, real.dtypes.index)
@@ -482,12 +479,12 @@ class MarsObjectCheckMixin:
     @classmethod
     def assert_series_consistent(cls, expected, real):
         if not isinstance(real, pd.Series):
-            raise AssertionError('Type of real value (%r) not Series' % type(real))
+            raise AssertionError(f'Type of real value ({type(real)}) not Series')
         cls.assert_shape_consistent(expected.shape, real.shape)
 
         if _check_options['check_series_name'] and expected.name != real.name:
-            raise AssertionError('series name in metadata %r is not equal to real name %r'
-                                 % (expected.name, real.name))
+            raise AssertionError(f'series name in metadata {expected.name} '
+                                 f'is not equal to real name {real.name}')
 
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
         cls.assert_index_value_consistent(expected.index_value, real.index)
@@ -515,7 +512,7 @@ class MarsObjectCheckMixin:
     @classmethod
     def assert_index_consistent(cls, expected, real):
         if not isinstance(real, pd.Index):
-            raise AssertionError('Type of real value (%r) not Index' % type(real))
+            raise AssertionError(f'Type of real value ({type(real)}) not Index')
         cls.assert_shape_consistent(expected.shape, real.shape)
 
         if _check_options['check_series_name'] and expected.name != real.name:
@@ -528,7 +525,7 @@ class MarsObjectCheckMixin:
     @classmethod
     def assert_categorical_consistent(cls, expected, real):
         if not isinstance(real, pd.Categorical):
-            raise AssertionError('Type of real value (%r) not Categorical' % type(real))
+            raise AssertionError(f'Type of real value ({type(real)}) not Categorical')
         cls.assert_dtype_consistent(expected.dtype, real.dtype)
         cls.assert_shape_consistent(expected.shape, real.shape)
         cls.assert_index_value_consistent(expected.categories_value, real.categories)

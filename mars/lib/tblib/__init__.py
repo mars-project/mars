@@ -225,4 +225,4 @@ class Traceback(object):
                 )
             return cls(previous)
         else:
-            raise TracebackParseError("Could not find any frames in %r." % string)
+            raise TracebackParseError(f"Could not find any frames in {string}.")

@@ -40,9 +40,8 @@ def calc_shape(tensor_shape, index):
             for i, t_size, size in zip(itertools.count(0), ind.shape, tensor_shape[in_axis:ind.ndim + in_axis]):
                 if not np.isnan(t_size) and not np.isnan(size) and t_size != size:
                     raise IndexError(
-                        'boolean index did not match indexed array along dimension {0}; '
-                        'dimension is {1} but corresponding boolean dimension is {2}'.format(
-                            in_axis + i, size, t_size)
+                        f'boolean index did not match indexed array along dimension {in_axis + i}; '
+                        f'dimension is {size} but corresponding boolean dimension is {t_size}'
                     )
             in_axis += ind.ndim
             out_axis += 1
@@ -53,8 +52,8 @@ def calc_shape(tensor_shape, index):
                 fancy_index = out_axis
             if isinstance(ind, np.ndarray) and np.any(ind >= tensor_shape[in_axis]):
                 out_of_range_index = next(i for i in ind.flat if i >= tensor_shape[in_axis])
-                raise IndexError('IndexError: index {0} is out of bounds with size {1}'.format(
-                    out_of_range_index, tensor_shape[in_axis]))
+                raise IndexError(f'IndexError: index {out_of_range_index} is out of '
+                                 f'bounds with size {tensor_shape[in_axis]}')
             fancy_index_shapes.append(ind.shape)
             in_axis += 1
             if first_fancy_index:
@@ -69,9 +68,7 @@ def calc_shape(tensor_shape, index):
         elif isinstance(ind, Integral):
             size = tensor_shape[in_axis]
             if not np.isnan(size) and ind >= size:
-                raise IndexError('index {0} is out of bounds for axis {1} with size {2}'.format(
-                    ind, in_axis, size
-                ))
+                raise IndexError(f'index {ind} is out of bounds for axis {in_axis} with size {size}')
             in_axis += 1
         else:
             assert ind is None

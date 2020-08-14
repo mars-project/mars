@@ -54,7 +54,7 @@ def normalize_chunk_sizes(shape, chunk_size):
 
     if len(shape) != len(chunk_size):
         raise ValueError('Chunks must have the same dimemsion, '
-                         'got shape: %s, chunks: %s' % (shape, chunk_size))
+                         f'got shape: {shape}, chunks: {chunk_size}')
 
     chunk_sizes = []
     for size, chunk in zip(shape, chunk_size):
@@ -64,7 +64,7 @@ def normalize_chunk_sizes(shape, chunk_size):
 
             if sum(chunk) != size:
                 raise ValueError('chunks shape should be of the same length, '
-                                 'got shape: %s, chunks: %s' % (size, chunk))
+                                 f'got shape: {size}, chunks: {chunk}')
             chunk_sizes.append(chunk)
         else:
             assert isinstance(chunk, int)
@@ -158,7 +158,7 @@ def normalize_axis_tuple(axis, ndim, argname=None, allow_duplicate=False):
     axis = tuple([validate_axis(ndim, ax, argname) for ax in axis])
     if not allow_duplicate and len(set(axis)) != len(axis):
         if argname:
-            raise ValueError('repeated axis in `{}` argument'.format(argname))
+            raise ValueError(f'repeated axis in `{argname}` argument')
         else:
             raise ValueError('repeated axis')
     return axis
@@ -182,7 +182,7 @@ def validate_order(dtype, order):
     if need_check:
         for o in order:
             if o not in dtype.fields:
-                raise ValueError('unknown field name: {}'.format(o))
+                raise ValueError(f'unknown field name: {o}')
     return order
 
 
@@ -193,7 +193,7 @@ def inject_dtype(dtype):
             kw['dtype'] = np.dtype(dtype)
             ret = func(*tensors, **kw)
             if ret is NotImplemented:
-                reverse_func = getattr(inspect.getmodule(func), 'r{0}'.format(func.__name__), None)
+                reverse_func = getattr(inspect.getmodule(func), f'r{func.__name__}', None)
                 if reverse_func is not None:
                     ret = reverse_func(*tensors[::-1], **kw)
                 if ret is NotImplemented:
@@ -249,15 +249,15 @@ def infer_dtype(np_func, empty=True, reverse=False, check=True):
                 if kw.get('casting') is not None:
                     can_cast_kwargs['casting'] = kw.get('casting')
                 if check and not np.can_cast(dtype, usr_dtype, **can_cast_kwargs):
-                    raise TypeError(' No loop matching the specified signature '
-                                    'and casting was found for ufunc %s' % np_func)
+                    raise TypeError('No loop matching the specified signature '
+                                    f'and casting was found for ufunc {np_func}')
                 kw['dtype'] = usr_dtype
             else:
                 kw['dtype'] = dtype
 
             ret = func(*tensors, **kw)
             if ret is NotImplemented:
-                reverse_func = getattr(inspect.getmodule(func), 'r{0}'.format(func.__name__), None) \
+                reverse_func = getattr(inspect.getmodule(func), f'r{func.__name__}', None) \
                     if not reverse else None
                 if reverse_func is not None:
                     ret = reverse_func(*tensors[::-1], **kw)
@@ -384,8 +384,7 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
 
         if np.any(index >= cum_nsplit[-1]):
             idx = index[index >= cum_nsplit[-1]][0]
-            raise IndexError('index {0} is out of bounds with size {1}'.format(
-                idx, cum_nsplit[-1]))
+            raise IndexError(f'index {idx} is out of bounds with size {cum_nsplit[-1]}')
 
         chunk_idx = np.searchsorted(cum_nsplit, index[sorted_idx], side='right')
         chunk_idxes[i, sorted_idx] = chunk_idx
@@ -433,9 +432,9 @@ def decide_unify_split(*splits):
         return raw_splits[0]
 
     if any(np.isnan(sum(s)) for s in splits):
-        raise ValueError('Tensor chunk sizes are unknown: {0}'.format(splits))
+        raise ValueError(f'Tensor chunk sizes are unknown: {splits}')
     if len(set(sum(s) for s in splits)) > 1:
-        raise ValueError('Splits do not hava same size: {0}'.format(splits))
+        raise ValueError(f'Splits do not hava same size: {splits}')
 
     q = [list(s) for s in splits]
     size = sum(q[0])
@@ -498,9 +497,9 @@ def check_out_param(out, t, casting):
                                                           ','.join(str(s) for s in out.shape)))
 
     if not np.can_cast(t.dtype, out.dtype, casting):
-        raise TypeError("output (typecode '{0}') could not be coerced "
-                        "to provided output paramter (typecode '{1}') "
-                        "according to the casting rule ''{2}''".format(t.dtype.char, out.dtype.char, casting))
+        raise TypeError(f"output (typecode '{t.dtype.char}') could not be coerced "
+                        f"to provided output paramter (typecode '{out.dtype.char}') "
+                        f"according to the casting rule ''{casting}''")
 
 
 def dictify_chunk_size(shape, chunk_size):
@@ -519,7 +518,7 @@ def dictify_chunk_size(shape, chunk_size):
         elif isinstance(chunk_size, int):
             chunk_size = {i: chunk_size for i in range(len(shape))}
         else:
-            raise TypeError('chunks must be iterable, got {0}'.format(type(chunk_size)))
+            raise TypeError(f'chunks must be iterable, got {type(chunk_size)}')
 
     if chunk_size is None:
         chunk_size = dict()
@@ -595,8 +594,8 @@ def check_random_state(seed):
         return mtrand.RandomState.from_numpy(seed)
     if isinstance(seed, mtrand.RandomState):
         return seed
-    raise ValueError('%r cannot be used to seed a mt.random.RandomState'
-                     ' instance' % seed)
+    raise ValueError(f'{seed} cannot be used to seed a mt.random.RandomState'
+                     ' instance')
 
 
 def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=None, chunk_keys=None):

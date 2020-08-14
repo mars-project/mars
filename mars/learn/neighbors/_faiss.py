@@ -504,26 +504,24 @@ def _gen_index_string_and_sample_count(shape, n_sample, accuracy, memory_require
     if memory_require == MemoryRequirementGrade.maximum and not gpu:
         x = kw.get('M', 32)  # get medium number by default
         if x < 4 or x > 64:
-            raise ValueError('HNSWx requires M that between 4 and 64, '
-                             'got {}'.format(x))
-        return 'HNSW%d' % x, None
+            raise ValueError(f'HNSWx requires M that between 4 and 64, got {x}')
+        return f'HNSW{x}', None
 
     if memory_require in (MemoryRequirementGrade.high, MemoryRequirementGrade.maximum):
         basement = '{},Flat'
     elif memory_require == MemoryRequirementGrade.low:
         x = kw.get('dim', dim // 2)
-        basement = 'PCAR%d,{},SQ8' % x
+        basement = f'PCAR{x},{{}},SQ8'
     elif memory_require == MemoryRequirementGrade.minimum:
         x = kw.get('M', min(64, dim // 2))
         if x > 64:
-            raise ValueError('PQx requires M <= 64, got {}'.format(x))
+            raise ValueError(f'PQx requires M <= 64, got {x}')
         y = kw.get('dim', None)
         if y is not None and y % x != 0:
-            raise ValueError('OPQx_y requires dim is a multiple of M({}), '
-                             'got dim: {}'.format(x, y))
+            raise ValueError(f'OPQx_y requires dim is a multiple of M({x}), got dim: {y}')
         y = min(dim, 4 * x)
         y = x * (y // x)  # make sure y is a multiple of x
-        basement = 'OPQ%(x)d_%(y)d,{},PQ%(x)d' % {'x': x, 'y': y}
+        basement = f'OPQ{x}_{y},{{}},PQ{x}'
     else:  # pragma: no cover
         raise ValueError('unknown memory require')
 
@@ -532,9 +530,8 @@ def _gen_index_string_and_sample_count(shape, n_sample, accuracy, memory_require
         # < 1M, or <10M but need GPU
         k = kw.get('k', 5 * int(np.sqrt(size)))
         if k < 4 * int(np.sqrt(size)) or k > 16 * int(np.sqrt(size)):
-            raise ValueError('k should be between 4 * sqrt(N) and 16 * sqrt(N), '
-                             'got {}'.format(k))
-        index_str = basement.format('IVF%d' % k)
+            raise ValueError(f'k should be between 4 * sqrt(N) and 16 * sqrt(N), got {k}')
+        index_str = basement.format(f'IVF{k}')
         if n_sample is None:
             # 30 * k - 256 * k
             n_sample = min(30 * k, size)
@@ -569,13 +566,13 @@ def build_faiss_index(X, index_name='auto', n_sample=None, metric="euclidean",
     X = astensor(X)
 
     if metric not in METRIC_TO_FAISS_METRIC_TYPE:
-        raise ValueError('unknown metric: {}'.format(metric))
+        raise ValueError(f'unknown metric: {metric}')
     if index_name != 'auto':
         try:
             faiss.index_factory(X.shape[1], index_name,
                                 METRIC_TO_FAISS_METRIC_TYPE[metric])
         except RuntimeError:
-            raise ValueError('illegal faiss index: {}'.format(index_name))
+            raise ValueError(f'illegal faiss index: {index_name}')
 
     rs = check_random_state(random_state)
     if isinstance(rs, RandomState):

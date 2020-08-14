@@ -90,7 +90,7 @@ if os.path.exists(os.path.join(repo_root, '.git')):
     git_info = version_ns['get_git_info']()
     if git_info:
         with open(os.path.join(repo_root, 'mars', '.git-branch'), 'w') as git_file:
-            git_file.write('%s %s' % git_info)
+            git_file.write(' '.join(git_info))
 
 cythonize_kw = dict(language_level=sys.version_info[0])
 cy_extension_kw = dict()

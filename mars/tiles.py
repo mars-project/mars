@@ -128,7 +128,7 @@ class OperandTilesHandler(object):
         if tiled is not None:
             return tiled if isinstance(tiled, list) else [tiled]
         else:
-            raise NotImplementedError('{} does not support tile'.format(type(op))) from cause
+            raise NotImplementedError(f'{type(op)} does not support tile') from cause
 
     def inplace_tile(self, to_tile):
         if not to_tile.is_coarse():

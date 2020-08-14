@@ -104,13 +104,13 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
         super().__init__(*args, **kwargs)
         if hasattr(self, OP_MODULE_KEY) and hasattr(self, OP_TYPE_KEY):
-            self._op_id = '{0}.{1}'.format(getattr(self, OP_MODULE_KEY), getattr(self, OP_TYPE_KEY))
+            self._op_id = f'{getattr(self, OP_MODULE_KEY)}.{getattr(self, OP_TYPE_KEY)}'
 
     def __repr__(self):
         if self.stage is None:
-            return '{0} <key={1}>'.format(type(self).__name__, self.key)
+            return f'{type(self).__name__} <key={self.key}>'
         else:
-            return '{0} <key={1}, stage={2}>'.format(type(self).__name__, self.key, self.stage.name)
+            return f'{type(self).__name__} <key={self.key}, stage={self.stage.name}>'
 
     @classmethod
     def cls(cls, provider):
@@ -577,7 +577,7 @@ class FetchMixin(TileableOperandMixin):
     def check_inputs(self, inputs):
         # no inputs
         if inputs and len(inputs) > 0:
-            raise ValueError("%s has no inputs" % type(self).__name__)
+            raise ValueError(f"{type(self).__name__} has no inputs")
 
     @classmethod
     def tile(cls, op):

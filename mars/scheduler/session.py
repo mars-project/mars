@@ -40,7 +40,7 @@ class SessionActor(SchedulerActor):
 
     @staticmethod
     def gen_uid(session_id):
-        return 's:h1:session$%s' % session_id
+        return f's:h1:session${session_id}'
 
     def get_argument(self, key):
         return self._args[key]
@@ -105,7 +105,7 @@ class SessionActor(SchedulerActor):
     def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
         from .mutable import MutableTensorActor
         if name in self._mut_tensor_refs:
-            raise ValueError("The mutable tensor named '%s' already exists." % name)
+            raise ValueError(f"The mutable tensor named '{name}' already exists.")
         graph_key = uuid.uuid4()
         mut_tensor_uid = MutableTensorActor.gen_uid(self._session_id, name)
         mut_tensor_addr = self.get_scheduler(mut_tensor_uid)
@@ -119,21 +119,21 @@ class SessionActor(SchedulerActor):
     def get_mutable_tensor(self, name):
         tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or tensor_ref.sealed():
-            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
+            raise ValueError(f"The mutable tensor named '{name}' doesn't exist, or has already been sealed.")
         return tensor_ref.tensor_meta()
 
     @log_unhandled
     def write_mutable_tensor(self, name, index, value):
         tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or tensor_ref.sealed():
-            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
+            raise ValueError(f"The mutable tensor named '{name}' doesn't exist, or has already been sealed.")
         return tensor_ref.write(index, value)
 
     @log_unhandled
     def append_chunk_records(self, name, chunk_records):
         tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or tensor_ref.sealed():
-            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
+            raise ValueError(f"The mutable tensor named '{name}' doesn't exist, or has already been sealed.")
         return tensor_ref.append_chunk_records(chunk_records)
 
     @log_unhandled
@@ -143,7 +143,7 @@ class SessionActor(SchedulerActor):
 
         tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or tensor_ref.sealed():
-            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
+            raise ValueError(f"The mutable tensor named '{name}' doesn't exist, or has already been sealed.")
 
         graph_key_hex, tensor_key, tensor_id, tensor_meta = tensor_ref.seal()
         shape, dtype, chunk_size, chunk_keys, _ = tensor_meta

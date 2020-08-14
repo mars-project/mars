@@ -40,7 +40,7 @@ class WorkerMeta(object):
                    for attr in self.__slots__)
 
     def __repr__(self):
-        return 'WorkerMeta(%r, %r ,%r)' % (self.chunk_size, self.chunk_shape, self.workers)
+        return f'WorkerMeta({self.chunk_size}, {self.chunk_shape}, {self.workers})'
 
 
 class ChunkMetaStore(object):
@@ -236,13 +236,13 @@ class ChunkMetaActor(SchedulerActor):
 
         # sync to external kv store
         if self._kv_store_ref is not None:
-            path = '/sessions/%s/chunks/%s' % (session_id, chunk_key)
+            path = f'/sessions/{session_id}/chunks/{chunk_key}'
             if size is not None:
                 self._kv_store_ref.write(path + '/data_size', size, _tell=True, _wait=False)
             if shape is not None:
                 self._kv_store_ref.write(path + '/data_shape', shape, _tell=True, _wait=False)
             for w in workers:
-                self._kv_store_ref.write(path + '/workers/%s' % w, '', _tell=True, _wait=False)
+                self._kv_store_ref.write(f'{path}/workers/{w}', '', _tell=True, _wait=False)
 
         meta = self._meta_store[query_key] = WorkerMeta(size, shape, tuple(workers))
         logger.debug('Set chunk meta for %s: %r', chunk_key, meta)
@@ -322,7 +322,7 @@ class ChunkMetaActor(SchedulerActor):
         try:
             del self._meta_store[query_key]
             if self._kv_store_ref is not None:
-                self._kv_store_ref.delete('/sessions/%s/chunks/%s' % (session_id, chunk_key),
+                self._kv_store_ref.delete(f'/sessions/{session_id}/chunks/{chunk_key}',
                                           recursive=True, _tell=True, _wait=False)
             logger.debug('Delete chunk meta %s', chunk_key)
         except KeyError:

@@ -138,8 +138,8 @@ class YarnServiceMixin(object):
     def register_node(self):
         self._container_key = getattr(self, '_container_key', None) or \
                               self.service_name + '-' + str(uuid.uuid1())
-        self.app_client.kv[self._container_key] = to_binary('%s@%s' % (
-            self.advertise_endpoint, skein_props['yarn_container_id']))
+        self.app_client.kv[self._container_key] = to_binary(
+            f'{self.advertise_endpoint}@{skein_props["yarn_container_id"]}')
 
     def wait_all_schedulers_ready(self):
         """

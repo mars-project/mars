@@ -31,7 +31,7 @@ class IORunnerActor(WorkerActor):
 
     @classmethod
     def gen_uid(cls, proc_id):
-        return 'w:%d:io_runner_inproc' % proc_id
+        return f'w:{proc_id}:io_runner_inproc'
 
     def __init__(self, io_parallel_num=None, dispatched=True):
         super().__init__()

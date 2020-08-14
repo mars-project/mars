@@ -90,8 +90,8 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         for arg, desc in zip((self.output_types, dtypes, index_value),
                              ('output_types', 'dtypes', 'index')):
             if arg is None:
-                raise TypeError('Cannot determine %s by calculating with enumerate data, '
-                                'please specify it as arguments' % desc)
+                raise TypeError(f'Cannot determine {desc} by calculating with enumerate data, '
+                                'please specify it as arguments')
 
         if self.output_types[0] == OutputType.dataframe:
             new_shape = (np.nan if self.call_agg else in_df.shape[0], len(dtypes))
@@ -163,7 +163,7 @@ def groupby_transform(groupby, func, *args, dtypes=None, index=None, output_type
 
     call_agg = kwargs.pop('_call_agg', False)
     if not call_agg and isinstance(func, (dict, list)):
-        raise TypeError('Does not support transform with %r' % type(func))
+        raise TypeError(f'Does not support transform with {type(func)}')
 
     op = GroupByTransform(func=func, args=args, kwds=kwargs, output_types=output_types,
                           call_agg=call_agg)

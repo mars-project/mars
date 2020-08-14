@@ -68,13 +68,11 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
         if precomputed:
             if X.shape[1] != Y.shape[0]:
                 raise ValueError("Precomputed metric requires shape "
-                                 "(n_queries, n_indexed). Got (%d, %d) "
-                                 "for %d indexed." %
-                                 (X.shape[0], X.shape[1], Y.shape[0]))
+                                 f"(n_queries, n_indexed). Got ({X.shape[0]}, {X.shape[1]}) "
+                                 f"for {Y.shape[0]} indexed.")
         elif X.shape[1] != Y.shape[1]:
             raise ValueError("Incompatible dimension for X and Y matrices: "
-                             "X.shape[1] == %d while Y.shape[1] == %d" % (
-                                 X.shape[1], Y.shape[1]))
+                             f"X.shape[1] == {X.shape[1]} while Y.shape[1] == {Y.shape[1]}")
 
         return X, Y
 

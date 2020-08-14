@@ -155,7 +155,7 @@ class MarsWebAPI(MarsAPI):
                 record_batch = pyarrow.read_record_batch(reader, schema)
                 value = record_batch.to_pandas().to_records(index=False)
         else:
-            raise ValueError('Not supported payload type: %s' % payload_type)
+            raise ValueError(f'Not supported payload type: {payload_type}')
         return session_ref.write_mutable_tensor(name, index, value)
 
 

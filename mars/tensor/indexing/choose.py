@@ -60,7 +60,7 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
 
     def __call__(self, a, choices, out=None):
         if out is not None and not isinstance(out, Tensor):
-            raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+            raise TypeError(f'out should be Tensor object, got {type(out)} instead')
 
         inputs = [a] + choices
         shape = broadcast_shape(a.shape, *[c.shape for c in choices])
@@ -74,7 +74,7 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
         out_shape, out_dtype = out.shape, out.dtype
         # if `out` is specified, use out's dtype and shape
         if out_shape != t.shape:
-            raise ValueError('output shape should be {0}, got {1}'.format(t.shape, out_shape))
+            raise ValueError(f'output shape should be {t.shape}, got {out_shape}')
         setattr(self, '_dtype', out_dtype)
         out.data = t.data
         return out

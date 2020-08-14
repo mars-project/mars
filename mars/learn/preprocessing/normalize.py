@@ -330,9 +330,9 @@ def normalize(X, norm='l2', axis=1, copy=True, return_norm=False):
         (e.g. as part of a preprocessing :class:`mars.learn.pipeline.Pipeline`).
     """
     if norm not in ('l1', 'l2', 'max'):
-        raise ValueError("'%s' is not a supported norm" % norm)
+        raise ValueError(f"'{norm}' is not a supported norm")
     if axis not in (0, 1):
-        raise ValueError("'%d' is not a supported axis" % axis)
+        raise ValueError(f"'{axis}' is not a supported axis")
 
     op = TensorNormalize(norm=norm, axis=axis, return_norm=return_norm,
                          dtype=np.dtype(np.float64))

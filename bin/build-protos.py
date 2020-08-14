@@ -36,25 +36,25 @@ def _download_protoc_executable():
 
     protoc_bin = 'protoc'
     if sys.platform == 'win32':
-        protoc_package = 'protoc-%s-win32.zip' % protobuf_version
+        protoc_package = f'protoc-{protobuf_version}-win32.zip'
         protoc_bin = 'protoc.exe'
     elif sys.platform == 'darwin':
-        protoc_package = 'protoc-%s-osx-x86_64.zip' % protobuf_version
+        protoc_package = f'protoc-{protobuf_version}-osx-x86_64.zip'
     else:
-        protoc_package = 'protoc-%s-linux-x86_64.zip' % protobuf_version
-    protoc_url = 'https://github.com/protocolbuffers/protobuf/releases/download/v%s/%s' \
-                 % (protobuf_version, protoc_package)
-    sys.stderr.write('Downloading protoc from %s. You can download it manually, '
-                     'extract the downloaded package and then specify the '
-                     'environment variable PROTOC as the path to the protoc '
-                     'binary and run the command again.\n' % protoc_url)
+        protoc_package = f'protoc-{protobuf_version}-linux-x86_64.zip'
+    protoc_url = f'https://github.com/protocolbuffers/protobuf/releases/download/' \
+                 f'v{protobuf_version}/{protoc_package}'
+    sys.stderr.write(f'Downloading protoc from {protoc_url}. You can download it '
+                     'manually, extract the downloaded package and then specify '
+                     'the environment variable PROTOC as the path to the protoc '
+                     'binary and run the command again.\n')
 
     temp_path = _temp_protoc_path = tempfile.mkdtemp(prefix='mars-setup-')
     zip_path = os.path.join(temp_path, 'protoc.zip')
     urlretrieve(protoc_url, zip_path)
 
     with zipfile.ZipFile(zip_path, 'r') as protoc_zip:
-        executable = protoc_zip.extract('bin/%s' % protoc_bin, temp_path)
+        executable = protoc_zip.extract(f'bin/{protoc_bin}', temp_path)
         os.chmod(executable, os.stat(executable).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         return executable
 
@@ -84,9 +84,9 @@ def _generate_operand_file(source_path, rel_path, op_file_path):
     analyzer.visit(tree)
 
     with open(op_file_path, 'w') as opcode_file:
-        opcode_file.write('# Generated automatically from %s.  DO NOT EDIT!\n' % rel_path)
+        opcode_file.write(f'# Generated automatically from {rel_path}.  DO NOT EDIT!\n')
         for desc, val in analyzer.operand_codes:
-            opcode_file.write('{0} = {1!r}\n'.format(desc, val))
+            opcode_file.write(f'{desc} = {val!r}\n')
 
 
 def main(repo_root):
@@ -100,13 +100,13 @@ def main(repo_root):
             rel_path = os.path.relpath(src_fn, repo_root)
             if not os.path.exists(compiled_fn) or \
                     os.path.getmtime(src_fn) > os.path.getmtime(compiled_fn):
-                sys.stdout.write('compiling protobuf %s\n' % rel_path)
+                sys.stdout.write(f'compiling protobuf {rel_path}\n')
                 subprocess.check_call([_get_protoc_executable(), '--python_out=.', rel_path],
                                       cwd=repo_root)
 
             if fn == 'operand.proto':
                 opcode_fn = os.path.join(repo_root, 'mars', 'opcodes.py')
-                sys.stdout.write('constructing opcodes with %s\n' % rel_path)
+                sys.stdout.write(f'constructing opcodes with {rel_path}\n')
                 if not os.path.exists(opcode_fn) or \
                         os.path.getmtime(src_fn) > os.path.getmtime(opcode_fn):
                     _generate_operand_file(compiled_fn, rel_path, opcode_fn)

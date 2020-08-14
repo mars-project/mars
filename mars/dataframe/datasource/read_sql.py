@@ -181,7 +181,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                             .alias(temp_name_2)
                     else:
                         selectable = sql.select(
-                            '*', from_obj=sql.text('(%s) AS %s' % (self._table_or_sql, temp_name_1))) \
+                            '*', from_obj=sql.text(f'({self._table_or_sql}) AS {temp_name_1}')) \
                             .alias(temp_name_2)
                     self._selectable = selectable
         return selectable
@@ -233,7 +233,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                     elif isinstance(col, str):
                         new_index_col.append(col)
                     elif col is not None:
-                        raise TypeError('unknown index_col type: {}'.format(type(col)))
+                        raise TypeError(f'unknown index_col type: {type(col)}')
                 self._index_col = new_index_col
 
             # process columns
@@ -267,7 +267,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
 
                 if not issubclass(part_frame[self.partition_col].dtype.type, (np.number, np.datetime64)):
                     raise TypeError('Type of partition column should be numeric or datetime, '
-                                    'now it is %r' % test_df[self.partition_col].dtype)
+                                    f'now it is {test_df[self.partition_col].dtype}')
 
             if isinstance(test_df.index, pd.RangeIndex):
                 index_value = parse_index(pd.RangeIndex(shape[0] if not np.isnan(shape[0]) else -1),

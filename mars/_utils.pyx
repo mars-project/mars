@@ -45,7 +45,7 @@ cpdef str to_str(s, encoding='utf-8'):
     elif s is None:
         return s
     else:
-        raise TypeError("Could not convert from %r to str." % (s,))
+        raise TypeError(f"Could not convert from {s} to str.")
 
 
 cpdef bytes to_binary(s, encoding='utf-8'):
@@ -58,7 +58,7 @@ cpdef bytes to_binary(s, encoding='utf-8'):
     elif s is None:
         return None
     else:
-        raise TypeError("Could not convert from %r to bytes." % (s,))
+        raise TypeError(f"Could not convert from {s} to bytes.")
 
 
 cpdef unicode to_text(s, encoding='utf-8'):
@@ -71,7 +71,7 @@ cpdef unicode to_text(s, encoding='utf-8'):
     elif s is None:
         return None
     else:
-        raise TypeError("Could not convert from %r to unicode." % (s,))
+        raise TypeError(f"Could not convert from {s} to unicode.")
 
 
 cdef inline build_canonical_bytes(tuple args, kwargs):
@@ -110,7 +110,7 @@ cdef class Tokenizer:
                 if clz in self._handlers:
                     self._handlers[object_type] = self._handlers[clz]
                     return self._handlers[clz](obj)
-            raise TypeError('Cannot generate token for %s, type: %s' % (obj, object_type))
+            raise TypeError(f'Cannot generate token for {obj}, type: {object_type}')
 
 
 cdef inline list iterative_tokenize(object ob):

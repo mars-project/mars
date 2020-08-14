@@ -144,7 +144,7 @@ class Test(SchedulerIntegratedTest):
 
         rs = np.random.RandomState(0)
         raw2 = pd.DataFrame({'a': rs.rand(10),
-                            'b': ['s%d' % rs.randint(1000) for _ in range(10)]
+                            'b': [f's{rs.randint(1000)}' for _ in range(10)]
                             })
         raw2['b'] = raw2['b'].astype(md.ArrowStringDtype())
         mdf = md.DataFrame(raw2, chunk_size=3)

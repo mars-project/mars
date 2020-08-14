@@ -64,7 +64,7 @@ class TensorReductionMixin(TensorOperandMixin):
     def _call(self, a, out):
         a = astensor(a)
         if out is not None and not isinstance(out, Tensor):
-            raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+            raise TypeError(f'out should be Tensor object, got {type(out)} instead')
 
         axis = getattr(self, 'axis', None)
         keepdims = getattr(self, 'keepdims', None)
@@ -96,7 +96,7 @@ class TensorReductionMixin(TensorOperandMixin):
         if out_shape != t.shape:
             if out.ndim > t.ndim:
                 raise ValueError('output has too many dimensions')
-            raise ValueError('output shape should be {0}, got {1}'.format(t.shape, out_shape))
+            raise ValueError(f'output shape should be {t.shape}, got {out_shape}')
 
         setattr(self, '_dtype', out_dtype)
 
@@ -304,7 +304,7 @@ class TensorArgReductionMixin(TensorReductionMixin):
             ravel = ndim == 1
         else:
             raise TypeError("axis must be either `None` or int, "
-                            "got '{0}'".format(axis))
+                            f"got '{axis}'")
         return axis, ravel
 
     @staticmethod

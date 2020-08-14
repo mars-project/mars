@@ -145,7 +145,7 @@ def predict(model, data, session=None, run_kwargs=None, run=True):
 
     data = check_data(data)
     if not isinstance(model, Booster):
-        raise TypeError('model has to be a xgboost.Booster, got {0} instead'.format(type(model)))
+        raise TypeError(f'model has to be a xgboost.Booster, got {type(model)} instead')
 
     num_class = model.attr('num_class')
     if isinstance(data, TENSOR_TYPE):

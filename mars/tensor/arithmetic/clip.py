@@ -105,7 +105,7 @@ class TensorClip(TensorOperand, TensorElementWise):
             if isinstance(out, Tensor):
                 self._out = out
             else:
-                raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+                raise TypeError(f'out should be Tensor object, got {type(out)} instead')
 
         dtypes = [dt for dt in [a.dtype, a_min_dtype, a_max_dtype] if dt is not None]
         dtype = np.result_type(*dtypes)

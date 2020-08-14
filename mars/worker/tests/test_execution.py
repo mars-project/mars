@@ -171,7 +171,7 @@ class Test(WorkerCase):
                 raise SystemError('Timed out')
 
     def testSimpleExecution(self):
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False)
             pool.create_actor(CpuCalcActor, uid='w:1:calc-a')
@@ -245,7 +245,7 @@ class Test(WorkerCase):
                 raise PinDataKeyFailed
             return orig_pin(self, session_id, chunk_keys, token)
 
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with patch_method(SharedHolderActor.pin_data_keys, new=_mock_pin), \
@@ -298,7 +298,7 @@ class Test(WorkerCase):
             self.assertGreaterEqual(finish_time, start_time + 0.5)
 
     def testPrepareSpilled(self):
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
 
@@ -367,7 +367,7 @@ class Test(WorkerCase):
 
     @patch_method(ResourceActor.allocate_resource, new=lambda *_, **__: True)
     def testEstimateGraphFinishTime(self):
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         session_id = str(uuid.uuid4())
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False)
@@ -400,7 +400,7 @@ class Test(WorkerCase):
             self.assertIsNotNone(stats_dict.get('max_est_finish_time'))
 
     def testCalcProcessFailure(self):
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=2, backend='gevent',
@@ -428,7 +428,7 @@ class Test(WorkerCase):
             self.assertEqual(len(dispatch_ref.get_slots('cpu')), 1)
 
     def testStopGraphCalc(self):
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=2, backend='gevent',
@@ -457,7 +457,7 @@ class Test(WorkerCase):
                 self.wait_for_result(pool, test_actor)
 
     def testFetchRemoteData(self):
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=1, backend='gevent',
@@ -531,7 +531,7 @@ class Test(WorkerCase):
             self.get_result()
 
     def testSendTargets(self):
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=1, backend='gevent',
@@ -570,7 +570,7 @@ class Test(WorkerCase):
             self.get_result()
 
     def testReExecuteExisting(self):
-        pool_address = '127.0.0.1:%d' % get_next_port()
+        pool_address = f'127.0.0.1:{get_next_port()}'
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=1, backend='gevent',

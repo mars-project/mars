@@ -28,7 +28,7 @@ class Test(WorkerCase):
         def _raiser(*_, **__):
             raise ValueError
 
-        local_pool_addr = 'localhost:%d' % get_next_port()
+        local_pool_addr = f'localhost:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
             pool.create_actor(WorkerClusterInfoActor, [local_pool_addr],
                               uid=WorkerClusterInfoActor.default_uid())
@@ -115,7 +115,7 @@ class Test(WorkerCase):
                         self.get_result(5)
 
     def testQuotaAllocation(self):
-        local_pool_addr = 'localhost:%d' % get_next_port()
+        local_pool_addr = f'localhost:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
@@ -145,7 +145,7 @@ class Test(WorkerCase):
             self.assertEqual(quota_ref.get_allocated_size(), 0)
 
     def testBatchQuotaAllocation(self):
-        local_pool_addr = 'localhost:%d' % get_next_port()
+        local_pool_addr = f'localhost:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
@@ -181,7 +181,7 @@ class Test(WorkerCase):
         from mars.utils import AttributeDict
 
         mock_mem_stat = AttributeDict(dict(total=300, available=50, used=0, free=50))
-        local_pool_addr = 'localhost:%d' % get_next_port()
+        local_pool_addr = f'localhost:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool, \
                 patch_method(resource.virtual_memory, new=lambda: mock_mem_stat):
             pool.create_actor(WorkerClusterInfoActor, [local_pool_addr],

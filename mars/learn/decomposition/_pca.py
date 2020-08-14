@@ -420,8 +420,7 @@ class PCA(_BasePCA):
         elif self._fit_svd_solver in ['arpack', 'randomized']:
             ret = self._fit_truncated(X, n_components, self._fit_svd_solver)
         else:
-            raise ValueError("Unrecognized svd_solver='{0}'"
-                             "".format(self._fit_svd_solver))
+            raise ValueError(f"Unrecognized svd_solver='{self._fit_svd_solver}'")
 
         if run:
             self._run(ret, session=session, run_kwargs=run_kwargs)

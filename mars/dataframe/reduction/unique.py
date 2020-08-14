@@ -45,7 +45,7 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
         if op.method == 'tree':
             return super().tile(op)
         else:
-            raise NotImplementedError("Method {} hasn't been supported".format(op.method))
+            raise NotImplementedError(f"Method {op.method} hasn't been supported")
 
     @classmethod
     def _execute_map(cls, ctx, op):

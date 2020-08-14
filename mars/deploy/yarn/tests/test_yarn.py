@@ -42,7 +42,7 @@ class Test(unittest.TestCase):
         if os.path.exists(dist_coverage_path):
             # change ownership of coverage files
             if find_executable('sudo'):
-                proc = subprocess.Popen(['sudo', '-n', 'chown', '-R', '%d:%d' % (os.geteuid(), os.getegid()),
+                proc = subprocess.Popen(['sudo', '-n', 'chown', '-R', f'{os.geteuid()}:{os.getegid()}',
                                          dist_coverage_path], shell=False)
                 proc.wait()
 
@@ -50,7 +50,7 @@ class Test(unittest.TestCase):
             for fn in glob.glob(os.path.join(dist_coverage_path, '.coverage.*')):
                 cov_db = sqlite3.connect(fn)
                 c = cov_db.cursor()
-                c.execute('UPDATE file SET path=REPLACE(path, \'%s\', \'\')' % (MARS_ROOT + os.path.sep))
+                c.execute(f"UPDATE file SET path=REPLACE(path, '{MARS_ROOT + os.path.sep}', '')")
                 cov_db.commit()
                 cov_db.close()
 
@@ -74,7 +74,7 @@ class Test(unittest.TestCase):
 
             cmd_tmpl = '"{executable}" -m coverage run --source=%s/mars --rcfile=%s/.coveragerc' \
                 % (MARS_ROOT, MARS_ROOT)
-            extra_env = {'COVERAGE_FILE': coverage_result, 'COVERAGE_PROCESS_START': '%s/.coveragerc' % MARS_ROOT}
+            extra_env = {'COVERAGE_FILE': coverage_result, 'COVERAGE_PROCESS_START': f'{MARS_ROOT}/.coveragerc'}
             cluster = new_cluster(env_path, timeout=timeout, extra_env=extra_env, log_config=log_config_file,
                                   scheduler_extra_args='-Dscheduler.default_cpu_usage=0',
                                   worker_extra_args='--ignore-avail-mem',

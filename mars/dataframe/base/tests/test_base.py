@@ -830,7 +830,7 @@ class Test(TestBase):
         rs = np.random.RandomState(0)
         raw = pd.DataFrame(rs.randint(1000, size=(20, 7)),
                            columns=['c' + str(i + 1) for i in range(7)])
-        raw['c7'] = ['s{}'.format(j) for j in range(20)]
+        raw['c7'] = [f's{j}' for j in range(20)]
 
         df = from_pandas_df(raw, chunk_size=10)
         with self.assertRaises(ValueError):

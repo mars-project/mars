@@ -36,7 +36,7 @@ from mars.worker.utils import build_quota_key, WorkerClusterInfoActor
 class Test(WorkerCase):
     @contextlib.contextmanager
     def _start_calc_pool(self):
-        mock_addr = '127.0.0.1:%d' % get_next_port()
+        mock_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, backend='gevent', address=mock_addr) as pool:
             pool.create_actor(SchedulerClusterInfoActor, [mock_addr],
                               uid=SchedulerClusterInfoActor.default_uid())
@@ -70,7 +70,7 @@ class Test(WorkerCase):
 
         inputs = []
         for idx, d in enumerate(data_list):
-            chunk_key = 'chunk-%d-%d' % (random.randint(0, 999), idx)
+            chunk_key = f'chunk-{random.randint(0, 999)}-{idx}'
             fetch_chunk = TensorFetch(to_fetch_key=chunk_key, dtype=d.dtype) \
                 .new_chunk([], shape=d.shape, _key=chunk_key)
             inputs.append(fetch_chunk)

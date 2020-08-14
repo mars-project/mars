@@ -87,7 +87,7 @@ class Test(WorkerCase):
 
     @contextlib.contextmanager
     def _start_shared_holder_pool(self):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerClusterInfoActor, [test_addr],

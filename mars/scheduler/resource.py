@@ -165,7 +165,7 @@ class ResourceActor(SchedulerActor):
 
         self._meta_cache[worker] = worker_meta
         if self._kv_store_ref is not None:
-            self._kv_store_ref.write('/workers/meta/%s' % worker, json.dumps(worker_meta),
+            self._kv_store_ref.write(f'/workers/meta/{worker}', json.dumps(worker_meta),
                                      _tell=True, _wait=False)
             self._kv_store_ref.write('/workers/meta_timestamp', str(int(time.time())),
                                      _tell=True, _wait=False)

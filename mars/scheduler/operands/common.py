@@ -77,12 +77,12 @@ class OperandActor(BaseOperandActor):
 
         if self._kv_store_ref is not None:
             futures.append(self._kv_store_ref.write(
-                '%s/retries' % self._op_path, str(value), _tell=True, _wait=False))
+                f'{self._op_path}/retries', str(value), _tell=True, _wait=False))
 
         retry_timestamp = time.time()
         self._info['retry_timestamp'] = retry_timestamp
         if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write('%s/retry_timestamp' % self._op_path, str(value),
+            futures.append(self._kv_store_ref.write(f'{self._op_path}/retry_timestamp', str(value),
                                                     _tell=True, _wait=False))
         [f.result() for f in futures]
 
@@ -165,7 +165,7 @@ class OperandActor(BaseOperandActor):
         optimize_data['demand_depths'] = new_demand_depths
         if self._kv_store_ref is not None:
             self._kv_store_ref.write(
-                '%s/optimize/demand_depths' % self._op_path,
+                f'{self._op_path}/optimize/demand_depths',
                 base64.b64encode(array_to_bytes('I', new_demand_depths)), _tell=True, _wait=False)
 
         if self.state == OperandState.READY:

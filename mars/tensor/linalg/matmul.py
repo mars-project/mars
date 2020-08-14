@@ -87,7 +87,7 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
         if a.ndim == 0 or b.ndim == 0:
             raise ValueError("Scalar operands are not allowed, use '*' instead")
         if out is not None and not isinstance(out, Tensor):
-            raise TypeError('out must be a Tensor, got {0} instead'.format(type(out)))
+            raise TypeError(f'out must be a Tensor, got {type(out)} instead')
 
         a_is_1d = False
         if a.ndim == 1:
@@ -105,9 +105,8 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
             b = b[(a.ndim - b.ndim) * (np.newaxis,)]
 
         if a.shape[-1] != b.shape[-2]:
-            raise ValueError('shape {0} and {1} not aligned: {2} (dim {3}) != {4} (dim {5})'.format(
-                a.shape, b.shape, a.shape[-1], a.ndim - 1, b.shape[-2], b.ndim - 2
-            ))
+            raise ValueError(f'shape {a.shape} and {b.shape} not aligned: '
+                             f'{a.shape[-1]} (dim {a.ndim - 1}) != {b.shape[-2]} (dim {b.ndim - 2})')
 
         shape = broadcast_shape(a.shape[:-2], b.shape[:-2]) + (a.shape[-2], b.shape[-1])
         order = self._calc_order(a, b, out)

@@ -64,7 +64,7 @@ class KVStoreSchedulerDiscoverer(object):
         self._address = address
         self._client = kvstore.get(address)
         if isinstance(self._client, kvstore.LocalKVStore):
-            raise ValueError('etcd_addr should not be a local address, got {0}'.format(address))
+            raise ValueError(f'etcd_addr should not be a local address, got {address}')
 
     def __reduce__(self):
         return type(self), (self._address,)

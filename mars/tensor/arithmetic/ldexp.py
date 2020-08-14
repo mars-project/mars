@@ -91,7 +91,7 @@ def ldexp(x1, x2, out=None, where=None, **kwargs):
     if not np.can_cast(x2_dtype, np.int64, casting=casting):
         raise TypeError("ufunc 'ldexp' not supported for the input types, "
                         "and the inputs could not be safely coerced to any supported types "
-                        "according to the casting rule ''{0}''".format(casting))
+                        f"according to the casting rule ''{casting}''")
 
     op = TensorLdexp(**kwargs)
     return op(x1, x2, out=out, where=where)

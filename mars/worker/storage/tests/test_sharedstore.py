@@ -31,7 +31,7 @@ class Test(unittest.TestCase):
         from pyarrow import plasma
 
         store_size = 10 * 1024 ** 2
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with plasma.start_plasma_store(store_size) as (sckt, _), \
                 create_actor_pool(n_process=1, address=test_addr) as pool:
             km_ref = pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())

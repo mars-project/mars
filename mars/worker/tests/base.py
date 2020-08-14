@@ -77,7 +77,7 @@ class WorkerCase(unittest.TestCase):
     def spill_dir(cls):
         import tempfile
         if not getattr(cls, '_base_spill_dir', None):
-            cls._base_spill_dir = tempfile.mkdtemp('mars_spill_%d_%d' % (os.getpid(), id(cls)))
+            cls._base_spill_dir = tempfile.mkdtemp(f'mars_spill_{os.getpid()}_{id(cls)}')
         return cls._base_spill_dir
 
     @classmethod

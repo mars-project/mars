@@ -176,8 +176,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 if axis == op.axis:
                     continue
                 if np.isnan(inp.shape[axis]):
-                    raise TilesError('input tensor has unknown shape '
-                                     'on axis {}'.format(axis))
+                    raise TilesError(f'input tensor has unknown shape on axis {axis}')
                 new_chunk_size[axis] = inp.shape[axis]
             check_chunks_unknown_shape([inp], TilesError)
             inp = inp.rechunk(new_chunk_size)._inplace_tile()

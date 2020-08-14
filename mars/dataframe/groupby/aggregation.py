@@ -638,11 +638,11 @@ def agg(groupby, func, method='auto', *args, **kwargs):
     # When perform a computation on the grouped data, we won't shuffle
     # the data in the stage of groupby and do shuffle after aggregation.
     if not isinstance(groupby, GROUPBY_TYPE):
-        raise TypeError('Input should be type of groupby, not %s' % type(groupby))
+        raise TypeError(f'Input should be type of groupby, not {type(groupby)}')
 
     if method not in ['shuffle', 'tree', 'auto']:
-        raise ValueError("Method %s is not available, "
-                         "please specify 'tree' or 'shuffle" % method)
+        raise ValueError(f"Method {method} is not available, "
+                         "please specify 'tree' or 'shuffle")
 
     if not _check_if_func_available(func):
         return groupby.transform(func, *args, _call_agg=True, **kwargs)

@@ -225,8 +225,8 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     for it in index:
                         if it not in pd_index:
-                            raise KeyError('Label [{}] not found in the [{}]'.format(
-                                it, 'index' if axis == 0 else 'columns'))
+                            axis_name = 'index' if axis == 0 else 'columns'
+                            raise KeyError(f'Label [{it}] not found in the [{axis_name}]')
                     param['shape'] = len(index)
                     param['index_value'] = parse_index(pd.Index(index), store_data=True)
                     if axis == 1:

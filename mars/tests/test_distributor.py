@@ -47,8 +47,8 @@ class Test(unittest.TestCase):
         distributor = MarsDistributor(3)
         ref_uid = 'w:h1:Actor2'
         new_uid = distributor.make_same_process('w::Actor', ref_uid)
-        self.assertEqual(new_uid,
-                         'w:%d:Actor' % (1 + mmh_hash(ref_uid) % (distributor.n_process - 1)))
+        expect_worker_id = 1 + mmh_hash(ref_uid) % (distributor.n_process - 1)
+        self.assertEqual(new_uid, f'w:{expect_worker_id}:Actor')
 
         with self.assertRaises(ValueError):
             distributor.make_same_process('Actor', ref_uid)

@@ -107,9 +107,8 @@ def isin(elements, values):
         values = list(values)
     elif not isinstance(values, (SERIES_TYPE, TENSOR_TYPE, INDEX_TYPE)):
         raise TypeError('only list-like objects are allowed to be passed to isin(), '
-                        'you passed a [{}]'.format(type(values)))
+                        f'you passed a [{type(values)}]')
     if not isinstance(elements, SERIES_TYPE):  # pragma: no cover
-        raise NotImplementedError('Unsupported parameter types: %s and %s' %
-                                  (type(elements), type(values)))
+        raise NotImplementedError(f'Unsupported parameter types: {type(elements)} and {type(values)}')
     op = DataFrameIsin(values)
     return op(elements)

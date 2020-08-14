@@ -67,7 +67,7 @@ class FakeExecutionActor(promise.PromiseActor):
 class Test(unittest.TestCase):
     @contextlib.contextmanager
     def _prepare_test_graph(self, session_id, graph_key, mock_workers):
-        addr = '127.0.0.1:%d' % get_next_port()
+        addr = f'127.0.0.1:{get_next_port()}'
         a1 = mt.random.random((100,))
         a2 = mt.random.random((100,))
         s = a1 + a2

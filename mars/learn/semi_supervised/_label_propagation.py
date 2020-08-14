@@ -90,9 +90,9 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             else:
                 return self.kernel(X, y)
         else:  # pragma: no cover
-            raise ValueError("%s is not a valid kernel. Only rbf and knn"
+            raise ValueError(f"{self.kernel} is not a valid kernel. Only rbf and knn"
                              " or an explicit function "
-                             " are supported at this time." % self.kernel)
+                             " are supported at this time.")
 
     @abstractmethod
     def _build_graph(self):  # pragma: no cover
@@ -242,7 +242,7 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
             to_run.append(self.label_distributions_)
         else:
             warnings.warn(
-                'max_iter=%d was reached without convergence.' % self.max_iter,
+                f'max_iter={self.max_iter} was reached without convergence.',
                 category=ConvergenceWarning
             )
             self.n_iter_ += 1

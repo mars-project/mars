@@ -60,4 +60,4 @@ def scalar(data, dtype=None, gpu=False):
         shape = ()
         return op(shape)
     except ValueError:
-        raise TypeError('Expect scalar, got: {0}'.format(data))
+        raise TypeError(f'Expect scalar, got: {data}')

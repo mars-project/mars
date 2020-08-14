@@ -28,7 +28,7 @@ from mars.worker.storage import StorageManagerActor, InProcHolderActor, IORunner
 
 class Test(WorkerCase):
     def testProcMemPutAndGet(self):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
@@ -68,7 +68,7 @@ class Test(WorkerCase):
             handler.delete(session_id, [data_key2])
 
     def testProcMemLoad(self):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())

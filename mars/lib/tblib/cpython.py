@@ -76,5 +76,5 @@ try:
     if platform.python_implementation() == 'CPython':
         tb_set_next = _init_ugly_crap()
 except Exception as exc:
-    sys.stderr.write("Failed to initialize cpython support: {!r}".format(exc))
+    sys.stderr.write(f"Failed to initialize cpython support: {exc!r}")
 del _init_ugly_crap

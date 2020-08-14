@@ -653,8 +653,8 @@ class Serializable(metaclass=SerializableMetaclass):
         if provider.type == ProviderType.json:
             return dict
 
-        raise TypeError('Unknown provider type `{0}` for class `{1}`'.format(
-            ProviderType(provider.type).name, cls.__name__))
+        provider_name = ProviderType(provider.type).name
+        raise TypeError(f'Unknown provider type `{provider_name}` for class `{cls.__name__}`')
 
     def serialize(self, Provider provider, obj=None):
         return provider.serialize_model(self, obj=obj)

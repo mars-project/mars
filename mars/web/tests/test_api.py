@@ -103,9 +103,9 @@ class Test(unittest.TestCase):
         check_time = time.time()
         while not resource_ref.get_worker_count():
             if self.proc_scheduler.poll() is not None:
-                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+                raise SystemError(f'Scheduler not started. exit code {self.proc_scheduler.poll()}')
             if self.proc_worker.poll() is not None:
-                raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
+                raise SystemError(f'Worker not started. exit code {self.proc_worker.poll()}')
             if time.time() - check_time > 30:
                 raise SystemError('Check meta_timestamp timeout')
 
@@ -171,6 +171,7 @@ class Test(unittest.TestCase):
         service_ep = 'http://127.0.0.1:' + self.web_port
         timeout = 120 if 'CI' in os.environ else -1
         with new_session(service_ep) as sess:
+            session_id = sess._session_id
             self.assertEqual(sess.count_workers(), 1)
 
             a = mt.ones((100, 100), chunk_size=30)
@@ -244,34 +245,32 @@ class Test(unittest.TestCase):
             res = requests.get(service_ep)
             self.assertEqual(res.status_code, 200)
 
-            res = requests.get('%s/scheduler' % (service_ep,))
+            res = requests.get(f'{service_ep}/scheduler')
             self.assertEqual(res.status_code, 200)
-            res = requests.get('%s/scheduler/127.0.0.1:%s' % (service_ep, self.scheduler_port))
-            self.assertEqual(res.status_code, 200)
-
-            res = requests.get('%s/worker' % (service_ep,))
-            self.assertEqual(res.status_code, 200)
-            res = requests.get('%s/worker/127.0.0.1:%s' % (service_ep, self.worker_port))
-            self.assertEqual(res.status_code, 200)
-            res = requests.get('%s/worker/127.0.0.1:%s/timeline' % (service_ep, self.worker_port))
+            res = requests.get(f'{service_ep}/scheduler/127.0.0.1:{self.scheduler_port}')
             self.assertEqual(res.status_code, 200)
 
-            res = requests.get('%s/session' % (service_ep,))
+            res = requests.get(f'{service_ep}/worker')
+            self.assertEqual(res.status_code, 200)
+            res = requests.get(f'{service_ep}/worker/127.0.0.1:{self.worker_port}')
+            self.assertEqual(res.status_code, 200)
+            res = requests.get(f'{service_ep}/worker/127.0.0.1:{self.worker_port}/timeline')
+            self.assertEqual(res.status_code, 200)
+
+            res = requests.get(f'{service_ep}/session')
             self.assertEqual(res.status_code, 200)
             task_id = next(iter(graphs.keys()))
-            res = requests.get('%s/session/%s/graph/%s' % (service_ep, sess._session_id, task_id))
+            res = requests.get(f'{service_ep}/session/{session_id}/graph/{task_id}')
             self.assertEqual(res.status_code, 200)
-            res = requests.get('%s/session/%s/graph/%s/running_nodes' % (service_ep, sess._session_id, task_id))
+            res = requests.get(f'{service_ep}/session/{session_id}/graph/{task_id}/running_nodes')
             self.assertEqual(res.status_code, 200)
 
             from mars.web.task_pages import PROGRESS_APP_NAME
-            res = requests.get('%s/%s?session_id=%s&task_id=%s'
-                               % (service_ep, PROGRESS_APP_NAME, sess._session_id, task_id))
+            res = requests.get(f'{service_ep}/{PROGRESS_APP_NAME}?session_id={session_id}&task_id={task_id}')
             self.assertEqual(res.status_code, 200)
 
             from mars.web.worker_pages import TIMELINE_APP_NAME
-            res = requests.get('%s/%s?endpoint=127.0.0.1:%s'
-                               % (service_ep, TIMELINE_APP_NAME, self.worker_port))
+            res = requests.get(f'{service_ep}/{TIMELINE_APP_NAME}?endpoint=127.0.0.1:{self.worker_port}')
             self.assertEqual(res.status_code, 200)
 
         # make sure all chunks freed when session quits
@@ -292,18 +291,18 @@ class Test(unittest.TestCase):
         service_ep = 'http://127.0.0.1:' + self.web_port
 
         # query worker info
-        res = requests.get('%s/api/worker' % service_ep)
+        res = requests.get(f'{service_ep}/api/worker')
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(json.loads(res.text)), 1)
-        res = requests.get('%s/api/worker?action=count' % service_ep)
+        res = requests.get(f'{service_ep}/api/worker?action=count')
         self.assertEqual(res.status_code, 200)
         self.assertEqual(int(res.text), 1)
 
         # raise on malicious python version
-        res = requests.post('%s/api/session' % service_ep, dict(pyver='mal.version'))
+        res = requests.post(f'{service_ep}/api/session', dict(pyver='mal.version'))
         self.assertEqual(res.status_code, 400)
         wrong_version = '3.7.4' if sys.version_info[0] < 3 else '2.7.4'
-        res = requests.post('%s/api/session' % service_ep, dict(pyver=wrong_version))
+        res = requests.post(f'{service_ep}/api/session', dict(pyver=wrong_version))
         self.assertEqual(res.status_code, 400)
 
         # use pickle when arrow version does not agree
@@ -329,7 +328,7 @@ class Test(unittest.TestCase):
         with new_session(service_ep) as sess:
             # Stop non-existing graph should raise an exception
             graph_key = str(uuid.uuid4())
-            res = requests.delete('%s/api/session/%s/graph/%s' % (service_ep, sess._session_id, graph_key))
+            res = requests.delete(f'{service_ep}/api/session/{sess._session_id}/graph/{graph_key}')
             self.assertEqual(res.status_code, 404)
             resp_json = json.loads(res.text)
             typ, value, tb = pickle.loads(base64.b64decode(resp_json['exc_info']))
@@ -338,7 +337,7 @@ class Test(unittest.TestCase):
                              normalize_tbs(resp_json['exc_info_text']))
 
             # get graph states of non-existing session should raise an exception
-            res = requests.get('%s/api/session/%s/graph' % (service_ep, 'xxxx'))
+            res = requests.get(f'{service_ep}/api/session/xxxx/graph')
             self.assertEqual(res.status_code, 500)
             resp_json = json.loads(res.text)
             typ, value, tb = pickle.loads(base64.b64decode(resp_json['exc_info']))

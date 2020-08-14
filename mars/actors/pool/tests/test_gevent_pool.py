@@ -50,7 +50,7 @@ def create_actor_pool(*args, **kwargs):
     auto_port = kwargs.pop('auto_port', True)
     while True:
         try:
-            address = '127.0.0.1:{0}'.format(next(it))
+            address = f'127.0.0.1:{next(it)}'
             return new_actor_pool(address, *args, **kwargs)
         except gevent.socket.error:
             if auto_port:

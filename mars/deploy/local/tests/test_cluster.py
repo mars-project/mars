@@ -852,14 +852,14 @@ class Test(unittest.TestCase):
             with self.assertRaises(ValueError) as cm:
                 new_session(cluster.endpoint, session_id=session_id)
 
-            expected_msg = "The session with id = %s doesn't exist" % session_id
+            expected_msg = f"The session with id = {session_id} doesn't exist"
             self.assertEqual(cm.exception.args[0], expected_msg)
 
             sess1.close()
             with self.assertRaises(ValueError) as cm:
                 new_session(cluster.endpoint, session_id=sess1.session_id)
 
-            expected_msg = "The session with id = %s doesn't exist" % sess1.session_id
+            expected_msg = f"The session with id = {sess1.session_id} doesn't exist"
             self.assertEqual(cm.exception.args[0], expected_msg)
 
             web_sess1 = new_session('http://' + cluster._web_endpoint)
@@ -872,14 +872,14 @@ class Test(unittest.TestCase):
             with self.assertRaises(ValueError) as cm:
                 new_session('http://' + cluster._web_endpoint, session_id=session_id)
 
-            expected_msg = "The session with id = %s doesn't exist" % session_id
+            expected_msg = f"The session with id = {session_id} doesn't exist"
             self.assertEqual(cm.exception.args[0], expected_msg)
 
             web_sess1.close()
             with self.assertRaises(ValueError) as cm:
                 new_session('http://' + cluster._web_endpoint, session_id=web_sess1.session_id)
 
-            expected_msg = "The session with id = %s doesn't exist" % web_sess1.session_id
+            expected_msg = f"The session with id = {web_sess1.session_id} doesn't exist"
             self.assertEqual(cm.exception.args[0], expected_msg)
 
     def testTensorOrder(self, *_):
@@ -1003,7 +1003,7 @@ class Test(unittest.TestCase):
 
             dataset = 'test_dataset'
             with tempfile.TemporaryDirectory() as d:
-                filename = os.path.join(d, 'test_read_{}.hdf5'.format(int(time.time())))
+                filename = os.path.join(d, f'test_read_{int(time.time())}.hdf5')
 
                 r = mt.tohdf5(filename, t, dataset=dataset)
 

@@ -77,31 +77,31 @@ def gather_node_info():
         logger.exception('NVError encountered, cannot gather CUDA devices.')
         cuda_info = None
     if cuda_info:
-        node_info['cuda_info'] = 'Driver: %s\nCUDA: %s\nProducts: %s\n' % \
-                                 (cuda_info.driver_version, cuda_info.cuda_version,
-                                  ', '.join(cuda_info.products))
+        node_info['cuda_info'] = f'Driver: {cuda_info.driver_version}\n' \
+                                 f'CUDA: {cuda_info.cuda_version}\n' \
+                                 f'Products: {", ".join(cuda_info.products)}\n'
 
     package_lines = []
     if np is not None:
         ver_str = 'numpy==' + np.__version__
         if hasattr(np, '__mkl_version__') and mkl_get_version:
             mkl_version = mkl_get_version()
-            ver_str += ' (mkl: %d.%d.%d)' % (mkl_version.major, mkl_version.minor, mkl_version.update)
+            ver_str += f' (mkl: {mkl_version.major}.{mkl_version.minor}.{mkl_version.update})'
         package_lines.append(ver_str)
     if scipy is not None:
-        package_lines.append('scipy==%s' % scipy.__version__)
+        package_lines.append(f'scipy=={scipy.__version__}')
     if pandas is not None:
-        package_lines.append('pandas==%s' % pandas.__version__)
+        package_lines.append(f'pandas=={pandas.__version__}')
     if cp is not None:
-        package_lines.append('cupy==%s' % cp.__version__)
+        package_lines.append(f'cupy=={cp.__version__}')
     if cudf is not None:
-        package_lines.append('cudf==%s' % cudf.__version__)
+        package_lines.append(f'cudf=={cudf.__version__}')
 
     node_info['package_info'] = '\n'.join(package_lines)
 
     git = git_info()
     if git:
-        node_info['git_info'] = '%s %s' % (git[0], git[1])
+        node_info['git_info'] = f'{git[0]} {git[1]}'
     else:
         node_info['git_info'] = 'Not available'
 

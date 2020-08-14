@@ -41,7 +41,7 @@ except ImportError:  # pragma: no cover
         elif isinstance(dt, date):
             return datetime(dt.year, dt.month, dt.day)
         else:
-            raise TypeError('Unrecognized type: %r' % type(dt))
+            raise TypeError(f'Unrecognized type: {type(dt)}')
 
 
 class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
@@ -424,7 +424,7 @@ def date_range(start=None, end=None, periods=None, freq=None, tz=None,
     if isinstance(periods, (float, np.float)):
         periods = int(periods)
     if periods is not None and not isinstance(periods, (int, np.integer)):
-        raise TypeError('periods must be a number, got {}'.format(periods))
+        raise TypeError(f'periods must be a number, got {periods}')
 
     if freq is None and any(arg is None for arg in [periods, start, end]):
         freq = 'D'

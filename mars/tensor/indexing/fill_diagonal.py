@@ -413,7 +413,7 @@ def fill_diagonal(a, val, wrap=False):
     """
 
     if not isinstance(a, Tensor):
-        raise TypeError('`a` should be a tensor, got {}'.format(type(a)))
+        raise TypeError(f'`a` should be a tensor, got {type(a)}')
     if a.ndim < 2:
         raise ValueError("array must be at least 2-d")
     if a.ndim > 2 and len(set(a.shape)) != 1:

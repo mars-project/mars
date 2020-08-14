@@ -71,7 +71,7 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
 
     def _check_algorithm_metric(self):
         if self.algorithm not in ['auto', 'brute', 'kd_tree', 'ball_tree', 'faiss']:
-            raise ValueError("unrecognized algorithm: '%s'" % self.algorithm)
+            raise ValueError(f"unrecognized algorithm: '{self.algorithm}'")
 
         if self.algorithm == 'auto':
             if self.metric == 'precomputed':
@@ -219,15 +219,14 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
         if self.n_neighbors is not None:
             if self.n_neighbors <= 0:
                 raise ValueError(
-                    "Expected n_neighbors > 0. Got %d" %
-                    self.n_neighbors
+                    f"Expected n_neighbors > 0. Got {self.n_neighbors}"
                 )
             else:
                 if not np.issubdtype(type(self.n_neighbors), np.integer):
                     raise TypeError(
-                        "n_neighbors does not take %s value, "
-                        "enter integer value" %
-                        type(self.n_neighbors))
+                        f"n_neighbors does not take {type(self.n_neighbors)} value, "
+                        "enter integer value"
+                    )
 
         return self
 
@@ -294,15 +293,14 @@ class KNeighborsMixin:
             n_neighbors = self.n_neighbors
         elif n_neighbors <= 0:
             raise ValueError(
-                "Expected n_neighbors > 0. Got %d" %
-                n_neighbors
+                f"Expected n_neighbors > 0. Got {n_neighbors}"
             )
         else:
             if not np.issubdtype(type(n_neighbors), np.integer):
                 raise TypeError(
-                    "n_neighbors does not take %s value, "
-                    "enter integer value" %
-                    type(n_neighbors))
+                    f"n_neighbors does not take {type(n_neighbors)} value, "
+                    "enter integer value"
+                )
 
         if X is not None:
             query_is_train = False
@@ -324,8 +322,7 @@ class KNeighborsMixin:
         if n_neighbors > train_size:
             raise ValueError(
                 "Expected n_neighbors <= n_samples, "
-                " but n_samples = %d, n_neighbors = %d" %
-                (train_size, n_neighbors)
+                f"but n_samples = {train_size}, n_neighbors = {n_neighbors}"
             )
         n_samples, _ = X.shape
         sample_range = mt.arange(n_samples)[:, None]
@@ -349,16 +346,16 @@ class KNeighborsMixin:
         elif self._fit_method in ['ball_tree', 'kd_tree']:
             if X.issparse():
                 raise ValueError(
-                    "%s does not work with sparse matrices. Densify the data, "
-                    "or set algorithm='brute'" % self._fit_method)
+                    f"{self._fit_method} does not work with sparse matrices. "
+                    "Densify the data, or set algorithm='brute'")
 
             query = ball_tree_query if self._fit_method == 'ball_tree' else kd_tree_query
             result = query(self._tree, X, n_neighbors, return_distance)
         elif self._fit_method == 'faiss':
             if X.issparse():
                 raise ValueError(
-                    "%s does not work with sparse matrices. Densify the data, "
-                    "or set algorithm='brute'" % self._fit_method)
+                    f"{self._fit_method} does not work with sparse matrices. "
+                    "Densify the data, or set algorithm='brute'")
             result = faiss_query(self._faiss_index, X, n_neighbors, return_distance, **kw)
         else:  # pragma: no cover
             raise ValueError("internal: _fit_method not recognized")
@@ -465,7 +462,7 @@ class KNeighborsMixin:
 
         else:
             raise ValueError('Unsupported mode, must be one of "connectivity" '
-                             'or "distance" but got {} instead'.format(mode))
+                             f'or "distance" but got {mode} instead')
 
         op = KNeighborsGraph(a_data=A_data, a_ind=A_ind, n_neighbors=n_neighbors,
                              sparse=True)

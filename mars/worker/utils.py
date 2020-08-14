@@ -39,7 +39,7 @@ class ExecutionState(Enum):
 class WorkerClusterInfoActor(ClusterInfoActor):
     @classmethod
     def default_uid(cls):
-        return 'w:0:%s' % cls.__name__
+        return f'w:0:{cls.__name__}'
 
 
 class WorkerHasClusterInfoActor(HasClusterInfoActor):
@@ -56,7 +56,7 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
 
     @classmethod
     def default_uid(cls):
-        return 'w:0:{0}'.format(cls.__name__)
+        return f'w:0:{cls.__name__}'
 
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
@@ -189,7 +189,7 @@ def concat_operand_keys(graph, sep=','):
         if c.op.stage is None:
             graph_op_dict[c.op.key] = type(c.op).__name__
         else:
-            graph_op_dict[c.op.key] = '%s:%s' % (type(c.op).__name__, c.op.stage.name)
+            graph_op_dict[c.op.key] = f'{type(c.op).__name__}:{c.op.stage.name}'
     keys = sep.join(graph_op_dict.keys())
     graph_ops = sep.join(graph_op_dict.values())
     return keys, graph_ops

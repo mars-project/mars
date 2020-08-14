@@ -50,7 +50,7 @@ class Test(WorkerCase):
         call_records = dict()
         group_size = 4
 
-        mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
+        mock_scheduler_addr = f'127.0.0.1:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent',
                                address=mock_scheduler_addr) as pool:
             dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
@@ -85,9 +85,9 @@ class Test(WorkerCase):
 
                 for idx in range(group_size + 1):
                     p = p.then(lambda *_: _dispatch_ref.acquire_free_slot('g1', _promise=True)) \
-                        .then(partial(_call_on_dispatched, key='%d_1' % idx)) \
+                        .then(partial(_call_on_dispatched, key=f'{idx}_1')) \
                         .then(lambda *_: _dispatch_ref.acquire_free_slot('g2', _promise=True)) \
-                        .then(partial(_call_on_dispatched, key='%d_2' % idx))
+                        .then(partial(_call_on_dispatched, key=f'{idx}_2'))
 
                 p.then(lambda *_: _dispatch_ref.acquire_free_slot('g3', _promise=True)) \
                     .then(partial(_call_on_dispatched, key='N_1')) \
@@ -96,9 +96,9 @@ class Test(WorkerCase):
             self.get_result(20)
 
             self.assertEqual(call_records['N_1'], 'NoneUID')
-            self.assertLess(sum(abs(call_records['%d_1' % idx] - call_records['0_1'])
+            self.assertLess(sum(abs(call_records[f'{idx}_1'] - call_records['0_1'])
                                 for idx in range(group_size)), delay * 0.5)
-            self.assertGreater(call_records['%d_1' % group_size] - call_records['0_1'], delay * 0.5)
-            self.assertLess(call_records['%d_1' % group_size] - call_records['0_1'], delay * 1.5)
+            self.assertGreater(call_records[f'{group_size}_1'] - call_records['0_1'], delay * 0.5)
+            self.assertLess(call_records[f'{group_size}_1'] - call_records['0_1'], delay * 1.5)
 
             dispatch_ref.destroy()

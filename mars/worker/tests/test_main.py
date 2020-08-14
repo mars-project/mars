@@ -88,7 +88,7 @@ class Test(unittest.TestCase):
                 if not resource_ref.get_workers_meta():
                     gevent.sleep(0.1)
                     if proc.poll() is not None:
-                        raise SystemError('Worker dead. exit code %s' % proc.poll())
+                        raise SystemError(f'Worker dead. exit code {proc.poll()}')
                     if time.time() - check_time > 20:
                         raise TimeoutError('Check meta_timestamp timeout')
                     continue
@@ -103,7 +103,7 @@ class Test(unittest.TestCase):
 
     @contextlib.contextmanager
     def _start_worker_process(self, cuda=False, cuda_device=None):
-        mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
+        mock_scheduler_addr = f'127.0.0.1:{get_next_port()}'
         try:
             with create_actor_pool(n_process=1, backend='gevent',
                                    address=mock_scheduler_addr) as pool:

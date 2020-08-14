@@ -187,7 +187,7 @@ def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
             return t.tosparse()
         return t
     else:
-        raise ValueError('Cannot create tensor by given data: {0}'.format(data))
+        raise ValueError(f'Cannot create tensor by given data: {data}')
 
 
 def named_tensor(name, session=None):

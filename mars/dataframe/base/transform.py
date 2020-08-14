@@ -220,8 +220,8 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
         for arg, desc in zip((self.output_types, dtypes), ('output_types', 'dtypes')):
             if arg is None:
-                raise TypeError('Cannot determine %s by calculating with enumerate data, '
-                                'please specify it as arguments' % desc)
+                raise TypeError(f'Cannot determine {desc} by calculating with enumerate data, '
+                                'please specify it as arguments')
 
         if self.output_types[0] == OutputType.dataframe:
             new_shape = list(df.shape)

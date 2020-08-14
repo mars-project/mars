@@ -285,7 +285,7 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
     def tile(cls, op):
         in_tensor = op.input
         if np.isnan(in_tensor.shape[op.axis]):
-            raise TilesError('Tensor has unknown shape on axis {}'.format(op.axis))
+            raise TilesError(f'Tensor has unknown shape on axis {op.axis}')
 
         kth = op.kth
         if isinstance(op.kth, TENSOR_TYPE):
@@ -537,8 +537,7 @@ def _validate_kth_value(kth, size):
     kth = np.where(kth < 0, kth + size, kth)
     if np.any((kth < 0) | (kth >= size)):
         invalid_kth = next(k for k in kth if k < 0 or k >= size)
-        raise ValueError('kth(={}) out of bounds ({})'.format(
-            invalid_kth, size))
+        raise ValueError(f'kth(={invalid_kth}) out of bounds ({size})')
     return kth
 
 
@@ -558,13 +557,13 @@ def _validate_partition_arguments(a, kth, axis, kind, order, kw):
     if kth.ndim > 1:
         raise ValueError('object too deep for desired array')
     if kind != 'introselect':
-        raise ValueError('{} is an unrecognized kind of select'.format(kind))
+        raise ValueError(f'{kind} is an unrecognized kind of select')
     # if a is structure type and order is not None
     order = validate_order(a.dtype, order)
     need_align = kw.pop('need_align', None)
     if len(kw) > 0:
-        raise TypeError('partition() got an unexpected keyword '
-                        'argument \'{}\''.format(next(iter(kw))))
+        raise TypeError("partition() got an unexpected keyword "
+                        f"argument '{next(iter(kw))}'")
 
     return a, kth, axis, kind, order, need_align
 

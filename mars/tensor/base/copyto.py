@@ -94,21 +94,20 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
         self._sparse = dst.issparse()
 
         if not np.can_cast(src.dtype, dst.dtype, casting=self.casting):
-            raise TypeError('Cannot cast array from {0!r} to {1!r} '
-                            'according to the rule {2!s}'.format(
-                                src.dtype, dst.dtype, self.casting))
+            raise TypeError(f'Cannot cast array from {src.dtype!r} to {dst.dtype!r} '
+                            f'according to the rule {self.casting!s}')
 
         try:
             broadcast_to(src, dst.shape)
         except ValueError:
             raise ValueError('could not broadcast input array '
-                             'from shape {0!r} into shape {1!r}'.format(src.shape, dst.shape))
+                             f'from shape {src.shape!r} into shape {dst.shape!r}')
         if where:
             try:
                 broadcast_to(where, dst.shape)
             except ValueError:
                 raise ValueError('could not broadcast where mask '
-                                 'from shape {0!r} into shape {1!r}'.format(src.shape, dst.shape))
+                                 f'from shape {src.shape!r} into shape {dst.shape!r}')
 
         inps = [src, dst]
         if where is not None:

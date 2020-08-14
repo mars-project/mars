@@ -155,8 +155,8 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     if tensor.dtype == dtype and tensor.order == tensor_order:
         return tensor if not copy else tensor.copy(order=order)
     elif not np.can_cast(tensor.dtype, dtype, casting=casting):
-        raise TypeError('Cannot cast array from {0!r} to {1!r} '
-                        'according to the rule {2!s}'.format(tensor.dtype, dtype, casting))
+        raise TypeError(f'Cannot cast array from {tensor.dtype!r} to {dtype!r} '
+                        f'according to the rule {casting}')
 
     op = TensorAstype(dtype=dtype, order=order, casting=casting, sparse=tensor.issparse())
     return op(tensor, order=tensor_order)

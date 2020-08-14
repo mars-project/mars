@@ -124,7 +124,7 @@ class StorageHandler(object):
 
     def get_io_pool(self, pool_name=None):
         actor_obj = self.host_actor
-        pool_var = '_pool_%s_attr_%s' % (pool_name or '', self.storage_type.value)
+        pool_var = f'_pool_{pool_name}_attr_{self.storage_type.value}'
         if getattr(actor_obj, pool_var, None) is None:
             setattr(actor_obj, pool_var, self._actor_ctx.threadpool(1))
         return getattr(actor_obj, pool_var)
@@ -430,4 +430,4 @@ def get_storage_handler_cls(storage_type):
     try:
         return _storage_handler_cls[storage_type]
     except KeyError:  # pragma: no cover
-        raise NotImplementedError('Storage type %r not supported' % (storage_type, ))
+        raise NotImplementedError(f'Storage type {storage_type} not supported')

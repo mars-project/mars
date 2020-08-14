@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class BaseOperandActor(SchedulerActor):
     @staticmethod
     def gen_uid(session_id, op_key):
-        return 's:h1:operand$%s$%s' % (session_id, op_key)
+        return f's:h1:operand${session_id}${op_key}'
 
     def __init__(self, session_id, graph_id, op_key, op_info, worker=None,
                  with_kvstore=True, schedulers=None):
@@ -34,7 +34,7 @@ class BaseOperandActor(SchedulerActor):
         self._graph_ids = [graph_id]
         self._info = op_info
         self._op_key = op_key
-        self._op_path = '/sessions/%s/operands/%s' % (self._session_id, self._op_key)
+        self._op_path = f'/sessions/{self._session_id}/operands/{self._op_key}'
 
         self._is_initial = op_info.get('is_initial') or False
         self._is_terminal = op_info.get('is_terminal') or False
@@ -112,7 +112,7 @@ class BaseOperandActor(SchedulerActor):
             graph_ref.set_operand_state(self._op_key, value, _tell=True, _wait=False)
         if self._kv_store_ref is not None:
             self._kv_store_ref.write(
-                '%s/state' % self._op_path, value.name, _tell=True, _wait=False)
+                f'{self._op_path}/state', value.name, _tell=True, _wait=False)
 
     @property
     def worker(self):
@@ -126,10 +126,10 @@ class BaseOperandActor(SchedulerActor):
         if self._kv_store_ref is not None:
             if value:
                 futures.append(self._kv_store_ref.write(
-                    '%s/worker' % self._op_path, value, _tell=True, _wait=False))
+                    f'{self._op_path}/worker', value, _tell=True, _wait=False))
             elif self._worker is not None:
                 futures.append(self._kv_store_ref.delete(
-                    '%s/worker' % self._op_path, silent=True, _tell=True, _wait=False))
+                    f'{self._op_path}/worker', silent=True, _tell=True, _wait=False))
         [f.result() for f in futures]
         self._worker = value
 

@@ -410,10 +410,9 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
         if build_mode().is_build_mode or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return 'Index <op={}, key={}'.format(self._op.__class__.__name__,
-                                                     self.key)
+                return f'Index <op={type(self._op).__name__}, key={self.key}'
             else:
-                return 'Index(op={})'.format(self._op.__class__.__name__)
+                return f'Index(op={type(self._op).__name__})'
         else:
             data = self.fetch(session=self._executed_sessions[-1])
             return repr(data) if repr(data) else str(data)
@@ -695,12 +694,9 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
         if build_mode().is_build_mode or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return '{} <op={}, key={}>'.format(self._type_name,
-                                                   self._op.__class__.__name__,
-                                                   self.key)
+                return f'{self._type_name} <op={type(self._op).__name__}, key={self.key}>'
             else:
-                return '{}(op={})'.format(self._type_name,
-                                          self._op.__class__.__name__)
+                return f'{self._type_name}(op={type(self._op).__name__})'
         else:
             corner_data = fetch_corner_data(
                 self, session=self._executed_sessions[-1])
@@ -1042,12 +1038,9 @@ class DataFrameData(BaseDataFrameData):
         if build_mode().is_build_mode or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return '{} <op={}, key={}>'.format(self._type_name,
-                                                   self._op.__class__.__name__,
-                                                   self.key)
+                return f'{self._type_name} <op={type(self._op).__name__}, key={self.key}>'
             else:
-                return '{}(op={})'.format(self._type_name,
-                                          self._op.__class__.__name__)
+                return f'{self._type_name}(op={type(self._op).__name__})'
         else:
             corner_data = fetch_corner_data(
                 self, session=self._executed_sessions[-1])
@@ -1069,10 +1062,7 @@ class DataFrameData(BaseDataFrameData):
                     buf.write(s)
                 if pd.get_option('display.show_dimensions'):
                     n_rows, n_cols = self.shape
-                    buf.write(
-                        "\n\n[{nrows} rows x {ncols} columns]".format(
-                            nrows=n_rows, ncols=n_cols)
-                        )
+                    buf.write(f"\n\n[{n_rows} rows x {n_cols} columns]")
 
             return buf.getvalue()
 
@@ -1100,10 +1090,7 @@ class DataFrameData(BaseDataFrameData):
                 buf.write(corner_data._repr_html_().rstrip().rstrip('</div>'))
             if pd.get_option('display.show_dimensions'):
                 n_rows, n_cols = self.shape
-                buf.write(
-                    "<p>{nrows} rows × {ncols} columns</p>\n".format(
-                        nrows=n_rows, ncols=n_cols)
-                )
+                buf.write(f"<p>{n_rows} rows × {n_cols} columns</p>\n")
             buf.write('</div>')
 
         return buf.getvalue()
@@ -1629,9 +1616,9 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
         if build_mode().is_build_mode or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return '{0} <op={1}, key={2}>'.format(self._type_name, self.op.__class__.__name__, self.key)
+                return f'{self._type_name} <op={type(self.op).__name__}, key={self.key}>'
             else:
-                return '{0}(op={1})'.format(self._type_name, self.op.__class__.__name__)
+                return f'{self._type_name}(op={type(self.op).__name__})'
         else:
             data = self.fetch(session=self._executed_sessions[-1])
             return repr(data) if repr(data) else str(data)

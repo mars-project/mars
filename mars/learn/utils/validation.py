@@ -44,22 +44,20 @@ def _num_samples(x):
     """Return number of samples in array-like x."""
     if hasattr(x, 'fit') and callable(x.fit):
         # Don't get num_samples from an ensembles length!
-        raise TypeError('Expected sequence or array-like, got '
-                        'estimator %s' % x)
+        raise TypeError(f'Expected sequence or array-like, got estimator {x}')
     if not hasattr(x, '__len__') and not hasattr(x, 'shape'):
         if hasattr(x, '__array__'):
             x = mt.asarray(x)
         else:
-            raise TypeError("Expected sequence or array-like, got %s" %
-                            type(x))
+            raise TypeError(f"Expected sequence or array-like, got {type(x)}")
     if hasattr(x, 'shape'):
         if len(x.shape) == 0:
             if isinstance(x.op, AssertAllFinite):
                 x = x.op.x
             if hasattr(x.op, 'data') and x.op.data is not None:
                 x = np.asarray(x.op.data)
-            raise TypeError("Singleton array %r cannot be considered"
-                            " a valid collection." % x)
+            raise TypeError(f"Singleton array {x!r} cannot be considered"
+                            " a valid collection.")
         # Check that shape is returning an integer or default to len
         if isinstance(x.shape[0], numbers.Integral):
             return x.shape[0]
@@ -103,7 +101,7 @@ def check_consistent_length(*arrays, session=None, run_kwargs=None):
     uniques = np.unique(lengths)
     if len(uniques) > 1:
         raise ValueError("Found input variables with inconsistent numbers of"
-                         " samples: %r" % [int(length) for length in lengths])
+                         f" samples: {[int(length) for length in lengths]}")
 
 
 def _make_indexable(iterable):
@@ -149,8 +147,7 @@ def indexable(*iterables, session=None, run_kwargs=None):
 def _ensure_no_complex_data(array):
     if hasattr(array, 'dtype') and array.dtype is not None \
             and hasattr(array.dtype, 'kind') and array.dtype.kind == "c":
-        raise ValueError("Complex data not supported\n"
-                         "{}\n".format(array))
+        raise ValueError(f"Complex data not supported\n{array}\n")
 
 
 def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
@@ -221,7 +218,7 @@ def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
         # any other type
         raise ValueError("Parameter 'accept_sparse' should be a string, "
                          "boolean or list of strings. You provided "
-                         "'accept_sparse={}'.".format(accept_sparse))
+                         f"'accept_sparse={accept_sparse}'.")
 
     if dtype != spmatrix.dtype:
         # convert dtype
@@ -345,7 +342,7 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
 
     if force_all_finite not in (True, False, 'allow-nan'):
         raise ValueError('force_all_finite should be a bool or "allow-nan"'
-                         '. Got {!r} instead'.format(force_all_finite))
+                         f'. Got {force_all_finite!r} instead')
 
     if estimator is not None:
         if isinstance(estimator, str):
@@ -354,7 +351,7 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
             estimator_name = estimator.__class__.__name__
     else:
         estimator_name = "Estimator"
-    context = " by %s" % estimator_name if estimator is not None else ""
+    context = f" by {estimator_name}" if estimator is not None else ""
 
     if (hasattr(array, 'issparse') and array.issparse()) or issparse(array):
         _ensure_no_complex_data(array)
@@ -374,8 +371,7 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
                 warnings.simplefilter('error', ComplexWarning)
                 array = mt.asarray(array, dtype=dtype, order=order)
             except ComplexWarning:
-                raise ValueError("Complex data not supported\n"
-                                 "{}\n".format(array))
+                raise ValueError(f"Complex data not supported\n{array}\n")
 
         # It is possible that the np.array(..) gave no warning. This happens
         # when no dtype conversion happened, for example dtype = None. The
@@ -387,17 +383,17 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
             # If input is scalar raise error
             if array.ndim == 0:
                 raise ValueError(
-                    "Expected 2D array, got scalar array instead:\narray={}.\n"
+                    f"Expected 2D array, got scalar array instead:\narray={array}.\n"
                     "Reshape your data either using array.reshape(-1, 1) if "
                     "your data has a single feature or array.reshape(1, -1) "
-                    "if it contains a single sample.".format(array))
+                    "if it contains a single sample.")
             # If input is 1D raise error
             if array.ndim == 1:
                 raise ValueError(
-                    "Expected 2D array, got 1D array instead:\narray={}.\n"
+                    f"Expected 2D array, got 1D array instead:\narray={array}.\n"
                     "Reshape your data either using array.reshape(-1, 1) if "
                     "your data has a single feature or array.reshape(1, -1) "
-                    "if it contains a single sample.".format(array))
+                    "if it contains a single sample.")
 
         # in the future np.flexible dtypes will be handled like object dtypes
         if dtype_numeric and np.issubdtype(array.dtype, np.flexible):
@@ -604,7 +600,7 @@ def column_or_1d(y, warn=False):
                           DataConversionWarning, stacklevel=2)
         return mt.ravel(y)
 
-    raise ValueError("bad input shape {0}".format(shape))
+    raise ValueError(f"bad input shape {shape}")
 
 
 check_is_fitted = check_is_fitted
@@ -660,6 +656,6 @@ def _check_sample_weight(sample_weight, X, dtype=None):
             raise ValueError("Sample weights must be 1D array or scalar")
 
         if sample_weight.shape != (n_samples,):
-            raise ValueError("sample_weight.shape == {}, expected {}!"
-                             .format(sample_weight.shape, (n_samples,)))
+            raise ValueError(f"sample_weight.shape == {sample_weight.shape}, "
+                             f"expected {(n_samples,)}!")
     return sample_weight

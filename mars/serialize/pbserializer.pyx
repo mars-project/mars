@@ -314,9 +314,8 @@ cdef class ProtobufSerializeProvider(Provider):
             obj.list.is_tuple = True
             if tp is not None and isinstance(tp.type, tuple):
                 if len(tp.type) != len(value):
-                    raise ValueError('Value length should be {0} '
-                                     'according to type definition, got {1}'
-                                     .format(len(tp.type), len(value)))
+                    raise ValueError(f'Value length should be {len(tp.type)} '
+                                     f'according to type definition, got {len(value)}')
                 for it_type, val in zip(tp.type, value):
                     if weak_ref:
                         val = val()
@@ -463,7 +462,7 @@ cdef class ProtobufSerializeProvider(Provider):
             # dict type
             self._set_dict(<dict>value, obj, tp, weak_ref=weak_ref)
         else:
-            raise TypeError('Unknown type to serialize: {0}'.format(tp))
+            raise TypeError(f'Unknown type to serialize: {tp}')
 
     cdef inline void _set_untyped_value(self, value, obj, bint weak_ref=False) except *:
         if not isinstance(value, (list, tuple, dict)) and weak_ref:
@@ -523,7 +522,7 @@ cdef class ProtobufSerializeProvider(Provider):
         elif callable(value):
             self._set_function(value, obj)
         else:
-            raise TypeError('Unknown type to serialize: {0}'.format(type(value)))
+            raise TypeError(f'Unknown type to serialize: {type(value)}')
 
     cdef inline void _set_value(cls, value, obj, tp=None, bint weak_ref=False) except *:
         if tp is None:
@@ -549,8 +548,8 @@ cdef class ProtobufSerializeProvider(Provider):
             if isinstance(value, model):
                 value.serialize(self, obj=value_pb)
             else:
-                raise TypeError('Does not match type for reference field {0}: '
-                                'expect {1}, got {2}'.format(tag, model, type(value)))
+                raise TypeError(f'Does not match type for reference field {tag}: '
+                                f'expect {model}, got {type(value)}')
 
     cpdef serialize_field(self, Field field, model_instance, obj):
         cdef object value
@@ -573,8 +572,7 @@ cdef class ProtobufSerializeProvider(Provider):
                     matched = True
                     return
             if not matched and value is not None:
-                raise ValueError('Value {0} cannot match any type for OneOfField `{1}`'.format(
-                    value, field.tag_name(self)))
+                raise ValueError(f'Value {value} cannot match any type for OneOfField `{field.tag_name(self)}`')
             return
 
         value = getattr(model_instance, field.attr, field.default)
@@ -584,7 +582,7 @@ cdef class ProtobufSerializeProvider(Provider):
         try:
             field_obj = getattr(obj, tag)
         except AttributeError:
-            raise AttributeError('no attribute {} for {}'.format(tag, model_instance))
+            raise AttributeError(f'no attribute {tag} for {model_instance}')
 
         if value is None:
             return
@@ -614,22 +612,25 @@ cdef class ProtobufSerializeProvider(Provider):
                 self._set_value(value, field_obj, field.type, weak_ref=field.weak_ref)
             except TypeError:
                 exc_info = sys.exc_info()
-                raise TypeError('Failed to set field `{}` for {} with value {}, reason: {}'.format(
-                    tag, model_instance, value, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
+                raise TypeError(f'Failed to set field `{tag}` for {model_instance} with '
+                                f'value {value}, reason: {exc_info[1]}') \
+                    .with_traceback(exc_info[2]) from exc_info[1]
         elif isinstance(field, TupleField):
             try:
                 self._set_tuple(value, field_obj, tp=field.type, weak_ref=field.weak_ref)
             except TypeError:
                 exc_info = sys.exc_info()
-                raise TypeError('Failed to set field `{}` for {} with value {}, reason: {}'.format(
-                    tag, model_instance, value, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
+                raise TypeError(f'Failed to set field `{tag}` for {model_instance} with '
+                                f'value {value}, reason: {exc_info[1]}') \
+                    .with_traceback(exc_info[2]) from exc_info[1]
         else:
             try:
                 setattr(obj, tag, value)
             except TypeError:
                 exc_info = sys.exc_info()
-                raise TypeError('Failed to set field `{}` for {} with value {}, reason: {}'.format(
-                    tag, model_instance, value, exc_info[1])).with_traceback(exc_info[2]) from exc_info[1]
+                raise TypeError(f'Failed to set field `{tag}` for {model_instance} with '
+                                f'value {value}, reason: {exc_info[1]}') \
+                    .with_traceback(exc_info[2]) from exc_info[1]
 
     cpdef serialize_attribute_as_dict(self, model_instance, obj=None):
         cdef object id_field
@@ -741,7 +742,7 @@ cdef class ProtobufSerializeProvider(Provider):
             # dict type
             return self._get_dict(obj, tp, callbacks, weak_ref)
         else:
-            raise TypeError('Unknown type to deserialize: {0}'.format(tp))
+            raise TypeError(f'Unknown type to deserialize: {tp}')
 
     cdef inline object _get_untyped_value(self, obj, list callbacks, bint weak_ref):
         cdef str field

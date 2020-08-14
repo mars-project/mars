@@ -35,7 +35,7 @@ class Test(TestBase):
                 array = np.random.randint(0, 256, 2500 * 3, dtype=np.uint8).reshape((50, 50, 3))
                 raws.append(array)
                 im = Image.fromarray(array)
-                im.save(os.path.join(tempdir, 'random_{}.png'.format(i)))
+                im.save(os.path.join(tempdir, f'random_{i}.png'))
 
             t = imread(os.path.join(tempdir, 'random_0.png'))
             self.assertEqual(t.shape, (50, 50, 3))

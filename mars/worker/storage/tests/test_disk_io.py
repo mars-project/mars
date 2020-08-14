@@ -44,7 +44,7 @@ class Test(WorkerCase):
             | dataserializer.get_supported_compressions()
 
     def testDiskReadAndWrite(self, *_):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
@@ -137,7 +137,7 @@ class Test(WorkerCase):
                 assert_allclose(self.get_result(5), data2)
 
     def testDiskReadAndWritePacked(self, *_):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerClusterInfoActor, [test_addr],
@@ -190,7 +190,7 @@ class Test(WorkerCase):
                 assert_allclose(self.get_result(5), data1)
 
     def testDiskLoad(self, *_):
-        test_addr = '127.0.0.1:%d' % get_next_port()
+        test_addr = f'127.0.0.1:{get_next_port()}'
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())

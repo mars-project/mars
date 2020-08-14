@@ -81,7 +81,7 @@ def get_operand_actor_class(op_cls):
                 return actor_cls
             except KeyError:
                 continue
-        raise KeyError('Operand type %s not supported.' % op_cls.__name__)  # pragma: no cover
+        raise KeyError(f'Operand type {op_cls} not supported')  # pragma: no cover
 
 
 def register_operand_class(op_cls, actor_cls):

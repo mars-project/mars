@@ -157,7 +157,7 @@ def df_insert(df, loc, column, value, allow_duplicates=False):
     allow_duplicates : bool, optional
     """
     if isinstance(value, TENSOR_TYPE) and value.ndim > 1:
-        raise ValueError('Wrong number of items passed %d, placement implies 1' % value.ndim)
+        raise ValueError(f'Wrong number of items passed {value.ndim}, placement implies 1')
 
     op = DataFrameInsert(loc=loc, column=column, value=value, allow_duplicates=allow_duplicates)
     out_df = op(df)

@@ -259,8 +259,8 @@ def _validate_sort_psrs_kinds(psrs_kinds):
                                          'should be specified')
                 upper_psrs_kind = psrs_kind.upper()
                 if upper_psrs_kind not in _AVAILABLE_KINDS:
-                    raise ValueError('{} is an unrecognized kind '
-                                     'in psrs_kinds'.format(psrs_kind))
+                    raise ValueError(f'{psrs_kind} is an unrecognized kind '
+                                     'in psrs_kinds')
         else:
             raise TypeError('psrs_kinds should be list or tuple')
     else:
@@ -280,13 +280,13 @@ def _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order):
         kind = kind.upper()
         if kind not in _AVAILABLE_KINDS:
             # check kind
-            raise ValueError('{} is an unrecognized kind of sort'.format(raw_kind))
+            raise ValueError(f'{raw_kind} is an unrecognized kind of sort')
     if parallel_kind is not None:
         raw_parallel_kind = parallel_kind
         parallel_kind = parallel_kind.upper()
         if parallel_kind not in {'PSRS'}:
-            raise ValueError('{} is an unrecognized kind of '
-                             'parallel sort'.format(raw_parallel_kind))
+            raise ValueError(f'{raw_parallel_kind} is an unrecognized kind of '
+                             'parallel sort')
 
     order = validate_order(a.dtype, order)
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
@@ -424,7 +424,7 @@ def sort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None,
     need_align = kw.pop('need_align', None)
     if len(kw) > 0:
         raise TypeError('sort() got an unexpected keyword '
-                        'argument \'{}\''.format(next(iter(kw))))
+                        f'argument \'{next(iter(kw))}\'')
     a, axis, kind, parallel_kind, psrs_kinds, order = \
         _validate_sort_arguments(a, axis, kind, parallel_kind, psrs_kinds, order)
     op = TensorSort(axis=axis, kind=kind, parallel_kind=parallel_kind,

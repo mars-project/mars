@@ -68,9 +68,8 @@ PAIRWISE_BOOLEAN_FUNCTIONS = [
 def pairwise_distances(X, Y=None, metric="euclidean", **kwds):
     if (metric not in _VALID_METRICS and
             not callable(metric) and metric != "precomputed"):
-        raise ValueError("Unknown metric %s. "
-                         "Valid metrics are %s, or 'precomputed', or a "
-                         "callable" % (metric, _VALID_METRICS))
+        raise ValueError(f"Unknown metric {metric}. Valid metrics are {_VALID_METRICS}, "
+                         "or 'precomputed', or a callable")
 
     if metric == "precomputed":
         X, _ = PairwiseDistances.check_pairwise_arrays(X, Y, precomputed=True)
@@ -88,7 +87,7 @@ def pairwise_distances(X, Y=None, metric="euclidean", **kwds):
         if (dtype == bool and
                 (X.dtype != bool or (Y is not None and Y.dtype != bool)) and
                 DataConversionWarning is not None):
-            msg = "Data was converted to boolean for metric %s" % metric
+            msg = f"Data was converted to boolean for metric {metric}"
             warnings.warn(msg, DataConversionWarning)
 
         X, Y = PairwiseDistances.check_pairwise_arrays(X, Y, dtype=dtype)
