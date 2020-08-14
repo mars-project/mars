@@ -742,6 +742,15 @@ class Test(unittest.TestCase):
         self.assertIs(type(s), type(dest_s))
         self.assertEqual(s, dest_s)
 
+        # test DataFrame with SparseDtype
+        s = pd.Series([1, 2, np.nan, np.nan, 3]).astype(
+            pd.SparseDtype(np.dtype(np.float64), np.nan))
+        dest_s = dataserializer.loads((dataserializer.dumps(s)))
+        pd.testing.assert_series_equal(s, dest_s)
+        df = pd.DataFrame({'s': s})
+        dest_df = dataserializer.loads((dataserializer.dumps(df)))
+        pd.testing.assert_frame_equal(df, dest_df)
+
     @unittest.skipIf(pyarrow is None, 'PyArrow is not installed.')
     def testArrowSerialize(self):
         array = np.random.rand(1000, 100)

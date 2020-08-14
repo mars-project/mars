@@ -79,6 +79,7 @@ mars.dataframe.DataFrame
       ~DataFrame.radd
       ~DataFrame.rdiv
       ~DataFrame.rechunk
+      ~DataFrame.reindex
       ~DataFrame.rename
       ~DataFrame.reset_index
       ~DataFrame.rfloordiv

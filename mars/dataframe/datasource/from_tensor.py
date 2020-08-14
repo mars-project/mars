@@ -340,7 +340,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
 def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):
     if tensor.ndim > 2 or tensor.ndim <= 0:
-        raise TypeError('Not support create DataFrame from {0} dims tensor', format(tensor.ndim))
+        raise TypeError('Not support create DataFrame from {0} dims tensor'.format(tensor.ndim))
     try:
         col_num = tensor.shape[1]
     except IndexError:
