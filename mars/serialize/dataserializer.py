@@ -380,18 +380,23 @@ def _deserialize_pandas_categorical_dtype(data):
     return pd.CategoricalDtype(data[0], data[1])
 
 
+def _serialize_arrow_dtype(obj):
+    return type(obj), obj.name
+
+
+def _deserialize_arrow_dtype(obj):
+    tp, name = obj
+    return tp.construct_from_string(name)
+
+
 def _serialize_arrow_array(obj):
-    return obj._arrow_array.chunks
+    return obj.dtype, obj._arrow_array.chunks
 
 
-def _deserialize_arrow_string_array(obj):
-    from ..dataframe.arrays import ArrowStringArray
-    return ArrowStringArray(pyarrow.chunked_array(obj))
-
-
-def _deserialize_arrow_list_array(obj):
-    from ..dataframe.arrays import ArrowListArray
-    return ArrowListArray(pyarrow.chunked_array(obj))
+def _deserialize_arrow_array(obj):
+    dtype, chunks = obj
+    arrow_array = pyarrow.chunked_array(chunks)
+    return dtype.construct_array_type()(arrow_array)
 
 
 def _serialize_sparse_array(obj):
@@ -496,7 +501,7 @@ def _apply_pyarrow_serialization_patch(serialization_context):  # pragma: no cov
 
 
 def mars_serialize_context():
-    from ..dataframe.arrays import ArrowStringArray, ArrowListArray
+    from ..dataframe.arrays import ArrowArray, ArrowDtype
 
     global _serialize_context
     if _serialize_context is None:
@@ -519,12 +524,12 @@ def mars_serialize_context():
         ctx.register_type(pd.CategoricalDtype, 'pandas.CategoricalDtype',
                           custom_serializer=_serialize_pandas_categorical_dtype,
                           custom_deserializer=_deserialize_pandas_categorical_dtype)
-        ctx.register_type(ArrowStringArray, 'mars.dataframe.ArrowStringArray',
+        ctx.register_type(ArrowDtype, 'mars.dataframe.ArrowDtype',
+                          custom_serializer=_serialize_arrow_dtype,
+                          custom_deserializer=_deserialize_arrow_dtype)
+        ctx.register_type(ArrowArray, 'mars.dataframe.ArrowArray',
                           custom_serializer=_serialize_arrow_array,
-                          custom_deserializer=_deserialize_arrow_string_array)
-        ctx.register_type(ArrowListArray, 'mars.dataframe.ArrowListArray',
-                          custom_serializer=_serialize_arrow_array,
-                          custom_deserializer=_deserialize_arrow_list_array)
+                          custom_deserializer=_deserialize_arrow_array)
         ctx.register_type(pd.arrays.SparseArray, 'pandas.arrays.SparseArray',
                           custom_serializer=_serialize_sparse_array,
                           custom_deserializer=_deserialzie_sparse_array)
