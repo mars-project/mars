@@ -28,6 +28,9 @@ import pytz
 import pandas as pd
 from numpy.testing import assert_array_equal
 
+from mars.core import Base, Entity
+from mars.dataframe import ArrowStringDtype, ArrowListDtype
+from mars.errors import SerializationFailed
 from mars.lib import sparse
 from mars.lib.groupby_wrapper import wrapped_groupby
 from mars.serialize.core import Serializable, IdentityField, StringField, UnicodeField, \
@@ -40,8 +43,6 @@ from mars.serialize.core import Serializable, IdentityField, StringField, Unicod
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
-from mars.core import Base, Entity
-from mars.errors import SerializationFailed
 from mars.tests.core import assert_groupby_equal
 from mars.utils import to_binary, to_text
 
@@ -741,6 +742,15 @@ class Test(unittest.TestCase):
         dest_s = dataserializer.loads((dataserializer.dumps(s)))
         self.assertIs(type(s), type(dest_s))
         self.assertEqual(s, dest_s)
+
+        # test ArrowArray
+        df = pd.DataFrame({'a': ['s1', 's2', 's3'],
+                           'b': [['s1', 's2'], ['s3'], ['s4', 's5']]})
+        df['a'] = df['a'].astype(ArrowStringDtype())
+        df['b'] = df['b'].astype(ArrowListDtype(str))
+        dest_df = dataserializer.loads(dataserializer.dumps(df))
+        self.assertIs(type(df), type(dest_df))
+        pd.testing.assert_frame_equal(df, dest_df)
 
         # test DataFrame with SparseDtype
         s = pd.Series([1, 2, np.nan, np.nan, 3]).astype(

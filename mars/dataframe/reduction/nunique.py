@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
-
 import pandas as pd
+try:
+    import pyarrow as pa
+except ImportError:  # pragma: no cover
+    pa = None
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
+from ...config import options
 from ...serialize import BoolField
 from ...utils import lazy_import
+from ..arrays import ArrowListArray, ArrowListDtype
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 
@@ -31,16 +35,43 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
     _func_name = 'nunique'
 
     _dropna = BoolField('dropna')
+    _use_arrow_dtype = BoolField('use_arrow_dtype')
 
-    def __init__(self, dropna=None, **kw):
-        super(DataFrameNunique, self).__init__(_dropna=dropna, **kw)
+    def __init__(self, dropna=None, use_arrow_dtype=None, **kw):
+        super(DataFrameNunique, self).__init__(
+            _dropna=dropna, _use_arrow_dtype=use_arrow_dtype, **kw)
 
     @property
     def dropna(self):
         return self._dropna
 
+    @property
+    def use_arrow_dtype(self):
+        return self._use_arrow_dtype
+
     @classmethod
-    def _execute_map(cls, ctx, op):
+    def _if_use_arrow_dtype(cls, op):
+        use_arrow_dtype = op.use_arrow_dtype
+        if use_arrow_dtype is None:
+            # get options again,
+            # options may different when running
+            use_arrow_dtype = options.dataframe.use_arrow_dtype
+        return use_arrow_dtype
+
+    @classmethod
+    def _drop_duplicates_to_arrow(cls, v, explode=False):
+        if explode:
+            v = v.explode()
+        try:
+            return ArrowListArray([v.drop_duplicates().to_numpy()])
+        except pa.ArrowInvalid:
+            # fallback due to diverse dtypes
+            return [v.drop_duplicates().to_list()]
+
+    @classmethod
+    def _execute_map(cls, ctx, op: "DataFrameNunique"):
+        use_arrow_dtype = cls._if_use_arrow_dtype(op)
+
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
         if isinstance(in_data, xdf.Series) or op.output_types[0] == OutputType.series:
@@ -48,16 +79,26 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
             ctx[op.outputs[0].key] = xdf.Series(unique_values, name=in_data.name)
         else:
             if op.axis == 0:
-                df = xdf.DataFrame(OrderedDict((d, [v.drop_duplicates().to_list()])
-                                               for d, v in in_data.iteritems()))
+                data = dict()
+                for d, v in in_data.iteritems():
+                    if not use_arrow_dtype or xdf is cudf:
+                        data[d] = [v.drop_duplicates().to_list()]
+                    else:
+                        data[d] = cls._drop_duplicates_to_arrow(v)
+                df = xdf.DataFrame(data)
             else:
                 df = xdf.DataFrame(columns=[0])
                 for d, v in in_data.iterrows():
-                    df.loc[d] = [v.drop_duplicates().to_list()]
+                    if not use_arrow_dtype or xdf is cudf:
+                        df.loc[d] = [v.drop_duplicates().to_list()]
+                    else:
+                        df.loc[d] = cls._drop_duplicates_to_arrow(v)
             ctx[op.outputs[0].key] = df
 
     @classmethod
     def _execute_combine(cls, ctx, op):
+        use_arrow_dtype = cls._if_use_arrow_dtype(op)
+
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
         if isinstance(in_data, xdf.Series):
@@ -65,27 +106,38 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
             ctx[op.outputs[0].key] = xdf.Series(unique_values, name=in_data.name)
         else:
             if op.axis == 0:
-                df = xdf.DataFrame(OrderedDict((d, [v.explode().drop_duplicates().to_list()])
-                                               for d, v in in_data.iteritems()))
+                data = dict()
+                for d, v in in_data.iteritems():
+                    if not use_arrow_dtype or xdf is cudf:
+                        data[d] = [v.explode().drop_duplicates().to_list()]
+                    else:
+                        v = pd.Series(v.to_numpy())
+                        data[d] = cls._drop_duplicates_to_arrow(v, explode=True)
+                df = xdf.DataFrame(data)
             else:
                 df = xdf.DataFrame(columns=[0])
                 for d, v in in_data.iterrows():
-                    df.loc[d] = [v.explode().drop_duplicates().to_list()]
+                    if not use_arrow_dtype or xdf is cudf:
+                        df.loc[d] = [v.explode().drop_duplicates().to_list()]
+                    else:
+                        df.loc[d] = cls._drop_duplicates_to_arrow(v, explode=True)
             ctx[op.outputs[0].key] = df
 
     @classmethod
     def _execute_agg(cls, ctx, op):
         xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
+        dropna = op.dropna
         if isinstance(in_data, xdf.Series):
-            ctx[op.outputs[0].key] = in_data.explode().nunique(dropna=op.dropna)
+            ctx[op.outputs[0].key] = in_data.explode().nunique(dropna=dropna)
         else:
-            if op.axis == 0:
-                ctx[op.outputs[0].key] = xdf.Series(OrderedDict((d, v.explode().nunique(dropna=op.dropna))
-                                                    for d, v in in_data.iteritems()))
-            else:
-                ctx[op.outputs[0].key] = xdf.Series(OrderedDict((d, v.explode().nunique(dropna=op.dropna))
-                                                    for d, v in in_data.iterrows()))
+            in_data_iter = in_data.iteritems() if op.axis == 0 else in_data.iterrows()
+            data = dict()
+            for d, v in in_data_iter:
+                if isinstance(v.dtype, ArrowListDtype):
+                    v = xdf.Series(v.to_numpy())
+                data[d] = v.explode().nunique(dropna=dropna)
+            ctx[op.outputs[0].key] = xdf.Series(data)
 
     @classmethod
     def _execute_reduction(cls, in_data, op, min_count=None, reduction_func=None):
@@ -137,7 +189,8 @@ def nunique_dataframe(df, axis=0, dropna=True, combine_size=None):
     dtype: int64
     """
     op = DataFrameNunique(axis=axis, dropna=dropna, combine_size=combine_size,
-                          output_types=[OutputType.series])
+                          output_types=[OutputType.series],
+                          use_arrow_dtype=options.dataframe.use_arrow_dtype)
     return op(df)
 
 
@@ -179,5 +232,6 @@ def nunique_series(df, dropna=True, combine_size=None):
     4
     """
     op = DataFrameNunique(dropna=dropna, combine_size=combine_size,
-                          output_types=[OutputType.scalar])
+                          output_types=[OutputType.scalar],
+                          use_arrow_dtype=options.dataframe.use_arrow_dtype)
     return op(df)
