@@ -905,30 +905,34 @@ def arrow_table_to_pandas_dataframe(arrow_table, use_arrow_dtype=True, **kw):
         # if not use arrow string, just return
         return arrow_table.to_pandas(**kw)
 
-    from .arrays import ArrowStringArray
+    from .arrays import ArrowStringArray, ArrowListArray
 
     table = arrow_table
     schema = arrow_table.schema
 
-    string_field_names = list()
-    string_arrays = list()
-    string_indexes = list()
+    arrow_field_names = list()
+    arrow_arrays = list()
+    arrow_indexes = list()
     other_field_names = list()
     other_arrays = list()
     for i, arrow_type in enumerate(schema.types):
-        if arrow_type == pa.string():
-            string_field_names.append(schema.names[i])
-            string_indexes.append(i)
-            string_arrays.append(table.columns[i])
+        if arrow_type == pa.string() or isinstance(arrow_type, pa.ListType):
+            arrow_field_names.append(schema.names[i])
+            arrow_indexes.append(i)
+            arrow_arrays.append(table.columns[i])
         else:
             other_field_names.append(schema.names[i])
             other_arrays.append(table.columns[i])
 
     df = pa.Table.from_arrays(
         other_arrays, names=other_field_names).to_pandas(**kw)
-    for string_index, string_name, string_array in \
-            zip(string_indexes, string_field_names, string_arrays):
-        df.insert(string_index, string_name,
-                  pd.Series(ArrowStringArray(string_array)))
+    for arrow_index, arrow_name, arrow_array in \
+            zip(arrow_indexes, arrow_field_names, arrow_arrays):
+        if arrow_array.type == pa.string():
+            series = pd.Series(ArrowStringArray(arrow_array))
+        else:
+            assert isinstance(arrow_array.type, pa.ListType)
+            series = pd.Series(ArrowListArray(arrow_array))
+        df.insert(arrow_index, arrow_name, series)
 
     return df

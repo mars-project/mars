@@ -14,6 +14,7 @@
 
 import itertools
 import operator
+import re
 from copy import copy as copy_obj
 from numbers import Integral
 from typing import Type, Sequence
@@ -21,14 +22,17 @@ from typing import Type, Sequence
 import numpy as np
 import pandas as pd
 from pandas._libs import lib
-from pandas.api.types import pandas_dtype, is_scalar, is_array_like, is_string_dtype
-from pandas.api.extensions import ExtensionArray, ExtensionDtype, register_extension_dtype
+from pandas.api.types import pandas_dtype, is_scalar, \
+    is_array_like, is_string_dtype, is_list_like
+from pandas.api.extensions import ExtensionArray, \
+    ExtensionDtype, register_extension_dtype
 from pandas.core import ops
 from pandas.core.algorithms import take
 from pandas.compat import set_function_name
 try:
     from pandas.arrays import StringArray as StringArrayBase
-except ImportError:  # for pandas < 1.0
+except ImportError:  # pragma: no cover
+    # for pandas < 1.0
     StringArrayBase = ExtensionArray
 try:
     from pandas.api.indexers import check_array_indexer
@@ -69,8 +73,17 @@ except ImportError:  # pragma: no cover
     pa_null = None
 
 
+class ArrowDtype(ExtensionDtype):
+    @property
+    def arrow_type(self):  # pragma: no cover
+        raise NotImplementedError
+
+    def __from_arrow__(self, array):
+        return self.construct_array_type()(array)
+
+
 @register_extension_dtype
-class ArrowStringDtype(ExtensionDtype):
+class ArrowStringDtype(ArrowDtype):
     """
     Extension dtype for arrow string data.
 
@@ -99,7 +112,7 @@ class ArrowStringDtype(ExtensionDtype):
 
     type = str
     kind = "U"
-    name = "arrow_string"
+    name = "Arrow[string]"
     na_value = pa_null
 
     @classmethod
@@ -114,12 +127,109 @@ class ArrowStringDtype(ExtensionDtype):
     def construct_array_type(cls) -> "Type[ArrowStringArray]":
         return ArrowStringArray
 
-    def __from_arrow__(self, array):
-        return ArrowStringArray(array)
+    @property
+    def arrow_type(self):
+        return pa.string()
 
 
-class ArrowStringArray(StringArrayBase):
-    def __init__(self, values, copy=False):
+@register_extension_dtype
+class ArrowStringDtypeAlias(ArrowStringDtype):
+    name = 'arrow_string'  # register an alias name for compatibility
+
+
+class ArrowListDtype(ArrowDtype):
+    _metadata = ("_value_type",)
+
+    def __init__(self, dtype):
+        if isinstance(dtype, type(self)):
+            dtype = dtype.value_type
+        if pa and isinstance(dtype, pa.DataType):
+            dtype = dtype.to_pandas_dtype()
+
+        dtype = pandas_dtype(dtype)
+        if is_string_dtype(dtype) and \
+                not isinstance(dtype, ArrowStringDtype):
+            # convert string dtype to arrow string dtype
+            dtype = ArrowStringDtype()
+
+        self._value_type = dtype
+
+    @property
+    def value_type(self):
+        return self._value_type
+
+    @property
+    def kind(self):
+        return self._value_type.kind
+
+    @property
+    def type(self):
+        return self._value_type.type
+
+    @property
+    def name(self):
+        return "Arrow[List[{}]]".format(self.value_type.name)
+
+    @property
+    def arrow_type(self):
+        if isinstance(self._value_type, ArrowDtype):
+            arrow_subdtype = self._value_type.arrow_type
+        else:
+            arrow_subdtype = pa.from_numpy_dtype(self._value_type)
+        return pa.list_(arrow_subdtype)
+
+    def __repr__(self) -> str:
+        return self.name
+
+    @classmethod
+    def construct_array_type(cls) -> "Type[ArrowListArray]":
+        return ArrowListArray
+
+    @classmethod
+    def construct_from_string(cls, string):
+        msg = "Cannot construct a 'ArrowListDtype' from '{}'".format(string)
+        xpr = re.compile(r"Arrow\[List\[(?P<value_type>[^,]*)\]\]$")
+        m = xpr.match(string)
+        if m:
+            value_type = m.groupdict()["value_type"]
+            return ArrowListDtype(value_type)
+        else:
+            raise TypeError(msg)
+
+    @classmethod
+    def is_dtype(cls, dtype) -> bool:
+        dtype = getattr(dtype, "dtype", dtype)
+        if isinstance(dtype, str):
+            try:
+                cls.construct_from_string(dtype)
+            except TypeError:
+                return False
+            else:
+                return True
+        else:
+            return isinstance(dtype, cls)
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other):
+        if not isinstance(other, ArrowListDtype):
+            return False
+
+        value_type = self._value_type
+        other_value_type = other._value_type
+
+        try:
+            return value_type == other_value_type
+        except TypeError:
+            # cannot compare numpy dtype and extension dtype
+            return other_value_type == value_type
+
+
+class ArrowArray(ExtensionArray):
+    _arrow_type = None
+
+    def __init__(self, values, dtype: ArrowDtype = None, copy=False):
         if isinstance(values, (pd.Index, pd.Series)):
             # for pandas Index and Series,
             # convert to PandasArray
@@ -134,54 +244,26 @@ class ArrowStringArray(StringArrayBase):
             arrow_array = pa.chunked_array([pa.array(values, from_pandas=True)])
         elif isinstance(values, pa.ChunkedArray):
             arrow_array = values
-        elif isinstance(values, pa.StringArray):
+        elif isinstance(values, pa.Array):
             arrow_array = pa.chunked_array([values])
         else:
-            arrow_array = pa.chunked_array([pa.array(values, type=pa.string())])
+            arrow_array = pa.chunked_array([pa.array(values, type=dtype.arrow_type)])
 
         if copy:
             arrow_array = copy_obj(arrow_array)
 
         self._arrow_array = arrow_array
-        self._dtype = ArrowStringDtype()
+        self._dtype = dtype
 
         # for test purpose
         self._force_use_pandas = False
-
-    @classmethod
-    def from_scalars(cls, values):
-        values = np.asarray(values)
-        if not is_string_dtype(values):
-            values = np.asarray(pd.Series(values).map(
-                lambda x: x if pd.isna(x) else str(x)))
-        arrow_array = pa.chunked_array([pa.array(values)])
-        return cls(arrow_array)
-
-    @classmethod
-    def _from_sequence(cls, scalars, dtype=None, copy=False):
-        if not hasattr(scalars, 'dtype'):
-            scalars = np.asarray(scalars)
-        if isinstance(scalars, cls):
-            if copy:
-                scalars = scalars.copy()
-            return scalars
-        arrow_array = pa.chunked_array([pa.array(scalars).cast(pa.string())])
-        return cls(arrow_array, copy=copy)
-
-    @classmethod
-    def _from_sequence_of_strings(cls, strings, dtype=None, copy=False):
-        return cls._from_sequence(strings, dtype=dtype, copy=copy)
-
-    @classmethod
-    def _from_factorized(cls, values, original):
-        return cls(values)
 
     def __repr__(self):
         return "{}({})".format(type(self).__name__,
                                repr(self._arrow_array))
 
     @property
-    def dtype(self):
+    def dtype(self) -> "Type[ArrowDtype]":
         return self._dtype
 
     @property
@@ -193,6 +275,28 @@ class ArrowStringArray(StringArrayBase):
 
     def memory_usage(self, deep=True) -> int:
         return self.nbytes
+
+    @classmethod
+    def _to_arrow_array(cls, scalars):
+        return pa.array(scalars)
+
+    @classmethod
+    def _from_sequence(cls, scalars, dtype=None, copy=False):
+        if not hasattr(scalars, 'dtype'):
+            ret = np.empty(len(scalars), dtype=object)
+            for i, s in enumerate(scalars):
+                ret[i] = s
+            scalars = ret
+        if isinstance(scalars, cls):
+            if copy:
+                scalars = scalars.copy()
+            return scalars
+        arrow_array = pa.chunked_array([cls._to_arrow_array(scalars)])
+        return cls(arrow_array, dtype=dtype, copy=copy)
+
+    @classmethod
+    def _from_sequence_of_strings(cls, strings, dtype=None, copy=False):
+        return cls._from_sequence(strings, dtype=dtype, copy=copy)
 
     @staticmethod
     def _can_process_slice_via_arrow(slc):
@@ -217,66 +321,54 @@ class ArrowStringArray(StringArrayBase):
     def _values_for_argsort(self):
         return self.to_numpy()
 
+    @classmethod
+    def _from_factorized(cls, values, original):
+        return cls(values)
+
     @staticmethod
     def _process_pos(pos, length, is_start):
         if pos is None:
             return 0 if is_start else length
         return pos + length if pos < 0 else pos
 
+    @classmethod
+    def _post_scalar_getitem(cls, lst):
+        return lst.to_pandas()[0]
+
     def __getitem__(self, item):
+        cls = type(self)
         has_take = hasattr(self._arrow_array, 'take')
         if not self._force_use_pandas and has_take:
             if pd.api.types.is_scalar(item):
                 item = item + len(self) if item < 0 else item
-                return self._arrow_array.take([item]).to_pandas()[0]
+                return self._post_scalar_getitem(
+                    self._arrow_array.take([item]))
             elif self._can_process_slice_via_arrow(item):
                 length = len(self)
                 start, stop = item.start, item.stop
                 start = self._process_pos(start, length, True)
                 stop = self._process_pos(stop, length, False)
-                return ArrowStringArray(
-                    self._arrow_array.slice(offset=start,
-                                            length=stop - start))
+                return cls(self._arrow_array.slice(offset=start, length=stop - start),
+                           dtype=self._dtype)
             elif hasattr(item, 'dtype') and np.issubdtype(item.dtype, np.bool_):
-                return ArrowStringArray(self._arrow_array.filter(
-                    pa.array(item, from_pandas=True)))
+                return cls(self._arrow_array.filter(pa.array(item, from_pandas=True)),
+                           dtype=self._dtype)
             elif hasattr(item, 'dtype'):
                 length = len(self)
                 item = np.where(item < 0, item + length, item)
-                return ArrowStringArray(self._arrow_array.take(item))
+                return cls(self._arrow_array.take(item), dtype=self._dtype)
 
         array = np.asarray(self._arrow_array.to_pandas())
-        return ArrowStringArray(array[item])
+        return cls(array[item], dtype=self._dtype)
 
-    def __setitem__(self, key, value):
-        if isinstance(value, (pd.Index, pd.Series)):
-            value = value.to_numpy()
-        if isinstance(value, type(self)):
-            value = value.to_numpy()
-
-        key = check_array_indexer(self, key)
-        scalar_key = is_scalar(key)
-        scalar_value = is_scalar(value)
-        if scalar_key and not scalar_value:
-            raise ValueError("setting an array element with a sequence.")
-
-        # validate new items
-        if scalar_value:
-            if pd.isna(value):
-                value = None
-            elif not isinstance(value, str):
-                raise ValueError(
-                    "Cannot set non-string value '{}' into a StringArray.".format(value)
-                )
-        else:
-            if not is_array_like(value):
-                value = np.asarray(value, dtype=object)
-            if len(value) and not lib.is_string_array(value, skipna=True):
-                raise ValueError("Must provide strings.")
-
-        string_array = np.asarray(self._arrow_array.to_pandas())
-        string_array[key] = value
-        self._arrow_array = pa.chunked_array([pa.array(string_array)])
+    @classmethod
+    def _concat_same_type(
+            cls, to_concat: Sequence["ArrowArray"]) -> "ArrowArray":
+        chunks = list(itertools.chain.from_iterable(
+            x._arrow_array.chunks for x in to_concat))
+        if len(chunks) == 0:
+            chunks = [pa.array([], type=to_concat[0].dtype.arrow_type)]
+        return cls(pa.chunked_array(chunks))
 
     def __len__(self):
         return len(self._arrow_array)
@@ -292,14 +384,21 @@ class ArrowStringArray(StringArrayBase):
             array[self.isna()] = na_value
         return array
 
+    @classmethod
+    def _array_fillna(cls, array, value):
+        return array.fillna(value)
+
     def fillna(self, value=None, method=None, limit=None):
         chunks = []
         for chunk_array in self._arrow_array.chunks:
             array = chunk_array.to_pandas()
-            result_array = array.fillna(value=value, method=method,
-                                        limit=limit)
+            if method is None:
+                result_array = self._array_fillna(array, value)
+            else:
+                result_array = array.fillna(value=value, method=method,
+                                            limit=limit)
             chunks.append(pa.array(result_array, from_pandas=True))
-        return ArrowStringArray(pa.chunked_array(chunks))
+        return type(self)(pa.chunked_array(chunks), dtype=self._dtype)
 
     def astype(self, dtype, copy=True):
         dtype = pandas_dtype(dtype)
@@ -333,44 +432,88 @@ class ArrowStringArray(StringArrayBase):
 
     def take(self, indices, allow_fill=False, fill_value=None):
         if allow_fill is False:
-            return ArrowStringArray(self[indices])
+            return type(self)(self[indices], dtype=self._dtype)
 
-        string_array = self._arrow_array.to_pandas().to_numpy()
+        array = self._arrow_array.to_pandas().to_numpy()
 
         replace = False
         if allow_fill and fill_value is None:
             fill_value = self.dtype.na_value
             replace = True
 
-        result = take(string_array, indices, fill_value=fill_value,
+        result = take(array, indices, fill_value=fill_value,
                       allow_fill=allow_fill)
-        del string_array
+        del array
         if replace:
             # pyarrow cannot recognize pa.NULL
             result[result == self.dtype.na_value] = None
-        return ArrowStringArray(result)
+        return type(self)(result, dtype=self._dtype)
 
     def copy(self):
         return type(self)(copy_obj(self._arrow_array))
 
-    @classmethod
-    def _concat_same_type(
-            cls, to_concat: Sequence["ArrowStringArray"]) -> "ArrowStringArray":
-        chunks = list(itertools.chain.from_iterable(
-            x._arrow_array.chunks for x in to_concat))
-        if len(chunks) == 0:
-            chunks = [pa.array([], type=pa.string())]
-        return cls(pa.chunked_array(chunks))
-
     def value_counts(self, dropna=False):
-        string_array = self._arrow_array.to_pandas()
-        return ArrowStringArray(string_array.value_counts(dropna=dropna))
+        series = self._arrow_array.to_pandas()
+        return type(self)(series.value_counts(dropna=dropna),
+                          dtype=self._dtype)
 
     def any(self, axis=0, out=None):
-        return self._arrow_array.to_pandas().any(axis=axis, out=out)
+        return self.to_numpy().any(axis=axis, out=out)
 
     def all(self, axis=0, out=None):
-        return self._arrow_array.to_pandas().all(axis=axis, out=out)
+        return self.to_numpy().all(axis=axis, out=out)
+
+    def __mars_tokenize__(self):
+        return [memoryview(x) for chunk in self._arrow_array.chunks
+                for x in chunk.buffers()
+                if x is not None]
+
+
+class ArrowStringArray(ArrowArray, StringArrayBase):
+
+    def __init__(self, values, dtype=None, copy=False):
+        if dtype is not None:
+            assert isinstance(dtype, ArrowStringDtype)
+        ArrowArray.__init__(self, values, ArrowStringDtype(), copy=copy)
+
+    @classmethod
+    def from_scalars(cls, values):
+        arrow_array = pa.chunked_array([cls._to_arrow_array(values)])
+        return cls(arrow_array)
+
+    @classmethod
+    def _to_arrow_array(cls, scalars):
+        return pa.array(scalars).cast(pa.string())
+
+    def __setitem__(self, key, value):
+        if isinstance(value, (pd.Index, pd.Series)):
+            value = value.to_numpy()
+        if isinstance(value, type(self)):
+            value = value.to_numpy()
+
+        key = check_array_indexer(self, key)
+        scalar_key = is_scalar(key)
+        scalar_value = is_scalar(value)
+        if scalar_key and not scalar_value:
+            raise ValueError("setting an array element with a sequence.")
+
+        # validate new items
+        if scalar_value:
+            if pd.isna(value):
+                value = None
+            elif not isinstance(value, str):
+                raise ValueError(
+                    "Cannot set non-string value '{}' into a ArrowStringArray.".format(value)
+                )
+        else:
+            if not is_array_like(value):
+                value = np.asarray(value, dtype=object)
+            if len(value) and not lib.is_string_array(value, skipna=True):
+                raise ValueError("Must provide strings.")
+
+        string_array = np.asarray(self._arrow_array.to_pandas())
+        string_array[key] = value
+        self._arrow_array = pa.chunked_array([pa.array(string_array)])
 
     # Overrride parent because we have different return types.
     @classmethod
@@ -449,11 +592,79 @@ class ArrowStringArray(StringArrayBase):
 
     _create_comparison_method = _create_arithmetic_method
 
-    def __mars_tokenize__(self):
-        return [memoryview(x) for chunk in self._arrow_array.chunks
-                for x in chunk.buffers()
-                if x is not None]
-
 
 ArrowStringArray._add_arithmetic_ops()
 ArrowStringArray._add_comparison_ops()
+
+
+class ArrowListArray(ArrowArray):
+    def __init__(self, values, dtype: ArrowListDtype=None, copy=False):
+        if dtype is None:
+            if isinstance(values, type(self)):
+                dtype = values.dtype
+            elif isinstance(values, pa.Array):
+                dtype = ArrowListDtype(values.type.value_type)
+            elif isinstance(values, pa.ChunkedArray):
+                dtype = ArrowListDtype(values.type.value_type)
+            else:
+                values = pa.array(values)
+                dtype = ArrowListDtype(values.type.value_type)
+
+        super().__init__(values, dtype=dtype, copy=copy)
+
+    def to_numpy(self, dtype=None, copy=False, na_value=no_default):
+        s = self._arrow_array.to_pandas().map(
+            lambda x: x.tolist() if x is not None else x)
+        if copy or na_value is not no_default:
+            s = s.copy()
+        if na_value is not no_default:
+            s[self.isna()] = na_value
+        return np.asarray(s)
+
+    @classmethod
+    def _post_scalar_getitem(cls, lst):
+        return lst[0].as_py()
+
+    def __setitem__(self, key, value):
+        if isinstance(value, (pd.Index, pd.Series)):
+            value = value.to_numpy()
+
+        key = check_array_indexer(self, key)
+        scalar_key = is_scalar(key)
+
+        # validate new items
+        if scalar_key:
+            if pd.isna(value):
+                value = None
+            elif not is_list_like(value):
+                raise ValueError('Must provide list.')
+
+        array = np.asarray(self._arrow_array.to_pandas())
+        array[key] = value
+        self._arrow_array = pa.chunked_array([
+            pa.array(array, type=self.dtype.arrow_type)])
+
+    @classmethod
+    def _array_fillna(cls, series, value):
+        # cannot fillna directly, because value is a list-like object
+        return series.apply(lambda x: x if is_list_like(x) or not pd.isna(x) else value)
+
+    def astype(self, dtype, copy=True):
+        msg = 'cannot astype from {} to {}'.format(self.dtype, dtype)
+        dtype = pandas_dtype(dtype)
+        if isinstance(dtype, ArrowListDtype):
+            if self.dtype == dtype:
+                if copy:
+                    return self.copy()
+                return self
+            else:
+                try:
+                    arrow_array = self._arrow_array.cast(dtype.arrow_type)
+                    return ArrowListArray(arrow_array)
+                except (NotImplementedError, pa.ArrowInvalid):
+                    raise TypeError(msg)
+
+        try:
+            return super().astype(dtype, copy=copy)
+        except ValueError:
+            raise TypeError(msg)
