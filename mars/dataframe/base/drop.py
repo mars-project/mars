@@ -117,7 +117,7 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
                     col_to_args[c.index[1]] = (new_dtypes, new_col_id)
 
                 params.update(dict(dtypes=new_dtypes, index=(c.index[0], new_col_id),
-                                   index_value=parse_index(None, (c.key, c.index_value.key))))
+                                   index_value=c.index_value))
                 if op.index is not None:
                     params.update(dict(shape=(np.nan, len(new_dtypes)),
                                        index_value=parse_index(None, (c.key, c.index_value.key))))
