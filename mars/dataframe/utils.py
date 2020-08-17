@@ -20,6 +20,7 @@ from numbers import Integral
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_string_dtype
 from pandas.core.dtypes.cast import find_common_type
 try:
     import pyarrow as pa
@@ -934,3 +935,27 @@ def arrow_table_to_pandas_dataframe(arrow_table, use_arrow_dtype=True, **kw):
         df.insert(arrow_index, arrow_name, series)
 
     return df
+
+
+def to_arrow_dtypes(dtypes, test_df=None):
+    from .arrays import ArrowStringDtype
+
+    new_dtypes = dtypes.copy()
+    for i in range(len(dtypes)):
+        dtype = dtypes.iloc[i]
+        if is_string_dtype(dtype):
+            if test_df is not None:
+                series = test_df.iloc[:, i]
+                # check value
+                non_na_series = series[series.notna()]
+                if len(non_na_series) > 0:
+                    first_value = non_na_series.iloc[0]
+                    if isinstance(first_value, str):
+                        new_dtypes.iloc[i] = ArrowStringDtype()
+                else:  # pragma: no cover
+                    # empty, set arrow string dtype
+                    new_dtypes.iloc[i] = ArrowStringDtype()
+            else:
+                # empty, set arrow string dtype
+                new_dtypes.iloc[i] = ArrowStringDtype()
+    return new_dtypes
