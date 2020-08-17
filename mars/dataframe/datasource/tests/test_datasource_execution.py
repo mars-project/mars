@@ -24,6 +24,7 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.config import option_context
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
@@ -416,6 +417,18 @@ class Test(TestBase):
             self.assertIsInstance(mdf.dtypes.iloc[1], md.ArrowStringDtype)
             self.assertIsInstance(result.dtypes.iloc[1], md.ArrowStringDtype)
             pd.testing.assert_frame_equal(arrow_array_to_objects(result), pdf)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            with option_context({'dataframe.use_arrow_dtype': True}):
+                file_path = os.path.join(tempdir, 'test.csv')
+                df.to_csv(file_path, index=False)
+
+                pdf = pd.read_csv(file_path)
+                mdf = md.read_csv(file_path)
+                result = self.executor.execute_dataframe(mdf, concat=True)[0]
+                self.assertIsInstance(mdf.dtypes.iloc[1], md.ArrowStringDtype)
+                self.assertIsInstance(result.dtypes.iloc[1], md.ArrowStringDtype)
+                pd.testing.assert_frame_equal(arrow_array_to_objects(result), pdf)
 
         # test compression
         with tempfile.TemporaryDirectory() as tempdir:

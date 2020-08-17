@@ -308,7 +308,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
                 dtypes = cls._validate_dtypes(op.outputs[0].dtypes, op.gpu)
-                if cls._contains_arrow_dtype(dtypes):
+                if cls._contains_arrow_dtype(dtypes.values()):
                     # when keep_default_na is True which is default,
                     # will replace null value with np.nan,
                     # which will cause failure when converting to arrow string array
