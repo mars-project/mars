@@ -99,7 +99,11 @@ class Session(object):
         content = json.loads(resp.text)
         self._session_id = content['session_id']
         self._pickle_protocol = content.get('pickle_protocol', pickle.HIGHEST_PROTOCOL)
-        if not content.get('arrow_compatible'):
+
+        # as pyarrow will use pickle.HIGHEST_PROTOCOL to pickle, we need to use
+        # SerialType.PICKLE when pickle protocol between client and server
+        # does not agree with each other
+        if not content.get('arrow_compatible') or self._pickle_protocol != pickle.HIGHEST_PROTOCOL:
             self._serial_type = dataserializer.SerialType.PICKLE
 
     def _get_tileable_graph_key(self, tileable_key):
