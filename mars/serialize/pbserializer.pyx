@@ -60,8 +60,8 @@ cdef dict PRIMITIVE_TYPE_TO_VALUE_FIELD = {
 cdef class ProtobufSerializeProvider(Provider):
     def __init__(self, data_serial_type=None, pickle_protocol=None):
         self.type = ProviderType.protobuf
-        self.data_serial_type = None
-        self.pickle_protocol = None
+        self.data_serial_type = data_serial_type
+        self.pickle_protocol = pickle_protocol
 
     cdef inline void _set_slice(self, slice value, obj, tp=None):
         if value.start is not None:
@@ -71,7 +71,7 @@ cdef class ProtobufSerializeProvider(Provider):
                 obj.slice.start_label = value.start
             else:
                 # dump if not integer or string
-                obj.slice.start_obj = pickle.dumps(value.start)
+                obj.slice.start_obj = pickle.dumps(value.start, protocol=self.pickle_protocol)
         if value.stop is not None:
             if isinstance(value.stop, (int, np.integer)):
                 obj.slice.stop_val = value.stop
@@ -79,7 +79,7 @@ cdef class ProtobufSerializeProvider(Provider):
                 obj.slice.stop_label = value.stop
             else:
                 # dump if not integer or string
-                obj.slice.stop_obj = pickle.dumps(value.stop)
+                obj.slice.stop_obj = pickle.dumps(value.stop, protocol=self.pickle_protocol)
         if value.step is not None:
             obj.slice.step_val = value.step
         if all(it is None for it in (value.start, value.stop, value.step)):
@@ -127,7 +127,7 @@ cdef class ProtobufSerializeProvider(Provider):
                 dtype = dtype.encode('utf-8')
             obj.dtype = dtype
         else:
-            obj.dtype = pickle.dumps(value)
+            obj.dtype = pickle.dumps(value, protocol=self.pickle_protocol)
 
     cdef inline object _get_dtype(self, obj):
         if obj.dtype is None or len(obj.dtype) == 0:
@@ -216,14 +216,14 @@ cdef class ProtobufSerializeProvider(Provider):
         return complex(obj.c.real, obj.c.imag)
 
     cdef inline void _set_function(self, value, obj, tp=None):
-        obj.function = serialize_function(value)
+        obj.function = serialize_function(value, pickle_protocol=self.pickle_protocol)
 
     cdef inline object _get_function(self, obj):
         x = obj.function
         return cloudpickle.loads(x) if x is not None and len(x) > 0 else None
 
     cdef inline void _set_tzinfo(self, value, obj, tp=None):
-        obj.tzinfo = pickle.dumps(value)
+        obj.tzinfo = pickle.dumps(value, protocol=self.pickle_protocol)
 
     cdef inline object _get_tzinfo(self, obj):
         x = obj.tzinfo

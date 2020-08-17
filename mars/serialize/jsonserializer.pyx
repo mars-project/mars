@@ -108,7 +108,8 @@ cdef class JsonSerializeProvider(Provider):
                     'value': pos}
         else:
             return {'type': 'object',
-                    'value': self._to_str(base64.b64encode(pickle.dumps(pos)))}
+                    'value': self._to_str(base64.b64encode(
+                        pickle.dumps(pos, protocol=self.pickle_protocol)))}
 
     cdef inline dict _serialize_slice(self, slice value):
         return {
@@ -161,7 +162,7 @@ cdef class JsonSerializeProvider(Provider):
         if not isinstance(value, ExtensionDtype) and 'V' not in value.str:
             v = value.str
         else:
-            v = self._to_str(base64.b64encode(pickle.dumps(value)))
+            v = self._to_str(base64.b64encode(pickle.dumps(value, protocol=self.pickle_protocol)))
         return {
             'type': _get_name(ValueType.dtype),
             'value': v
@@ -347,7 +348,8 @@ cdef class JsonSerializeProvider(Provider):
     cdef inline dict _serialize_function(self, value):
         return {
             'type': 'function',
-            'value': self._to_str(base64.b64encode(serialize_function(value)))
+            'value': self._to_str(base64.b64encode(
+                serialize_function(value, pickle_protocol=self.pickle_protocol)))
         }
 
     cdef inline _deserialize_function(self, obj, list callbacks):
@@ -363,7 +365,7 @@ cdef class JsonSerializeProvider(Provider):
     cdef inline dict _serialize_tzinfo(self, value):
         return {
             'type': 'tzinfo',
-            'value': self._to_str(base64.b64encode(pickle.dumps(value)))
+            'value': self._to_str(base64.b64encode(pickle.dumps(value, protocol=self.pickle_protocol)))
         }
 
     cdef inline _deserialize_tzinfo(self, obj, list callbacks):
