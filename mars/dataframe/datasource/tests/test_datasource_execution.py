@@ -14,7 +14,6 @@
 
 import os
 import tempfile
-import shutil
 import time
 from collections import OrderedDict
 from datetime import datetime
@@ -25,13 +24,14 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.session import new_session
-from mars.tests.core import TestBase, require_cudf
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
 from mars.dataframe.datasource.from_records import from_records
+from mars.session import new_session
+from mars.tests.core import TestBase, require_cudf
+from mars.utils import arrow_array_to_objects
 
 
 class Test(TestBase):
@@ -277,9 +277,9 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(df2_result, pdf_expected)
 
     def testReadCSVExecution(self):
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test.csv')
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+
             df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.int64), columns=['a', 'b', 'c'])
             df.to_csv(file_path)
 
@@ -293,13 +293,11 @@ class Test(TestBase):
 
             mdf = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0, nrows=1), concat=True)[0]
             pd.testing.assert_frame_equal(df[:1], mdf)
-        finally:
-            shutil.rmtree(tempdir)
 
         # test sep
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test.csv')
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+
             df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
             df.to_csv(file_path, sep=';')
 
@@ -311,13 +309,10 @@ class Test(TestBase):
                                                    concat=True)[0]
             pd.testing.assert_frame_equal(pdf, mdf2)
 
-        finally:
-            shutil.rmtree(tempdir)
-
         # test missing value
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test.csv')
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+
             df = pd.DataFrame({'c1': [np.nan, 'a', 'b', 'c'], 'c2': [1, 2, 3, np.nan],
                                'c3': [np.nan, np.nan, 3.4, 2.2]})
             df.to_csv(file_path)
@@ -330,12 +325,9 @@ class Test(TestBase):
                                                    concat=True)[0]
             pd.testing.assert_frame_equal(pdf, mdf2)
 
-        finally:
-            shutil.rmtree(tempdir)
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
 
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test.csv')
-        try:
             index = pd.date_range(start='1/1/2018', periods=100)
             df = pd.DataFrame({
                 'col1': np.random.rand(100),
@@ -352,13 +344,10 @@ class Test(TestBase):
                                                    concat=True)[0]
             pd.testing.assert_frame_equal(pdf, mdf2)
 
-        finally:
-            shutil.rmtree(tempdir)
-
         # test compression
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test.gzip')
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.gzip')
+
             index = pd.date_range(start='1/1/2018', periods=100)
             df = pd.DataFrame({
                 'col1': np.random.rand(100),
@@ -376,12 +365,8 @@ class Test(TestBase):
                                                                chunk_bytes='1k'), concat=True)[0]
             pd.testing.assert_frame_equal(pdf, mdf2)
 
-        finally:
-            shutil.rmtree(tempdir)
-
         # test multiply files
-        tempdir = tempfile.mkdtemp()
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
             df = pd.DataFrame(np.random.rand(300, 3), columns=['a', 'b', 'c'])
 
             file_paths = [os.path.join(tempdir, f'test{i}.csv') for i in range(3)]
@@ -396,12 +381,8 @@ class Test(TestBase):
                                                    concat=True)[0]
             pd.testing.assert_frame_equal(df, mdf2)
 
-        finally:
-            shutil.rmtree(tempdir)
-
         # test wildcards in path
-        tempdir = tempfile.mkdtemp()
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
             df = pd.DataFrame(np.random.rand(300, 3), columns=['a', 'b', 'c'])
 
             file_paths = [os.path.join(tempdir, f'test{i}.csv') for i in range(3)]
@@ -419,14 +400,40 @@ class Test(TestBase):
                 md.read_csv(f'{tempdir}/*.csv', index_col=0, chunk_bytes=50), concat=True)[0]
             pd.testing.assert_frame_equal(df, mdf2.sort_index())
 
-        finally:
-            shutil.rmtree(tempdir)
+    def testReadCSVUseArrowDtype(self):
+        df = pd.DataFrame({
+            'col1': np.random.rand(100),
+            'col2': np.random.choice(['a' * 2, 'b' * 3, 'c' * 4], (100,)),
+            'col3': np.arange(100)
+        })
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+            df.to_csv(file_path, index=False)
+
+            pdf = pd.read_csv(file_path)
+            mdf = md.read_csv(file_path, use_arrow_dtype=True)
+            result = self.executor.execute_dataframe(mdf, concat=True)[0]
+            self.assertIsInstance(mdf.dtypes.iloc[1], md.ArrowStringDtype)
+            self.assertIsInstance(result.dtypes.iloc[1], md.ArrowStringDtype)
+            pd.testing.assert_frame_equal(arrow_array_to_objects(result), pdf)
+
+        # test compression
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.gzip')
+            df.to_csv(file_path, compression='gzip', index=False)
+
+            pdf = pd.read_csv(file_path, compression='gzip')
+            mdf = md.read_csv(file_path, compression='gzip', use_arrow_dtype=True)
+            result = self.executor.execute_dataframe(mdf, concat=True)[0]
+            self.assertIsInstance(mdf.dtypes.iloc[1], md.ArrowStringDtype)
+            self.assertIsInstance(result.dtypes.iloc[1], md.ArrowStringDtype)
+            pd.testing.assert_frame_equal(arrow_array_to_objects(result), pdf)
 
     @require_cudf
     def testReadCSVGPUExecution(self):
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test.csv')
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+
             df = pd.DataFrame({
                 'col1': np.random.rand(100),
                 'col2': np.random.choice(['a', 'b', 'c'], (100,)),
@@ -442,16 +449,13 @@ class Test(TestBase):
                                                    concat=True)[0]
             pd.testing.assert_frame_equal(pdf.reset_index(drop=True), mdf2.to_pandas().reset_index(drop=True))
 
-        finally:
-            shutil.rmtree(tempdir)
-
     def testReadCSVWithoutIndex(self):
         sess = new_session()
 
         # test csv file without storing index
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test.csv')
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+
             df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
             df.to_csv(file_path, index=False)
 
@@ -461,8 +465,6 @@ class Test(TestBase):
 
             mdf2 = sess.run(md.read_csv(file_path, incremental_index=True, chunk_bytes=10))
             pd.testing.assert_frame_equal(pdf, mdf2)
-        finally:
-            shutil.rmtree(tempdir)
 
     def testReadSQLExecution(self):
         import sqlalchemy as sa
@@ -564,6 +566,36 @@ class Test(TestBase):
                 pd.testing.assert_frame_equal(result, test_df)
             finally:
                 engine.dispose()
+
+    def testReadSQLUseArrowDtype(self):
+        test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                                'b': [f's{i}' for i in range(10)],
+                                'c': np.random.rand(10),
+                                'd': [datetime.fromtimestamp(time.time() + 3600 * (i - 5))
+                                      for i in range(10)]})
+
+        with tempfile.TemporaryDirectory() as d:
+            table_name = 'test'
+            uri = 'sqlite:///' + os.path.join(d, 'test.db')
+
+            test_df.to_sql(table_name, uri, index=False)
+
+            r = md.read_sql_table('test', uri, chunk_size=4, use_arrow_dtype=True)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            self.assertIsInstance(r.dtypes.iloc[1], md.ArrowStringDtype)
+            self.assertIsInstance(result.dtypes.iloc[1], md.ArrowStringDtype)
+            pd.testing.assert_frame_equal(arrow_array_to_objects(result), test_df)
+
+            # test read with sql string and offset method
+            r = md.read_sql_query('select * from test where c > 0.5', uri,
+                                  parse_dates=['d'], chunk_size=4,
+                                  incremental_index=True,
+                                  use_arrow_dtype=True)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            self.assertIsInstance(r.dtypes.iloc[1], md.ArrowStringDtype)
+            self.assertIsInstance(result.dtypes.iloc[1], md.ArrowStringDtype)
+            pd.testing.assert_frame_equal(arrow_array_to_objects(result),
+                                          test_df[test_df.c > 0.5].reset_index(drop=True))
 
     def testDateRangeExecution(self):
         for closed in [None, 'left', 'right']:

@@ -25,8 +25,9 @@ from ...core import OutputType
 from ...utils import parse_readable_size, lazy_import, FixedSizeFileObject
 from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, BoolField, AnyField
 from ...filesystem import open_file, file_size, glob
+from ..arrays import ArrowStringDtype
 from ..core import IndexValue
-from ..utils import parse_index, build_empty_df, standardize_range_index
+from ..utils import parse_index, build_empty_df, standardize_range_index, to_arrow_dtypes
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 try:
@@ -93,19 +94,20 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     _size = Int64Field('size')
     _nrows = Int64Field('nrows')
     _incremental_index = BoolField('incremental_index')
+    _use_arrow_dtype = BoolField('use_arrow_dtype')
     _keep_usecols_order = BoolField('keep_usecols_order')
-
     _storage_options = DictField('storage_options')
 
     def __init__(self, path=None, names=None, sep=None, header=None, index_col=None,
                  compression=None, usecols=None, offset=None, size=None, nrows=None,
                  gpu=None, keep_usecols_order=None, incremental_index=None,
-                 storage_options=None, **kw):
+                 use_arrow_dtype=None, storage_options=None, **kw):
         super().__init__(_path=path, _names=names, _sep=sep, _header=header,
                          _index_col=index_col, _compression=compression,
                          _usecols=usecols, _offset=offset, _size=size, _nrows=nrows,
                          _gpu=gpu, _incremental_index=incremental_index,
                          _keep_usecols_order=keep_usecols_order,
+                         _use_arrow_dtype=use_arrow_dtype,
                          _storage_options=storage_options,
                          _output_types=[OutputType.dataframe], **kw)
 
@@ -154,6 +156,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         return self._incremental_index
 
     @property
+    def use_arrow_dtype(self):
+        return self._use_arrow_dtype
+
+    @property
     def keep_usecols_order(self):
         return self._keep_usecols_order
 
@@ -195,6 +201,12 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         chunk_bytes = df.extra_params.chunk_bytes
         chunk_bytes = int(parse_readable_size(chunk_bytes)[0])
 
+        dtypes = df.dtypes
+        if op.use_arrow_dtype is None and not op.gpu and \
+                options.dataframe.use_arrow_dtype:  # pragma: no cover
+            # check if use_arrow_dtype set on the server side
+            dtypes = to_arrow_dtypes(df.dtypes)
+
         paths = op.path if isinstance(op.path, (tuple, list)) else glob(op.path, storage_options=op.storage_options)
 
         out_chunks = []
@@ -207,10 +219,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._path = path
                 chunk_op._offset = offset
                 chunk_op._size = min(chunk_bytes, total_bytes - offset)
-                shape = (np.nan, len(df.dtypes))
+                shape = (np.nan, len(dtypes))
                 index_value = parse_index(df.index_value.to_pandas(), path, index_num)
                 new_chunk = chunk_op.new_chunk(None, shape=shape, index=(index_num, 0), index_value=index_value,
-                                               columns_value=df.columns_value, dtypes=df.dtypes)
+                                               columns_value=df.columns_value, dtypes=dtypes)
                 out_chunks.append(new_chunk)
                 index_num += 1
                 offset += chunk_bytes
@@ -220,7 +232,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
             out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
-        return new_op.new_dataframes(None, df.shape, dtypes=df.dtypes,
+        return new_op.new_dataframes(None, df.shape, dtypes=dtypes,
                                      index_value=df.index_value,
                                      columns_value=df.columns_value,
                                      chunks=out_chunks, nsplits=nsplits)
@@ -252,6 +264,11 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 usecols = op.usecols if isinstance(op.usecols, list) else [op.usecols]
             else:
                 usecols = op.usecols
+            if cls._contains_arrow_dtype(dtypes):
+                # when keep_default_na is True which is default,
+                # will replace null value with np.nan,
+                # which will cause failure when converting to arrow string array
+                csv_kwargs['keep_default_na'] = False
             df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col, usecols=usecols,
                              dtype=dtypes.to_dict(), nrows=op.nrows, **csv_kwargs)
             if op.keep_usecols_order:
@@ -277,6 +294,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         return df
 
     @classmethod
+    def _contains_arrow_dtype(cls, dtypes):
+        return any(isinstance(dtype, ArrowStringDtype) for dtype in dtypes)
+
+    @classmethod
     def execute(cls, ctx, op):
         xdf = cudf if op.gpu else pd
         out_df = op.outputs[0]
@@ -286,8 +307,14 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
             if op.compression is not None:
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
+                dtypes = cls._validate_dtypes(op.outputs[0].dtypes, op.gpu)
+                if cls._contains_arrow_dtype(dtypes):
+                    # when keep_default_na is True which is default,
+                    # will replace null value with np.nan,
+                    # which will cause failure when converting to arrow string array
+                    csv_kwargs['keep_default_na'] = False
                 df = xdf.read_csv(f, sep=op.sep, names=op.names, index_col=op.index_col,
-                                  usecols=op.usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
+                                  usecols=op.usecols, dtype=dtypes,
                                   nrows=op.nrows, **csv_kwargs)
                 if op.keep_usecols_order:
                     df = df[op.usecols]
@@ -304,7 +331,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
 
 def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer',
              dtype=None, usecols=None, nrows=None, chunk_bytes='64M', gpu=None, head_bytes='100k',
-             head_lines=None, incremental_index=False, storage_options=None, **kwargs):
+             head_lines=None, incremental_index=False, use_arrow_dtype=None,
+             storage_options=None, **kwargs):
     r"""
     Read a comma-separated values (csv) file into DataFrame.
     Also supports optionally iterating or breaking of the file
@@ -563,6 +591,8 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
         Number of lines to use in the head of file, mainly for data inference.
     incremental_index: bool, default False
         Create a new RangeIndex if csv doesn't contain index columns.
+    use_arrow_dtype: bool, default None
+        If True, use arrow dtype to store columns.
     storage_options: dict, optional
         Options for storage connection.
 
@@ -594,7 +624,8 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
             head_start, head_end = _find_chunk_start_end(f, 0, head_bytes)
             f.seek(head_start)
             b = f.read(head_end - head_start)
-        mini_df = pd.read_csv(BytesIO(b), sep=sep, index_col=index_col, dtype=dtype, names=names, header=header)
+        mini_df = pd.read_csv(BytesIO(b), sep=sep, index_col=index_col, dtype=dtype,
+                              names=names, header=header)
 
     if isinstance(mini_df.index, pd.RangeIndex):
         index_value = parse_index(pd.RangeIndex(-1))
@@ -606,11 +637,17 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     names = list(mini_df.columns)
     op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col,
                           usecols=usecols, compression=compression, gpu=gpu,
-                          incremental_index=incremental_index, storage_options=storage_options,
+                          incremental_index=incremental_index, use_arrow_dtype=use_arrow_dtype,
+                          storage_options=storage_options,
                           **kwargs)
     chunk_bytes = chunk_bytes or options.chunk_store_limit
+    dtypes = mini_df.dtypes
+    if use_arrow_dtype is None:
+        use_arrow_dtype = options.dataframe.use_arrow_dtype
+    if not gpu and use_arrow_dtype:
+        dtypes = to_arrow_dtypes(dtypes, test_df=mini_df)
     ret = op(index_value=index_value, columns_value=columns_value,
-             dtypes=mini_df.dtypes, chunk_bytes=chunk_bytes)
+             dtypes=dtypes, chunk_bytes=chunk_bytes)
     if nrows is not None:
         return ret.head(nrows)
     return ret
