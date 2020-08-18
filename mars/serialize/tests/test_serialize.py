@@ -15,11 +15,13 @@
 # limitations under the License.
 
 import datetime
+import io
 import itertools
 import json
 import os
+import pickle
 import tempfile
-import unittest
+import unittest.mock
 from collections import OrderedDict
 from io import BytesIO
 
@@ -189,261 +191,312 @@ class Node4(AttributeAsDict):
         return super().cls(provider)
 
 
+TEST_PICKLE_PROTOCOL = 3
+original_pickle_loads = pickle.loads
+
+
+def _loads_with_check(s, *args, **kwargs):
+    unpickler = pickle._Unpickler(io.BytesIO(s), *args, **kwargs)
+    ret = unpickler.load()
+    assert unpickler.proto == TEST_PICKLE_PROTOCOL, \
+        f'Pickle protocol {unpickler.proto} not agree with {TEST_PICKLE_PROTOCOL}'
+    return ret
+
+
 class Test(unittest.TestCase):
-    def testPBSerialize(self):
-        provider = ProtobufSerializeProvider()
+    @staticmethod
+    def _get_serial_types():
+        if pyarrow is None:
+            return dataserializer.SerialType.PICKLE,
+        else:
+            return dataserializer.SerialType.PICKLE, dataserializer.SerialType.ARROW
 
-        node2 = Node2(a=[['ss'], ['dd']], data=[3, 7, 212])
-        node1 = Node1(a='test1',
-                      b1=-2, b2=2000, b3=-5000, b4=500000,
-                      c1=2, c2=2000, c3=5000, c4=500000,
-                      d1=2.5, d2=7.37, d3=5.976321,
-                      cl1=1+2j, cl2=2.5+3.1j,
-                      e=False,
-                      f1=Node2Entity(node2),
-                      f2=Node2Entity(node2),
-                      g=Node2(a=[['1', '2'], ['3', '4']]),
-                      h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
-                         np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
-                         lambda x: x + 2, pytz.timezone('Asia/Shanghai'),
-                         pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)])],
-                      i=[Node8(b1=111), Node8(b1=222)],
-                      j=Node2(a=[['u'], ['v']]),
-                      k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None],
-                      l=lambda x: x + 1,
-                      m=pytz.timezone('Asia/Shanghai'),
-                      n=pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)]))
-        node3 = Node3(value=node1)
+    def testPBSerialize(self, *_):
+        for serial_type in self._get_serial_types():
+            provider = ProtobufSerializeProvider(
+                data_serial_type=serial_type, pickle_protocol=TEST_PICKLE_PROTOCOL)
 
-        serials = serializes(provider, [node2, node3])
-        d_node2, d_node3 = deserializes(provider, [Node2, Node3], serials)
+            node2 = Node2(a=[['ss'], ['dd']], data=[3, 7, 212])
+            node1 = Node1(a='test1',
+                          b1=-2, b2=2000, b3=-5000, b4=500000,
+                          c1=2, c2=2000, c3=5000, c4=500000,
+                          d1=2.5, d2=7.37, d3=5.976321,
+                          cl1=1+2j, cl2=2.5+3.1j,
+                          e=False,
+                          f1=Node2Entity(node2),
+                          f2=Node2Entity(node2),
+                          g=Node2(a=[['1', '2'], ['3', '4']]),
+                          h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
+                             np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
+                             lambda x: x + 2, pytz.timezone('Asia/Shanghai'),
+                             pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)])],
+                          i=[Node8(b1=111), Node8(b1=222)],
+                          j=Node2(a=[['u'], ['v']]),
+                          k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None],
+                          l=lambda x: x + 1,
+                          m=pytz.timezone('Asia/Shanghai'),
+                          n=pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)]))
+            node3 = Node3(value=node1)
 
-        self.assertIsNot(node2, d_node2)
-        self.assertEqual(node2.a, d_node2.a)
-        self.assertEqual(node2.data, d_node2.data)
+            serials = serializes(provider, [node2, node3])
 
-        self.assertIsNot(node3, d_node3)
-        self.assertIsInstance(d_node3.value, Node8)
-        self.assertIsNot(node3.value, d_node3.value)
-        self.assertEqual(node3.value.a, d_node3.value.a)
-        self.assertEqual(node3.value.b1, d_node3.value.b1)
-        self.assertEqual(node3.value.b2, d_node3.value.b2)
-        self.assertEqual(node3.value.b3, d_node3.value.b3)
-        self.assertEqual(node3.value.b4, d_node3.value.b4)
-        self.assertEqual(node3.value.c1, d_node3.value.c1)
-        self.assertEqual(node3.value.c2, d_node3.value.c2)
-        self.assertEqual(node3.value.c3, d_node3.value.c3)
-        self.assertEqual(node3.value.c4, d_node3.value.c4)
-        self.assertAlmostEqual(node3.value.d1, d_node3.value.d1, places=2)
-        self.assertAlmostEqual(node3.value.d2, d_node3.value.d2, places=4)
-        self.assertAlmostEqual(node3.value.d3, d_node3.value.d3)
-        self.assertAlmostEqual(node3.value.cl1, d_node3.value.cl1)
-        self.assertAlmostEqual(node3.value.cl2, d_node3.value.cl2)
-        self.assertEqual(node3.value.e, d_node3.value.e)
-        self.assertIsNot(node3.value.f1, d_node3.value.f1)
-        self.assertEqual(node3.value.f1.a, d_node3.value.f1.a)
-        self.assertIsNot(node3.value.f2, d_node3.value.f2)
-        self.assertEqual(node3.value.f2.a, d_node3.value.f2.a)
-        self.assertIsNot(node3.value.g, d_node3.value.g)
-        self.assertEqual(node3.value.g.a, d_node3.value.g.a)
-        self.assertEqual(node3.value.h[0], d_node3.value.h[0])
-        self.assertNotIsInstance(d_node3.value.h[1], str)
-        self.assertIs(d_node3.value.h[1], d_node3.value.f1)
-        self.assertEqual(node3.value.h[2], True)
-        self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
-        self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
-        self.assertEqual(node3.value.h[8](2), 4)
-        self.assertEqual(node3.value.h[9], d_node3.value.h[9])
-        np.testing.assert_array_equal(node3.value.h[10], d_node3.value.h[10])
-        self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
-        self.assertIsInstance(d_node3.value.i[0], Node8)
-        self.assertIsInstance(d_node3.value.j, Node2)
-        self.assertEqual(node3.value.j.a, d_node3.value.j.a)
-        self.assertIsInstance(d_node3.value.k[0], Node5)
-        self.assertEqual(node3.value.k[0].a, d_node3.value.k[0].a)
-        self.assertIsInstance(d_node3.value.k[1], Node8)
-        self.assertEqual(node3.value.k[1].b1, d_node3.value.k[1].b1)
-        self.assertIsInstance(d_node3.value.k[1].j, Node5)
-        self.assertEqual(node3.value.k[1].j.a, d_node3.value.k[1].j.a)
-        self.assertIsNone(node3.value.k[2])
-        self.assertEqual(d_node3.value.l(1), 2)
-        self.assertEqual(d_node3.value.m, node3.value.m)
-        np.testing.assert_array_equal(d_node3.value.n, node3.value.n)
+            loads_fun = _loads_with_check if serial_type == dataserializer.SerialType.PICKLE \
+                else original_pickle_loads
+            with unittest.mock.patch('pickle.loads', new=loads_fun):
+                d_node2, d_node3 = deserializes(provider, [Node2, Node3], serials)
 
-        with self.assertRaises(ValueError):
-            serializes(provider, [Node3(value='sth else')])
+            self.assertIsNot(node2, d_node2)
+            self.assertEqual(node2.a, d_node2.a)
+            self.assertEqual(node2.data, d_node2.data)
+
+            self.assertIsNot(node3, d_node3)
+            self.assertIsInstance(d_node3.value, Node8)
+            self.assertIsNot(node3.value, d_node3.value)
+            self.assertEqual(node3.value.a, d_node3.value.a)
+            self.assertEqual(node3.value.b1, d_node3.value.b1)
+            self.assertEqual(node3.value.b2, d_node3.value.b2)
+            self.assertEqual(node3.value.b3, d_node3.value.b3)
+            self.assertEqual(node3.value.b4, d_node3.value.b4)
+            self.assertEqual(node3.value.c1, d_node3.value.c1)
+            self.assertEqual(node3.value.c2, d_node3.value.c2)
+            self.assertEqual(node3.value.c3, d_node3.value.c3)
+            self.assertEqual(node3.value.c4, d_node3.value.c4)
+            self.assertAlmostEqual(node3.value.d1, d_node3.value.d1, places=2)
+            self.assertAlmostEqual(node3.value.d2, d_node3.value.d2, places=4)
+            self.assertAlmostEqual(node3.value.d3, d_node3.value.d3)
+            self.assertAlmostEqual(node3.value.cl1, d_node3.value.cl1)
+            self.assertAlmostEqual(node3.value.cl2, d_node3.value.cl2)
+            self.assertEqual(node3.value.e, d_node3.value.e)
+            self.assertIsNot(node3.value.f1, d_node3.value.f1)
+            self.assertEqual(node3.value.f1.a, d_node3.value.f1.a)
+            self.assertIsNot(node3.value.f2, d_node3.value.f2)
+            self.assertEqual(node3.value.f2.a, d_node3.value.f2.a)
+            self.assertIsNot(node3.value.g, d_node3.value.g)
+            self.assertEqual(node3.value.g.a, d_node3.value.g.a)
+            self.assertEqual(node3.value.h[0], d_node3.value.h[0])
+            self.assertNotIsInstance(d_node3.value.h[1], str)
+            self.assertIs(d_node3.value.h[1], d_node3.value.f1)
+            self.assertEqual(node3.value.h[2], True)
+            self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
+            self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
+            self.assertEqual(node3.value.h[8](2), 4)
+            self.assertEqual(node3.value.h[9], d_node3.value.h[9])
+            np.testing.assert_array_equal(node3.value.h[10], d_node3.value.h[10])
+            self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
+            self.assertIsInstance(d_node3.value.i[0], Node8)
+            self.assertIsInstance(d_node3.value.j, Node2)
+            self.assertEqual(node3.value.j.a, d_node3.value.j.a)
+            self.assertIsInstance(d_node3.value.k[0], Node5)
+            self.assertEqual(node3.value.k[0].a, d_node3.value.k[0].a)
+            self.assertIsInstance(d_node3.value.k[1], Node8)
+            self.assertEqual(node3.value.k[1].b1, d_node3.value.k[1].b1)
+            self.assertIsInstance(d_node3.value.k[1].j, Node5)
+            self.assertEqual(node3.value.k[1].j.a, d_node3.value.k[1].j.a)
+            self.assertIsNone(node3.value.k[2])
+            self.assertEqual(d_node3.value.l(1), 2)
+            self.assertEqual(d_node3.value.m, node3.value.m)
+            np.testing.assert_array_equal(d_node3.value.n, node3.value.n)
+
+            with self.assertRaises(ValueError):
+                serializes(provider, [Node3(value='sth else')])
 
     def testJSONSerialize(self):
-        provider = JsonSerializeProvider()
+        for serial_type in self._get_serial_types():
+            provider = JsonSerializeProvider(
+                data_serial_type=serial_type, pickle_protocol=TEST_PICKLE_PROTOCOL)
 
-        node2 = Node2(a=[['ss'], ['dd']], data=[3, 7, 212])
-        node1 = Node1(a='test1',
-                      b1=2, b2=2000, b3=5000, b4=500000,
-                      c1=2, c2=2000, c3=5000, c4=500000,
-                      d1=2.5, d2=7.37, d3=5.976321,
-                      cl1=1+2j, cl2=2.5+3.1j,
-                      e=False,
-                      f1=Node2Entity(node2),
-                      f2=Node2Entity(node2),
-                      g=Node2(a=[['1', '2'], ['3', '4']]),
-                      h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
-                         np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
-                         lambda x: x + 2, pytz.timezone('Asia/Shanghai'),
-                         pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)])],
-                      i=[Node8(b1=111), Node8(b1=222)],
-                      j=Node2(a=[['u'], ['v']]),
-                      k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None],
-                      l=lambda x: x + 1,
-                      m=pytz.timezone('Asia/Shanghai'),
-                      n=pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)]))
-        node3 = Node3(value=node1)
+            node2 = Node2(a=[['ss'], ['dd']], data=[3, 7, 212])
+            node1 = Node1(a='test1',
+                          b1=2, b2=2000, b3=5000, b4=500000,
+                          c1=2, c2=2000, c3=5000, c4=500000,
+                          d1=2.5, d2=7.37, d3=5.976321,
+                          cl1=1+2j, cl2=2.5+3.1j,
+                          e=False,
+                          f1=Node2Entity(node2),
+                          f2=Node2Entity(node2),
+                          g=Node2(a=[['1', '2'], ['3', '4']]),
+                          h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
+                             np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
+                             lambda x: x + 2, pytz.timezone('Asia/Shanghai'),
+                             pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)])],
+                          i=[Node8(b1=111), Node8(b1=222)],
+                          j=Node2(a=[['u'], ['v']]),
+                          k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None],
+                          l=lambda x: x + 1,
+                          m=pytz.timezone('Asia/Shanghai'),
+                          n=pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)]))
+            node3 = Node3(value=node1)
 
-        serials = serializes(provider, [node2, node3])
-        serials = [json.loads(json.dumps(s), object_hook=OrderedDict) for s in serials]
-        d_node2, d_node3 = deserializes(provider, [Node2, Node3], serials)
+            serials = serializes(provider, [node2, node3])
+            serials = [json.loads(json.dumps(s), object_hook=OrderedDict) for s in serials]
 
-        self.assertIsNot(node2, d_node2)
-        self.assertEqual(node2.a, d_node2.a)
-        self.assertEqual(node2.data, d_node2.data)
+            loads_fun = _loads_with_check if serial_type == dataserializer.SerialType.PICKLE \
+                else original_pickle_loads
+            with unittest.mock.patch('pickle.loads', new=loads_fun):
+                d_node2, d_node3 = deserializes(provider, [Node2, Node3], serials)
 
-        self.assertIsNot(node3, d_node3)
-        self.assertIsInstance(d_node3.value, Node8)
-        self.assertIsNot(node3.value, d_node3.value)
-        self.assertEqual(node3.value.a, d_node3.value.a)
-        self.assertEqual(node3.value.b1, d_node3.value.b1)
-        self.assertEqual(node3.value.b2, d_node3.value.b2)
-        self.assertEqual(node3.value.b3, d_node3.value.b3)
-        self.assertEqual(node3.value.b4, d_node3.value.b4)
-        self.assertEqual(node3.value.c1, d_node3.value.c1)
-        self.assertEqual(node3.value.c2, d_node3.value.c2)
-        self.assertEqual(node3.value.c3, d_node3.value.c3)
-        self.assertEqual(node3.value.c4, d_node3.value.c4)
-        self.assertAlmostEqual(node3.value.d1, d_node3.value.d1, places=2)
-        self.assertAlmostEqual(node3.value.d2, d_node3.value.d2, places=4)
-        self.assertAlmostEqual(node3.value.d3, d_node3.value.d3)
-        self.assertAlmostEqual(node3.value.cl1, d_node3.value.cl1)
-        self.assertAlmostEqual(node3.value.cl2, d_node3.value.cl2)
-        self.assertEqual(node3.value.e, d_node3.value.e)
-        self.assertIsNot(node3.value.f1, d_node3.value.f1)
-        self.assertEqual(node3.value.f1.a, d_node3.value.f1.a)
-        self.assertIsNot(node3.value.f2, d_node3.value.f2)
-        self.assertEqual(node3.value.f2.a, d_node3.value.f2.a)
-        self.assertIsNot(node3.value.g, d_node3.value.g)
-        self.assertEqual(node3.value.g.a, d_node3.value.g.a)
-        self.assertEqual(node3.value.h[0], d_node3.value.h[0])
-        self.assertNotIsInstance(d_node3.value.h[1], str)
-        self.assertIs(d_node3.value.h[1], d_node3.value.f1)
-        self.assertEqual(node3.value.h[2], True)
-        self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
-        self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
-        self.assertEqual(node3.value.h[8](2), 4)
-        self.assertEqual(node3.value.h[9], d_node3.value.h[9])
-        np.testing.assert_array_equal(node3.value.h[10], d_node3.value.h[10])
-        self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
-        self.assertIsInstance(d_node3.value.i[0], Node8)
-        self.assertIsInstance(d_node3.value.j, Node2)
-        self.assertEqual(node3.value.j.a, d_node3.value.j.a)
-        self.assertIsInstance(d_node3.value.k[0], Node5)
-        self.assertEqual(node3.value.k[0].a, d_node3.value.k[0].a)
-        self.assertIsInstance(d_node3.value.k[1], Node8)
-        self.assertEqual(node3.value.k[1].b1, d_node3.value.k[1].b1)
-        self.assertIsInstance(d_node3.value.k[1].j, Node5)
-        self.assertEqual(node3.value.k[1].j.a, d_node3.value.k[1].j.a)
-        self.assertIsNone(node3.value.k[2])
-        self.assertEqual(d_node3.value.l(1), 2)
-        self.assertEqual(d_node3.value.m, node3.value.m)
-        np.testing.assert_array_equal(d_node3.value.n, node3.value.n)
+            self.assertIsNot(node2, d_node2)
+            self.assertEqual(node2.a, d_node2.a)
+            self.assertEqual(node2.data, d_node2.data)
 
-        with self.assertRaises(ValueError):
-            serializes(provider, [Node3(value='sth else')])
+            self.assertIsNot(node3, d_node3)
+            self.assertIsInstance(d_node3.value, Node8)
+            self.assertIsNot(node3.value, d_node3.value)
+            self.assertEqual(node3.value.a, d_node3.value.a)
+            self.assertEqual(node3.value.b1, d_node3.value.b1)
+            self.assertEqual(node3.value.b2, d_node3.value.b2)
+            self.assertEqual(node3.value.b3, d_node3.value.b3)
+            self.assertEqual(node3.value.b4, d_node3.value.b4)
+            self.assertEqual(node3.value.c1, d_node3.value.c1)
+            self.assertEqual(node3.value.c2, d_node3.value.c2)
+            self.assertEqual(node3.value.c3, d_node3.value.c3)
+            self.assertEqual(node3.value.c4, d_node3.value.c4)
+            self.assertAlmostEqual(node3.value.d1, d_node3.value.d1, places=2)
+            self.assertAlmostEqual(node3.value.d2, d_node3.value.d2, places=4)
+            self.assertAlmostEqual(node3.value.d3, d_node3.value.d3)
+            self.assertAlmostEqual(node3.value.cl1, d_node3.value.cl1)
+            self.assertAlmostEqual(node3.value.cl2, d_node3.value.cl2)
+            self.assertEqual(node3.value.e, d_node3.value.e)
+            self.assertIsNot(node3.value.f1, d_node3.value.f1)
+            self.assertEqual(node3.value.f1.a, d_node3.value.f1.a)
+            self.assertIsNot(node3.value.f2, d_node3.value.f2)
+            self.assertEqual(node3.value.f2.a, d_node3.value.f2.a)
+            self.assertIsNot(node3.value.g, d_node3.value.g)
+            self.assertEqual(node3.value.g.a, d_node3.value.g.a)
+            self.assertEqual(node3.value.h[0], d_node3.value.h[0])
+            self.assertNotIsInstance(d_node3.value.h[1], str)
+            self.assertIs(d_node3.value.h[1], d_node3.value.f1)
+            self.assertEqual(node3.value.h[2], True)
+            self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
+            self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
+            self.assertEqual(node3.value.h[8](2), 4)
+            self.assertEqual(node3.value.h[9], d_node3.value.h[9])
+            np.testing.assert_array_equal(node3.value.h[10], d_node3.value.h[10])
+            self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
+            self.assertIsInstance(d_node3.value.i[0], Node8)
+            self.assertIsInstance(d_node3.value.j, Node2)
+            self.assertEqual(node3.value.j.a, d_node3.value.j.a)
+            self.assertIsInstance(d_node3.value.k[0], Node5)
+            self.assertEqual(node3.value.k[0].a, d_node3.value.k[0].a)
+            self.assertIsInstance(d_node3.value.k[1], Node8)
+            self.assertEqual(node3.value.k[1].b1, d_node3.value.k[1].b1)
+            self.assertIsInstance(d_node3.value.k[1].j, Node5)
+            self.assertEqual(node3.value.k[1].j.a, d_node3.value.k[1].j.a)
+            self.assertIsNone(node3.value.k[2])
+            self.assertEqual(d_node3.value.l(1), 2)
+            self.assertEqual(d_node3.value.m, node3.value.m)
+            np.testing.assert_array_equal(d_node3.value.n, node3.value.n)
+
+            with self.assertRaises(ValueError):
+                serializes(provider, [Node3(value='sth else')])
 
     def testNumpyDtypePBSerialize(self):
-        provider = ProtobufSerializeProvider()
+        for serial_type in self._get_serial_types():
+            provider = ProtobufSerializeProvider(
+                data_serial_type=serial_type, pickle_protocol=TEST_PICKLE_PROTOCOL)
 
-        node9 = Node9(b1=np.int8(-2), b2=np.int16(2000), b3=np.int32(-5000), b4=np.int64(500000),
-                      c1=np.uint8(2), c2=np.uint16(2000), c3=np.uint32(5000), c4=np.uint64(500000),
-                      d1=np.float16(2.5), d2=np.float32(7.37), d3=np.float64(5.976321),
-                      f1=np.int8(3))
+            node9 = Node9(b1=np.int8(-2), b2=np.int16(2000), b3=np.int32(-5000), b4=np.int64(500000),
+                          c1=np.uint8(2), c2=np.uint16(2000), c3=np.uint32(5000), c4=np.uint64(500000),
+                          d1=np.float16(2.5), d2=np.float32(7.37), d3=np.float64(5.976321),
+                          f1=np.int8(3))
 
-        serials = serializes(provider, [node9])
-        d_node9, = deserializes(provider, [Node9], serials)
+            serials = serializes(provider, [node9])
 
-        self.assertIsNot(node9, d_node9)
-        self.assertEqual(node9.b1, d_node9.b1)
-        self.assertEqual(node9.b2, d_node9.b2)
-        self.assertEqual(node9.b3, d_node9.b3)
-        self.assertEqual(node9.b4, d_node9.b4)
-        self.assertEqual(node9.c1, d_node9.c1)
-        self.assertEqual(node9.c2, d_node9.c2)
-        self.assertEqual(node9.c3, d_node9.c3)
-        self.assertEqual(node9.c4, d_node9.c4)
-        self.assertAlmostEqual(node9.d1, d_node9.d1, places=2)
-        self.assertAlmostEqual(node9.d2, d_node9.d2, places=4)
-        self.assertAlmostEqual(node9.d3, d_node9.d3)
-        self.assertEqual(node9.f1, d_node9.f1)
+            loads_fun = _loads_with_check if serial_type == dataserializer.SerialType.PICKLE \
+                else original_pickle_loads
+            with unittest.mock.patch('pickle.loads', new=loads_fun):
+                d_node9, = deserializes(provider, [Node9], serials)
 
-        node_rec1 = Node9(f1=np.dtype([('label', 'int32'),
-                                       ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
-                                       ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
-        node_rec2 = Node9(f1=np.dtype([('label', 'int32'),
-                                       ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
-                                       ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+            self.assertIsNot(node9, d_node9)
+            self.assertEqual(node9.b1, d_node9.b1)
+            self.assertEqual(node9.b2, d_node9.b2)
+            self.assertEqual(node9.b3, d_node9.b3)
+            self.assertEqual(node9.b4, d_node9.b4)
+            self.assertEqual(node9.c1, d_node9.c1)
+            self.assertEqual(node9.c2, d_node9.c2)
+            self.assertEqual(node9.c3, d_node9.c3)
+            self.assertEqual(node9.c4, d_node9.c4)
+            self.assertAlmostEqual(node9.d1, d_node9.d1, places=2)
+            self.assertAlmostEqual(node9.d2, d_node9.d2, places=4)
+            self.assertAlmostEqual(node9.d3, d_node9.d3)
+            self.assertEqual(node9.f1, d_node9.f1)
 
-        serials = serializes(provider, [node_rec1])
-        d_node_rec1, = deserializes(provider, [Node9], serials)
+            node_rec1 = Node9(f1=np.dtype([('label', 'int32'),
+                                           ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
+                                           ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+            node_rec2 = Node9(f1=np.dtype([('label', 'int32'),
+                                           ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
+                                           ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
 
-        self.assertIsNot(node_rec1, d_node_rec1)
-        self.assertEqual(node_rec1.f1, d_node_rec1.f1)
+            serials = serializes(provider, [node_rec1])
+            loads_fun = _loads_with_check if serial_type == dataserializer.SerialType.PICKLE \
+                else original_pickle_loads
+            with unittest.mock.patch('pickle.loads', new=loads_fun):
+                d_node_rec1, = deserializes(provider, [Node9], serials)
 
-        serials = serializes(provider, [node_rec2])
-        d_node_rec2, = deserializes(provider, [Node9], serials)
+            self.assertIsNot(node_rec1, d_node_rec1)
+            self.assertEqual(node_rec1.f1, d_node_rec1.f1)
 
-        self.assertIsNot(node_rec2, d_node_rec2)
-        self.assertEqual(node_rec2.f1, d_node_rec2.f1)
+            serials = serializes(provider, [node_rec2])
+            loads_fun = _loads_with_check if serial_type == dataserializer.SerialType.PICKLE \
+                else original_pickle_loads
+            with unittest.mock.patch('pickle.loads', new=loads_fun):
+                d_node_rec2, = deserializes(provider, [Node9], serials)
+
+            self.assertIsNot(node_rec2, d_node_rec2)
+            self.assertEqual(node_rec2.f1, d_node_rec2.f1)
 
     def testNumpyDtypeJSONSerialize(self):
-        provider = JsonSerializeProvider()
+        for serial_type in self._get_serial_types():
+            provider = JsonSerializeProvider(
+                data_serial_type=serial_type, pickle_protocol=TEST_PICKLE_PROTOCOL)
 
-        node9 = Node9(b1=np.int8(-2), b2=np.int16(2000), b3=np.int32(-5000), b4=np.int64(500000),
-                      c1=np.uint8(2), c2=np.uint16(2000), c3=np.uint32(5000), c4=np.uint64(500000),
-                      d1=np.float16(2.5), d2=np.float32(7.37), d3=np.float64(5.976321),
-                      f1=np.int8(3))
+            node9 = Node9(b1=np.int8(-2), b2=np.int16(2000), b3=np.int32(-5000), b4=np.int64(500000),
+                          c1=np.uint8(2), c2=np.uint16(2000), c3=np.uint32(5000), c4=np.uint64(500000),
+                          d1=np.float16(2.5), d2=np.float32(7.37), d3=np.float64(5.976321),
+                          f1=np.int8(3))
 
-        serials = serializes(provider, [node9])
-        d_node9, = deserializes(provider, [Node9], serials)
+            serials = serializes(provider, [node9])
+            d_node9, = deserializes(provider, [Node9], serials)
 
-        self.assertIsNot(node9, d_node9)
-        self.assertEqual(node9.b1, d_node9.b1)
-        self.assertEqual(node9.b2, d_node9.b2)
-        self.assertEqual(node9.b3, d_node9.b3)
-        self.assertEqual(node9.b4, d_node9.b4)
-        self.assertEqual(node9.c1, d_node9.c1)
-        self.assertEqual(node9.c2, d_node9.c2)
-        self.assertEqual(node9.c3, d_node9.c3)
-        self.assertEqual(node9.c4, d_node9.c4)
-        self.assertAlmostEqual(node9.d1, d_node9.d1, places=2)
-        self.assertAlmostEqual(node9.d2, d_node9.d2, places=4)
-        self.assertAlmostEqual(node9.d3, d_node9.d3)
-        self.assertEqual(node9.f1, d_node9.f1)
+            self.assertIsNot(node9, d_node9)
+            self.assertEqual(node9.b1, d_node9.b1)
+            self.assertEqual(node9.b2, d_node9.b2)
+            self.assertEqual(node9.b3, d_node9.b3)
+            self.assertEqual(node9.b4, d_node9.b4)
+            self.assertEqual(node9.c1, d_node9.c1)
+            self.assertEqual(node9.c2, d_node9.c2)
+            self.assertEqual(node9.c3, d_node9.c3)
+            self.assertEqual(node9.c4, d_node9.c4)
+            self.assertAlmostEqual(node9.d1, d_node9.d1, places=2)
+            self.assertAlmostEqual(node9.d2, d_node9.d2, places=4)
+            self.assertAlmostEqual(node9.d3, d_node9.d3)
+            self.assertEqual(node9.f1, d_node9.f1)
 
-        node_rec1 = Node9(f1=np.dtype([('label', 'int32'),
-                                       ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
-                                       ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
-        node_rec2 = Node9(f1=np.dtype([('label', 'int32'),
-                                       ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
-                                       ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+            node_rec1 = Node9(f1=np.dtype([('label', 'int32'),
+                                           ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
+                                           ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+            node_rec2 = Node9(f1=np.dtype([('label', 'int32'),
+                                           ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
+                                           ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
 
-        serials = serializes(provider, [node_rec1])
-        d_node_rec1, = deserializes(provider, [Node9], serials)
+            serials = serializes(provider, [node_rec1])
+            loads_fun = _loads_with_check if serial_type == dataserializer.SerialType.PICKLE \
+                else original_pickle_loads
+            with unittest.mock.patch('pickle.loads', new=loads_fun):
+                d_node_rec1, = deserializes(provider, [Node9], serials)
 
-        self.assertIsNot(node_rec1, d_node_rec1)
-        self.assertEqual(node_rec1.f1, d_node_rec1.f1)
+            self.assertIsNot(node_rec1, d_node_rec1)
+            self.assertEqual(node_rec1.f1, d_node_rec1.f1)
 
-        serials = serializes(provider, [node_rec2])
-        d_node_rec2, = deserializes(provider, [Node9], serials)
+            serials = serializes(provider, [node_rec2])
+            loads_fun = _loads_with_check if serial_type == dataserializer.SerialType.PICKLE \
+                else original_pickle_loads
+            with unittest.mock.patch('pickle.loads', new=loads_fun):
+                d_node_rec2, = deserializes(provider, [Node9], serials)
 
-        self.assertIsNot(node_rec2, d_node_rec2)
-        self.assertEqual(node_rec2.f1, d_node_rec2.f1)
+            self.assertIsNot(node_rec2, d_node_rec2)
+            self.assertEqual(node_rec2.f1, d_node_rec2.f1)
 
     def testAttributeAsDict(self):
         other_data = {}
