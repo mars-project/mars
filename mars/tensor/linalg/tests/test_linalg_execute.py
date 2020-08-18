@@ -805,7 +805,7 @@ class Test(unittest.TestCase):
                             concat = t.ndim > 0
                             res = self.executor.execute_tensor(t, concat=concat)[0]
 
-                            expected_shape = expected.shapes
+                            expected_shape = expected.shape
                             t_shape = t.shape
                             self.assertEqual(expected_shape, t_shape)
 
