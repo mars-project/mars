@@ -805,9 +805,9 @@ class Test(unittest.TestCase):
                             concat = t.ndim > 0
                             res = self.executor.execute_tensor(t, concat=concat)[0]
 
-                            expected_shape = expected.shape
+                            expected_shape = expected.shapes
                             t_shape = t.shape
-                            np.testing.assert_equal(expected_shape, t_shape)
+                            self.assertEqual(expected_shape, t_shape)
 
                             np.testing.assert_allclose(res, expected, atol=.0001)
                         except ValueError:

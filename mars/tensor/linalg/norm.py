@@ -306,7 +306,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
         ord = None
     if axis is not None:
         if isinstance(axis, Iterable):
-            axis = tuple([validate_axis(ndim, a) for a in axis])
+            axis = tuple(validate_axis(ndim, a) for a in axis)
         else:
             axis = (validate_axis(ndim, axis),)
     else:
