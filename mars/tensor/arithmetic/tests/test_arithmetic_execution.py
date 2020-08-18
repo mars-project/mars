@@ -510,18 +510,29 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(z, concat=True)[0]
         expected = np.isclose(data, data2, atol=.01)
-
         np.testing.assert_equal(res, expected)
 
         z = isclose(x, y, atol=.01, equal_nan=True)
 
         res = self.executor.execute_tensor(z, concat=True)[0]
         expected = np.isclose(data, data2, atol=.01, equal_nan=True)
+        np.testing.assert_equal(res, expected)
 
+        # test tensor with scalar
+        z = isclose(x, 1.0, atol=.01)
+        res = self.executor.execute_tensor(z, concat=True)[0]
+        expected = np.isclose(data, 1.0, atol=.01)
+        np.testing.assert_equal(res, expected)
+        z = isclose(1.0, y, atol=.01)
+        res = self.executor.execute_tensor(z, concat=True)[0]
+        expected = np.isclose(1.0, data2, atol=.01)
+        np.testing.assert_equal(res, expected)
+        z = isclose(1.0, 2.0, atol=.01)
+        res = self.executor.execute_tensor(z, concat=True)[0]
+        expected = np.isclose(1.0, 2.0, atol=.01)
         np.testing.assert_equal(res, expected)
 
         # test sparse
-
         data = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
         data2 = sps.csr_matrix(np.array([0, 1.0, 1.03, np.nan]))
 
@@ -532,14 +543,12 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(z, concat=True)[0]
         expected = np.isclose(data.toarray(), data2.toarray(), atol=.01)
-
         np.testing.assert_equal(res, expected)
 
         z = isclose(x, y, atol=.01, equal_nan=True)
 
         res = self.executor.execute_tensor(z, concat=True)[0]
         expected = np.isclose(data.toarray(), data2.toarray(), atol=.01, equal_nan=True)
-
         np.testing.assert_equal(res, expected)
 
     @ignore_warning
