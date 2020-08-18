@@ -212,15 +212,17 @@ class Test(unittest.TestCase):
                 value = sess.run(c, timeout=timeout)
                 np.testing.assert_array_equal(value, np.ones((10, 10)) * 10)
 
-                raw = pd.DataFrame(np.random.rand(10, 5), columns=list('ABCDE'))
+                raw = pd.DataFrame(np.random.rand(10, 5), columns=list('ABCDE'),
+                                   index=pd.RangeIndex(10, 0, -1))
                 data = md.DataFrame(raw).astype({'E': 'arrow_string'})
                 ret_data = data.execute(session=sess).fetch(session=sess)
                 self.assertEqual(ret_data.dtypes['E'], np.dtype('O'))
                 pd.testing.assert_frame_equal(
                     ret_data.astype({'E': 'float'}), raw, check_less_precise=True)
 
-                raw = pd.Series(np.random.rand(10))
-                data = md.Series(raw).astype('arrow_string')
+                raw = pd.Series(np.random.rand(10), index=pd.RangeIndex(10, 0, -1),
+                                name='r')
+                data = md.Series(raw).astype('Arrow[string]')
                 ret_data = data.execute(session=sess).fetch(session=sess)
                 self.assertEqual(ret_data.dtype, np.dtype('O'))
                 pd.testing.assert_series_equal(ret_data.astype('float'), raw)
