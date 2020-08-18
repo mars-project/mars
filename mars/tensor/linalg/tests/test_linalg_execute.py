@@ -797,13 +797,17 @@ class Test(unittest.TestCase):
         for i, a in enumerate(ma):
             data = d if i < 2 else d2
             for ord in (None, 'nuc', np.inf, -np.inf, 0, 1, -1, 2, -2):
-                for axis in (0, 1, (0, 1)):
+                for axis in (0, 1, (0, 1), -1):
                     for keepdims in (True, False):
                         try:
                             expected = np.linalg.norm(data, ord=ord, axis=axis, keepdims=keepdims)
                             t = norm(a, ord=ord, axis=axis, keepdims=keepdims)
                             concat = t.ndim > 0
                             res = self.executor.execute_tensor(t, concat=concat)[0]
+
+                            expected_shape = expected.shape
+                            t_shape = t.shape
+                            np.testing.assert_equal(expected_shape, t_shape)
 
                             np.testing.assert_allclose(res, expected, atol=.0001)
                         except ValueError:

@@ -22,6 +22,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, AnyField, TupleField, BoolField
 from ...utils import recursive_tile
+from ..utils import validate_axis
 from ..array_utils import device, as_same_device
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..arithmetic import sqrt
@@ -299,14 +300,15 @@ def norm(x, ord=None, axis=None, keepdims=False):
 
     """
     x = astensor(x)
+    ndim = x.ndim
 
     if ord == 'fro':
         ord = None
     if axis is not None:
         if isinstance(axis, Iterable):
-            axis = tuple(axis)
+            axis = tuple([validate_axis(ndim, a) for a in axis])
         else:
-            axis = (axis,)
+            axis = (validate_axis(ndim, axis),)
     else:
         axis = tuple(range(x.ndim))
 
