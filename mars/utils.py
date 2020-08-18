@@ -1101,5 +1101,5 @@ def arrow_array_to_objects(obj):
         obj = pd.DataFrame(out_cols, columns=list(obj.dtypes.keys()))
     elif isinstance(obj, pd.Series):
         if isinstance(obj.dtype, ArrowDtype):
-            obj = pd.Series(obj.to_numpy())
+            obj = pd.Series(obj.to_numpy(), index=obj.index, name=obj.name)
     return obj
