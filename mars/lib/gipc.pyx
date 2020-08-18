@@ -381,6 +381,9 @@ def _child(target, args, kwargs):
         # might block forever upon `ThreadPool.kill()` as of gevent 1.0rc2.
         del hub.threadpool
         hub._threadpool = None
+        # Temporarily disable Hub.throw() as it will block on fork processes
+        # on gevent>=20.5.1.
+        old_throw, hub.throw = hub.throw, lambda *_: None
         # Destroy default event loop via `libev.ev_loop_destroy()` and delete
         # hub. This orphans all registered events and greenlets that have been
         # duplicated from the parent via fork().
@@ -388,19 +391,21 @@ def _child(target, args, kwargs):
         hub.destroy(destroy_loop=True)
         # Create a new hub and a new default event loop via
         # `libev.gevent_ev_default_loop`.
-        h = gevent.get_hub(default=True)
+        hub = gevent.get_hub(default=True)
         log.debug("Created new hub and default event loop.")
-        assert h.loop.default, 'Could not create libev default event loop.'
+        assert hub.loop.default, 'Could not create libev default event loop.'
         # On Unix, file descriptors are inherited by default. Also, the global
         # `_all_handles` is inherited from the parent. Close dispensable gipc-
         # related file descriptors in child.
         for h in _all_handles[:]:
+            # Rebuild lock as hub is reconstructed and might be locked already
+            h._lock = gevent.lock.Semaphore(value=1)
             if h not in childhandles:
                 log.debug("Invalidate %s in child.", h)
                 h._set_legit_process()
-                # At duplication time the handle might have been locked. Unlock.
-                h._lock.counter = 1
                 h.close()
+        # Restore previously masked hub.throw()
+        hub.throw = old_throw
     else:
         # On Windows, the state of module globals is not transferred to
         # children. Set `_all_handles`.

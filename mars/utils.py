@@ -992,8 +992,8 @@ def prune_chunk_graph(chunk_graph, result_chunk_keys):
 
 
 @functools.lru_cache(500)
-def serialize_function(function):
-    return cloudpickle.dumps(function)
+def serialize_function(function, pickle_protocol=None):
+    return cloudpickle.dumps(function, protocol=pickle_protocol)
 
 
 class FixedSizeFileObject:
@@ -1087,9 +1087,13 @@ def arrow_array_to_objects(obj):
     from .dataframe.arrays import ArrowDtype
 
     if isinstance(obj, pd.DataFrame):
+        out_cols = dict()
         for col_name, dtype in obj.dtypes.items():
             if isinstance(dtype, ArrowDtype):
-                obj[col_name] = pd.Series(obj[col_name].to_numpy())
+                out_cols[col_name] = pd.Series(obj[col_name].to_numpy(), index=obj.index)
+            else:
+                out_cols[col_name] = obj[col_name]
+        obj = pd.DataFrame(out_cols, columns=list(obj.dtypes.keys()))
     elif isinstance(obj, pd.Series):
         if isinstance(obj.dtype, ArrowDtype):
             obj = pd.Series(obj.to_numpy())
