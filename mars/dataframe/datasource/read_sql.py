@@ -26,9 +26,11 @@ from ...config import options
 from ...serialize import StringField, AnyField, BoolField, ListField, \
     Int64Field, Float64Field, BytesField
 from ...tensor.utils import normalize_chunk_sizes
+from ..arrays import ArrowStringDtype
 from ..core import IndexValue
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
-from ..utils import parse_index, create_sa_connection, standardize_range_index
+from ..utils import parse_index, create_sa_connection, \
+    standardize_range_index, to_arrow_dtypes
 
 
 class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
@@ -48,6 +50,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
     _row_memory_usage = Float64Field('row_memory_usage')
     _method = StringField('method')
     _incremental_index = BoolField('incremental_index')
+    _use_arrow_dtype = BoolField('use_arrow_dtype')
     # for chunks
     _offset = Int64Field('offset')
     _partition_col = StringField('partition_col')
@@ -61,14 +64,15 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
     def __init__(self, table_or_sql=None, selectable=None, con=None, schema=None,
                  index_col=None, coerce_float=None, parse_dates=None, columns=None,
                  engine_kwargs=None, row_memory_usage=None, method=None,
-                 incremental_index=None, offset=None, partition_col=None,
+                 incremental_index=None, use_arrow_dtype=None, offset=None, partition_col=None,
                  num_partitions=None, low_limit=None, high_limit=None, left_end=None,
                  right_end=None, nrows=None, output_types=None, gpu=None, **kw):
         super().__init__(_table_or_sql=table_or_sql, _selectable=selectable, _con=con,
                          _schema=schema, _index_col=index_col, _coerce_float=coerce_float,
                          _parse_dates=parse_dates, _columns=columns,
                          _engine_kwargs=engine_kwargs, _row_memory_usage=row_memory_usage,
-                         _method=method, _incremental_index=incremental_index, _offset=offset,
+                         _method=method, _incremental_index=incremental_index,
+                         _use_arrow_dtype=use_arrow_dtype, _offset=offset,
                          _partition_col=partition_col, _num_partitions=num_partitions,
                          _low_limit=low_limit, _left_end=left_end, _right_end=right_end,
                          _high_limit=high_limit, _nrows=nrows, _output_types=output_types,
@@ -123,6 +127,10 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
     @property
     def incremental_index(self):
         return self._incremental_index
+
+    @property
+    def use_arrow_dtype(self):
+        return self._use_arrow_dtype
 
     @property
     def offset(self):
@@ -193,7 +201,7 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
         if columns:
             query = sql.select([sql.column(c) for c in columns], from_obj=selectable).limit(test_rows)
         else:
-            query = sql.select('*', from_obj=selectable).limit(test_rows)
+            query = sql.select(selectable.columns, from_obj=selectable).limit(test_rows)
         test_df = pd.read_sql(query, engine_or_conn, index_col=self._index_col,
                               coerce_float=self._coerce_float,
                               parse_dates=self._parse_dates)
@@ -274,8 +282,17 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                                           str(selectable), self._con)
             else:
                 index_value = parse_index(test_df.index)
+
             columns_value = parse_index(test_df.columns, store_data=True)
-            return self.new_dataframe(None, shape=shape, dtypes=test_df.dtypes,
+
+            dtypes = test_df.dtypes
+            use_arrow_dtype = self._use_arrow_dtype
+            if use_arrow_dtype is None:
+                use_arrow_dtype = options.dataframe.use_arrow_dtype
+            if use_arrow_dtype:
+                dtypes = to_arrow_dtypes(dtypes, test_df=test_df)
+
+            return self.new_dataframe(None, shape=shape, dtypes=dtypes,
                                       index_value=index_value,
                                       columns_value=columns_value,
                                       raw_chunk_size=chunk_size)
@@ -455,6 +472,17 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
                 if op.nrows is not None:
                     index = index[:op.nrows]
                 df.index = index
+
+            use_arrow_dtype = op.use_arrow_dtype
+            if use_arrow_dtype is None:
+                use_arrow_dtype = options.dataframe.use_arrow_dtype
+            if use_arrow_dtype:
+                dtypes = to_arrow_dtypes(df.dtypes, test_df=df)
+                for i in range(len(dtypes)):
+                    dtype = dtypes.iloc[i]
+                    if isinstance(dtype, ArrowStringDtype):
+                        df.iloc[:, i] = df.iloc[:, i].astype(dtype)
+
             ctx[out.key] = df
         finally:
             engine.dispose()
@@ -462,7 +490,8 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
 
 def _read_sql(table_or_sql, con, schema=None, index_col=None, coerce_float=True,
               params=None, parse_dates=None, columns=None, chunksize=None,
-              incremental_index=False, test_rows=None, chunk_size=None,
+              incremental_index=False, use_arrow_dtype=None,
+              test_rows=None, chunk_size=None,
               engine_kwargs=None, partition_col=None, num_partitions=None,
               low_limit=None, high_limit=None):
     if chunksize is not None:
@@ -473,7 +502,7 @@ def _read_sql(table_or_sql, con, schema=None, index_col=None, coerce_float=True,
                           index_col=index_col, coerce_float=coerce_float,
                           params=params, parse_dates=parse_dates, columns=columns,
                           engine_kwargs=engine_kwargs, incremental_index=incremental_index,
-                          method=method, partition_col=partition_col,
+                          use_arrow_dtype=use_arrow_dtype, method=method, partition_col=partition_col,
                           num_partitions=num_partitions, low_limit=low_limit,
                           high_limit=high_limit)
     return op(test_rows, chunk_size)
@@ -580,8 +609,8 @@ def read_sql(sql, con, index_col=None, coerce_float=True, params=None, parse_dat
 def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=True,
                    parse_dates=None, columns=None, chunksize=None, test_rows=5,
                    chunk_size=None, engine_kwargs=None, incremental_index=False,
-                   partition_col=None, num_partitions=None, low_limit=None,
-                   high_limit=None):
+                   use_arrow_dtype=None, partition_col=None, num_partitions=None,
+                   low_limit=None, high_limit=None):
     """
     Read SQL database table into a DataFrame.
 
@@ -627,6 +656,8 @@ def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=Tr
         Extra kwargs to pass to sqlalchemy.create_engine
     incremental_index: bool, default False
         Create a new RangeIndex if csv doesn't contain index columns.
+    use_arrow_dtype: bool, default None
+        If True, use arrow dtype to store columns.
     partition_col : str, default None
         Specify name of the column to split the result of the query. If
         specified, the range ``[low_limit, high_limit]`` will be divided
@@ -669,14 +700,16 @@ def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=Tr
     return _read_sql(table_or_sql=table_name, con=con, schema=schema, index_col=index_col,
                      coerce_float=coerce_float, parse_dates=parse_dates, columns=columns,
                      engine_kwargs=engine_kwargs, incremental_index=incremental_index,
-                     chunksize=chunksize, test_rows=test_rows, chunk_size=chunk_size,
+                     use_arrow_dtype=use_arrow_dtype, chunksize=chunksize,
+                     test_rows=test_rows, chunk_size=chunk_size,
                      partition_col=partition_col, num_partitions=num_partitions,
                      low_limit=low_limit, high_limit=high_limit)
 
 
 def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, parse_dates=None,
                    chunksize=None, test_rows=5, chunk_size=None, engine_kwargs=None,
-                   incremental_index=None, partition_col=None, num_partitions=None,
+                   incremental_index=None, use_arrow_dtype=None,
+                   partition_col=None, num_partitions=None,
                    low_limit=None, high_limit=None):
     """
     Read SQL query into a DataFrame.
@@ -721,6 +754,8 @@ def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, par
         reported.
     incremental_index: bool, default False
         Sort RangeIndex if csv doesn't contain index columns.
+    use_arrow_dtype: bool, default None
+        If True, use arrow dtype to store columns.
     test_rows: int, default 5
         The number of rows to fetch for inferring dtypes.
     chunk_size: : int or tuple of ints, optional
@@ -764,6 +799,7 @@ def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, par
     """
     return _read_sql(table_or_sql=sql, con=con, index_col=index_col, coerce_float=coerce_float,
                      params=params, parse_dates=parse_dates, engine_kwargs=engine_kwargs,
-                     incremental_index=incremental_index, chunksize=chunksize, test_rows=test_rows,
+                     incremental_index=incremental_index, use_arrow_dtype=use_arrow_dtype,
+                     chunksize=chunksize, test_rows=test_rows,
                      chunk_size=chunk_size, partition_col=partition_col, num_partitions=num_partitions,
                      low_limit=low_limit, high_limit=high_limit)
