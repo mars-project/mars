@@ -15,6 +15,7 @@
 import logging
 import os
 import uuid
+from collections import OrderedDict
 
 from .utils import SchedulerActor
 from ..utils import log_unhandled
@@ -29,6 +30,7 @@ class SessionActor(SchedulerActor):
         self._args = kwargs
 
         self._tileable_names = dict()
+        self._graph_infos = OrderedDict()
 
         self._cluster_info_ref = None
         self._assigner_ref = None
@@ -76,6 +78,16 @@ class SessionActor(SchedulerActor):
             self.ctx.destroy_actor(graph_ref)
         for mut_tensor_ref in self._mut_tensor_refs.values():
             self.ctx.destroy_actor(mut_tensor_ref)
+
+    def set_graph_info(self, graph_key, **kwargs):
+        try:
+            info_dict = self._graph_infos[graph_key]
+        except KeyError:
+            info_dict = self._graph_infos[graph_key] = dict()
+        info_dict.update(kwargs)
+
+    def get_graph_infos(self):
+        return self._graph_infos
 
     @log_unhandled
     def submit_tileable_graph(self, serialized_graph, graph_key, target_tileables=None, names=None, compose=True):
@@ -225,6 +237,9 @@ class SessionManagerActor(SchedulerActor):
         self.set_cluster_info_ref()
 
     def get_sessions(self):
+        return list(self._session_refs.keys())
+
+    def get_session_refs(self):
         return self._session_refs
 
     @log_unhandled
