@@ -83,11 +83,14 @@ class MarsWebAPI(MarsAPI):
             cls._schedulers_cache = self.cluster_info.get_schedulers()
         return cls._schedulers_cache
 
+    def get_sessions(self):
+        return self.session_manager.get_sessions()
+
     def get_tasks_info(self, select_session_id=None):
         from ..scheduler import GraphState
 
         sessions = defaultdict(dict)
-        for session_id, session_ref in self.session_manager.get_sessions().items():
+        for session_id, session_ref in self.session_manager.get_session_refs().items():
             if select_session_id and session_id != select_session_id:
                 continue
             session_desc = sessions[session_id]
@@ -95,7 +98,8 @@ class MarsWebAPI(MarsAPI):
             session_desc['name'] = session_id
             session_desc['tasks'] = dict()
             session_ref = self.actor_client.actor_ref(session_ref)
-            for graph_key, graph_meta_ref in session_ref.get_graph_meta_refs().items():
+            graph_infos = session_ref.get_graph_infos()
+            for graph_key, graph_info in graph_infos.items():
                 task_desc = dict()
 
                 state = self.get_graph_state(session_id, graph_key)
@@ -104,13 +108,11 @@ class MarsWebAPI(MarsAPI):
                     session_desc['tasks'][graph_key] = task_desc
                     continue
 
-                graph_meta_ref = self.actor_client.actor_ref(graph_meta_ref)
                 task_desc['id'] = graph_key
-                task_desc['state'] = graph_meta_ref.get_state().value
-                start_time, end_time, graph_size = graph_meta_ref.get_graph_info()
-                task_desc['start_time'] = start_time
-                task_desc['end_time'] = end_time
-                task_desc['graph_size'] = graph_size
+                task_desc['state'] = graph_info['state'].value
+                task_desc['start_time'] = graph_info['start_time']
+                task_desc['end_time'] = graph_info['end_time']
+                task_desc['graph_size'] = graph_info['graph_size']
 
                 session_desc['tasks'][graph_key] = task_desc
         return sessions
