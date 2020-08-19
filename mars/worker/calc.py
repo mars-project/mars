@@ -332,7 +332,9 @@ class BaseCalcActor(WorkerActor):
                 # delay destroying to allow requests to enter
                 self.ref().destroy_self(_tell=True, _delay=0.5)
 
-        return storage_client.copy_to(session_id, keys_to_store, self._calc_dest_devices) \
+        dest_devices = self._calc_dest_devices if not isinstance(keys_to_store[0], tuple) \
+            else [DataStorageDevice.DISK]
+        return storage_client.copy_to(session_id, keys_to_store, dest_devices) \
             .then(_delete_keys) \
             .then(lambda *_: meta_future.result()) \
             .then(lambda *_: self.tell_promise(callback),

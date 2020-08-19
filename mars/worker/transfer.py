@@ -585,16 +585,18 @@ class ReceiverWorkerActor(WorkerActor):
         for chunk_key, data_size in zip(chunk_keys, data_sizes):
             self._data_metas[(session_id, chunk_key)] = ReceiverDataMeta(
                 start_time=time.time(), chunk_size=data_size, source_address=source_address)
+
+            use_device_order = [DataStorageDevice.DISK] if isinstance(chunk_key, tuple) else device_order
             if use_promise:
                 promises.append(self.storage_client.create_writer(
-                    session_id, chunk_key, data_size, device_order, packed=True,
+                    session_id, chunk_key, data_size, use_device_order, packed=True,
                     pin_token=pin_token, _promise=True)
                     .then(functools.partial(_handle_accept_key, chunk_key),
                           functools.partial(_handle_reject_key, chunk_key)))
             else:
                 try:
                     _writer = self.storage_client.create_writer(
-                        session_id, chunk_key, data_size, device_order, packed=True,
+                        session_id, chunk_key, data_size, use_device_order, packed=True,
                         pin_token=pin_token, _promise=False)
                     _handle_accept_key(chunk_key, _writer)
                     return self.address, None
