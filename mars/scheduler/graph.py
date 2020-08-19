@@ -56,11 +56,12 @@ class GraphMetaActor(SchedulerActor):
     def gen_uid(session_id, graph_key):
         return f's:0:graph_meta${session_id}${graph_key}'
 
-    def __init__(self, session_id, graph_key):
+    def __init__(self, session_id, graph_key, session_ref):
         super().__init__()
         self._session_id = session_id
         self._graph_key = graph_key
 
+        self._session_ref = session_ref
         self._kv_store_ref = None
         self._graph_wait_ref = None
 
@@ -81,6 +82,10 @@ class GraphMetaActor(SchedulerActor):
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
+        self._session_ref = self.ctx.actor_ref(self._session_ref) if self._session_ref else None
+        if not self.ctx.has_actor(self._session_ref):
+            self._session_ref = None
+
         self._graph_finish_event = self.ctx.event()
         graph_wait_uid = GraphWaitActor.gen_uid(self._session_id, self._graph_key)
         try:
@@ -95,21 +100,28 @@ class GraphMetaActor(SchedulerActor):
         self._graph_wait_ref.destroy()
         super().pre_destroy()
 
-    def get_graph_info(self):
-        return self._start_time, self._end_time, len(self._op_infos)
+    def _update_session_graph_info(self):
+        if self._session_ref is not None:
+            self._session_ref.set_graph_info(
+                self._graph_key, start_time=self._start_time, end_time=self._end_time,
+                state=self._state, graph_size=len(self._op_infos), _tell=True, _wait=False)
 
     def set_graph_start(self):
         self._start_time = time.time()
+        self._update_session_graph_info()
 
     def set_graph_end(self):
         self._end_time = time.time()
         self._graph_finish_event.set()
+        self._update_session_graph_info()
 
     def set_state(self, state):
         self._state = state
         if self._kv_store_ref is not None:
             self._kv_store_ref.write(
-                f'/sessions/{self._session_id}/graph/{self._graph_key}/state', state.name, _tell=True)
+                f'/sessions/{self._session_id}/graph/{self._graph_key}/state', state.name,
+                _tell=True, _wait=False)
+        self._update_session_graph_info()
 
     def get_state(self):
         return self._state
@@ -157,6 +169,7 @@ class GraphMetaActor(SchedulerActor):
                 self._state_to_infos[info['state']][key] = info
 
             self._op_infos[key].update(info)
+        self._update_session_graph_info()
 
     @log_unhandled
     def calc_stats(self):
@@ -286,7 +299,7 @@ class GraphActor(SchedulerActor):
 
         uid = GraphMetaActor.gen_uid(self._session_id, self._graph_key)
         self._graph_meta_ref = self.ctx.create_actor(
-            GraphMetaActor, self._session_id, self._graph_key, uid=uid)
+            GraphMetaActor, self._session_id, self._graph_key, self._session_ref, uid=uid)
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):

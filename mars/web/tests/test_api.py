@@ -298,6 +298,11 @@ class Test(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(int(res.text), 1)
 
+        # query sessions (should be empty)
+        res = requests.get(f'{service_ep}/api/session')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(json.loads(res.text)), 0)
+
         # raise on malicious python version
         res = requests.post(f'{service_ep}/api/session', dict(pyver='mal.version'))
         self.assertEqual(res.status_code, 400)
