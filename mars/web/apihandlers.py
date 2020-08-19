@@ -87,6 +87,9 @@ class ApiEntryHandler(MarsApiRequestHandler):
 
 
 class SessionsApiHandler(MarsApiRequestHandler):
+    def get(self):
+        self.write(json.dumps(self.web_api.get_sessions()))
+
     def post(self):
         versions, args = self._handle_versions()
 
