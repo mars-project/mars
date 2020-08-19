@@ -299,7 +299,7 @@ After all mars processes are started, users can run
 Getting involved
 ----------------
 
-- Read `contribution guide <https://docs.pymars.org/en/latest/contributing.html>`_.
+- Read `development guide <https://docs.pymars.org/en/latest/development/index.html>`_.
 - Join the mailing list: send an email to `mars-dev@googlegroups.com`_.
 - Please report bugs by submitting a `GitHub issue`_.
 - Submit contributions using `pull requests`_.
