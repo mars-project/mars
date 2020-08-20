@@ -20,8 +20,8 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, Int32Field
 from ...lib.sparse.core import get_array_module
 from ...core import ExecutableTuple
-from ..datasource import tensor as astensor
 from ..core import Tensor
+from ..datasource import tensor as astensor
 from ..utils import calc_sliced_size
 from ..operands import TensorHasInput, TensorOperandMixin
 

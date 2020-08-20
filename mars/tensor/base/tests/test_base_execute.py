@@ -444,6 +444,13 @@ class Test(TestBase):
         [np.testing.assert_equal(r, e) for r, e in zip(res, expected)]
 
     def testSplitExecution(self):
+        for a in ((1,1,1,2,2,3), [1,1,1,2,2,3]):
+            splits = split(a, (3,5))
+            self.assertEqual(len(splits), 3)
+            np.testing.assert_array_equal(splits[0].execute(), (1,1,1))
+            np.testing.assert_array_equal(splits[1].execute(), (2,2))
+            np.testing.assert_array_equal(splits[2].execute(), (3,))
+
         x = arange(48, chunk_size=3).reshape(2, 3, 8)
         ss = split(x, 4, axis=2)
 
