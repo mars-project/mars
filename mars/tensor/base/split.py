@@ -21,6 +21,7 @@ from ...serialize import KeyField, AnyField, Int32Field
 from ...lib.sparse.core import get_array_module
 from ...core import ExecutableTuple
 from ..core import Tensor
+from ..datasource import tensor as astensor
 from ..utils import calc_sliced_size
 from ..operands import TensorHasInput, TensorOperandMixin
 
@@ -198,4 +199,4 @@ def split(ary, indices_or_sections, axis=0):
      array([], dtype=float64)]
 
     """
-    return _split(ary, indices_or_sections, axis=axis, is_split=True)
+    return _split(astensor(ary), indices_or_sections, axis=axis, is_split=True)
