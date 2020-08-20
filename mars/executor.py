@@ -337,12 +337,14 @@ class GraphExecution(object):
     """
 
     def __init__(self, chunk_results, graph, keys, executed_keys, sync_provider,
-                 n_parallel=None, engine=None, prefetch=False, print_progress=False,
-                 mock=False, mock_max_memory=0, fetch_keys=None, no_intermediate=False):
+                 op_handler=None, n_parallel=None, engine=None, prefetch=False,
+                 print_progress=False, mock=False, mock_max_memory=0, fetch_keys=None,
+                 no_intermediate=False):
         self._chunk_results = chunk_results
         self._graph = graph
         self._keys = keys
         self._key_set = set(keys).union(executed_keys)
+        self._op_handler = op_handler
         self._n_parallel = n_parallel or 1
         self._engine = engine
         self._prefetch = prefetch
@@ -440,7 +442,7 @@ class GraphExecution(object):
             # note that currently execution is the chunk-level
             # so we pass the first operand's first output to Executor.handle
             first_op = ops[0]
-            Executor.handle(first_op, results, self._mock)
+            self._op_handler(first_op, results, self._mock)
 
             # update maximal memory usage during execution
             if self._mock:
@@ -684,7 +686,7 @@ class Executor(object):
         chunk_result = self._chunk_result if chunk_result is None else chunk_result
         graph_execution = self._graph_execution_cls(
             chunk_result, optimized_graph, keys, executed_keys, self._sync_provider,
-            n_parallel=n_parallel, engine=self._engine, prefetch=self._prefetch,
+            self.handle, n_parallel=n_parallel, engine=self._engine, prefetch=self._prefetch,
             print_progress=print_progress, mock=mock, mock_max_memory=self._mock_max_memory,
             fetch_keys=fetch_keys, no_intermediate=no_intermediate)
         res = graph_execution.execute(retval)
