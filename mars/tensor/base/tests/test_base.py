@@ -370,6 +370,10 @@ class Test(unittest.TestCase):
         self.assertTrue(splits[2].flags['F_CONTIGUOUS'])
         self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
 
+        for a in ((1,1,1,2,2,3), [1,1,1,2,2,3]):
+            splits = split(a, (3,5))
+            self.assertEqual(len(splits), 3)
+
     def testSqueeze(self):
         data = np.array([[[0], [1], [2]]])
         x = tensor(data)
