@@ -72,6 +72,13 @@ class EWM(Window):
             pass
         return super()._repr(params)
 
+    def _repr_name(self):
+        try:
+            from pandas.core.window import ExponentialMovingWindow  # noqa: F401
+            return 'ExponentialMovingWindow'
+        except ImportError:  # pragma: no cover
+            return 'EWM'
+
     def aggregate(self, func):
         from .aggregation import DataFrameEwmAgg
 
@@ -219,6 +226,9 @@ def ewm(obj, com=None, span=None, halflife=None, alpha=None, min_periods=0, adju
 
     if alpha == 1:
         return obj.expanding(min_periods=min_periods, axis=axis)
+
+    if LooseVersion(pd.__version__) >= '1.1.0':  # pragma: no cover
+        min_periods = min_periods or 1
 
     return EWM(input=obj, alpha=alpha, min_periods=min_periods, adjust=adjust,
                ignore_na=ignore_na, axis=axis)

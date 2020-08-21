@@ -61,7 +61,7 @@ class Test(unittest.TestCase):
         r = df2.ewm(alpha=1)
         self.assertEqual(type(r).__name__, 'Expanding')
 
-    def testExpandingAgg(self):
+    def testEWMAgg(self):
         df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
         df2 = md.DataFrame(df, chunk_size=3)
 

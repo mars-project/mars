@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
@@ -28,7 +27,6 @@ from mars.serialize import dataserializer
 
 
 @unittest.skipIf(pa is None, 'pyarrow not installed')
-@unittest.skipIf(sys.version_info[:2] == (3, 5), 'skip for Python 3.5')
 class Test(unittest.TestCase):
     def testArrowDtype(self):
         s = pa.array(['a', 'b'])

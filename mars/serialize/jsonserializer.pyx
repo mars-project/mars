@@ -36,6 +36,12 @@ from .core cimport Provider, ValueType, ProviderType, \
 from .core import HasKey, HasData
 from .dataserializer import dumps as datadumps, loads as dataloads
 
+try:
+    from pandas.tseries.offsets import Tick as PDTick
+    from pandas.tseries.frequencies import to_offset
+except ImportError:
+    PDTick = to_offset = None
+
 
 cdef dict PRIMITIVE_TYPE_TO_NAME = {
     ValueType.bool: 'bool',
@@ -401,6 +407,16 @@ cdef class JsonSerializeProvider(Provider):
 
         return IntervalArray.from_arrays(left, right, closed=closed, dtype=dtype)
 
+    cdef inline _serialize_freq(self, value):
+        return {
+            'type': 'freq',
+            'value': value.freqstr,
+        }
+
+    cdef inline _deserialize_freq(self, obj, list callbacks):
+        value = obj['value']
+        return to_offset(value)
+
     cdef inline object _serialize_typed_value(self, value, tp, bint weak_ref=False):
         if type(tp) not in (List, Tuple, Dict) and weak_ref:
             # not iterable, and is weak ref
@@ -443,6 +459,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_tzinfo(value)
         elif tp == ValueType.interval_arr:
             return self._serialize_interval_arr(value)
+        elif tp == ValueType.freq:
+            return self._serialize_freq(value)
         elif isinstance(tp, List):
             if not isinstance(value, list):
                 value = list(value)
@@ -508,6 +526,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_tzinfo(value)
         elif isinstance(value, IntervalArray):
             return self._serialize_interval_arr(value)
+        elif PDTick is not None and isinstance(value, PDTick):
+            return self._serialize_freq(value)
         elif callable(value):
             return self._serialize_function(value)
         else:
@@ -631,6 +651,8 @@ cdef class JsonSerializeProvider(Provider):
             return ref(self._deserialize_tzinfo(obj, callbacks))
         elif tp is ValueType.interval_arr:
             return ref(self._deserialize_interval_arr(obj, callbacks))
+        elif tp is ValueType.freq:
+            return ref(self._deserialize_freq(obj, callbacks))
         elif tp is ValueType.list:
             return self._deserialize_list(obj, callbacks, weak_ref)
         elif tp is ValueType.tuple:

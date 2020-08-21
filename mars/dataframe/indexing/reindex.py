@@ -25,6 +25,7 @@ from ...operands import OperandStage
 from ...serialize import KeyField, AnyField, StringField, Int64Field, BoolField
 from ...tensor import tensor as astensor
 from ...utils import lazy_import, recursive_tile
+from ..core import Index as DataFrameIndexType
 from ..initializer import Index as asindex
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import validate_axis_style_args, parse_index
@@ -39,6 +40,7 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
 
     _input = KeyField('input')
     _index = AnyField('index')
+    _index_freq = AnyField('index_freq')
     _columns = AnyField('columns')
     _method = StringField('method')
     _level = AnyField('level')
@@ -46,11 +48,11 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
     _limit = Int64Field('limit')
     _enable_sparse = BoolField('enable_sparse')
 
-    def __init__(self, index=None, columns=None, method=None, level=None,
+    def __init__(self, index=None, index_freq=None, columns=None, method=None, level=None,
                  fill_value=None, limit=None, enable_sparse=None, stage=None, **kw):
-        super().__init__(_index=index, _columns=columns, _method=method,
-                         _level=level, _fill_value=fill_value, _limit=limit,
-                         _enable_sparse=enable_sparse, _stage=stage, **kw)
+        super().__init__(_index=index, _index_freq=index_freq, _columns=columns,
+                         _method=method, _level=level, _fill_value=fill_value,
+                         _limit=limit, _enable_sparse=enable_sparse, _stage=stage, **kw)
 
     @property
     def input(self):
@@ -59,6 +61,10 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
     @property
     def index(self):
         return self._index
+
+    @property
+    def index_freq(self):
+        return self._index_freq
 
     @property
     def columns(self):
@@ -249,6 +255,8 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
     def _reindex(cls, ctx, op, fill=True, try_sparse=None):
         inp = cls._convert_to_writable(ctx[op.input.key])
         index = cls._get_value(ctx, op.index)
+        if op.index_freq is not None:
+            index = pd.Index(index, freq=op.index_freq)
         columns = cls._get_value(ctx, op.columns)
         kw = {'level': op.level}
         if index is not None and not isinstance(index, slice):
@@ -651,10 +659,14 @@ def reindex(df_or_series, *args, **kwargs):
         raise NotImplementedError('method=nearest is not supported yet')
 
     index = axes.get('index')
+    index_freq = None
     if isinstance(index, (Base, Entity)):
+        if isinstance(index, DataFrameIndexType):
+            index_freq = getattr(index.index_value.value, 'freq', None)
         index = astensor(index)
     elif index is not None:
         index = np.asarray(index)
+        index_freq = getattr(index, 'freq', None)
 
     columns = axes.get('columns')
     if isinstance(columns, (Base, Entity)):  # pragma: no cover
@@ -669,9 +681,9 @@ def reindex(df_or_series, *args, **kwargs):
     if isinstance(fill_value, (Base, Entity)) and getattr(fill_value, 'ndim', 0) != 0:
         raise ValueError('fill_value must be a scalar')
 
-    op = DataFrameReindex(index=index, columns=columns, method=method,
-                          level=level, fill_value=fill_value, limit=limit,
-                          enable_sparse=enable_sparse)
+    op = DataFrameReindex(index=index, index_freq=index_freq, columns=columns,
+                          method=method, level=level, fill_value=fill_value,
+                          limit=limit, enable_sparse=enable_sparse)
     ret = op(df_or_series)
 
     if copy:

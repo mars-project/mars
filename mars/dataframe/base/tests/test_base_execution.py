@@ -1006,7 +1006,7 @@ class Test(TestBase):
                         result = self.executor.execute_dataframe(r, concat=True)[0]
                         expected = raw.shift(periods=periods, axis=axis,
                                              fill_value=fill_value)
-                        pd.testing.assert_frame_equal(result, expected)
+                        pd.testing.assert_frame_equal(result, expected, check_dtype=False)
                     except AssertionError as e:  # pragma: no cover
                         raise AssertionError(
                             f'Failed when periods: {periods}, axis: {axis}, fill_value: {fill_value}'
@@ -1098,7 +1098,7 @@ class Test(TestBase):
 
         r = from_pandas_df(raw, chunk_size=5).diff(1, axis=1)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.diff(1, axis=1))
+                                      raw.diff(1, axis=1), check_dtype=False)
 
         # test series
         s = raw.iloc[:, 0]

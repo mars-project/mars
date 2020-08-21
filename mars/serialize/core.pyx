@@ -112,6 +112,7 @@ cdef class ValueType:
     function = ExtendType.function
     tzinfo = ExtendType.tzinfo
     interval_arr = ExtendType.interval_arr
+    freq = ExtendType.freq
 
     identity = Identity()
 
