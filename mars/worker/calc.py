@@ -327,7 +327,8 @@ class BaseCalcActor(WorkerActor):
                 # delay destroying to allow requests to enter
                 self.ref().destroy_self(_tell=True, _delay=0.5)
 
-        dest_devices = self._calc_dest_devices if not isinstance(keys_to_store[0], tuple) \
+        dest_devices = self._calc_dest_devices \
+            if not isinstance(keys_to_store[0], tuple) or not options.worker.write_shuffle_to_disk \
             else [DataStorageDevice.DISK]
         return storage_client.copy_to(session_id, keys_to_store, dest_devices) \
             .then(_delete_keys) \

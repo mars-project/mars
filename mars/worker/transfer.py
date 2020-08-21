@@ -586,7 +586,9 @@ class ReceiverWorkerActor(WorkerActor):
             self._data_metas[(session_id, chunk_key)] = ReceiverDataMeta(
                 start_time=time.time(), chunk_size=data_size, source_address=source_address)
 
-            use_device_order = [DataStorageDevice.DISK] if isinstance(chunk_key, tuple) else device_order
+            use_device_order = device_order \
+                if not isinstance(chunk_key, tuple) or not options.worker.write_shuffle_to_disk \
+                else [DataStorageDevice.DISK]
             if use_promise:
                 promises.append(self.storage_client.create_writer(
                     session_id, chunk_key, data_size, use_device_order, packed=True,
