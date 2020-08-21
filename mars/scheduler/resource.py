@@ -26,7 +26,6 @@ from .utils import SchedulerActor
 from ..config import options
 from ..utils import BlacklistSet
 
-
 logger = logging.getLogger(__name__)
 
 
