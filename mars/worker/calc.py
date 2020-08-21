@@ -239,8 +239,6 @@ class BaseCalcActor(WorkerActor):
                 'calc_speed.' + op_name, sum(apply_alloc_sizes) * 1.0 / (end_time - start_time),
                 _tell=True, _wait=False)
 
-        logger.debug('Finish calculating operand %s.', graph_key)
-
         return self.storage_client.put_objects(
             session_id, result_keys, result_values, [self._calc_intermediate_device],
             sizes=result_sizes, shapes=result_shapes) \
@@ -273,27 +271,24 @@ class BaseCalcActor(WorkerActor):
             if not self._marked_as_destroy:
                 self._dispatch_ref.register_free_slot(self.uid, self._slot_name, _tell=True, _wait=False)
 
-            keys_to_delete = []
-            keys_to_release = []
-
-            for k in keys_to_fetch:
-                if get_chunk_key(k) not in chunk_targets:
-                    if self._remove_intermediate:
-                        keys_to_delete.append(k)
-                    keys_to_release.append(k)
-
             if not exc_info:
                 self.tell_promise(callback, keys)
             else:
-                for k in chunk_targets:
-                    if self._remove_intermediate:
-                        keys_to_delete.append(k)
-                    keys_to_release.append(k)
                 self.tell_promise(callback, *exc_info, _accept=False)
+
+            keys_to_release = [k for k in keys_to_fetch if get_chunk_key(k) not in chunk_targets]
+            if exc_info:
+                keys_to_release.extend(chunk_targets)
+
+            if self._remove_intermediate:
+                keys_to_delete = keys_to_release
+            else:
+                keys_to_delete = []
 
             if keys_to_delete:
                 self.storage_client.delete(session_id, keys_to_delete, [self._calc_intermediate_device])
             self._release_local_quotas(session_id, keys_to_release)
+            logger.debug('Finish calculating operand %s.', graph_key)
 
         return self._fetch_keys_to_process(session_id, keys_to_fetch) \
             .then(lambda context_dict: _start_calc(context_dict)) \

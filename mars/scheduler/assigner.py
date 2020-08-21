@@ -256,6 +256,8 @@ class AssignEvaluationActor(SchedulerActor):
 
         self._session_last_assigns = dict()
 
+        self._mem_usage_cache = dict()
+
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
@@ -348,21 +350,16 @@ class AssignEvaluationActor(SchedulerActor):
         op_io_meta = op_info.get('io_meta', {})
         try:
             input_metas = op_io_meta['input_data_metas']
-            input_data_keys = list(input_metas.keys())
-            input_sizes = dict((k, v.chunk_size) for k, v in input_metas.items())
         except KeyError:
-            input_data_keys = op_io_meta.get('input_chunks', {})
-
-            input_metas = self._get_chunks_meta(session_id, input_data_keys)
+            input_metas = self._get_chunks_meta(session_id, op_io_meta.get('input_chunks', {}))
             missing_keys = [k for k, m in input_metas.items() if m is None]
             if missing_keys:
                 raise DependencyMissing(f'Dependencies {missing_keys!r} missing for operand {op_key}')
 
-            input_sizes = dict((k, meta.chunk_size) for k, meta in input_metas.items())
-
         if target_worker is None:
+            input_sizes = dict((k, v.chunk_size) for k, v in input_metas.items())
             who_has = dict((k, meta.workers) for k, meta in input_metas.items())
-            candidate_workers = self._get_eps_by_worker_locality(input_data_keys, who_has, input_sizes)
+            candidate_workers = self._get_eps_by_worker_locality(who_has, input_sizes)
         else:
             candidate_workers = [target_worker]
 
@@ -372,7 +369,12 @@ class AssignEvaluationActor(SchedulerActor):
 
         # todo make more detailed allocation plans
         calc_device = op_info.get('calc_device', 'cpu')
-        mem_usage = sum(input_sizes.values())
+
+        try:
+            mem_usage = self._mem_usage_cache[op_key]
+        except KeyError:
+            mem_usage = self._mem_usage_cache[op_key] = sum(v.chunk_size for v in input_metas.values())
+
         if calc_device == 'cpu':
             alloc_dict = dict(cpu=options.scheduler.default_cpu_usage, mem_quota=mem_usage)
         elif calc_device == 'cuda':
@@ -388,11 +390,13 @@ class AssignEvaluationActor(SchedulerActor):
             if self._resource_ref.allocate_resource(
                     session_id, op_key, worker_ep, alloc_dict, log_fail=timeout_on_fail):
                 logger.debug('Operand %s(%s) allocated to run in %s', op_key, op_info['op_name'], worker_ep)
+                self._mem_usage_cache.pop(op_key, None)
 
                 self.get_actor_ref(BaseOperandActor.gen_uid(session_id, op_key)) \
                     .submit_to_worker(worker_ep, input_metas, _tell=True, _wait=False)
                 return worker_ep, rejects
-            rejects.append(worker_ep)
+            else:
+                rejects.append(worker_ep)
 
         if timeout_on_fail:
             raise TimeoutError(f'Assign resources to operand {op_key} timed out')
@@ -403,9 +407,9 @@ class AssignEvaluationActor(SchedulerActor):
             return dict()
         return dict(zip(keys, self.chunk_meta.batch_get_chunk_meta(session_id, keys)))
 
-    def _get_eps_by_worker_locality(self, input_keys, chunk_workers, input_sizes):
+    def _get_eps_by_worker_locality(self, chunk_workers, input_sizes):
         locality_data = defaultdict(lambda: 0)
-        for k in input_keys:
+        for k in input_sizes.keys():
             if k in chunk_workers:
                 for ep in chunk_workers[k]:
                     locality_data[ep] += input_sizes[k]
