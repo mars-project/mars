@@ -144,6 +144,10 @@ class IndexValue(Serializable):
         _dayfirst = BoolField('dayfirst')
         _yearfirst = BoolField('yearfirst')
 
+        @property
+        def freq(self):
+            return getattr(self, '_freq', None)
+
     class TimedeltaIndex(IndexBase):
         _name = AnyField('name')
         _data = NDArrayField('data')

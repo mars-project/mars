@@ -29,6 +29,11 @@ from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes, \
     hash_from_buffer as mmh3_hash_from_buffer
 
 try:
+    from pandas.tseries.offsets import Tick as PDTick
+except ImportError:
+    PDTick = None
+
+try:
     from sqlalchemy.sql import Selectable as SASelectable
     from sqlalchemy.sql.sqltypes import TypeEngine as SATypeEngine
 except ImportError:
@@ -105,11 +110,12 @@ cdef class Tokenizer:
             if hasattr(obj, '__mars_tokenize__') and not isinstance(obj, type):
                 return self.tokenize(obj.__mars_tokenize__())
             if callable(obj):
-                return tokenize_function(obj)
+                if PDTick is not None and not isinstance(obj, PDTick):
+                    return tokenize_function(obj)
             for clz in object_type.__mro__:
                 if clz in self._handlers:
-                    self._handlers[object_type] = self._handlers[clz]
-                    return self._handlers[clz](obj)
+                    handler = self._handlers[object_type] = self._handlers[clz]
+                    return handler(obj)
             raise TypeError(f'Cannot generate token for {obj}, type: {object_type}')
 
 
@@ -215,6 +221,10 @@ cdef list tokenize_pandas_time_arrays(ob):
     return iterative_tokenize([ob.asi8, ob.dtype])
 
 
+cdef list tokenize_pandas_tick(ob):
+    return iterative_tokenize([ob.freqstr])
+
+
 cdef list tokenize_pandas_interval_arrays(ob):
     return iterative_tokenize([ob.left, ob.right, ob.closed])
 
@@ -281,6 +291,8 @@ tokenize_handler.register(pd.arrays.PeriodArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.IntervalArray, tokenize_pandas_interval_arrays)
 tokenize_handler.register(pd.api.extensions.ExtensionDtype, tokenize_pd_extension_dtype)
 
+if PDTick is not None:
+    tokenize_handler.register(PDTick, tokenize_pandas_tick)
 if SATypeEngine is not None:
     tokenize_handler.register(SATypeEngine, tokenize_sqlalchemy_data_type)
 if SASelectable is not None:

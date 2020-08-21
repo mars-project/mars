@@ -30,7 +30,7 @@ class Test(TestBase):
 
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = pd.to_datetime(1490195805, unit='s')
-        self.assertEqual(result, expected)
+        self.assertEqual(pd.to_datetime(result.item()), expected)
 
         # test list like
         raw = ['3/11/2000', '3/12/2000', '3/13/2000']

@@ -216,12 +216,20 @@ def parse_index(index_value, *args, store_data=False, key=None):
     def _get_index_min(index):
         try:
             return index.min()
+        except ValueError:
+            if isinstance(index, pd.IntervalIndex):
+                return None
+            raise
         except TypeError:
             return None
 
     def _get_index_max(index):
         try:
             return index.max()
+        except ValueError:
+            if isinstance(index, pd.IntervalIndex):
+                return None
+            raise
         except TypeError:
             return None
 
@@ -456,7 +464,7 @@ def build_df(df_obj, fill_value=1, size=1):
     record = [_generate_value(dtype, fill_value) for dtype in empty_df.dtypes]
     if isinstance(empty_df.index, pd.MultiIndex):
         index = tuple(_generate_value(level.dtype, fill_value) for level in empty_df.index.levels)
-        empty_df.loc[index, ] = record
+        empty_df.loc[index, :] = record
     else:
         index = _generate_value(empty_df.index.dtype, fill_value)
         empty_df.loc[index] = record
@@ -867,6 +875,17 @@ class ReprSeries(pd.Series):
         # the length would be wrong and we have no way to control,
         # thus we just overwrite the length to show the real one
         return self._real_shape[0]
+
+
+def filter_dtypes_by_index(dtypes, index):
+    try:
+        new_dtypes = dtypes.loc[index].dropna()
+    except KeyError:
+        dtypes_idx = dtypes.index.to_frame().merge(index.to_frame()) \
+            .set_index(list(range(dtypes.index.nlevels))).index
+        new_dtypes = dtypes.loc[dtypes_idx]
+        new_dtypes.index.names = dtypes.index.names
+    return new_dtypes
 
 
 @contextmanager

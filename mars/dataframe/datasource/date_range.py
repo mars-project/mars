@@ -110,9 +110,10 @@ class DataFrameDateRange(DataFrameOperand, DataFrameOperandMixin):
         index_value.value._max_val_close = True
         index_value.value._is_unique = True
         index_value.value._is_monotonic_increasing = True
+        index_value.value._freq = self._freq
         return self.new_index(None, shape=shape, dtype=dtype,
                               index_value=index_value, name=self._name,
-                              raw_chunk_size=chunk_size)
+                              raw_chunk_size=chunk_size, freq=self._freq)
 
     @classmethod
     def tile(cls, op):

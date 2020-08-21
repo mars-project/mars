@@ -242,6 +242,10 @@ class ArrowArray(ExtensionArray):
                    for x in chunk.buffers()
                    if x is not None)
 
+    @property
+    def shape(self):
+        return (self._arrow_array.length(), )
+
     def memory_usage(self, deep=True) -> int:
         return self.nbytes
 

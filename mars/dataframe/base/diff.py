@@ -105,7 +105,10 @@ class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
         in_data = ctx[op.inputs[0].key]
         if len(op.inputs) == 1:
             if in_data.ndim == 2:
-                ctx[op.outputs[0].key] = in_data.diff(periods=op.periods, axis=op.axis)
+                try:
+                    ctx[op.outputs[0].key] = in_data.diff(periods=op.periods, axis=op.axis)
+                except ValueError:
+                    ctx[op.outputs[0].key] = in_data.copy().diff(periods=op.periods, axis=op.axis)
             else:
                 ctx[op.outputs[0].key] = in_data.diff(periods=op.periods)
         else:

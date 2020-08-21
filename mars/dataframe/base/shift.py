@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
@@ -285,6 +286,13 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
 
         obj = ctx[op.input.key]
         out = op.outputs[0]
+
+        if pd.__version__ == '1.1.0' and \
+                isinstance(obj, (pd.Series, pd.DataFrame)) and len(obj._data.blocks) > 1:
+            # if #internal blocks > 1, shift will create wrong result in pandas 1.1.0
+            # see https://github.com/pandas-dev/pandas/issues/35488
+            # thus we force to do consolidate
+            obj._data._consolidate_inplace()
 
         result = obj.shift(periods=periods, freq=op.freq,
                            axis=axis, fill_value=op.fill_value)

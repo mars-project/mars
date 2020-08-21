@@ -47,6 +47,7 @@ cpdef enum ExtendType:
     function = 26
     tzinfo = 27
     interval_arr = 28
+    freq = 29
 
 
 cdef class Identity:
