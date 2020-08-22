@@ -22,7 +22,7 @@ import ray
 from ..operands import Fetch
 from ..graph import DAG
 from ..utils import build_fetch_chunk
-from ..executor import Executor
+from ..executor import Executor, GraphExecution
 
 
 def operand_serializer(op):
@@ -61,6 +61,12 @@ def _register_ray_serializer(op):
     ray.register_custom_serializer(
         type(op), serializer=operand_serializer,
         deserializer=operand_deserializer)
+
+
+class GraphExecutionForRay(GraphExecution):
+    @property
+    def op_handler(self):
+        return RayExecutor.handle
 
 
 class RayStorage:
@@ -116,6 +122,9 @@ class RayExecutor(Executor):
     Wraps the execute function as a Ray remote function, the type of `results` is `RayStorage`,
     when operand is executed, it will fetch dependencies from a Ray actor.
     """
+
+    _graph_execution_cls = GraphExecutionForRay
+
     @classmethod
     def handle(cls, op, results, mock=False):
         method_name, mapper = ('execute', cls._op_runners) if not mock else \
