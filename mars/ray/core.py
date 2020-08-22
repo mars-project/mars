@@ -23,7 +23,6 @@ from ..operands import Fetch
 from ..graph import DAG
 from ..utils import build_fetch_chunk
 from ..executor import Executor
-from ..tiles import get_tiled
 
 
 def operand_serializer(op):
@@ -56,16 +55,12 @@ def operand_deserializer(value):
     return op
 
 
-def _register_ray_serializer():
+@lru_cache(500)
+def _register_ray_serializer(op):
     # register a custom serializer for Mars operand
-    import ray
-
-    from ..operands import operand_type_to_oprand_cls
-
-    for cls in operand_type_to_oprand_cls.values():
-        ray.register_custom_serializer(
-            cls, serializer=operand_serializer,
-            deserializer=operand_deserializer)
+    ray.register_custom_serializer(
+        type(op), serializer=operand_serializer,
+        deserializer=operand_deserializer)
 
 
 class RayStorage:
@@ -130,6 +125,9 @@ class RayExecutor(Executor):
         except KeyError:
             runner = getattr(op, method_name)
 
+        # register a custom serializer for Mars operand
+        _register_ray_serializer(op)
+
         @lru_cache(500)
         def build_remote_funtion(func):
 
@@ -161,8 +159,6 @@ class RaySession:
     def __init__(self, **kwargs):
         if not ray.is_initialized():
             ray.init(**kwargs)
-        # register a custom serializer for Mars operand
-        _register_ray_serializer()
         self._session_id = uuid.uuid4()
         self._executor = RayExecutor(storage=RayStorage())
 

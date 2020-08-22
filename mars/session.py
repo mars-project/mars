@@ -452,7 +452,7 @@ class Session(object):
         self._sess = ClusterSession(endpoint, **kwargs)
 
     def _init_ray_session(self, **kwargs):
-        from .ray import RaySession
+        from .ray.core import RaySession
 
         self._sess = RaySession(**kwargs)
 
