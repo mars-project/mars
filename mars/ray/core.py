@@ -64,9 +64,8 @@ def _register_ray_serializer(op):
 
 
 class GraphExecutionForRay(GraphExecution):
-    @property
-    def op_handler(self):
-        return RayExecutor.handle
+    def handle_op(self, *args, **kw):
+        return RayExecutor.handle(*args, **kw)
 
 
 class RayStorage:

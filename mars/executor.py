@@ -331,7 +331,7 @@ class GraphDeviceAssigner(object):
                     chunk.op._device = v
 
 
-class GraphExecution(object):
+class GraphExecution:
     """
     Represent an execution for a specified graph.
     """
@@ -375,9 +375,8 @@ class GraphExecution(object):
         # initial assignment for GPU
         self._assign_devices()
 
-    @property
-    def op_handler(self):
-        return Executor.handle
+    def handle_op(self, *args, **kw):
+        return Executor.handle(*args, **kw)
 
     def _order_starts(self):
         visited = set()
@@ -444,7 +443,7 @@ class GraphExecution(object):
             # note that currently execution is the chunk-level
             # so we pass the first operand's first output to Executor.handle
             first_op = ops[0]
-            self.op_handler(first_op, results, self._mock)
+            self.handle_op(first_op, results, self._mock)
 
             # update maximal memory usage during execution
             if self._mock:
