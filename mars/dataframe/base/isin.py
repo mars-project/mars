@@ -98,7 +98,7 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = elements.isin(values)
         except ValueError:
             # buffer read-only
-            ctx[op.outputs[0].key] = elements.copy().isin(values)
+            ctx[op.outputs[0].key] = elements.copy().isin(values.copy())
 
 
 def isin(elements, values):

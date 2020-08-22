@@ -163,17 +163,23 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op: "DataFrameValueCounts"):
         if op.stage != OperandStage.map:
+            in_data = ctx[op.input.key]
             if op.convert_index_to_interval:
-                data = ctx[op.input.key]
-                result = data.value_counts(
+                result = in_data.value_counts(
                     normalize=False, sort=op.sort, ascending=op.ascending,
                     bins=op.bins, dropna=op.dropna)
                 if op.normalize:
-                    result /= data.shape[0]
+                    result /= in_data.shape[0]
             else:
-                result = ctx[op.input.key].value_counts(
-                    normalize=op.normalize, sort=op.sort, ascending=op.ascending,
-                    bins=op.bins, dropna=op.dropna)
+                try:
+                    result = in_data.value_counts(
+                        normalize=op.normalize, sort=op.sort, ascending=op.ascending,
+                        bins=op.bins, dropna=op.dropna)
+                except ValueError:
+                    in_data = in_data.copy()
+                    result = in_data.value_counts(
+                        normalize=op.normalize, sort=op.sort, ascending=op.ascending,
+                        bins=op.bins, dropna=op.dropna)
         else:
             result = ctx[op.input.key]
         if op.convert_index_to_interval:

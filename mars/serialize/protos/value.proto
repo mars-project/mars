@@ -75,6 +75,7 @@ message Value {
         bytes function = 20;  // callable
         bytes tzinfo = 21;  // tzinfo
         IntervalArray interval_arr = 22;  // pandas.arrays.IntervalArray
+        string freq = 24;  // pandas.tseries.offsets.Tick
     }
 
 }
