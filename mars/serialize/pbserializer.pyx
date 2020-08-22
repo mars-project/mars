@@ -38,6 +38,12 @@ from .core import HasKey, HasData
 from .protos.value_pb2 import Value
 from .dataserializer import dumps as datadumps, loads as dataloads
 
+try:
+    from pandas.tseries.offsets import Tick as PDTick
+    from pandas.tseries.frequencies import to_offset
+except ImportError:
+    PDTick = to_offset = None
+
 
 cdef dict PRIMITIVE_TYPE_TO_VALUE_FIELD = {
     ValueType.bool: 'b',
@@ -248,6 +254,12 @@ cdef class ProtobufSerializeProvider(Provider):
         return IntervalArray.from_arrays(left, right,
                                          closed=closed, dtype=dtype)
 
+    cdef inline void _set_freq(self, value, obj, tp=None):
+        obj.freq = value.freqstr
+
+    cdef inline object _get_freq(self, obj):
+        return to_offset(obj.freq)
+
     @cython.boundscheck(False)
     @cython.wraparound(False)
     @cython.nonecheck(False)
@@ -447,6 +459,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_tzinfo(value, obj, tp)
         elif tp is ValueType.interval_arr:
             self._set_interval_arr(value, obj, tp)
+        elif tp is ValueType.freq:
+            self._set_freq(value, obj, tp)
         elif tp in {ValueType.complex64, ValueType.complex128}:
             self._set_complex(value, obj, tp)
         elif isinstance(tp, Identity):
@@ -519,6 +533,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_tzinfo(value, obj)
         elif isinstance(value, IntervalArray):
             self._set_interval_arr(value, obj)
+        elif PDTick is not None and isinstance(value, PDTick):
+            self._set_freq(value, obj)
         elif callable(value):
             self._set_function(value, obj)
         else:
@@ -729,6 +745,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_tzinfo(obj))
         elif tp is ValueType.interval_arr:
             return ref(self._get_interval_arr(obj))
+        elif tp is ValueType.freq:
+            return ref(self._get_freq(obj))
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             return ref(getattr(obj, value_field))
@@ -805,6 +823,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_tzinfo(obj))
         elif field == 'interval_arr':
             return ref(self._get_interval_arr(obj))
+        elif field == 'freq':
+            return ref(self._get_freq(obj))
         else:
             raise TypeError('Unknown type to deserialize')
 

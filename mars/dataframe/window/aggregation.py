@@ -26,7 +26,8 @@ from ...utils import tokenize
 from ..core import DATAFRAME_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import build_empty_df, parse_index, build_empty_series
+from ..utils import build_empty_df, parse_index, build_empty_series, \
+    filter_dtypes_by_index
 
 _stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_sources',
                                          'combine_columns', 'combine_funcs', 'key_to_funcs',
@@ -251,14 +252,10 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
 
         axis = out_df.op.axis
         chunk_idx_to_dtypes = dict()
-        out_dtypes = out_df.dtypes
         new_dtypes_sizes = []
         for c in in_df.cix[0, :]:
             columns = c.columns_value.to_pandas()
-            try:
-                dtypes = out_dtypes.loc[columns].dropna()
-            except KeyError:
-                dtypes = out_dtypes.reindex(columns).dropna()
+            dtypes = filter_dtypes_by_index(out_df.dtypes, columns)
 
             if len(dtypes):
                 chunk_idx_to_dtypes[c.index[1]] = (len(chunk_idx_to_dtypes), dtypes)

@@ -21,7 +21,8 @@ from ...core import OutputType
 from ...serialize import AnyField, BoolField, TupleField, DictField
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_empty_df, build_empty_series, validate_axis, parse_index
+from ..utils import build_empty_df, build_empty_series, validate_axis, \
+    parse_index, filter_dtypes_by_index
 
 
 class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
@@ -107,10 +108,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
             if out_df.ndim == 2:
                 if isinstance(c, DATAFRAME_CHUNK_TYPE):
                     columns = c.columns_value.to_pandas()
-                    try:
-                        new_dtypes = out_df.dtypes.loc[columns].dropna()
-                    except KeyError:
-                        new_dtypes = out_df.dtypes.reindex(columns).dropna()
+                    new_dtypes = filter_dtypes_by_index(out_df.dtypes, columns)
 
                     if len(new_dtypes) == 0:
                         continue

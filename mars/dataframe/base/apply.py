@@ -121,7 +121,10 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                         new_index_value = c.index_value
                         new_columns_value = out_df.columns_value
 
-                new_dtypes = out_df.dtypes[c.dtypes.keys()]
+                if op.axis == 0:
+                    new_dtypes = out_df.dtypes[c.dtypes.keys()]
+                else:
+                    new_dtypes = out_df.dtypes
 
                 new_op = op.copy().reset_key()
                 chunks.append(new_op.new_chunk([c], shape=tuple(new_shape), index=c.index, dtypes=new_dtypes,

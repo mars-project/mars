@@ -923,7 +923,8 @@ class Test(unittest.TestCase):
 
                 f = mdf1[mdf1.a > mdf2.a]
                 r3 = f.iloc[:3].to_pandas()
-                pd.testing.assert_frame_equal(r3, df[df.a > df.a].reset_index(drop=True))
+                pd.testing.assert_frame_equal(r3, df[df.a > df.a].reset_index(drop=True),
+                                              check_index_type=False)
 
                 mdf3 = md.read_csv(file_path, chunk_bytes=15, incremental_index=True)
                 r4 = mdf3.to_pandas()

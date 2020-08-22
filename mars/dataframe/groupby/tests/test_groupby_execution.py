@@ -440,19 +440,20 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
                                       df1.groupby('b').transform(transform_series, truncate=False).sort_index())
 
-        r = mdf.groupby('b').transform(['cummax', 'cumsum'], _call_agg=True)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
-                                      df1.groupby('b').agg(['cummax', 'cumsum']).sort_index())
+        if pd.__version__ != '1.1.0':
+            r = mdf.groupby('b').transform(['cummax', 'cumsum'], _call_agg=True)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                          df1.groupby('b').agg(['cummax', 'cumsum']).sort_index())
 
-        agg_list = ['cummax', 'cumsum']
-        r = mdf.groupby('b').transform(agg_list, _call_agg=True)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
-                                      df1.groupby('b').agg(agg_list).sort_index())
+            agg_list = ['cummax', 'cumsum']
+            r = mdf.groupby('b').transform(agg_list, _call_agg=True)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                          df1.groupby('b').agg(agg_list).sort_index())
 
-        agg_dict = OrderedDict([('d', 'cummax'), ('b', 'cumsum')])
-        r = mdf.groupby('b').transform(agg_dict, _call_agg=True)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
-                                      df1.groupby('b').agg(agg_dict).sort_index())
+            agg_dict = OrderedDict([('d', 'cummax'), ('b', 'cumsum')])
+            r = mdf.groupby('b').transform(agg_dict, _call_agg=True)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                          df1.groupby('b').agg(agg_dict).sort_index())
 
         agg_list = ['sum', lambda s: s.sum()]
         r = mdf.groupby('b').transform(agg_list, _call_agg=True)

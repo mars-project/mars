@@ -344,7 +344,11 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
         xdf = pd if isinstance(df, (pd.Series, pd.DataFrame)) or cudf is None else cudf
 
         if op.stage != OperandStage.map:
-            r = df.loc[indexes]
+            try:
+                r = df.loc[indexes]
+            except AttributeError:
+                # workaround for error when calling series.loc[(index,)]
+                r = df.loc[indexes[0]]
         else:
             # for map stage, and when some index is fancy index
             # ignore keys that do not exist

@@ -475,7 +475,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
             ctx[chunk.key] = series.iloc[indexes]
         else:
             # index, only happen for calling from rechunk
-            ctx[chunk.key] = series[indexes]
+            ctx[chunk.key] = series[indexes if len(indexes) > 1 else indexes[0]]
 
     def __call__(self, series):
         if isinstance(self._indexes[0], Integral):

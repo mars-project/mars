@@ -14,6 +14,8 @@
 
 import multiprocessing
 
+import pandas as pd
+
 from .... import remote as mr
 from ....session import Session
 from ....utils import ceildiv
@@ -37,9 +39,25 @@ class MarsDistributor(DistributorBaseClass):
             return ceildiv(data_length, n_cores)
 
     def distribute(self, func, partitioned_chunks, kwargs):
+        def _wrapped_func(*args, **kw):
+            # Series.value_counts() may not be able to handle
+            if not getattr(pd.Series.value_counts, '_wrapped', False):
+                old_value_counts = pd.Series.value_counts
+
+                def _wrapped_value_counts(obj, *args, **kw):
+                    try:
+                        return old_value_counts(obj, *args, **kw)
+                    except ValueError:
+                        return old_value_counts(obj.copy(), *args, **kw)
+
+                pd.Series.value_counts = _wrapped_value_counts
+                pd.Series.value_counts._wrapped = True
+
+            return func(*args, **kw)
+
         tasks = []
         for partitioned_chunk in partitioned_chunks:
-            tasks.append(mr.spawn(func, args=(partitioned_chunk,), kwargs=kwargs))
+            tasks.append(mr.spawn(_wrapped_func, args=(partitioned_chunk,), kwargs=kwargs))
         executed = mr.ExecutableTuple(tasks).execute(session=self._session)
         fetched = executed.fetch(session=self._session)
         return [item for results in fetched for item in results]

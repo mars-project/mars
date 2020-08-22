@@ -38,7 +38,7 @@ class Test(LearnIntegrationTestBase):
         with new_session(service_ep) as sess:
             dist = MarsDistributor(sess)
 
-            df = df.iloc[:200]
+            df = df.iloc[:200].copy()
 
             extraction_settings = ComprehensiveFCParameters()
             extract_features(df, column_id='id', column_sort='time',
