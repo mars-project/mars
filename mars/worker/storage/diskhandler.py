@@ -15,6 +15,7 @@
 import functools
 import os
 import shutil
+import subprocess
 import sys
 import time
 
@@ -254,13 +255,14 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
     def delete(self, session_id, data_keys, _tell=False):
-        for data_key in data_keys:
-            file_name = _build_file_name(session_id, data_key)
-            if sys.platform == 'win32':  # pragma: no cover
-                CREATE_NO_WINDOW = 0x08000000
-                self._actor_ctx.popen(['del', file_name], creationflags=CREATE_NO_WINDOW)
-            else:
-                self._actor_ctx.popen(['rm', '-f', file_name])
+        file_names = [_build_file_name(session_id, k) for k in data_keys]
+        del_pool = self.get_io_pool()
+
+        for idx in range(0, len(file_names), 10):
+            cmd = ['rm', '-f'] if sys.platform != 'win32' else ['del']
+            cmd += file_names[idx:idx + 10]
+            kw = dict() if sys.platform != 'win32' else dict(creationflags=0x08000000)  # CREATE_NO_WINDOW
+            del_pool.submit(subprocess.Popen, cmd, **kw)
         self.unregister_data(session_id, data_keys, _tell=_tell)
 
 

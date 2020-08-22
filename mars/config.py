@@ -358,6 +358,7 @@ default_options.register_option('worker.prepare_data_timeout', 600, validator=is
 default_options.register_option('worker.peer_blacklist_time', 3600, validator=is_numeric, serialize=True)
 default_options.register_option('worker.io_parallel_num', 1, validator=is_integer, serialize=True)
 default_options.register_option('worker.recover_dead_process', True, validator=is_bool, serialize=True)
+default_options.register_option('worker.write_shuffle_to_disk', False, validator=is_bool, serialize=True)
 
 default_options.register_option('worker.plasma_socket', '/tmp/plasma', validator=is_string)
 
