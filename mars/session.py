@@ -413,36 +413,54 @@ class ClusterSession(object):
 class Session(object):
     _default_session_local = threading.local()
 
-    def __init__(self, endpoint=None, **kwargs):
+    def __init__(self, endpoint=None, backend=None, **kwargs):
         self._endpoint = endpoint
+        self._backend = backend
         self._kws = kwargs
         self._init()
 
     def _init(self):
         endpoint, kwargs = self._endpoint, self._kws
-        if endpoint is not None:
-            if 'http' in endpoint:
-                # connect to web
-                from .web.session import Session as WebSession
-
-                self._sess = WebSession(endpoint, **kwargs)
+        if self._backend is None:
+            if endpoint is not None:
+                if 'http' in endpoint:
+                    # connect to web
+                    self._init_web_session(endpoint, **kwargs)
+                else:
+                    # connect to local cluster
+                    self._init_cluster_session(endpoint, **kwargs)
             else:
-                # connect to local cluster
+                try:
+                    endpoint = os.environ['MARS_SCHEDULER_ADDRESS']
+                    session_id = os.environ.get('MARS_SESSION_ID', None)
+                    kwargs['session_id'] = session_id
+                    self._init_cluster_session(endpoint, **kwargs)
+                except KeyError:
+                    self._init_local_session(**kwargs)
+        elif self._backend == 'ray':
+            self._init_ray_session(**kwargs)
 
-                self._sess = ClusterSession(endpoint, **kwargs)
-        else:
-            try:
-                endpoint = os.environ['MARS_SCHEDULER_ADDRESS']
-                session_id = os.environ.get('MARS_SESSION_ID', None)
-                self._sess = ClusterSession(endpoint, session_id=session_id)
-            except KeyError:
-                self._sess = LocalSession(**kwargs)
+    def _init_local_session(self, **kwargs):
+        self._sess = LocalSession(**kwargs)
+
+    def _init_web_session(self, endpoint, **kwargs):
+        from .web.session import Session as WebSession
+
+        self._sess = WebSession(endpoint, **kwargs)
+
+    def _init_cluster_session(self, endpoint, **kwargs):
+        self._sess = ClusterSession(endpoint, **kwargs)
+
+    def _init_ray_session(self, **kwargs):
+        from .ray.core import RaySession
+
+        self._sess = RaySession(**kwargs)
 
     def __getstate__(self):
-        return self._endpoint, self._kws, self.session_id
+        return self._endpoint, self._kws, self.session_id, self._backend
 
     def __setstate__(self, state):
-        self._endpoint, self._kws, session_id = state
+        self._endpoint, self._kws, session_id, self._backend = state
         self._init()
         self._sess._session_id = session_id
 
@@ -564,5 +582,5 @@ class Session(object):
         return self._sess.seal(tensor)
 
 
-def new_session(scheduler=None, **kwargs):
-    return Session(scheduler, **kwargs)
+def new_session(scheduler=None, backend=None, **kwargs):
+    return Session(scheduler, backend=backend, **kwargs)
