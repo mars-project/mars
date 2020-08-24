@@ -23,7 +23,7 @@ from mars.config import option_context
 from mars.utils import ignore_warning
 from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, cos, truediv, frexp, \
-    modf, clip, isclose
+    modf, clip, isclose, arctan2
 from mars.tests.core import require_cupy, ExecutorForTest
 
 
@@ -281,6 +281,40 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(arr3, concat=True)[0]
         expected = np.add(data2[:5, :], 1)
         self.assertTrue(np.array_equal(res, expected))
+
+    def testArctan2Execution(self):
+        x = tensor(1)  # scalar
+        y = arctan2(x, x)
+
+        self.assertFalse(y.issparse())
+        result = self.executor.execute_tensor(y, concat=True)[0]
+        np.testing.assert_equal(result, np.arctan2(1, 1))
+
+        y = arctan2(0, x)
+
+        self.assertFalse(y.issparse())
+        result = self.executor.execute_tensor(y, concat=True)[0]
+        np.testing.assert_equal(result, np.arctan2(0, 1))
+
+        raw1 = np.array([[0, 1, 2]])
+        raw2 = sps.csr_matrix([[0, 1, 0]])
+        y = arctan2(raw1, raw2)
+
+        self.assertFalse(y.issparse())
+        result = self.executor.execute_tensor(y, concat=True)[0]
+        np.testing.assert_equal(result, np.arctan2(raw1, raw2.A))
+
+        y = arctan2(raw2, raw2)
+
+        self.assertTrue(y.issparse())
+        result = self.executor.execute_tensor(y, concat=True)[0]
+        np.testing.assert_equal(result, np.arctan2(raw2.A, raw2.A))
+
+        y = arctan2(0, raw2)
+
+        self.assertTrue(y.issparse())
+        result = self.executor.execute_tensor(y, concat=True)[0]
+        np.testing.assert_equal(result, np.arctan2(0, raw2.A))
 
     def testFrexpExecution(self):
         data1 = np.random.random((5, 9, 4))
