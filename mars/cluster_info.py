@@ -110,7 +110,7 @@ class ClusterInfoActor(FunctionActor):
         self._hash_ring = None
         self._watcher = None
         self._schedulers = []
-        self._observer_refs = []
+        self._observer_refs = dict()
 
     @classmethod
     def default_uid(cls):
@@ -132,7 +132,10 @@ class ClusterInfoActor(FunctionActor):
             self.ctx.destroy_actor(self._watcher)
 
     def register_observer(self, observer, fun_name):
-        self._observer_refs.append((self.ctx.actor_ref(observer), fun_name))
+        self._observer_refs[(observer.uid, observer.address)] = (self.ctx.actor_ref(observer), fun_name)
+
+    def unregister_observer(self, observer):
+        self._observer_refs.pop((observer.uid, observer.address), None)
 
     def get_schedulers(self):
         return self._schedulers
@@ -142,9 +145,9 @@ class ClusterInfoActor(FunctionActor):
         self._schedulers = schedulers
         self._hash_ring = create_hash_ring(self._schedulers)
 
-        for observer_ref, fun_name in self._observer_refs:
+        for observer_ref, fun_name in self._observer_refs.values():
             # notify the observers to update the new scheduler list
-            getattr(observer_ref, fun_name)(schedulers, _tell=True)
+            getattr(observer_ref, fun_name)(schedulers, _tell=True, _wait=False)
 
     def get_scheduler(self, key, size=1):
         if len(self._schedulers) == 1 and size == 1:
@@ -190,6 +193,11 @@ class HasClusterInfoActor(PromiseActor):
             self.ref(), set_schedulers_fun_name, _tell=True, _wait=False)
         if not self._schedulers:
             self.set_schedulers(self._cluster_info_ref.get_schedulers())
+
+    def unset_cluster_info_ref(self):
+        self._cluster_info_ref = self.ctx.actor_ref(self.cluster_info_uid)
+        # when some schedulers lost, notification will be received
+        self._cluster_info_ref.unregister_observer(self.ref(), _tell=True, _wait=False)
 
     def get_actor_ref(self, key):
         addr = self.get_scheduler(key)

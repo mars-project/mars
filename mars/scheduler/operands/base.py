@@ -96,6 +96,9 @@ class BaseOperandActor(SchedulerActor):
 
         self.ref().start_operand(_tell=True)
 
+    def pre_destroy(self):
+        self.unset_cluster_info_ref()
+
     @property
     def state(self):
         return self._state

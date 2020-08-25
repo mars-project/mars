@@ -130,6 +130,7 @@ class AssignerActor(SchedulerActor):
 
     def pre_destroy(self):
         self._actual_ref.destroy()
+        self.unset_cluster_info_ref()
 
     def allocate_top_resources(self, max_allocates=None):
         self._allocate_requests.append(max_allocates)
@@ -266,6 +267,9 @@ class AssignEvaluationActor(SchedulerActor):
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
         self.periodical_allocate()
+
+    def pre_destroy(self):
+        self.unset_cluster_info_ref()
 
     def mark_metrics_expired(self):
         logger.debug('Metrics cache marked as expired.')

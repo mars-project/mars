@@ -139,7 +139,6 @@ class ExecutionActor(WorkerActor):
         from .status import StatusActor
 
         super().post_create()
-        self.set_cluster_info_ref()
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
