@@ -67,6 +67,12 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
         self._init_shared_store()
         self._proc_id = self.ctx.distributor.distribute(self.uid)
 
+    def pre_destroy(self):
+        try:
+            self.unset_cluster_info_ref()
+        except ActorNotExist:
+            pass
+
     def _init_shared_store(self):
         import pyarrow.plasma as plasma
         from .storage.sharedstore import PlasmaSharedStore, PlasmaKeyMapActor

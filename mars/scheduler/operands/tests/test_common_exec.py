@@ -49,6 +49,9 @@ class FakeExecutionActor(SchedulerActor):
         super().post_create()
         self.set_cluster_info_ref()
 
+    def pre_destroy(self):
+        self.unset_cluster_info_ref()
+
     @classmethod
     def gen_uid(cls, addr):
         return f's:h1:{cls.__name__}${addr}'
