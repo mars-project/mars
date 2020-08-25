@@ -72,6 +72,9 @@ class MutableTensorActor(SchedulerActor):
             nsplits=tensor.nsplits, key=tensor.key, chunks=tensor.chunks,
             chunk_eps=endpoints))
 
+    def pre_destroy(self):
+        self.unset_cluster_info_ref()
+
     def tensor_meta(self):
         # avoid built-in scalar dtypes are made into one-field record type.
         if self._dtype.fields:
