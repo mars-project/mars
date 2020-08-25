@@ -41,6 +41,19 @@ class Test(TestBase):
         self.ctx, self.executor = self._create_test_context()
 
     def testFromPandasDataFrameExecution(self):
+        # test empty dataframe
+        pdf = pd.DataFrame()
+        df = from_pandas_df(pdf)
+
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        pd.testing.assert_frame_equal(pdf, result)
+
+        pdf = pd.DataFrame(columns=list('ab'))
+        df = from_pandas_df(pdf)
+
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        pd.testing.assert_frame_equal(pdf, result)
+
         pdf = pd.DataFrame(np.random.rand(20, 30), index=[np.arange(20), np.arange(20, 0, -1)])
         df = from_pandas_df(pdf, chunk_size=(13, 21))
 

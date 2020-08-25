@@ -137,7 +137,7 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
         row_left_size = shape[0]
     else:
         row_chunk_size = normalize_chunk_sizes((shape[0],), (chunk_size[0],))[0]
-        row_left_size = 0
+        row_left_size = -1
     # for the column side, along axis 1
     if 1 not in chunk_size:
         col_chunk_size = []
@@ -148,11 +148,18 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
         acc = [0] + np.cumsum(col_chunk_size).tolist()
         col_chunk_store = [average_memory_usage[acc[i]: acc[i + 1]].sum()
                            for i in range(len(col_chunk_size))]
-        col_left_size = 0
+        col_left_size = -1
 
     while True:
         nbytes_occupied = np.prod([max(it) for it in (row_chunk_size, col_chunk_store) if it])
         dim_size = np.maximum(int(np.power(max_chunk_size / nbytes_occupied, 1 / float(nleft))), 1)
+
+        if col_left_size == 0:
+            col_chunk_size.append(0)
+
+        if row_left_size == 0:
+            row_chunk_size.append(0)
+
         # check col first
         if col_left_size > 0:
             cs = min(col_left_size, dim_size)
@@ -166,7 +173,7 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
             row_chunk_size.append(cs)
             row_left_size -= cs
 
-        if col_left_size == 0 and row_left_size == 0:
+        if col_left_size <= 0 and row_left_size <= 0:
             break
 
     return tuple(row_chunk_size), tuple(col_chunk_size)
