@@ -41,7 +41,7 @@ class Test(TestBase):
         self.ctx, self.executor = self._create_test_context()
 
     def testFromPandasDataFrameExecution(self):
-        # test empty dataframe
+        # test empty DataFrame
         pdf = pd.DataFrame()
         df = from_pandas_df(pdf)
 
@@ -61,6 +61,13 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(pdf, result)
 
     def testFromPandasSeriesExecution(self):
+        # test empty Series
+        ps = pd.Series(name='a')
+        series = from_pandas_series(ps, chunk_size=13)
+
+        result = self.executor.execute_dataframe(series, concat=True)[0]
+        pd.testing.assert_series_equal(ps, result)
+
         ps = pd.Series(np.random.rand(20), index=[np.arange(20), np.arange(20, 0, -1)], name='a')
         series = from_pandas_series(ps, chunk_size=13)
 
