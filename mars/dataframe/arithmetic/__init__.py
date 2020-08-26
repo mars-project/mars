@@ -14,7 +14,7 @@
 
 import functools
 
-from ...core import build_mode
+from ...utils import is_build_mode
 from ..core import DATAFRAME_TYPE
 from ..utils import wrap_notimplemented_exception
 from ..ufunc.tensor import register_tensor_unary_ufunc
@@ -66,7 +66,7 @@ from .dot import dot
 def _wrap_eq():
     @functools.wraps(eq)
     def call(df, other, **kw):
-        if build_mode().is_build_mode:
+        if is_build_mode():
             return df._equals(other)
         return _wrap_comparison(eq)(df, other, **kw)
     return call

@@ -17,7 +17,7 @@
 import itertools
 
 from .graph import DAG
-from .utils import kernel_mode, enter_build_mode
+from .utils import enter_mode
 
 
 class GraphBuilder(object):
@@ -69,8 +69,7 @@ class TileableGraphBuilder(GraphBuilder):
                          node_processor=node_processor,
                          inputs_selector=inputs_selector)
 
-    @kernel_mode
-    @enter_build_mode
+    @enter_mode(build=True, kernel=True)
     def build(self, tileables, tileable_graph=None):
         if tileable_graph is not None:  # pragma: no cover
             return tileable_graph

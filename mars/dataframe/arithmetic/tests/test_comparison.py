@@ -19,8 +19,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-from mars.core import build_mode
 from mars.dataframe.initializer import DataFrame
+from mars.utils import enter_mode
 
 
 class Test(unittest.TestCase):
@@ -28,7 +28,7 @@ class Test(unittest.TestCase):
         df1 = DataFrame(pd.DataFrame(np.random.rand(4, 3)))
         df2 = DataFrame(pd.DataFrame(np.random.rand(4, 3)))
 
-        with build_mode():
+        with enter_mode(build=True):
             self.assertFalse(df1.data == df2.data)
             self.assertTrue(df1.data == df1.data)
 

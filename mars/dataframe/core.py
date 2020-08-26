@@ -27,7 +27,7 @@ from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, An
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
-    build_mode, ceildiv
+    ceildiv, is_build_mode
 from .utils import fetch_corner_data, ReprSeries
 
 
@@ -411,7 +411,7 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
         }
 
     def _to_str(self, representation=False):
-        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+        if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
                 return f'Index <op={type(self._op).__name__}, key={self.key}'
@@ -695,7 +695,7 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
         }
 
     def _to_str(self, representation=False):
-        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+        if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
                 return f'{self._type_name} <op={type(self._op).__name__}, key={self.key}>'
@@ -1039,7 +1039,7 @@ class DataFrameData(BaseDataFrameData):
     _type_name = 'DataFrame'
 
     def _to_str(self, representation=False):
-        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+        if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
                 return f'{self._type_name} <op={type(self._op).__name__}, key={self.key}>'
@@ -1453,7 +1453,7 @@ class DataFrameGroupByData(BaseDataFrameData):
 
     def _equal(self, o):
         # FIXME We need to implemented a true `==` operator for DataFrameGroupby
-        if build_mode().is_build_mode:
+        if is_build_mode():
             return self is o
         else:
             return self == o
@@ -1489,7 +1489,7 @@ class SeriesGroupByData(BaseSeriesData):
 
     def _equal(self, o):
         # FIXME We need to implemented a true `==` operator for DataFrameGroupby
-        if build_mode().is_build_mode:
+        if is_build_mode():
             return self is o
         else:
             return self == o
@@ -1617,7 +1617,7 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
         }
 
     def _to_str(self, representation=False):
-        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+        if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
                 return f'{self._type_name} <op={type(self.op).__name__}, key={self.key}>'
@@ -1642,7 +1642,7 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
 
     def _equal(self, o):
         # FIXME We need to implemented a true `==` operator for DataFrameGroupby
-        if build_mode().is_build_mode:
+        if is_build_mode():
             return self is o
         else:  # pragma: no cover
             return self == o
