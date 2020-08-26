@@ -14,6 +14,7 @@
 
 import os
 import pickle
+import types
 import uuid
 from collections import deque
 from datetime import date, datetime, timedelta, tzinfo
@@ -245,7 +246,10 @@ def tokenize_function(ob):
         return tokenize_function(ob.func), args, keywords
     else:
         try:
-            return iterative_tokenize([pickle.dumps(ob, protocol=0), id(ob)])
+            if isinstance(ob, types.FunctionType):
+                return iterative_tokenize([pickle.dumps(ob, protocol=0), id(ob)])
+            else:
+                return pickle.dumps(ob, protocol=0)
         except:
             pass
         try:
