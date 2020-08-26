@@ -28,7 +28,7 @@ from ..align import align_dataframe_series, align_series_series
 from ..initializer import Series as asseries
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..utils import build_concatenated_rows_frame, hash_dataframe_on, \
-    build_empty_df, build_empty_series, parse_index
+    build_df, build_series, parse_index
 from ..operands import DataFrameOperandMixin, DataFrameMapReduceOperand, DataFrameShuffleProxy
 
 
@@ -97,14 +97,14 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def build_mock_groupby(self, **kwargs):
         in_df = self.inputs[0]
         if self.is_dataframe_obj:
-            empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
+            empty_df = build_df(in_df, size=2)
             obj_dtypes = in_df.dtypes[in_df.dtypes == np.dtype('O')]
             empty_df[obj_dtypes.index] = 'O'
         else:
             if in_df.dtype == np.dtype('O'):
                 empty_df = pd.Series('O', index=pd.RangeIndex(2), name=in_df.name, dtype=np.dtype('O'))
             else:
-                empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
+                empty_df = build_series(in_df, size=2, name=in_df.name)
 
         new_kw = self.groupby_params
         new_kw.update(kwargs)
@@ -114,7 +114,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             new_by = []
             for v in new_kw['by']:
                 if isinstance(v, (Base, Entity)):
-                    new_by.append(build_empty_series(v.dtype, index=pd.RangeIndex(2), name=v.name))
+                    new_by.append(build_series(v, size=2, name=v.name))
                 else:
                     new_by.append(v)
             new_kw['by'] = new_by

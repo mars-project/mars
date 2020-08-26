@@ -13,11 +13,16 @@
 # limitations under the License.
 
 import random
+import unittest
 from collections import OrderedDict
 from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
+try:
+    import pyarrow as pa
+except ImportError:  # pragma: no cover
+    pa = None
 
 from mars.config import options, option_context
 from mars.dataframe.base import to_gpu, to_cpu, cut, qcut
@@ -490,6 +495,27 @@ class Test(TestBase):
         expected = s_raw.apply(lambda x: [x, x + 1], convert_dtype=False)
         pd.testing.assert_series_equal(result, expected)
 
+    @unittest.skipIf(pa is None, 'pyarrow not installed')
+    def testApplyWithArrowDtypeExecution(self):
+        df1 = pd.DataFrame({'a': [1, 2, 1],
+                            'b': ['a', 'b', 'a']})
+        df = from_pandas_df(df1)
+        df['b'] = df['b'].astype('Arrow[string]')
+
+        r = df.apply(lambda row: str(row[0]) + row[1], axis=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df1.apply(lambda row: str(row[0]) + row[1], axis=1)
+        pd.testing.assert_series_equal(result, expected)
+
+        s1 = df1['b']
+        s = from_pandas_series(s1)
+        s = s.astype('arrow_string')
+
+        r = s.apply(lambda x: x + '_suffix')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s1.apply(lambda x: x + '_suffix')
+        pd.testing.assert_series_equal(result, expected)
+
     def testTransformExecute(self):
         cols = [chr(ord('A') + i) for i in range(10)]
         df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
@@ -586,8 +612,10 @@ class Test(TestBase):
             df_raw = pd.DataFrame({'col1': ['str'] * 10, 'col2': ['string'] * 10})
             df = from_pandas_df(df_raw, chunk_size=3)
 
-            with self.assertRaises(TypeError):
-                df['col1'].transform(lambda x: x + '_suffix')
+            r = df['col1'].transform(lambda x: x + '_suffix')
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = df_raw['col1'].transform(lambda x: x + '_suffix')
+            pd.testing.assert_series_equal(result, expected)
 
             r = df.transform(lambda x: x + '_suffix')
             result = self.executor.execute_dataframe(r, concat=True)[0]
@@ -600,6 +628,27 @@ class Test(TestBase):
             pd.testing.assert_series_equal(result, expected)
         finally:
             options.chunk_store_limit = old_chunk_store_limit
+
+    @unittest.skipIf(pa is None, 'pyarrow not installed')
+    def testTransformWithArrowDtypeExecution(self):
+        df1 = pd.DataFrame({'a': [1, 2, 1],
+                            'b': ['a', 'b', 'a']})
+        df = from_pandas_df(df1)
+        df['b'] = df['b'].astype('Arrow[string]')
+
+        r = df.transform({'b': lambda x: x + '_suffix'})
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df1.transform({'b': lambda x: x + '_suffix'})
+        pd.testing.assert_frame_equal(result, expected)
+
+        s1 = df1['b']
+        s = from_pandas_series(s1)
+        s = s.astype('arrow_string')
+
+        r = s.transform(lambda x: x + '_suffix')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s1.transform(lambda x: x + '_suffix')
+        pd.testing.assert_series_equal(result, expected)
 
     def testStringMethodExecution(self):
         s = pd.Series(['s1,s2', 'ef,', 'dd', np.nan])
