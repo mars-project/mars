@@ -53,6 +53,8 @@ class WorkerApplication(BaseApplication):
         parser.add_argument('--io-parallel-num', help='make file io lock free, add this when using a mounted dfs')
         parser.add_argument('--disable-proc-recover', action='store_true',
                             help='disable recovering failed processes')
+        parser.add_argument('--write-shuffle-to-disk', action='store_true',
+                            help='write shuffled data to disk')
         parser.add_argument('--plasma-dir', help='path of plasma directory. When specified, the size '
                                                  'of plasma store will not be taken into account when '
                                                  'managing host memory')
@@ -78,6 +80,8 @@ class WorkerApplication(BaseApplication):
         args.cache_mem = args.cache_mem or environ.get('MARS_CACHE_MEM_SIZE')
         args.disable_proc_recover = args.disable_proc_recover \
             or bool(int(environ.get('MARS_DISABLE_PROC_RECOVER', '0')))
+        args.write_shuffle_to_disk = args.write_shuffle_to_disk \
+            or bool(int(environ.get('MARS_WRITE_SHUFFLE_TO_DISK', '0')))
         args.io_parallel_num = args.io_parallel_num \
             or int(environ.get('MARS_IO_PARALLEL_NUM', '1'))
         if args.io_parallel_num == 1 and bool(int(environ.get('MARS_LOCK_FREE_FILEIO', '0'))):
@@ -115,6 +119,7 @@ class WorkerApplication(BaseApplication):
             plasma_dir=self.args.plasma_dir,
             use_ext_plasma_dir=bool(self.args.plasma_dir),
             disable_proc_recover=self.args.disable_proc_recover,
+            write_shuffle_to_disk=self.args.write_shuffle_to_disk,
         )
         # start plasma
         self._service.start_plasma()

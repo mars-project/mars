@@ -139,7 +139,6 @@ class ExecutionActor(WorkerActor):
         from .status import StatusActor
 
         super().post_create()
-        self.set_cluster_info_ref()
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
@@ -653,7 +652,8 @@ class ExecutionActor(WorkerActor):
         promises = []
         graph_record = self._graph_records[(session_id, graph_key)]
         ensure_shared_keys = [k for k in copy_keys if k in graph_record.shared_input_chunks]
-        better_shared_keys = [k for k in copy_keys if k not in graph_record.shared_input_chunks]
+        better_shared_keys = [k for k in copy_keys if k not in graph_record.shared_input_chunks
+                              and not isinstance(k, tuple)]
 
         def _release_copied_keys(keys):
             actual_moved_keys = self._pin_shared_data_keys(session_id, graph_key, keys)

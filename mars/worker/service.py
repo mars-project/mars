@@ -98,6 +98,7 @@ class WorkerService(object):
             options.worker.transfer_compression
         options.worker.io_parallel_num = kwargs.pop('io_parallel_num', None) or False
         options.worker.recover_dead_process = not (kwargs.pop('disable_proc_recover', None) or False)
+        options.worker.write_shuffle_to_disk = kwargs.pop('write_shuffle_to_disk', None) or False
 
         self._total_mem = kwargs.pop('total_mem', None)
         self._cache_mem_limit = kwargs.pop('cache_mem_limit', None)

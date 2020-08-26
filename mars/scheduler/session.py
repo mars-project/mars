@@ -72,6 +72,8 @@ class SessionActor(SchedulerActor):
 
     def pre_destroy(self):
         super().pre_destroy()
+        self.unset_cluster_info_ref()
+
         self._manager_ref.delete_session(self._session_id, _tell=True)
         self.ctx.destroy_actor(self._assigner_ref)
         for graph_ref in self._graph_refs.values():
@@ -235,6 +237,9 @@ class SessionManagerActor(SchedulerActor):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
         self.set_cluster_info_ref()
+
+    def pre_destroy(self):
+        self.unset_cluster_info_ref()
 
     def get_sessions(self):
         return list(self._session_refs.keys())
