@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...core import build_mode
+from ...utils import is_build_mode
 from .add import add, TensorAdd, TensorTreeAdd
 from .subtract import subtract, TensorSubtract
 from .multiply import multiply, TensorMultiply, TensorTreeMultiply
@@ -141,7 +141,7 @@ def _install():
 
     def _wrap_equal(func):
         def eq(x1, x2, **kwargs):
-            if build_mode().is_build_mode:
+            if is_build_mode():
                 return astensor(x1)._equals(x2)
             return func(x1, x2, **kwargs)
         return eq

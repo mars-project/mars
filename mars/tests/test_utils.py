@@ -202,10 +202,10 @@ class Test(unittest.TestCase):
         self.assertTrue(any(isinstance(n.op, TensorFetch) for n in graph))
         self.assertEqual(len(graph), 1)
 
-    def testKernelMode(self):
+    def testEnterMode(self):
         from mars.config import option_context, options
 
-        @utils.kernel_mode
+        @utils.enter_mode(kernel=True)
         def wrapped():
             return utils.is_eager_mode()
 
@@ -216,14 +216,48 @@ class Test(unittest.TestCase):
             self.assertTrue(options.eager_mode)
             self.assertFalse(wrapped())
 
-        @utils.kernel_mode
+        @utils.enter_mode(kernel=True)
         def wrapped2():
             wrapped()
             with option_context({'eager_mode': True}):
                 self.assertTrue(options.eager_mode)
                 self.assertFalse(utils.is_eager_mode())
+                with utils.enter_mode(kernel=False):
+                    self.assertFalse(utils.is_kernel_mode())
+                self.assertTrue(utils.is_kernel_mode())
 
         wrapped2()
+
+        self.assertFalse(utils.is_kernel_mode())
+        self.assertFalse(utils.is_build_mode())
+
+        @utils.enter_mode(kernel=False)
+        def wrapped3():
+            wrapped()
+            with option_context({'eager_mode': True}):
+                self.assertTrue(options.eager_mode)
+                self.assertFalse(utils.is_kernel_mode())
+                with utils.enter_mode(kernel=True, build=True):
+                    self.assertTrue(utils.is_kernel_mode())
+                    self.assertTrue(utils.is_build_mode())
+                self.assertFalse(utils.is_kernel_mode())
+                self.assertFalse(utils.is_build_mode())
+                with self.assertRaises(ValueError):
+                    with utils.enter_mode(kernel=True, build=True):
+                        raise ValueError('meant to raise error')
+                self.assertFalse(utils.is_kernel_mode())
+                self.assertFalse(utils.is_build_mode())
+
+                @utils.enter_mode(kernel=True)
+                def wrapped4():
+                    raise ValueError('meant to raise error')
+
+                with self.assertRaises(ValueError):
+                    wrapped4()
+                self.assertFalse(utils.is_kernel_mode())
+                self.assertFalse(utils.is_build_mode())
+
+        wrapped3()
 
     def testBlacklistSet(self):
         blset = utils.BlacklistSet(0.1)
