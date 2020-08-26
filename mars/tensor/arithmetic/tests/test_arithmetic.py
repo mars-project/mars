@@ -24,8 +24,8 @@ from mars.tensor.arithmetic import add, subtract, truediv, log, frexp, around, \
     isclose, isfinite, negative, cos, TensorAdd, TensorSubtract, TensorLog, TensorIsclose, TensorGreaterThan
 from mars.tensor.linalg import matmul
 from mars.tensor.core import Tensor, SparseTensor
-from mars.core import build_mode
 from mars.tiles import get_tiled
+from mars.utils import enter_mode
 
 
 class Test(unittest.TestCase):
@@ -538,5 +538,5 @@ class Test(unittest.TestCase):
         t1 = ones((2, 3), chunk_size=2)
         self.assertTrue(t1 == 2)
 
-        with build_mode():
+        with enter_mode(build=True):
             self.assertFalse(t1 == 2)

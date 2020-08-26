@@ -27,15 +27,10 @@ from pandas.api.types import pandas_dtype, is_scalar, \
     is_array_like, is_string_dtype, is_list_like
 from pandas.api.extensions import ExtensionArray, \
     ExtensionDtype, register_extension_dtype
+from pandas.arrays import StringArray as StringArrayBase
 from pandas.core import ops
 from pandas.core.algorithms import take
 from pandas.compat import set_function_name
-try:
-    from pandas.arrays import StringArray as StringArrayBase
-except ImportError:  # pragma: no cover
-    # for pandas < 1.0
-    StringArrayBase = ExtensionArray
-
 try:
     import pyarrow as pa
     pa_null = pa.NULL

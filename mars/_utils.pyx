@@ -245,7 +245,7 @@ def tokenize_function(ob):
         return tokenize_function(ob.func), args, keywords
     else:
         try:
-            return pickle.dumps(ob, protocol=0)
+            return iterative_tokenize([pickle.dumps(ob, protocol=0), id(ob)])
         except:
             pass
         try:

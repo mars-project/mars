@@ -20,10 +20,10 @@ import weakref
 from .graph import DAG
 from .graph_builder import GraphBuilder, TileableGraphBuilder
 from .config import options
-from .utils import kernel_mode, enter_build_mode, copy_tileables
+from .utils import enter_mode, copy_tileables
 
 
-class Tileable(object):
+class Tileable:
     __slots__ = ()
 
     @property
@@ -50,7 +50,7 @@ class Tileable(object):
     def _inplace_tile(self):
         return handler.inplace_tile(self)
 
-    @kernel_mode
+    @enter_mode(kernel=True)
     def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True,
                     **build_chunk_graph_kwargs):
         tileable_graph = graph if not tiled else None
@@ -106,7 +106,7 @@ class OperandTilesHandler(object):
             tile_after_tensor_data.copy_to(tile_before_tensor_data)
             tile_before_tensor_data.op.outputs = tile_before_tensor_datas
 
-    @kernel_mode
+    @enter_mode(kernel=True)
     def dispatch(self, op):
         op_cls = self._get_op_cls(op)
         tiled = None
@@ -150,7 +150,7 @@ _tileable_data_to_tiled = weakref.WeakKeyDictionary()
 _op_to_copied = weakref.WeakKeyDictionary()
 
 
-@enter_build_mode
+@enter_mode(build=True)
 def get_tiled(tileable, mapping=None, raise_err_if_not_tiled=True):
     tileable_data = tileable.data if hasattr(tileable, 'data') else tileable
     if mapping:
@@ -224,8 +224,7 @@ class ChunkGraphBuilder(GraphBuilder):
             tileable_graph = tileable_graph_builder.build(tileables)
         return tileable_graph
 
-    @kernel_mode
-    @enter_build_mode
+    @enter_mode(build=True, kernel=True)
     def build(self, tileables, tileable_graph=None):
         tileable_graph = self._get_tileable_data_graph(tileables, tileable_graph)
 
@@ -337,8 +336,7 @@ class IterativeChunkGraphBuilder(ChunkGraphBuilder):
             raise TilesError('Tile fail due to failure of inputs')
         return super()._tile(tileable_data, tileable_graph)
 
-    @kernel_mode
-    @enter_build_mode
+    @enter_mode(build=True, kernel=True)
     def build(self, tileables, tileable_graph=None):
         tileable_graph = self._get_tileable_data_graph(tileables, tileable_graph)
         self._graph = self._graph_cls()

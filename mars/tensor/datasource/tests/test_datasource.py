@@ -27,7 +27,6 @@ except (ImportError, OSError):  # pragma: no cover
 
 from mars import dataframe as md
 from mars import opcodes
-from mars.core import build_mode
 from mars.graph import DAG
 from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like, dot
 from mars.tensor.datasource import array, fromtiledb, TensorTileDBDataSource, fromdense
@@ -41,7 +40,7 @@ from mars.tensor.core import Tensor, SparseTensor, TensorChunk
 from mars.tensor.datasource.from_dataframe import from_dataframe
 from mars.tests.core import TestBase
 from mars.tiles import get_tiled
-from mars.utils import build_fuse_chunk
+from mars.utils import build_fuse_chunk, enter_mode
 
 
 class Test(TestBase):
@@ -184,7 +183,7 @@ class Test(TestBase):
 
         serials = self._pb_serial(t2)
         dt = self._pb_deserial(serials)[t2.data]
-        with build_mode():
+        with enter_mode(build=True):
             self.assertIn(dt.op.indices_or_sections, dt.inputs)
 
     def testOnes(self):
@@ -632,7 +631,7 @@ class Test(TestBase):
         t3c = copy(t3)
         t3c.inputs = [t1c, t2c]
 
-        with build_mode():
+        with enter_mode(build=True):
             self.assertIs(t3c.op.input, t1c.data)
             self.assertIs(t3c.op.indexes[0], t2c.data)
 

@@ -39,8 +39,8 @@ import numpy as np
 import pandas as pd
 import cloudpickle
 
-from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, register_tokenizer,\
-    insert_reversed_tuple, ceildiv
+from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, \
+    register_tokenizer, insert_reversed_tuple, ceildiv
 from .config import options
 from .lib.tblib import Traceback
 
@@ -382,43 +382,76 @@ def log_unhandled(func):
     return _wrapped
 
 
-_kernel_mode = threading.local()
+_internal_mode = threading.local()
 
 
 def is_eager_mode():
-    if getattr(_kernel_mode, 'eager', None) is None:
+    in_kernel = is_kernel_mode()
+    if not in_kernel:
         return options.eager_mode
-    return _kernel_mode.eager
+    else:
+        # in kernel, eager mode always False
+        return False
 
 
-def kernel_mode(func):
-    """
-    A decorator for kernel functions.
-    When eager mode is on, expressions will be executed after `new_entities`, however
-    `new_entities` is also called in `Executor` and `OperandTilesHandler`, this decorator
-    provides an options context for kernel functions to avoid execution.
-    """
+def is_kernel_mode():
+    return bool(getattr(_internal_mode, 'kernel', None))
 
-    def _wrapped(*args, **kwargs):
-        try:
-            enter_eager_count = getattr(_kernel_mode, 'eager_count', 0)
-            if enter_eager_count == 0:
-                _kernel_mode.eager = False
-            _kernel_mode.eager_count = enter_eager_count + 1
-            return func(*args, **kwargs)
-        finally:
-            _kernel_mode.eager_count -= 1
-            if _kernel_mode.eager_count == 0:
-                _kernel_mode.eager = None
 
-    return _wrapped
+def is_build_mode():
+    return bool(getattr(_internal_mode, 'build', False))
+
+
+class _EnterModeFuncWrapper:
+    def __init__(self, mode_name_to_value):
+        self.mode_name_to_value = mode_name_to_value
+
+        # as the wrapper may enter for many times
+        # record old values for each time
+        self.mode_name_to_value_list = list()
+
+    def __enter__(self):
+        mode_name_to_old_value = dict()
+        for mode_name, value in self.mode_name_to_value.items():
+            # record mode's old values
+            mode_name_to_old_value[mode_name] = \
+                getattr(_internal_mode, mode_name, None)
+            if value is None:
+                continue
+            # set value
+            setattr(_internal_mode, mode_name, value)
+        self.mode_name_to_value_list.append(mode_name_to_old_value)
+
+    def __exit__(self, *_):
+        mode_name_to_old_value = self.mode_name_to_value_list.pop()
+        for mode_name, value in self.mode_name_to_value.items():
+            # set back old values
+            setattr(_internal_mode, mode_name,
+                    mode_name_to_old_value[mode_name])
+
+    def __call__(self, func):
+        @functools.wraps(func)
+        def _inner(*args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+
+        return _inner
+
+
+def enter_mode(kernel=None, build=None):
+    mode_name_to_value = {
+        'kernel': kernel,
+        'build': build,
+    }
+
+    return _EnterModeFuncWrapper(mode_name_to_value)
 
 
 def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
     from .operands import Fetch
     from .tiles import TileableGraphBuilder
 
-    with build_mode():
+    with enter_mode(build=True):
         node_to_copy = weakref.WeakKeyDictionary()
         node_to_fetch = weakref.WeakKeyDictionary()
         copied = weakref.WeakSet()
@@ -455,52 +488,6 @@ def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
         tileable_graph_builder = TileableGraphBuilder(
             graph=graph, node_processor=replace_with_fetch_or_copy)
         return tileable_graph_builder.build(tileables)
-
-
-_build_mode = threading.local()
-
-
-class BuildMode(object):
-    def __init__(self):
-        self.is_build_mode = False
-        self._old_mode = None
-        self._enter_times = 0
-
-    def __enter__(self):
-        if self._enter_times == 0:
-            # check to prevent nested enter and exit
-            self._old_mode = self.is_build_mode
-            self.is_build_mode = True
-        self._enter_times += 1
-        return self
-
-    def __exit__(self, *_):
-        self._enter_times -= 1
-        if self._enter_times == 0:
-            self.is_build_mode = self._old_mode
-            self._old_mode = None
-
-
-def build_mode():
-    ret = getattr(_build_mode, 'build_mode', None)
-    if ret is None:
-        ret = BuildMode()
-        _build_mode.build_mode = ret
-
-    return ret
-
-
-def enter_build_mode(func):
-    """
-    Decorator version of build_mode.
-
-    :param func: function
-    :return: the result of function
-    """
-    def inner(*args, **kwargs):
-        with build_mode():
-            return func(*args, **kwargs)
-    return inner
 
 
 def build_exc_info(exc_type, *args, **kwargs):

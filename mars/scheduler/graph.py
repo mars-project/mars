@@ -42,7 +42,7 @@ from ..tiles import handler, IterativeChunkGraphBuilder, \
     TileableGraphBuilder, get_tiled
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
     build_exc_info, build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
-    get_chunk_shuffle_key, enter_build_mode, has_unknown_shape
+    get_chunk_shuffle_key, enter_mode, has_unknown_shape
 from ..context import DistributedContext
 
 logger = logging.getLogger(__name__)
@@ -593,7 +593,7 @@ class GraphActor(SchedulerActor):
         logger.debug(f'Terminal chunk keys: {self._terminal_chunk_keys}')
 
     @log_unhandled
-    @enter_build_mode
+    @enter_mode(build=True)
     def prepare_graph(self, compose=True):
         """
         Tile and compose tileable graph into chunk graph
@@ -1204,7 +1204,7 @@ class GraphActor(SchedulerActor):
         return list(fetch_graph)[0]
 
     @log_unhandled
-    @enter_build_mode
+    @enter_mode(build=True)
     def fetch_tileable_result(self, tileable_key, _check=True):
         # this function is for test usage
         from ..executor import Executor

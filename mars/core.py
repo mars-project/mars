@@ -23,11 +23,11 @@ from weakref import WeakKeyDictionary, WeakSet, ref
 
 import numpy as np
 
-from .utils import tokenize, AttributeDict, on_serialize_shape, \
-    on_deserialize_shape, on_serialize_nsplits, enter_build_mode, build_mode
 from .serialize import HasKey, HasData, ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, ListField, DictField, KeyField, BoolField, StringField
 from .tiles import Tileable, handler
+from .utils import tokenize, AttributeDict, on_serialize_shape, \
+    on_deserialize_shape, on_serialize_nsplits, enter_mode, is_build_mode
 
 
 class Base(HasKey):
@@ -462,11 +462,11 @@ class TileableData(EntityData, Tileable, _ExecutableMixin):
     def is_coarse(self):
         return not hasattr(self, '_chunks') or self._chunks is None or len(self._chunks) == 0
 
-    @enter_build_mode
+    @enter_mode(build=True)
     def attach(self, entity):
         self._entities.add(entity)
 
-    @enter_build_mode
+    @enter_mode(build=True)
     def detach(self, entity):
         self._entities.discard(entity)
 
@@ -529,7 +529,7 @@ class HasShapeTileableData(TileableData):
         try:
             return self.shape[0]
         except IndexError:
-            if build_mode().is_build_mode:
+            if is_build_mode():
                 return 0
             raise TypeError('len() of unsized object')
 
@@ -677,7 +677,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
                 t._attach_session(session)
 
 
-class _TileableSession(object):
+class _TileableSession:
     def __init__(self, tensor, session):
         key = tensor.key, tensor.id
 
@@ -688,11 +688,11 @@ class _TileableSession(object):
         self._tensor = ref(tensor, cb)
 
 
-class _TileableDataCleaner(object):
+class _TileableDataCleaner:
     def __init__(self):
         self._tileable_to_sessions = WeakKeyDictionary()
 
-    @enter_build_mode
+    @enter_mode(build=True)
     def register(self, tensor, session):
         if tensor in self._tileable_to_sessions:
             self._tileable_to_sessions[tensor].append(_TileableSession(tensor, session))
@@ -704,7 +704,7 @@ class _TileableDataCleaner(object):
 _cleaner = _TileableDataCleaner()
 
 
-class EntityDataModificationHandler(object):
+class EntityDataModificationHandler:
     def __init__(self):
         self._data_to_entities = WeakKeyDictionary()
 
@@ -718,7 +718,7 @@ class EntityDataModificationHandler(object):
 
         self._data_to_entities[data].add(entity)
 
-    @enter_build_mode
+    @enter_mode(build=True)
     def add_observer(self, data, entity):
         self._add_observer(data, entity)
 
@@ -736,7 +736,7 @@ class EntityDataModificationHandler(object):
     def _get_data(obj):
         return obj.data if isinstance(obj, Entity) else obj
 
-    @enter_build_mode
+    @enter_mode(build=True)
     def data_changed(self, old_data, new_data):
         notified = set()
         processed_data = set()

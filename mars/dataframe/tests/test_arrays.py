@@ -130,7 +130,6 @@ class Test(unittest.TestCase):
         self.assertEqual(array.dtype.value_type, np.int64)
         self.assertIsInstance(array._arrow_array, pa.ChunkedArray)
 
-    @unittest.skipIf(pd.__version__ < '1.0', 'pandas version should be at least 1.0')
     def testArrowStringArrayFunctions(self):
         lst = np.array(['abc', 'de', 'eee', '中文'], dtype=object)
         arrow_array = ArrowStringArray(lst)
@@ -364,7 +363,6 @@ class Test(unittest.TestCase):
         self.assertEqual(len(concatenated._arrow_array.chunks), 1)
         pd.testing.assert_series_equal(pd.Series(arrow_array5), pd.Series(concatenated))
 
-    @unittest.skipIf(pd.__version__ < '1.0', 'pandas version should be at least 1.0')
     def testToPandas(self):
         rs = np.random.RandomState(0)
         df = pd.DataFrame({'a': rs.rand(100),
