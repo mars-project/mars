@@ -35,8 +35,7 @@ from .optimizes.runtime.core import RuntimeOptimizer
 from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTileableGraphBuilder
 from .graph_builder import TileableGraphBuilder
 from .context import LocalContext
-from .utils import kernel_mode, enter_build_mode, build_fetch, calc_nsplits,\
-    has_unknown_shape, prune_chunk_graph
+from .utils import enter_mode, build_fetch, calc_nsplits, has_unknown_shape, prune_chunk_graph
 
 try:
     from numpy.core._exceptions import UFuncTypeError
@@ -429,6 +428,7 @@ class GraphExecution(object):
 
         return op_key_to_ops
 
+    @enter_mode(kernel=True)
     def _execute_operand(self, op):
         results = self._chunk_results
         ref_counts = self._chunk_key_ref_counts
@@ -693,8 +693,7 @@ class Executor(object):
             chunk_result.clear()
         return res
 
-    @kernel_mode
-    @enter_build_mode
+    @enter_mode(build=True, kernel=True)
     def execute_tileable(self, tileable, n_parallel=None, n_thread=None, concat=False,
                          print_progress=False, mock=False, compose=True):
         result_keys = []
@@ -757,8 +756,7 @@ class Executor(object):
         else:
             yield chunk_result
 
-    @kernel_mode
-    @enter_build_mode
+    @enter_mode(build=True, kernel=True)
     def execute_tileables(self, tileables, fetch=True, n_parallel=None, n_thread=None,
                           print_progress=False, mock=False, compose=True, name=None):
         # shallow copy chunk_result, prevent from any chunk key decref
@@ -949,7 +947,7 @@ class Executor(object):
             if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
                 raise ValueError('Only support fetch data slices')
 
-    @kernel_mode
+    @enter_mode(kernel=True)
     def fetch_tileables(self, tileables, **kw):
         from .tensor.indexing import TensorIndex
         from .dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem

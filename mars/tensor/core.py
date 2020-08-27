@@ -24,10 +24,10 @@ from operator import attrgetter
 import numpy as np
 
 from ..core import Entity, HasShapeTileableEnity, ChunkData, Chunk, HasShapeTileableData, \
-    build_mode, Serializable, OutputType, register_output_types, _ExecuteAndFetchMixin
+    Serializable, OutputType, register_output_types, _ExecuteAndFetchMixin
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
-from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
+from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape, is_build_mode
 from .utils import get_chunk_slices, fetch_corner_data
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class TensorChunkData(ChunkData):
         try:
             return self.shape[0]
         except IndexError:
-            if build_mode().is_build_mode:
+            if is_build_mode():
                 return 0
             raise TypeError('len() of unsized object')
 
@@ -154,7 +154,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
         return super().cls(provider)
 
     def _to_str(self, representation=False):
-        if build_mode().is_build_mode or len(self._executed_sessions) == 0:
+        if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
                 return f'Tensor <op={type(self._op).__name__}, shape={self._shape}, key={self._key}'

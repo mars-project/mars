@@ -19,7 +19,7 @@ from collections import defaultdict
 
 from ...graph import DAG
 from ...graph_builder import TileableGraphBuilder
-from ...utils import copy_tileables, kernel_mode, enter_build_mode
+from ...utils import copy_tileables, enter_mode
 
 _rules = defaultdict(list)
 
@@ -114,8 +114,7 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
         self._optimizer_context.update(replaced_tileables)
         return new_graph
 
-    @kernel_mode
-    @enter_build_mode
+    @enter_mode(build=True, kernel=True)
     def build(self, tileables, tileable_graph=None):
         self._optimizer_context.append_result_tileables(tileables)
         graph = super().build(tileables, tileable_graph=tileable_graph)
