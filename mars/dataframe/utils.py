@@ -262,6 +262,7 @@ def parse_index(index_value, *args, store_data=False, key=None):
     def _serialize_multi_index(index):
         kw = _extract_property(index, IndexValue.MultiIndex, store_data)
         kw['_sortorder'] = index.sortorder
+        kw['_dtypes'] = [lev.dtype for lev in index.levels]
         return IndexValue.MultiIndex(**kw)
 
     if index_value is None:
@@ -441,6 +442,10 @@ def _generate_value(dtype, fill_value):
     dispatch = {
         np.datetime64: pd.Timestamp,
         np.timedelta64: pd.Timedelta,
+        pd.CategoricalDtype.type: lambda x: pd.CategoricalDtype([x]),
+        # for object, we do not know the actual dtype,
+        # just convert to str for common usage
+        np.object_: lambda x: str(fill_value),
     }
     # otherwise, just use dtype.type itself to convert
     convert = dispatch.get(dtype.type, dtype.type)
@@ -452,8 +457,10 @@ def build_empty_df(dtypes, index=None):
     # duplicate column may exist,
     # so use RangeIndex first
     df = pd.DataFrame(columns=pd.RangeIndex(len(columns)), index=index)
+    length = len(index) if index is not None else 0
     for i, d in enumerate(dtypes):
-        df[i] = pd.Series(dtype=d, index=index)
+        df[i] = pd.Series([_generate_value(d, 1) for _ in range(length)],
+                          dtype=d, index=index)
     df.columns = columns
     return df
 
@@ -461,10 +468,12 @@ def build_empty_df(dtypes, index=None):
 def build_df(df_obj, fill_value=1, size=1):
     empty_df = build_empty_df(df_obj.dtypes, index=df_obj.index_value.to_pandas()[:0])
     dtypes = empty_df.dtypes
-    record = [_generate_value(dtype, fill_value) for dtype in empty_df.dtypes]
+    record = [_generate_value(dtype, fill_value) for dtype in dtypes]
     if isinstance(empty_df.index, pd.MultiIndex):
         index = tuple(_generate_value(level.dtype, fill_value) for level in empty_df.index.levels)
-        empty_df.loc[index, :] = record
+        empty_df = empty_df.reindex(
+            index=pd.MultiIndex.from_tuples([index], names=empty_df.index.names))
+        empty_df.iloc[0] = record
     else:
         index = _generate_value(empty_df.index.dtype, fill_value)
         empty_df.loc[index] = record
@@ -473,21 +482,26 @@ def build_df(df_obj, fill_value=1, size=1):
     # make sure dtypes correct for MultiIndex
     for i, dtype in enumerate(dtypes.tolist()):
         s = empty_df.iloc[:, i]
-        if s.dtype != dtype:
+        if not pd.api.types.is_dtype_equal(s.dtype, dtype):
             empty_df.iloc[:, i] = s.astype(dtype)
     return empty_df
 
 
 def build_empty_series(dtype, index=None, name=None):
-    return pd.Series(dtype=dtype, index=index, name=name)
+    length = len(index) if index is not None else 0
+    return pd.Series([_generate_value(dtype, 1) for _ in range(length)],
+                     dtype=dtype, index=index, name=name)
 
 
-def build_series(series_obj, fill_value=1, size=1):
-    empty_series = build_empty_series(series_obj.dtype, index=series_obj.index_value.to_pandas()[:0])
+def build_series(series_obj, fill_value=1, size=1, name=None):
+    empty_series = build_empty_series(series_obj.dtype, name=name,
+                                      index=series_obj.index_value.to_pandas()[:0])
     record = _generate_value(series_obj.dtype, fill_value)
     if isinstance(empty_series.index, pd.MultiIndex):
         index = tuple(_generate_value(level.dtype, fill_value) for level in empty_series.index.levels)
-        empty_series.loc[index, ] = record
+        empty_series = empty_series.reindex(
+            index=pd.MultiIndex.from_tuples([index], names=empty_series.index.names))
+        empty_series.iloc[0] = record
     else:
         if isinstance(empty_series.index.dtype, pd.CategoricalDtype):
             index = None

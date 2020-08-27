@@ -27,7 +27,8 @@ from .core import Entity, Chunk, Tileable, AttributeAsDictKey, ExecutableTuple, 
 from .serialize import SerializableMetaclass, ValueType, ProviderType, IdentityField, \
     ListField, DictField, Int32Field, BoolField, StringField, ReferenceField
 from .tiles import NotSupportTile
-from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode, calc_object_overhead
+from .utils import AttributeDict, to_str, calc_data_size, calc_object_overhead, \
+    enter_mode, is_eager_mode
 
 
 operand_type_to_oprand_cls = {}
@@ -38,6 +39,11 @@ T = TypeVar('T')
 
 class OperandMetaclass(SerializableMetaclass):
     def __new__(mcs, name, bases, kv):
+        if '__call__' in kv:
+            # if __call__ is specified for an operand,
+            # make sure that entering user space
+            kv['__call__'] = enter_mode(kernel=False)(kv['__call__'])
+
         cls = super().__new__(mcs, name, bases, kv)
 
         for base in bases:

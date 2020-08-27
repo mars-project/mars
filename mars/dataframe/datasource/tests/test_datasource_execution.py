@@ -15,12 +15,17 @@
 import os
 import tempfile
 import time
+import unittest
 from collections import OrderedDict
 from datetime import datetime
 from string import printable
 
 import numpy as np
 import pandas as pd
+try:
+    import pyarrow as pa
+except ImportError:  # pragma: no cover
+    pa = None
 
 import mars.tensor as mt
 import mars.dataframe as md
@@ -401,6 +406,7 @@ class Test(TestBase):
                 md.read_csv(f'{tempdir}/*.csv', index_col=0, chunk_bytes=50), concat=True)[0]
             pd.testing.assert_frame_equal(df, mdf2.sort_index())
 
+    @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testReadCSVUseArrowDtype(self):
         df = pd.DataFrame({
             'col1': np.random.rand(100),
@@ -580,6 +586,7 @@ class Test(TestBase):
             finally:
                 engine.dispose()
 
+    @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testReadSQLUseArrowDtype(self):
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                                 'b': [f's{i}' for i in range(10)],

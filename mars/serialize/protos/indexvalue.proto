@@ -204,6 +204,7 @@ message IndexValue {
         repeated Value names = 1;
         Value data = 2;
         int32 sortorder = 3;
+        repeated Value dtypes = 4;
         // public fields
         string key = 51;
         bool is_monotonic_increasing = 52;

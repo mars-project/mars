@@ -298,6 +298,7 @@ default_options.register_option('check_interval', 20, validator=is_integer)
 # dataframe-related options
 default_options.register_option('dataframe.mode.use_inf_as_na', False, validator=is_bool)
 default_options.register_option('dataframe.use_arrow_dtype', None, validator=any_validator(is_null, is_bool))
+default_options.register_option('dataframe.arrow_array.pandas_only', None, validator=any_validator(is_null, is_bool))
 
 # learn options
 assume_finite = os.environ.get('SKLEARN_ASSUME_FINITE')

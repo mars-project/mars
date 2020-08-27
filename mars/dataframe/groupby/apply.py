@@ -19,7 +19,7 @@ from ... import opcodes
 from ...core import OutputType
 from ...serialize import TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_empty_df, build_empty_series, parse_index
+from ..utils import build_df, build_empty_df, build_series, build_empty_series, parse_index
 
 
 class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
@@ -100,16 +100,16 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
 
         try:
             if in_df.op.output_types[0] == OutputType.dataframe:
-                empty_df = build_empty_df(in_df.dtypes, index=pd.RangeIndex(2))
+                test_df = build_df(in_df, size=2)
             else:
-                empty_df = build_empty_series(in_df.dtype, index=pd.RangeIndex(2), name=in_df.name)
+                test_df = build_series(in_df, size=2, name=in_df.name)
 
             selection = getattr(in_groupby.op, 'selection', None)
             if selection:
-                empty_df = empty_df[selection]
+                test_df = test_df[selection]
 
             with np.errstate(all='ignore'):
-                infer_df = self.func(empty_df, *self.args, **self.kwds)
+                infer_df = self.func(test_df, *self.args, **self.kwds)
 
             # todo return proper index when sort=True is implemented
             index_value = parse_index(None, in_df.key, self.func)

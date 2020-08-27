@@ -27,7 +27,7 @@ from ...serialize import BoolField, AnyField, DictField
 from ...utils import tokenize, ceildiv, lazy_import
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import build_empty_df, build_empty_series, parse_index, validate_axis
+from ..utils import build_df, build_series, parse_index, validate_axis
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())
@@ -115,11 +115,11 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
     def _calc_result_shape(self, df):
         if self.output_types[0] == OutputType.dataframe:
-            empty_obj = build_empty_df(df.dtypes, index=pd.RangeIndex(0, 10))
+            test_obj = build_df(df, size=10)
         else:
-            empty_obj = build_empty_series(df.dtype, index=pd.RangeIndex(0, 10), name=df.name)
+            test_obj = build_series(df, size=10, name=df.name)
 
-        result_df = empty_obj.agg(self.func, axis=self.axis)
+        result_df = test_obj.agg(self.func, axis=self.axis)
 
         if isinstance(result_df, pd.DataFrame):
             self.output_types = [OutputType.dataframe]
