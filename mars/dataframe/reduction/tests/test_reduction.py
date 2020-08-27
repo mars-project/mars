@@ -88,7 +88,7 @@ class TestReduction(TestBase):
         self.assertEqual(chunk.op.axis, chunk2.op.axis)
 
     def testSeriesReduction(self):
-        data = pd.Series({'a': list(range(20))}, index=[str(i) for i in range(20)])
+        data = pd.Series(range(20), index=[str(i) for i in range(20)])
         series = getattr(from_pandas_series(data, chunk_size=3), self.func_name)()
 
         self.assertIsInstance(series, Tensor)

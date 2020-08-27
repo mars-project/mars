@@ -26,7 +26,7 @@ from ...utils import tokenize
 from ..core import DATAFRAME_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import build_empty_df, parse_index, build_empty_series, \
+from ..utils import build_df, parse_index, build_empty_series, \
     filter_dtypes_by_index
 
 _stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_sources',
@@ -129,9 +129,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
         self._normalize_funcs()
 
         if isinstance(inp, DATAFRAME_TYPE):
-            pd_index = inp.index_value.to_pandas()
-
-            empty_df = build_empty_df(inp.dtypes, index=pd_index[:1])
+            empty_df = build_df(inp)
             for c, t in empty_df.dtypes.items():
                 if t == np.dtype('O'):
                     empty_df[c] = 'O'

@@ -192,6 +192,7 @@ class IndexValue(Serializable):
 
     class MultiIndex(IndexBase):
         _names = ListField('names', on_serialize=list)
+        _dtypes = ListField('dtypes', on_serialize=list)
         _data = NDArrayField('data')
         _sortorder = Int32Field('sortorder')
 
@@ -203,7 +204,7 @@ class IndexValue(Serializable):
             data = getattr(self, '_data', None)
             if data is None:
                 sortorder = getattr(self, '_sortorder', None)
-                return pd.MultiIndex.from_arrays([[] for _ in range(len(self._names))],
+                return pd.MultiIndex.from_arrays([np.array([], dtype=dtype) for dtype in self._dtypes],
                                                  sortorder=sortorder, names=self._names)
             return pd.MultiIndex.from_tuples([tuple(d) for d in data], sortorder=self._sortorder,
                                              names=self._names)
