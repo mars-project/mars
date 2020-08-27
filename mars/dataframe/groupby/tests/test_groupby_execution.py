@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
+try:
+    import pyarrow as pa
+except ImportError:  # pragma: no cover
+    pa = None
 
 import mars.dataframe as md
 from mars.operands import ShuffleProxy
 from mars.tests.core import TestBase, ExecutorForTest, assert_groupby_equal
+from mars.utils import arrow_array_to_objects
 
 
 class Test(TestBase):
@@ -502,3 +508,57 @@ class Test(TestBase):
             r1 = getattr(ms1.groupby(lambda x: x % 2), fun)()
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0].sort_index(),
                                            getattr(series1.groupby(lambda x: x % 2), fun)().sort_index())
+
+    @unittest.skipIf(pa is None, 'pyarrow not installed')
+    def testGroupbyAggWithArrowDtype(self):
+        df1 = pd.DataFrame({'a': [1, 2, 1],
+                            'b': ['a', 'b', 'a']})
+        mdf = md.DataFrame(df1)
+        mdf['b'] = mdf['b'].astype('Arrow[string]')
+
+        r = mdf.groupby('a').count()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df1.groupby('a').count()
+        pd.testing.assert_frame_equal(result, expected)
+
+        r = mdf.groupby('b').count()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df1.groupby('b').count()
+        pd.testing.assert_frame_equal(result, expected)
+
+        series1 = df1['b']
+        mseries = md.Series(series1).astype('Arrow[string]')
+
+        r = mseries.groupby(mseries).count()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series1.groupby(series1).count()
+        pd.testing.assert_series_equal(result, expected)
+
+        series2 = series1.copy()
+        series2.index = pd.MultiIndex.from_tuples([(0, 1), (2, 3), (4, 5)])
+        mseries = md.Series(series2).astype('Arrow[string]')
+
+        r = mseries.groupby(mseries).count()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = series2.groupby(series2).count()
+        pd.testing.assert_series_equal(result, expected)
+
+    @unittest.skipIf(pa is None, 'pyarrow not installed')
+    def testGroupbyApplyWithArrowDtype(self):
+        df1 = pd.DataFrame({'a': [1, 2, 1],
+                            'b': ['a', 'b', 'a']})
+        mdf = md.DataFrame(df1)
+        mdf['b'] = mdf['b'].astype('Arrow[string]')
+
+        applied = mdf.groupby('b').apply(lambda df: df.a.sum())
+        result = self.executor.execute_dataframe(applied, concat=True)[0]
+        expected = df1.groupby('b').apply(lambda df: df.a.sum())
+        pd.testing.assert_series_equal(result, expected)
+
+        series1 = df1['b']
+        mseries = md.Series(series1).astype('Arrow[string]')
+
+        applied = mseries.groupby(mseries).apply(lambda s: s)
+        result = self.executor.execute_dataframe(applied, concat=True)[0]
+        expected = series1.groupby(series1).apply(lambda s: s)
+        pd.testing.assert_series_equal(arrow_array_to_objects(result), expected)

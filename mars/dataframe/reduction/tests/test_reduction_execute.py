@@ -16,6 +16,10 @@ import unittest
 
 import pandas as pd
 import numpy as np
+try:
+    import pyarrow as pa
+except ImportError:  # pragma: no cover
+    pa = None
 
 from mars.config import option_context
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -300,6 +304,7 @@ class TestCount(TestBase):
         expected = data1.nunique(axis=1)
         pd.testing.assert_series_equal(result, expected)
 
+    @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testUseArrowDtypeNUnique(self):
         with option_context({'dataframe.use_arrow_dtype': True, 'combine_size': 2}):
             rs = np.random.RandomState(0)

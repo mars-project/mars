@@ -23,7 +23,7 @@ from ...core import OutputType
 from ...serialize import StringField, AnyField, BoolField, \
     TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_empty_df, build_empty_series, parse_index, validate_axis
+from ..utils import build_df, build_series, parse_index, validate_axis
 
 
 class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
@@ -176,7 +176,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         else:
             return cls._tile_series(op)
 
-    def _infer_df_func_returns(self, in_dtypes, dtypes, index):
+    def _infer_df_func_returns(self, df, dtypes, index):
         if isinstance(self._func, np.ufunc):
             output_type, new_dtypes, index_value, new_elementwise = \
                 OutputType.dataframe, None, 'inherit', True
@@ -184,7 +184,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             output_type, new_dtypes, index_value, new_elementwise = None, None, None, False
 
         try:
-            empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(2))
+            empty_df = build_df(df, size=2)
             with np.errstate(all='ignore'):
                 infer_df = empty_df.apply(self._func, axis=self._axis, raw=self._raw,
                                           result_type=self._result_type, args=self.args, **self.kwds)
@@ -210,18 +210,20 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         self._elementwise = new_elementwise if self._elementwise is None else self._elementwise
         return dtypes, index_value
 
-    def _infer_series_func_returns(self, in_dtype):
+    def _infer_series_func_returns(self, df):
         try:
-            empty_series = build_empty_series(in_dtype, index=pd.RangeIndex(2))
+            empty_series = build_series(df, size=2, name=df.name)
             with np.errstate(all='ignore'):
                 infer_series = empty_series.apply(self._func, args=self.args, **self.kwds)
             new_dtype = infer_series.dtype
+            name = infer_series.name
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             new_dtype = np.dtype('object')
-        return new_dtype
+            name = None
+        return new_dtype, name
 
     def _call_dataframe(self, df, dtypes=None, index=None):
-        dtypes, index_value = self._infer_df_func_returns(df.dtypes, dtypes, index)
+        dtypes, index_value = self._infer_df_func_returns(df, dtypes, index)
         for arg, desc in zip((self.output_types, dtypes, index_value),
                              ('output_types', 'dtypes', 'index')):
             if arg is None:
@@ -252,11 +254,11 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
 
     def _call_series(self, series):
         if self._convert_dtype:
-            dtype = self._infer_series_func_returns(series.dtype)
+            dtype, name = self._infer_series_func_returns(series)
         else:
-            dtype = np.dtype('object')
+            dtype, name = np.dtype('object'), None
         return self.new_series([series], dtype=dtype, shape=series.shape,
-                               index_value=series.index_value)
+                               index_value=series.index_value, name=name)
 
     def __call__(self, df, dtypes=None, index=None):
         axis = getattr(self, 'axis', None) or 0

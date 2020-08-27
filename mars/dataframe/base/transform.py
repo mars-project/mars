@@ -21,7 +21,7 @@ from ...core import OutputType
 from ...serialize import AnyField, BoolField, TupleField, DictField
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_empty_df, build_empty_series, validate_axis, \
+from ..utils import build_df, build_series, validate_axis, \
     parse_index, filter_dtypes_by_index
 
 
@@ -167,25 +167,25 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         kw.update(dict(chunks=chunks, nsplits=tuple(new_nsplits)))
         return new_op.new_tileables(op.inputs, **kw)
 
-    def _infer_df_func_returns(self, in_dtypes, dtypes):
+    def _infer_df_func_returns(self, df, dtypes):
         if self.output_types[0] == OutputType.dataframe:
-            empty_df = build_empty_df(in_dtypes, index=pd.RangeIndex(2))
+            test_df = build_df(df, fill_value=1, size=2)
             try:
                 with np.errstate(all='ignore'):
                     if self.call_agg:
-                        infer_df = empty_df.agg(self._func, axis=self._axis, *self.args, **self.kwds)
+                        infer_df = test_df.agg(self._func, axis=self._axis, *self.args, **self.kwds)
                     else:
-                        infer_df = empty_df.transform(self._func, axis=self._axis, *self.args, **self.kwds)
+                        infer_df = test_df.transform(self._func, axis=self._axis, *self.args, **self.kwds)
             except:  # noqa: E722
                 infer_df = None
         else:
-            empty_df = build_empty_series(in_dtypes[1], index=pd.RangeIndex(2), name=in_dtypes[0])
+            test_df = build_series(df, size=2, name=df.name)
             try:
                 with np.errstate(all='ignore'):
                     if self.call_agg:
-                        infer_df = empty_df.agg(self._func, args=self.args, **self.kwds)
+                        infer_df = test_df.agg(self._func, args=self.args, **self.kwds)
                     else:
-                        infer_df = empty_df.transform(self._func, convert_dtype=self.convert_dtype,
+                        infer_df = test_df.transform(self._func, convert_dtype=self.convert_dtype,
                                                       args=self.args, **self.kwds)
             except:  # noqa: E722
                 infer_df = None
@@ -211,10 +211,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         axis = getattr(self, 'axis', None) or 0
         self._axis = validate_axis(axis, df)
 
-        if self.output_types[0] == OutputType.dataframe:
-            dtypes = self._infer_df_func_returns(df.dtypes, dtypes)
-        else:
-            dtypes = self._infer_df_func_returns((df.name, df.dtype), dtypes)
+        dtypes = self._infer_df_func_returns(df, dtypes)
 
         for arg, desc in zip((self.output_types, dtypes), ('output_types', 'dtypes')):
             if arg is None:

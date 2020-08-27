@@ -19,7 +19,7 @@ from ...core import get_output_types, OutputType
 from ...serialize import AnyField, Int64Field, StringField
 from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import build_empty_df, build_empty_series, validate_axis, parse_index
+from ..utils import build_df, build_series, validate_axis, parse_index
 
 
 class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
@@ -57,13 +57,13 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
     def errors(self) -> str:
         return self._errors
 
-    def _calc_renamed_df(self, dtypes, index, errors='ignore'):
-        empty_df = build_empty_df(dtypes, index=index)
+    def _calc_renamed_df(self, df, errors='ignore'):
+        empty_df = build_df(df)
         return empty_df.rename(columns=self._columns_mapper, index=self._index_mapper,
                                level=self._level, errors=errors)
 
-    def _calc_renamed_series(self, name, dtype, index, errors='ignore'):
-        empty_series = build_empty_series(dtype, index=index, name=name)
+    def _calc_renamed_series(self, df, errors='ignore'):
+        empty_series = build_series(df, name=df.name)
         new_series = empty_series.rename(index=self._index_mapper, level=self._level, errors=errors)
         if self._new_name:
             new_series.name = self._new_name
@@ -73,10 +73,10 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
         params = df.params
         raw_index = df.index_value.to_pandas()
         if df.ndim == 2:
-            new_df = self._calc_renamed_df(df.dtypes, raw_index, errors=self.errors)
+            new_df = self._calc_renamed_df(df, errors=self.errors)
             new_index = new_df.index
         elif isinstance(df, SERIES_TYPE):
-            new_df = self._calc_renamed_series(df.name, df.dtype, raw_index, errors=self.errors)
+            new_df = self._calc_renamed_series(df, errors=self.errors)
             new_index = new_df.index
         else:
             new_df = new_index = raw_index.rename(self._index_mapper or self._new_name)
@@ -105,8 +105,7 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
                 try:
                     new_dtypes = dtypes_cache[c.index[0]]
                 except KeyError:
-                    new_dtypes = dtypes_cache[c.index[0]] = \
-                        op._calc_renamed_df(c.dtypes, c.index_value.to_pandas()).dtypes
+                    new_dtypes = dtypes_cache[c.index[0]] = op._calc_renamed_df(c).dtypes
 
                 params['columns_value'] = parse_index(new_dtypes.index, store_data=True)
                 params['dtypes'] = new_dtypes

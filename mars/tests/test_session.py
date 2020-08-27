@@ -18,6 +18,10 @@ import unittest
 
 import numpy as np
 import pandas as pd
+try:
+    import pyarrow as pa
+except ImportError:  # pragma: no cover
+    pa = None
 
 import mars.tensor as mt
 import mars.dataframe as md
@@ -383,6 +387,23 @@ class Test(unittest.TestCase):
             r = df.loc['2020-1-2']
             result = sess.run(r)
             pd.testing.assert_series_equal(result, raw.loc['2020-1-2'])
+
+    @unittest.skipIf(pa is not None, 'this test aims to test usage of ArrowDtype '
+                                     'when pyarrow not installed')
+    def testDataFrameWithArrowDtypeExecution(self):
+        sess = new_session()
+
+        # test ArrowDtype when pyarrow not installed
+        raw = pd.DataFrame({'a': [f's{i}' for i in range(10)],
+                            'b': np.random.rand(10)})
+        df = md.DataFrame(raw, chunk_size=5)
+        df['a'] = df['a'].astype('Arrow[string]')
+
+        r = df.groupby('a').sum()  # can work for expression
+        with self.assertRaises(ImportError):
+            # cannot perform execution
+            # due to the reason that pyarrow not installed
+            _ = sess.run(r)
 
     def testFetchSlices(self):
         sess = new_session()
