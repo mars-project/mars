@@ -34,7 +34,7 @@ try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
     from multiprocessing import cpu_count
-    cuda_count = None
+    from .lib.nvutils import get_device_count as cuda_count
 
 
 class LocalSession(object):
@@ -94,7 +94,7 @@ class LocalSession(object):
             if 'n_parallel' not in kw:
                 if dest_gpu:
                     # GPU
-                    cnt = cuda_count() if cuda_count is not None else 0
+                    cnt = cuda_count() or 0
                     if cnt == 0:
                         raise RuntimeError('No GPU found for execution. '
                                            'Make sure NVML library is in your library path.')
