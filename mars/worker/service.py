@@ -17,11 +17,6 @@ import logging
 import os
 import sys
 
-try:
-    from pyarrow import plasma
-except ImportError:  # pragma: no cover
-    plasma = None
-
 from ..config import options
 from .. import resource
 from ..utils import parse_readable_size, readable_size
@@ -183,6 +178,7 @@ class WorkerService(object):
         logger.info('Setting soft limit to %s.', readable_size(self._soft_quota_limit))
 
     def start_plasma(self):
+        from pyarrow import plasma
         self._plasma_store = plasma.start_plasma_store(
             self._cache_mem_limit, plasma_directory=self._plasma_dir)
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()

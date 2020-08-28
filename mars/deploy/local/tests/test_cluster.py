@@ -968,7 +968,7 @@ class Test(unittest.TestCase):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+                         shared_memory='20M', cuda_device=0, web=True) as cluster:
             session = cluster.session
             pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
             df = from_pandas_df(pdf, chunk_size=(13, 21))

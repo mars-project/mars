@@ -25,7 +25,6 @@ from queue import Empty
 
 import numpy as np
 from numpy.testing import assert_array_equal
-from pyarrow import plasma
 
 from mars import promise
 from mars.config import options
@@ -166,6 +165,8 @@ def start_transfer_test_pool(**kwargs):
 
 
 def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_queue):
+    from pyarrow import plasma
+
     options.worker.spill_directory = spill_dir
     plasma_size = 1024 * 1024 * 10
 

@@ -11,6 +11,7 @@ pytest-xdist
 scipy
 pandas
 numexpr
+scikit-learn
 psutil
 lz4
 protobuf

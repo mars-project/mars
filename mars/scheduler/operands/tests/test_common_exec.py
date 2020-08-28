@@ -23,7 +23,7 @@ from mars.actors import ActorAlreadyExist
 from mars.config import options
 from mars.errors import ExecutionInterrupted
 from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActor, \
-    ChunkMetaActor, GraphMetaActor
+    AssignEvaluationActor, ChunkMetaActor, GraphMetaActor
 from mars.scheduler.utils import GraphState, SchedulerClusterInfoActor, SchedulerActor
 from mars.worker.execution import GraphExecutionRecord
 from mars.utils import serialize_graph, log_unhandled, build_exc_info
@@ -218,7 +218,27 @@ class Test(unittest.TestCase):
 
     @patch_method(OperandActor._get_raw_execution_ref)
     @patch_method(OperandActor._free_data_in_worker)
-    def testOperandActorWithRetryAndFail(self, *_):
+    def testOperandActorWithAssignRetryAndFail(self, *_):
+        arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
+        arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
+        arr2 = arr + arr_add
+
+        def _allocate_raises(*_, **__):
+            raise TimeoutError
+
+        session_id = str(uuid.uuid4())
+        graph_key = str(uuid.uuid4())
+        try:
+            options.scheduler.retry_delay = 0
+            with patch_method(AssignEvaluationActor._allocate_resource, new=_allocate_raises):
+                self._run_operand_case(session_id, graph_key, arr2,
+                                       lambda pool, uid: pool.create_actor(FakeExecutionActor, fail_count=5, uid=uid))
+        finally:
+            options.scheduler.retry_delay = 60
+
+    @patch_method(OperandActor._get_raw_execution_ref)
+    @patch_method(OperandActor._free_data_in_worker)
+    def testOperandActorWithWorkerRetryAndFail(self, *_):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add

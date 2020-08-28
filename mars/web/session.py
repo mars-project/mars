@@ -29,6 +29,7 @@ from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
 from ..operands import Fetch
 from ..serialize import dataserializer
+from ..serialize.dataserializer import pyarrow
 from ..tensor.core import Indexes
 from ..utils import build_tileable_graph, sort_dataframe_result, numpy_dtype_from_descr_json
 
@@ -71,12 +72,10 @@ class Session(object):
         self._endpoint = url
 
     def _main(self):
-        try:
-            import pyarrow
-            self._serial_type = dataserializer.SerialType(options.client.serial_type.lower())
-        except ImportError:
-            pyarrow = None
+        if pyarrow is None:
             self._serial_type = dataserializer.SerialType.PICKLE
+        else:
+            self._serial_type = dataserializer.SerialType(options.client.serial_type.lower())
 
         args = self._args.copy()
         args['pyver'] = '.'.join(str(v) for v in sys.version_info[:3])
