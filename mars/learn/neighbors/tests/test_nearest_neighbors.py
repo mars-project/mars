@@ -25,10 +25,6 @@ try:
 except ImportError:  # pragma: no cover
     faiss = None
 try:
-    import cupy
-except ImportError:
-    cupy = None
-try:
     from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
     from sklearn.neighbors import BallTree as SkBallTree
     from sklearn.neighbors import KDTree as SkKDTree
@@ -37,9 +33,12 @@ except ImportError:  # pragma: no cover
     SkNearestNeighbors = None
 
 import mars.tensor as mt
+from mars.learn.neighbors import NearestNeighbors
 from mars.lib.sparse import SparseNDArray
 from mars.tiles import get_tiled
-from mars.learn.neighbors import NearestNeighbors
+from mars.utils import lazy_import
+
+cupy = lazy_import('cupy', globals=globals())
 
 
 @unittest.skipIf(SkNearestNeighbors is None, 'scikit-learn not installed')
