@@ -22,9 +22,10 @@ except ImportError:  # pragma: no cover
     pa = None
 
 from mars.config import option_context
+from mars.dataframe.base import to_gpu
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
-from mars.tests.core import TestBase, parameterized, ExecutorForTest
+from mars.tests.core import TestBase, parameterized, ExecutorForTest, require_cudf
 
 
 reduction_functions = dict(
@@ -172,6 +173,16 @@ class TestReduction(TestBase):
         pd.testing.assert_series_equal(
             self.compute(data, axis='index', numeric_only=True),
             self.executor.execute_dataframe(reduction_df, concat=True)[0])
+
+    @require_cudf
+    def testGPUExecution(self):
+        pdf = pd.DataFrame(np.random.rand(30, 3), columns=list('abc'))
+        df = from_pandas_df(pdf, chunk_size=6)
+        cdf = to_gpu(df).sum()
+
+        res = self.executor.execute_dataframe(cdf, concat=True)[0]
+        expected = pdf.sum()
+        pd.testing.assert_series_equal(res.to_pandas(), expected)
 
 
 class TestCount(TestBase):

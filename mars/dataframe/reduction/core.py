@@ -368,9 +368,12 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             ctx[op.outputs[0].key] = r
         else:
             if op.axis == 0:
-                # cannot just do xdf.DataFrame(r).T
-                # cuz the dtype will be object since pandas 1.0
-                df = xdf.DataFrame(OrderedDict((d, [v]) for d, v in r.iteritems()))
+                if xdf is cudf:
+                    df = xdf.DataFrame(r).transpose()
+                else:
+                    # cannot just do xdf.DataFrame(r).T
+                    # cuz the dtype will be object since pandas 1.0
+                    df = xdf.DataFrame(OrderedDict((d, [v]) for d, v in r.iteritems()))
             else:
                 df = xdf.DataFrame(r)
             ctx[op.outputs[0].key] = df
