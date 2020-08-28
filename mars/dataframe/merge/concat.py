@@ -198,8 +198,10 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                                 'and CategoricalChunk can be automatically concatenated')
 
         def _auto_concat_dataframe_chunks(chunk, inputs):
+            xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
+
             if chunk.op.axis is not None:
-                return pd.concat(inputs, axis=op.axis)
+                return xdf.concat(inputs, axis=op.axis)
 
             # auto generated concat when executing a DataFrame
             if len(inputs) == 1:
@@ -211,7 +213,6 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 n_cols = int(len(inputs) // n_rows)
                 assert n_rows * n_cols == len(inputs)
 
-                xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
 
                 concats = []
                 for i in range(n_rows):
