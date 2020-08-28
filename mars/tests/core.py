@@ -408,6 +408,12 @@ _check_args = ['check_all', 'check_series_name', 'check_index_name', 'check_dtyp
 
 class MarsObjectCheckMixin:
     @staticmethod
+    def adapt_index_value(value):
+        if hasattr(value, 'to_pandas'):
+            return value.to_pandas()
+        return value
+
+    @staticmethod
     def assert_shape_consistent(expected_shape, real_shape):
         if not _check_options['check_shape']:
             return
@@ -455,7 +461,7 @@ class MarsObjectCheckMixin:
         if expected_index_value.has_value():
             expected_index = expected_index_value.to_pandas()
             try:
-                pd.testing.assert_index_equal(expected_index, real_index)
+                pd.testing.assert_index_equal(expected_index, cls.adapt_index_value(real_index))
             except AssertionError as e:
                 raise AssertionError(
                     f'Index of real value ({expected_index}) not equal to ({real_index})') from e
@@ -470,7 +476,7 @@ class MarsObjectCheckMixin:
             raise AssertionError(f'Type of real value ({type(real)}) not DataFrame')
         cls.assert_shape_consistent(expected.shape, real.shape)
         if not np.isnan(expected.shape[1]):  # ignore when columns length is nan
-            pd.testing.assert_index_equal(expected.dtypes.index, real.dtypes.index)
+            pd.testing.assert_index_equal(expected.dtypes.index, cls.adapt_index_value(real.dtypes.index))
 
             if _check_options['check_dtypes']:
                 try:
@@ -506,15 +512,26 @@ class MarsObjectCheckMixin:
         from mars.dataframe.core import DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
         from mars.dataframe.core import DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
 
+        df_groupby_types = (DataFrameGroupBy,)
+        series_groupby_types = (SeriesGroupBy,)
+
+        try:
+            from cudf.core.groupby.groupby import DataFrameGroupBy as CUDataFrameGroupBy, \
+                SeriesGroupBy as CUSeriesGroupBy
+            df_groupby_types += (CUDataFrameGroupBy,)
+            series_groupby_types += (CUSeriesGroupBy,)
+        except ImportError:
+            pass
+
         if isinstance(expected, (DATAFRAME_GROUPBY_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE)) \
-                and isinstance(real, DataFrameGroupBy):
+                and isinstance(real, df_groupby_types):
             selection = getattr(real, '_selection', None)
             if not selection:
                 cls.assert_dataframe_consistent(expected, real.obj)
             else:
                 cls.assert_dataframe_consistent(expected, real.obj[selection])
         elif isinstance(expected, (SERIES_GROUPBY_TYPE, SERIES_GROUPBY_CHUNK_TYPE)) \
-                and isinstance(real, SeriesGroupBy):
+                and isinstance(real, series_groupby_types):
             cls.assert_series_consistent(expected, real.obj)
         else:
             raise AssertionError('GroupBy type not consistent. Expecting %r but receive %r'
