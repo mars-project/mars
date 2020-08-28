@@ -213,7 +213,6 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 n_cols = int(len(inputs) // n_rows)
                 assert n_rows * n_cols == len(inputs)
 
-
                 concats = []
                 for i in range(n_rows):
                     if n_cols == 1:
