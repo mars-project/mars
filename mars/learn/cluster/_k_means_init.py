@@ -28,6 +28,73 @@ from ..metrics import euclidean_distances
 from ..operands import LearnOperand, LearnOperandMixin
 
 
+def _kmeans_plus_plus_init(X,
+                           x_squared_norms,
+                           random_state,
+                           n_clusters: int,
+                           n_local_trials: int = None):
+    n_samples, n_features = X.shape
+
+    centers = mt.empty((n_clusters, n_features), dtype=X.dtype)
+
+    assert x_squared_norms is not None, 'x_squared_norms None in _k_init'
+
+    # Set the number of local seeding trials if none is given
+    if n_local_trials is None:
+        # This is what Arthur/Vassilvitskii tried, but did not report
+        # specific results for other than mentioning in the conclusion
+        # that it helped.
+        n_local_trials = 2 + int(np.log(n_clusters))
+
+    # Pick first center randomly
+    center_id = random_state.randint(n_samples)
+    if X.issparse():  # pragma: no cover
+        centers[0] = X[center_id].todense()
+    else:
+        centers[0] = X[center_id]
+
+    # Initialize list of closest distances and calculate current potential
+    closest_dist_sq = euclidean_distances(
+        centers[0, mt.newaxis], X, Y_norm_squared=x_squared_norms,
+        squared=True)
+    current_pot = closest_dist_sq.sum()
+
+    # Pick the remaining n_clusters-1 points
+    for c in range(1, n_clusters):
+        # Choose center candidates by sampling with probability proportional
+        # to the squared distance to the closest existing center
+        rand_vals = random_state.random_sample(n_local_trials) * current_pot
+        candidate_ids = mt.searchsorted(closest_dist_sq.cumsum(),
+                                        rand_vals)
+        # XXX: numerical imprecision can result in a candidate_id out of range
+        candidate_ids = mt.clip(candidate_ids, None, closest_dist_sq.size - 1)
+
+        # Compute distances to center candidates
+        distance_to_candidates = euclidean_distances(
+            X[candidate_ids], X, Y_norm_squared=x_squared_norms, squared=True)
+
+        # update closest distances squared and potential for each candidate
+        distance_to_candidates = mt.minimum(closest_dist_sq, distance_to_candidates)
+
+        candidates_pot = distance_to_candidates.sum(axis=1)
+
+        # Decide which candidate is the best
+        best_candidate = mt.argmin(candidates_pot)
+        current_pot = candidates_pot[best_candidate]
+        closest_dist_sq = distance_to_candidates[best_candidate]
+        best_candidate = candidate_ids[best_candidate]
+
+        # Permanently add best center candidate found in local tries
+        if X.issparse():  # pragma: no cover
+            c_center = X[best_candidate].todense()
+        else:
+            c_center = X[best_candidate]
+
+        centers[c] = c_center
+
+    return centers
+
+
 class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.KMEANS_PLUS_PLUS_INIT
 
@@ -112,63 +179,8 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
         random_state = op.state
         n_local_trials = op.n_local_trials
 
-        n_samples, n_features = X.shape
-
-        centers = mt.empty((n_clusters, n_features), dtype=X.dtype)
-
-        assert x_squared_norms is not None, 'x_squared_norms None in _k_init'
-
-        # Set the number of local seeding trials if none is given
-        if n_local_trials is None:
-            # This is what Arthur/Vassilvitskii tried, but did not report
-            # specific results for other than mentioning in the conclusion
-            # that it helped.
-            n_local_trials = 2 + int(np.log(n_clusters))
-
-        # Pick first center randomly
-        center_id = random_state.randint(n_samples)
-        if X.issparse():
-            centers[0] = X[center_id].todense()
-        else:
-            centers[0] = X[center_id]
-
-        # Initialize list of closest distances and calculate current potential
-        closest_dist_sq = euclidean_distances(
-            centers[0, mt.newaxis], X, Y_norm_squared=x_squared_norms,
-            squared=True)
-        current_pot = closest_dist_sq.sum()
-
-        # Pick the remaining n_clusters-1 points
-        for c in range(1, n_clusters):
-            # Choose center candidates by sampling with probability proportional
-            # to the squared distance to the closest existing center
-            rand_vals = random_state.random_sample(n_local_trials) * current_pot
-            candidate_ids = mt.searchsorted(closest_dist_sq.cumsum(),
-                                            rand_vals)
-            # XXX: numerical imprecision can result in a candidate_id out of range
-            candidate_ids = mt.clip(candidate_ids, None, closest_dist_sq.size - 1)
-
-            # Compute distances to center candidates
-            distance_to_candidates = euclidean_distances(
-                X[candidate_ids], X, Y_norm_squared=x_squared_norms, squared=True)
-
-            # update closest distances squared and potential for each candidate
-            distance_to_candidates = mt.minimum(closest_dist_sq, distance_to_candidates)
-
-            candidates_pot = distance_to_candidates.sum(axis=1)
-
-            # Decide which candidate is the best
-            best_candidate = mt.argmin(candidates_pot)
-            current_pot = candidates_pot[best_candidate]
-            closest_dist_sq = distance_to_candidates[best_candidate]
-            best_candidate = candidate_ids[best_candidate]
-
-            # Permanently add best center candidate found in local tries
-            if X.issparse():
-                centers[c] = X[best_candidate].todense()
-            else:
-                centers[c] = X[best_candidate]
-
+        centers = _kmeans_plus_plus_init(X, x_squared_norms, random_state,
+                                         n_clusters, n_local_trials)
         return recursive_tile(centers)
 
     @classmethod
@@ -317,7 +329,9 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
             cost = mt.sum(mt.min(distances, axis=1))
 
             # calculate the distribution to sample new centers
-            distribution = mt.min(distances, axis=1) / cost
+            distribution = mt.full(len(distances), 1 / len(distances))
+            mt.true_divide(mt.min(distances, axis=1), cost,
+                           where=cost != 0, out=distribution)
 
             # pick new centers
             new_centers_size = op.oversampling_factor * n_clusters
@@ -330,7 +344,8 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
 
         distances = recursive_tile(euclidean_distances(
             x, centers, X_norm_squared=x_squared_norms, squared=True))
-        map_chunks = []
+
+        map_index_to_chunks = {}
         # calculate weight for each chunk
         for c in distances.chunks:
             map_chunk_op = KMeansScalablePlusPlusInit(stage=OperandStage.map)
@@ -338,17 +353,32 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
                 'shape': (len(centers),),
                 'dtype': np.dtype(np.int64),
                 'order': TensorOrder.C_ORDER,
-                'index': (c.index[0],)
+                'index': c.index
             }
             map_chunk = map_chunk_op.new_chunk([c], kws=[map_chunk_kw])
-            map_chunks.append(map_chunk)
+            map_index_to_chunks[c.index] = map_chunk
+
+        combine_chunks = []
+        for i in range(distances.chunk_shape[0]):
+            map_chunks = [map_index_to_chunks[i, j]
+                          for j in range(distances.chunk_shape[1])]
+            combine_chunk_op = KMeansScalablePlusPlusInit(stage=OperandStage.combine)
+            combine_chunk_kw = {
+                'shape': (len(centers),),
+                'dtype': np.dtype(np.int64),
+                'order': TensorOrder.C_ORDER,
+                'index': (i,)
+            }
+            combine_chunk = combine_chunk_op.new_chunk(
+                map_chunks, kws=[combine_chunk_kw])
+            combine_chunks.append(combine_chunk)
 
         reduce_chunk_op = KMeansScalablePlusPlusInit(n_clusters=op.n_clusters,
                                                      state=random_state,
                                                      stage=OperandStage.reduce)
         reduce_chunk_kw = out.params
         reduce_chunk_kw['index'] = (0, 0)
-        reduce_chunk = reduce_chunk_op.new_chunk([centers.chunks[0]] + map_chunks,
+        reduce_chunk = reduce_chunk_op.new_chunk([centers.chunks[0]] + combine_chunks,
                                                  kws=[reduce_chunk_kw])
 
         new_op = op.copy()
@@ -361,10 +391,22 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
     def _execute_map(cls, ctx, op: "KMeansScalablePlusPlusInit"):
         distances = ctx[op.inputs[0].key]
         min_distance_ids = np.argmin(distances, axis=1)
-        result = np.zeros(distances.shape[1], dtype=np.int64)
+        min_distances = distances[range(len(distances)), min_distance_ids]
+        ctx[op.outputs[0].key] = (min_distances, min_distance_ids)
+
+    @classmethod
+    def _execute_combine(cls, ctx, op: "KMeansScalablePlusPlusInit"):
+        out = op.outputs[0]
+        all_distances, all_min_distance_ids = tuple(zip(*(ctx[inp.key] for inp in op.inputs)))
+        distances = np.stack(all_distances).T
+        min_distance_ids = np.stack(all_min_distance_ids).T
+
+        combined_min_distance_id = np.argmin(distances, axis=1)
+        min_distance_ids = min_distance_ids[range(len(distances)), combined_min_distance_id]
         count = np.bincount(min_distance_ids)
+        result = np.zeros(out.shape[0], dtype=np.int64)
         result[:len(count)] = count
-        ctx[op.outputs[0].key] = result
+        ctx[out.key] = result
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "KMeansScalablePlusPlusInit"):
@@ -388,6 +430,8 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
     def execute(cls, ctx, op: "KMeansScalablePlusPlusInit"):
         if op.stage == OperandStage.map:
             return cls._execute_map(ctx, op)
+        elif op.stage == OperandStage.combine:
+            return cls._execute_combine(ctx, op)
         else:
             return cls._execute_reduce(ctx, op)
 

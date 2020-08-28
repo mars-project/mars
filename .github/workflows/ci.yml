@@ -78,7 +78,7 @@ jobs:
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               pip install tensorflow\<2.3.0
               pip install torch torchvision
-              pip install tsfresh
+              pip install tsfresh statsmodels==0.11.1
             fi
             virtualenv testenv && source testenv/bin/activate
             pip install -r requirements.txt && pip install pytest pytest-timeout

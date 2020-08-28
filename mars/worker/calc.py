@@ -164,6 +164,7 @@ class BaseCalcActor(WorkerActor):
             self._n_cpu = len(self._dispatch_ref.get_slots('cpu'))
         return self._n_cpu
 
+    @log_unhandled
     def _calc_results(self, session_id, graph_key, graph, context_dict, chunk_targets):
         _, op_name = concat_operand_keys(graph, '_')
 
