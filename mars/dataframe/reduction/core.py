@@ -368,7 +368,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             ctx[op.outputs[0].key] = r
         else:
             if op.axis == 0:
-                if xdf is cudf:
+                if op.gpu:
                     df = xdf.DataFrame(r).transpose()
                 else:
                     # cannot just do xdf.DataFrame(r).T
