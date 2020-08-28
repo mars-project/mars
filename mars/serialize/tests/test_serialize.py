@@ -796,6 +796,12 @@ class Test(unittest.TestCase):
         self.assertIs(type(s), type(dest_s))
         self.assertEqual(s, dest_s)
 
+        # test ndarray with negative strides
+        arr = np.zeros((5, 6, 3))
+        arr2 = arr[:, :, ::-1]
+        dest_arr2 = dataserializer.loads(dataserializer.dumps(arr2))
+        np.testing.assert_array_equal(arr2, dest_arr2)
+
         # test ArrowArray
         df = pd.DataFrame({'a': ['s1', 's2', 's3'],
                            'b': [['s1', 's2'], ['s3'], ['s4', 's5']]})
