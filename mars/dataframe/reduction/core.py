@@ -370,6 +370,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             if op.axis == 0:
                 if op.gpu:
                     df = xdf.DataFrame(r).transpose()
+                    df.columns = r.index.to_arrow().to_pylist()
                 else:
                     # cannot just do xdf.DataFrame(r).T
                     # cuz the dtype will be object since pandas 1.0
