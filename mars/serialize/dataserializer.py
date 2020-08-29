@@ -299,6 +299,11 @@ def serialize(data):
         if isinstance(data, (complex, np.complexfloating)):
             return pyarrow.serialize(_ComplexWrapper(data), mars_serialize_context())
         raise SerializationFailed(obj=data)
+    except pyarrow.lib.ArrowInvalid:
+        if isinstance(data, np.ndarray) and any(s < 0 for s in data.strides):
+            # pyarrow does not support negative strides for now
+            return pyarrow.serialize(data.copy(), mars_serialize_context())
+        raise SerializationFailed(obj=data)
 
 
 def deserialize(data):

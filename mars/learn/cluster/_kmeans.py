@@ -453,7 +453,7 @@ def _init_centroids(X, n_clusters=8, init="k-means++", random_state=None,
                                    init_iter=init_iter)
     elif isinstance(init, str) and init == 'random':
         seeds = random_state.choice(n_samples, size=n_clusters, replace=False)
-        centers = X[seeds]
+        centers = X[seeds].rechunk((n_clusters, X.shape[1]))
     elif hasattr(init, '__array__'):
         # ensure that the centers have the same dtype as X
         # this is a requirement of fused types of cython
@@ -501,7 +501,7 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         If a tensor is passed, it should be of shape (n_clusters, n_features)
         and gives the initial centers.
 
-    n_init : int, default=10
+    n_init : int, default=1
         Number of time the k-means algorithm will be run with different
         centroid seeds. The final results will be the best output of
         n_init consecutive runs in terms of inertia.
@@ -605,10 +605,10 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
     array([[10.,  2.],
            [ 1.,  2.]])
     """
-    def __init__(self, n_clusters=8, init='k-means||', n_init=10,
+    def __init__(self, n_clusters=8, init='k-means||', n_init=1,
                  max_iter=300, tol=1e-4, verbose=0, random_state=None,
-                 copy_x=True, algorithm='auto',
-                 oversampling_factor=2, init_iter=5):
+                 copy_x=True, algorithm='auto', oversampling_factor=2,
+                 init_iter=5):
 
         self.n_clusters = n_clusters
         self.init = init
@@ -782,7 +782,12 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
             algorithm = "full"
 
         if algorithm == "auto":
-            algorithm = "full" if self.n_clusters == 1 else "elkan"
+            # note(xuye.qin):
+            # Different from scikit-learn,
+            # for now, full seems more efficient when data is large,
+            # elkan needs to be tuned more
+            # old: algorithm = "full" if self.n_clusters == 1 else "elkan"
+            algorithm = "full"
 
         if algorithm == "full":
             kmeans_single = _kmeans_single_lloyd

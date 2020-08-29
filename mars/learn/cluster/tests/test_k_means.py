@@ -26,7 +26,10 @@ try:
 except ImportError:
     pass
 
+from mars import tensor as mt
+from mars.config import options
 from mars.learn.cluster import KMeans, k_means
+from mars.learn.cluster._kmeans import _init_centroids
 from mars.session import new_session
 from mars.tests.core import TestBase, ExecutorForTest
 
@@ -170,7 +173,7 @@ class Test(TestBase):
                                 [+0, 0, 0, 0]])
 
         km = KMeans(n_clusters=3, init=bad_centers, n_init=1, max_iter=10,
-                    random_state=1)
+                    random_state=1, algorithm='elkan')
         for this_X in (X, sp.coo_matrix(X)):
             km.fit(this_X)
             this_labels = km.labels_.fetch()
@@ -210,9 +213,18 @@ class Test(TestBase):
         X_csr = sp.csr_matrix(X)
         for data in [X, X_csr]:
             for init in ['random', 'k-means++', 'k-means||', centers.copy()]:
-                km = KMeans(init=init, n_clusters=n_clusters, random_state=42, n_init=1)
+                data = mt.tensor(data, chunk_size=50)
+                km = KMeans(init=init, n_clusters=n_clusters, random_state=42,
+                            n_init=1, algorithm='elkan')
                 km.fit(data)
                 self._check_fitted_model(km, n_clusters, n_features, true_labels)
+
+        X = mt.array([[1, 2], [1, 4], [1, 0],
+                      [10, 2], [10, 4], [10, 0]])
+        kmeans = KMeans(n_clusters=2, random_state=0, n_init=1,
+                        init='k-means||').fit(X)
+        self.assertEqual(sorted(kmeans.cluster_centers_.fetch().tolist()),
+                         sorted([[10., 2.], [1., 2.]]))
 
     def testKMeansNInit(self):
         rnd = np.random.RandomState(0)
@@ -232,25 +244,27 @@ class Test(TestBase):
         X = rnd.normal(size=(40, 3))
 
         # mismatch of number of features
-        km = KMeans(n_init=1, init=X[:, :2], n_clusters=len(X))
+        km = KMeans(n_init=1, init=X[:, :2], n_clusters=len(X), algorithm='elkan')
         msg = "does not match the number of features of the data"
         with pytest.raises(ValueError, match=msg):
             km.fit(X)
         # for callable init
         km = KMeans(n_init=1,
                     init=lambda X_, k, random_state: X_[:, :2],
-                    n_clusters=len(X))
+                    n_clusters=len(X),
+                    algorithm='elkan')
         with pytest.raises(ValueError, match=msg):
             km.fit(X)
         # mismatch of number of clusters
         msg = "does not match the number of clusters"
-        km = KMeans(n_init=1, init=X[:2, :], n_clusters=3)
+        km = KMeans(n_init=1, init=X[:2, :], n_clusters=3, algorithm='elkan')
         with pytest.raises(ValueError, match=msg):
             km.fit(X)
         # for callable init
         km = KMeans(n_init=1,
                     init=lambda X_, k, random_state: X_[:2, :],
-                    n_clusters=3)
+                    n_clusters=3,
+                    algorithm='elkan')
         with pytest.raises(ValueError, match=msg):
             km.fit(X)
 
@@ -259,7 +273,8 @@ class Test(TestBase):
         X = np.asfortranarray([[0, 0], [0, 1], [0, 1]])
         centers = np.array([[0, 0], [0, 1]])
         labels = np.array([0, 1, 1])
-        km = KMeans(n_init=1, init=centers, random_state=42, n_clusters=2)
+        km = KMeans(n_init=1, init=centers, random_state=42,
+                    n_clusters=2, algorithm='elkan')
         km.fit(X)
         np.testing.assert_array_almost_equal(km.cluster_centers_, centers)
         np.testing.assert_array_equal(km.labels_, labels)
@@ -304,7 +319,8 @@ class Test(TestBase):
         X = make_blobs(n_samples=n_samples, centers=centers,
                        cluster_std=1., random_state=42)[0]
 
-        km = KMeans(n_clusters=n_clusters, init='k-means++')
+        km = KMeans(n_clusters=n_clusters, init='k-means++',
+                    algorithm='elkan')
         km.fit(X)
         X_new = km.transform(km.cluster_centers_).fetch()
 
@@ -323,8 +339,10 @@ class Test(TestBase):
         n_samples = 100
         X = make_blobs(n_samples=n_samples, centers=centers,
                        cluster_std=1., random_state=42)[0]
-        X1 = KMeans(n_clusters=3, random_state=51, init='k-means++').fit(X).transform(X)
-        X2 = KMeans(n_clusters=3, random_state=51, init='k-means++').fit_transform(X)
+        X1 = KMeans(n_clusters=3, random_state=51, init='k-means++',
+                    algorithm='elkan').fit(X).transform(X)
+        X2 = KMeans(n_clusters=3, random_state=51, init='k-means++',
+                    algorithm='elkan').fit_transform(X)
         np.testing.assert_array_almost_equal(X1, X2)
 
     def testScore(self):
@@ -390,3 +408,15 @@ class Test(TestBase):
         with pytest.raises(ValueError):
             k_means(X, n_clusters=X.shape[0] + 1, sample_weight=None,
                     init='k-means++')
+
+    def testKMeansInitLargeNClusters(self):
+        chunk_bytes_limit = options.chunk_store_limit * 2
+        n_cluster = 2000
+        x = mt.random.rand(1000_000, 64, chunk_size=250_000)
+
+        centers = _init_centroids(x, n_cluster, init='k-means||')
+        graph = centers.build_graph(tiled=True, compose=True)
+        for c in graph:
+            nbytes = c.nbytes
+            if not np.isnan(nbytes):
+                self.assertLessEqual(nbytes, chunk_bytes_limit)

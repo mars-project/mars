@@ -27,10 +27,11 @@ except ImportError:  # pragma: no cover
     sklearn = None
 
 from mars import tensor as mt
+from mars.config import option_context
 from mars.lib.sparse import SparseNDArray
-from mars.tests.core import ExecutorForTest
 from mars.learn.metrics import euclidean_distances
 from mars.learn.utils import check_array
+from mars.tests.core import ExecutorForTest
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
@@ -116,4 +117,30 @@ class Test(unittest.TestCase):
             result = self.executor.execute_tensor(distance, concat=True)[0]
             expected = sk_euclidean_distances(raw_x)
 
+            np.testing.assert_almost_equal(result, expected)
+
+        # test size adjust
+        raw1 = np.random.rand(12, 4)
+        raw2 = np.random.rand(18, 4)
+
+        t1 = mt.tensor(raw1, chunk_size=4)
+        t2 = mt.tensor(raw2, chunk_size=6)
+        with option_context({'chunk_store_limit': 80}):
+            distance = euclidean_distances(t1, t2)
+
+            result = self.executor.execute_tensor(distance, concat=True)[0]
+            expected = sk_euclidean_distances(raw1, raw2)
+            np.testing.assert_almost_equal(result, expected)
+
+            distance = euclidean_distances(t2, t1)
+
+            result = self.executor.execute_tensor(distance, concat=True)[0]
+            expected = sk_euclidean_distances(raw2, raw1)
+            np.testing.assert_almost_equal(result, expected)
+
+        with option_context({'chunk_store_limit': 20}):
+            distance = euclidean_distances(t1, t2)
+
+            result = self.executor.execute_tensor(distance, concat=True)[0]
+            expected = sk_euclidean_distances(raw1, raw2)
             np.testing.assert_almost_equal(result, expected)
