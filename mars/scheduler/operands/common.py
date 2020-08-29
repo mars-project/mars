@@ -381,6 +381,20 @@ class OperandActor(BaseOperandActor):
         else:
             self.start_operand(OperandState.RUNNING)
 
+    def handle_unexpected_failure(self, *exc_info):
+        self._allocated = False
+        logger.exception('Attempt %s: Unexpected error %s occurred in executing operand %s in %s',
+                         self.retries + 1, exc_info[0].__name__, self._op_key, self.worker, exc_info=exc_info)
+        # increase retry times
+        self.retries += 1
+        if not self._info['retryable'] or self.retries >= options.scheduler.retry_num:
+            # no further trial
+            self.state = OperandState.FATAL
+            self._exc = exc_info
+        else:
+            self.state = OperandState.READY
+        self.ref().start_operand(_tell=True)
+
     @log_unhandled
     def _on_ready(self):
         self.worker = None
@@ -393,7 +407,7 @@ class OperandActor(BaseOperandActor):
                 self.worker = None
                 self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             else:
-                raise exc_info[1].with_traceback(exc_info[2]) from None
+                self.handle_unexpected_failure(*exc_info)
 
         # if under retry, give application a delay
         delay = options.scheduler.retry_delay if self.retries else 0
@@ -447,17 +461,7 @@ class OperandActor(BaseOperandActor):
                                self._op_key)
                 self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             else:
-                logger.exception('Attempt %d: Unexpected error %s occurred in executing operand %s in %s',
-                                 self.retries + 1, exc_type.__name__, self._op_key, self.worker, exc_info=exc)
-                # increase retry times
-                self.retries += 1
-                if not self._info['retryable'] or self.retries >= options.scheduler.retry_num:
-                    # no further trial
-                    self.state = OperandState.FATAL
-                    self._exc = exc
-                else:
-                    self.state = OperandState.READY
-                self.ref().start_operand(_tell=True)
+                self.handle_unexpected_failure(*exc)
 
         try:
             with rewrite_worker_errors():

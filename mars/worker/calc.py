@@ -20,7 +20,7 @@ from .. import promise
 from ..config import options
 from ..executor import Executor
 from ..serialize import dataserializer
-from ..utils import to_str, deserialize_graph, log_unhandled, \
+from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size, \
     get_chunk_shuffle_key
 from ..context import DistributedDictContext
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
@@ -211,8 +211,12 @@ class BaseCalcActor(WorkerActor):
             chunk_key = get_chunk_key(k)
             if chunk_key in chunk_targets:
                 result_keys.append(k)
-                result_values.append(dataserializer.serialize(v))
-                result_sizes.append(result_values[-1].total_bytes)
+                if self._calc_intermediate_device in self._calc_dest_devices:
+                    result_values.append(v)
+                    result_sizes.append(calc_data_size(v))
+                else:
+                    result_values.append(dataserializer.serialize(v))
+                    result_sizes.append(result_values[-1].total_bytes)
                 result_shapes.append(getattr(v, 'shape', None))
                 collected_chunk_keys.add(chunk_key)
 

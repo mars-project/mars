@@ -27,7 +27,7 @@ from mars.config import options
 from mars.tiles import get_tiled
 from mars.promise import PromiseActor
 from mars.utils import get_next_port, serialize_graph
-from mars.scheduler import ResourceActor, ChunkMetaActor
+from mars.scheduler import ResourceActor, ChunkMetaActor, SessionManagerActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import require_cupy, create_actor_pool
 from mars.worker import DispatchActor, WorkerDaemonActor
@@ -109,6 +109,7 @@ class Test(unittest.TestCase):
                                    address=mock_scheduler_addr) as pool:
                 pool.create_actor(SchedulerClusterInfoActor, [mock_scheduler_addr],
                                   uid=SchedulerClusterInfoActor.default_uid())
+                pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_uid())
 
                 pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
                 resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
@@ -119,6 +120,8 @@ class Test(unittest.TestCase):
                         '--cpu-procs', '1',
                         '--cache-mem', '10m',
                         '--spill-dir', self._spill_dir,
+                        '--log-level', 'debug',
+                        '--log-format', '%(asctime)-15s %(message)s',
                         '--ignore-avail-mem']
                 env = os.environ.copy()
                 if cuda:
