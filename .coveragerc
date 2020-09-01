@@ -32,6 +32,7 @@ omit =
     mars/tensor/datasource/from_vineyard.py
     mars/tensor/datastore/to_vineyard.py
     mars/worker/storage/vineyardhandler.py
+    mars/deploy/kubedl/*
 
 [report]
 exclude_lines =
