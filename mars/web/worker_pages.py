@@ -17,7 +17,6 @@ from collections import defaultdict, OrderedDict
 from datetime import datetime
 
 import numpy as np
-from bokeh.embed import server_document
 from bokeh.models import ColumnDataSource, Legend
 from bokeh.plotting import figure
 
@@ -42,7 +41,7 @@ class WorkerListHandler(MarsRequestHandler):
             _worker_host_cache[ep] = meta['details']['host_name']
 
         template = _jinja_env.get_template('worker_pages/list.html')
-        self.write(template.render(worker_metrics=workers_meta))
+        self.write_rendered(template, worker_metrics=workers_meta)
 
 
 class WorkerHandler(MarsRequestHandler):
@@ -64,11 +63,12 @@ class WorkerHandler(MarsRequestHandler):
             progresses[k]['operands'] = ', '.join(f'{k} ({v})' for k, v in operands)
 
         template = _jinja_env.get_template('worker_pages/detail.html')
-        self.write(template.render(
+        self.write_rendered(
+            template,
             endpoint=endpoint,
             worker_metrics=workers_meta[endpoint],
             progresses=progresses,
-        ))
+        )
 
 
 class EventUpdater(object):
@@ -165,14 +165,14 @@ class EventUpdater(object):
 class WorkerTimelineHandler(MarsRequestHandler):
     def get(self, endpoint):
         template = _jinja_env.get_template('worker_pages/timeline.html')
-        worker_timeline_script = server_document(
-            f'{self.request.protocol}://{self.request.host}/{TIMELINE_APP_NAME}',
-            arguments=dict(endpoint=endpoint))
-        self.write(template.render(
+        worker_timeline_script = self.bokeh_server_document(
+            TIMELINE_APP_NAME, arguments=dict(endpoint=endpoint))
+        self.write_rendered(
+            template,
             endpoint=endpoint,
             host_name=_worker_host_cache.get(endpoint, endpoint),
             worker_timeline_script=worker_timeline_script,
-        ))
+        )
 
     @staticmethod
     def timeline_app(doc, scheduler_ip=None):
