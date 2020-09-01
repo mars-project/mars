@@ -57,7 +57,8 @@ class Test(unittest.TestCase):
         r = df.sort_values(by='a')
         op = r.op
 
-        new_op = operand_deserializer(operand_serializer(op))
+        new_op_wrapper = operand_deserializer(operand_serializer(op))
+        new_op = new_op_wrapper.op
 
         self.assertEqual(op.by, new_op.by)
         self.assertIsInstance(new_op, type(op))

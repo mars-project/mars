@@ -25,6 +25,18 @@ from ..utils import build_fetch_chunk
 from ..executor import Executor, GraphExecution
 
 
+class _OperandWrapper:
+    __slots__ = 'op', 'chunks'
+
+    def __init__(self, op, chunks):
+        """
+        As we only serde op for Ray executors, but op only weakly reference chunks,
+        So we create a wrapper here to keep the reference
+        """
+        self.op = op
+        self.chunks = chunks
+
+
 def operand_serializer(op):
     graph = DAG()
     inputs = [build_fetch_chunk(inp) for inp in op.inputs or []]
@@ -51,8 +63,7 @@ def operand_deserializer(value):
     else:
         chunks = [c for c in graph if not isinstance(c.op, Fetch)]
     op = chunks[0].op
-    op._extra_params['outputs_ref'] = chunks
-    return op
+    return _OperandWrapper(op, chunks)
 
 
 @lru_cache(500)
@@ -140,7 +151,8 @@ class RayExecutor(Executor):
         def build_remote_funtion(func):
 
             @ray.remote
-            def remote_runner(results, op):
+            def remote_runner(results, op_wrapper: _OperandWrapper):
+                op = op_wrapper.op
                 return func(results, op)
 
             return remote_runner

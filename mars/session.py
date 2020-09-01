@@ -439,6 +439,9 @@ class Session(object):
                     self._init_local_session(**kwargs)
         elif self._backend == 'ray':
             self._init_ray_session(**kwargs)
+        else:  # pragma: no cover
+            raise ValueError('Either endpoint or backend should '
+                             'be provided to create a session')
 
     def _init_local_session(self, **kwargs):
         self._sess = LocalSession(**kwargs)
