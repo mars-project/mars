@@ -30,9 +30,10 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 
 try:
-    from numpy.distutils.ccompiler import CCompiler_compile
     import distutils.ccompiler
-    distutils.ccompiler.CCompiler.compile = CCompiler_compile
+    if sys.platform != 'win32':
+        from numpy.distutils.ccompiler import CCompiler_compile
+        distutils.ccompiler.CCompiler.compile = CCompiler_compile
 except ImportError:
     pass
 
