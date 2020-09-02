@@ -14,7 +14,6 @@
 
 from collections import OrderedDict
 
-from bokeh.embed import server_document
 from bokeh.models import ColumnDataSource, Legend
 from bokeh.plotting import figure
 
@@ -38,7 +37,7 @@ class TaskListHandler(MarsRequestHandler):
         sessions = self.web_api.get_tasks_info()
 
         template = _jinja_env.get_template('task_pages/list.html')
-        self.write(template.render(sessions=sessions))
+        self.write_rendered(template, sessions=sessions)
 
 
 class TaskHandler(MarsRequestHandler):
@@ -46,15 +45,15 @@ class TaskHandler(MarsRequestHandler):
         session_name = session_id
 
         template = _jinja_env.get_template('task_pages/progress.html')
-        task_progress_script = server_document(
-            f'{self.request.protocol}://{self.request.host}/{PROGRESS_APP_NAME}',
-            arguments=dict(session_id=session_id, task_id=graph_key))
-        self.write(template.render(
+        task_progress_script = self.bokeh_server_document(
+            PROGRESS_APP_NAME, arguments=dict(session_id=session_id, task_id=graph_key))
+        self.write_rendered(
+            template,
             session_id=session_id,
             session_name=session_name,
             task_id=graph_key,
             task_progress_script=task_progress_script,
-        ))
+        )
 
     @staticmethod
     def task_progress_app(doc, scheduler_ip=None):
@@ -112,12 +111,13 @@ class TaskRunningNodesHandler(MarsRequestHandler):
             sorted((item for item in running_info.items()), key=lambda it: (it[1].get('op_name'), it[0])))
 
         template = _jinja_env.get_template('task_pages/runnings.html')
-        self.write(template.render(
+        self.write_rendered(
+            template,
             session_id=session_id,
             session_name=session_name,
             task_id=graph_key,
             running_info=sorted_info
-        ))
+        )
 
 
 register_web_handler('/session', TaskListHandler)

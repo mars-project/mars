@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set active_page = 'worker_list' %}
 {% block custom_head %}
-    <script type="text/javascript" src="/static/js/bootstrap-table.min.js"></script>
+    <script type="text/javascript" src="{{ root_path }}static/js/bootstrap-table.min.js"></script>
 {% endblock %}
 {% block page_nav %}
     <h2>Worker List</h2>
@@ -23,7 +23,7 @@
                 {%- for endpoint in worker_metrics %}
                     {% set metrics = worker_metrics[endpoint]['hardware'] %}
                     <tr>
-                        <td><a href="/worker/{{ endpoint }}">{{ endpoint }}</a></td>
+                        <td><a href="{{ root_path }}worker/{{ endpoint }}">{{ endpoint }}</a></td>
                         <td>{{ '%0.2f' % metrics['cpu_used'] }} / {{ metrics['cpu_total'] }}</td>
                         <td>{{ metrics['memory_used'] | readable_size }} / {{ metrics['memory_total'] | readable_size }}</td>
                         <td>{{ metrics['cached_hold'] | readable_size }} / {{ metrics['cached_total'] | readable_size }}</td>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set active_page = 'scheduler_list' %}
 {% block custom_head %}
-    <script type="text/javascript" src="/static/js/bootstrap-table.min.js"></script>
+    <script type="text/javascript" src="{{ root_path }}static/js/bootstrap-table.min.js"></script>
 {% endblock %}
 {% block page_nav %}
     <h2>Scheduler List</h2>
@@ -22,7 +22,7 @@
                 {%- for endpoint in scheduler_metrics %}
                     {% set metrics = scheduler_metrics[endpoint] %}
                     <tr>
-                        <td><a href="/scheduler/{{ endpoint }}">{{ endpoint }}</a></td>
+                        <td><a href="{{ root_path }}scheduler/{{ endpoint }}">{{ endpoint }}</a></td>
                         <td>{{ '%0.2f' % metrics['cpu_used'] }} / {{ metrics['cpu_total'] }}</td>
                         <td>{{ metrics['memory_used'] | readable_size }} / {{ metrics['memory_total'] | readable_size }}</td>
                         <td>{{ scheduler_metrics[endpoint]['update_time'] | format_ts }}</td>
