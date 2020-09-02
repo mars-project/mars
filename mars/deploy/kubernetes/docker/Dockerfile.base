@@ -13,15 +13,16 @@ RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
     mkl \
     numba \
     numexpr \
-    numpy \
-    pandas \
+    numpy\>=1.14.0 \
+    pandas\>=1.0.0 \
     protobuf \
     psutil \
+    scikit-learn \
     scipy \
     tornado \
   && /srv/retry.sh 3 /opt/conda/bin/conda install -c conda-forge \
     libiconv \
-    pyarrow \
+    pyarrow\>=1.0 \
     tiledb-py \
     python-kubernetes \
   && /opt/conda/bin/conda clean --all -f -y
