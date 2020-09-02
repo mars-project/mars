@@ -149,6 +149,12 @@ class RayStorage:
         ray.wait([self.meta_store.delete_keys.remote(key)])
 
 
+@ray.remote
+def execute_on_ray(func, results, op_wrapper: _OperandWrapper):
+    op = op_wrapper.op
+    func(results, op)
+
+
 class RayExecutor(Executor):
     """
     Wraps the execute function as a Ray remote function, the type of `results` is `RayStorage`,
@@ -169,26 +175,16 @@ class RayExecutor(Executor):
         # register a custom serializer for Mars operand
         _register_ray_serializer(op)
 
-        @lru_cache(500)
-        def build_remote_funtion(func):
-
-            @ray.remote
-            def remote_runner(results, op_wrapper: _OperandWrapper):
-                op = op_wrapper.op
-                return func(results, op)
-
-            return remote_runner
-
         try:
-            return ray.get(build_remote_funtion(runner).remote(results, op))
+            ray.wait([execute_on_ray.remote(runner, results, op)])
         except NotImplementedError:
             for op_cls in mapper.keys():
                 if isinstance(op, op_cls):
                     mapper[type(op)] = mapper[op_cls]
                     runner = mapper[op_cls]
 
-                    return ray.get(
-                        build_remote_funtion(runner).remote(results, op))
+                    ray.wait(
+                        [execute_on_ray.remote(runner, results, op)])
             raise KeyError(f'No handler found for op: {op}')
 
     @classmethod
