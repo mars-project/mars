@@ -37,10 +37,11 @@ logger = logging.getLogger(__name__)
 
 
 class Session(object):
-    def __init__(self, endpoint, session_id=None, req_session=None, args=None):
+    def __init__(self, endpoint, session_id=None, req_session=None, verify_ssl=True,
+                 **session_kwargs):
         self._endpoint = endpoint.rstrip('/')
         self._session_id = session_id
-        self._args = args or dict()
+        self._session_kwargs = session_kwargs
         # dict structure: {tileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tileable id
         self._executed_tileables = dict()
@@ -56,6 +57,8 @@ class Session(object):
 
             self._req_session = requests.Session()
             self._req_session.mount('http://stackoverflow.com', HTTPAdapter(max_retries=5))
+
+        self._req_session.verify = verify_ssl
 
         self._main()
 
@@ -77,19 +80,20 @@ class Session(object):
         else:
             self._serial_type = dataserializer.SerialType(options.client.serial_type.lower())
 
-        args = self._args.copy()
-        args['pyver'] = '.'.join(str(v) for v in sys.version_info[:3])
-        args['pickle_protocol'] = self._pickle_protocol
+        session_kw = self._session_kwargs.copy()
+        session_kw['pyver'] = '.'.join(str(v) for v in sys.version_info[:3])
+        session_kw['pickle_protocol'] = self._pickle_protocol
         if pyarrow is not None:
-            args['arrow_version'] = pyarrow.__version__
+            session_kw['arrow_version'] = pyarrow.__version__
 
         if self._session_id is None:
-            resp = self._req_session.post(self._endpoint + '/api/session', data=args)
+            resp = self._req_session.post(self._endpoint + '/api/session', data=session_kw)
 
             if resp.status_code >= 400:
                 raise SystemError('Failed to create mars session: ' + resp.reason)
         else:
-            resp = self._req_session.get(self._endpoint + '/api/session/' + self._session_id, params=args)
+            resp = self._req_session.get(
+                self._endpoint + '/api/session/' + self._session_id, params=session_kw)
             if resp.status_code == 404:
                 raise ValueError(f'The session with id = {self._session_id} doesn\'t exist')
             if resp.status_code >= 400:
