@@ -397,11 +397,15 @@ class Test(TestBase):
 
         mdf = md.DataFrame(df1, chunk_size=3)
 
+        applied = mdf.groupby('b').apply(lambda df: None)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(applied, concat=True)[0],
+                                      df1.groupby('b').apply(lambda df: None))
+
         applied = mdf.groupby('b').apply(apply_df)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
                                       df1.groupby('b').apply(apply_df).sort_index())
 
-        applied = mdf.groupby('b').apply(lambda df: df.a)
+        applied = mdf.groupby('b').apply(lambda df: df.a, output_type='series')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
                                        df1.groupby('b').apply(lambda df: df.a).sort_index())
 
@@ -411,6 +415,10 @@ class Test(TestBase):
 
         series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
         ms1 = md.Series(series1, chunk_size=3)
+
+        applied = ms1.groupby(lambda x: x % 3).apply(lambda df: None)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0],
+                                       series1.groupby(lambda x: x % 3).apply(lambda df: None))
 
         applied = ms1.groupby(lambda x: x % 3).apply(apply_series)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),

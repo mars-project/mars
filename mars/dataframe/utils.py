@@ -835,6 +835,16 @@ def validate_axis_style_args(data, args, kwargs, arg_name, method_name):  # prag
     return out
 
 
+def validate_output_types(**kwargs):
+    from ..core import OutputType
+
+    output_type = kwargs.pop('object_type', None) or kwargs.pop('output_type', None)
+    output_types = kwargs.pop('output_types', None) \
+        or ([output_type] if output_type is not None else None)
+    return [getattr(OutputType, v.lower()) if isinstance(v, str) else v for v in output_types] \
+        if output_types else None
+
+
 def standardize_range_index(chunks, axis=0):
     from .base.standardize_range_index import ChunkStandardizeRangeIndex
 

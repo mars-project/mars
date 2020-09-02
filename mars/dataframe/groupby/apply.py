@@ -16,10 +16,11 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import OutputType
+from ...core import OutputType, get_output_types
 from ...serialize import TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_df, build_empty_df, build_series, build_empty_series, parse_index
+from ..utils import build_df, build_empty_df, build_series, build_empty_series, \
+    parse_index, validate_output_types
 
 
 class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
@@ -114,7 +115,14 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             # todo return proper index when sort=True is implemented
             index_value = parse_index(None, in_df.key, self.func)
 
-            if isinstance(infer_df, pd.DataFrame):
+            if infer_df is None:
+                output_type = get_output_types(in_df)[0]
+                index_value = parse_index(pd.Index([], dtype=np.object))
+                if output_type == OutputType.dataframe:
+                    new_dtypes = pd.Series([], index=pd.Index([]))
+                else:
+                    new_dtypes = (None, np.dtype('O'))
+            elif isinstance(infer_df, pd.DataFrame):
                 output_type = output_type or OutputType.dataframe
                 new_dtypes = new_dtypes or infer_df.dtypes
             elif isinstance(infer_df, pd.Series):
@@ -137,8 +145,9 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             in_df = in_df.inputs[0]
 
         dtypes, index_value = self._infer_df_func_returns(groupby, in_df, dtypes, index)
-        for arg, desc in zip((self.output_types, dtypes, index_value),
-                             ('output_types', 'dtypes', 'index')):
+        if index_value is None:
+            index_value = parse_index(None, (in_df.key, in_df.index_value.key))
+        for arg, desc in zip((self.output_types, dtypes), ('output_types', 'dtypes')):
             if arg is None:
                 raise TypeError(f'Cannot determine {desc} by calculating with enumerate data, '
                                 'please specify it as arguments')
@@ -154,9 +163,15 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
                                    index_value=index_value)
 
 
-def groupby_apply(groupby, func, *args, dtypes=None, index=None, output_types=None, **kwargs):
+def groupby_apply(groupby, func, *args, dtypes=None, index=None, output_type=None, **kwargs):
     # todo this can be done with sort_index implemented
     if not groupby.op.groupby_params.get('as_index', True):
         raise NotImplementedError('apply when set_index == False is not supported')
+
+    output_types = kwargs.pop('output_types', None)
+    object_type = kwargs.pop('object_type', None)
+    output_types = validate_output_types(
+        output_types=output_types, output_type=output_type, object_type=object_type)
+
     op = GroupByApply(func=func, args=args, kwds=kwargs, output_types=output_types)
     return op(groupby, dtypes=dtypes, index=index)

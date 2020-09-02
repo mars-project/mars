@@ -1027,11 +1027,13 @@ class Test(unittest.TestCase):
             def g(x, y):
                 return x * y
 
-            a = mr.spawn(f, 3)
-            b = mr.spawn(f, 4)
-            c = mr.spawn(g, (a, b))
+            def f1():
+                a = mr.spawn(f, 3)
+                b = mr.spawn(f, 4)
+                c = mr.spawn(g, (a, b))
+                return c.execute().fetch()
 
-            r = session.run(c, timeout=_exec_timeout)
+            r = session.run(mr.spawn(f1), timeout=_exec_timeout)
             self.assertEqual(r, 20)
 
             e = mr.spawn(f, mr.spawn(f, 2))
