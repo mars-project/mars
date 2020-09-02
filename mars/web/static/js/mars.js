@@ -1,4 +1,10 @@
 $(function() {
+    if ($('meta[name=activepage]').attr("content") == 'dashboard') {
+        if (!window.location.pathname.endsWith('/')) {
+            window.location.assign(window.location.pathname + '/'
+                + window.location.search + window.location.hash);
+        }
+    }
     var resize_page = function() {
         var page_wrapper_obj = $('#page-wrapper');
         var new_height = $(window).height() - $('.navbar-static-top').outerHeight() - $('#page-nav').outerHeight();

@@ -59,6 +59,12 @@ class Session(object):
             self._req_session.mount('http://stackoverflow.com', HTTPAdapter(max_retries=5))
 
         self._req_session.verify = verify_ssl
+        if not verify_ssl:
+            try:
+                import urllib3
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            except ImportError:  # pragma: no cover
+                pass
 
         self._main()
 
