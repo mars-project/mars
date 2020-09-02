@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -33,8 +35,8 @@ class Test(unittest.TestCase):
         with new_session(backend='ray').as_default():
             # test tensor task
             raw = np.random.rand(100, 100)
-            t = mt.tensor(raw, chunk_size=30).sum().to_numpy()
-            self.assertAlmostEqual(t, raw.sum())
+            t = (mt.tensor(raw, chunk_size=30) + 1).sum().to_numpy()
+            self.assertAlmostEqual(t, (raw + 1).sum())
 
             # test DataFrame task
             raw = pd.DataFrame(np.random.random((20, 4)), columns=list('abcd'))
@@ -45,10 +47,22 @@ class Test(unittest.TestCase):
             # test update shape
             raw = np.random.rand(100)
             t = mt.tensor(raw, chunk_size=30)
-            selected = t[t > 0.5].execute()
+            selected = (t[t > 0.5] + 1).execute()
             r = selected.to_numpy()
-            expected = raw[raw > 0.5]
+            expected = raw[raw > 0.5] + 1
             np.testing.assert_array_equal(r, expected)
+
+            with tempfile.TemporaryDirectory() as tempdir:
+                file_path = os.path.join(tempdir, 'test.csv')
+
+                df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.int64),
+                                  columns=['a', 'b', 'c'])
+                df.to_csv(file_path)
+
+                mdf = md.read_csv(file_path)
+                r = mdf.groupby('a').agg({'c': 'sum'}).to_pandas()
+                expected = df.groupby('a').agg({'c': 'sum'})
+                pd.testing.assert_frame_equal(r, expected)
 
     def testOperandSerialization(self):
         from mars.ray.core import operand_serializer, operand_deserializer
@@ -57,7 +71,8 @@ class Test(unittest.TestCase):
         r = df.sort_values(by='a')
         op = r.op
 
-        new_op = operand_deserializer(operand_serializer(op))
+        new_op_wrapper = operand_deserializer(operand_serializer(op))
+        new_op = new_op_wrapper.op
 
         self.assertEqual(op.by, new_op.by)
         self.assertIsInstance(new_op, type(op))

@@ -15,14 +15,29 @@
 # limitations under the License.
 
 import uuid
+from collections import namedtuple
 from functools import lru_cache
+from typing import Dict
 
 import ray
 
-from ..operands import Fetch
 from ..graph import DAG
+from ..operands import Fetch
+from ..tiles import get_tiled
 from ..utils import build_fetch_chunk
 from ..executor import Executor, GraphExecution
+
+
+class _OperandWrapper:
+    __slots__ = 'op', 'chunks'
+
+    def __init__(self, op, chunks):
+        """
+        As we only serde op for Ray executors, but op only weakly reference chunks,
+        So we create a wrapper here to keep the reference
+        """
+        self.op = op
+        self.chunks = chunks
 
 
 def operand_serializer(op):
@@ -51,8 +66,7 @@ def operand_deserializer(value):
     else:
         chunks = [c for c in graph if not isinstance(c.op, Fetch)]
     op = chunks[0].op
-    op._extra_params['outputs_ref'] = chunks
-    return op
+    return _OperandWrapper(op, chunks)
 
 
 @lru_cache(500)
@@ -68,6 +82,9 @@ class GraphExecutionForRay(GraphExecution):
         return RayExecutor.handle(*args, **kw)
 
 
+ChunkMeta = namedtuple('ChunkMeta', ['shape', 'object_id'])
+
+
 class RayStorage:
     """
     `RayStorage` is a dict-like class. When executed in local, Mars executor will store chunk result in a
@@ -75,45 +92,67 @@ class RayStorage:
     """
 
     @ray.remote
-    class RemoteDict:
+    class RemoteMetaStore:
         def __init__(self):
-            self._dict = dict()
+            self._store = dict()
 
-        def keys(self):
-            return list(self._dict.keys())
+        def set_meta(self, chunk_key, meta):
+            self._store[chunk_key] = meta
 
-        def setitem(self, key, value):
-            self._dict[key] = value
+        def get_meta(self, chunk_key):
+            return self._store[chunk_key]
 
-        def getitem(self, item):
-            return self._dict[item]
+        def get_shape(self, chunk_key):
+            return self._store[chunk_key].shape
 
-        def update(self, mapping):
-            self._dict.update(mapping)
+        def chunk_keys(self):
+            return list(self._store.keys())
 
-        def delitem(self, key):
-            del self._dict[key]
+        def delete_keys(self, keys):
+            if not isinstance(keys, (list, tuple)):
+                keys = [keys]
+            for k in keys:
+                del self._store[k]
 
-    def __init__(self, ray_dict_ref=None):
-        self.ray_dict_ref = ray_dict_ref or RayStorage.RemoteDict.remote()
+    def __init__(self, meta_store=None):
+        self.meta_store = meta_store or RayStorage.RemoteMetaStore.remote()
 
     def __getitem__(self, item):
-        return ray.get(self.ray_dict_ref.getitem.remote(item))
+        meta: ChunkMeta = ray.get(self.meta_store.get_meta.remote(item))
+        return ray.get(meta.object_id)
 
     def __setitem__(self, key, value):
-        ray.get(self.ray_dict_ref.setitem.remote(key, value))
+        object_id = ray.put(value)
+        shape = getattr(value, 'shape', None)
+        meta = ChunkMeta(shape=shape, object_id=object_id)
+        set_meta = self.meta_store.set_meta.remote(key, meta)
+        ray.wait([object_id, set_meta])
 
     def copy(self):
-        return RayStorage(ray_dict_ref=self.ray_dict_ref)
+        return RayStorage(meta_store=self.meta_store)
 
-    def update(self, mapping):
-        ray.get(self.ray_dict_ref.update.remote(mapping))
+    def update(self, mapping: Dict):
+        tasks = []
+        for k, v in mapping.items():
+            object_id = ray.put(v)
+            tasks.append(object_id)
+            shape = getattr(v, 'shape', None)
+            meta = ChunkMeta(shape=shape, object_id=object_id)
+            set_meta = self.meta_store.set_meta.remote(k, meta)
+            tasks.append(set_meta)
+        ray.wait(tasks)
 
     def __iter__(self):
-        return iter(ray.get(self.ray_dict_ref.keys.remote()))
+        return iter(ray.get(self.meta_store.chunk_keys.remote()))
 
     def __delitem__(self, key):
-        ray.get(self.ray_dict_ref.delitem.remote(key))
+        ray.wait([self.meta_store.delete_keys.remote(key)])
+
+
+@ray.remote
+def execute_on_ray(func, results, op_wrapper: _OperandWrapper):
+    op = op_wrapper.op
+    func(results, op)
 
 
 class RayExecutor(Executor):
@@ -136,26 +175,22 @@ class RayExecutor(Executor):
         # register a custom serializer for Mars operand
         _register_ray_serializer(op)
 
-        @lru_cache(500)
-        def build_remote_funtion(func):
-
-            @ray.remote
-            def remote_runner(results, op):
-                return func(results, op)
-
-            return remote_runner
-
         try:
-            return ray.get(build_remote_funtion(runner).remote(results, op))
+            ray.wait([execute_on_ray.remote(runner, results, op)])
         except NotImplementedError:
             for op_cls in mapper.keys():
                 if isinstance(op, op_cls):
                     mapper[type(op)] = mapper[op_cls]
                     runner = mapper[op_cls]
 
-                    return ray.get(
-                        build_remote_funtion(runner).remote(results, op))
+                    ray.wait(
+                        [execute_on_ray.remote(runner, results, op)])
             raise KeyError(f'No handler found for op: {op}')
+
+    @classmethod
+    def _get_chunk_shape(cls, chunk_key, chunk_result):
+        assert isinstance(chunk_result, RayStorage)
+        return ray.get(chunk_result.meta_store.get_shape.remote(chunk_key))
 
 
 class RaySession:
@@ -165,10 +200,14 @@ class RaySession:
     If Ray is not initialized, kwargs will pass to initialize Ray.
     """
     def __init__(self, **kwargs):
+        # as we cannot serialize fuse chunk for now,
+        # we just disable numexpr for ray executor
+        engine = kwargs.pop('engine', ['numpy', 'dataframe'])
         if not ray.is_initialized():
             ray.init(**kwargs)
         self._session_id = uuid.uuid4()
-        self._executor = RayExecutor(storage=RayStorage())
+        self._executor = RayExecutor(engine=engine,
+                                     storage=RayStorage())
 
     @property
     def session_id(self):
@@ -188,6 +227,15 @@ class RaySession:
         if 'n_parallel' not in kw:  # pragma: no cover
             kw['n_parallel'] = ray.cluster_resources()['CPU']
         return self._executor.execute_tileables(tileables, **kw)
+
+    def _update_tileable_shape(self, tileable):
+        from ..optimizes.tileable_graph import tileable_optimized
+
+        new_nsplits = self._executor.get_tileable_nsplits(tileable)
+        tiled = get_tiled(tileable, mapping=tileable_optimized)
+        for t in (tileable, tiled):
+            t._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
+        tiled.nsplits = new_nsplits
 
     def __enter__(self):
         return self

@@ -39,10 +39,11 @@ except ImportError:  # pragma: no cover
 
 class LocalSession(object):
     def __init__(self, **kwargs):
+        engine = kwargs.pop('engine', None)
         self._endpoint = None
         self._session_id = uuid.uuid4()
         self._context = LocalContext(self)
-        self._executor = Executor(storage=self._context)
+        self._executor = Executor(engine=engine, storage=self._context)
 
         self._mut_tensor = dict()
         self._mut_tensor_data = dict()
@@ -439,6 +440,9 @@ class Session(object):
                     self._init_local_session(**kwargs)
         elif self._backend == 'ray':
             self._init_ray_session(**kwargs)
+        else:  # pragma: no cover
+            raise ValueError('Either endpoint or backend should '
+                             'be provided to create a session')
 
     def _init_local_session(self, **kwargs):
         self._sess = LocalSession(**kwargs)
