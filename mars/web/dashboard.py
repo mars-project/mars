@@ -41,9 +41,11 @@ class DashboardHandler(MarsRequestHandler):
         }
 
         template = _jinja_env.get_template('dashboard.html')
-        self.write(template.render(
-            scheduler_summary=scheduler_summary, worker_summary=worker_summary
-        ))
+        self.write_rendered(
+            template,
+            scheduler_summary=scheduler_summary,
+            worker_summary=worker_summary
+        )
 
 
 register_web_handler('/', DashboardHandler)
