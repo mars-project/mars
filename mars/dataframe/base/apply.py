@@ -23,7 +23,8 @@ from ...core import OutputType
 from ...serialize import StringField, AnyField, BoolField, \
     TupleField, DictField, FunctionField
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_df, build_series, parse_index, validate_axis
+from ..utils import build_df, build_series, parse_index, validate_axis, \
+    validate_output_types
 
 
 class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
@@ -224,8 +225,9 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
 
     def _call_dataframe(self, df, dtypes=None, index=None):
         dtypes, index_value = self._infer_df_func_returns(df, dtypes, index)
-        for arg, desc in zip((self.output_types, dtypes, index_value),
-                             ('output_types', 'dtypes', 'index')):
+        if index_value is None:
+            index_value = parse_index(None, (df.key, df.index_value.key))
+        for arg, desc in zip((self.output_types, dtypes), ('output_types', 'dtypes')):
             if arg is None:
                 raise TypeError(f'Cannot determine {desc} by calculating with enumerate data, '
                                 'please specify it as arguments')
@@ -275,8 +277,11 @@ def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None
     if isinstance(func, (list, dict)):
         return df.aggregate(func)
 
-    if isinstance(output_type, str):
-        output_type = getattr(OutputType, output_type.lower())
+    output_types = kwds.pop('output_types', None)
+    object_type = kwds.pop('object_type', None)
+    output_types = validate_output_types(
+        output_type=output_type, output_types=output_types, object_type=object_type)
+    output_type = output_types[0] if output_types else None
 
     # calling member function
     if isinstance(func, str):
@@ -287,7 +292,7 @@ def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None
         return func(*args, **kwds)
 
     op = ApplyOperand(func=func, axis=axis, raw=raw, result_type=result_type, args=args, kwds=kwds,
-                      output_type=output_type, elementwise=elementwise)
+                      output_types=output_type, elementwise=elementwise)
     return op(df, dtypes=dtypes, index=index)
 
 
