@@ -15,6 +15,7 @@
 import copy
 import os
 import random
+import string
 import sys
 import threading
 from collections import namedtuple, defaultdict
@@ -480,6 +481,7 @@ class DistributedDictContext(DistributedContext, dict):
             return
 
         from .actors import new_client
+        from .actors.errors import ActorAlreadyExist
         from .worker.daemon import WorkerDaemonActor
         client = new_client()
 
@@ -488,9 +490,17 @@ class DistributedDictContext(DistributedContext, dict):
             holder = client.actor_ref(WorkerDaemonActor.default_uid(), address=worker_addr)
         else:
             holder = client
-        uid = f'w:0:mars-cpu-calc-backup-{os.getpid()}-{op_key}-{random.randint(-1, 9999)}'
-        uid = self._actor_ctx.distributor.make_same_process(uid, actor_uid)
-        ref = holder.create_actor(actor_cls, uid=uid, address=worker_addr)
+
+        while True:
+            try:
+                random_tail = ''.join(random.choice(string.ascii_letters + string.digits)
+                                      for _ in range(5))
+                uid = f'w:0:mars-cpu-calc-backup-{os.getpid()}-{op_key}-{random_tail}'
+                uid = self._actor_ctx.distributor.make_same_process(uid, actor_uid)
+                ref = holder.create_actor(actor_cls, uid=uid, address=worker_addr)
+                break
+            except ActorAlreadyExist:  # pragma: no cover
+                pass
         return ref
 
     def acquire_execution_pool(self, yield_info):
