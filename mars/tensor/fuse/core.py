@@ -30,6 +30,7 @@ class TensorFuseChunk(TensorFuse, TensorFuseChunkMixin):
 def estimate_fuse_size(ctx, op):
     from ...graph import DAG
     from ...executor import Executor
+    from ...utils import build_fetch_chunk
 
     chunk = op.outputs[0]
     dag = DAG()
@@ -40,6 +41,7 @@ def estimate_fuse_size(ctx, op):
         for inp in c.inputs:
             if inp.key not in keys:
                 size_ctx[inp.key] = ctx[inp.key]
+                inp = build_fetch_chunk(inp).data
             if inp not in dag:
                 dag.add_node(inp)
             dag.add_edge(inp, c)
