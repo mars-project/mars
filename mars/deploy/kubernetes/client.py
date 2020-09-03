@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import logging
 import random
 import time
@@ -52,7 +53,7 @@ class KubernetesClusterClient:
 
     def start(self):
         self._endpoint = self._cluster.start()
-        self._session = new_session(self._endpoint)
+        self._session = new_session(self._endpoint).as_default()
 
     def stop(self, wait=False, timeout=0):
         self._cluster.stop(wait=wait, timeout=timeout)
@@ -88,6 +89,7 @@ class KubernetesCluster:
         extra_modules = extra_modules.split(',') if isinstance(extra_modules, str) \
             else extra_modules
         extra_envs = kwargs.pop('extra_env', None) or dict()
+        extra_labels = kwargs.pop('extra_labels', None) or dict()
         service_port = kwargs.pop('service_port', None) or self._default_service_port
 
         def _override_modules(updates):
@@ -97,16 +99,21 @@ class KubernetesCluster:
             modules.update(updates)
             return sorted(modules)
 
-        def _override_envs(updates):
-            ret = extra_envs.copy()
+        def _override_dict(d, updates):
+            updates = updates or dict()
+            ret = d.copy()
             ret.update(updates)
             return ret
+
+        _override_envs = functools.partial(_override_dict, extra_envs)
+        _override_labels = functools.partial(_override_dict, extra_labels)
 
         self._scheduler_num = scheduler_num
         self._scheduler_cpu = scheduler_cpu
         self._scheduler_mem = scheduler_mem
         self._scheduler_extra_modules = _override_modules(kwargs.pop('scheduler_extra_modules', []))
-        self._scheduler_extra_env = _override_envs(kwargs.pop('scheduler_extra_env', None) or dict())
+        self._scheduler_extra_env = _override_envs(kwargs.pop('scheduler_extra_env', None))
+        self._scheduler_extra_labels = _override_labels(kwargs.pop('scheduler_extra_labels', None))
         self._scheduler_service_port = kwargs.pop('scheduler_service_port', None) or service_port
 
         self._worker_num = worker_num
@@ -116,14 +123,16 @@ class KubernetesCluster:
         self._worker_cache_mem = worker_cache_mem
         self._min_worker_num = min_worker_num
         self._worker_extra_modules = _override_modules(kwargs.pop('worker_extra_modules', []))
-        self._worker_extra_env = _override_envs(kwargs.pop('worker_extra_env', None) or dict())
+        self._worker_extra_env = _override_envs(kwargs.pop('worker_extra_env', None))
+        self._worker_extra_labels = _override_labels(kwargs.pop('worker_extra_labels', None))
         self._worker_service_port = kwargs.pop('worker_service_port', None) or service_port
 
         self._web_num = web_num
         self._web_cpu = web_cpu
         self._web_mem = web_mem
         self._web_extra_modules = _override_modules(kwargs.pop('web_extra_modules', []))
-        self._web_extra_env = _override_envs(kwargs.pop('web_extra_env', None) or dict())
+        self._web_extra_env = _override_envs(kwargs.pop('web_extra_env', None))
+        self._web_extra_labels = _override_labels(kwargs.pop('web_extra_labels', None))
         self._web_service_port = kwargs.pop('web_service_port', None) or service_port
 
     @property
@@ -149,7 +158,7 @@ class KubernetesCluster:
 
         service_config = ServiceConfig(
             'marsservice', service_type='NodePort', port=self._web_service_port,
-            selector=dict(name=MarsWebsConfig.rc_name),
+            selector={'mars/service-type': MarsWebsConfig.rc_name},
         )
         self._core_api.create_namespaced_service(self._namespace, service_config.build())
 
@@ -159,7 +168,7 @@ class KubernetesCluster:
         port = svc_data['spec']['ports'][0]['node_port']
 
         web_pods = self._core_api.list_namespaced_pod(
-            self._namespace, label_selector='name=' + MarsWebsConfig.rc_name).to_dict()
+            self._namespace, label_selector='mars/service-type=' + MarsWebsConfig.rc_name).to_dict()
         host_ip = random.choice(web_pods['items'])['status']['host_ip']
 
         # docker desktop use a VM to hold docker processes, hence
@@ -213,6 +222,7 @@ class KubernetesCluster:
             pre_stop_command=self._pre_stop_command,
         )
         schedulers_config.add_simple_envs(self._scheduler_extra_env)
+        schedulers_config.add_labels(self._scheduler_extra_labels)
         self._core_api.create_namespaced_replication_controller(
             self._namespace, schedulers_config.build())
 
@@ -226,6 +236,7 @@ class KubernetesCluster:
             pre_stop_command=self._pre_stop_command,
         )
         workers_config.add_simple_envs(self._worker_extra_env)
+        workers_config.add_labels(self._worker_extra_labels)
         self._core_api.create_namespaced_replication_controller(
             self._namespace, workers_config.build())
 
@@ -236,6 +247,7 @@ class KubernetesCluster:
             service_port=self._web_service_port, pre_stop_command=self._pre_stop_command,
         )
         webs_config.add_simple_envs(self._web_extra_env)
+        webs_config.add_labels(self._web_extra_labels)
         self._core_api.create_namespaced_replication_controller(
             self._namespace, webs_config.build())
 
@@ -248,9 +260,9 @@ class KubernetesCluster:
         min_worker_num = int(self._min_worker_num or self._worker_num)
         limits = [self._scheduler_num, min_worker_num, self._web_num]
         selectors = [
-            'name=' + MarsSchedulersConfig.rc_name,
-            'name=' + MarsWorkersConfig.rc_name,
-            'name=' + MarsWebsConfig.rc_name,
+            'mars/service-type=' + MarsSchedulersConfig.rc_name,
+            'mars/service-type=' + MarsWorkersConfig.rc_name,
+            'mars/service-type=' + MarsWebsConfig.rc_name,
             ]
         wait_services_ready(selectors, limits,
                             lambda sel: self._get_ready_pod_count(sel),
@@ -277,7 +289,7 @@ class KubernetesCluster:
         except:  # noqa: E722
             if self._log_when_fail:  # pargma: no cover
                 logger.error('Error when creating cluster')
-                for name, log in self._load_cluster_logs():
+                for name, log in self._load_cluster_logs().items():
                     logger.error('Error logs for %s:\n%s', name, log)
             self.stop()
             raise
