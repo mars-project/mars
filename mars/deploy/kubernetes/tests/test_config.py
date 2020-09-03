@@ -36,7 +36,7 @@ class Test(unittest.TestCase):
                          'mars-pod-reader-binding')
 
         service_config_dict = ServiceConfig(
-            'mars-test-service', 'NodePort', 'name=marsscheduler', 7103, 7103).build()
+            'mars-test-service', 'NodePort', 'mars/service-type=marsscheduler', 7103, 7103).build()
         self.assertEqual(service_config_dict['metadata']['name'], 'mars-test-service')
 
     def testSchedulerObject(self):
