@@ -100,6 +100,8 @@ class Test(unittest.TestCase):
             extra_vol_config = HostPathVolumeConfig('mars-src-path', '/mnt/mars', MARS_ROOT)
             cluster_client = new_cluster(api_client, image=self._docker_image,
                                          worker_spill_paths=[temp_spill_dir],
+                                         extra_labels={'mars-test/group': 'test-label-name'},
+                                         extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'},
                                          extra_volumes=[extra_vol_config],
                                          pre_stop_command=['rm', '/tmp/stopping.tmp'],
                                          timeout=600, log_when_fail=True)
