@@ -43,6 +43,7 @@ class K8SPodsIPWatcher(object):
 
         self._k8s_namespace = k8s_namespace or os.environ.get('MARS_K8S_POD_NAMESPACE') or 'default'
         self._label_selector = label_selector
+        self._full_label_selector = None
         self._client = client.CoreV1Api(client.ApiClient(self._k8s_config))
         self._pool = ThreadPool(1)
 
@@ -51,12 +52,32 @@ class K8SPodsIPWatcher(object):
     def __reduce__(self):
         return type(self), (self._k8s_config, self._k8s_namespace, self._label_selector)
 
+    def _get_label_selector(self):
+        if self._full_label_selector is not None:
+            return self._full_label_selector
+
+        selectors = [self._label_selector]
+        if 'MARS_K8S_GROUP_LABELS' in os.environ:
+            group_labels = os.environ['MARS_K8S_GROUP_LABELS'].split(',')
+            cur_pod_info = self._pool.spawn(self._client.read_namespaced_pod,
+                                            os.environ['MARS_K8S_POD_NAME'],
+                                            namespace=self._k8s_namespace).result().to_dict()
+            for label in group_labels:
+                label_val = cur_pod_info['metadata']['labels'][label]
+                selectors.append(f'{label}={label_val}')
+        self._full_label_selector = ','.join(selectors)
+        logger.debug('Using pod selector %s', self._full_label_selector)
+        return self._full_label_selector
+
     def _extract_pod_name_ep(self, pod_data):
+        pod_ip = pod_data["status"]["pod_ip"]
         svc_port = pod_data['spec']['containers'][0]['ports'][0]['container_port']
-        return pod_data['metadata']['name'], f'{pod_data["status"]["pod_ip"]}:{svc_port}'
+        return pod_data['metadata']['name'], f'{pod_ip}:{svc_port}'
 
     @staticmethod
     def _extract_pod_ready(obj_data):
+        if obj_data['status']['phase'] != 'Running':
+            return False
         # if conditions not supported, always return True
         if 'status' not in obj_data or 'conditions' not in obj_data['status']:
             return True
@@ -66,7 +87,7 @@ class K8SPodsIPWatcher(object):
     def _get_pod_to_ep(self):
         query = self._pool.spawn(self._client.list_namespaced_pod,
                                  namespace=self._k8s_namespace,
-                                 label_selector=self._label_selector).result().to_dict()
+                                 label_selector=self._get_label_selector()).result().to_dict()
         result = dict()
         for el in query['items']:
             name, pod_ep = self._extract_pod_name_ep(el)
@@ -82,6 +103,8 @@ class K8SPodsIPWatcher(object):
 
     def is_all_ready(self):
         self.get(True)
+        if not self._pod_to_ep:
+            return False
         return all(a is not None for a in self._pod_to_ep.values())
 
     def watch(self):
@@ -96,7 +119,7 @@ class K8SPodsIPWatcher(object):
             linger = 10 if self.is_all_ready() else 1
             streamer = w.stream(self._client.list_namespaced_pod,
                                 namespace=self._k8s_namespace,
-                                label_selector=self._label_selector,
+                                label_selector=self._get_label_selector(),
                                 timeout_seconds=linger)
             while True:
                 try:
@@ -151,9 +174,14 @@ class K8SServiceMixin:
         # check if all schedulers are registered in ClusterInfoActor
         actor_client = new_client()
         while True:
-            cluster_info = actor_client.actor_ref(
-                SchedulerClusterInfoActor.default_uid(), address=random.choice(kube_schedulers))
-            cluster_info_schedulers = cluster_info.get_schedulers()
+            try:
+                cluster_info = actor_client.actor_ref(
+                    SchedulerClusterInfoActor.default_uid(), address=random.choice(kube_schedulers))
+                cluster_info_schedulers = cluster_info.get_schedulers()
+            except ConnectionError:  # pragma: no cover
+                time.sleep(0.1)
+                continue
+
             if set(cluster_info_schedulers) == set(kube_schedulers):
                 from ...cluster_info import INITIAL_SCHEDULER_FILE
                 with open(INITIAL_SCHEDULER_FILE, 'w') as scheduler_file:
@@ -164,4 +192,5 @@ class K8SServiceMixin:
             sleep_fun(1)  # pragma: no cover
 
     def create_scheduler_discoverer(self):
-        self.scheduler_discoverer = K8SPodsIPWatcher(label_selector='name=marsscheduler')
+        self.scheduler_discoverer = K8SPodsIPWatcher(
+            label_selector='mars/service-type=marsscheduler')

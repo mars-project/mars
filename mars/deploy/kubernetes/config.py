@@ -290,6 +290,7 @@ class ReplicationControllerConfig:
         self._ports = []
         self._volumes = []
         self._envs = dict()
+        self._labels = dict()
 
         self.add_default_envs()
 
@@ -307,6 +308,9 @@ class ReplicationControllerConfig:
     def add_simple_envs(self, envs):
         for k, v in envs.items() or ():
             self.add_env(k, v)
+
+    def add_labels(self, labels):
+        self._labels.update(labels)
 
     def add_port(self, container_port):
         self._ports.append(PortConfig(container_port))
@@ -358,10 +362,9 @@ class ReplicationControllerConfig:
             },
             'spec': {
                 'replicas': int(self._replicas),
-                'selector': {'name': self._name},
                 'template': {
                     'metadata': {
-                        'labels': {'name': self._name},
+                        'labels': _remove_nones(self._labels) or None,
                     },
                     'spec': self.build_template_spec()
                 }
@@ -401,6 +404,9 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
         for vol in volumes or ():
             self.add_volume(vol)
 
+        self.add_labels({'name': self.rc_name})
+        self.add_labels({'mars/service-type': self.rc_name})
+
     def add_default_envs(self):
         self.add_env('MARS_K8S_POD_NAME', field_path='metadata.name')
         self.add_env('MARS_K8S_POD_NAMESPACE', field_path='metadata.namespace')
@@ -429,6 +435,11 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
     @staticmethod
     def get_local_app_module(mod_name):
         return __name__.rsplit('.', 1)[0] + '.' + mod_name
+
+    def build(self):
+        result = super().build()
+        result['spec']['selector'] = {'mars/service-type': self.rc_name}
+        return result
 
 
 class MarsSchedulersConfig(MarsReplicationControllerConfig):

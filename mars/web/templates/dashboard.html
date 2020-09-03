@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% set active_page = 'dashboard' %}
+{% block custom_head %}
+    <script type="text/javascript">
+    if (!window.location.pathname.endsWith('/')) {
+        window.location.assign(window.location.pathname + '/'
+            + window.location.search + window.location.hash);
+    }
+    </script>
+{% endblock %}
 {% block body %}
     <div class="row">
         <div><h2>Scheduler Summary</h2></div>
