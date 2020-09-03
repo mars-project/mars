@@ -46,11 +46,13 @@ class ReplicaSpecConfig:
     """
     container_name = 'mars'
 
-    def __init__(self, name, image, replicas, resource_request=None, resource_limit=None):
+    def __init__(self, name, image, replicas, resource_request=None, resource_limit=None,
+                 node_selectors=None):
         self._name = name
         self._image = image
         self._replicas = replicas
         self._envs = dict()
+        self._node_selectors = node_selectors
 
         self.add_default_envs()
 
@@ -85,11 +87,12 @@ class ReplicaSpecConfig:
         })
 
     def build_template_spec(self):
-        return {
+        return _remove_nones({
             'serviceAccountName': DEFAULT_SERVICE_ACCOUNT_NAME,
             'tolerations': [{'operator': 'Exists'}],
+            'nodeSelector': self._node_selectors,
             'containers': [self.build_container()],
-        }
+        })
 
     def build(self):
         return {
@@ -97,7 +100,7 @@ class ReplicaSpecConfig:
             'restartPolicy': 'Never',
             'template': {
                 'metadata': {
-                    'labels': {'name': self._name},
+                    'labels': {'mars/service-type': self._name},
                 },
                 'spec': self.build_template_spec()
             }
@@ -109,7 +112,7 @@ class MarsReplicaSpecConfig(ReplicaSpecConfig):
     service_label = None
 
     def __init__(self, image, replicas, cpu=None, memory=None, limit_resources=False,
-                 modules=None):
+                 modules=None, node_selectors=None):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
@@ -121,7 +124,8 @@ class MarsReplicaSpecConfig(ReplicaSpecConfig):
 
         res = ResourceConfig(cpu, memory) if cpu or memory else None
         super().__init__(self.service_label, image, replicas, resource_request=res,
-                         resource_limit=res if limit_resources else None)
+                         resource_limit=res if limit_resources else None,
+                         node_selectors=node_selectors)
 
     def build_container_command(self):
         return ['/bin/sh', '-c', f'python -m mars.deploy.kubernetes.{self.service_name}']
@@ -145,6 +149,10 @@ class MarsWorkerSpecConfig(MarsReplicaSpecConfig):
         self._spill_dirs = kwargs.pop('spill_dirs', None) or ()
         kwargs['limit_resources'] = kwargs.get('limit_resources', True)
         super().__init__(*args, **kwargs)
+
+    @property
+    def spill_dirs(self):
+        return self._spill_dirs
 
     def add_default_envs(self):
         super().add_default_envs()
@@ -181,6 +189,9 @@ class MarsJobConfig:
             'kind': 'MarsJob',
             'metadata': metadata,
             'spec': _remove_nones({
+                'workerMemoryTuningPolicy': _remove_nones({
+                    'spillDirs': self._worker_config.spill_dirs or None
+                }),
                 'cleanPodPolicy': 'None',
                 'webHost': web_host,
                 'marsReplicaSpecs': {

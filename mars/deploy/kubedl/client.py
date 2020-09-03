@@ -50,7 +50,7 @@ class KubeDLClusterClient:
 
     def start(self):
         self._endpoint = self._cluster.start()
-        self._session = new_session(self._endpoint)
+        self._session = new_session(self._endpoint, verify_ssl=self._cluster.verify_ssl).as_default()
 
     def stop(self, wait=False, timeout=0):
         self._cluster.stop(wait=wait, timeout=timeout)
@@ -78,6 +78,7 @@ class KubeDLCluster:
         self._extra_volumes = kwargs.pop('extra_volumes', ())
         self._pre_stop_command = kwargs.pop('pre_stop_command', None)
         self._log_when_fail = kwargs.pop('log_when_fail', False)
+        self._node_selectors = kwargs.pop('node_selectors', None)
 
         extra_modules = kwargs.pop('extra_modules', None) or []
         extra_modules = extra_modules.split(',') if isinstance(extra_modules, str) \
@@ -117,15 +118,28 @@ class KubeDLCluster:
         self._web_extra_modules = _override_modules(kwargs.pop('web_extra_modules', []))
         self._web_extra_env = _override_envs(kwargs.pop('web_extra_env', None) or dict())
 
+    @property
+    def verify_ssl(self):
+        return self._verify_ssl
+
     def _create_service(self):
         scheduler_cfg = MarsSchedulerSpecConfig(
-            self._image, self._scheduler_num, cpu=self._scheduler_cpu, memory=self._scheduler_mem)
+            self._image, self._scheduler_num, cpu=self._scheduler_cpu, memory=self._scheduler_mem,
+            node_selectors=self._node_selectors
+        )
         worker_cfg = MarsWorkerSpecConfig(
             self._image, self._worker_num, cpu=self._worker_cpu, memory=self._worker_mem,
-            cache_mem=self._worker_cache_mem, spill_dirs=self._worker_spill_paths)
-        web_cfg = MarsWebSpecConfig(self._image, self._web_num, cpu=self._web_cpu, memory=self._web_mem)
-        job_cfg = MarsJobConfig(job_name=self._job_name, scheduler_config=scheduler_cfg,
-                                worker_config=worker_cfg, web_config=web_cfg)
+            cache_mem=self._worker_cache_mem, spill_dirs=self._worker_spill_paths,
+            node_selectors=self._node_selectors
+        )
+        web_cfg = MarsWebSpecConfig(
+            self._image, self._web_num, cpu=self._web_cpu, memory=self._web_mem,
+            node_selectors=self._node_selectors
+        )
+        job_cfg = MarsJobConfig(
+            job_name=self._job_name, scheduler_config=scheduler_cfg, worker_config=worker_cfg,
+            web_config=web_cfg, web_host=self._slb_endpoint
+        )
 
         api, version = KUBEDL_API_VERSION.rsplit('/', 1)
 
@@ -145,19 +159,36 @@ class KubeDLCluster:
                 if self._timeout and time.time() - check_start_time > self._timeout:
                     raise TimeoutError('Check Mars service start timeout')
 
+                if not self._verify_ssl:
+                    try:
+                        import urllib3
+                        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                    except ImportError:  # pragma: no cover
+                        pass
+
+                api, version = KUBEDL_API_VERSION.rsplit('/', 1)
+                service_obj = self._custom_api.get_namespaced_custom_object_status(
+                    api, version, self._namespace, KUBEDL_MARS_PLURAL, self._job_name)
+                if len(service_obj.get('status', dict()).get('conditions', [])) > 0:
+                    if service_obj['status']['conditions'][-1]['type'] == 'Failed':
+                        raise SystemError(service_obj['status']['conditions'][-1]['message'])
+
                 with warnings.catch_warnings():
                     warnings.filterwarnings('ignore', message='Unverified HTTPS request')
                     resp = requests.get(worker_count_url, timeout=1, verify=self._verify_ssl)
 
                 if int(resp.text) >= self._min_worker_num:
                     break
-            except (requests.Timeout, ValueError):
+            except (requests.Timeout, ValueError) as ex:
+                if not isinstance(ex, requests.Timeout):
+                    time.sleep(0.1)
                 pass
 
     def start(self):
         try:
             self._create_service()
             self._wait_service_ready()
+            return self._mars_endpoint
         except:  # noqa: E722
             self.stop()
             raise
@@ -190,6 +221,7 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
                 worker_spill_paths=None, worker_cache_mem='45%', min_worker_num=None,
                 web_num=1, web_cpu=1, web_mem=4 * 1024 ** 3, slb_endpoint=None, verify_ssl=True,
                 timeout=None, **kwargs):
+    worker_spill_paths = worker_spill_paths or ['/tmp/spill-dir']
     cluster = KubeDLCluster(kube_api_client, image=image, scheduler_num=scheduler_num,
                             scheduler_cpu=scheduler_cpu, scheduler_mem=scheduler_mem,
                             worker_num=worker_num, worker_cpu=worker_cpu, worker_mem=worker_mem,
