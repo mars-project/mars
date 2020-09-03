@@ -3,22 +3,23 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <meta name="activepage" content="{{ active_page }}"/>
     <title>Mars UI</title>
-    <script type="text/javascript" src="/static/js/jquery-3.2.1.min.js"></script>
-    <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="/static/js/moment.min.js"></script>
-    <script type="text/javascript" src="/static/js/mars.js"></script>
-    <link type="text/css" rel="stylesheet" href="/static/css/bootstrap.min.css" />
-    <link type="text/css" rel="stylesheet" href="/static/css/bootstrap-theme.min.css" />
-    <link type="text/css" rel="stylesheet" href="/static/css/font-awesome.min.css" />
-    <link type="text/css" rel="stylesheet" href="/static/css/bootstrap-table.min.css" />
-    <link type="text/css" rel="stylesheet" href="/static/css/mars.css" />
+    <script type="text/javascript" src="{{ root_path }}static/js/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="{{ root_path }}static/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="{{ root_path }}static/js/moment.min.js"></script>
+    <script type="text/javascript" src="{{ root_path }}static/js/mars.js"></script>
+    <link type="text/css" rel="stylesheet" href="{{ root_path }}static/css/bootstrap.min.css" />
+    <link type="text/css" rel="stylesheet" href="{{ root_path }}static/css/bootstrap-theme.min.css" />
+    <link type="text/css" rel="stylesheet" href="{{ root_path }}static/css/font-awesome.min.css" />
+    <link type="text/css" rel="stylesheet" href="{{ root_path }}static/css/bootstrap-table.min.css" />
+    <link type="text/css" rel="stylesheet" href="{{ root_path }}static/css/mars.css" />
     {% block custom_head %}{% endblock %}
 </head>
 <body>
 <div id="wrapper">
     <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
-        <a class="navbar-brand" href="/">Mars UI</a>
+        <a class="navbar-brand" href="{{ root_path }}">Mars UI</a>
 
         <!-- /.navbar-header -->
 
@@ -31,20 +32,20 @@
             <div class="sidebar-nav navbar-collapse">
                 <ul class="nav in" id="side-menu">
                     <li>
-                        <a href="/" {% if active_page == 'dashboard' %}class="active"{% endif %}><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>
+                        <a href="{{ root_path }}" {% if active_page == 'dashboard' %}class="active"{% endif %}><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>
                     </li>
                     <li>
-                        <a href="/scheduler" {% if active_page == 'scheduler_list' %}class="active"{% endif %}><i class="fa fa-clock-o fa-fw"></i> Schedulers</a>
+                        <a href="{{ root_path }}scheduler" {% if active_page == 'scheduler_list' %}class="active"{% endif %}><i class="fa fa-clock-o fa-fw"></i> Schedulers</a>
                         {% block scheduler_submenu %}
                         {% endblock %}
                     </li>
                     <li>
-                        <a href="/worker" {% if active_page == 'worker_list' %}class="active"{% endif %}><i class="fa fa-gears fa-fw"></i> Workers</a>
+                        <a href="{{ root_path }}worker" {% if active_page == 'worker_list' %}class="active"{% endif %}><i class="fa fa-gears fa-fw"></i> Workers</a>
                         {% block worker_submenu %}
                         {% endblock %}
                     </li>
                     <li>
-                        <a href="/session" {% if active_page == 'task_list' %}class="active"{% endif %}><i class="fa fa-tasks fa-fw"></i> Tasks</a>
+                        <a href="{{ root_path }}session" {% if active_page == 'task_list' %}class="active"{% endif %}><i class="fa fa-tasks fa-fw"></i> Tasks</a>
                         {% block task_submenu %}
                         {% endblock %}
                     </li>

@@ -322,7 +322,7 @@ class Test(unittest.TestCase):
             arrow_ver = pyarrow.__version__
             pyarrow.__version__ = '2000.0.0'
 
-            with new_session(service_ep) as sess:
+            with new_session(service_ep, verify_ssl=False) as sess:
                 self.assertEqual(sess._sess._serial_type, SerialType.PICKLE)
                 self.assertEqual(sess._sess._pickle_protocol, pickle_ver)
         except ImportError:

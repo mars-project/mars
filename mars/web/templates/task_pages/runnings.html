@@ -3,7 +3,7 @@
 {% block page_nav %}
     <h2>Task {{ session_name }}</h2>
     <ul class="nav nav-pills nav-justified">
-        <li><a href="/session/{{ session_id }}/graph/{{ task_id }}">Progress</a></li>
+        <li><a href="{{ root_path }}session/{{ session_id }}/graph/{{ task_id }}">Progress</a></li>
         <li class="active"><a href="#">Running Nodes</a></li>
     </ul>
 {% endblock %}
@@ -24,7 +24,7 @@
                     <td>{{ op_key }}</td>
                     <td>{{ info['op_name'] }}</td>
                     {%- if info['worker'] %}
-                        <td><a href="/worker/{{ info['worker'] }}">{{ info['worker'] }}</a></td>
+                        <td><a href="{{ root_path }}worker/{{ info['worker'] }}">{{ info['worker'] }}</a></td>
                     {% else %}
                         <td>N/A</td>
                     {% endif -%}
