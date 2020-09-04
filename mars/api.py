@@ -15,6 +15,7 @@
 import itertools
 import logging
 import random
+import time
 import uuid
 
 from .actors import new_client, ActorNotExist
@@ -81,6 +82,21 @@ class MarsAPI(object):
             return self.get_actor_ref(uid).get_worker_count()
         except KeyError:
             return 0
+
+    def rescale_workers(self, new_scale, min_workers=None, wait=True, timeout=None):
+        min_workers = min_workers or new_scale
+        endpoints = self.cluster_info.rescale_workers(new_scale)
+        resource_ref = self.get_actor_ref(ResourceActor.default_uid())
+
+        check_start_time = time.time()
+        while wait:
+            worker_count = resource_ref.get_worker_count()
+            if min_workers <= worker_count:
+                break
+            self.actor_client.sleep(0.5)
+            if timeout and time.time() - check_start_time > timeout:
+                raise TimeoutError
+        return endpoints
 
     def get_workers_meta(self):
         resource_uid = ResourceActor.default_uid()

@@ -55,20 +55,20 @@ class YarnNodeWatcher(object):
         else:
             return os.path.getmtime(self._endpoint_file_name)
 
-    def get(self):
+    def get_schedulers(self):
         if os.path.exists(self._endpoint_file_name):
             with open(self._endpoint_file_name, 'r') as file_obj:
                 eps = file_obj.read().splitlines(False)
             return sorted(eps)
         return []
 
-    def is_all_ready(self):
-        return self._expected_instances == len(self.get())
+    def is_all_schedulers_ready(self):
+        return self._expected_instances == len(self.get_schedulers())
 
-    def watch(self):
+    def watch_schedulers(self):
         import gevent
 
-        cur_endpoints = self.get()
+        cur_endpoints = self.get_schedulers()
         yield cur_endpoints
 
         while True:
@@ -83,7 +83,7 @@ class YarnNodeWatcher(object):
                 continue
 
             self._endpoint_last_modified = mtime
-            cur_endpoints = self.get()
+            cur_endpoints = self.get_schedulers()
             yield cur_endpoints
 
 
@@ -149,9 +149,9 @@ class YarnServiceMixin(object):
 
         # check if all schedulers are ready using Kubernetes API
         sleep_fun = (getattr(self, 'pool', None) or time).sleep
-        while not self.scheduler_discoverer.is_all_ready():
+        while not self.scheduler_discoverer.is_all_schedulers_ready():
             sleep_fun(1)
-        yarn_schedulers = self.scheduler_discoverer.get()
+        yarn_schedulers = self.scheduler_discoverer.get_schedulers()
 
         logger.debug('Schedulers all ready in yarn, waiting ClusterInfoActor to be ready')
         # check if all schedulers are registered in ClusterInfoActor

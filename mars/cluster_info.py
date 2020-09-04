@@ -41,7 +41,7 @@ def get_scheduler(hash_ring, key, size=1):
     return tuple(it['nodename'] for it in hash_ring.range(key, size=size))
 
 
-class StaticSchedulerDiscoverer(object):
+class StaticClusterDiscoverer(object):
     dynamic = False
 
     def __init__(self, schedulers):
@@ -50,14 +50,14 @@ class StaticSchedulerDiscoverer(object):
     def __reduce__(self):
         return type(self), (self._schedulers,)
 
-    def get(self):
+    def get_schedulers(self):
         return self._schedulers
 
-    def watch(self):
+    def watch_schedulers(self):
         raise NotImplementedError
 
 
-class KVStoreSchedulerDiscoverer(object):
+class KVStoreClusterDiscoverer(object):
     dynamic = True
 
     def __init__(self, address):
@@ -73,13 +73,13 @@ class KVStoreSchedulerDiscoverer(object):
     def _resolve_schedulers(result):
         return [to_str(s.key.rsplit('/', 1)[1]) for s in result.children]
 
-    def get(self):
+    def get_schedulers(self):
         try:
             return self._resolve_schedulers(self._client.read(SCHEDULER_PATH))
         except KeyError:
-            return next(self.watch())
+            return next(self.watch_schedulers())
 
-    def watch(self):
+    def watch_schedulers(self):
         for result in self._client.eternal_watch(SCHEDULER_PATH):
             yield self._resolve_schedulers(result)
 
@@ -93,17 +93,17 @@ class _ClusterInfoWatchActor(FunctionActor):
         self._cluster_info_ref = self.ctx.actor_ref(self._cluster_info_ref)
 
     def get_schedulers(self):
-        return self._discoverer.get()
+        return self._discoverer.get_schedulers()
 
-    def watch(self):
-        for schedulers in self._discoverer.watch():
+    def watch_schedulers(self):
+        for schedulers in self._discoverer.watch_schedulers():
             self._cluster_info_ref.set_schedulers(schedulers, _tell=True)
 
 
 class ClusterInfoActor(FunctionActor):
     def __init__(self, discoverer, distributed=True):
         if isinstance(discoverer, list):
-            discoverer = StaticSchedulerDiscoverer(discoverer)
+            discoverer = StaticClusterDiscoverer(discoverer)
 
         self._discoverer = discoverer
         self._distributed = distributed
@@ -122,8 +122,8 @@ class ClusterInfoActor(FunctionActor):
         if self._discoverer.dynamic:
             watcher = self._watcher = self.ctx.create_actor(
                 _ClusterInfoWatchActor, self._discoverer, self.ref())
-            watcher.watch(_tell=True)
-        self._schedulers = self._discoverer.get()
+            watcher.watch_schedulers(_tell=True)
+        self._schedulers = self._discoverer.get_schedulers()
 
         self._hash_ring = create_hash_ring(self._schedulers)
 
@@ -156,6 +156,12 @@ class ClusterInfoActor(FunctionActor):
 
     def is_distributed(self):
         return self._distributed
+
+    def rescale_workers(self, new_scale):
+        try:
+            return self._discoverer.rescale_workers(new_scale)
+        except AttributeError:
+            raise NotImplementedError from None
 
 
 class HasClusterInfoActor(PromiseActor):

@@ -20,6 +20,7 @@ import subprocess
 import tempfile
 import unittest
 import uuid
+from contextlib import contextmanager
 from distutils.spawn import find_executable
 
 import numpy as np
@@ -88,7 +89,8 @@ class Test(unittest.TestCase):
         if proc.wait() != 0 and raises:
             raise SystemError('Executing docker rmi failed.')
 
-    def testRunInKubernetes(self):
+    @contextmanager
+    def _start_kube_cluster(self, **kwargs):
         self._build_docker_images()
 
         temp_spill_dir = tempfile.mkdtemp(prefix='test-mars-k8s-')
@@ -100,11 +102,9 @@ class Test(unittest.TestCase):
             extra_vol_config = HostPathVolumeConfig('mars-src-path', '/mnt/mars', MARS_ROOT)
             cluster_client = new_cluster(api_client, image=self._docker_image,
                                          worker_spill_paths=[temp_spill_dir],
-                                         extra_labels={'mars-test/group': 'test-label-name'},
-                                         extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'},
                                          extra_volumes=[extra_vol_config],
                                          pre_stop_command=['rm', '/tmp/stopping.tmp'],
-                                         timeout=600, log_when_fail=True)
+                                         timeout=600, log_when_fail=True, **kwargs)
             self.assertIsNotNone(cluster_client.endpoint)
 
             pod_items = kube_api.list_namespaced_pod(cluster_client.namespace).to_dict()
@@ -112,21 +112,16 @@ class Test(unittest.TestCase):
             log_processes = []
             for item in pod_items['items']:
                 log_processes.append(subprocess.Popen(['kubectl', 'logs', '-f', '-n', cluster_client.namespace,
-                                                      item['metadata']['name']]))
+                                                       item['metadata']['name']]))
 
-            a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
-            b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
-            c = (a * b * 2 + 1).sum()
-            r = cluster_client.session.run(c, timeout=600)
-
-            expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
-            assert_array_equal(r, expected.sum())
+            yield cluster_client
 
             # turn off service processes with grace to get coverage data
             procs = []
+            pod_items = kube_api.list_namespaced_pod(cluster_client.namespace).to_dict()
             for item in pod_items['items']:
                 p = subprocess.Popen(['kubectl', 'exec', '-n', cluster_client.namespace,
-                                     item['metadata']['name'], '/srv/graceful_stop.sh'])
+                                      item['metadata']['name'], '/srv/graceful_stop.sh'])
                 procs.append(p)
             for p in procs:
                 p.wait()
@@ -140,6 +135,33 @@ class Test(unittest.TestCase):
                 except TimeoutError:
                     pass
             self._remove_docker_image(False)
+
+    def testRunInKubernetes(self):
+        with self._start_kube_cluster(
+            extra_labels={'mars-test/group': 'test-label-name'},
+            extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'},
+        ) as cluster_client:
+            a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
+            b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
+            c = (a * b * 2 + 1).sum()
+            r = cluster_client.session.run(c, timeout=600)
+
+            expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
+            assert_array_equal(r, expected.sum())
+
+    def testRescale(self):
+        from mars.deploy.kubernetes.config import MarsWorkersConfig
+
+        api_client = k8s_config.new_client_from_config()
+        kube_api = k8s_client.CoreV1Api(api_client)
+
+        with self._start_kube_cluster() as cluster_client:
+            cluster_client.rescale_workers(2)
+
+            worker_items = kube_api.list_namespaced_pod(
+                cluster_client.namespace,
+                label_selector=f'mars/service-type={MarsWorkersConfig.rc_name}').to_dict()
+            self.assertEqual(len(worker_items['items']), 2)
 
     @mock.patch('kubernetes.client.CoreV1Api.create_namespaced_replication_controller',
                 new=lambda *_, **__: None)

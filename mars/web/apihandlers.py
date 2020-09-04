@@ -230,12 +230,39 @@ class GraphDataApiHandler(MarsApiRequestHandler):
 
 
 class WorkersApiHandler(MarsApiRequestHandler):
+    _executor = ThreadPoolExecutor(1)
+
     def get(self):
         action = self.get_argument('action', None)
         if action == 'count':
             self.write(json.dumps(self.web_api.count_workers()))
         else:
             self.write(json.dumps(self.web_api.get_workers_meta()))
+
+    @gen.coroutine
+    def patch(self):
+        action = self.get_argument('action', None)
+        if action == 'count':
+            wait = bool(int(self.get_argument('wait', '1')))
+            timeout = int(self.get_argument('timeout', '0'))
+
+            req_json = json.loads(self.request.body)
+            count = req_json['new_scale']
+            min_workers = req_json.get('min_workers')
+
+            try:
+                def _wait_fun():
+                    web_api = MarsWebAPI(self._scheduler)
+                    return web_api.rescale_workers(
+                        count, min_workers=min_workers, wait=wait, timeout=timeout)
+
+                _ = yield self._executor.submit(_wait_fun)  # noqa: F841
+            except NotImplementedError:
+                raise web.HTTPError(405)
+            except:  # noqa: E722
+                self._dump_exception(sys.exc_info())
+        else:  # pragma: no cover
+            raise web.HTTPError(405)
 
 
 class MutableTensorApiHandler(MarsApiRequestHandler):

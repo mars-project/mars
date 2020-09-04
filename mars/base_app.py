@@ -153,12 +153,12 @@ class BaseApplication(object):
         pass
 
     def create_scheduler_discoverer(self):
-        from .cluster_info import StaticSchedulerDiscoverer, KVStoreSchedulerDiscoverer
+        from .cluster_info import StaticClusterDiscoverer, KVStoreClusterDiscoverer
         if self.args.kv_store:
-            self.scheduler_discoverer = KVStoreSchedulerDiscoverer(self.args.kv_store)
+            self.scheduler_discoverer = KVStoreClusterDiscoverer(self.args.kv_store)
         elif self.args.schedulers:
             schedulers = to_str(self.args.schedulers).split(',')
-            self.scheduler_discoverer = StaticSchedulerDiscoverer(schedulers)
+            self.scheduler_discoverer = StaticClusterDiscoverer(schedulers)
 
     def _try_create_pool(self, endpoint=None, host=None, port=None, advertise_address=None):
         pool = None

@@ -66,7 +66,7 @@ class WebApplication(BaseApplication):
             port_arg = self.args.ui_port or self.args.port
             ui_port = int(port_arg) if port_arg else None
 
-            schedulers = self.scheduler_discoverer.get()
+            schedulers = self.scheduler_discoverer.get_schedulers()
             logger.debug('Obtained schedulers: %r', schedulers)
             if not schedulers:
                 raise KeyError('No scheduler is available')

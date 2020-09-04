@@ -29,7 +29,7 @@ class K8SPodsIPWatcher(object):
     """
     dynamic = True
 
-    def __init__(self, k8s_config=None, k8s_namespace=None, label_selector=None):
+    def __init__(self, k8s_config=None, k8s_namespace=None):
         from kubernetes import config, client
         from gevent.threadpool import ThreadPool
 
@@ -42,7 +42,6 @@ class K8SPodsIPWatcher(object):
             self._k8s_config = config.load_incluster_config()
 
         self._k8s_namespace = k8s_namespace or os.environ.get('MARS_K8S_POD_NAMESPACE') or 'default'
-        self._label_selector = label_selector
         self._full_label_selector = None
         self._client = client.CoreV1Api(client.ApiClient(self._k8s_config))
         self._pool = ThreadPool(1)
@@ -50,13 +49,13 @@ class K8SPodsIPWatcher(object):
         self._pod_to_ep = None
 
     def __reduce__(self):
-        return type(self), (self._k8s_config, self._k8s_namespace, self._label_selector)
+        return type(self), (self._k8s_config, self._k8s_namespace)
 
-    def _get_label_selector(self):
+    def _get_label_selector(self, service_type):
         if self._full_label_selector is not None:
             return self._full_label_selector
 
-        selectors = [self._label_selector]
+        selectors = [f'mars/service-type={service_type}']
         if 'MARS_K8S_GROUP_LABELS' in os.environ:
             group_labels = os.environ['MARS_K8S_GROUP_LABELS'].split(',')
             cur_pod_info = self._pool.spawn(self._client.read_namespaced_pod,
@@ -84,10 +83,13 @@ class K8SPodsIPWatcher(object):
         return any(cond['type'] == 'Ready' and cond['status'] == 'True'
                    for cond in obj_data['status']['conditions'])
 
-    def _get_pod_to_ep(self):
-        query = self._pool.spawn(self._client.list_namespaced_pod,
-                                 namespace=self._k8s_namespace,
-                                 label_selector=self._get_label_selector()).result().to_dict()
+    def _get_pod_to_ep(self, service_type):
+        query = self._pool.spawn(
+            self._client.list_namespaced_pod,
+            namespace=self._k8s_namespace,
+            label_selector=self._get_label_selector(service_type)
+        ).result().to_dict()
+
         result = dict()
         for el in query['items']:
             name, pod_ep = self._extract_pod_name_ep(el)
@@ -96,41 +98,45 @@ class K8SPodsIPWatcher(object):
             result[name] = pod_ep
         return result
 
-    def get(self, update=False):
+    def get_schedulers(self, update=False):
+        from .config import MarsSchedulersConfig
         if self._pod_to_ep is None or update:
-            self._pod_to_ep = self._get_pod_to_ep()
+            self._pod_to_ep = self._get_pod_to_ep(MarsSchedulersConfig.rc_name)
         return sorted(a for a in self._pod_to_ep.values() if a is not None)
 
-    def is_all_ready(self):
-        self.get(True)
+    def is_all_schedulers_ready(self):
+        self.get_schedulers(True)
         if not self._pod_to_ep:
             return False
         return all(a is not None for a in self._pod_to_ep.values())
 
-    def watch(self):
+    def watch_schedulers(self):
         from urllib3.exceptions import ReadTimeoutError
         from kubernetes import watch
+        from .config import MarsSchedulersConfig
 
-        cur_pods = set(self.get(True))
+        cur_pods = set(self.get_schedulers(True))
         w = watch.Watch()
 
         while True:
             # when some schedulers are not ready, we refresh faster
-            linger = 10 if self.is_all_ready() else 1
-            streamer = w.stream(self._client.list_namespaced_pod,
-                                namespace=self._k8s_namespace,
-                                label_selector=self._get_label_selector(),
-                                timeout_seconds=linger)
+            linger = 10 if self.is_all_schedulers_ready() else 1
+            streamer = w.stream(
+                self._client.list_namespaced_pod,
+                namespace=self._k8s_namespace,
+                label_selector=self._get_label_selector(MarsSchedulersConfig.rc_name),
+                timeout_seconds=linger
+            )
             while True:
                 try:
                     event = self._pool.spawn(next, streamer, StopIteration).result()
                     if event is StopIteration:
                         raise StopIteration
                 except (ReadTimeoutError, StopIteration):
-                    new_pods = set(self.get(True))
+                    new_pods = set(self.get_schedulers(True))
                     if new_pods != cur_pods:
                         cur_pods = new_pods
-                        yield self.get(False)
+                        yield self.get_schedulers(False)
                     break
                 except:  # noqa: E722
                     logger.exception('Unexpected error when watching on kubernetes')
@@ -140,7 +146,13 @@ class K8SPodsIPWatcher(object):
                 pod_name, endpoint = self._extract_pod_name_ep(obj_dict)
                 self._pod_to_ep[pod_name] = endpoint \
                     if endpoint and self._extract_pod_ready(obj_dict) else None
-                yield self.get(False)
+                yield self.get_schedulers(False)
+
+    def rescale_workers(self, new_scale):
+        from .config import MarsWorkersConfig
+        self._client.patch_namespaced_replication_controller_scale(
+            MarsWorkersConfig.rc_name, self._k8s_namespace, {"spec": {"replicas": new_scale}}
+        )
 
 
 class ReadinessActor(FunctionActor):
@@ -166,9 +178,9 @@ class K8SServiceMixin:
 
         # check if all schedulers are ready using Kubernetes API
         sleep_fun = (getattr(self, 'pool', None) or time).sleep
-        while not self.scheduler_discoverer.is_all_ready():
+        while not self.scheduler_discoverer.is_all_schedulers_ready():
             sleep_fun(1)
-        kube_schedulers = self.scheduler_discoverer.get()
+        kube_schedulers = self.scheduler_discoverer.get_schedulers()
 
         logger.debug('Schedulers all ready in kubernetes, waiting ClusterInfoActor to be ready')
         # check if all schedulers are registered in ClusterInfoActor
@@ -192,5 +204,4 @@ class K8SServiceMixin:
             sleep_fun(1)  # pragma: no cover
 
     def create_scheduler_discoverer(self):
-        self.scheduler_discoverer = K8SPodsIPWatcher(
-            label_selector='mars/service-type=marsscheduler')
+        self.scheduler_discoverer = K8SPodsIPWatcher()
