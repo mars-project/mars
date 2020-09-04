@@ -26,7 +26,7 @@ try:
 except ImportError:  # pragma: no cover
     K8SApiException = None
 
-KUBEDL_API_VERSION = 'kubedl.io/v1beta1'
+KUBEDL_API_VERSION = 'kubedl.io/v1alpha1'
 KUBEDL_MARS_PLURAL = 'marsjobs'
 
 

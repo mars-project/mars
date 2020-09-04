@@ -88,7 +88,7 @@ jobs:
               source $DEFAULT_VENV/bin/activate
             fi
           fi
-          ./.github/workflows/download-etcd.sh
+          retry ./.github/workflows/download-etcd.sh
           if [ -n "$WITH_KUBERNETES" ]; then
             ./.github/workflows/install-minikube.sh
             pip install kubernetes
