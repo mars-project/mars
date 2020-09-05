@@ -16,10 +16,11 @@
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, Int32Field
-from ..utils import validate_axis, reverse_order
-from ..operands import TensorHasInput, TensorOperandMixin
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
+from ..datasource import tensor as astensor
+from ..operands import TensorHasInput, TensorOperandMixin
+from ..utils import validate_axis, reverse_order
 
 
 def _swap(it, axis1, axis2):
@@ -143,6 +144,7 @@ def swapaxes(a, axis1, axis2):
             [3, 7]]])
 
     """
+    a = astensor(a)
     axis1 = validate_axis(a.ndim, axis1)
     axis2 = validate_axis(a.ndim, axis2)
 
