@@ -19,14 +19,14 @@ import scipy.sparse as sps
 import pandas as pd
 
 from mars import tensor as mt
-from mars.tiles import get_tiled
-from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, flip, flipud, fliplr, repeat, tile, \
     isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, \
-    trapz, shape, to_gpu, to_cpu
+    trapz, shape, to_gpu, to_cpu, swapaxes
+from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tests.core import require_cupy, ExecutorForTest, TestBase
+from mars.tiles import get_tiled
 
 
 class Test(TestBase):
@@ -143,6 +143,13 @@ class Test(TestBase):
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testSwapaxesExecution(self):
+        raw = np.random.random((11, 8, 5))
+        arr = swapaxes(raw, 2, 0)
+
+        res = self.executor.execute_tensor(arr, concat=True)
+
+        np.testing.assert_array_equal(res[0], raw.swapaxes(2, 0))
+
         raw = np.random.random((11, 8, 5))
         arr = tensor(raw, chunk_size=3)
         arr2 = arr.swapaxes(2, 0)
@@ -444,13 +451,13 @@ class Test(TestBase):
         [np.testing.assert_equal(r, e) for r, e in zip(res, expected)]
 
     def testSplitExecution(self):
-        for a in ((1,1,1,2,2,3), [1,1,1,2,2,3]):
-            splits = split(a, (3,5))
+        for a in ((1, 1, 1, 2, 2, 3), [1, 1, 1, 2, 2, 3]):
+            splits = split(a, (3, 5))
             self.assertEqual(len(splits), 3)
             splits0 = self.executor.execute_tensor(splits[0], concat=True)[0]
-            np.testing.assert_array_equal(splits0, (1,1,1))
+            np.testing.assert_array_equal(splits0, (1, 1, 1))
             splits1 = self.executor.execute_tensor(splits[1], concat=True)[0]
-            np.testing.assert_array_equal(splits1, (2,2))
+            np.testing.assert_array_equal(splits1, (2, 2))
             splits2 = self.executor.execute_tensor(splits[2], concat=True)[0]
             np.testing.assert_array_equal(splits2, (3,))
 
