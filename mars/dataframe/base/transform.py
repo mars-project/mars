@@ -19,6 +19,7 @@ from ... import opcodes
 from ...config import options
 from ...core import OutputType
 from ...serialize import AnyField, BoolField, TupleField, DictField
+from ...utils import enter_current_session
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_series, validate_axis, \
@@ -66,6 +67,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         return self._call_agg
 
     @classmethod
+    @enter_current_session
     def execute(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]
         out_chunk = op.outputs[0]
