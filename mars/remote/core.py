@@ -18,8 +18,7 @@ from functools import partial
 import numpy as np
 
 from .. import opcodes
-from ..utils import calc_nsplits
-from ..context import ContextBase
+from ..utils import calc_nsplits, get_current_session
 from ..core import Entity, Base, ChunkData
 from ..serialize import FunctionField, ListField, DictField, BoolField, Int32Field
 from ..operands import ObjectOperand
@@ -182,12 +181,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         return new_op.new_tileables(op.inputs, kws=kws)
 
     @classmethod
+    @get_current_session
     def execute(cls, ctx, op: "RemoteFunction"):
-        from ..session import Session
-
-        session = ctx.get_current_session()
-        prev_default_session = Session.default
-
         mapping = {inp: ctx[inp.key] for inp, prepare_inp
                    in zip(op.inputs, op.prepare_inputs) if prepare_inp}
         for to_search in [op.function_args, op.function_kwargs]:
@@ -210,17 +205,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         function_args = replace_inputs(op.function_args, mapping)
         function_kwargs = replace_inputs(op.function_kwargs, mapping)
 
-        # set session created from context as default one
-        session.as_default()
-        try:
-            if isinstance(ctx, ContextBase):
-                with ctx:
-                    result = function(*function_args, **function_kwargs)
-            else:
-                result = function(*function_args, **function_kwargs)
-        finally:
-            # set back default session
-            Session._set_default_session(prev_default_session)
+        result = function(*function_args, **function_kwargs)
 
         if op.n_output is None:
             ctx[op.outputs[0].key] = result

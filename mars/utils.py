@@ -1093,3 +1093,28 @@ def arrow_array_to_objects(obj):
         if isinstance(obj.dtype, ArrowDtype):
             obj = pd.Series(obj.to_numpy(), index=obj.index, name=obj.name)
     return obj
+
+
+def get_current_session(func):
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        from .session import Session
+        from .context import ContextBase
+
+        ctx = kwargs.get('ctx') or args[1]
+        session = ctx.get_current_session()
+        prev_default_session = Session.default
+        session.as_default()
+
+        try:
+            if isinstance(ctx, ContextBase):
+                with ctx:
+                    result = func(*args, **kwargs)
+            else:
+                result = func(*args, **kwargs)
+        finally:
+            Session._set_default_session(prev_default_session)
+
+        return result
+
+    return wrapped

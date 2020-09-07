@@ -550,6 +550,58 @@ class Test(unittest.TestCase):
             r2 = session.fetch(df6)
             pd.testing.assert_series_equal(r1, r2)
 
+            # test dataframe custom functions
+            raw = pd.DataFrame({'c1': np.random.rand(10),
+                                'c2': np.arange(10),
+                                'c3': np.random.choice(['a', 'b', 'c'], size=(10,))})
+
+            def execute_with_session_check(func, expected_session_id):
+                def wrapped(*arg, **kwargs):
+                    from mars.session import Session, ClusterSession
+
+                    default_session = Session.default_or_local()
+                    assert isinstance(default_session._sess, ClusterSession)
+                    assert default_session.session_id == expected_session_id
+
+                    return func(*arg, **kwargs)
+
+                return wrapped
+
+            # Series.map
+            df = md.DataFrame(raw, chunk_size=3)
+            func = lambda x: x + 1
+            r1 = df['c2'].map(execute_with_session_check(func, session.session_id),
+                              dtype='int').to_pandas()
+            expected1 = raw['c2'].map(func)
+            pd.testing.assert_series_equal(r1, expected1)
+
+            # DataFrame.apply
+            df = md.DataFrame(raw.copy(), chunk_size=3)
+
+            func = lambda x: x[1] + 1
+            r2 = df.apply(execute_with_session_check(func, session.session_id),
+                          dtypes=np.dtype('int'), axis=1).to_pandas()
+            expected2 = raw.apply(func, axis=1)
+            pd.testing.assert_series_equal(r2, expected2)
+
+            # Groupby.apply
+            df = md.DataFrame(raw.copy(), chunk_size=3)
+            func = lambda df: df.c1.sum()
+            r3 = df.groupby('c2').apply(execute_with_session_check(func,
+                                                                   session.session_id),
+                                        ).to_pandas()
+            expected3 = raw.groupby('c2').apply(func)
+            pd.testing.assert_series_equal(r3.sort_index(), expected3.sort_index())
+
+            # Groupby.transform
+            df = md.DataFrame(raw.copy(), chunk_size=4)
+            func = lambda x: x
+            r4 = df.groupby('c2').transform(execute_with_session_check(
+                func, session.session_id)).to_pandas()
+            expected4 = raw.groupby('c2').transform(func)
+            print(r4, expected4)
+            pd.testing.assert_frame_equal(r4.sort_index(), expected4.sort_index())
+
     def testMultiSessionDecref(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:

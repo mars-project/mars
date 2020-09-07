@@ -18,6 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType
 from ...serialize import BoolField, TupleField, DictField, AnyField
+from ...utils import get_current_session
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_empty_df, build_empty_series, parse_index
 
@@ -133,6 +134,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables([in_groupby], **kw)
 
     @classmethod
+    @get_current_session
     def execute(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]
         out_chunk = op.outputs[0]
