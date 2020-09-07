@@ -22,7 +22,7 @@ from ...config import options
 from ...core import OutputType
 from ...serialize import StringField, AnyField, BoolField, \
     TupleField, DictField, FunctionField
-from ...utils import get_current_session
+from ...utils import enter_current_session
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_series, parse_index, validate_axis, \
     validate_output_types
@@ -81,7 +81,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         return getattr(self, '_kwds', None) or dict()
 
     @classmethod
-    @get_current_session
+    @enter_current_session
     def execute(cls, ctx, op):
         input_data = ctx[op.inputs[0].key]
         if isinstance(input_data, pd.DataFrame):

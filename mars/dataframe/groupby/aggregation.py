@@ -27,7 +27,7 @@ from ...context import get_context, RunningMode
 from ...core import Base, Entity, OutputType
 from ...operands import OperandStage
 from ...serialize import ValueType, AnyField, StringField, ListField, DictField
-from ...utils import get_current_session
+from ...utils import enter_current_session
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..core import GROUPBY_TYPE
@@ -529,7 +529,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return func in {'min', 'max', 'prod', 'sum', 'count', 'size'}
 
     @classmethod
-    @get_current_session
+    @enter_current_session
     def execute(cls, ctx, op):
         df = ctx[op.inputs[0].key]
         out = op.outputs[0]

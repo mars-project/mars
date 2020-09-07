@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType, get_output_types
 from ...serialize import TupleField, DictField, FunctionField
-from ...utils import get_current_session
+from ...utils import enter_current_session
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_empty_df, build_series, build_empty_series, \
     parse_index, validate_output_types
@@ -48,7 +48,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
         return getattr(self, '_kwds', None) or dict()
 
     @classmethod
-    @get_current_session
+    @enter_current_session
     def execute(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]
         if not in_data:

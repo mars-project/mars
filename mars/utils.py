@@ -1095,13 +1095,16 @@ def arrow_array_to_objects(obj):
     return obj
 
 
-def get_current_session(func):
+def enter_current_session(func):
     @functools.wraps(func)
-    def wrapped(*args, **kwargs):
+    def wrapped(cls, ctx, op):
         from .session import Session
         from .context import ContextBase
 
-        ctx = kwargs.get('ctx') or args[1]
+        # skip in some test cases
+        if not hasattr(ctx, 'get_current_session'):
+            return func(cls, ctx, op)
+
         session = ctx.get_current_session()
         prev_default_session = Session.default
         session.as_default()
@@ -1109,9 +1112,9 @@ def get_current_session(func):
         try:
             if isinstance(ctx, ContextBase):
                 with ctx:
-                    result = func(*args, **kwargs)
+                    result = func(cls, ctx, op)
             else:
-                result = func(*args, **kwargs)
+                result = func(cls, ctx, op)
         finally:
             Session._set_default_session(prev_default_session)
 

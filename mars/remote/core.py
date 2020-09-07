@@ -18,7 +18,7 @@ from functools import partial
 import numpy as np
 
 from .. import opcodes
-from ..utils import calc_nsplits, get_current_session
+from ..utils import calc_nsplits, enter_current_session
 from ..core import Entity, Base, ChunkData
 from ..serialize import FunctionField, ListField, DictField, BoolField, Int32Field
 from ..operands import ObjectOperand
@@ -181,7 +181,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         return new_op.new_tileables(op.inputs, kws=kws)
 
     @classmethod
-    @get_current_session
+    @enter_current_session
     def execute(cls, ctx, op: "RemoteFunction"):
         mapping = {inp: ctx[inp.key] for inp, prepare_inp
                    in zip(op.inputs, op.prepare_inputs) if prepare_inp}
