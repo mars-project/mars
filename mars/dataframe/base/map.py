@@ -22,7 +22,7 @@ from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...serialize import KeyField, AnyField, StringField
 from ...tiles import TilesError
-from ...utils import check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape, enter_current_session
 from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
@@ -126,6 +126,7 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_seriess(op.inputs, kws=[params])
 
     @classmethod
+    @enter_current_session
     def execute(cls, ctx, op):
         series = ctx[op.inputs[0].key]
         out = op.outputs[0]
