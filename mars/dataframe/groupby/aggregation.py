@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import itertools
-from collections import OrderedDict, namedtuple
+from collections import namedtuple
 from collections.abc import Iterable
 from functools import partial
 
@@ -107,7 +107,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     def _normalize_keyword_aggregations(self, groupby):
         raw_func = self._raw_func
         if isinstance(raw_func, dict):
-            func = OrderedDict()
+            func = dict()
             for col, function in raw_func.items():
                 if isinstance(function, Iterable) and not isinstance(function, str):
                     func[col] = list(function)
@@ -120,18 +120,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_df = grouped.aggregate(self.func)
 
             if isinstance(agg_df, pd.Series):
-                self._func = OrderedDict([(agg_df.name or _series_col_name, [raw_func])])
+                self._func = dict([(agg_df.name or _series_col_name, [raw_func])])
             else:
                 if groupby.op.output_types[0] == OutputType.series_groupby:
-                    func = OrderedDict()
+                    func = dict()
                     for f in agg_df.columns:
                         self._safe_append(func, groupby.name or _series_col_name, f)
                     self._func = func
                 elif not isinstance(agg_df.columns, pd.MultiIndex):
                     # 1 func, the columns of agg_df is the columns to aggregate
-                    self._func = OrderedDict((c, [raw_func]) for c in agg_df.columns)
+                    self._func = {c: [raw_func] for c in agg_df.columns}
                 else:
-                    func = OrderedDict()
+                    func = dict()
                     for c, f in agg_df.columns:
                         self._safe_append(func, c, f)
                     self._func = func
@@ -223,17 +223,17 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         intermediate_cols = []
         intermediate_cols_set = set()
         agg_cols = []
-        map_func = OrderedDict()
+        map_func = dict()
         map_output_column_to_func = dict()
-        combine_func = OrderedDict()
+        combine_func = dict()
         combine_output_column_to_func = dict()
-        agg_func = OrderedDict()
+        agg_func = dict()
         agg_output_column_to_func = dict()
 
         def _add_column_to_functions(col, fun_name, mappers, combiners, aggregator):
             final_col = tokenize(col, fun_name)
             agg_cols.append(final_col)
-            mapper_to_cols = OrderedDict([(mapper, tokenize(col, mapper)) for mapper in mappers])
+            mapper_to_cols = {mapper: tokenize(col, mapper) for mapper in mappers}
             for mapper, combiner in zip(mappers, combiners):
                 mapper_col = mapper_to_cols[mapper]
                 if mapper_col not in intermediate_cols_set:
@@ -544,7 +544,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         else:
             columns = op.outputs[0].columns_value.to_pandas().tolist()
 
-        func = OrderedDict()
+        func = dict()
         processed_cols = []
         col_iter = iter(columns)
         for col, funcs in op.func.items():
@@ -590,6 +590,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
             # sort columns as origin
             result = result[columns]
+            if hasattr(result.index, 'name') and result.index.name is None and \
+                    out.index_value.name is not None:
+                # set index name, lost when pandas 1.1.2 released
+                result.index.name = out.index_value.name
 
         if len(result) == 0:
             # empty data, set index manually
