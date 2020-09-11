@@ -72,6 +72,7 @@ cdef dict EXTEND_TYPE_TO_NAME = {
     ValueType.timedelta64: 'timedelta64',
     ValueType.complex64: 'complex64',
     ValueType.complex128: 'complex128',
+    ValueType.namedtuple: 'namedtuple',
 }
 
 
@@ -351,6 +352,16 @@ cdef class JsonSerializeProvider(Provider):
         v = obj['value']
         return complex(*v)
 
+    cdef inline dict _serialize_namedtuple(self, value):
+        return {
+            'type': 'namedtuple',
+            'value': self._to_str(base64.b64encode(
+                cloudpickle.dumps(value, protocol=self.pickle_protocol)))
+        }
+
+    cdef inline _deserialize_namedtuple(self, obj, list callbacks):
+        return cloudpickle.loads(base64.b64decode(obj['value']))
+
     cdef inline dict _serialize_function(self, value):
         return {
             'type': 'function',
@@ -449,18 +460,20 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_dataframe(value)
         elif tp is ValueType.key:
             return self._serialize_key(value)
-        elif tp == ValueType.datetime64:
+        elif tp is ValueType.datetime64:
             return self._serialize_datetime64(value)
-        elif tp == ValueType.timedelta64:
+        elif tp is ValueType.timedelta64:
             return self._serialize_timedelta64(value)
-        elif tp == ValueType.function:
+        elif tp is ValueType.function:
             return self._serialize_function(value)
-        elif tp == ValueType.tzinfo:
+        elif tp is ValueType.tzinfo:
             return self._serialize_tzinfo(value)
-        elif tp == ValueType.interval_arr:
+        elif tp is ValueType.interval_arr:
             return self._serialize_interval_arr(value)
-        elif tp == ValueType.freq:
+        elif tp is ValueType.freq:
             return self._serialize_freq(value)
+        elif tp is ValueType.namedtuple:
+            return self._serialize_namedtuple(value)
         elif isinstance(tp, List):
             if not isinstance(value, list):
                 value = list(value)
@@ -513,6 +526,9 @@ cdef class JsonSerializeProvider(Provider):
         elif isinstance(value, list):
             return self._serialize_list(value, tp=None, weak_ref=weak_ref)
         elif isinstance(value, tuple):
+            if hasattr(value, '_fields'):
+                # namedtuple, use cloudpickle to serialize
+                return self._serialize_namedtuple(value)
             return self._serialize_tuple(value, tp=None, weak_ref=weak_ref)
         elif isinstance(value, dict):
             return self._serialize_dict(value, tp=None, weak_ref=weak_ref)
@@ -659,6 +675,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._deserialize_tuple(obj, callbacks, weak_ref)
         elif tp is ValueType.dict:
             return self._deserialize_dict(obj, callbacks, weak_ref)
+        elif tp is ValueType.namedtuple:
+            return self._deserialize_namedtuple(obj, callbacks)
         else:
             raise TypeError(f'Unknown type to deserialize {obj["type"]}')
 

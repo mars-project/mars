@@ -21,7 +21,13 @@ from ....session import Session
 from ....utils import ceildiv
 
 try:
-    from tsfresh.utilities.distribution import DistributorBaseClass
+    try:
+        # fix for tsfresh 0.17.0, from this version on,
+        # we need to inherit from IterableDistributorBaseClass
+        from tsfresh.utilities.distribution import IterableDistributorBaseClass \
+            as DistributorBaseClass
+    except ImportError:  # pragma: no cover
+        from tsfresh.utilities.distribution import DistributorBaseClass
 except ImportError:
     DistributorBaseClass = object
 
