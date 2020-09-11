@@ -1540,3 +1540,14 @@ class Test(TestBase):
         r = index.memory_usage()
         self.assertEqual(self.executor.execute_dataframe(r, concat=True)[0],
                          raw.memory_usage())
+
+    def testSelectDtypesExecution(self):
+        raw = pd.DataFrame({'a': np.random.rand(10),
+                            'b': np.random.randint(10, size=10)})
+
+        df = from_pandas_df(raw, chunk_size=5)
+        r = df.select_dtypes(include=['float64'])
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.select_dtypes(include=['float64'])
+        pd.testing.assert_frame_equal(result, expected)
