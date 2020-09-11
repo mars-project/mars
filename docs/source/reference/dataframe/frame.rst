@@ -26,6 +26,7 @@ Attributes and underlying data
    :toctree: api/
 
    DataFrame.dtypes
+   DataFrame.select_dtypes
    DataFrame.ndim
    DataFrame.shape
    DataFrame.memory_usage
