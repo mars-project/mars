@@ -113,6 +113,7 @@ cdef class ValueType:
     tzinfo = ExtendType.tzinfo
     interval_arr = ExtendType.interval_arr
     freq = ExtendType.freq
+    namedtuple = ExtendType.namedtuple
 
     identity = Identity()
 
@@ -403,6 +404,14 @@ cdef class FunctionField(Field):
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.function
+
+
+cdef class NamedtupleField(Field):
+    def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
+        super().__init__(
+            tag, default=default, weak_ref=weak_ref,
+            on_serialize=on_serialize, on_deserialize=on_deserialize)
+        self._type = ValueType.namedtuple
 
 
 cdef class TZInfoField(Field):
