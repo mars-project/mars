@@ -228,6 +228,13 @@ cdef class ProtobufSerializeProvider(Provider):
         x = obj.function
         return cloudpickle.loads(x) if x is not None and len(x) > 0 else None
 
+    cdef inline void _set_namedtuple(self, value, obj, tp=None):
+        obj.namedtuple = cloudpickle.dumps(value, protocol=self.pickle_protocol)
+
+    cdef inline object _get_namedtuple(self, obj):
+        x = obj.namedtuple
+        return cloudpickle.loads(x) if x is not None and len(x) > 0 else None
+
     cdef inline void _set_tzinfo(self, value, obj, tp=None):
         obj.tzinfo = pickle.dumps(value, protocol=self.pickle_protocol)
 
@@ -463,6 +470,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_freq(value, obj, tp)
         elif tp in {ValueType.complex64, ValueType.complex128}:
             self._set_complex(value, obj, tp)
+        elif tp is ValueType.namedtuple:
+            self._set_namedtuple(value, obj, tp)
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             setattr(obj, value_field, value)
@@ -520,7 +529,11 @@ cdef class ProtobufSerializeProvider(Provider):
         elif isinstance(value, list):
             self._set_list(value, obj, tp=None, weak_ref=weak_ref)
         elif isinstance(value, tuple):
-            self._set_tuple(value, obj, tp=None, weak_ref=weak_ref)
+            if hasattr(value, '_fields'):
+                # namedtuple
+                self._set_namedtuple(value, obj, tp=None)
+            else:
+                self._set_tuple(value, obj, tp=None, weak_ref=weak_ref)
         elif isinstance(value, dict):
             self._set_dict(value, obj, tp=None, weak_ref=weak_ref)
         elif isinstance(value, (np.datetime64, pd.Timestamp)):
@@ -747,6 +760,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_interval_arr(obj))
         elif tp is ValueType.freq:
             return ref(self._get_freq(obj))
+        elif tp is ValueType.namedtuple:
+            return ref(self._get_namedtuple(obj))
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             return ref(getattr(obj, value_field))
@@ -825,6 +840,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_interval_arr(obj))
         elif field == 'freq':
             return ref(self._get_freq(obj))
+        elif field == 'namedtuple':
+            return ref(self._get_namedtuple(obj))
         else:
             raise TypeError('Unknown type to deserialize')
 
