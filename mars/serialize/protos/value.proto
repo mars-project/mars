@@ -76,6 +76,7 @@ message Value {
         bytes tzinfo = 21;  // tzinfo
         IntervalArray interval_arr = 22;  // pandas.arrays.IntervalArray
         string freq = 24;  // pandas.tseries.offsets.Tick
+        bytes namedtuple = 25;
     }
 
 }

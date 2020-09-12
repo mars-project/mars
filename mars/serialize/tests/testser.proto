@@ -30,6 +30,7 @@ message Node1Def {
     Value l = 23;
     Value m = 24;
     Value n = 25;
+    Value o = 26;
 }
 
 
