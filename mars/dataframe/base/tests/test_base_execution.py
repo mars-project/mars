@@ -1551,3 +1551,70 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = raw.select_dtypes(include=['float64'])
         pd.testing.assert_frame_equal(result, expected)
+
+    def testMapChunkExecution(self):
+        raw = pd.DataFrame(np.random.rand(10, 5),
+                           columns=[f'col{i}' for i in range(5)])
+
+        df = from_pandas_df(raw, chunk_size=(5, 3))
+
+        def f1(pdf):
+            return pdf + 1
+
+        r = df.map_chunk(f1)
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw + 1
+        pd.testing.assert_frame_equal(result, expected)
+
+        raw_s = raw['col1']
+        series = from_pandas_series(raw_s, chunk_size=5)
+
+        r = series.map_chunk(f1)
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw_s + 1
+        pd.testing.assert_series_equal(result, expected)
+
+        def f2(pdf):
+            return pdf.sum(axis=1)
+
+        df = from_pandas_df(raw, chunk_size=5)
+        r = df.map_chunk(f2, output_type='series')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.sum(axis=1)
+        pd.testing.assert_series_equal(result, expected)
+
+        raw = pd.DataFrame({'a': [f's{i}'for i in range(10)],
+                            'b': np.arange(10)})
+
+        df = from_pandas_df(raw, chunk_size=5)
+
+        def f3(pdf):
+            return pdf['a'].str.slice(1).astype(int) + pdf['b']
+
+        with self.assertRaises(TypeError):
+            r = df.map_chunk(f3)
+            _ = self.executor.execute_dataframe(r, concat=True)[0]
+
+        r = df.map_chunk(f3, output_type='series')
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = f3(raw)
+        pd.testing.assert_series_equal(result, expected)
+
+        def f4(pdf):
+            ret = pd.DataFrame(columns=['a', 'b'])
+            ret['a'] = pdf['a'].str.slice(1).astype(int)
+            ret['b'] = pdf['b']
+            return ret
+
+        with self.assertRaises(TypeError):
+            r = df.map_chunk(f4, output_type='dataframe')
+            _ = self.executor.execute_dataframe(r, concat=True)[0]
+
+        r = df.map_chunk(f4, output_type='dataframe',
+                         dtypes=pd.Series([np.dtype(int), raw['b'].dtype], index=['a', 'b']))
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = f4(raw)
+        pd.testing.assert_frame_equal(result, expected)

@@ -35,6 +35,7 @@ from .drop_duplicates import df_drop_duplicates, \
 from .melt import melt
 from .memory_usage import df_memory_usage, series_memory_usage, index_memory_usage
 from .select_dtypes import select_dtypes
+from .map_chunk import map_chunk
 
 
 def _install():
@@ -70,6 +71,7 @@ def _install():
         setattr(t, 'melt', melt)
         setattr(t, 'memory_usage', df_memory_usage)
         setattr(t, 'select_dtypes', select_dtypes)
+        setattr(t, 'map_chunk', map_chunk)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -96,6 +98,7 @@ def _install():
         setattr(t, 'drop', series_drop)
         setattr(t, 'drop_duplicates', series_drop_duplicates)
         setattr(t, 'memory_usage', series_memory_usage)
+        setattr(t, 'map_chunk', map_chunk)
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
