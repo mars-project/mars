@@ -35,9 +35,10 @@ def create_hash_ring(schedulers):
 
 
 def get_scheduler(hash_ring, key, size=1):
+    if hash_ring is None:
+        return None
     if size == 1:
         return hash_ring.get_node(key)
-
     return tuple(it['nodename'] for it in hash_ring.range(key, size=size))
 
 

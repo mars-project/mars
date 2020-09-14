@@ -3,10 +3,6 @@
 Run on Kubernetes
 =================
 
-.. note::
-
-    Support for kubernetes is experimental. APIs may change in future releases.
-
 Mars can run in clusters managed by `Kubernetes <https://kubernetes.io>`_. You
 can use ``mars.deploy.kubernetes`` to set up a Mars cluster.
 
@@ -146,6 +142,25 @@ waiting when 95 workers are ready, we can use the code below:
     api_client = config.new_client_from_config()
     cluster = new_cluster(api_client, scheduler_num=1, web_num=1, worker_num=100,
                           worker_cpu=4, worker_mem='16g', min_worker_num=95)
+
+
+Rescale workers
+---------------
+
+.. note::
+
+    Currently it is not ensured that data are still kept when rescaling workers in
+    a Mars cluster. Please make sure that all data are stored before conducting
+    the operation below.
+
+Mars supports scaling up or down the number of workers in a created Kubernetes cluster.
+After creating a cluster in Kubernetes, you can rescale the number of workers in it
+by calling
+
+.. code-block:: python
+
+    num_of_workers = 20
+    cluster.rescale_workers(20)
 
 Implementation details
 ----------------------

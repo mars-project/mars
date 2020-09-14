@@ -46,7 +46,7 @@ class K8SPodsIPWatcher(object):
         self._client = client.CoreV1Api(client.ApiClient(self._k8s_config))
         self._pool = ThreadPool(1)
 
-        self._pod_to_ep = None
+        self._service_pod_to_ep = dict()
 
     def __reduce__(self):
         return type(self), (self._k8s_config, self._k8s_namespace)
@@ -98,34 +98,39 @@ class K8SPodsIPWatcher(object):
             result[name] = pod_ep
         return result
 
+    def _get_endpoints_by_service_type(self, service_type, update=False):
+        if not self._service_pod_to_ep.get(service_type) or update:
+            self._service_pod_to_ep[service_type] = self._get_pod_to_ep(service_type)
+        return sorted(a for a in self._service_pod_to_ep[service_type].values() if a is not None)
+
     def get_schedulers(self, update=False):
         from .config import MarsSchedulersConfig
-        if self._pod_to_ep is None or update:
-            self._pod_to_ep = self._get_pod_to_ep(MarsSchedulersConfig.rc_name)
-        return sorted(a for a in self._pod_to_ep.values() if a is not None)
+        return self._get_endpoints_by_service_type(MarsSchedulersConfig.rc_name, update=update)
 
     def is_all_schedulers_ready(self):
+        from .config import MarsSchedulersConfig
         self.get_schedulers(True)
-        if not self._pod_to_ep:
+        pod_to_ep = self._service_pod_to_ep[MarsSchedulersConfig.rc_name]
+        if not pod_to_ep:
             return False
-        return all(a is not None for a in self._pod_to_ep.values())
+        return all(a is not None for a in pod_to_ep.values())
 
-    def watch_schedulers(self):
+    def _watch_service(self, service_type, linger=10):
         from urllib3.exceptions import ReadTimeoutError
         from kubernetes import watch
-        from .config import MarsSchedulersConfig
 
-        cur_pods = set(self.get_schedulers(True))
+        cur_pods = set(self._get_endpoints_by_service_type(service_type, update=True))
         w = watch.Watch()
 
+        pod_to_ep = self._service_pod_to_ep[service_type]
         while True:
-            # when some schedulers are not ready, we refresh faster
-            linger = 10 if self.is_all_schedulers_ready() else 1
+            # when some pods are not ready, we refresh faster
+            linger_seconds = linger() if callable(linger) else linger
             streamer = w.stream(
                 self._client.list_namespaced_pod,
                 namespace=self._k8s_namespace,
-                label_selector=self._get_label_selector(MarsSchedulersConfig.rc_name),
-                timeout_seconds=linger
+                label_selector=self._get_label_selector(service_type),
+                timeout_seconds=linger_seconds
             )
             while True:
                 try:
@@ -133,10 +138,10 @@ class K8SPodsIPWatcher(object):
                     if event is StopIteration:
                         raise StopIteration
                 except (ReadTimeoutError, StopIteration):
-                    new_pods = set(self.get_schedulers(True))
+                    new_pods = set(self._get_endpoints_by_service_type(service_type, update=True))
                     if new_pods != cur_pods:
                         cur_pods = new_pods
-                        yield self.get_schedulers(False)
+                        yield self._get_endpoints_by_service_type(service_type, update=False)
                     break
                 except:  # noqa: E722
                     logger.exception('Unexpected error when watching on kubernetes')
@@ -144,9 +149,17 @@ class K8SPodsIPWatcher(object):
 
                 obj_dict = event['object'].to_dict()
                 pod_name, endpoint = self._extract_pod_name_ep(obj_dict)
-                self._pod_to_ep[pod_name] = endpoint \
+                pod_to_ep[pod_name] = endpoint \
                     if endpoint and self._extract_pod_ready(obj_dict) else None
-                yield self.get_schedulers(False)
+                yield self._get_endpoints_by_service_type(service_type, update=False)
+
+    def watch_schedulers(self):
+        from .config import MarsSchedulersConfig
+        return self._watch_service(MarsSchedulersConfig.rc_name)
+
+    def watch_workers(self):
+        from .config import MarsWorkersConfig
+        return self._watch_service(MarsWorkersConfig.rc_name)
 
     def rescale_workers(self, new_scale):
         from .config import MarsWorkersConfig

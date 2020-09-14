@@ -91,9 +91,9 @@ class MarsAPI(object):
         check_start_time = time.time()
         while wait:
             worker_count = resource_ref.get_worker_count()
-            if min_workers <= worker_count:
+            if min_workers <= worker_count <= new_scale:
                 break
-            self.actor_client.sleep(0.5)
+            self.actor_client.sleep(0.1)
             if timeout and time.time() - check_start_time > timeout:
                 raise TimeoutError
         return endpoints
