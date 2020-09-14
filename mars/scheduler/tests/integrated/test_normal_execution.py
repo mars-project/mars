@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import logging
 import operator
 import os
@@ -166,6 +167,17 @@ class Test(SchedulerIntegratedTest):
         result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
         expected = data.reindex(index=np.arange(10, 1, -1))
         pd.testing.assert_frame_equal(result, expected)
+
+        # test rebalance
+        df4 = md.DataFrame(data)
+
+        r = df4.rebalance()
+
+        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        pd.testing.assert_frame_equal(result, data)
+        chunk_metas = sess.get_tileable_chunk_metas(r.key)
+        workers = list(set(itertools.chain(*(m.workers for m in chunk_metas.values()))))
+        self.assertEqual(len(workers), 2)
 
     def testIterativeTilingWithoutEtcd(self):
         self.start_processes(etcd=False)

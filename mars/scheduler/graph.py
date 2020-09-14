@@ -1181,6 +1181,17 @@ class GraphActor(SchedulerActor):
                     metas.append([meta[k] for k in filter_fields])
         return metas
 
+    def get_tileable_chunk_metas(self, tileable_keys, filter_fields=None):
+        metas = []
+        for tileable_key in tileable_keys:
+            tileable = self._get_tileable_by_key(tileable_key)
+            chunk_keys = [c.key for c in tileable.chunks]
+            meta = self.chunk_meta.batch_get_chunk_meta(
+                self._session_id, chunk_keys, filter_fields=filter_fields)
+            metas.append({k: m for k, m in zip(chunk_keys, meta)})
+
+        return metas
+
     def build_fetch_graph(self, tileable_key):
         """
         Convert single tileable node to tiled fetch tileable node and

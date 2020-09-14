@@ -129,6 +129,12 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
+    def get_total_ncores(self):
+        """
+        Get all workers' cores
+        """
+        raise NotImplementedError
+
     def get_local_address(self):
         """
         Get local address
@@ -247,6 +253,9 @@ class LocalContext(ContextBase, dict):
     def get_worker_metas(self):  # pragma: no cover
         return
 
+    def get_total_ncores(self):
+        return self._ncores
+
     def get_local_address(self):
         return
 
@@ -356,6 +365,9 @@ class DistributedContext(ContextBase):
 
     def get_worker_metas(self):  # pragma: no cover
         return self._resource_actor_ref.get_worker_metas()
+
+    def get_total_ncores(self):
+        return self._resource_actor_ref.get_total_cpu_count()
 
     def get_local_address(self):
         return self._address
