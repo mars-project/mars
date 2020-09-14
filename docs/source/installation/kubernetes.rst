@@ -144,14 +144,14 @@ waiting when 95 workers are ready, we can use the code below:
                           worker_cpu=4, worker_mem='16g', min_worker_num=95)
 
 
-Rescale workers
----------------
+Rescaling workers
+-----------------
 
 .. note::
 
     Currently it is not ensured that data are still kept when rescaling workers in
-    a Mars cluster. Please make sure that all data are stored before conducting
-    the operation below.
+    a Mars cluster created in Kubernetes. Please make sure that all data are stored
+    before conducting the operation below.
 
 Mars supports scaling up or down the number of workers in a created Kubernetes cluster.
 After creating a cluster in Kubernetes, you can rescale the number of workers in it
