@@ -362,6 +362,7 @@ message OperandDef {
         SET_LABEL = 730;
         RENAME = 731;
         INSERT = 732;
+        MAP_CHUNK = 733;
 
         FUSE = 801;
 
