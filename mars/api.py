@@ -85,13 +85,12 @@ class MarsAPI(object):
 
     def rescale_workers(self, new_scale, min_workers=None, wait=True, timeout=None):
         min_workers = min_workers or new_scale
-        endpoints = self.cluster_info.rescale_workers(new_scale)
         resource_ref = self.get_actor_ref(ResourceActor.default_uid())
+        endpoints = self.cluster_info.rescale_workers(new_scale)
 
         check_start_time = time.time()
         while wait:
-            worker_count = resource_ref.get_worker_count()
-            if min_workers <= worker_count <= new_scale:
+            if min_workers <= resource_ref.get_worker_count() <= new_scale:
                 break
             self.actor_client.sleep(0.1)
             if timeout and time.time() - check_start_time > timeout:

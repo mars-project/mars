@@ -185,7 +185,7 @@ class GraphApiHandler(MarsApiRequestHandler):
         try:
             self.web_api.stop_graph(session_id, graph_key)
         except:  # noqa: E722
-            self._dump_exception(sys.exc_info(), 404)
+            self._dump_exception(sys.exc_info(), status_code=404)
 
 
 class GraphDataApiHandler(MarsApiRequestHandler):
@@ -258,8 +258,8 @@ class WorkersApiHandler(MarsApiRequestHandler):
 
                 _ = yield self._executor.submit(_wait_fun)  # noqa: F841
             except NotImplementedError:
-                raise web.HTTPError(405)
-            except:  # noqa: E722
+                self._dump_exception(sys.exc_info(), status_code=405)
+            except:  # noqa: E722  # pragma: no cover
                 self._dump_exception(sys.exc_info())
         else:  # pragma: no cover
             raise web.HTTPError(405)

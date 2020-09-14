@@ -164,6 +164,8 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
             self.assertNotIn(session._session_id, api.session_manager.get_sessions())
+            with self.assertRaises(NotImplementedError):
+                api.rescale_workers(2)
 
     def testLocalClusterWithWeb(self, *_):
         import psutil

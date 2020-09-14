@@ -299,6 +299,9 @@ class Test(unittest.TestCase):
         res = requests.get(f'{service_ep}/api/worker?action=count')
         self.assertEqual(res.status_code, 200)
         self.assertEqual(int(res.text), 1)
+        res = requests.patch(f'{service_ep}/api/worker?action=count',
+                             data=json.dumps(dict(new_scale=2)))
+        self.assertEqual(res.status_code, 405)
 
         # query sessions (should be empty)
         res = requests.get(f'{service_ep}/api/session')
