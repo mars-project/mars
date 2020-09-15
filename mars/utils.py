@@ -427,7 +427,7 @@ class _EnterModeFuncWrapper:
 
     def __exit__(self, *_):
         mode_name_to_old_value = self.mode_name_to_value_list.pop()
-        for mode_name, value in self.mode_name_to_value.items():
+        for mode_name in self.mode_name_to_value.keys():
             # set back old values
             setattr(_internal_mode, mode_name,
                     mode_name_to_old_value[mode_name])

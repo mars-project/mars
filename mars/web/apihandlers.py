@@ -259,7 +259,7 @@ class WorkersApiHandler(MarsApiRequestHandler):
                 _ = yield self._executor.submit(_wait_fun)  # noqa: F841
             except NotImplementedError:
                 self._dump_exception(sys.exc_info(), status_code=405)
-            except:  # noqa: E722  # pragma: no cover
+            except:  # noqa: E722  # pragma: no cover  # pylint: disable=bare-except
                 self._dump_exception(sys.exc_info())
         else:  # pragma: no cover
             raise web.HTTPError(405)

@@ -143,7 +143,7 @@ class K8SPodsIPWatcher(object):
                         cur_pods = new_pods
                         yield self._get_endpoints_by_service_type(service_type, update=False)
                     break
-                except:  # noqa: E722
+                except:  # noqa: E722  # pragma: no cover  # pylint: disable=bare-except
                     logger.exception('Unexpected error when watching on kubernetes')
                     break
 
