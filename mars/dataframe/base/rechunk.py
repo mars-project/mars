@@ -35,9 +35,11 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
     _threshold = Int32Field('threshold')
     _chunk_size_limit = Int64Field('chunk_size_limit')
 
-    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, output_types=None, **kw):
+    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, output_types=None,
+                 reassign_worker=None, **kw):
         super().__init__(_chunk_size=chunk_size, _threshold=threshold,
-                         _chunk_size_limit=chunk_size_limit, _output_types=output_types, **kw)
+                         _chunk_size_limit=chunk_size_limit, _output_types=output_types,
+                         _reassign_worker=reassign_worker, **kw)
 
     @property
     def chunk_size(self):
@@ -79,10 +81,14 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
         for c in steps:
             out = compute_rechunk(out.inputs[0], c)
 
+        if op.reassign_worker:
+            for c in out.chunks:
+                c.op._reassign_worker = True
+
         return [out]
 
 
-def rechunk(a, chunk_size, threshold=None, chunk_size_limit=None):
+def rechunk(a, chunk_size, threshold=None, chunk_size_limit=None, reassign_worker=False):
     if isinstance(a, DATAFRAME_TYPE):
         itemsize = max(getattr(dt, 'itemsize', 8) for dt in a.dtypes)
     else:
@@ -91,7 +97,7 @@ def rechunk(a, chunk_size, threshold=None, chunk_size_limit=None):
     if chunk_size == a.nsplits:
         return a
 
-    op = DataFrameRechunk(chunk_size, threshold, chunk_size_limit)
+    op = DataFrameRechunk(chunk_size, threshold, chunk_size_limit, reassign_worker=reassign_worker)
     return op(a)
 
 

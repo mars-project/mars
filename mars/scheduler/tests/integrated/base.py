@@ -151,7 +151,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
                               '-H', '127.0.0.1',
                               '-p', p,
                               '--log-level', 'debug' if log_scheduler else 'warning',
-                              '--log-format', f'SCH{idx} %(asctime)-15s %(message)s'
+                              '--log-format', f'SCH{idx} %(asctime)-15s %(message)s',
                               '-Dscheduler.retry_delay=5',
                               '-Dscheduler.default_cpu_usage=0',
                               '-Dscheduler.status_timeout=10']

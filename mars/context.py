@@ -307,7 +307,8 @@ class LocalContext(ContextBase, dict):
 
 
 class DistributedContext(ContextBase):
-    def __init__(self, scheduler_address, session_id, actor_ctx=None, **kw):
+    def __init__(self, scheduler_address, session_id, actor_ctx=None,
+                 is_distributed=None, resource_ref=None, **kw):
         from .worker.api import WorkerAPI
         from .scheduler.resource import ResourceActor
         from .scheduler.utils import SchedulerClusterInfoActor
@@ -322,11 +323,18 @@ class DistributedContext(ContextBase):
         self._actor_ctx = actor_ctx or new_client()
         self._cluster_info = self._actor_ctx.actor_ref(
             SchedulerClusterInfoActor.default_uid(), address=scheduler_address)
-        is_distributed = self._cluster_info.is_distributed()
+
+        if is_distributed is None:
+            is_distributed = self._cluster_info.is_distributed()
         self._running_mode = RunningMode.local_cluster \
             if not is_distributed else RunningMode.distributed
-        self._resource_actor_ref = self._actor_ctx.actor_ref(
-            ResourceActor.default_uid(), address=scheduler_address)
+
+        if resource_ref is not None:
+            self._resource_actor_ref = self._actor_ctx.actor_ref(resource_ref)
+        else:
+            self._resource_actor_ref = self._actor_ctx.actor_ref(
+                ResourceActor.default_uid(),
+                address=self._cluster_info.get_scheduler(ResourceActor.default_uid()))
 
         self._address = kw.pop('address', None)
         self._extra_info = kw

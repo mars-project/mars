@@ -27,7 +27,7 @@ class DataFrameRebalance(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _factor = Float64Field('factor')
 
-    def __init__(self, input=None, factor=None, output_types=None, **kw):
+    def __init__(self, input=None, factor=None, output_types=None, **kw):  # pylint: disable=redefined-builtin
         super().__init__(_input=input, _factor=factor,
                          _output_types=output_types, **kw)
 
@@ -65,7 +65,7 @@ class DataFrameRebalance(DataFrameOperand, DataFrameOperandMixin):
         size = len(df_or_series)
         expect_n_chunk = int(cluster_cpu_count * op.factor)
         expect_chunk_size = max(size // expect_n_chunk, 1)
-        return [df_or_series.rechunk({0: expect_chunk_size})._inplace_tile()]
+        return [df_or_series.rechunk({0: expect_chunk_size}, reassign_worker=True)._inplace_tile()]
 
 
 def rebalance(df_or_series, factor=1.2):

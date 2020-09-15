@@ -187,7 +187,7 @@ class GraphAnalyzer(object):
             pos = (pos + 1) % len(counts)
         return dict(zip(endpoints, counts))
 
-    def _collect_zero_degrees(self):
+    def get_initial_operand_keys(self):
         """Collect unassigned initial nodes"""
         if not self._descendant_sizes:
             self.calc_descendant_sizes()
@@ -196,21 +196,19 @@ class GraphAnalyzer(object):
         descendant_sizes = self._descendant_sizes
         fixed_assigns = self._fixed_assigns
 
-        zero_degrees = list()
+        chunks_to_assign = list()
         visited_keys = set()
         for n in graph:
             if n.op.key in visited_keys:
                 continue
             visited_keys.add(n.op.key)
-            if not graph.predecessors(n) and n.op.key not in fixed_assigns:
-                zero_degrees.append(n)
-        random.shuffle(zero_degrees)
+            if (n.op.reassign_worker or not graph.predecessors(n)) \
+                    and n.op.key not in fixed_assigns:
+                chunks_to_assign.append(n)
+        random.shuffle(chunks_to_assign)
 
         # note that different orders can contribute to different efficiency
-        return sorted(zero_degrees, key=lambda n: descendant_sizes[n.op.key])
-
-    def get_initial_operand_keys(self):
-        return list(set(n.op.key for n in self._collect_zero_degrees()))
+        return [c.op.key for c in sorted(chunks_to_assign, key=lambda n: descendant_sizes[n.op.key])]
 
     def _iter_assignments_by_transfer_sizes(self, worker_quotas, input_chunk_metas):
         """
