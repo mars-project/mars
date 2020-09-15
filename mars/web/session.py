@@ -443,6 +443,13 @@ class Session(object):
         resp = self._req_session.get(self._endpoint + '/api/worker?action=count', timeout=1)
         return self._handle_json_response(resp)
 
+    def rescale_workers(self, new_scale, min_workers=None, wait=True, timeout=None):
+        data = json.dumps(dict(new_scale=new_scale, min_workers=min_workers))
+        wait_req = 1 if wait else 0
+        resp = self._req_session.patch(f'{self._endpoint}/api/worker?action=count&wait={wait_req}',
+                                       data, timeout=timeout)
+        return self._handle_json_response(resp)
+
     def get_workers_meta(self):
         resp = self._req_session.get(self._endpoint + '/api/worker', timeout=1)
         return self._handle_json_response(resp)

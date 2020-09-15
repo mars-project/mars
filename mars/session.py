@@ -384,7 +384,7 @@ class ClusterSession(object):
         for tileable_key, tileable_id in keys:
             if tileable_key not in self._executed_tileables:
                 continue
-            graph_key, ids = self._executed_tileables[tileable_key]
+            _graph_key, ids = self._executed_tileables[tileable_key]
             if tileable_id in ids:
                 ids.remove(tileable_id)
                 # for those same key tileables, do decref only when all those tileables are garbage collected

@@ -58,6 +58,10 @@ class KubernetesClusterClient:
     def stop(self, wait=False, timeout=0):
         self._cluster.stop(wait=wait, timeout=timeout)
 
+    def rescale_workers(self, new_scale, min_workers=None, wait=True, timeout=None):
+        self._session._sess.rescale_workers(
+            new_scale, min_workers=min_workers, wait=wait, timeout=timeout)
+
 
 class KubernetesCluster:
     _scheduler_config_cls = MarsSchedulersConfig
@@ -150,9 +154,6 @@ class KubernetesCluster:
                 return namespace
 
     def _create_kube_service(self):
-        """
-        :type kube_api: kubernetes.client.CoreV1Api
-        """
         if self._service_type != 'NodePort':  # pragma: no cover
             raise NotImplementedError(f'Service type {self._service_type} not supported')
 
@@ -208,10 +209,12 @@ class KubernetesCluster:
 
     def _create_roles_and_bindings(self):
         # create role and binding
-        role_config = RoleConfig('mars-pod-reader', self._namespace, '', 'pods', 'get,watch,list')
+        role_config = RoleConfig('mars-pod-operator', self._namespace, api_groups='',
+                                 resources='pods,replicationcontrollers/scale',
+                                 verbs='get,watch,list,patch')
         self._rbac_api.create_namespaced_role(self._namespace, role_config.build())
         role_binding_config = RoleBindingConfig(
-            'mars-pod-reader-binding', self._namespace, 'mars-pod-reader', 'default')
+            'mars-pod-operator-binding', self._namespace, 'mars-pod-operator', 'default')
         self._rbac_api.create_namespaced_role_binding(self._namespace, role_binding_config.build())
 
     def _create_schedulers(self):

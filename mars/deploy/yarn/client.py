@@ -171,4 +171,4 @@ def new_cluster(environment=None, scheduler_num=1, scheduler_cpu=None, scheduler
         finally:
             if app_id is not None:
                 skein_client.kill_application(app_id)
-            raise
+        raise

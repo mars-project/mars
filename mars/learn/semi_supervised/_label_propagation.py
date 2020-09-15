@@ -69,6 +69,8 @@ class BaseLabelPropagation(ClassifierMixin, BaseEstimator, metaclass=ABCMeta):
         # clamping factor
         self.alpha = alpha
 
+        self.nn_fit = None
+
     def _get_kernel(self, X, y=None):
         if self.kernel == "rbf":
             if y is None:

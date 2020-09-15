@@ -22,7 +22,7 @@ import sys
 import time
 
 from ...actors import create_actor_pool
-from ...cluster_info import StaticSchedulerDiscoverer
+from ...cluster_info import StaticClusterDiscoverer
 from ...config import options, option_context
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
@@ -113,7 +113,7 @@ class LocalDistributedCluster(object):
         distributor = gen_distributor(self._scheduler_n_process, self._worker_n_process)
         self._pool = create_actor_pool(self._endpoint, n_process, distributor=distributor)
 
-        discoverer = StaticSchedulerDiscoverer([self._endpoint])
+        discoverer = StaticClusterDiscoverer([self._endpoint])
 
         # start scheduler first
         self._scheduler_service.start(self._endpoint, discoverer, self._pool, distributed=False)
