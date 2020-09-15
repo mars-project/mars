@@ -156,11 +156,13 @@ class GraphApiHandler(MarsApiRequestHandler):
     def get(self, session_id, graph_key):
         from ..scheduler.utils import GraphState
 
-        wait_timeout = int(self.get_argument('wait_timeout', None))
+        wait_timeout = self.get_argument('wait_timeout', None)
+        if wait_timeout is not None:
+            wait_timeout = float(wait_timeout)
 
         try:
             if wait_timeout:
-                if wait_timeout <= 0:
+                if wait_timeout <= 1e-6:
                     wait_timeout = None
 
                 def _wait_fun():

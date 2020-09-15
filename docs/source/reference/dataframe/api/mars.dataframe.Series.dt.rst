@@ -18,6 +18,7 @@ mars.dataframe.Series.dt
       ~dt.ceil
       ~dt.day_name
       ~dt.floor
+      ~dt.isocalendar
       ~dt.month_name
       ~dt.normalize
       ~dt.round

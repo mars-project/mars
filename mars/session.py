@@ -401,6 +401,9 @@ class ClusterSession(object):
     def get_named_tileable_infos(self, name):
         return self._context.get_named_tileable_infos(name)
 
+    def get_tileable_chunk_metas(self, tileable_key):
+        return self._api.get_tileable_chunk_metas(self._session_id, tileable_key)
+
     def __enter__(self):
         return self
 

@@ -27,6 +27,7 @@ mars.dataframe.Series.str
       ~str.extractall
       ~str.find
       ~str.findall
+      ~str.fullmatch
       ~str.get
       ~str.index
       ~str.isalnum

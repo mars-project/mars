@@ -160,6 +160,60 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
 
 
 def map_chunk(df_or_series, func, args=(), **kwargs):
+    """
+    Apply function to each chunk.
+
+    Parameters
+    ----------
+    func : function
+        Function to apply to each chunk.
+    args : tuple
+        Positional arguments to pass to func in addition to the array/series.
+    **kwargs
+        Additional keyword arguments to pass as keywords arguments to func.
+
+    Returns
+    -------
+    Series or DataFrame
+        Result of applying ``func`` to each chunk of the DataFrame or Series.
+
+    See Also
+    --------
+    DataFrame.apply : Perform any type of operations.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame([[4, 9]] * 3, columns=['A', 'B'])
+    >>> df.execute()
+       A  B
+    0  4  9
+    1  4  9
+    2  4  9
+
+    Output type including Series or DataFrame will be auto inferred.
+
+    >>> df.map_chunk(lambda c: c['A'] + c['B']).execute()
+    0    13
+    1    13
+    2    13
+    dtype: int64
+
+    You can specify ``output_type`` by yourself if auto infer failed.
+
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> df['c'] = ['s1', 's2', 's3']
+    >>> df.map_chunk(lambda c: pd.concat([c['A'], c['c'].str.slice(1).astype(int)], axis=1)).execute()
+    Traceback (most recent call last):
+    TypeError: Cannot determine `output_type`, you have to specify it as `dataframe` or `series`...
+    >>> df.map_chunk(lambda c: pd.concat([c['A'], c['c'].str.slice(1).astype(int)], axis=1),
+    >>>              output_type='dataframe', dtypes=pd.Series([np.dtype(object), np.dtype(int)])).execute()
+       A  c
+    0  4  1
+    1  4  2
+    2  4  3
+    """
     output_type = kwargs.pop('output_type', None)
     output_types = kwargs.pop('output_types', None)
     object_type = kwargs.pop('object_type', None)

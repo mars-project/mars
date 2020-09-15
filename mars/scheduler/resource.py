@@ -133,6 +133,11 @@ class ResourceActor(SchedulerActor):
     def get_worker_count(self):
         return len(self._meta_cache)
 
+    def get_total_cpu_count(self):
+        """Get all workers' cpu count"""
+        return sum(v['hardware']['cpu_total'] for k, v in self._meta_cache.items()
+                   if k not in self._worker_blacklist)
+
     def get_workers_meta(self):
         return dict((k, v) for k, v in self._meta_cache.items()
                     if k not in self._worker_blacklist)

@@ -1618,3 +1618,15 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = f4(raw)
         pd.testing.assert_frame_equal(result, expected)
+
+    def testRebalanceExecution(self):
+        raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
+        df = from_pandas_df(raw)
+
+        df2 = df.rebalance()
+
+        self.ctx.set_ncores(2)
+        with self.ctx:
+            result = self.executor.execute_dataframe(df2)
+            self.assertEqual(len(result), 2)
+            pd.testing.assert_frame_equal(pd.concat(result), raw)

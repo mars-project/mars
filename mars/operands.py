@@ -84,6 +84,8 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     _expect_worker = StringField('expect_worker')
     # will this operand create a view of input data or not
     _create_view = BoolField('create_view')
+    # will this operand be assigned a worker or not
+    _reassign_worker = BoolField('reassign_worker')
 
     _inputs = ListField('inputs', ValueType.key)
     _prepare_inputs = ListField('prepare_inputs', ValueType.bool)
@@ -173,6 +175,10 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     @property
     def create_view(self):
         return getattr(self, '_create_view', False)
+
+    @property
+    def reassign_worker(self):
+        return getattr(self, '_reassign_worker', False)
 
     @property
     def expect_worker(self):
@@ -566,7 +572,6 @@ class MapReduceOperand(Operand):
 
 class ShuffleProxy(VirtualOperand):
     _op_type_ = OperandDef.SHUFFLE_PROXY
-    _broadcaster = True
 
 
 class Fetch(Operand):
