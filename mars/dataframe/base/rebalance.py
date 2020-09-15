@@ -69,5 +69,19 @@ class DataFrameRebalance(DataFrameOperand, DataFrameOperandMixin):
 
 
 def rebalance(df_or_series, factor=1.2):
+    """
+    Make Data more balanced across entire cluster.
+
+    Parameters
+    ----------
+    factor : float
+        Specified so that number of chunks after balance is
+        total CPU count of cluster * factor.
+
+    Returns
+    -------
+    Series or DataFrame
+        Result of DataFrame or Series after rebalanced.
+    """
     op = DataFrameRebalance(input=df_or_series, factor=factor)
     return op(df_or_series)
