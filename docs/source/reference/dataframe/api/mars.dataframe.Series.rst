@@ -55,6 +55,7 @@ mars.dataframe.Series
       ~Series.le
       ~Series.lt
       ~Series.map
+      ~Series.map_chunk
       ~Series.max
       ~Series.mean
       ~Series.memory_usage
@@ -72,6 +73,7 @@ mars.dataframe.Series
       ~Series.quantile
       ~Series.radd
       ~Series.rdiv
+      ~Series.rebalance
       ~Series.rechunk
       ~Series.reindex
       ~Series.rename

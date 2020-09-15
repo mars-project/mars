@@ -58,6 +58,7 @@ mars.dataframe.DataFrame
       ~DataFrame.join
       ~DataFrame.le
       ~DataFrame.lt
+      ~DataFrame.map_chunk
       ~DataFrame.max
       ~DataFrame.mean
       ~DataFrame.melt
@@ -78,6 +79,7 @@ mars.dataframe.DataFrame
       ~DataFrame.quantile
       ~DataFrame.radd
       ~DataFrame.rdiv
+      ~DataFrame.rebalance
       ~DataFrame.rechunk
       ~DataFrame.reindex
       ~DataFrame.rename
@@ -90,6 +92,7 @@ mars.dataframe.DataFrame
       ~DataFrame.rpow
       ~DataFrame.rsub
       ~DataFrame.rtruediv
+      ~DataFrame.select_dtypes
       ~DataFrame.set_index
       ~DataFrame.shift
       ~DataFrame.sort_index

@@ -250,6 +250,13 @@ class MarsAPI(object):
     def get_chunk_metas(self, session_id, chunk_keys):
         return self.chunk_meta_client.batch_get_chunk_meta(session_id, chunk_keys)
 
+    def get_tileable_chunk_metas(self, session_id, tileable_key):
+        session_uid = SessionActor.gen_uid(session_id)
+        session_ref = self.get_actor_ref(session_uid)
+        graph_ref = self.actor_client.actor_ref(
+            session_ref.get_graph_ref_by_tileable_key(tileable_key))
+        return graph_ref.get_tileable_chunk_metas([tileable_key])[0]
+
     def delete_data(self, session_id, graph_key, tileable_key, wait=False):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)

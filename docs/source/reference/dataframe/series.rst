@@ -386,3 +386,11 @@ Serialization / IO / conversion
 
    Series.to_csv
    Series.to_sql
+
+Misc
+~~~~
+
+.. autosummary::
+  :toctree: api/
+
+   Series.map_chunk

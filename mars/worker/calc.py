@@ -46,6 +46,7 @@ class BaseCalcActor(WorkerActor):
         self._events_ref = None
         self._status_ref = None
         self._execution_ref = None
+        self._resource_ref = None
 
         self._executing_set = set()
         self._marked_as_destroy = False
@@ -61,6 +62,7 @@ class BaseCalcActor(WorkerActor):
         from .events import EventsActor
         from .quota import MemQuotaActor
         from .status import StatusActor
+        from ..scheduler.resource import ResourceActor
 
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
@@ -76,6 +78,8 @@ class BaseCalcActor(WorkerActor):
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
         if not self.ctx.has_actor(self._events_ref):
             self._events_ref = None
+
+        self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
         self._execution_pool = self.ctx.threadpool(1)
 
@@ -178,7 +182,8 @@ class BaseCalcActor(WorkerActor):
 
         local_context_dict = DistributedDictContext(
             self.get_scheduler(self.default_uid()), session_id, actor_ctx=self.ctx,
-            address=self.address, n_cpu=self._get_n_cpu())
+            address=self.address, n_cpu=self._get_n_cpu(), is_distributed=True,
+            resource_ref=self._resource_ref)
         local_context_dict['_actor_cls'] = type(self)
         local_context_dict['_actor_uid'] = self.uid
         local_context_dict['_op_key'] = graph_key
