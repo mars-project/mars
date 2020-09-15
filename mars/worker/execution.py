@@ -937,7 +937,7 @@ class ExecutionActor(WorkerActor):
         """
         self._do_active_transfer(session_id, None, data_to_addresses) \
             .then(lambda *_: self.tell_promise(callback) if callback else None) \
-            .catch(lambda *exc: self.tell_promise(*exc, _accept=False) if callback else None)
+            .catch(lambda *exc: self.tell_promise(callback, *exc, _accept=False) if callback else None)
 
     @log_unhandled
     def stop_execution(self, session_id, graph_key):
