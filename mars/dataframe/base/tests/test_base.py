@@ -898,3 +898,12 @@ class Test(TestBase):
         self.assertEqual(r.shape, ())
         self.assertEqual(len(r.chunks), 1)
         self.assertEqual(r.chunks[0].op.stage, OperandStage.reduce)
+
+    def testRebalance(self):
+        raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
+        df = from_pandas_df(raw)
+
+        df2 = df.rebalance()
+        df2 = df2.tiles()
+
+        self.assertIsInstance(df2.op, type(df.op))

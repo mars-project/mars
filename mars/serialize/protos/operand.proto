@@ -363,6 +363,7 @@ message OperandDef {
         RENAME = 731;
         INSERT = 732;
         MAP_CHUNK = 733;
+        REBALANCE = 734;
 
         FUSE = 801;
 

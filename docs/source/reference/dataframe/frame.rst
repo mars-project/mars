@@ -219,3 +219,12 @@ Serialization / IO / conversion
 
    DataFrame.to_csv
    DataFrame.to_sql
+
+Misc
+~~~~
+
+.. autosummary::
+  :toctree: api/
+
+   DataFrame.map_chunk
+   DataFrame.rebalance
