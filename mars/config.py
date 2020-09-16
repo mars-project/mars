@@ -376,6 +376,9 @@ default_options.register_option('eager_mode', False, validator=is_bool)
 # client serialize type
 default_options.register_option('client.serial_type', 'arrow', validator=is_string)
 
+# custom log dir
+default_options.register_option('custom_log_dir', None, validator=any_validator(is_null, is_string))
+
 # vineyard
 default_options.register_option('vineyard.socket', None)
 

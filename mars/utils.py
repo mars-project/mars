@@ -760,6 +760,8 @@ def copy_tileables(tileables: List, **kwargs):
             raise TypeError("All tileables' operands should be same.")
 
     op = tileables[0].op.copy().reset_key()
+    if copy_key:
+        op._key = tileables[0].op.key
     kws = []
     for t in tileables:
         params = t.params.copy()

@@ -380,6 +380,12 @@ class ClusterSession(object):
             tileable_results.append(sort_dataframe_result(tileable, result))
         return tileable_results
 
+    def fetch_log(self, tileables, offsets=None, sizes=None):
+        from .custom_log import fetch
+
+        return fetch(tileables, self._context,
+                     offsets=offsets, sizes=sizes)
+
     def decref(self, *keys):
         for tileable_key, tileable_id in keys:
             if tileable_key not in self._executed_tileables:

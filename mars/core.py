@@ -367,12 +367,30 @@ class _ExecutableMixin:
         # return Tileable or ExecutableTuple itself
         return self
 
-    def fetch(self, session=None, **kw):
+    def _get_session(self, session=None):
         from .session import Session
 
         if session is None:
-            session = Session.default_or_local()
+            session = Session.default
+        if session is None and len(self._executed_sessions) > 0:
+            session = self._executed_sessions[-1]
+
+        return session
+
+    def fetch(self, session=None, **kw):
+        session = self._get_session(session)
+        if session is None:
+            if isinstance(self, tuple):
+                key = self[0].key
+            else:
+                key = self.key
+            raise ValueError(
+                f'Tileable object {key} must be executed first before being fetched')
         return session.fetch(self, **kw)
+
+    def fetch_log(self, session=None, offsets=None, sizes=None):
+        session = self._get_session(session)
+        return session.fetch_log([self], offsets=offsets, sizes=sizes)[0]
 
     def _attach_session(self, session):
         _cleaner.register(self, session)
@@ -669,6 +687,12 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         if len(self) == 0:
             return tuple()
         return super().fetch(session=session, **kw)
+
+    def fetch_log(self, session=None, offsets=None, sizes=None):
+        if len(self) == 0:
+            return []
+        session = self._get_session(session=session)
+        return session.fetch_log(self, offsets=offsets, sizes=sizes)
 
     def _attach_session(self, session):
         super()._attach_session(session)

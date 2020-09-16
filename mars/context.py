@@ -22,6 +22,8 @@ from collections import namedtuple, defaultdict
 from enum import Enum
 from typing import List
 
+import numpy as np
+
 
 _context_factory = threading.local()
 
@@ -310,6 +312,7 @@ class DistributedContext(ContextBase):
     def __init__(self, scheduler_address, session_id, actor_ctx=None,
                  is_distributed=None, resource_ref=None, **kw):
         from .worker.api import WorkerAPI
+        from .scheduler.custom_log import CustomLogMetaActor
         from .scheduler.resource import ResourceActor
         from .scheduler.utils import SchedulerClusterInfoActor
         from .actors import new_client
@@ -336,6 +339,10 @@ class DistributedContext(ContextBase):
                 ResourceActor.default_uid(),
                 address=self._cluster_info.get_scheduler(ResourceActor.default_uid()))
 
+        self._custom_log_meta = self._actor_ctx.actor_ref(
+            CustomLogMetaActor.default_uid(),
+            address=self._cluster_info.get_scheduler(CustomLogMetaActor.default_uid()))
+
         self._address = kw.pop('address', None)
         self._extra_info = kw
 
@@ -356,6 +363,10 @@ class DistributedContext(ContextBase):
     @property
     def session_id(self):
         return self._session_id
+
+    @property
+    def scheduler_address(self):
+        return self._scheduler_address
 
     def get_current_session(self):
         from .session import new_session, ClusterSession
@@ -483,6 +494,67 @@ class DistributedContext(ContextBase):
 
             chunk_results = [(k, v) for k, v in chunk_results.items()]
             return indexes_handler.aggregate_result(context, chunk_results)
+
+    def get_custom_log_meta_ref(self):
+        from .actors import new_client
+        from .scheduler.custom_log import CustomLogMetaActor
+        from .scheduler.utils import SchedulerClusterInfoActor
+
+        actor_client = new_client()
+        uid = CustomLogMetaActor.default_uid()
+        cluster_info = actor_client.actor_ref(
+            SchedulerClusterInfoActor.default_uid(),
+            address=self._scheduler_address)
+        return actor_client.actor_ref(
+            uid, address=cluster_info.get_scheduler(uid))
+
+    def fetch_tileable_op_logs(self, tileable_op_key,
+                               chunk_op_key_to_offsets: dict = None,
+                               chunk_op_key_to_sizes: dict = None):
+        from .worker.dispatcher import DispatchActor
+
+        chunk_op_key_to_paths = self._custom_log_meta.get_tileable_op_log_paths(
+            self._session_id, tileable_op_key)
+
+        worker_to_kwds = dict()
+        for chunk_op_key, path in chunk_op_key_to_paths.items():
+            worker_address, log_path = path
+
+            if chunk_op_key_to_offsets is not None:
+                offset = chunk_op_key_to_offsets.get(chunk_op_key, 0)
+            else:
+                offset = 0
+            if chunk_op_key_to_sizes is not None:
+                size = chunk_op_key_to_sizes.get(chunk_op_key, -1)
+            else:
+                size = -1
+
+            if worker_address not in worker_to_kwds:
+                worker_to_kwds[worker_address] = {
+                    'chunk_op_keys': [],
+                    'log_paths': [],
+                    'offsets': [],
+                    'sizes': []
+                }
+
+            kwds = worker_to_kwds[worker_address]
+            kwds['chunk_op_keys'].append(chunk_op_key)
+            kwds['log_paths'].append(log_path)
+            kwds['offsets'].append(offset)
+            kwds['sizes'].append(size)
+
+        result = dict()
+        for worker, kwds in worker_to_kwds.items():
+            dispatch = self._actor_ctx.actor_ref(DispatchActor.default_uid(),
+                                                 address=worker)
+            custom_log_fetcher = self._actor_ctx.actor_ref(
+                worker, dispatch.get_hash_slot('custom_log', np.random.bytes(8)))
+            chunk_op_keys = kwds.pop('chunk_op_keys')
+            logs = custom_log_fetcher.fetch_logs(**kwds)
+            for chunk_op_key, log_result in zip(chunk_op_keys, logs):
+                result[chunk_op_key] = log_result
+
+        return result
 
     def create_lock(self):
         return self._actor_ctx.lock()

@@ -17,6 +17,7 @@ import logging
 import operator
 import os
 import sys
+import tempfile
 import time
 import unittest
 from functools import reduce
@@ -27,6 +28,7 @@ import pandas as pd
 import mars.dataframe as md
 import mars.tensor as mt
 from mars.errors import ExecutionFailed
+from mars.scheduler.custom_log import CustomLogMetaActor
 from mars.scheduler.resource import ResourceActor
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 from mars.scheduler.tests.integrated.no_prepare_op import NoPrepareOperand
@@ -326,6 +328,41 @@ class Test(SchedulerIntegratedTest):
         for worker_ip in worker_ips:
             ref = sess._api.actor_client.actor_ref(DispatchActor.default_uid(), address=worker_ip)
             self.assertEqual(len(ref.get_slots('cpu')), 1)
+
+    def testFetchLogWithoutEtcd(self):
+        # test fetch log
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.start_processes(etcd=False, modules=['mars.scheduler.tests.integrated.no_prepare_op'],
+                                 scheduler_args=[f'-Dcustom_log_dir={temp_dir}'])
+            sess = new_session(self.session_manager_ref.address)
+
+            def f():
+                print('test')
+
+            r = spawn(f)
+            r.execute(session=sess)
+
+            custom_log_actor = sess._api.actor_client.actor_ref(
+                CustomLogMetaActor.default_uid(),
+                address=self.cluster_info.get_scheduler(CustomLogMetaActor.default_uid())
+            )
+
+            chunk_key_to_log_path = custom_log_actor.get_tileable_op_log_paths(
+                sess.session_id, r.op.key)
+            paths = list(chunk_key_to_log_path.values())
+            self.assertEqual(len(paths), 1)
+            log_path = paths[0][1]
+            with open(log_path) as f:
+                self.assertEqual(f.read().strip(), 'test')
+
+            context = DistributedContext(scheduler_address=self.session_manager_ref.address,
+                                         session_id=sess.session_id)
+            log_result = context.fetch_tileable_op_logs(r.op.key)
+            log = next(iter(log_result.values()))['log']
+            self.assertEqual(log.strip(), 'test')
+
+            log = r.fetch_log()
+            self.assertEqual(str(log).strip(), 'test')
 
     def testNoWorkerException(self):
         self.start_processes(etcd=False, n_workers=0)

@@ -17,19 +17,20 @@ import logging
 import os
 import sys
 
-from ..config import options
 from .. import resource
+from ..config import options
 from ..utils import parse_readable_size, readable_size
-from .status import StatusActor
-from .quota import QuotaActor, MemQuotaActor
+from .calc import CpuCalcActor, CudaCalcActor
+from .custom_log import CustomLogFetchActor
 from .dispatcher import DispatchActor
 from .events import EventsActor
 from .execution import ExecutionActor
-from .calc import CpuCalcActor, CudaCalcActor
-from .transfer import SenderActor, ReceiverManagerActor, ReceiverWorkerActor, ResultSenderActor
 from .prochelper import ProcessHelperActor
+from .quota import QuotaActor, MemQuotaActor
+from .status import StatusActor
 from .storage import IORunnerActor, StorageManagerActor, SharedHolderActor, \
     InProcHolderActor, CudaHolderActor
+from .transfer import SenderActor, ReceiverManagerActor, ReceiverWorkerActor, ResultSenderActor
 from .utils import WorkerClusterInfoActor
 
 
@@ -61,6 +62,7 @@ class WorkerService(object):
         self._receiver_actors = []
         self._spill_actors = []
         self._process_helper_actors = []
+        self._custom_log_fetch_actors = []
         self._result_sender_ref = None
 
         self._advertise_addr = kwargs.pop('advertise_addr', None)
@@ -284,6 +286,11 @@ class WorkerService(object):
                 uid = f'w:{start_pid + sender_id}:mars-sender-{sender_id}'
                 actor = actor_holder.create_actor(SenderActor, uid=uid)
                 self._sender_actors.append(actor)
+
+            for custom_log_fetch_id in range(self._n_net_process):
+                uid = f'w:{start_pid + custom_log_fetch_id}:mars-custom-log-fetch'
+                actor = actor_holder.create_actor(CustomLogFetchActor, uid=uid)
+                self._custom_log_fetch_actors.append(actor)
 
         # Mutable requires ReceiverActor (with ClusterSession)
         for receiver_id in range(2 * self._n_net_process):
