@@ -124,6 +124,9 @@ class LocalSession(object):
             kw['n_parallel'] = cpu_count()
         return self._executor.fetch_tileables(tileables, **kw)
 
+    def fetch_log(self, tileables, offsets=None, sizes=None):  # pragma: no cover
+        raise NotImplementedError('`fetch_log` is not implemented for local executor')
+
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
         from .tensor.core import MutableTensor, MutableTensorData
         if name in self._mut_tensor:

@@ -17,7 +17,8 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType, get_output_types
-from ...serialize import TupleField, DictField, FunctionField
+from ...custom_log import redirect_custom_log
+from ...serialize import TupleField, DictField, FunctionField, StringField
 from ...utils import enter_current_session
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_empty_df, build_series, build_empty_series, \
@@ -31,9 +32,13 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     _func = FunctionField('func')
     _args = TupleField('args')
     _kwds = DictField('kwds')
+    # for chunk
+    _tileable_op_key = StringField('tileable_op_key')
 
-    def __init__(self, func=None, args=None, kwds=None, output_types=None, **kw):
-        super().__init__(_func=func, _args=args, _kwds=kwds, _output_types=output_types, **kw)
+    def __init__(self, func=None, args=None, kwds=None, output_types=None,
+                 tileable_op_key=None, **kw):
+        super().__init__(_func=func, _args=args, _kwds=kwds, _output_types=output_types,
+                         _tileable_op_key=tileable_op_key, **kw)
 
     @property
     def func(self):
@@ -47,7 +52,12 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     def kwds(self):
         return getattr(self, '_kwds', None) or dict()
 
+    @property
+    def tileable_op_key(self):
+        return self._tileable_op_key
+
     @classmethod
+    @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]
@@ -80,6 +90,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             inp_chunks = [c]
 
             new_op = op.copy().reset_key()
+            new_op._tileable_op_key = op.key
             if op.output_types[0] == OutputType.dataframe:
                 chunks.append(new_op.new_chunk(
                     inp_chunks, index=c.index, shape=(np.nan, len(out_df.dtypes)), dtypes=out_df.dtypes,
@@ -89,7 +100,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
                     inp_chunks, name=out_df.name, index=(c.index[0],), shape=(np.nan,), dtype=out_df.dtype,
                     index_value=out_df.index_value))
 
-        new_op = op.copy().reset_key()
+        new_op = op.copy()
         kw = out_df.params.copy()
         kw['chunks'] = chunks
         if op.output_types[0] == OutputType.dataframe:

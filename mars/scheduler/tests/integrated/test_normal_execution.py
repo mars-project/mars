@@ -391,6 +391,18 @@ class Test(SchedulerIntegratedTest):
             self.assertIn('level0', log)
             self.assertIn('f1', log)
 
+            df = md.DataFrame(mt.random.rand(10, 3), chunk_size=5)
+
+            def df_func(c):
+                print('df func')
+                return c
+
+            df2 = df.map_chunk(df_func)
+            df2.execute(session=sess)
+            log = df2.fetch_log()
+            self.assertIn('Chunk op key:', str(log))
+            self.assertIn('df func', repr(log))
+
     def testNoWorkerException(self):
         self.start_processes(etcd=False, n_workers=0)
 

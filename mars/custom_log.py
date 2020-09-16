@@ -19,6 +19,7 @@ import os
 import shutil
 import sys
 import tempfile
+import textwrap
 import weakref
 
 from .config import options
@@ -168,10 +169,11 @@ class LogFetcher:
 
         sio = io.StringIO()
         for chunk_op_key, content in self._chunk_op_key_to_result.items():
-            sio.writelines([
-                f'Chunk key: {chunk_op_key}',
-                'Out: ', content
-            ])
+            sio.write(textwrap.dedent(
+                f"""
+                Chunk op key: {chunk_op_key}
+                Out:
+                {content}"""))
         result = sio.getvalue()
         return repr(result) if representation else str(result)
 

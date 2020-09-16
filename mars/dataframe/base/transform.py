@@ -18,7 +18,8 @@ import pandas as pd
 from ... import opcodes
 from ...config import options
 from ...core import OutputType
-from ...serialize import AnyField, BoolField, TupleField, DictField
+from ...custom_log import redirect_custom_log
+from ...serialize import AnyField, BoolField, TupleField, DictField, StringField
 from ...utils import enter_current_session
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
@@ -34,13 +35,16 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
     _convert_dtype = BoolField('convert_dtype')
     _args = TupleField('args')
     _kwds = DictField('kwds')
+    # for chunk
+    _tileable_op_key = StringField('tileable_op_key')
 
     _call_agg = BoolField('call_agg')
 
     def __init__(self, func=None, axis=None, convert_dtype=None, args=None, kwds=None,
-                 call_agg=None, output_types=None, **kw):
+                 call_agg=None, output_types=None, tileable_op_key=None, **kw):
         super().__init__(_func=func, _axis=axis, _convert_dtype=convert_dtype, _args=args,
-                         _kwds=kwds, _call_agg=call_agg, _output_types=output_types, **kw)
+                         _kwds=kwds, _call_agg=call_agg, _output_types=output_types,
+                         _tileable_op_key=tileable_op_key, **kw)
 
     @property
     def func(self):
@@ -66,7 +70,12 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
     def call_agg(self):
         return self._call_agg
 
+    @property
+    def tileable_op_key(self):
+        return self._tileable_op_key
+
     @classmethod
+    @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]
@@ -105,6 +114,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         col_sizes = []
         for c in in_df.chunks:
             new_op = op.copy().reset_key()
+            new_op._tileable_op_key = op.key
             params = c.params.copy()
 
             if out_df.ndim == 2:
@@ -164,7 +174,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         else:
             new_nsplits = in_df.nsplits
 
-        new_op = op.copy().reset_key()
+        new_op = op.copy()
         kw = out_df.params.copy()
         kw.update(dict(chunks=chunks, nsplits=tuple(new_nsplits)))
         return new_op.new_tileables(op.inputs, **kw)

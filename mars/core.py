@@ -731,6 +731,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
                 session = item._get_session()
                 if session is not None:
                     return session
+        return session
 
 
 class _TileableSession:
