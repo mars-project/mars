@@ -125,8 +125,8 @@ _tileable_to_log_fetcher = weakref.WeakKeyDictionary()
 
 
 class LogFetcher:
-    def __init__(self, tileable, context: DistributedContext):
-        self._tileable = weakref.ref(tileable)
+    def __init__(self, tileable_op_key, context: DistributedContext):
+        self._tileable_op_key = tileable_op_key
         self._context = context
         self._chunk_op_key_to_result = dict()
         self._chunk_op_key_to_offsets = dict()
@@ -146,24 +146,15 @@ class LogFetcher:
     def offsets(self):
         return list(self._chunk_op_key_to_offsets.values())
 
-    def fetch(self,
-              offsets: dict = None,
-              sizes: dict = None):
+    def fetch(self, offsets=None, sizes=None):
         if offsets is None:
             offsets = self._chunk_op_key_to_offsets
-        elif isinstance(offsets, int):
-            offsets = {chunk_op_key: offsets
-                       for chunk_op_key in self.chunk_op_keys}
 
         if sizes is None:
-            sizes = {chunk_op_key: 1 * 1024 ** 2  # 1M each time
-                     for chunk_op_key in self._chunk_op_key_to_offsets}
-        elif isinstance(sizes, int):
-            sizes = {chunk_op_key: sizes
-                     for chunk_op_key in self.chunk_op_keys}
+            sizes = 1 * 1024 ** 2  # 1M each time
 
         result: dict = self._context.fetch_tileable_op_logs(
-            self._tileable().op.key, chunk_op_key_to_offsets=offsets,
+            self._tileable_op_key, chunk_op_key_to_offsets=offsets,
             chunk_op_key_to_sizes=sizes)
 
         for chunk_key, chunk_result in result.items():
@@ -195,8 +186,10 @@ def fetch(tileables, context: DistributedContext,
           offsets=None, sizes=None):
     log_fetchers = []
     for tileable in tileables:
+        tileable = tileable.data if hasattr(tileable, 'data') else tileable
+
         if tileable not in _tileable_to_log_fetcher:
-            _tileable_to_log_fetcher[tileable] = LogFetcher(tileable, context)
+            _tileable_to_log_fetcher[tileable] = LogFetcher(tileable.op.key, context)
 
         log_fetcher = _tileable_to_log_fetcher[tileable]
         log_fetcher.fetch(offsets=offsets, sizes=sizes)

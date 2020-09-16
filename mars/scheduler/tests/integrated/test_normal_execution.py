@@ -33,7 +33,7 @@ from mars.scheduler.resource import ResourceActor
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 from mars.scheduler.tests.integrated.no_prepare_op import NoPrepareOperand
 from mars.session import new_session
-from mars.remote import spawn
+from mars.remote import spawn, ExecutableTuple
 from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf
 from mars.context import DistributedContext
 
@@ -363,6 +363,33 @@ class Test(SchedulerIntegratedTest):
 
             log = r.fetch_log()
             self.assertEqual(str(log).strip(), 'test')
+
+            # test multiple functions
+            def f1(size):
+                print('f1' * size)
+
+            fs = ExecutableTuple([spawn(f1, 30), spawn(f1, 40)])
+            fs.execute(session=sess)
+            log = fs.fetch_log(offsets=20, sizes=10)
+            self.assertEqual(str(log[0]).strip(), ('f1' * 30)[20:30])
+            self.assertEqual(str(log[1]).strip(), ('f1' * 40)[20:30])
+            self.assertGreater(len(log[0].offsets), 0)
+            self.assertTrue(all(s > 0 for s in log[0].offsets))
+            self.assertGreater(len(log[1].offsets), 0)
+            self.assertTrue(all(s > 0 for s in log[1].offsets))
+            self.assertGreater(len(log[0].chunk_op_keys), 0)
+
+            def test_nested():
+                print('level0')
+                fr = spawn(f1, 1)
+                fr.execute()
+                print(fr.fetch_log())
+
+            r = spawn(test_nested)
+            r.execute(session=sess)
+            log = str(r.fetch_log())
+            self.assertIn('level0', log)
+            self.assertIn('f1', log)
 
     def testNoWorkerException(self):
         self.start_processes(etcd=False, n_workers=0)

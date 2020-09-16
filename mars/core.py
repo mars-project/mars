@@ -17,6 +17,7 @@
 import builtins
 import enum
 import itertools
+from concurrent.futures import ThreadPoolExecutor
 from operator import attrgetter
 from typing import List
 from weakref import WeakKeyDictionary, WeakSet, ref
@@ -359,21 +360,32 @@ class _ExecutableMixin:
         else:
             kw['fetch'] = False
 
+        wait = kw.pop('wait', True)
+
         if session is None:
             session = Session.default_or_local()
 
-        # no more fetch, thus just fire run
-        session.run(self, **kw)
-        # return Tileable or ExecutableTuple itself
-        return self
+        def run():
+            # no more fetch, thus just fire run
+            session.run(self, **kw)
+            # return Tileable or ExecutableTuple itself
+            return self
+
+        if wait:
+            return run()
+        else:
+            # leverage ThreadPoolExecutor to submit task,
+            # return a concurrent.future.Future
+            thread_executor = ThreadPoolExecutor(1)
+            return thread_executor.submit(run)
 
     def _get_session(self, session=None):
         from .session import Session
 
-        if session is None:
-            session = Session.default
         if session is None and len(self._executed_sessions) > 0:
             session = self._executed_sessions[-1]
+        if session is None:
+            session = Session.default
 
         return session
 
@@ -408,7 +420,16 @@ class _ExecuteAndFetchMixin:
             return self.fetch(session=session)
         except ValueError:
             # not execute before
-            return self.execute(session=session, **kw).fetch(session=session)
+            wait = kw.pop('wait', True)
+
+            def run():
+                return self.execute(session=session, **kw).fetch(session=session)
+
+            if wait:
+                return run()
+            else:
+                thread_executor = ThreadPoolExecutor(1)
+                return thread_executor.submit(run)
 
 
 class _ToObjectMixin(_ExecuteAndFetchMixin):
@@ -593,8 +614,17 @@ class HasShapeTileableEnity(TileableEntity):
         return self._data.size
 
     def execute(self, session=None, **kw):
-        self._data.execute(session, **kw)
-        return self
+        wait = kw.pop('wait', True)
+
+        def run():
+            self.data.execute(session, **kw)
+            return self
+
+        if wait:
+            return run()
+        else:
+            thread_executor = ThreadPoolExecutor(1)
+            return thread_executor.submit(run)
 
 
 class ObjectData(TileableData, _ToObjectMixin):
@@ -694,11 +724,13 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         session = self._get_session(session=session)
         return session.fetch_log(self, offsets=offsets, sizes=sizes)
 
-    def _attach_session(self, session):
-        super()._attach_session(session)
-        for t in self:
-            if hasattr(t, '_attach_session'):
-                t._attach_session(session)
+    def _get_session(self, session=None):
+        session = super()._get_session(session=session)
+        if session is None:
+            for item in self:
+                session = item._get_session()
+                if session is not None:
+                    return session
 
 
 class _TileableSession:

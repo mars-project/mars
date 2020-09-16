@@ -26,7 +26,7 @@ class CustomLogFetchActor(WorkerActor):
         self._dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'custom_log')
 
-    def fetch_logs(self, log_paths, offsets=None, sizes=None):
+    def fetch_logs(self, log_paths, offsets, sizes):
         result = []
         for i, log_path in enumerate(log_paths):
             log_result = dict()

@@ -509,8 +509,8 @@ class DistributedContext(ContextBase):
             uid, address=cluster_info.get_scheduler(uid))
 
     def fetch_tileable_op_logs(self, tileable_op_key,
-                               chunk_op_key_to_offsets: dict = None,
-                               chunk_op_key_to_sizes: dict = None):
+                               chunk_op_key_to_offsets=None,
+                               chunk_op_key_to_sizes=None):
         from .worker.dispatcher import DispatchActor
 
         chunk_op_key_to_paths = self._custom_log_meta.get_tileable_op_log_paths(
@@ -520,12 +520,16 @@ class DistributedContext(ContextBase):
         for chunk_op_key, path in chunk_op_key_to_paths.items():
             worker_address, log_path = path
 
-            if chunk_op_key_to_offsets is not None:
+            if isinstance(chunk_op_key_to_offsets, dict):
                 offset = chunk_op_key_to_offsets.get(chunk_op_key, 0)
+            elif isinstance(chunk_op_key_to_offsets, int):
+                offset = chunk_op_key_to_offsets
             else:
                 offset = 0
-            if chunk_op_key_to_sizes is not None:
+            if isinstance(chunk_op_key_to_sizes, dict):
                 size = chunk_op_key_to_sizes.get(chunk_op_key, -1)
+            elif isinstance(chunk_op_key_to_sizes, int):
+                size = chunk_op_key_to_sizes
             else:
                 size = -1
 
