@@ -712,3 +712,24 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(dr, concat=True)[0]
         expected = pd.date_range(start='1/1/2018', periods=5, freq='M')
         pd.testing.assert_index_equal(result, expected)
+
+    def testReadParquet(self):
+        test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                                'b': [f's{i}' for i in range(10)],
+                                'c': np.random.rand(10),})
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+            test_df.to_parquet(file_path)
+
+            df = md.read_parquet(file_path)
+            result = self.executor.execute_dataframe(df, concat=True)[0]
+            pd.testing.assert_frame_equal(result, test_df)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+            test_df.to_parquet(file_path, row_group_size=3)
+
+            df = md.read_parquet(file_path, groups_as_chunks=True)
+            result = self.executor.execute_dataframe(df, concat=True)[0]
+            pd.testing.assert_frame_equal(result.reset_index(drop=True), test_df)
