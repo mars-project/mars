@@ -25,6 +25,7 @@ from ...core import OutputType
 from ...utils import parse_readable_size, lazy_import, FixedSizeFileObject
 from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, BoolField, AnyField
 from ...filesystem import open_file, file_size, glob
+from ..arrays import ArrowStringDtype
 from ..core import IndexValue
 from ..utils import parse_index, build_empty_df, standardize_range_index, \
     to_arrow_dtypes, contain_arrow_dtype

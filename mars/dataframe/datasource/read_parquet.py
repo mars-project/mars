@@ -20,46 +20,52 @@ import pandas as pd
 
 try:
     import pyarrow as pa
-    import fastparquet
     import pyarrow.parquet as pq
 except ImportError:
     pa = None
+
+try:
+    import fastparquet
+except ImportError:
     fastparquet = None
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...filesystem import open_file
+from ...filesystem import open_file, glob
 from ...serialize import AnyField, BoolField, DictField, ListField,\
     StringField, Int32Field
 from ..arrays import ArrowStringDtype
 from ..operands import DataFrameOperandMixin, DataFrameOperand, OutputType
-from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype
+from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype, \
+    standardize_range_index
 
 
 def check_engine(engine):
     if engine == 'auto':
         if pa is not None:
             return 'pyarrow'
-        elif fastparquet is not None:
+        elif fastparquet is not None:  # pragma: no cover
             return 'fastparquet'
-        else:
+        else:  # pragma: no cover
             raise RuntimeError('Please install either pyarrow or fastparquet.')
     elif engine == 'pyarrow':
-        if pa is None:
+        if pa is None:  # pragma: no cover
             raise RuntimeError('Please install pyarrow fisrt.')
         return engine
     elif engine == 'fastparquet':
-        if fastparquet is None:
+        if fastparquet is None:  # pragma: no cover
             raise RuntimeError('Please install fastparquet first.')
         return engine
-    else:
+    else:  # pragma: no cover
         raise RuntimeError('Unsupported engine {} to read parquet.'.format(engine))
 
 
 def get_engine(engine):
     if engine == 'pyarrow':
         return ArrowEngine()
-    else:
+    elif engine == 'fastparquet':
+        return FastpaquetEngine()
+    else:  # pragma: no cover
         raise RuntimeError('Unsupported engine {}'.format(engine))
 
 
@@ -99,8 +105,24 @@ class ArrowEngine(ParqueEngine):
     def read_group_to_pandas(self, f, group_index, columns=None,
                              use_arrow_dtype=None, **kwargs):
         file = pq.ParquetFile(f)
-        t = file.read_row_group(group_index, columns=columns)
+        t = file.read_row_group(group_index, columns=columns, **kwargs)
         return self._table_to_pandas(t, use_arrow_dtype=use_arrow_dtype)
+
+
+class FastpaquetEngine(ParqueEngine):
+    def read_dtypes(self, f, **kwargs):
+        file = fastparquet.ParquetFile(f)
+        dtypes_dict = file._dtypes()
+        return pd.Series(dict((c, dtypes_dict[c]) for c in file.columns))
+
+    def read_to_pandas(self, f, columns=None,
+                       use_arrow_dtype=None, **kwargs):
+        file = fastparquet.ParquetFile(f)
+        df = file.to_pandas(**kwargs)
+        if use_arrow_dtype:
+            df = df.astype(to_arrow_dtypes(df.dtypes).to_dict())
+
+        return df
 
 
 class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
@@ -113,16 +135,18 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
     _groups_as_chunks = BoolField('groups_as_chunks')
     _group_index = Int32Field('group_index')
     _read_kwargs = DictField('read_kwargs')
+    _incremental_index = BoolField('incremental_index')
     _storage_options = DictField('storage_options')
 
     def __init__(self, path=None, engine=None, columns=None, use_arrow_dtype=None,
-                 groups_as_chunks=None, group_index=None,
+                 groups_as_chunks=None, group_index=None, incremental_index=None,
                  read_kwargs=None, storage_options=None, **kw):
         super().__init__(_path=path, _engine=engine, _columns=columns,
                          _use_arrow_dtype=use_arrow_dtype,
                          _groups_as_chunks=groups_as_chunks,
                          _group_index=group_index,
                          _read_kwargs=read_kwargs,
+                         _incremental_index=incremental_index,
                          _storage_options=storage_options,
                          _output_types=[OutputType.dataframe], **kw)
 
@@ -155,6 +179,10 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
         return self._read_kwargs
 
     @property
+    def incremental_index(self):
+        return self._incremental_index
+
+    @property
     def storage_options(self):
         return self._storage_options
 
@@ -171,7 +199,11 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
             dtypes = to_arrow_dtypes(out_df.dtypes)
 
         shape = (np.nan, out_df.shape[1])
-        for pth in op.path:
+
+        paths = op.path if isinstance(op.path, (tuple, list)) else \
+            glob(op.path, storage_options=op.storage_options)
+
+        for pth in paths:
             if op.groups_as_chunks:
                 for group_idx in range(pq.ParquetFile(pth).num_row_groups):
                     chunk_op = op.copy().reset_key()
@@ -195,6 +227,9 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
                 out_chunks.append(new_chunk)
                 chunk_index += 1
 
+        if op.incremental_index:
+            out_chunks = standardize_range_index(out_chunks)
+
         new_op = op.copy()
         nsplits = ((np.nan,) * len(out_chunks), (out_df.shape[1],))
         return new_op.new_dataframes(None, out_df.shape, dtypes=dtypes,
@@ -212,10 +247,12 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
             use_arrow_dtype = contain_arrow_dtype(out.dtypes)
             if op.groups_as_chunks:
                 df = engine.read_group_to_pandas(f, op.group_index, columns=op.columns,
-                                                 use_arrow_dtype=use_arrow_dtype)
+                                                 use_arrow_dtype=use_arrow_dtype,
+                                                 **op.read_kwargs or dict())
             else:
                 df = engine.read_to_pandas(f, columns=op.columns,
-                                           use_arrow_dtype=use_arrow_dtype)
+                                           use_arrow_dtype=use_arrow_dtype,
+                                           **op.read_kwargs or dict())
 
             ctx[out.key] = df
 
@@ -227,7 +264,8 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
 
 def read_parquet(path, engine: str = "auto", columns=None,
                  groups_as_chunks=False, use_arrow_dtype=None,
-                 storage_options=None, **kwargs):
+                 incremental_index=False, storage_options=None,
+                 **kwargs):
     """
     Load a parquet object from the file path, returning a DataFrame.
     Parameters
@@ -251,6 +289,9 @@ def read_parquet(path, engine: str = "auto", columns=None,
     groups_as_chunks : bool, default False
         if True, each row group correspond to a chunk.
         if False, each file correspond to a chunk.
+        Only available for 'pyarrow' engine.
+    incremental_index: bool, default False
+        Create a new RangeIndex if csv doesn't contain index columns.
     use_arrow_dtype: bool, default None
         If True, use arrow dtype to store columns.
     storage_options: dict, optional
@@ -262,11 +303,13 @@ def read_parquet(path, engine: str = "auto", columns=None,
     Mars DataFrame
     """
     if not isinstance(path, list):
-        path = [path]
+        file_path = glob(path, storage_options=storage_options)[0]
+    else:
+        file_path = path[0]
 
     engine_type = check_engine(engine)
     engine = get_engine(engine_type)
-    with open_file(path[0], storage_options=storage_options) as f:
+    with open_file(file_path, storage_options=storage_options) as f:
         dtypes = engine.read_dtypes(f)
 
     if columns:
@@ -283,6 +326,7 @@ def read_parquet(path, engine: str = "auto", columns=None,
                               groups_as_chunks=groups_as_chunks,
                               use_arrow_dtype=use_arrow_dtype,
                               read_kwargs=kwargs,
+                              incremental_index=incremental_index,
                               storage_options=storage_options)
     return op(index_value=index_value, columns_value=columns_value,
               dtypes=dtypes)

@@ -56,7 +56,7 @@ jobs:
         if [[ $UNAME == "windows" ]]; then
           pip install virtualenv flake8
         else
-          pip install virtualenv flake8 etcd-gevent ray
+          pip install virtualenv flake8 etcd-gevent ray fastparquet
           if [ -z "$NO_COMMON_TESTS" ]; then
             if [[ $UNAME == "linux" ]]; then
               pip install h5py zarr
