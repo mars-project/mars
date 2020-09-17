@@ -23,7 +23,7 @@ import time
 
 from ...actors import create_actor_pool
 from ...cluster_info import StaticClusterDiscoverer
-from ...config import options, option_context
+from ...config import options
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
 from ...session import new_session
@@ -56,7 +56,8 @@ class LocalDistributedCluster(object):
         cuda_devices = [cuda_device] if cuda_device is not None else None
         self._worker_service = WorkerService(ignore_avail_mem=ignore_avail_mem,
                                              cache_mem_limit=shared_memory,
-                                             cuda_devices=cuda_devices)
+                                             cuda_devices=cuda_devices,
+                                             distributed=False)
 
         self._scheduler_n_process, self._worker_n_process = \
             self._calc_scheduler_worker_n_process(n_process,
@@ -119,7 +120,7 @@ class LocalDistributedCluster(object):
         self._scheduler_service.start(self._endpoint, discoverer, self._pool, distributed=False)
 
         # start worker next
-        self._worker_service.start(self._endpoint, self._pool, distributed=False,
+        self._worker_service.start(self._endpoint, self._pool,
                                    discoverer=discoverer,
                                    process_start_index=self._scheduler_n_process)
 
@@ -174,16 +175,16 @@ def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
     for m in modules:
         __import__(m, globals(), locals(), [])
     options_dict = kw.pop('options', None) or {}
+    options.update(options_dict)
 
-    with option_context(options_dict):
-        cluster = LocalDistributedCluster(endpoint, n_process=n_process,
-                                          shared_memory=shared_memory, **kw)
-        cluster.start_service()
-        event.set()
-        try:
-            cluster.serve_forever()
-        finally:
-            cluster.stop_service()
+    cluster = LocalDistributedCluster(endpoint, n_process=n_process,
+                                      shared_memory=shared_memory, **kw)
+    cluster.start_service()
+    event.set()
+    try:
+        cluster.serve_forever()
+    finally:
+        cluster.stop_service()
 
 
 def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
@@ -303,6 +304,11 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
             web_endpoint = web
         else:
             web_endpoint = gen_endpoint(web)
+
+    options_dict = kw.get('options', dict())
+    if options.custom_log_dir is not None:
+        options_dict['custom_log_dir'] = options.custom_log_dir
+        kw['options'] = options_dict
 
     process = _start_cluster_process(endpoint, n_process, shared_memory, **kw)
 

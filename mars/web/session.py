@@ -285,7 +285,7 @@ class Session(object):
         if not isinstance(argument, dict):
             params[name] = argument
         else:
-            params[name] = ','.join(f'{k}={v}' for k, v in argument)
+            params[name] = ','.join(f'{k}={v}' for k, v in argument.items())
 
     def fetch_tileable_op_logs(self, tileable_op_key, offsets=None, sizes=None):
         url = f'{self._endpoint}/api/session/{self._session_id}/op/{tileable_op_key}/log'

@@ -1,0 +1,116 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.6.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-09-17 17:19+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.memory_usage.rst:2
+msgid "mars.dataframe.DataFrame.memory\\_usage"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:1 of
+msgid "Return the memory usage of each column in bytes."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:3 of
+msgid ""
+"The memory usage can optionally include the contribution of the index and"
+" elements of `object` dtype."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:6 of
+msgid ""
+"This value is displayed in `DataFrame.info` by default. This can be "
+"suppressed by setting ``pandas.options.display.memory_usage`` to False."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:9 of
+msgid ""
+"Specifies whether to include the memory usage of the DataFrame's index in"
+" returned Series. If ``index=True``, the memory usage of the index is the"
+" first item in the output."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:13 of
+msgid ""
+"If True, introspect the data deeply by interrogating `object` dtypes for "
+"system-level memory consumption, and include it in the returned values."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:18 of
+msgid ""
+"A Series whose index is the original column names and whose values is the"
+" memory usage of each column in bytes."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:25 of
+msgid ":meth:`numpy.ndarray.nbytes`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:25 of
+msgid "Total bytes consumed by the elements of an ndarray."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:28 of
+msgid ":meth:`Series.memory_usage`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:28 of
+msgid "Bytes consumed by a Series."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:31 of
+msgid ":meth:`Categorical`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:31 of
+msgid "Memory-efficient array for string values with many repeated values."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:33 of
+msgid ":meth:`DataFrame.info`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:34 of
+msgid "Concise summary of a DataFrame."
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:37 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:69 of
+msgid "The memory footprint of `object` dtype columns is ignored by default:"
+msgstr ""
+
+#: mars.dataframe.DataFrame.memory_usage:80 of
+msgid ""
+"Use a Categorical for efficient storage of an object-dtype column with "
+"many repeated values."
+msgstr ""
+

@@ -109,7 +109,8 @@ def redirect_custom_log(func):
 
     @functools.wraps(func)
     def wrap(cls, ctx: DistributedContext, op):
-        if not hasattr(ctx, 'running_mode') or ctx.running_mode != RunningMode.distributed:
+        if getattr(ctx, 'running_mode', RunningMode.local) == RunningMode.local or \
+                options.custom_log_dir is None:
             # do nothing for local scheduler
             return func(cls, ctx, op)
 

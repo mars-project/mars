@@ -1,0 +1,250 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.6.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-09-17 17:19+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.reindex.rst:2
+msgid "mars.dataframe.DataFrame.reindex"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:1 of
+msgid "Conform Series/DataFrame to new index with optional filling logic."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:3 of
+msgid ""
+"Places NA/NaN in locations having no value in the previous index. A new "
+"object is produced unless the new index is equivalent to the current one "
+"and ``copy=False``."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:7 of
+msgid "New labels / index to conform the axis specified by 'axis' to."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:9 of
+msgid ""
+"New labels / index to conform to, should be specified using keywords. "
+"Preferably an Index object to avoid duplicating data."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:12 of
+msgid ""
+"Axis to target. Can be either the axis name ('index', 'columns') or "
+"number (0, 1)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:15 of
+msgid ""
+"Method to use for filling holes in reindexed DataFrame. Please note: this"
+" is only applicable to DataFrames/Series with a monotonically "
+"increasing/decreasing index.  * None (default): don't fill gaps * pad / "
+"ffill: Propagate last valid observation forward to next   valid. * "
+"backfill / bfill: Use next valid observation to fill gap. * nearest: Use "
+"nearest valid observations to fill gap."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:15 of
+msgid ""
+"Method to use for filling holes in reindexed DataFrame. Please note: this"
+" is only applicable to DataFrames/Series with a monotonically "
+"increasing/decreasing index."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:19 of
+msgid "None (default): don't fill gaps"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:20 of
+msgid "pad / ffill: Propagate last valid observation forward to next valid."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:22 of
+msgid "backfill / bfill: Use next valid observation to fill gap."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:23 of
+msgid "nearest: Use nearest valid observations to fill gap."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:25 of
+msgid "Return a new object, even if the passed indexes are the same."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:27 of
+msgid ""
+"Broadcast across a level, matching Index values on the passed MultiIndex "
+"level."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:30 of
+msgid ""
+"Value to use for missing values. Defaults to NaN, but can be any "
+"\"compatible\" value."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:33 of
+msgid "Maximum number of consecutive elements to forward or backward fill."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:35 of
+msgid ""
+"Maximum distance between original and new labels for inexact matches. The"
+" values of the index at the matching locations most satisfy the equation "
+"``abs(index[indexer] - target) <= tolerance``.  Tolerance may be a scalar"
+" value, which applies the same tolerance to all values, or list-like, "
+"which applies variable tolerance per element. List-like includes list, "
+"tuple, array, Series, and must be the same size as the index and its "
+"dtype must exactly match the index's type."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:35 of
+msgid ""
+"Maximum distance between original and new labels for inexact matches. The"
+" values of the index at the matching locations most satisfy the equation "
+"``abs(index[indexer] - target) <= tolerance``."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:39 of
+msgid ""
+"Tolerance may be a scalar value, which applies the same tolerance to all "
+"values, or list-like, which applies variable tolerance per element. List-"
+"like includes list, tuple, array, Series, and must be the same size as "
+"the index and its dtype must exactly match the index's type."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:52 of
+msgid ":meth:`DataFrame.set_index`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:52 of
+msgid "Set row labels."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:55 of
+msgid ":meth:`DataFrame.reset_index`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:55 of
+msgid "Remove row labels or move them to new columns."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:57 of
+msgid ":meth:`DataFrame.reindex_like`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:58 of
+msgid "Change to same indices as other DataFrame."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:61 of
+msgid "Examples"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:62 of
+msgid "``DataFrame.reindex`` supports two calling conventions"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:64 of
+msgid "``(index=index_labels, columns=column_labels, ...)``"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:65 of
+msgid "``(labels, axis={'index', 'columns'}, ...)``"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:67 of
+msgid "We *highly* recommend using keyword arguments to clarify your intent."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:70 of
+msgid "Create a dataframe with some fictional data."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:85 of
+msgid ""
+"Create a new index and reindex the dataframe. By default values in the "
+"new index that do not have corresponding records in the dataframe are "
+"assigned ``NaN``."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:99 of
+msgid ""
+"We can fill in the missing values by passing a value to the keyword "
+"``fill_value``. Because the index is not monotonically increasing or "
+"decreasing, we cannot use arguments to the keyword ``method`` to fill the"
+" ``NaN`` values."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:120 of
+msgid "We can also reindex the columns."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:130 of
+msgid "Or we can use \"axis-style\" keyword arguments"
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:140 of
+msgid ""
+"To further illustrate the filling functionality in ``reindex``, we will "
+"create a dataframe with a monotonically increasing index (for example, a "
+"sequence of dates)."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:157 of
+msgid "Suppose we decide to expand the dataframe to cover a wider date range."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:174 of
+msgid ""
+"The index entries that did not have a value in the original data frame "
+"(for example, '2009-12-29') are by default filled with ``NaN``. If "
+"desired, we can fill in the missing values using one of several options."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:179 of
+msgid ""
+"For example, to back-propagate the last valid value to fill the ``NaN`` "
+"values, pass ``bfill`` as an argument to the ``method`` keyword."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:195 of
+msgid ""
+"Please note that the ``NaN`` value present in the original dataframe (at "
+"index value 2010-01-03) will not be filled by any of the value "
+"propagation schemes. This is because filling while reindexing does not "
+"look at dataframe values, but only compares the original and desired "
+"indexes. If you do want to fill in the ``NaN`` values present in the "
+"original dataframe, use the ``fillna()`` method."
+msgstr ""
+
+#: mars.dataframe.DataFrame.reindex:202 of
+msgid "See the :ref:`user guide <basics.reindexing>` for more."
+msgstr ""
+

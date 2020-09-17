@@ -238,7 +238,7 @@ class OpLogHandler(MarsRequestHandler):
     def _extract_int_or_dict(cls, argument):
         if not argument:
             return
-        if ',' not in argument:
+        if ',' not in argument and '=' not in argument:
             return int(argument)
         else:
             ret = dict()

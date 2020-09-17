@@ -17,6 +17,7 @@ mars.remote.ExecutableTuple
       ~ExecutableTuple.count
       ~ExecutableTuple.execute
       ~ExecutableTuple.fetch
+      ~ExecutableTuple.fetch_log
       ~ExecutableTuple.index
       ~ExecutableTuple.to_object
    

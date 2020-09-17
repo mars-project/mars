@@ -31,14 +31,8 @@ class CustomLogFetchActor(WorkerActor):
         for i, log_path in enumerate(log_paths):
             log_result = dict()
 
-            if offsets is not None:
-                offset = offsets[i]
-            else:
-                offset = 0
-            if sizes is not None:
-                size = sizes[i]
-            else:
-                size = -1
+            offset = offsets[i]
+            size = sizes[i]
 
             with self.ctx.fileobject(log_path, mode='r') as f:
                 if offset:

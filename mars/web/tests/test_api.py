@@ -245,6 +245,8 @@ class Test(unittest.TestCase):
 
             r = mr.spawn(f).execute(session=sess, timeout=timeout)
             self.assertEqual(str(r.fetch_log()).strip(), 'test')
+            self.assertEqual(str(r.fetch_log(offsets=0)).strip(), 'test')
+            self.assertEqual(str(r.fetch_log()).strip(), '')
 
             graphs = sess.get_graph_states()
 

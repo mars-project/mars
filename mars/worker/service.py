@@ -15,7 +15,9 @@
 
 import logging
 import os
+import shutil
 import sys
+import tempfile
 
 from .. import resource
 from ..config import options
@@ -65,6 +67,7 @@ class WorkerService(object):
         self._custom_log_fetch_actors = []
         self._result_sender_ref = None
 
+        self._distributed = distributed = kwargs.pop('distributed', True)
         self._advertise_addr = kwargs.pop('advertise_addr', None)
 
         cuda_devices = kwargs.pop('cuda_devices', None) or os.environ.get('CUDA_VISIBLE_DEVICES')
@@ -96,6 +99,13 @@ class WorkerService(object):
         options.worker.io_parallel_num = kwargs.pop('io_parallel_num', None) or False
         options.worker.recover_dead_process = not (kwargs.pop('disable_proc_recover', None) or False)
         options.worker.write_shuffle_to_disk = kwargs.pop('write_shuffle_to_disk', None) or False
+
+        if distributed and options.custom_log_dir is None:
+            # gen custom_log_dir for distributed only
+            options.custom_log_dir = tempfile.mkdtemp(prefix='mars-custom-log')
+            self._clear_custom_log_dir = True
+        else:
+            self._clear_custom_log_dir = False
 
         self._total_mem = kwargs.pop('total_mem', None)
         self._cache_mem_limit = kwargs.pop('cache_mem_limit', None)
@@ -185,7 +195,8 @@ class WorkerService(object):
             self._cache_mem_limit, plasma_directory=self._plasma_dir)
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()
 
-    def start(self, endpoint, pool, distributed=True, discoverer=None, process_start_index=0):
+    def start(self, endpoint, pool, discoverer=None, process_start_index=0):
+        distributed = self._distributed
         # create plasma key mapper
         from .storage import PlasmaKeyMapActor
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
@@ -287,6 +298,7 @@ class WorkerService(object):
                 actor = actor_holder.create_actor(SenderActor, uid=uid)
                 self._sender_actors.append(actor)
 
+        if options.custom_log_dir is not None:
             for custom_log_fetch_id in range(self._n_net_process):
                 uid = f'w:{start_pid + custom_log_fetch_id}:mars-custom-log-fetch'
                 actor = actor_holder.create_actor(CustomLogFetchActor, uid=uid)
@@ -351,5 +363,10 @@ class WorkerService(object):
             if self._execution_ref:
                 destroy_futures.append(self._execution_ref.destroy(wait=False))
             [f.result(5) for f in destroy_futures]
+
+            if self._clear_custom_log_dir:
+                custom_dir = options.custom_log_dir
+                shutil.rmtree(custom_dir, ignore_errors=True)
+                options.custom_log_dir = None
         finally:
             self._plasma_store.__exit__(None, None, None)
