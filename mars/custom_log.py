@@ -22,7 +22,6 @@ import tempfile
 import textwrap
 import weakref
 
-from .config import options
 from .context import RunningMode, DistributedContext
 
 
@@ -30,6 +29,8 @@ _custom_log_dir = None
 
 
 def _get_custom_log_dir():
+    from .config import options
+
     global _custom_log_dir
 
     if _custom_log_dir is None:
@@ -109,6 +110,9 @@ def redirect_custom_log(func):
 
     @functools.wraps(func)
     def wrap(cls, ctx: DistributedContext, op):
+        # import inside, or Ray backend may fail
+        from .config import options
+
         if getattr(ctx, 'running_mode', RunningMode.local) == RunningMode.local or \
                 options.custom_log_dir is None:
             # do nothing for local scheduler
