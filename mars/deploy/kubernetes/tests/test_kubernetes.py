@@ -18,6 +18,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 import uuid
 from contextlib import contextmanager
@@ -166,11 +167,19 @@ class Test(unittest.TestCase):
 
             cluster_client.rescale_workers(1)
 
-            worker_items = kube_api.list_namespaced_pod(
-                cluster_client.namespace,
-                label_selector=f'mars/service-type={MarsWorkersConfig.rc_name}').to_dict()
-            self.assertEqual(len([w for w in worker_items['items'] if w['status']['phase'] == 'Running']), 1)
             self.assertEqual(cluster_client._session._sess.count_workers(), 1)
+
+            start_check_time = time.time()
+            n_workers = 2
+            while time.time() - start_check_time < 60:
+                worker_items = kube_api.list_namespaced_pod(
+                    cluster_client.namespace,
+                    label_selector=f'mars/service-type={MarsWorkersConfig.rc_name}').to_dict()
+                n_workers = len([w for w in worker_items['items'] if w['status']['phase'] == 'Running'])
+                if n_workers == 1:
+                    break
+                time.sleep(1)
+            self.assertEqual(n_workers, 1)
 
     @mock.patch('kubernetes.client.CoreV1Api.create_namespaced_replication_controller',
                 new=lambda *_, **__: None)

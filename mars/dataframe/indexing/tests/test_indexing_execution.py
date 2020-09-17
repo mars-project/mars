@@ -1081,3 +1081,54 @@ class Test(TestBase):
             result = self.executor.execute_dataframe(r, concat=True)[0]
             expected = s_data.reindex(['c2', 'c11', 'c4'], copy=False)
             pd.testing.assert_series_equal(result, expected)
+
+    def testWhereExecution(self):
+        dates = pd.date_range('1/1/2000', periods=20)
+
+        raw_df = pd.DataFrame(np.random.randn(20, 10), index=dates, columns=list('ABCDEFGHIJ'))
+        raw_df2 = pd.DataFrame(np.random.randn(20, 10), index=dates, columns=list('ABCDEFGHIJ'))
+        df = md.DataFrame(raw_df, chunk_size=6)
+        df2 = md.DataFrame(raw_df2, chunk_size=7)
+
+        raw_series = pd.Series(np.random.randn(20), index=dates)
+        raw_series2 = pd.Series(np.random.randn(20), index=dates)
+        raw_series3 = pd.Series(np.random.randn(10), index=dates[:10])
+        series = md.Series(raw_series, chunk_size=6)
+        series2 = md.Series(raw_series2, chunk_size=7)
+        series3 = md.Series(raw_series3, chunk_size=7)
+
+        # tests for dataframes
+        r = df.mask(df < 0)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.mask(raw_df < 0))
+        r = df.mask(raw_df < 0, df2)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.mask(raw_df < 0, raw_df2))
+
+        # tests for series
+        r = series.where(series < 0, 0)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw_series.where(raw_series < 0, 0))
+        r = series.where(series < 0, series2)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw_series.where(raw_series < 0, raw_series2))
+
+        # test for dataframe with series
+        with self.assertRaises(ValueError):
+            df.mask(df < 0, series)
+
+        r = df.mask(df < 0, series, axis=0)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.mask(raw_df < 0, raw_series, axis=0))
+        r = df.mask(series < 0, df2)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.mask(raw_series < 0, raw_df2))
+        r = df.mask(series < 0, series3, axis=1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.mask(raw_series < 0, raw_series3, axis=1))
+
+        # test inplace
+        new_df = df.copy()
+        new_df.mask(new_df < 0, inplace=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(new_df, concat=True)[0],
+                                      raw_df.mask(raw_df < 0))
