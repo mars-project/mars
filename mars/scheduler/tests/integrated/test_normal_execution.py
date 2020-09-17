@@ -386,6 +386,8 @@ class Test(SchedulerIntegratedTest):
                 print(fr.fetch_log())
 
             r = spawn(test_nested)
+            with self.assertRaises(ValueError):
+                r.fetch_log()
             r.execute(session=sess)
             log = str(r.fetch_log())
             self.assertIn('level0', log)
@@ -402,6 +404,7 @@ class Test(SchedulerIntegratedTest):
             log = df2.fetch_log()
             self.assertIn('Chunk op key:', str(log))
             self.assertIn('df func', repr(log))
+            self.assertEqual(len(str(df.fetch_log(session=sess))), 0)
 
     def testNoWorkerException(self):
         self.start_processes(etcd=False, n_workers=0)

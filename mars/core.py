@@ -389,19 +389,23 @@ class _ExecutableMixin:
 
         return session
 
-    def fetch(self, session=None, **kw):
-        session = self._get_session(session)
+    def _check_session(self, session, action):
         if session is None:
             if isinstance(self, tuple):
                 key = self[0].key
             else:
                 key = self.key
             raise ValueError(
-                f'Tileable object {key} must be executed first before being fetched')
+                f'Tileable object {key} must be executed first before {action}')
+
+    def fetch(self, session=None, **kw):
+        session = self._get_session(session)
+        self._check_session(session, 'fetch')
         return session.fetch(self, **kw)
 
     def fetch_log(self, session=None, offsets=None, sizes=None):
         session = self._get_session(session)
+        self._check_session(session, 'fetch_log')
         return session.fetch_log([self], offsets=offsets, sizes=sizes)[0]
 
     def _attach_session(self, session):

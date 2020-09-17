@@ -231,6 +231,35 @@ class GraphDataApiHandler(MarsApiRequestHandler):
         self.web_api.delete_data(session_id, graph_key, tileable_key, wait=wait)
 
 
+class OpLogHandler(MarsRequestHandler):
+    _executor = ThreadPoolExecutor(1)
+
+    @classmethod
+    def _extract_int_or_dict(cls, argument):
+        if not argument:
+            return
+        if ',' not in argument:
+            return int(argument)
+        else:
+            ret = dict()
+            for kv in argument.split(','):
+                k, v = kv.split('=', 1)
+                ret[k] = int(v)
+            return ret
+
+    @gen.coroutine
+    def get(self, session_id, op_key):
+        from ..context import DistributedContext
+
+        offsets = self._extract_int_or_dict(self.get_argument('offsets', None))
+        sizes = self._extract_int_or_dict(self.get_argument('sizes', None))
+
+        ctx = DistributedContext(self._scheduler, session_id, is_distributed=True)
+        log = ctx.fetch_tileable_op_logs(op_key, chunk_op_key_to_offsets=offsets,
+                                         chunk_op_key_to_sizes=sizes)
+        self.write(json.dumps(log))
+
+
 class WorkersApiHandler(MarsApiRequestHandler):
     _executor = ThreadPoolExecutor(1)
 
@@ -313,3 +342,4 @@ register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/
 register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tileable_key>[^/]+)',
                      GraphDataApiHandler)
 register_web_handler('/api/session/(?P<session_id>[^/]+)/mutable-tensor/(?P<name>[^/]+)', MutableTensorApiHandler)
+register_web_handler('/api/session/(?P<session_id>[^/]+)/op/(?P<op_key>[^/]+)/log', OpLogHandler)

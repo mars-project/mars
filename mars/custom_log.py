@@ -126,9 +126,9 @@ _tileable_to_log_fetcher = weakref.WeakKeyDictionary()
 
 
 class LogFetcher:
-    def __init__(self, tileable_op_key, context: DistributedContext):
+    def __init__(self, tileable_op_key, session):
         self._tileable_op_key = tileable_op_key
-        self._context = context
+        self._session = session
         self._chunk_op_key_to_result = dict()
         self._chunk_op_key_to_offsets = dict()
 
@@ -154,9 +154,11 @@ class LogFetcher:
         if sizes is None:
             sizes = 1 * 1024 ** 2  # 1M each time
 
-        result: dict = self._context.fetch_tileable_op_logs(
-            self._tileable_op_key, chunk_op_key_to_offsets=offsets,
-            chunk_op_key_to_sizes=sizes)
+        result: dict = self._session.fetch_tileable_op_logs(
+            self._tileable_op_key, offsets=offsets, sizes=sizes)
+
+        if result is None:
+            return
 
         for chunk_key, chunk_result in result.items():
             self._chunk_op_key_to_result[chunk_key] = chunk_result['log']
@@ -184,14 +186,13 @@ class LogFetcher:
         return self._display(False)
 
 
-def fetch(tileables, context: DistributedContext,
-          offsets=None, sizes=None):
+def fetch(tileables, session, offsets=None, sizes=None):
     log_fetchers = []
     for tileable in tileables:
         tileable = tileable.data if hasattr(tileable, 'data') else tileable
 
         if tileable not in _tileable_to_log_fetcher:
-            _tileable_to_log_fetcher[tileable] = LogFetcher(tileable.op.key, context)
+            _tileable_to_log_fetcher[tileable] = LogFetcher(tileable.op.key, session)
 
         log_fetcher = _tileable_to_log_fetcher[tileable]
         log_fetcher.fetch(offsets=offsets, sizes=sizes)

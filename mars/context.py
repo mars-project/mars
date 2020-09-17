@@ -20,7 +20,7 @@ import sys
 import threading
 from collections import namedtuple, defaultdict
 from enum import Enum
-from typing import List
+from typing import List, Dict, Optional
 
 import numpy as np
 
@@ -510,11 +510,14 @@ class DistributedContext(ContextBase):
 
     def fetch_tileable_op_logs(self, tileable_op_key,
                                chunk_op_key_to_offsets=None,
-                               chunk_op_key_to_sizes=None):
+                               chunk_op_key_to_sizes=None) -> Optional[Dict]:
         from .worker.dispatcher import DispatchActor
 
         chunk_op_key_to_paths = self._custom_log_meta.get_tileable_op_log_paths(
             self._session_id, tileable_op_key)
+
+        if chunk_op_key_to_paths is None:
+            return
 
         worker_to_kwds = dict()
         for chunk_op_key, path in chunk_op_key_to_paths.items():

@@ -383,11 +383,15 @@ class ClusterSession(object):
             tileable_results.append(sort_dataframe_result(tileable, result))
         return tileable_results
 
+    def fetch_tileable_op_logs(self, tileable_op_key, offsets=None, sizes=None):
+        return self._context.fetch_tileable_op_logs(
+            tileable_op_key, chunk_op_key_to_offsets=offsets,
+            chunk_op_key_to_sizes=sizes)
+
     def fetch_log(self, tileables, offsets=None, sizes=None):
         from .custom_log import fetch
 
-        return fetch(tileables, self._context,
-                     offsets=offsets, sizes=sizes)
+        return fetch(tileables, self, offsets=offsets, sizes=sizes)
 
     def decref(self, *keys):
         for tileable_key, tileable_id in keys:
