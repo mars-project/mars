@@ -74,6 +74,21 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
         return self._replace_true
 
     def __call__(self, df_or_series):
+        def _check_input_index(obj, axis=None):
+            axis = axis if axis is not None else self.axis
+            if isinstance(obj, DATAFRAME_TYPE) \
+                    and (
+                        df_or_series.columns_value.key != obj.columns_value.key
+                        or df_or_series.index_value.key != obj.index_value.key
+                    ):
+                raise NotImplementedError('Aligning different indices not supported')
+            elif isinstance(obj, SERIES_TYPE) \
+                    and df_or_series.axes[axis].index_value.key != obj.index_value.key:
+                raise NotImplementedError('Aligning different indices not supported')
+
+        _check_input_index(self.cond, axis=0)
+        _check_input_index(self.other)
+
         if isinstance(df_or_series, DATAFRAME_TYPE):
             mock_obj = build_df(df_or_series)
         else:

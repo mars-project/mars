@@ -1092,12 +1092,17 @@ class Test(TestBase):
 
         raw_series = pd.Series(np.random.randn(20), index=dates)
         raw_series2 = pd.Series(np.random.randn(20), index=dates)
-        raw_series3 = pd.Series(np.random.randn(10), index=dates[:10])
+        raw_series3 = pd.Series(np.random.randn(10), index=list('ABCDEFGHIJ'))
         series = md.Series(raw_series, chunk_size=6)
         series2 = md.Series(raw_series2, chunk_size=7)
         series3 = md.Series(raw_series3, chunk_size=7)
 
         # tests for dataframes
+        with self.assertRaises(NotImplementedError):
+            df.mask(df < 0, md.DataFrame(np.random.randn(5, 5)))
+        with self.assertRaises(NotImplementedError):
+            df.mask(series < 0, md.Series(np.random.randn(5)), axis=0)
+
         r = df.mask(df < 0)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw_df.mask(raw_df < 0))
@@ -1106,6 +1111,9 @@ class Test(TestBase):
                                       raw_df.mask(raw_df < 0, raw_df2))
 
         # tests for series
+        with self.assertRaises(NotImplementedError):
+            series.mask(series < 0, md.Series(np.random.randn(5)))
+
         r = series.where(series < 0, 0)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                        raw_series.where(raw_series < 0, 0))
