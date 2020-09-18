@@ -47,6 +47,8 @@ Indexing, iteration
    Series.iat
    Series.loc
    Series.iloc
+   Series.where
+   Series.mask
 
 Binary operator functions
 -------------------------

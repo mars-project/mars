@@ -15,6 +15,7 @@
 
 def _install():
     from pandas.util import cache_readonly
+    from ..operands import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
     from .at import at
     from .getitem import dataframe_getitem, series_getitem
     from .iat import iat
@@ -26,7 +27,7 @@ def _install():
     from .set_index import set_index
     from .setitem import dataframe_setitem
     from .reindex import reindex
-    from ..operands import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+    from .where import mask, where
 
     for cls in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(cls, 'iloc', cache_readonly(iloc))
@@ -36,6 +37,8 @@ def _install():
         setattr(cls, 'reindex', reindex)
         setattr(cls, 'head', head)
         setattr(cls, 'tail', tail)
+        setattr(cls, 'mask', mask)
+        setattr(cls, 'where', where)
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'set_index', set_index)
