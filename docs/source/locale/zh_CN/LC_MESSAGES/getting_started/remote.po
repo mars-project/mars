@@ -23,7 +23,7 @@ msgstr ""
 
 #: ../../source/getting_started/remote.rst:6
 msgid "New in version 0.4.1"
-msgstr ""
+msgstr "自 0.4.1 起支持"
 
 #: ../../source/getting_started/remote.rst:8
 msgid ""
