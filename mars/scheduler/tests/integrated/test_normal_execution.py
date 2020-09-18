@@ -379,6 +379,24 @@ class Test(SchedulerIntegratedTest):
             self.assertTrue(all(s > 0 for s in log[1].offsets))
             self.assertGreater(len(log[0].chunk_op_keys), 0)
 
+            # test negative offsets
+            log = fs.fetch_log(offsets=-20, sizes=10)
+            self.assertEqual(str(log[0]).strip(), ('f1' * 30 + '\n')[-20:-10])
+            self.assertEqual(str(log[1]).strip(), ('f1' * 40 + '\n')[-20:-10])
+            self.assertTrue(all(s > 0 for s in log[0].offsets))
+            self.assertGreater(len(log[1].offsets), 0)
+            self.assertTrue(all(s > 0 for s in log[1].offsets))
+            self.assertGreater(len(log[0].chunk_op_keys), 0)
+
+            # test negative offsets which represented in string
+            log = fs.fetch_log(offsets='-0.02K', sizes='0.01K')
+            self.assertEqual(str(log[0]).strip(), ('f1' * 30 + '\n')[-20:-10])
+            self.assertEqual(str(log[1]).strip(), ('f1' * 40 + '\n')[-20:-10])
+            self.assertTrue(all(s > 0 for s in log[0].offsets))
+            self.assertGreater(len(log[1].offsets), 0)
+            self.assertTrue(all(s > 0 for s in log[1].offsets))
+            self.assertGreater(len(log[0].chunk_op_keys), 0)
+
             def test_nested():
                 print('level0')
                 fr = spawn(f1, 1)

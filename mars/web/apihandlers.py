@@ -30,7 +30,7 @@ from ..actors import new_client
 from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import SerialType, CompressType
-from ..utils import to_str, tokenize, numpy_dtype_from_descr_json
+from ..utils import to_str, tokenize, numpy_dtype_from_descr_json, parse_readable_size
 from .server import MarsWebAPI, MarsRequestHandler, register_web_handler
 
 pickling_support.install()
@@ -239,7 +239,10 @@ class OpLogHandler(MarsRequestHandler):
         if not argument:
             return
         if ',' not in argument and '=' not in argument:
-            return int(argument)
+            try:
+                return int(argument)
+            except ValueError:
+                return int(parse_readable_size(argument)[0])
         else:
             ret = dict()
             for kv in argument.split(','):

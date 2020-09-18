@@ -247,6 +247,7 @@ class Test(unittest.TestCase):
             self.assertEqual(str(r.fetch_log()).strip(), 'test')
             self.assertEqual(str(r.fetch_log(offsets=0)).strip(), 'test')
             self.assertEqual(str(r.fetch_log()).strip(), '')
+            self.assertEqual(str(r.fetch_log(offsets='-0.003k', sizes=2)).strip(), 'st')
 
             graphs = sess.get_graph_states()
 

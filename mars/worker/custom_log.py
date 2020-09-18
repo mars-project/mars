@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from .utils import WorkerActor
 
 
@@ -35,6 +37,10 @@ class CustomLogFetchActor(WorkerActor):
             size = sizes[i]
 
             with self.ctx.fileobject(log_path, mode='r') as f:
+                if offset < 0:
+                    # process negative offset
+                    offset = max(os.path.getsize(log_path) + offset, 0)
+
                 if offset:
                     f.seek(offset)
 

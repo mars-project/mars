@@ -512,6 +512,7 @@ class DistributedContext(ContextBase):
                                chunk_op_key_to_offsets=None,
                                chunk_op_key_to_sizes=None) -> Optional[Dict]:
         from .worker.dispatcher import DispatchActor
+        from .utils import parse_readable_size
 
         chunk_op_key_to_paths = self._custom_log_meta.get_tileable_op_log_paths(
             self._session_id, tileable_op_key)
@@ -525,12 +526,16 @@ class DistributedContext(ContextBase):
 
             if isinstance(chunk_op_key_to_offsets, dict):
                 offset = chunk_op_key_to_offsets.get(chunk_op_key, 0)
+            elif isinstance(chunk_op_key_to_offsets, str):
+                offset = int(parse_readable_size(chunk_op_key_to_offsets)[0])
             elif isinstance(chunk_op_key_to_offsets, int):
                 offset = chunk_op_key_to_offsets
             else:
                 offset = 0
             if isinstance(chunk_op_key_to_sizes, dict):
                 size = chunk_op_key_to_sizes.get(chunk_op_key, -1)
+            elif isinstance(chunk_op_key_to_sizes, str):
+                size = int(parse_readable_size(chunk_op_key_to_sizes)[0])
             elif isinstance(chunk_op_key_to_sizes, int):
                 size = chunk_op_key_to_sizes
             else:
