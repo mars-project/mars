@@ -56,6 +56,8 @@ Indexing, iteration
    DataFrame.itertuples
    DataFrame.pop
    DataFrame.tail
+   DataFrame.where
+   DataFrame.mask
 
 Binary operator functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -744,6 +744,10 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
 
         return from_tileable(self)
 
+    @property
+    def axes(self):
+        return [self.index]
+
     def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_series
         return from_series(self, dtype=dtype)
@@ -1034,6 +1038,10 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
         from .datasource.index import from_pandas as from_pandas_index
 
         return from_pandas_index(self.dtypes.index)
+
+    @property
+    def axes(self):
+        return [self.index, self.columns]
 
 
 class DataFrameData(BaseDataFrameData):

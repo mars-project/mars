@@ -1,4 +1,4 @@
-mars.dataframe.Series
+﻿mars.dataframe.Series
 =====================
 
 .. currentmodule:: mars.dataframe
@@ -56,6 +56,7 @@ mars.dataframe.Series
       ~Series.lt
       ~Series.map
       ~Series.map_chunk
+      ~Series.mask
       ~Series.max
       ~Series.mean
       ~Series.memory_usage
@@ -107,6 +108,7 @@ mars.dataframe.Series
       ~Series.unique
       ~Series.value_counts
       ~Series.var
+      ~Series.where
    
    
 
