@@ -1,4 +1,4 @@
-mars.dataframe.DataFrame
+﻿mars.dataframe.DataFrame
 ========================
 
 .. currentmodule:: mars.dataframe
@@ -59,6 +59,7 @@ mars.dataframe.DataFrame
       ~DataFrame.le
       ~DataFrame.lt
       ~DataFrame.map_chunk
+      ~DataFrame.mask
       ~DataFrame.max
       ~DataFrame.mean
       ~DataFrame.melt
@@ -113,6 +114,7 @@ mars.dataframe.DataFrame
       ~DataFrame.truediv
       ~DataFrame.tshift
       ~DataFrame.var
+      ~DataFrame.where
    
    
 
