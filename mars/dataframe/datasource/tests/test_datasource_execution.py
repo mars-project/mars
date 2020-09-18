@@ -771,10 +771,10 @@ class Test(TestBase):
             df[100:200].to_parquet(file_paths[1], row_group_size=30)
             df[200:].to_parquet(file_paths[2])
 
-            mdf = md.read_parquet(f'{tempdir}/*.parquet', incremental_index=True)
+            mdf = md.read_parquet(f'{tempdir}/*.parquet')
             r = self.executor.execute_dataframe(mdf, concat=True)[0]
-            pd.testing.assert_frame_equal(df, r)
+            pd.testing.assert_frame_equal(df, r.sort_values('a').reset_index(drop=True))
 
             mdf = md.read_parquet(f'{tempdir}/*.parquet', groups_as_chunks=True)
             r = self.executor.execute_dataframe(mdf, concat=True)[0]
-            pd.testing.assert_frame_equal(df, r.reset_index(drop=True))
+            pd.testing.assert_frame_equal(df, r.sort_values('a').reset_index(drop=True))
