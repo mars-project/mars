@@ -27,7 +27,8 @@ from ...serialize import StringField, DictField, ListField, Int32Field, Int64Fie
 from ...filesystem import open_file, file_size, glob
 from ..arrays import ArrowStringDtype
 from ..core import IndexValue
-from ..utils import parse_index, build_empty_df, standardize_range_index, to_arrow_dtypes
+from ..utils import parse_index, build_empty_df, standardize_range_index, \
+    to_arrow_dtypes, contain_arrow_dtype
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 try:
@@ -264,7 +265,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 usecols = op.usecols if isinstance(op.usecols, list) else [op.usecols]
             else:
                 usecols = op.usecols
-            if cls._contains_arrow_dtype(dtypes):
+            if contain_arrow_dtype(dtypes):
                 # when keep_default_na is True which is default,
                 # will replace null value with np.nan,
                 # which will cause failure when converting to arrow string array
@@ -308,7 +309,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
                 dtypes = cls._validate_dtypes(op.outputs[0].dtypes, op.gpu)
-                if cls._contains_arrow_dtype(dtypes.values()):
+                if contain_arrow_dtype(dtypes.values()):
                     # when keep_default_na is True which is default,
                     # will replace null value with np.nan,
                     # which will cause failure when converting to arrow string array
