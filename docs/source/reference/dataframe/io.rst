@@ -12,6 +12,13 @@ Flat file
 
    read_csv
 
+Parquet
+~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   read_parquet
+
 SQL
 ~~~
 .. autosummary::

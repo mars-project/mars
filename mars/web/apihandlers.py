@@ -235,7 +235,7 @@ class OpLogHandler(MarsRequestHandler):
     _executor = ThreadPoolExecutor(1)
 
     @classmethod
-    def _extract_int_or_dict(cls, argument):
+    def _extract_size(cls, argument):
         if not argument:
             return
         if ',' not in argument and '=' not in argument:
@@ -252,15 +252,19 @@ class OpLogHandler(MarsRequestHandler):
 
     @gen.coroutine
     def get(self, session_id, op_key):
-        from ..context import DistributedContext
+        def _fetch_log():
+            from ..context import DistributedContext
 
-        offsets = self._extract_int_or_dict(self.get_argument('offsets', None))
-        sizes = self._extract_int_or_dict(self.get_argument('sizes', None))
+            offsets = self._extract_size(self.get_argument('offsets', None))
+            sizes = self._extract_size(self.get_argument('sizes', None))
 
-        ctx = DistributedContext(self._scheduler, session_id, is_distributed=True)
-        log = ctx.fetch_tileable_op_logs(op_key, chunk_op_key_to_offsets=offsets,
-                                         chunk_op_key_to_sizes=sizes)
-        self.write(json.dumps(log))
+            ctx = DistributedContext(self._scheduler, session_id, is_distributed=True)
+            log = ctx.fetch_tileable_op_logs(op_key, chunk_op_key_to_offsets=offsets,
+                                             chunk_op_key_to_sizes=sizes)
+            return log
+
+        log_result = yield self._executor.submit(_fetch_log)
+        self.write(json.dumps(log_result))
 
 
 class WorkersApiHandler(MarsApiRequestHandler):
