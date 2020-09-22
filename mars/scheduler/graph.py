@@ -1144,6 +1144,9 @@ class GraphActor(SchedulerActor):
         for chunk in tileable.chunks:
             if skip_chunk_keys is not None and chunk.key in skip_chunk_keys:
                 continue
+            if isinstance(chunk.op, Fetch):
+                # skip fetch op
+                continue
             futures.append(self._get_operand_ref(chunk.op.key).free_data(
                 check=False, _tell=not wait, _wait=False))
         logger.debug('Free tileable data: %s, chunk keys: %r',

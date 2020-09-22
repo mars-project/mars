@@ -25,6 +25,7 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...context import get_context, RunningMode
 from ...core import Base, Entity, OutputType
+from ...custom_log import redirect_custom_log
 from ...operands import OperandStage
 from ...serialize import ValueType, AnyField, StringField, ListField, DictField
 from ...utils import enter_current_session
@@ -60,13 +61,16 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     _agg_columns = ListField('agg_columns', ValueType.string)
     # store output columns -> function to apply on DataFrameGroupBy
     _output_column_to_func = DictField('output_column_to_func')
+    # for chunk
+    _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, func=None, method=None, groupby_params=None, raw_func=None,
                  agg_columns=None, output_column_to_func=None, stage=None,
-                 output_types=None, **kw):
+                 output_types=None, tileable_op_key=None, **kw):
         super().__init__(_func=func, _method=method, _groupby_params=groupby_params,
                          _agg_columns=agg_columns, _output_column_to_func=output_column_to_func,
-                         _raw_func=raw_func, _stage=stage, _output_types=output_types, **kw)
+                         _raw_func=raw_func, _stage=stage, _output_types=output_types,
+                         _tileable_op_key=tileable_op_key, **kw)
 
     @property
     def func(self):
@@ -91,6 +95,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @property
     def output_column_to_func(self):
         return self._output_column_to_func
+
+    @property
+    def tileable_op_key(self):
+        return self._tileable_op_key
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -375,6 +383,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         agg_chunks = []
         for chunk in reduce_chunks:
             agg_op = op.copy().reset_key()
+            agg_op._tileable_op_key = op.key
             agg_op._groupby_params = agg_op.groupby_params.copy()
             agg_op._groupby_params.pop('selection', None)
             # use levels instead of by for reducer
@@ -429,6 +438,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                         c._index = (j, 0)
                     chk = concat_op.new_chunk(chks, dtypes=chks[0].dtypes)
                 chunk_op = op.copy().reset_key()
+                chunk_op._tileable_op_key = None
                 chunk_op.output_types = [OutputType.dataframe]
                 chunk_op._stage = OperandStage.combine
                 chunk_op._groupby_params = chunk_op.groupby_params.copy()
@@ -450,6 +460,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         concat_op = DataFrameConcat(output_types=[OutputType.dataframe])
         chk = concat_op.new_chunk(chunks, dtypes=chunks[0].dtypes)
         chunk_op = op.copy().reset_key()
+        chunk_op._tileable_op_key = op.key
         chunk_op._stage = OperandStage.agg
         chunk_op._groupby_params = chunk_op.groupby_params.copy()
         chunk_op._groupby_params.pop('selection', None)
@@ -529,6 +540,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return func in {'min', 'max', 'prod', 'sum', 'count', 'size'}
 
     @classmethod
+    @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
         df = ctx[op.inputs[0].key]

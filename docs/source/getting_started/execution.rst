@@ -39,3 +39,22 @@ intermediately.
 - All plot functions for DataFrame and Series, including :meth:`mars.dataframe.DataFrame.plot`,
   :meth:`mars.dataframe.DataFrame.plot.bar` and so forth.
 - All functions in Mars learn like ``fit``, ``predict`` and so forth.
+
+
+.. _async_execute:
+
+Asynchronous Execution
+======================
+
+Specifying ``wait=False`` can make the execution asynchronous, it will return a
+`Future object <https://docs.python.org/3/library/concurrent.futures.html#future-objects>`_.
+
+.. code-block:: python
+
+  >>> import mars.tensor as mt
+  >>> a = mt.random.rand(100, 10)
+  >>> future = a.mean().execute(wait=False)
+  >>> future.done()
+  True
+  >>> future.result()
+  0.49123541512823077

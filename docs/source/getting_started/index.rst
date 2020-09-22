@@ -40,6 +40,7 @@ every time when each tensor, DataFrame, and so forth is created.
    execution
    eager
    session
+   log
 
 Mars can :ref:`leverage NVIDIA GPU <gpu>` to accelerate computation.
 

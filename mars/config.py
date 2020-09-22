@@ -21,6 +21,7 @@ import os
 import warnings
 import threading
 from copy import deepcopy
+from typing import Union, Dict
 
 
 _DEFAULT_REDIRECT_WARN = 'Option {source} has been replaced by {target} and might be removed in a future release.'
@@ -214,6 +215,15 @@ class Config(object):
         new_options = Config(deepcopy(self._config))
         return new_options
 
+    def update(self, new_config: Union["Config", Dict]):
+        if not isinstance(new_config, dict):
+            new_config = new_config._config
+        for option, value in new_config.items():
+            try:
+                self.register_option(option, value)
+            except AttributeError:
+                setattr(self, option, value)
+
     def get_serializable(self):
         d = dict()
         for k in self._serialize_options:
@@ -240,11 +250,7 @@ def option_context(config=None):
     try:
         config = config or dict()
         local_options = Config(deepcopy(global_options._config))
-        for option, value in config.items():
-            try:
-                local_options.register_option(option, value)
-            except AttributeError:
-                setattr(local_options, option, value)
+        local_options.update(config)
         _options_local.default_options = local_options
         yield local_options
     finally:
@@ -375,6 +381,9 @@ default_options.register_option('eager_mode', False, validator=is_bool)
 
 # client serialize type
 default_options.register_option('client.serial_type', 'arrow', validator=is_string)
+
+# custom log dir
+default_options.register_option('custom_log_dir', None, validator=any_validator(is_null, is_string))
 
 # vineyard
 default_options.register_option('vineyard.socket', None)
