@@ -17,6 +17,7 @@ import logging
 import operator
 import os
 import sys
+import tempfile
 import time
 import unittest
 from functools import reduce
@@ -27,11 +28,12 @@ import pandas as pd
 import mars.dataframe as md
 import mars.tensor as mt
 from mars.errors import ExecutionFailed
+from mars.scheduler.custom_log import CustomLogMetaActor
 from mars.scheduler.resource import ResourceActor
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 from mars.scheduler.tests.integrated.no_prepare_op import NoPrepareOperand
 from mars.session import new_session
-from mars.remote import spawn
+from mars.remote import spawn, ExecutableTuple
 from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf
 from mars.context import DistributedContext
 
@@ -326,6 +328,101 @@ class Test(SchedulerIntegratedTest):
         for worker_ip in worker_ips:
             ref = sess._api.actor_client.actor_ref(DispatchActor.default_uid(), address=worker_ip)
             self.assertEqual(len(ref.get_slots('cpu')), 1)
+
+    def testFetchLogWithoutEtcd(self):
+        # test fetch log
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.start_processes(etcd=False, modules=['mars.scheduler.tests.integrated.no_prepare_op'],
+                                 scheduler_args=[f'-Dcustom_log_dir={temp_dir}'])
+            sess = new_session(self.session_manager_ref.address)
+
+            def f():
+                print('test')
+
+            r = spawn(f)
+            r.execute(session=sess)
+
+            custom_log_actor = sess._api.actor_client.actor_ref(
+                CustomLogMetaActor.default_uid(),
+                address=self.cluster_info.get_scheduler(CustomLogMetaActor.default_uid())
+            )
+
+            chunk_key_to_log_path = custom_log_actor.get_tileable_op_log_paths(
+                sess.session_id, r.op.key)
+            paths = list(chunk_key_to_log_path.values())
+            self.assertEqual(len(paths), 1)
+            log_path = paths[0][1]
+            with open(log_path) as f:
+                self.assertEqual(f.read().strip(), 'test')
+
+            context = DistributedContext(scheduler_address=self.session_manager_ref.address,
+                                         session_id=sess.session_id)
+            log_result = context.fetch_tileable_op_logs(r.op.key)
+            log = next(iter(log_result.values()))['log']
+            self.assertEqual(log.strip(), 'test')
+
+            log = r.fetch_log()
+            self.assertEqual(str(log).strip(), 'test')
+
+            # test multiple functions
+            def f1(size):
+                print('f1' * size)
+
+            fs = ExecutableTuple([spawn(f1, 30), spawn(f1, 40)])
+            fs.execute(session=sess)
+            log = fs.fetch_log(offsets=20, sizes=10)
+            self.assertEqual(str(log[0]).strip(), ('f1' * 30)[20:30])
+            self.assertEqual(str(log[1]).strip(), ('f1' * 40)[20:30])
+            self.assertGreater(len(log[0].offsets), 0)
+            self.assertTrue(all(s > 0 for s in log[0].offsets))
+            self.assertGreater(len(log[1].offsets), 0)
+            self.assertTrue(all(s > 0 for s in log[1].offsets))
+            self.assertGreater(len(log[0].chunk_op_keys), 0)
+
+            # test negative offsets
+            log = fs.fetch_log(offsets=-20, sizes=10)
+            self.assertEqual(str(log[0]).strip(), ('f1' * 30 + '\n')[-20:-10])
+            self.assertEqual(str(log[1]).strip(), ('f1' * 40 + '\n')[-20:-10])
+            self.assertTrue(all(s > 0 for s in log[0].offsets))
+            self.assertGreater(len(log[1].offsets), 0)
+            self.assertTrue(all(s > 0 for s in log[1].offsets))
+            self.assertGreater(len(log[0].chunk_op_keys), 0)
+
+            # test negative offsets which represented in string
+            log = fs.fetch_log(offsets='-0.02K', sizes='0.01K')
+            self.assertEqual(str(log[0]).strip(), ('f1' * 30 + '\n')[-20:-10])
+            self.assertEqual(str(log[1]).strip(), ('f1' * 40 + '\n')[-20:-10])
+            self.assertTrue(all(s > 0 for s in log[0].offsets))
+            self.assertGreater(len(log[1].offsets), 0)
+            self.assertTrue(all(s > 0 for s in log[1].offsets))
+            self.assertGreater(len(log[0].chunk_op_keys), 0)
+
+            def test_nested():
+                print('level0')
+                fr = spawn(f1, 1)
+                fr.execute()
+                print(fr.fetch_log())
+
+            r = spawn(test_nested)
+            with self.assertRaises(ValueError):
+                r.fetch_log()
+            r.execute(session=sess)
+            log = str(r.fetch_log())
+            self.assertIn('level0', log)
+            self.assertIn('f1', log)
+
+            df = md.DataFrame(mt.random.rand(10, 3), chunk_size=5)
+
+            def df_func(c):
+                print('df func')
+                return c
+
+            df2 = df.map_chunk(df_func)
+            df2.execute(session=sess)
+            log = df2.fetch_log()
+            self.assertIn('Chunk op key:', str(log))
+            self.assertIn('df func', repr(log))
+            self.assertEqual(len(str(df.fetch_log(session=sess))), 0)
 
     def testNoWorkerException(self):
         self.start_processes(etcd=False, n_workers=0)

@@ -123,6 +123,9 @@ class LocalSession(object):
             kw['n_parallel'] = cpu_count()
         return self._executor.fetch_tileables(tileables, **kw)
 
+    def fetch_log(self, tileables, offsets=None, sizes=None):  # pragma: no cover
+        raise NotImplementedError('`fetch_log` is not implemented for local executor')
+
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
         from .tensor.core import MutableTensor, MutableTensorData
         if name in self._mut_tensor:
@@ -378,6 +381,16 @@ class ClusterSession(object):
                                               index_obj=indexes, compressions=compressions)
             tileable_results.append(sort_dataframe_result(tileable, result))
         return tileable_results
+
+    def fetch_tileable_op_logs(self, tileable_op_key, offsets=None, sizes=None):
+        return self._context.fetch_tileable_op_logs(
+            tileable_op_key, chunk_op_key_to_offsets=offsets,
+            chunk_op_key_to_sizes=sizes)
+
+    def fetch_log(self, tileables, offsets=None, sizes=None):
+        from .custom_log import fetch
+
+        return fetch(tileables, self, offsets=offsets, sizes=sizes)
 
     def decref(self, *keys):
         for tileable_key, tileable_id in keys:

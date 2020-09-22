@@ -1,0 +1,193 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.6.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-09-17 17:19+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/learn/generated/mars.learn.cluster.k_means.rst:2
+msgid "mars.learn.cluster.k\\_means"
+msgstr ""
+
+#: mars.learn.cluster.k_means:1 of
+msgid "K-means clustering algorithm."
+msgstr ""
+
+#: mars.learn.cluster.k_means of
+msgid "Parameters"
+msgstr ""
+
+#: mars.learn.cluster.k_means:3 of
+msgid ""
+"The observations to cluster. It must be noted that the data will be "
+"converted to C ordering, which will cause a memory copy if the given data"
+" is not C-contiguous."
+msgstr ""
+
+#: mars.learn.cluster.k_means:7 of
+msgid ""
+"The number of clusters to form as well as the number of centroids to "
+"generate."
+msgstr ""
+
+#: mars.learn.cluster.k_means:10 of
+msgid ""
+"The weights for each observation in X. If None, all observations are "
+"assigned equal weight (default: None)"
+msgstr ""
+
+#: mars.learn.cluster.k_means:13 of
+msgid ""
+"Method for initialization, default to 'k-means||':  'k-means++' : selects"
+" initial cluster centers for k-mean clustering in a smart way to speed up"
+" convergence. See section Notes in k_init for more details.  'k-means||':"
+" scalable k-means++.  'random': choose k observations (rows) at random "
+"from data for the initial centroids.  If an ndarray is passed, it should "
+"be of shape (n_clusters, n_features) and gives the initial centers.  If a"
+" callable is passed, it should take arguments X, k and and a random state"
+" and return an initialization."
+msgstr ""
+
+#: mars.learn.cluster.k_means:13 of
+msgid "Method for initialization, default to 'k-means||':"
+msgstr ""
+
+#: mars.learn.cluster.k_means:15 of
+msgid ""
+"'k-means++' : selects initial cluster centers for k-mean clustering in a "
+"smart way to speed up convergence. See section Notes in k_init for more "
+"details."
+msgstr ""
+
+#: mars.learn.cluster.k_means:19 of
+msgid "'k-means||': scalable k-means++."
+msgstr ""
+
+#: mars.learn.cluster.k_means:21 of
+msgid ""
+"'random': choose k observations (rows) at random from data for the "
+"initial centroids."
+msgstr ""
+
+#: mars.learn.cluster.k_means:24 of
+msgid ""
+"If an ndarray is passed, it should be of shape (n_clusters, n_features) "
+"and gives the initial centers."
+msgstr ""
+
+#: mars.learn.cluster.k_means:27 of
+msgid ""
+"If a callable is passed, it should take arguments X, k and and a random "
+"state and return an initialization."
+msgstr ""
+
+#: mars.learn.cluster.k_means:30 of
+msgid ""
+"Number of time the k-means algorithm will be run with different centroid "
+"seeds. The final results will be the best output of n_init consecutive "
+"runs in terms of inertia."
+msgstr ""
+
+#: mars.learn.cluster.k_means:34 of
+msgid "Maximum number of iterations of the k-means algorithm to run."
+msgstr ""
+
+#: mars.learn.cluster.k_means:36 of
+msgid "Verbosity mode."
+msgstr ""
+
+#: mars.learn.cluster.k_means:38 of
+msgid "The relative increment in the results before declaring convergence."
+msgstr ""
+
+#: mars.learn.cluster.k_means:40 of
+msgid ""
+"Determines random number generation for centroid initialization. Use an "
+"int to make the randomness deterministic. See :term:`Glossary "
+"<random_state>`."
+msgstr ""
+
+#: mars.learn.cluster.k_means:44 of
+msgid ""
+"When pre-computing distances it is more numerically accurate to center "
+"the data first.  If copy_x is True (default), then the original data is "
+"not modified, ensuring X is C-contiguous.  If False, the original data is"
+" modified, and put back before the function returns, but small numerical "
+"differences may be introduced by subtracting and then adding the data "
+"mean, in this case it will also not ensure that data is C-contiguous "
+"which may cause a significant slowdown."
+msgstr ""
+
+#: mars.learn.cluster.k_means:52 of
+msgid ""
+"K-means algorithm to use. The classical EM-style algorithm is \"full\". "
+"The \"elkan\" variation is more efficient by using the triangle "
+"inequality, but currently doesn't support sparse data. \"auto\" chooses "
+"\"elkan\" for dense data and \"full\" for sparse data."
+msgstr ""
+
+#: mars.learn.cluster.k_means:57 of
+msgid "Only work for kmeans||, used in each iteration in kmeans||."
+msgstr ""
+
+#: mars.learn.cluster.k_means:59 of
+msgid "Only work for kmeans||, indicates how may iterations required."
+msgstr ""
+
+#: mars.learn.cluster.k_means:61 of
+msgid "Whether or not to return the number of iterations."
+msgstr ""
+
+#: mars.learn.cluster.k_means of
+msgid "Returns"
+msgstr ""
+
+#: mars.learn.cluster.k_means:64 of
+msgid ""
+"* **centroid** (*float ndarray with shape (k, n_features)*) -- Centroids "
+"found at the last iteration of k-means. * **label** (*integer ndarray "
+"with shape (n_samples,)*) -- label[i] is the code or index of the "
+"centroid the   i'th observation is closest to. * **inertia** (*float*) --"
+" The final value of the inertia criterion (sum of squared distances to   "
+"the closest centroid for all observations in the training set). * "
+"**best_n_iter** (*int*) -- Number of iterations corresponding to the best"
+" results.   Returned only if `return_n_iter` is set to True."
+msgstr ""
+
+#: mars.learn.cluster.k_means:64 of
+msgid ""
+"**centroid** (*float ndarray with shape (k, n_features)*) -- Centroids "
+"found at the last iteration of k-means."
+msgstr ""
+
+#: mars.learn.cluster.k_means:65 of
+msgid ""
+"**label** (*integer ndarray with shape (n_samples,)*) -- label[i] is the "
+"code or index of the centroid the i'th observation is closest to."
+msgstr ""
+
+#: mars.learn.cluster.k_means:67 of
+msgid ""
+"**inertia** (*float*) -- The final value of the inertia criterion (sum of"
+" squared distances to the closest centroid for all observations in the "
+"training set)."
+msgstr ""
+
+#: mars.learn.cluster.k_means:69 of
+msgid ""
+"**best_n_iter** (*int*) -- Number of iterations corresponding to the best"
+" results. Returned only if `return_n_iter` is set to True."
+msgstr ""
+

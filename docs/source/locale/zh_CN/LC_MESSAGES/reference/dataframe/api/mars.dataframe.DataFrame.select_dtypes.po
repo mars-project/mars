@@ -1,0 +1,123 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.6.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-09-17 17:19+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/reference/dataframe/api/mars.dataframe.DataFrame.select_dtypes.rst:2
+msgid "mars.dataframe.DataFrame.select\\_dtypes"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:1 of
+msgid "Return a subset of the DataFrame's columns based on the column dtypes."
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes of
+msgid "Parameters"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:3 of
+msgid ""
+"A selection of dtypes or strings to be included/excluded. At least one of"
+" these parameters must be supplied."
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes of
+msgid "Returns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:7 of
+msgid ""
+"The subset of the frame including the dtypes in ``include`` and excluding"
+" the dtypes in ``exclude``."
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes of
+msgid "Return type"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes of
+msgid "Raises"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:11 of
+msgid ""
+"* If both of ``include`` and ``exclude`` are empty     * If ``include`` "
+"and ``exclude`` have overlapping elements     * If any kind of string "
+"dtype is passed in."
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:11 of
+msgid ""
+"If both of ``include`` and ``exclude`` are empty     * If ``include`` and"
+" ``exclude`` have overlapping elements     * If any kind of string dtype "
+"is passed in."
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:15 of
+msgid ":meth:`DataFrame.dtypes`"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:16 of
+msgid "Return Series with the data type of each column."
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:19 of
+msgid "Notes"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:20 of
+msgid "To select all *numeric* types, use ``np.number`` or ``'number'``"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:21 of
+msgid ""
+"To select strings you must use the ``object`` dtype, but note that this "
+"will return *all* object dtype columns"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:23 of
+msgid ""
+"See the `numpy dtype hierarchy "
+"<https://numpy.org/doc/stable/reference/arrays.scalars.html>`__"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:25 of
+msgid ""
+"To select datetimes, use ``np.datetime64``, ``'datetime'`` or "
+"``'datetime64'``"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:27 of
+msgid ""
+"To select timedeltas, use ``np.timedelta64``, ``'timedelta'`` or "
+"``'timedelta64'``"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:29 of
+msgid "To select Pandas categorical dtypes, use ``'category'``"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:30 of
+msgid ""
+"To select Pandas datetimetz dtypes, use ``'datetimetz'`` (new in 0.20.0) "
+"or ``'datetime64[ns, tz]'``"
+msgstr ""
+
+#: mars.dataframe.DataFrame.select_dtypes:34 of
+msgid "Examples"
+msgstr ""
+
