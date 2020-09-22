@@ -530,7 +530,7 @@ class Session(object):
 
         ret = []
         for r, t in zip(result, tileables):
-            if hasattr(t, 'isscalar') and t.isscalar() and hasattr(r, 'item'):
+            if hasattr(t, 'isscalar') and t.isscalar() and getattr(r, 'size', None) == 1:
                 ret.append(r.item())
             else:
                 ret.append(r)
