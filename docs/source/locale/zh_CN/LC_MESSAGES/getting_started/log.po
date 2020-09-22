@@ -1,0 +1,61 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.6.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-09-17 17:19+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/getting_started/log.rst:4
+msgid "Retrieving Log"
+msgstr "获取日志"
+
+#: ../../source/getting_started/log.rst:7
+msgid "New in version 0.5.2, only available for distributed scheduler."
+msgstr "自 0.5.2 支持，仅支持分布式环境使用。"
+
+#: ../../source/getting_started/log.rst:9
+msgid ""
+"For a distributed setting, the log output in custom functions, for "
+"instance, submitted via ``mars.remote.spawn``, will not reveal on client,"
+" Users may have to login to the workers to see the log. Hence, "
+"``fetch_log`` API is used to retrieve the log to client for display "
+"purpose."
+msgstr ""
+"对于分布式环境，自定义函数的输出（如通过 ``mr.remote.spawn`` 提交），"
+"不会在客户端显示。因此，``fetch_log`` 接口可以用来在客户端显示日志。"
+
+#: ../../source/getting_started/log.rst:14
+msgid "For example, we define a function called ``calculate``."
+msgstr "举个例子，我们定义了一个 ``calculate`` 函数。"
+
+#: ../../source/getting_started/log.rst:30
+msgid ""
+"Then we trigger the execution, we can see that no output can be revealed "
+"just like expected."
+msgstr ""
+"然后触发执行，正如所料，没有任何日志输出。"
+
+#: ../../source/getting_started/log.rst:40
+msgid "You can use ``r.fetch_log()`` to retrieve the output."
+msgstr "调用 ``r.fetch_log()`` 来获取日志。"
+
+#: ../../source/getting_started/log.rst:70
+msgid ""
+"Combining :ref:`asynchronous execution <async_execute>` with "
+"``fetch_log``, it's able to retrieve log continuously during running."
+msgstr ""
+"结合 :ref:`异步执行 <async_execute>` 和 ``fetch_log``，"
+"我们可以一边运行一边拉取日志。"
+

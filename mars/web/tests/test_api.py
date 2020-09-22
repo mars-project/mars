@@ -32,6 +32,7 @@ import requests
 
 import mars.dataframe as md
 import mars.tensor as mt
+import mars.remote as mr
 from mars.actors import new_client
 from mars.actors.errors import ActorNotExist
 from mars.config import options
@@ -237,6 +238,16 @@ class Test(unittest.TestCase):
             c = a.dot(b)
             value = sess.run(c, timeout=timeout)
             np.testing.assert_array_equal(value, va.dot(vb))
+
+            # test fetch log
+            def f():
+                print('test')
+
+            r = mr.spawn(f).execute(session=sess, timeout=timeout)
+            self.assertEqual(str(r.fetch_log()).strip(), 'test')
+            self.assertEqual(str(r.fetch_log(offsets=0)).strip(), 'test')
+            self.assertEqual(str(r.fetch_log()).strip(), '')
+            self.assertEqual(str(r.fetch_log(offsets='-0.003k', sizes=2)).strip(), 'st')
 
             graphs = sess.get_graph_states()
 

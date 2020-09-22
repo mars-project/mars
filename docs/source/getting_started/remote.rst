@@ -3,6 +3,8 @@
 Mars Remote
 ===========
 
+.. Note:: New in version 0.4.1
+
 Mars remote provides a simple but powerful way to execute Python functions in
 parallel.
 

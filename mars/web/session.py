@@ -278,6 +278,31 @@ class Session(object):
             results.append(sort_dataframe_result(tileable, result_data))
         return results
 
+    @classmethod
+    def _process_int_or_dict_argument(cls, argument, name, params):
+        if argument is None:
+            return
+        if not isinstance(argument, dict):
+            params[name] = argument
+        else:
+            params[name] = ','.join(f'{k}={v}' for k, v in argument.items())
+
+    def fetch_tileable_op_logs(self, tileable_op_key, offsets=None, sizes=None):
+        url = f'{self._endpoint}/api/session/{self._session_id}/op/{tileable_op_key}/log'
+        params = dict()
+        self._process_int_or_dict_argument(offsets, 'offsets', params)
+        self._process_int_or_dict_argument(sizes, 'sizes', params)
+        resp = self._req_session.get(url, params=params)
+        if resp.status_code >= 400:
+            raise ValueError(f'Failed to fetch log from server. Code: {resp.status_code}, '
+                             f'Reason: {resp.reason}, Content:\n{resp.text}')
+        return json.loads(resp.content)
+
+    def fetch_log(self, tileables, offsets=None, sizes=None):
+        from ..custom_log import fetch
+
+        return fetch(tileables, self, offsets=offsets, sizes=sizes)
+
     def get_named_tileable_infos(self, name):
         from ..context import TileableInfos
 

@@ -30,7 +30,7 @@ from ..actors import new_client
 from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import SerialType, CompressType
-from ..utils import to_str, tokenize, numpy_dtype_from_descr_json
+from ..utils import to_str, tokenize, numpy_dtype_from_descr_json, parse_readable_size
 from .server import MarsWebAPI, MarsRequestHandler, register_web_handler
 
 pickling_support.install()
@@ -231,6 +231,42 @@ class GraphDataApiHandler(MarsApiRequestHandler):
         self.web_api.delete_data(session_id, graph_key, tileable_key, wait=wait)
 
 
+class OpLogHandler(MarsRequestHandler):
+    _executor = ThreadPoolExecutor(1)
+
+    @classmethod
+    def _extract_size(cls, argument):
+        if not argument:
+            return
+        if ',' not in argument and '=' not in argument:
+            try:
+                return int(argument)
+            except ValueError:
+                return int(parse_readable_size(argument)[0])
+        else:
+            ret = dict()
+            for kv in argument.split(','):
+                k, v = kv.split('=', 1)
+                ret[k] = int(v)
+            return ret
+
+    @gen.coroutine
+    def get(self, session_id, op_key):
+        def _fetch_log():
+            from ..context import DistributedContext
+
+            offsets = self._extract_size(self.get_argument('offsets', None))
+            sizes = self._extract_size(self.get_argument('sizes', None))
+
+            ctx = DistributedContext(self._scheduler, session_id, is_distributed=True)
+            log = ctx.fetch_tileable_op_logs(op_key, chunk_op_key_to_offsets=offsets,
+                                             chunk_op_key_to_sizes=sizes)
+            return log
+
+        log_result = yield self._executor.submit(_fetch_log)
+        self.write(json.dumps(log_result))
+
+
 class WorkersApiHandler(MarsApiRequestHandler):
     _executor = ThreadPoolExecutor(1)
 
@@ -313,3 +349,4 @@ register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/
 register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tileable_key>[^/]+)',
                      GraphDataApiHandler)
 register_web_handler('/api/session/(?P<session_id>[^/]+)/mutable-tensor/(?P<name>[^/]+)', MutableTensorApiHandler)
+register_web_handler('/api/session/(?P<session_id>[^/]+)/op/(?P<op_key>[^/]+)/log', OpLogHandler)

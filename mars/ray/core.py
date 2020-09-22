@@ -220,6 +220,9 @@ class RaySession:
     def fetch(self, *tileables, **kw):
         return self._executor.fetch_tileables(tileables, **kw)
 
+    def fetch_log(self, tileables, offsets=None, sizes=None):  # pragma: no cover
+        raise NotImplementedError('`fetch_log` is not implemented for ray executor')
+
     def run(self, *tileables, **kw):
         """
         Parallelism equals to Ray cluster CPUs.

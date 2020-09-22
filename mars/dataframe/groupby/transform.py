@@ -17,7 +17,8 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType
-from ...serialize import BoolField, TupleField, DictField, AnyField
+from ...custom_log import redirect_custom_log
+from ...serialize import BoolField, TupleField, DictField, AnyField, StringField
 from ...utils import enter_current_session
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_empty_df, build_empty_series, parse_index
@@ -33,9 +34,13 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
 
     _call_agg = BoolField('call_agg')
 
-    def __init__(self, func=None, args=None, kwds=None, call_agg=None, output_types=None, **kw):
+    # for chunk
+    _tileable_op_key = StringField('tileable_op_key')
+
+    def __init__(self, func=None, args=None, kwds=None, call_agg=None, output_types=None,
+                 tileable_op_key=None, **kw):
         super().__init__(_func=func, _args=args, _kwds=kwds, _call_agg=call_agg,
-                         _output_types=output_types, **kw)
+                         _output_types=output_types, _tileable_op_key=tileable_op_key, **kw)
 
     @property
     def func(self):
@@ -52,6 +57,10 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
     @property
     def call_agg(self):
         return self._call_agg
+
+    @property
+    def tileable_op_key(self):
+        return self._tileable_op_key
 
     def _infer_df_func_returns(self, in_groupby, dtypes, index):
         index_value, output_types, new_dtypes = None, None, None
@@ -114,6 +123,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
             inp_chunks = [c]
 
             new_op = op.copy().reset_key()
+            new_op._tileable_op_key = op.key
             if op.output_types[0] == OutputType.dataframe:
                 new_index = c.index if c.ndim == 2 else c.index + (0,)
                 chunks.append(new_op.new_chunk(
@@ -124,7 +134,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
                     inp_chunks, name=out_df.name, index=(c.index[0],), shape=(np.nan,), dtype=out_df.dtype,
                     index_value=out_df.index_value))
 
-        new_op = op.copy().reset_key()
+        new_op = op.copy()
         kw = out_df.params.copy()
         kw['chunks'] = chunks
         if op.output_types[0] == OutputType.dataframe:
@@ -134,6 +144,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables([in_groupby], **kw)
 
     @classmethod
+    @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]

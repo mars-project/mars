@@ -18,13 +18,14 @@ from functools import partial
 import numpy as np
 
 from .. import opcodes
-from ..utils import calc_nsplits, enter_current_session
 from ..core import Entity, Base, ChunkData
-from ..serialize import FunctionField, ListField, DictField, BoolField, Int32Field
+from ..custom_log import redirect_custom_log
+from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+from ..serialize import FunctionField, ListField, DictField, \
+    BoolField, Int32Field, StringField
 from ..operands import ObjectOperand
 from ..tensor.core import TENSOR_TYPE
-from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
-from ..utils import build_fetch_tileable
+from ..utils import build_fetch_tileable, calc_nsplits, enter_current_session
 from .operands import RemoteOperandMixin
 from .utils import replace_inputs, find_objects
 
@@ -71,14 +72,16 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     _function_kwargs = DictField('function_kwargs')
     _retry_when_fail = BoolField('retry_when_fail')
     _n_output = Int32Field('n_output')
+    # for chunk
+    _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, function=None, function_args=None,
                  function_kwargs=None, retry_when_fail=None,
-                 n_output=None, **kw):
+                 n_output=None, tileable_op_key=None, **kw):
         super().__init__(_function=function, _function_args=function_args,
                          _function_kwargs=function_kwargs,
                          _retry_when_fail=retry_when_fail,
-                         _n_output=n_output, **kw)
+                         _n_output=n_output, _tileable_op_key=tileable_op_key, **kw)
 
     @property
     def function(self):
@@ -99,6 +102,10 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     @property
     def n_output(self):
         return self._n_output
+
+    @property
+    def tileable_op_key(self):
+        return self._tileable_op_key
 
     @property
     def output_limit(self):
@@ -159,6 +166,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
                 prepare_inputs.extend([True] * len(inp.chunks))
             chunk_inputs.extend(inp.chunks)
         chunk_op._prepare_inputs = prepare_inputs
+        # record tileable op key for chunk op
+        chunk_op._tileable_op_key = op.key
 
         out_chunks = [list() for _ in range(len(outs))]
         chunk_kws = []
@@ -181,6 +190,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         return new_op.new_tileables(op.inputs, kws=kws)
 
     @classmethod
+    @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op: "RemoteFunction"):
         mapping = {inp: ctx[inp.key] for inp, prepare_inp

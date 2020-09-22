@@ -38,6 +38,36 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isscalar(res))
         self.assertLess(res, 200)
 
+    def testSessionAsyncExecute(self):
+        raw_a = np.random.RandomState(0).rand(10, 20)
+        a = mt.tensor(raw_a)
+
+        expected = raw_a.sum()
+        res = a.sum().to_numpy(wait=False).result()
+        self.assertEqual(expected, res)
+        res = a.sum().execute(wait=False)
+        res = res.result().fetch()
+        self.assertEqual(expected, res)
+
+        raw_df = pd.DataFrame(raw_a)
+
+        expected = raw_df.sum()
+        df = md.DataFrame(a)
+        res = df.sum().to_pandas(wait=False).result()
+        pd.testing.assert_series_equal(expected, res)
+        res = df.sum().execute(wait=False)
+        res = res.result().fetch()
+        pd.testing.assert_series_equal(expected, res)
+
+        t = [df.sum(), a.sum()]
+        res = mt.ExecutableTuple(t).to_object(wait=False).result()
+        pd.testing.assert_series_equal(raw_df.sum(), res[0])
+        self.assertEqual(raw_a.sum(), res[1])
+        res = mt.ExecutableTuple(t).execute(wait=False)
+        res = res.result().fetch()
+        pd.testing.assert_series_equal(raw_df.sum(), res[0])
+        self.assertEqual(raw_a.sum(), res[1])
+
     def testMultipleOutputExecute(self):
         data = np.random.random((5, 9))
 

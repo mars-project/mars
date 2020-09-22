@@ -20,6 +20,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
+from ...custom_log import redirect_custom_log
 from ...serialize import KeyField, AnyField, StringField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, enter_current_session
@@ -33,10 +34,14 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _arg = AnyField('arg')
     _na_action = StringField('na_action')
+    # for chunk
+    _tileable_op_key = StringField('tileable_op_key')
 
-    def __init__(self, arg=None, na_action=None, output_types=None, **kw):
+    def __init__(self, arg=None, na_action=None, output_types=None,
+                 tileable_op_key=None, **kw):
         super().__init__(_arg=arg, _na_action=na_action,
-                         _output_types=output_types, **kw)
+                         _output_types=output_types,
+                         _tileable_op_key=tileable_op_key, **kw)
         if not self.output_types:
             self.output_types = [OutputType.series]
 
@@ -51,6 +56,10 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
     @property
     def na_action(self):
         return self._na_action
+
+    @property
+    def tileable_op_key(self):
+        return self._tileable_op_key
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -109,6 +118,7 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for chunk in in_series.chunks:
             chunk_op = op.copy().reset_key()
+            chunk_op._tileable_op_key = op.key
             chunk_inputs = [chunk]
             if len(op.inputs) == 2:
                 chunk_inputs.append(arg.chunks[0])
@@ -126,6 +136,7 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_seriess(op.inputs, kws=[params])
 
     @classmethod
+    @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op):
         series = ctx[op.inputs[0].key]
