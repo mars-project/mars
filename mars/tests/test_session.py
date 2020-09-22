@@ -299,6 +299,11 @@ class Test(unittest.TestCase):
         r6 = sess.run(arr2 + 1)
         np.testing.assert_array_equal(r6[:3, :3], np.ones((3, 3)) * 3)
 
+        df = md.DataFrame(np.random.rand(10, 2), columns=list('ab'))
+        s = df['a'].map(lambda x: np.ones((3, 3)), dtype='object').sum()
+
+        np.testing.assert_array_equal(s.execute().fetch(), np.ones((3, 3)) * 10)
+
         # test fetch multiple tensors
         raw = np.random.rand(5, 10)
         arr1 = mt.ones((5, 10), chunk_size=5)
