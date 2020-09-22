@@ -56,6 +56,7 @@ def _install():
         setattr(t, 'fillna', fillna)
         setattr(t, 'ffill', ffill)
         setattr(t, 'bfill', bfill)
+        setattr(t, 'isin', isin)
         setattr(t, 'isna', isna)
         setattr(t, 'isnull', isnull)
         setattr(t, 'notna', notna)
