@@ -987,6 +987,12 @@ def arrow_table_to_pandas_dataframe(arrow_table, use_arrow_dtype=True, **kw):
     return df
 
 
+def contain_arrow_dtype(dtypes):
+    from .arrays import ArrowStringDtype
+
+    return any(isinstance(dtype, ArrowStringDtype) for dtype in dtypes)
+
+
 def to_arrow_dtypes(dtypes, test_df=None):
     from .arrays import ArrowStringDtype
 

@@ -58,6 +58,7 @@ jobs:
         else
           pip install virtualenv flake8 etcd-gevent
           if [ -z "$NO_COMMON_TESTS" ]; then
+            pip install fastparquet
             if [[ $UNAME == "linux" ]]; then
               pip install h5py zarr
               pip install matplotlib
