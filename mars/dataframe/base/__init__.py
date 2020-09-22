@@ -20,7 +20,7 @@ from .describe import describe
 from .apply import df_apply, series_apply
 from .fillna import fillna, ffill, bfill
 from .transform import df_transform, series_transform
-from .isin import isin
+from .isin import series_isin, df_isin
 from .checkna import isna, notna, isnull, notnull
 from .dropna import df_dropna, series_dropna
 from .cut import cut
@@ -56,6 +56,7 @@ def _install():
         setattr(t, 'fillna', fillna)
         setattr(t, 'ffill', ffill)
         setattr(t, 'bfill', bfill)
+        setattr(t, 'isin', df_isin)
         setattr(t, 'isna', isna)
         setattr(t, 'isnull', isnull)
         setattr(t, 'notna', notna)
@@ -86,7 +87,7 @@ def _install():
         setattr(t, 'fillna', fillna)
         setattr(t, 'ffill', ffill)
         setattr(t, 'bfill', bfill)
-        setattr(t, 'isin', isin)
+        setattr(t, 'isin', series_isin)
         setattr(t, 'isna', isna)
         setattr(t, 'isnull', isnull)
         setattr(t, 'notna', notna)

@@ -671,6 +671,9 @@ class Test(TestBase):
         with self.assertRaises(TypeError):
             _ = a.isin('sth')
 
+        with self.assertRaises(TypeError):
+            _ = a.to_frame().isin('sth')
+
     def testDropNA(self):
         # dataframe cases
         df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
