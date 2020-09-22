@@ -745,7 +745,7 @@ class Test(TestBase):
         expected = s.dt.days
         pd.testing.assert_series_equal(result, expected)
 
-    def testSeriesIsin(self):
+    def testIsinExecution(self):
         # one chunk in multiple chunks
         a = pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
         b = pd.Series([2, 1, 9, 3])
@@ -800,6 +800,32 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(sa.isin(b), concat=True)[0]
         expected = a.isin(b)
         pd.testing.assert_series_equal(result, expected)
+
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(10, 3)))
+        df = from_pandas_df(raw, chunk_size=(5, 2))
+
+        # set
+        b = {2, 1, raw[1][0]}
+        r = df.isin(b)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.isin(b)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # mars object
+        b = tensor([2, 1, raw[1][0]], chunk_size=2)
+        r = df.isin(b)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.isin([2, 1, raw[1][0]])
+        pd.testing.assert_frame_equal(result, expected)
+
+        # dict
+        b = {1: tensor([2, 1, raw[1][0]], chunk_size=2),
+             2: [3, 10]}
+        r = df.isin(b)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.isin({1: [2, 1, raw[1][0]], 2: [3, 10]})
+        pd.testing.assert_frame_equal(result, expected)
 
     def testCheckNA(self):
         df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))

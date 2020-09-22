@@ -46,6 +46,8 @@ intermediately.
 Asynchronous Execution
 ======================
 
+.. Note:: New in version 0.5.2
+
 Specifying ``wait=False`` can make the execution asynchronous, it will return a
 `Future object <https://docs.python.org/3/library/concurrent.futures.html#future-objects>`_.
 
