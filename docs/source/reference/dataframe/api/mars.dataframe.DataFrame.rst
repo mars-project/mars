@@ -1,4 +1,4 @@
-﻿mars.dataframe.DataFrame
+mars.dataframe.DataFrame
 ========================
 
 .. currentmodule:: mars.dataframe
@@ -98,6 +98,7 @@
       ~DataFrame.shift
       ~DataFrame.sort_index
       ~DataFrame.sort_values
+      ~DataFrame.stack
       ~DataFrame.std
       ~DataFrame.sub
       ~DataFrame.sum

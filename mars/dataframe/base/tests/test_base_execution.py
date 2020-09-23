@@ -1656,3 +1656,32 @@ class Test(TestBase):
             result = self.executor.execute_dataframe(df2)
             self.assertEqual(len(result), 2)
             pd.testing.assert_frame_equal(pd.concat(result), raw)
+
+    def testStackExecution(self):
+        raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'),
+                           index=[f's{i}' for i in range(10)])
+        for loc in [(5, 1), (8, 2), (1, 0)]:
+            raw.iloc[loc] = np.nan
+        df = from_pandas_df(raw, chunk_size=(5, 2))
+
+        for dropna in (True, False):
+            r = df.stack(dropna=dropna)
+            result = self.executor.execute_dataframe(r, concat=True)[0]
+            expected = raw.stack(dropna=dropna)
+            pd.testing.assert_series_equal(result, expected)
+
+        cols = pd.MultiIndex.from_tuples([
+            ('c1', 'cc1'), ('c1', 'cc2'), ('c2', 'cc3')])
+        raw2 = raw.copy()
+        raw2.columns = cols
+        df = from_pandas_df(raw2, chunk_size=(5, 2))
+
+        for level in [-1, 0, [0, 1]]:
+            for dropna in (True, False):
+                r = df.stack(level=level, dropna=dropna)
+                result = self.executor.execute_dataframe(r, concat=True)[0]
+                expected = raw2.stack(level=level, dropna=dropna)
+                assert_method = \
+                    pd.testing.assert_series_equal if expected.ndim == 1 \
+                        else pd.testing.assert_frame_equal
+                assert_method(result, expected)
