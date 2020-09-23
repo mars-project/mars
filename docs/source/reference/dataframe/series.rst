@@ -104,6 +104,8 @@ Computations / descriptive stats
    Series.abs
    Series.all
    Series.any
+   Series.autocorr
+   Series.corr
    Series.count
    Series.cummax
    Series.cummin

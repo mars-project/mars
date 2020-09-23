@@ -255,6 +255,7 @@ message OperandDef {
         CUMMAX = 344;
         CUMMIN = 345;
         CUMCOUNT = 346;
+        CORR = 347;
 
         // tensor operand
         RESHAPE = 401;
