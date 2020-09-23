@@ -37,6 +37,7 @@ from .memory_usage import df_memory_usage, series_memory_usage, index_memory_usa
 from .select_dtypes import select_dtypes
 from .map_chunk import map_chunk
 from .rebalance import rebalance
+from .stack import stack
 
 
 def _install():
@@ -75,6 +76,7 @@ def _install():
         setattr(t, 'select_dtypes', select_dtypes)
         setattr(t, 'map_chunk', map_chunk)
         setattr(t, 'rebalance', rebalance)
+        setattr(t, 'stack', stack)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)

@@ -160,6 +160,7 @@ Reshaping, sorting, transposing
    DataFrame.melt
    DataFrame.sort_values
    DataFrame.sort_index
+   DataFrame.stack
 
 Combining / joining / merging
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
