@@ -174,6 +174,14 @@ class TestReduction(TestBase):
             self.compute(data, axis='index', numeric_only=True),
             self.executor.execute_dataframe(reduction_df, concat=True)[0])
 
+        data1 = pd.DataFrame(np.random.rand(10, 10), columns=[str(i) for i in range(10)])
+        data2 = pd.DataFrame(np.random.rand(10, 10), columns=[str(i) for i in range(10)])
+        df = from_pandas_df(data1, chunk_size=5) + from_pandas_df(data2, chunk_size=6)
+        reduction_df = self.compute(df)
+        pd.testing.assert_series_equal(
+            self.compute(data1 + data2).sort_index(),
+            self.executor.execute_dataframe(reduction_df, concat=True)[0].sort_index())
+
     @require_cudf
     def testGPUExecution(self):
         pdf = pd.DataFrame(np.random.rand(30, 3), columns=list('abc'))
