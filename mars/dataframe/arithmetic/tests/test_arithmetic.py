@@ -1058,6 +1058,10 @@ class TestBinary(TestBase):
         result3 = getattr(df, self.rfunc_name)(1)
         result4 = self.func(df, 1)
         result5 = self.func(1, df)
+
+        expected = self.func(data, 2)
+        pd.testing.assert_series_equal(result.dtypes, expected.dtypes)
+
         pd.testing.assert_index_equal(result.columns_value.to_pandas(), data.columns)
         self.assertIsInstance(result.index_value.value, IndexValue.Int64Index)
 
