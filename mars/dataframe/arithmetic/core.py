@@ -27,7 +27,7 @@ from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHU
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..initializer import Series, DataFrame
 from ..ufunc.tensor import TensorUfuncMixin
-from ..utils import parse_index, infer_dtypes, infer_dtype, infer_index_value
+from ..utils import parse_index, infer_dtypes, infer_dtype, infer_index_value, build_empty_df
 
 
 class DataFrameBinOp(DataFrameOperand):
@@ -301,7 +301,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if x2 is None:
                 dtypes = x1.dtypes
             elif pd.api.types.is_scalar(x2):
-                dtypes = infer_dtypes(x1.dtypes, pd.Series(np.array(x2).dtype), cls._operator)
+                dtypes = cls._operator(build_empty_df(x1.dtypes), x2).dtypes
             elif x1.dtypes is not None and isinstance(x2, TENSOR_TYPE):
                 dtypes = pd.Series(
                     [infer_dtype(dt, x2.dtype, cls._operator) for dt in x1.dtypes],

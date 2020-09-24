@@ -268,6 +268,7 @@ def read_parquet(path, engine: str = "auto", columns=None,
                  **kwargs):
     """
     Load a parquet object from the file path, returning a DataFrame.
+
     Parameters
     ----------
     path : str, path object or file-like object
@@ -298,10 +299,12 @@ def read_parquet(path, engine: str = "auto", columns=None,
         Options for storage connection.
     **kwargs
         Any additional kwargs are passed to the engine.
+
     Returns
     -------
     Mars DataFrame
     """
+
     if not isinstance(path, list):
         file_path = glob(path, storage_options=storage_options)[0]
     else:
