@@ -49,7 +49,6 @@ def _install():
     from .cumprod import cumprod
     from .cumsum import cumsum
     from .nunique import nunique_dataframe, nunique_series
-    from .corr import df_corr, df_corrwith, series_corr, series_autocorr
 
     funcs = [
         ('sum', sum_series, sum_dataframe),
@@ -71,9 +70,6 @@ def _install():
         ('aggregate', aggregate, aggregate),
         ('nunique', nunique_series, nunique_dataframe),
         ('unique', unique, None),
-        ('corr', series_corr, df_corr),
-        ('corrwith', None, df_corrwith),
-        ('autocorr', series_autocorr, None),
     ]
     for func_name, series_func, df_func in funcs:
         if df_func is not None:  # pragma: no branch
