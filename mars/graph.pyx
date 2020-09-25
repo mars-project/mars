@@ -366,6 +366,8 @@ cdef class DirectedGraph:
         for node in self.iter_nodes():
             op = node.op
             op_name = type(op).__name__
+            if op.stage is not None:
+                op_name = f'{op_name}:{op.stage.name}'
             if op.key in visited:
                 continue
             for input_chunk in (op.inputs or []):

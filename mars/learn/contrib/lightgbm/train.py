@@ -277,6 +277,8 @@ class LGBMTrain(MergeDictOperand):
             eval_init_score = eval_init_score or None
 
         params = op.params.copy()
+        # if model is trained, remove unsupported parameters
+        params.pop('out_dtype_', None)
         if ctx.running_mode == RunningMode.distributed:
             params['machines'] = ','.join(op.lgbm_endpoints)
             params['time_out'] = op.timeout

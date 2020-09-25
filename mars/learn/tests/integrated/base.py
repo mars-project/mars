@@ -75,6 +75,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
                                            '-H', '127.0.0.1',
                                            '-p', scheduler_port,
                                            '-Dscheduler.default_cpu_usage=0',
+                                           '-Dscheduler.retry_delay=5',
                                            '--log-level', 'debug',
                                            '--log-format', 'SCH %(asctime)-15s %(message)s'])
         self.proc_scheduler = proc_scheduler
