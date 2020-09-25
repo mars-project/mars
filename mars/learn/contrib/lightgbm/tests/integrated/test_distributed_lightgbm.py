@@ -55,6 +55,13 @@ class Test(LearnIntegrationTestBase):
             self.assertEqual(prediction.ndim, 1)
             self.assertEqual(prediction.shape[0], len(self.X))
 
+            # fi on fitted model shall work well
+            classifier.fit(X, y, session=sess, run_kwargs=run_kwargs)
+            prediction = classifier.predict(X, session=sess, run_kwargs=run_kwargs)
+
+            self.assertEqual(prediction.ndim, 1)
+            self.assertEqual(prediction.shape[0], len(self.X))
+
             self.assertIsInstance(prediction, mt.Tensor)
 
             classifier = LGBMClassifier(n_estimators=2)
