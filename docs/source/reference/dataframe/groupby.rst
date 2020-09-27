@@ -36,6 +36,8 @@ Computations / descriptive stats
 .. autosummary::
    :toctree: api/
 
+   GroupBy.all
+   GroupBy.any
    GroupBy.count
    GroupBy.cumcount
    GroupBy.cummax

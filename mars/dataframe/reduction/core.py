@@ -34,19 +34,20 @@ class DataFrameReductionOperand(DataFrameOperand):
     _skipna = BoolField('skipna')
     _level = AnyField('level')
     _numeric_only = BoolField('numeric_only')
+    _bool_only = BoolField('bool_only')
     _min_count = Int32Field('min_count')
     _use_inf_as_na = BoolField('use_inf_as_na')
 
     _dtype = DataTypeField('dtype')
     _combine_size = Int32Field('combine_size')
 
-    def __init__(self, axis=None, skipna=None, level=None, numeric_only=None, min_count=None,
-                 stage=None, dtype=None, combine_size=None, gpu=None, sparse=None, output_types=None,
-                 use_inf_as_na=None, **kw):
+    def __init__(self, axis=None, skipna=None, level=None, numeric_only=None, bool_only=None,
+                 min_count=None, stage=None, dtype=None, combine_size=None, gpu=None,
+                 sparse=None, output_types=None, use_inf_as_na=None, **kw):
         super().__init__(_axis=axis, _skipna=skipna, _level=level, _numeric_only=numeric_only,
-                         _min_count=min_count, _stage=stage, _dtype=dtype, _combine_size=combine_size,
-                         _gpu=gpu, _sparse=sparse, _output_types=output_types, _use_inf_as_na=use_inf_as_na,
-                         **kw)
+                         _bool_only=bool_only, _min_count=min_count, _stage=stage, _dtype=dtype,
+                         _combine_size=combine_size, _gpu=gpu, _sparse=sparse,
+                         _output_types=output_types, _use_inf_as_na=use_inf_as_na, **kw)
 
     @property
     def axis(self):
@@ -63,6 +64,10 @@ class DataFrameReductionOperand(DataFrameOperand):
     @property
     def numeric_only(self):
         return self._numeric_only
+
+    @property
+    def bool_only(self):
+        return self._bool_only
 
     @property
     def min_count(self):
@@ -198,11 +203,12 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         n_rows, n_cols = in_df.chunk_shape
 
         chunk_dtypes = []
-        if op.numeric_only and op.axis == 0:
+        if (op.numeric_only or op.bool_only) and op.axis == 0:
+            sel_dtypes = [np.number, 'bool'] if op.numeric_only else ['bool']
             cum_nsplits = np.cumsum((0,) + in_df.nsplits[1])
             for i in range(len(cum_nsplits) - 1):
                 chunk_empty_df = build_empty_df(in_df.dtypes[cum_nsplits[i]: cum_nsplits[i + 1]])
-                chunk_dtypes.append(chunk_empty_df.select_dtypes([np.number, 'bool']).dtypes)
+                chunk_dtypes.append(chunk_empty_df.select_dtypes(sel_dtypes).dtypes)
 
         # build reduction chunks
         reduction_chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
@@ -211,7 +217,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             new_chunk_op._stage = OperandStage.map
             new_chunk_op.output_types = [OutputType.dataframe]
             if op.axis == 0:
-                if op.numeric_only:
+                if op.numeric_only or op.bool_only:
                     dtypes = chunk_dtypes[c.index[1]]
                 else:
                     dtypes = c.dtypes
@@ -303,6 +309,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             kwargs['skipna'] = op.skipna
         if op.numeric_only is not None:
             kwargs['numeric_only'] = op.numeric_only
+        if op.bool_only is not None:
+            kwargs['bool_only'] = op.bool_only
         if min_count is not None:
             kwargs['min_count'] = op.min_count
         reduction_func = reduction_func or getattr(cls, '_func_name')
@@ -422,6 +430,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         level = getattr(self, 'level', None)
         skipna = getattr(self, 'skipna', None)
         numeric_only = getattr(self, 'numeric_only', None)
+        bool_only = getattr(self, 'bool_only', None)
         self._axis = axis = validate_axis(axis, df)
         # TODO: enable specify level if we support groupby
         if level is not None:
@@ -433,6 +442,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, numeric_only=numeric_only)
         elif func_name == 'nunique':
             reduced_df = getattr(empty_df, func_name)(axis=axis)
+        elif func_name in ('all', 'any'):
+            reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, bool_only=bool_only)
         else:
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, skipna=skipna,
                                                       numeric_only=numeric_only)
@@ -446,6 +457,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         axis = getattr(self, 'axis', None)
         skipna = getattr(self, 'skipna', None)
         numeric_only = getattr(self, 'numeric_only', None)
+        bool_only = getattr(self, 'bool_only', None)
         if axis == 'index':
             axis = 0
         self._axis = axis
@@ -459,6 +471,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced_series = empty_series.count(level=level)
         elif func_name == 'nunique':
             reduced_series = empty_series.nunique()
+        elif func_name in ('all', 'any'):
+            reduced_series = getattr(empty_series, func_name)(axis=axis, level=level, bool_only=bool_only)
         else:
             reduced_series = getattr(empty_series, func_name)(axis=axis, level=level, skipna=skipna,
                                                               numeric_only=numeric_only)
