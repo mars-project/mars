@@ -19,6 +19,8 @@ from .min import DataFrameMin
 from .count import DataFrameCount
 from .mean import DataFrameMean
 from .var import DataFrameVar
+from .all import DataFrameAll
+from .any import DataFrameAny
 
 from .cummax import DataFrameCummax
 from .cummin import DataFrameCummin
@@ -40,6 +42,8 @@ def _install():
     from .mean import mean_series, mean_dataframe
     from .var import var_series, var_dataframe
     from .std import std_series, std_dataframe
+    from .all import all_series, all_dataframe
+    from .any import any_series, any_dataframe
     from .cummax import cummax
     from .cummin import cummin
     from .cumprod import cumprod
@@ -47,15 +51,16 @@ def _install():
     from .nunique import nunique_dataframe, nunique_series
 
     func_names = ['sum', 'prod', 'max', 'min', 'count', 'mean', 'var',
-                  'std', 'cummax', 'cummin', 'cumprod', 'cumsum',
-                  'agg', 'aggregate', 'nunique']
+                  'std', 'all', 'any', 'cummax', 'cummin', 'cumprod',
+                  'cumsum', 'agg', 'aggregate', 'nunique']
     series_funcs = [sum_series, prod_series, max_series, min_series,
                     count_series, mean_series, var_series, std_series,
-                    cummax, cummin, cumprod, cumsum, aggregate, aggregate,
-                    nunique_series]
+                    all_series, any_series, cummax, cummin, cumprod,
+                    cumsum, aggregate, aggregate, nunique_series]
     df_funcs = [sum_dataframe, prod_dataframe, max_dataframe, min_dataframe,
                 count_dataframe, mean_dataframe, var_dataframe, std_dataframe,
-                cummax, cummin, cumprod, cumsum, aggregate, aggregate, nunique_dataframe]
+                all_dataframe, any_dataframe, cummax, cummin, cumprod, cumsum,
+                aggregate, aggregate, nunique_dataframe]
     for func_name, series_func, df_func in zip(func_names, series_funcs, df_funcs):
         for t in DATAFRAME_TYPE:
             setattr(t, func_name, df_func)

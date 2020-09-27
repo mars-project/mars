@@ -102,6 +102,8 @@ Computations / descriptive stats
    :toctree: api/
 
    Series.abs
+   Series.all
+   Series.any
    Series.count
    Series.cummax
    Series.cummin

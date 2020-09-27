@@ -110,6 +110,8 @@ Computations / descriptive stats
    :toctree: api/
 
    DataFrame.abs
+   DataFrame.all
+   DataFrame.any
    DataFrame.count
    DataFrame.cummax
    DataFrame.cummin

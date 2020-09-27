@@ -44,6 +44,8 @@ def _install():
         setattr(cls, 'mean', lambda groupby, **kw: agg(groupby, 'mean', **kw))
         setattr(cls, 'var', lambda groupby, **kw: agg(groupby, 'var', **kw))
         setattr(cls, 'std', lambda groupby, **kw: agg(groupby, 'std', **kw))
+        setattr(cls, 'all', lambda groupby, **kw: agg(groupby, 'all', **kw))
+        setattr(cls, 'any', lambda groupby, **kw: agg(groupby, 'any', **kw))
 
         setattr(cls, 'apply', groupby_apply)
         setattr(cls, 'transform', groupby_transform)

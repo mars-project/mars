@@ -64,7 +64,7 @@ class MultiGetDict(dict):
         return super(MultiGetDict, self).__getitem__(item)
 
 
-def parameterized(**params):
+def parameterized(defaults=None, **params):
     """
     Parameterized testing decorator for unittest
     :param params: dictionary of params, e.g.:
@@ -79,7 +79,9 @@ def parameterized(**params):
         @functools.wraps(fun)
         def test_fun(self, *args, **kwargs):
             for n, param in params.items():
-                for pn, pv in param.items():
+                actual_param = (defaults or dict()).copy()
+                actual_param.update(param)
+                for pn, pv in actual_param.items():
                     setattr(cls, pn, pv)
                 try:
                     fun(self, *args, **kwargs)
