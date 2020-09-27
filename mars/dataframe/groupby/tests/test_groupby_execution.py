@@ -210,7 +210,7 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r6, concat=True)[0],
                                           df2.groupby('c2').agg('std'))
 
-            agg = ['std', 'mean', 'var', 'max', 'count', 'size']
+            agg = ['std', 'mean', 'var', 'max', 'count', 'size', 'all', 'any']
             r3 = mdf2.groupby('c2').agg(agg, method=method)
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                           df2.groupby('c2').agg(agg))
@@ -270,6 +270,14 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0],
                                       df2.groupby('c2').std())
 
+        r10 = mdf2.groupby('c2').all(method='tree')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r10, concat=True)[0],
+                                      df2.groupby('c2').all())
+
+        r11 = mdf2.groupby('c2').any(method='tree')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0],
+                                      df2.groupby('c2').any())
+
         # test as_index=False
         r12 = mdf2.groupby('c2', as_index=False).agg('mean', method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r12, concat=True)[0],
@@ -327,7 +335,7 @@ class Test(TestBase):
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r6, concat=True)[0],
                                            series1.groupby(lambda x: x % 2).agg('std'))
 
-            agg = ['std', 'mean', 'var', 'max', 'count', 'size']
+            agg = ['std', 'mean', 'var', 'max', 'count', 'size', 'all', 'any']
             r3 = ms1.groupby(lambda x: x % 2).agg(agg, method=method)
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
                                           series1.groupby(lambda x: x % 2).agg(agg))
@@ -372,6 +380,14 @@ class Test(TestBase):
         r11 = ms1.groupby(lambda x: x % 2).std(method='tree')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r11, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).std())
+
+        r10 = ms1.groupby(lambda x: x % 2).all(method='tree')
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r10, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).all())
+
+        r11 = ms1.groupby(lambda x: x % 2).any(method='tree')
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r11, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).any())
 
         r11 = ms1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0].sort_index(),

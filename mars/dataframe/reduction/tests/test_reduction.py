@@ -25,25 +25,29 @@ from mars.tests.core import TestBase, parameterized
 from mars.tensor import Tensor
 from mars.dataframe.core import DataFrame, IndexValue, Series, OutputType
 from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, \
-    DataFrameMax, DataFrameCount, DataFrameMean, DataFrameVar, DataFrameCummin, \
-    DataFrameCummax, DataFrameCumprod, DataFrameCumsum, DataFrameNunique
+    DataFrameMax, DataFrameCount, DataFrameMean, DataFrameVar, DataFrameAll, \
+    DataFrameAny, DataFrameCummin, DataFrameCummax, DataFrameCumprod, \
+    DataFrameCumsum, DataFrameNunique
 from mars.dataframe.merge import DataFrameConcat
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 
 
 reduction_functions = dict(
-    sum=dict(func_name='sum', op=DataFrameSum, has_skipna=True),
-    prod=dict(func_name='prod', op=DataFrameProd, has_skipna=True),
-    min=dict(func_name='min', op=DataFrameMin, has_skipna=True),
-    max=dict(func_name='max', op=DataFrameMax, has_skipna=True),
+    sum=dict(func_name='sum', op=DataFrameSum),
+    prod=dict(func_name='prod', op=DataFrameProd),
+    min=dict(func_name='min', op=DataFrameMin),
+    max=dict(func_name='max', op=DataFrameMax),
     count=dict(func_name='count', op=DataFrameCount, has_skipna=False),
-    mean=dict(func_name='mean', op=DataFrameMean, has_skipna=True),
-    var=dict(func_name='var', op=DataFrameVar, has_skipna=True),
+    mean=dict(func_name='mean', op=DataFrameMean),
+    var=dict(func_name='var', op=DataFrameVar),
+    all=dict(func_name='all', op=DataFrameAll, has_numeric_only=False),
+    any=dict(func_name='any', op=DataFrameAny, has_numeric_only=False),
 )
 
 
-@parameterized(**reduction_functions)
+@parameterized(defaults=dict(has_skipna=True, has_numeric_only=True),
+               **reduction_functions)
 class TestReduction(TestBase):
     @property
     def op_name(self):
@@ -120,9 +124,11 @@ class TestReduction(TestBase):
 
     def testDataFrameReductionSerialize(self):
         data = pd.DataFrame(np.random.rand(10, 8), columns=[np.random.bytes(10) for _ in range(8)])
-        kwargs = dict(axis='index', numeric_only=True)
+        kwargs = dict(axis='index')
         if self.has_skipna:
             kwargs['skipna'] = False
+        if self.has_numeric_only:
+            kwargs['numeric_only'] = True
         reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)(**kwargs).tiles()
 
         # pb
@@ -404,12 +410,12 @@ class TestCumReduction(TestBase):
 class TestAggregate(TestBase):
     def testDataFrameAggregate(self):
         data = pd.DataFrame(np.random.rand(20, 19))
-        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std']
+        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std', 'all', 'any']
 
         df = from_pandas_df(data)
         result = df.agg(agg_funcs).tiles()
         self.assertEqual(len(result.chunks), 1)
-        self.assertEqual(result.shape, (6, data.shape[1]))
+        self.assertEqual(result.shape, (len(agg_funcs), data.shape[1]))
         self.assertListEqual(list(result.columns_value.to_pandas()), list(range(19)))
         self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
         self.assertEqual(result.op.output_types[0], OutputType.dataframe)
@@ -449,7 +455,7 @@ class TestAggregate(TestBase):
         self.assertListEqual(list(agg_chunk.index_value.to_pandas()), list(range(3)))
         self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
 
-        result = df.agg(['sum', 'min', 'max', 'mean', 'var', 'std']).tiles()
+        result = df.agg(agg_funcs).tiles()
         self.assertEqual(len(result.chunks), 5)
         self.assertEqual(result.shape, (len(agg_funcs), data.shape[1]))
         self.assertListEqual(list(result.columns_value.to_pandas()), list(range(data.shape[1])))
@@ -462,7 +468,7 @@ class TestAggregate(TestBase):
         self.assertListEqual(list(agg_chunk.index_value.to_pandas()), agg_funcs)
         self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
 
-        result = df.agg(['sum', 'min', 'max', 'mean', 'var', 'std'], axis=1).tiles()
+        result = df.agg(agg_funcs, axis=1).tiles()
         self.assertEqual(len(result.chunks), 7)
         self.assertEqual(result.shape, (data.shape[0], len(agg_funcs)))
         self.assertListEqual(list(result.columns_value.to_pandas()), agg_funcs)
@@ -496,13 +502,13 @@ class TestAggregate(TestBase):
 
     def testSeriesAggregate(self):
         data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
-        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std']
+        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std', 'all', 'any']
 
         series = from_pandas_series(data)
 
         result = series.agg(agg_funcs).tiles()
         self.assertEqual(len(result.chunks), 1)
-        self.assertEqual(result.shape, (6,))
+        self.assertEqual(result.shape, (len(agg_funcs),))
         self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)
         self.assertEqual(result.op.output_types[0], OutputType.series)
         self.assertListEqual(result.op.func, agg_funcs)
@@ -517,7 +523,7 @@ class TestAggregate(TestBase):
         self.assertEqual(agg_chunk.shape, ())
         self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
 
-        result = series.agg(['sum', 'min', 'max', 'mean', 'var', 'std']).tiles()
+        result = series.agg(agg_funcs).tiles()
         self.assertEqual(len(result.chunks), 1)
         self.assertEqual(result.shape, (len(agg_funcs),))
         self.assertListEqual(list(result.index_value.to_pandas()), agg_funcs)

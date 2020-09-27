@@ -32,7 +32,8 @@ from ..utils import build_df, build_series, parse_index, validate_axis
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())
 
-_builtin_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count', 'size', 'mean', 'var', 'std'}
+_builtin_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count', 'size', 'mean', 'var', 'std',
+                                  'all', 'any'}
 _stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_groups', 'combine_sources',
                                          'agg_sources', 'agg_columns', 'agg_funcs', 'key_to_funcs',
                                          'valid_columns'))
@@ -225,7 +226,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     continue
                 valid_columns.append(col)
             for func in funcs:
-                if func in {'sum', 'prod', 'min', 'max'}:
+                if func in {'sum', 'prod', 'min', 'max', 'all', 'any'}:
                     _add_column_to_functions(col, func, [func], [func], func)
                 elif func in {'count', 'size'}:
                     _add_column_to_functions(col, func, [func], ['sum'], 'sum')

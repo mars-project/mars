@@ -37,7 +37,7 @@ from .core import DataFrameGroupByOperand
 
 
 _available_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count', 'size',
-                                    'mean', 'var', 'std'}
+                                    'mean', 'var', 'std', 'all', 'any'}
 
 _stage_infos = namedtuple('stage_infos', ('intermediate_cols', 'agg_cols',
                                           'map_func', 'map_output_column_to_func',
@@ -258,7 +258,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         for col, functions in func.items():
             for f in functions:
-                if f in {'sum', 'prod', 'min', 'max'}:
+                if f in {'sum', 'prod', 'min', 'max', 'all', 'any'}:
                     _add_column_to_functions(col, f, [f], [f], f)
                 elif f in {'count', 'size'}:
                     _add_column_to_functions(col, f, [f], ['sum'], 'sum')
