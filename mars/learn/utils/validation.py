@@ -118,7 +118,10 @@ def _make_indexable(iterable):
     if issparse(iterable):
         return mt.tensor(iterable)
     elif hasattr(iterable, "iloc"):
-        return md.DataFrame(iterable)
+        if iterable.ndim == 1:
+            return md.Series(iterable)
+        else:
+            return md.DataFrame(iterable)
     elif hasattr(iterable, "__getitem__"):
         return mt.tensor(iterable)
     elif iterable is None:
