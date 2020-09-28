@@ -186,14 +186,6 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                                      chunks=[new_chunk], nsplits=nsplits)
 
     @classmethod
-    def _validate_dtypes(cls, dtypes, is_gpu):
-        dtypes = dtypes.to_dict()
-        # CuDF doesn't support object type, turn it to 'str'.
-        if is_gpu:
-            dtypes = dict((n, dt.name if dt != np.dtype('object') else 'str') for n, dt in dtypes.items())
-        return dtypes
-
-    @classmethod
     def tile(cls, op):
         if op.compression:
             return cls._tile_compressed(op)
@@ -270,8 +262,9 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 # will replace null value with np.nan,
                 # which will cause failure when converting to arrow string array
                 csv_kwargs['keep_default_na'] = False
-            df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col, usecols=usecols,
-                             dtype=dtypes.to_dict(), nrows=op.nrows, **csv_kwargs)
+                csv_kwargs['dtype'] = cls._select_arrow_dtype(dtypes.to_dict())
+            df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col,
+                             usecols=usecols, nrows=op.nrows, **csv_kwargs)
             if op.keep_usecols_order:
                 df = df[op.usecols]
         return df
@@ -287,8 +280,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
             df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, usecols=usecols, **csv_kwargs)
         else:
             df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, names=op.names,
-                               usecols=usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
-                               nrows=op.nrows, **csv_kwargs)
+                               usecols=usecols, nrows=op.nrows, **csv_kwargs)
 
         if op.keep_usecols_order:
             df = df[op.usecols]
@@ -297,6 +289,11 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _contains_arrow_dtype(cls, dtypes):
         return any(isinstance(dtype, ArrowStringDtype) for dtype in dtypes)
+
+    @classmethod
+    def _select_arrow_dtype(cls, dtypes):
+        return dict((c, dtype) for c, dtype in dtypes.items() if
+                    isinstance(dtype, ArrowStringDtype))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -308,15 +305,15 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
             if op.compression is not None:
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
-                dtypes = cls._validate_dtypes(op.outputs[0].dtypes, op.gpu)
+                dtypes = op.outputs[0].dtypes.to_dict()
                 if contain_arrow_dtype(dtypes.values()):
                     # when keep_default_na is True which is default,
                     # will replace null value with np.nan,
                     # which will cause failure when converting to arrow string array
                     csv_kwargs['keep_default_na'] = False
+                    csv_kwargs['dtype'] = cls._select_arrow_dtype(dtypes)
                 df = xdf.read_csv(f, sep=op.sep, names=op.names, index_col=op.index_col,
-                                  usecols=op.usecols, dtype=dtypes,
-                                  nrows=op.nrows, **csv_kwargs)
+                                  usecols=op.usecols, nrows=op.nrows, **csv_kwargs)
                 if op.keep_usecols_order:
                     df = df[op.usecols]
             else:
