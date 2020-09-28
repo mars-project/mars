@@ -186,6 +186,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         # 2. distributions of chunks are the same, in not,
         #    train separately on each chunk data
         need_sample_train = not faiss_index_.is_trained and op.same_distribution
+        need_merge_index = hasattr(faiss_index_, 'merge_from') if need_sample_train else False
 
         train_chunk = None
         if need_sample_train:
@@ -217,7 +218,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             build_index_chunks.append(build_index_chunk)
 
         out_chunks = []
-        if need_sample_train:
+        if need_merge_index:
             assert op.n_sample is not None
             # merge all indices into one, do only when trained on sample data
             out_chunk_op = op.copy().reset_key()
@@ -238,6 +239,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
+            inp = inp.astype(np.float32, copy=False)
             # create index
             index = faiss.index_factory(inp.shape[1], op.faiss_index,
                                         op.faiss_metric_type)
@@ -262,7 +264,6 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             # add vectors to index
             if device_id >= 0:  # pragma: no cover
                 # gpu
-                inp = inp.astype(np.float32, copy=False)
                 index.add_c(inp.shape[0], _swig_ptr_from_cupy_float32_array(inp))
             else:
                 index.add(inp)
