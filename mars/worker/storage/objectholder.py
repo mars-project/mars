@@ -71,6 +71,8 @@ class ObjectHolderActor(WorkerActor):
         self._storage_handler = self.storage_client.get_storage_handler(
             self._storage_device.build_location(self.proc_id))
 
+        self.ref().update_cache_status(_tell=True)
+
     def pre_destroy(self):
         for k in self._data_holder:
             self._data_holder[k] = None
