@@ -103,6 +103,16 @@ class Test(unittest.TestCase):
             self.assertIsInstance(ind, faiss.IndexIVFFlat)
             self.assertEqual(ind.ntotal, 10)
 
+        # test more index type
+        index = build_faiss_index(X, 'PCAR6,IVF8_HNSW32,SQ8', 10, random_state=0,
+                                  return_index_type='object')
+        faiss_index = self.executor.execute_tileable(index)
+
+        self.assertEqual(len(faiss_index), 5)
+        for ind in faiss_index:
+            self.assertIsInstance(ind, faiss.IndexPreTransform)
+            self.assertEqual(ind.ntotal, 10)
+
         # test one chunk, train
         X = mt.tensor(x, chunk_size=50)
         index = build_faiss_index(X, 'IVF30,Flat', 30, random_state=0,
@@ -147,6 +157,15 @@ class Test(unittest.TestCase):
 
                 np.testing.assert_array_equal(indices, expected_indices.fetch())
                 np.testing.assert_almost_equal(distance, expected_distance.fetch())
+
+                # test other index
+                X2 = X.astype(np.float64)
+                Y2 = y.astype(np.float64)
+                faiss_index = build_faiss_index(X2, 'PCAR6,IVF8_HNSW32,SQ8', 10,
+                                                random_state=0, return_index_type='object')
+                d, i = faiss_query(faiss_index, Y2, 5, nprobe=10)
+                # test execute only
+                self.executor.execute_tensors([d, i])
 
     def testGenIndexStringAndSampleCount(self):
         d = 32
