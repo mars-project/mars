@@ -305,6 +305,9 @@ class ReplicationControllerConfig:
     def add_env(self, name, value=None, field_path=None):
         self._envs[name] = ContainerEnvConfig(name, value=value, field_path=field_path)
 
+    def remove_env(self, name):  # pragma: no cover
+        self._envs.pop(name, None)
+
     def add_simple_envs(self, envs):
         for k, v in envs.items() or ():
             self.add_env(k, v)
