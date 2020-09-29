@@ -645,12 +645,22 @@ def _check_if_func_available(func):
 def agg(groupby, func, method='auto', *args, **kwargs):
     """
     Aggregate using one or more operations on grouped data.
-    :param groupby: Groupby data.
-    :param func: Aggregation functions.
-    :param method: 'shuffle' or 'tree', 'tree' method provide a better performance, 'shuffle' is recommended
-    if aggregated result is very large, 'auto' will use 'shuffle' method in distributed mode and use 'tree'
-    in local mode.
-    :return: Aggregated result.
+
+    Parameters
+    ----------
+    groupby : Mars Groupby
+        Groupby data.
+    func : str or list-like
+        Aggregation functions.
+    method : {'auto', 'shuffle', 'tree'}, default 'auto'
+        'tree' method provide a better performance, 'shuffle' is recommended
+        if aggregated result is very large, 'auto' will use 'shuffle' method
+        in distributed mode and use 'tree' in local mode.
+
+    Returns
+    -------
+    Series or DataFrame
+        Aggregated result.
     """
 
     # When perform a computation on the grouped data, we won't shuffle
