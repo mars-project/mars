@@ -14,6 +14,8 @@
 
 import unittest
 
+import pandas as pd
+
 import mars.tensor as mt
 from mars.session import new_session
 from mars.tests.core import ExecutorForTest
@@ -66,3 +68,25 @@ class Test(unittest.TestCase):
         self.assertEqual(prediction.shape[0], len(self.X))
         result = prediction.fetch()
         self.assertEqual(prediction.dtype, result.dtype)
+
+        # test numpy tensor
+        try:
+            from sklearn.datasets import make_classification
+            X_array, y_array = make_classification()
+            regressor = LGBMRegressor(n_estimators=2)
+            regressor.fit(X_array, y_array, verbose=True)
+            prediction = regressor.predict(X_array)
+
+            self.assertEqual(prediction.ndim, 1)
+            self.assertEqual(prediction.shape[0], len(X_array))
+
+            X_df = pd.DataFrame(X_array)
+            y_df = pd.Series(y_array)
+            regressor = LGBMRegressor(n_estimators=2)
+            regressor.fit(X_df, y_df, verbose=True)
+            prediction = regressor.predict(X_df)
+
+            self.assertEqual(prediction.ndim, 1)
+            self.assertEqual(prediction.shape[0], len(X_df))
+        except ImportError:
+            pass

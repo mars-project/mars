@@ -157,9 +157,13 @@ class Test(WorkerCase):
             manager_ref = pool.actor_ref(StorageManagerActor.default_uid())
             shared_holder_ref = pool.actor_ref(SharedHolderActor.default_uid())
             mock_runner_ref = pool.actor_ref(MockIORunnerActor.default_uid())
+            status_ref = pool.actor_ref(StatusActor.default_uid())
 
             storage_client = test_actor.storage_client
             shared_handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
+
+            cache_allocations = status_ref.get_cache_allocations()
+            self.assertGreater(cache_allocations['total'], 0)
 
             session_id = str(uuid.uuid4())
             data_list = [np.random.randint(0, 32767, (655360,), np.int16)
