@@ -155,8 +155,8 @@ class QuotaActor(WorkerActor):
         :return: if request is returned immediately, return True, otherwise False
         """
         if delta > self._total_size:
-            raise ValueError(f'Cannot allocate size({delta}) '
-                             f'larger than the total capacity({self._total_size}).')
+            raise ValueError(f'Cannot allocate quota size {delta} '
+                             f'larger than total capacity {self._total_size}.')
 
         if keys in self._requests:
             # already in request queue, store callback and quit

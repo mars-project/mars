@@ -28,6 +28,8 @@ from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameShuffle
 
 cudf = lazy_import('cudf', globals=globals())
 
+_PSRS_DISTINCT_COL = '__PSRS_TMP_DISTINCT_COL'
+
 
 class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
     @classmethod
@@ -331,6 +333,17 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
         else:
             ctx[op.outputs[0].key] = res = execute_sort_index(a, op)
 
+        by = op.by
+        if getattr(ctx, 'running_mode', None) == RunningMode.distributed \
+                and isinstance(a, pd.DataFrame) and op.sort_type == 'sort_values':
+            # when running under distributed mode, we introduce an extra column
+            # to make sure pivots are distinct
+            chunk_idx = op.inputs[0].index[0]
+            distinct_col = _PSRS_DISTINCT_COL if a.columns.nlevels == 1 \
+                else (_PSRS_DISTINCT_COL,) + ('',) * (a.columns.nlevels - 1)
+            res[distinct_col] = np.arange(chunk_idx << 32, (chunk_idx << 32) + len(a))
+            by = list(by) + [distinct_col]
+
         n = op.n_partition
         if a.shape[op.axis] < n:
             num = n // a.shape[op.axis] + 1
@@ -341,7 +354,7 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
         if op.sort_type == 'sort_values':
             # do regular sample
             if op.by is not None:
-                ctx[op.outputs[-1].key] = res[op.by].iloc[slc]
+                ctx[op.outputs[-1].key] = res[by].iloc[slc]
             else:
                 ctx[op.outputs[-1].key] = res.iloc[slc]
         else:
@@ -454,7 +467,14 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
         if isinstance(a, pd.DataFrame):
             # use numpy.searchsorted to find split positions.
-            records = a[op.by].to_records(index=False)
+            by = op.by
+
+            distinct_col = _PSRS_DISTINCT_COL if a.columns.nlevels == 1 \
+                else (_PSRS_DISTINCT_COL,) + ('',) * (a.columns.nlevels - 1)
+            if _PSRS_DISTINCT_COL in a.columns:
+                by += [distinct_col]
+
+            records = a[by].to_records(index=False)
             p_records = pivots.to_records(index=False)
             if op.ascending:
                 poses = records.searchsorted(p_records, side='right')
@@ -531,6 +551,8 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
         xdf = pd if isinstance(raw_inputs[0], (pd.DataFrame, pd.Series)) else cudf
         concat_values = xdf.concat(raw_inputs, axis=op.axis)
+        if isinstance(concat_values, pd.DataFrame):
+            concat_values.drop(_PSRS_DISTINCT_COL, axis=1, inplace=True, errors='ignore')
 
         del raw_inputs[:]
         if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
