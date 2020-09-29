@@ -15,13 +15,13 @@
 import numpy as np
 import pandas as pd
 
-from mars import opcodes
-from mars.core import Base, Entity
-from mars.serialize import AnyField, Int32Field, BoolField, StringField
-from mars.tensor.utils import filter_inputs
-from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
-from mars.dataframe.operands import DataFrameOperandMixin, DataFrameOperand
-from mars.dataframe.utils import build_df, build_series, validate_axis
+from ... import opcodes
+from ...core import Base, Entity
+from ...serialize import AnyField, Int32Field, BoolField, StringField
+from ...tensor.utils import filter_inputs
+from ..core import DATAFRAME_TYPE, SERIES_TYPE
+from ..operands import DataFrameOperandMixin, DataFrameOperand
+from ..utils import build_df, build_series, validate_axis
 
 
 class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
