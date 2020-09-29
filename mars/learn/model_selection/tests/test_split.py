@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -159,3 +160,23 @@ class Test(TestBase):
             np.testing.assert_equal(y_train2, y_train3)
             np.testing.assert_equal(X_test1, X_test3)
             np.testing.assert_equal(y_test3, y_test2)
+
+    def testMixiedInputTypeTrainTestSplit(self):
+        rs = np.random.RandomState(0)
+        df_raw = pd.DataFrame(rs.rand(10, 4))
+        df = md.DataFrame(df_raw, chunk_size=5)
+        X, y = df.iloc[:, :-1], df.iloc[:, -1]
+
+        for x_to_tensor, y_to_tensor in itertools.product(range(1), range(1)):
+            x = X
+            if x_to_tensor:
+                x = mt.tensor(x)
+            yy = y
+            if y_to_tensor:
+                yy = mt.tensor(yy)
+
+            x_train, x_test, y_train, y_test = train_test_split(x, y, random_state=0)
+            self.assertIsInstance(x_train, type(x))
+            self.assertIsInstance(x_test, type(x))
+            self.assertIsInstance(y_train, type(yy))
+            self.assertIsInstance(y_test, type(yy))
