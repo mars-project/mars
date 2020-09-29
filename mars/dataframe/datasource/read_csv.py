@@ -262,7 +262,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 # will replace null value with np.nan,
                 # which will cause failure when converting to arrow string array
                 csv_kwargs['keep_default_na'] = False
-                csv_kwargs['dtype'] = cls._select_arrow_dtype(dtypes.to_dict())
+                csv_kwargs['dtype'] = cls._select_arrow_dtype(dtypes)
             df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col,
                              usecols=usecols, nrows=op.nrows, **csv_kwargs)
             if op.keep_usecols_order:
