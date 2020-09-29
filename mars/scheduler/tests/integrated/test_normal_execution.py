@@ -140,10 +140,11 @@ class Test(SchedulerIntegratedTest):
 
         raw1 = pd.DataFrame(np.random.rand(10, 10))
         raw1[0] = raw1[0].apply(str)
+        raw1.columns = pd.MultiIndex.from_product([list('AB'), list('CDEFG')])
         df1 = md.DataFrame(raw1, chunk_size=5)
-        r = df1.sort_values(0)
+        r = df1.sort_values([('A', 'C')])
         result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        pd.testing.assert_frame_equal(result, raw1.sort_values(0))
+        pd.testing.assert_frame_equal(result, raw1.sort_values([('A', 'C')]))
 
         rs = np.random.RandomState(0)
         raw2 = pd.DataFrame({'a': rs.rand(10),

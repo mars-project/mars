@@ -66,6 +66,16 @@ class Test(unittest.TestCase):
 
         pd.testing.assert_frame_equal(result, expected)
 
+        # test multiindex
+        df2 = df.copy(deep=True)
+        df2.columns = pd.MultiIndex.from_product([list('AB'), list('CDEFG')])
+        mdf = DataFrame(df2, chunk_size=10)
+
+        result = self.executor.execute_dataframe(mdf.sort_values([('A', 'C')]), concat=True)[0]
+        expected = df2.sort_values([('A', 'C')])
+
+        pd.testing.assert_frame_equal(result, expected)
+
         # test rechunk
         mdf = DataFrame(df, chunk_size=3)
         result = self.executor.execute_dataframe(mdf.sort_values('a0'), concat=True)[0]
