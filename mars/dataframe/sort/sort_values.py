@@ -112,31 +112,48 @@ def dataframe_sort_values(df, by, axis=0, ascending=True, inplace=False, kind='q
                           na_position='last', ignore_index=False, parallel_kind='PSRS', psrs_kinds=None):
     """
     Sort by the values along either axis.
-    :param df: input DataFrame.
-    :param by: Name or list of names to sort by.
-    :param axis: Axis to be sorted.
-    :param ascending: Sort ascending vs. descending. Specify list for multiple sort orders.
-    If this is a list of bools, must match the length of the by.
-    :param inplace: If True, perform operation in-place.
-    :param kind: Choice of sorting algorithm. See also ndarray.np.sort for more information.
-    mergesort is the only stable algorithm. For DataFrames, this option is only applied
-    when sorting on a single column or label.
-    :param na_position: Puts NaNs at the beginning if first; last puts NaNs at the end.
-    :param ignore_index: If True, the resulting axis will be labeled 0, 1, …, n - 1.
-    :param parallel_kind: {'PSRS'}, optional. Parallel sorting algorithm, for the details, refer to:
-    http://csweb.cs.wfu.edu/bigiron/LittleFE-PSRS/build/html/PSRSalgorithm.html
-    :param psrs_kinds: Sorting algorithms during PSRS algorithm.
-    :return: sorted dataframe.
+
+    Parameters
+    ----------
+    df : Mars DataFrame
+         Input dataframe.
+    by : str
+         Name or list of names to sort by.
+    axis : %(axes_single_arg)s, default 0
+         Axis to be sorted.
+    ascending : bool or list of bool, default True
+         Sort ascending vs. descending. Specify list for multiple sort
+         orders.  If this is a list of bools, must match the length of
+         the by.
+    inplace : bool, default False
+         If True, perform operation in-place.
+    kind : {'quicksort', 'mergesort', 'heapsort'}, default 'quicksort'
+         Choice of sorting algorithm. See also ndarray.np.sort for more
+         information.  `mergesort` is the only stable algorithm. For
+         DataFrames, this option is only applied when sorting on a single
+         column or label.
+    na_position : {'first', 'last'}, default 'last'
+         Puts NaNs at the beginning if `first`; `last` puts NaNs at the
+         end.
+    ignore_index : bool, default False
+         If True, the resulting axis will be labeled 0, 1, …, n - 1.
+    parallel_kind : {'PSRS'}, default 'PSRS'
+         Parallel sorting algorithm, for the details, refer to:
+         http://csweb.cs.wfu.edu/bigiron/LittleFE-PSRS/build/html/PSRSalgorithm.html
+
+    Returns
+    -------
+    sorted_obj : DataFrame or None
+        DataFrame with sorted values if inplace=False, None otherwise.
 
     Examples
     --------
     >>> import mars.dataframe as md
-    >>> raw = pd.DataFrame({
+    >>> df = md.DataFrame({
     ...     'col1': ['A', 'A', 'B', np.nan, 'D', 'C'],
     ...     'col2': [2, 1, 9, 8, 7, 4],
     ...     'col3': [0, 1, 9, 4, 2, 3],
     ... })
-    >>> df = md.DataFrame(raw)
     >>> df.execute()
         col1 col2 col3
     0   A    2    0
@@ -179,7 +196,18 @@ def dataframe_sort_values(df, by, axis=0, ascending=True, inplace=False, kind='q
     1   A    1    1
     3   NaN  8    4
 
+    Putting NAs first
+
+    >>> df.sort_values(by='col1', ascending=False, na_position='first').execute()
+        col1 col2 col3
+    3   NaN  8    4
+    4   D    7    2
+    5   C    4    3
+    2   B    9    9
+    0   A    2    0
+    1   A    1    1
     """
+
     if na_position not in ['last', 'first']:  # pragma: no cover
         raise TypeError(f'invalid na_position: {na_position}')
     axis = validate_axis(axis, df)
