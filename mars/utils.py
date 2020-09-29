@@ -732,7 +732,11 @@ def kill_process_tree(pid, include_parent=True):
         return
 
     plasma_sock_dir = None
-    children = proc.children(recursive=True)
+    try:
+        children = proc.children(recursive=True)
+    except psutil.NoSuchProcess:  # pragma: no cover
+        return
+
     if include_parent:
         children.append(proc)
     for p in children:

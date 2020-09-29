@@ -16,6 +16,12 @@ import enum
 import itertools
 from collections import namedtuple
 
+import numpy as np
+import pandas as pd
+
+from ....tensor import tensor as mars_tensor
+from ....dataframe import DataFrame as MarsDataFrame, Series as MarsSeries
+
 try:
     import lightgbm
 except ImportError:
@@ -54,7 +60,21 @@ class LGBMScikitLearnBase:
             setattr(dest, name, attributes[name])
 
     @staticmethod
-    def _wrap_train_tuple(data, label, sample_weight=None, init_score=None):
+    def _convert_tileable(obj):
+        if isinstance(obj, np.ndarray):
+            return mars_tensor(obj)
+        elif isinstance(obj, pd.DataFrame):
+            return MarsDataFrame(obj)
+        elif isinstance(obj, pd.Series):
+            return MarsSeries(obj)
+        return obj
+
+    @classmethod
+    def _wrap_train_tuple(cls, data, label, sample_weight=None, init_score=None):
+        data = cls._convert_tileable(data)
+        label = cls._convert_tileable(label)
+        sample_weight = cls._convert_tileable(sample_weight)
+        init_score = cls._convert_tileable(init_score)
         return TrainTuple(data, label, sample_weight, init_score)
 
     @staticmethod

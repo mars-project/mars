@@ -16,7 +16,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialize import ListField, ValueType
+from ...serialize import ListField
 from ...tensor.base.sort import _validate_sort_psrs_kinds
 from ..utils import parse_index, validate_axis, build_concatenated_rows_frame
 from ..core import IndexValue
@@ -27,7 +27,7 @@ from .psrs import DataFramePSRSOperandMixin, execute_sort_values
 class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
     _op_type_ = OperandDef.SORT_VALUES
 
-    _by = ListField('by', ValueType.string)
+    _by = ListField('by')
 
     def __init__(self, by=None, output_types=None, **kw):
         super(DataFrameSortValues, self).__init__(_by=by, _output_types=output_types, **kw)
