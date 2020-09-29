@@ -16,11 +16,19 @@ from .quantile import DataFrameQuantile
 
 
 def _install():
-    from ..core import Series, DataFrame
+    from ..core import SERIES_TYPE, DATAFRAME_TYPE
     from .quantile import quantile_series, quantile_dataframe
+    from .corr import df_corr, df_corrwith, series_corr, series_autocorr
 
-    Series.quantile = quantile_series
-    DataFrame.quantile = quantile_dataframe
+    for t in SERIES_TYPE:
+        t.quantile = quantile_series
+        t.corr = series_corr
+        t.autocorr = series_autocorr
+
+    for t in DATAFRAME_TYPE:
+        t.quantile = quantile_dataframe
+        t.corr = df_corr
+        t.corrwith = df_corrwith
 
 
 _install()
