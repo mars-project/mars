@@ -112,6 +112,8 @@ Computations / descriptive stats
    DataFrame.abs
    DataFrame.all
    DataFrame.any
+   DataFrame.corr
+   DataFrame.corrwith
    DataFrame.count
    DataFrame.cummax
    DataFrame.cummin

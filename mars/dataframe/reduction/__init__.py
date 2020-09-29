@@ -50,31 +50,34 @@ def _install():
     from .cumsum import cumsum
     from .nunique import nunique_dataframe, nunique_series
 
-    func_names = ['sum', 'prod', 'max', 'min', 'count', 'mean', 'var',
-                  'std', 'all', 'any', 'cummax', 'cummin', 'cumprod',
-                  'cumsum', 'agg', 'aggregate', 'nunique']
-    series_funcs = [sum_series, prod_series, max_series, min_series,
-                    count_series, mean_series, var_series, std_series,
-                    all_series, any_series, cummax, cummin, cumprod,
-                    cumsum, aggregate, aggregate, nunique_series]
-    df_funcs = [sum_dataframe, prod_dataframe, max_dataframe, min_dataframe,
-                count_dataframe, mean_dataframe, var_dataframe, std_dataframe,
-                all_dataframe, any_dataframe, cummax, cummin, cumprod, cumsum,
-                aggregate, aggregate, nunique_dataframe]
-    for func_name, series_func, df_func in zip(func_names, series_funcs, df_funcs):
-        for t in DATAFRAME_TYPE:
-            setattr(t, func_name, df_func)
-        for t in SERIES_TYPE:
-            setattr(t, func_name, series_func)
-    # alias
-    for t in DATAFRAME_TYPE:
-        setattr(t, 'product', prod_dataframe)
-    for t in SERIES_TYPE:
-        setattr(t, 'product', prod_series)
-
-    # unique only for Series
-    for t in SERIES_TYPE:
-        setattr(t, 'unique', unique)
+    funcs = [
+        ('sum', sum_series, sum_dataframe),
+        ('prod', prod_series, prod_dataframe),
+        ('product', prod_series, prod_dataframe),
+        ('max', max_series, max_dataframe),
+        ('min', min_series, min_dataframe),
+        ('count', count_series, count_dataframe),
+        ('mean', mean_series, mean_dataframe),
+        ('var', var_series, var_dataframe),
+        ('std', std_series, std_dataframe),
+        ('all', all_series, all_dataframe),
+        ('any', any_series, any_dataframe),
+        ('cummax', cummax, cummax),
+        ('cummin', cummin, cummin),
+        ('cumprod', cumprod, cumprod),
+        ('cumsum', cumsum, cumsum),
+        ('agg', aggregate, aggregate),
+        ('aggregate', aggregate, aggregate),
+        ('nunique', nunique_series, nunique_dataframe),
+        ('unique', unique, None),
+    ]
+    for func_name, series_func, df_func in funcs:
+        if df_func is not None:  # pragma: no branch
+            for t in DATAFRAME_TYPE:
+                setattr(t, func_name, df_func)
+        if series_func is not None:  # pragma: no branch
+            for t in SERIES_TYPE:
+                setattr(t, func_name, series_func)
 
 
 _install()
