@@ -374,6 +374,27 @@ class Test(TestBase):
                                                    concat=True)[0]
             pd.testing.assert_frame_equal(pdf, mdf2)
 
+        # test nan
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+
+            df = pd.DataFrame({
+                'col1': np.random.rand(100, ),
+                'col2': np.random.choice(['a', 'b', 'c'], (100,)),
+                'col3': np.arange(100)
+            })
+            df.iloc[20:, :] = pd.NA
+            df.to_csv(file_path)
+
+            pdf = pd.read_csv(file_path, index_col=0)
+            mdf = md.read_csv(file_path, index_col=0, head_lines=10, chunk_bytes=200)
+            result = self.executor.execute_dataframe(mdf, concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, result)
+
+            # dtypes is inferred as expected
+            pd.testing.assert_series_equal(mdf.dtypes, pd.Series(['float64', 'object', 'int64'],
+                                                                 index=df.columns))
+
         # test compression
         with tempfile.TemporaryDirectory() as tempdir:
             file_path = os.path.join(tempdir, 'test.gzip')
