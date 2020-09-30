@@ -63,9 +63,10 @@ class Test(unittest.TestCase):
                     with open(path, 'rb') as f:
                         self.assertGreater(len(f.read()), 0)
 
-                pk2, distance = search_proxima2_index(t, range(15), index, 2)
-                print(pk2)
-                print(distance)
+                pk2, distance = search_proxima2_index(t, range(15), index, 2,
+                                                      session=self.session)
+                self.assertEqual(pk2.shape, (len(t), 2))
+                self.assertEqual(distance.shape, (len(t), 2))
             finally:
                 for path in paths:
                     os.remove(path)
