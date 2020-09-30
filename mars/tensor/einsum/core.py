@@ -167,18 +167,48 @@ def einsum(subscripts, *operands, dtype=None, order='K', casting='safe', optimiz
 
     See the notes and examples for clarification.
 
-    :param subscripts: Specifies the subscripts for summation as comma separated list of subscript labels.
-    An implicit (classical Einstein summation) calculation is performed unless the explicit indicator ‘->’ is
-    included as well as subscript labels of the precise output form.
-    :param operands: These are the arrays for the operation.
-    :param dtype: If provided, forces the calculation to use the data type specified.
-    Note that you may have to also give a more liberal casting parameter to allow the conversions.
-    Default is None.
-    :param order: Controls the memory layout of the output.
-    :param casting: Controls what kind of data casting may occur. Setting this to ‘unsafe’ is not recommended,
-     as it can adversely affect accumulations.
-    :param optimize: Controls if intermediate optimization should occur.
-    :return: The calculation based on the Einstein summation convention.
+    Parameters
+    ----------
+    subscripts : str
+        Specifies the subscripts for summation as comma separated list of
+        subscript labels. An implicit (classical Einstein summation)
+        calculation is performed unless the explicit indicator '->' is
+        included as well as subscript labels of the precise output form.
+    operands : list of array_like
+        These are the arrays for the operation.
+    dtype : {data-type, None}, optional
+        If provided, forces the calculation to use the data type specified.
+        Note that you may have to also give a more liberal `casting`
+        parameter to allow the conversions. Default is None.
+    order : {'C', 'F', 'A', 'K'}, optional
+        Controls the memory layout of the output. 'C' means it should
+        be C contiguous. 'F' means it should be Fortran contiguous,
+        'A' means it should be 'F' if the inputs are all 'F', 'C' otherwise.
+        'K' means it should be as close to the layout as the inputs as
+        is possible, including arbitrarily permuted axes.
+        Default is 'K'.
+    casting : {'no', 'equiv', 'safe', 'same_kind', 'unsafe'}, optional
+        Controls what kind of data casting may occur.  Setting this to
+        'unsafe' is not recommended, as it can adversely affect accumulations.
+
+          * 'no' means the data types should not be cast at all.
+          * 'equiv' means only byte-order changes are allowed.
+          * 'safe' means only casts which can preserve values are allowed.
+          * 'same_kind' means only safe casts or casts within a kind,
+            like float64 to float32, are allowed.
+          * 'unsafe' means any data conversions may be done.
+
+        Default is 'safe'.
+    optimize : {False, True, 'greedy', 'optimal'}, optional
+        Controls if intermediate optimization should occur. No optimization
+        will occur if False and True will default to the 'greedy' algorithm.
+        Also accepts an explicit contraction list from the ``np.einsum_path``
+        function. See ``np.einsum_path`` for more details. Defaults to False.
+
+    Returns
+    -------
+    output : Mars.tensor
+        The calculation based on the Einstein summation convention.
 
     The Einstein summation convention can be used to compute
     many multi-dimensional, linear algebraic array operations. `einsum`
@@ -393,6 +423,7 @@ def einsum(subscripts, *operands, dtype=None, order='K', casting='safe', optimiz
     ...     _ = mt.einsum('ijk,ilm,njm,nlk,abc->',a,a,a,a,a, optimize=path)
 
     """
+
     all_inputs = [subscripts] + list(operands)
     inputs, outputs, operands = parse_einsum_input(all_inputs)
     subscripts = "->".join((inputs, outputs))
