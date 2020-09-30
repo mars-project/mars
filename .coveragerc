@@ -33,6 +33,7 @@ omit =
     mars/tensor/datastore/to_vineyard.py
     mars/worker/storage/vineyardhandler.py
     mars/deploy/kubedl/*
+    mars/learn/neighbors/_proxima2.py
 
 [report]
 exclude_lines =
