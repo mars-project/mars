@@ -25,22 +25,37 @@ except ImportError:  # pragma: no cover
 import mars.dataframe as md
 from mars.learn.neighbors._proxima2 import build_proxima2_index
 from mars.session import new_session
+from mars.tests.core import ExecutorForTest
 
 
 @unittest.skipIf(pyproxima2 is None, 'pyproxima2 not installed')
 class Test(unittest.TestCase):
     def setUp(self) -> None:
         self.session = new_session().as_default()
+        self._old_executor = self.session._sess._executor
+        self.executor = self.session._sess._executor = \
+            ExecutorForTest('numpy', storage=self.session._sess._context)
+
+    def tearDown(self) -> None:
+        self.session._sess._executor = self._old_executor
 
     def testBuildIndex(self):
         raw = pd.DataFrame(np.random.rand(20, 10).astype(np.float32))
         df = md.DataFrame(raw, chunk_size=10)
 
-        index = build_proxima2_index(df, df.index, session=self.session)
-        paths = index.fetch()
-        for path in paths:
-            try:
-                with open(path, 'rb') as f:
-                    self.assertGreater(len(f.read()), 0)
-            finally:
-                os.remove(path)
+        args = [
+            (df, df.index),
+            (raw.to_numpy(), range(20)),
+        ]
+
+        for arg in args:
+            index = build_proxima2_index(arg[0], arg[1], session=self.session)
+            paths = index.fetch()
+            if not isinstance(paths, list):
+                paths = [paths]
+            for path in paths:
+                try:
+                    with open(path, 'rb') as f:
+                        self.assertGreater(len(f.read()), 0)
+                finally:
+                    os.remove(path)

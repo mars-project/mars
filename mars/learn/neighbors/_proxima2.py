@@ -22,6 +22,7 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes
 from ... import tensor as mt
+from ...core import Base, Entity
 from ...operands import OutputType, OperandStage
 from ...serialize import KeyField, StringField, Int32Field
 from ...tiles import TilesError
@@ -114,6 +115,7 @@ class Proxima2BuildIndex(LearnOperand, LearnOperandMixin):
         holder = pp.IndexHolder(type=_type_mapping[inp.dtype],
                                 dimension=op.dimension)
         for pk, record in zip(pks, inp):
+            pk = pk.item() if hasattr(pk, 'item') else pk
             holder.emplace(pk, record.copy())
 
         builder = pp.IndexBuilder(name='SsgBuilder',
@@ -121,7 +123,7 @@ class Proxima2BuildIndex(LearnOperand, LearnOperandMixin):
                                                     dimension=op.dimension))
         builder = builder.train_and_build(holder)
 
-        path = tempfile.mktemp(prefix='pyproxima2-', suffix='.index')
+        path = tempfile.mkstemp(prefix='pyproxima2-', suffix='.index')[1]
         dumper = pp.IndexDumper(name="FileDumper", path=path)
         builder.dump(dumper)
 
@@ -158,6 +160,10 @@ def build_proxima2_index(tensor, pk, shuffle=False, metric='l2',
         raise ValueError('Input tensor should be 2-d')
     if shuffle:
         tensor = mt.random.permutation(tensor)
+
+    if not isinstance(pk, (Base, Entity)):
+        pk = mt.tensor(pk)
+
     op = Proxima2BuildIndex(tensor=tensor, pk=pk,
                             metric=metric, dimension=tensor.shape[1])
     return op(tensor, pk).execute(session=session, **(run_kwargs or dict()))
