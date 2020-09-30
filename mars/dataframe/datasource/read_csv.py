@@ -341,7 +341,9 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     path : str
         Any valid string path is acceptable. The string could be a URL. Valid
         URL schemes include http, ftp, s3, and file. For file URLs, a host is
-        expected. A local file could be: file://localhost/path/to/table.csv.
+        expected. A local file could be: file://localhost/path/to/table.csv,
+        you can alos read from external resources using a URL like:
+        hdfs://localhost:8020/test.csv.
         If you want to pass in a path object, pandas accepts any ``os.PathLike``.
         By file-like object, we refer to objects with a ``read()`` method, such as
         a file handler (e.g. via builtin ``open`` function) or ``StringIO``.
@@ -608,6 +610,8 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     --------
     >>> import mars.dataframe as md
     >>> md.read_csv('data.csv')  # doctest: +SKIP
+    >>> # read from HDFS
+    >>> md.read_csv('hdfs://localhost:8020/test.csv')  # doctest: +SKIP
     """
     # infer dtypes and columns
     if isinstance(path, (list, tuple)):
