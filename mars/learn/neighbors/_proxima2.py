@@ -264,7 +264,12 @@ class Proxima2SearchIndex(LearnOperand, LearnOperandMixin):
                 pk_chunks.append(pk_chunk)
                 distance_chunks.append(distance_chunk)
 
-            shape=(tensor_chunk.shape[0], topk * len(pk_chunks))
+            if len(pk_chunks) == 1:
+                out_chunks[0].append(pk_chunks[0])
+                out_chunks[1].append(distance_chunks[0])
+                continue
+
+            shape = (tensor_chunk.shape[0], topk * len(pk_chunks))
             pk_merge_op = TensorConcatenate(axis=1)
             pk_merge_chunk = pk_merge_op.new_chunk(
                 pk_chunks, index=(pk_chunks[0].index[0], 0), shape=shape,
