@@ -23,7 +23,8 @@ except ImportError:  # pragma: no cover
     pyproxima2 = None
 
 import mars.dataframe as md
-from mars.learn.neighbors._proxima2 import build_proxima2_index
+import mars.tensor as mt
+from mars.learn.neighbors._proxima2 import build_proxima2_index, search_proxima2_index
 from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 
@@ -39,9 +40,12 @@ class Test(unittest.TestCase):
     def tearDown(self) -> None:
         self.session._sess._executor = self._old_executor
 
-    def testBuildIndex(self):
-        raw = pd.DataFrame(np.random.rand(20, 10).astype(np.float32))
+    def testBuildAndSearchIndex(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.rand(20, 10).astype(np.float32))
         df = md.DataFrame(raw, chunk_size=10)
+        raw_t = rs.rand(15, 10).astype(np.float32)
+        t = mt.tensor(raw_t, chunk_size=(5, 10))
 
         args = [
             (df, df.index),
@@ -53,9 +57,15 @@ class Test(unittest.TestCase):
             paths = index.fetch()
             if not isinstance(paths, list):
                 paths = [paths]
-            for path in paths:
-                try:
+
+            try:
+                for path in paths:
                     with open(path, 'rb') as f:
                         self.assertGreater(len(f.read()), 0)
-                finally:
+
+                pk2, distance = search_proxima2_index(t, range(15), index, 2)
+                print(pk2)
+                print(distance)
+            finally:
+                for path in paths:
                     os.remove(path)
