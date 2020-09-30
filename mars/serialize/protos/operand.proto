@@ -465,6 +465,8 @@ message OperandDef {
         PROXIMA2_TRAIN = 2238;
         PROXIMA2_QUERY = 2239;
         KNEIGHBORS_GRAPH = 2237;
+        PROXIMA2_QUERY=2238;
+        PROXIMA2_TRAIN=2239;
 
         // CLUSTER
         KMEANS_PLUS_PLUS_INIT = 2250;
