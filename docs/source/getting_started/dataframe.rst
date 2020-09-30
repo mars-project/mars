@@ -35,6 +35,14 @@ Mars DataFrame can read data from CSV files, SQL tables, etc.
    >>> md.read_csv('Downloads/ratings.csv')
    DataFrame <op=DataFrameReadCSV, key=48550937383cbea63d4f9f24f3eb1a17>
 
+
+Mars DataFrame also supports reading data from HDFS by providing a URL.
+
+.. code-block:: python
+
+    >>> df = md.read_csv('hdfs://localhost:8020/test.csv')
+
+
 For more information about DataFrame creation, refer to :ref:`api.io`.
 
 Like Mars tensor, DataFrame is lazy evaluated as well.

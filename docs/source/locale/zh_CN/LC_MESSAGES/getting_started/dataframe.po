@@ -41,11 +41,15 @@ msgstr "从 Mars tensor 创建 Mars DataFrame。"
 msgid "Mars DataFrame can read data from CSV files, SQL tables, etc."
 msgstr "Mars DataFrame 能通过 CSV 文件和 SQL 表来创建。"
 
-#: ../../source/getting_started/dataframe.rst:38
+#: ../../source/getting_started/dataframe.rst:39
+msgid "Mars DataFrame also supports reading data from HDFS by providing a URL."
+msgstr "Mars DataFrame 也能够通过提供 URL 读取 HDFS 来创建。"
+
+#: ../../source/getting_started/dataframe.rst:46
 msgid "For more information about DataFrame creation, refer to :ref:`api.io`."
 msgstr "关于如何创建 DataFrame，参考 :ref:`api.io`。"
 
-#: ../../source/getting_started/dataframe.rst:40
+#: ../../source/getting_started/dataframe.rst:48
 msgid ""
 "Like Mars tensor, DataFrame is lazy evaluated as well. If you want to get"
 " result, ``.execute()`` needs to be called."
@@ -53,17 +57,17 @@ msgstr ""
 "类似 Mars tensor，DataFrame 也是延迟执行的。如果要获取结果，需要调用 ``."
 "execute()``。"
 
-#: ../../source/getting_started/dataframe.rst:66
+#: ../../source/getting_started/dataframe.rst:74
 msgid "Remember that ``DataFrame.execute()`` will return DataFrame itself."
 msgstr "记住，``DataFrame.execute()`` 会返回 DataFrame 自身。"
 
-#: ../../source/getting_started/dataframe.rst:68
+#: ../../source/getting_started/dataframe.rst:76
 msgid ""
 "For more implemented DataFrame API, refer to :ref:`DataFrame API "
 "reference <dataframe_api>`."
 msgstr "了解更多 DataFrame 接口，参考 :ref:`api`。"
 
-#: ../../source/getting_started/dataframe.rst:70
+#: ../../source/getting_started/dataframe.rst:78
 msgid ""
 "In order to convert Mars DataFrame to pandas, ``.execute().fetch()`` can "
 "be called.  An alternative is ``.to_pandas()``."
@@ -71,7 +75,7 @@ msgstr ""
 "调用 ``.execute().fetch()`` 来把 Mars DataFrame 转成 pandas。或者使用快捷"
 "方法 ``.to_pandas()``。"
 
-#: ../../source/getting_started/dataframe.rst:105
+#: ../../source/getting_started/dataframe.rst:113
 msgid ""
 "Users should always consider using ``.execute()`` instead of "
 "``.to_pandas()``, because when the DataFrame is large, ``.execute()`` "
@@ -85,17 +89,17 @@ msgstr ""
 "()`` 会在服务端生成完整的 DataFrame，然后返回到客户端，这非常低效，而且很"
 "有可能导致内存溢出。"
 
-#: ../../source/getting_started/dataframe.rst:112
+#: ../../source/getting_started/dataframe.rst:120
 msgid ""
 "If multiple DataFrames need to be executed together, "
 ":class:`mars.dataframe.ExecutableTuple` could be used."
 msgstr "使用 :class:`mars.dataframe.ExecutableTuple` 来执行多个 DataFrame。"
 
-#: ../../source/getting_started/dataframe.rst:129
+#: ../../source/getting_started/dataframe.rst:137
 msgid "DataFrame can be saved to CSV etc."
 msgstr "DataFrame 能被保存到 CSV 文件。"
 
-#: ../../source/getting_started/dataframe.rst:138
+#: ../../source/getting_started/dataframe.rst:146
 msgid "Refer to :ref:`api.dataframe.io` for more information."
 msgstr "参考 :ref:`api.dataframe.io` 获取更多信息。"
 

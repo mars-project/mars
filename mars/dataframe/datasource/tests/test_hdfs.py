@@ -17,6 +17,7 @@ import os
 from io import BytesIO
 
 import pandas as pd
+import numpy as np
 
 import mars.dataframe as md
 from mars.tests.core import TestBase
@@ -69,3 +70,14 @@ class TestHDFS(TestBase):
         expected = pd.read_csv(BytesIO(csv_content))
         res = df.to_pandas()
         pd.testing.assert_frame_equal(expected.reset_index(drop=True), res.reset_index(drop=True))
+
+    def testReadParquetExecution(self):
+        test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                                'b': [f's{i}' for i in range(10)],
+                                'c': np.random.rand(10), })
+        with self.hdfs.open(f"{TEST_DIR}/test.parquet", "wb", replication=1) as f:
+            test_df.to_parquet(f, row_group_size=3)
+
+        df = md.read_parquet(f'hdfs://localhost:8020{TEST_DIR}/test.parquet')
+        res = df.to_pandas()
+        pd.testing.assert_frame_equal(res, test_df)
