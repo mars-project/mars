@@ -72,9 +72,18 @@ def operand_deserializer(value):
 @lru_cache(500)
 def _register_ray_serializer(op):
     # register a custom serializer for Mars operand
-    ray.register_custom_serializer(
-        type(op), serializer=operand_serializer,
-        deserializer=operand_deserializer)
+    try:
+        ray.register_custom_serializer(
+            type(op), serializer=operand_serializer,
+            deserializer=operand_deserializer)
+    except AttributeError:  # ray >= 1.0
+        from ray.worker import global_worker
+
+        global_worker.check_connected()
+        context = global_worker.get_serialization_context()
+        context.register_custom_serializer(
+            type(op), serializer=operand_serializer,
+            deserializer=operand_deserializer)
 
 
 class GraphExecutionForRay(GraphExecution):
