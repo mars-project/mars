@@ -35,4 +35,4 @@ from .from_tiledb import fromtiledb, TensorTileDBDataSource
 from .from_hdf5 import fromhdf5, TensorHDF5DataSource
 from .from_zarr import fromzarr, TensorFromZarr
 from .from_dataframe import from_dataframe, from_series, TensorFromDataFrame
-from .from_vineyard import from_vineyard, TensorFromVineyard, TensorFromVineyardChunk
+from .from_vineyard import from_vineyard, TensorFromVineyard
