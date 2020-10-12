@@ -164,5 +164,3 @@ def build_index(tensor, pk, need_shuffle=False, distance_metric='L2', index_buil
                         distance_metric=distance_metric, dimension=tensor.shape[1],
                         index_builder=index_builder, index_builder_params=index_builder_params)
     return op(tensor, pk).execute(session=session, **(run_kwargs or dict()))
-
-
