@@ -16,159 +16,42 @@ import itertools
 import tempfile
 
 import numpy as np
-try:
-    import pyproxima2 as pp
-except ImportError:  # pragma: no cover
-    pp = None
 
-from ... import opcodes
-from ... import tensor as mt
-from ...context import get_context
-from ...core import Base, Entity
-from ...operands import OutputType, OperandStage
-from ...serialize import KeyField, StringField, Int32Field
-from ...tensor.core import TensorOrder
-from ...tensor.merge.concatenate import TensorConcatenate
-from ...tiles import TilesError
-from ...tensor.utils import decide_unify_split
-from ...utils import check_chunks_unknown_shape
-from ..operands import LearnOperand, LearnOperandMixin
+from .... import opcodes
+from .... import tensor as mt
+from ....context import get_context
+from ....core import Base, Entity
+from ....operands import OutputType, OperandStage
+from ....serialize import KeyField, StringField, Int32Field, DictField
+from ....tensor.core import TensorOrder
+from ....tensor.merge.concatenate import TensorConcatenate
+from ....tiles import TilesError
+from ....tensor.utils import decide_unify_split
+from ....utils import check_chunks_unknown_shape
+from ...operands import LearnOperand, LearnOperandMixin
+from ..core import proxima, get_proxima_type, validate_tensor
 
 
-if pp:
-    _type_mapping = {
-        np.dtype(np.float32): pp.IndexMeta.FT_FP32
-    }
-
-
-class Proxima2BuildIndex(LearnOperand, LearnOperandMixin):
-    _op_type_ = opcodes.PROXIMA2_TRAIN
+class ProximaSearcher(LearnOperand, LearnOperandMixin):
+    _op_type_ = opcodes.PROXIMA_SIMPLE_SEARCHER
 
     _tensor = KeyField('tensor')
     _pk = KeyField('pk')
-    _metric = StringField('metric')
-    _dimension = Int32Field('dimension')
-
-    def __init__(self, tensor=None, pk=None, metric=None, dimension=None,
-                 output_types=None, stage=None, **kw):
-        super().__init__(_tensor=tensor, _pk=pk, _metric=metric,
-                         _dimension=dimension, _output_types=output_types,
-                         _stage=stage, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
-
-    @property
-    def tensor(self):
-        return self._tensor
-
-    @property
-    def pk(self):
-        return self._pk
-
-    @property
-    def metric(self):
-        return self._metric
-
-    @property
-    def dimension(self):
-        return self._dimension
-
-    def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
-        self._tensor = self._inputs[0]
-        self._pk = self._inputs[-1]
-
-    def __call__(self, tensor, pk):
-        return self.new_tileable([tensor, pk])
-
-    @classmethod
-    def tile(cls, op):
-        tensor = op.tensor
-        pk = op.pk
-        out = op.outputs[0]
-
-        # make sure all inputs have known chunk sizes
-        check_chunks_unknown_shape(op.inputs, TilesError)
-
-        nsplit = decide_unify_split(tensor.nsplits[0], pk.nsplits[0])
-        if tensor.chunk_shape[1] > 1:
-            tensor = tensor.rechunk({0: nsplit, 1: tensor.shape[1]})._inplace_tile()
-        else:
-            tensor = tensor.rechunk({0: nsplit})._inplace_tile()
-        pk = pk.rechunk({0: nsplit})._inplace_tile()
-
-        out_chunks = []
-        for chunk, pk_col_chunk in zip(tensor.chunks, pk.chunks):
-            chunk_op = op.copy().reset_key()
-            chunk_op._stage = OperandStage.map
-            out_chunk = chunk_op.new_chunk([chunk, pk_col_chunk],
-                                           index=pk_col_chunk.index)
-            out_chunks.append(out_chunk)
-
-        params = out.params
-        params['chunks'] = out_chunks
-        params['nsplits'] = ((1,) * len(out_chunks),)
-        new_op = op.copy()
-        return new_op.new_tileables(op.inputs, kws=[params])
-
-    @classmethod
-    def _execute_map(cls, ctx, op: "Proxima2BuildIndex"):
-        inp = ctx[op.tensor.key]
-        pks = ctx[op.pk.key]
-
-        holder = pp.IndexHolder(type=_type_mapping[inp.dtype],
-                                dimension=op.dimension)
-        for pk, record in zip(pks, inp):
-            pk = pk.item() if hasattr(pk, 'item') else pk
-            holder.emplace(pk, record.copy())
-
-        builder = pp.IndexBuilder(name='SsgBuilder',
-                                  meta=pp.IndexMeta(type=_type_mapping[inp.dtype],
-                                                    dimension=op.dimension))
-        builder = builder.train_and_build(holder)
-
-        path = tempfile.mkstemp(prefix='pyproxima2-', suffix='.index')[1]
-        dumper = pp.IndexDumper(name="FileDumper", path=path)
-        builder.dump(dumper)
-
-        ctx[op.outputs[0].key] = path
-
-    @classmethod
-    def _execute_agg(cls, ctx, op: "Proxima2BuildIndex"):
-        paths = [ctx[inp.key] for inp in op.inputs]
-        ctx[op.outputs[0].key] = paths
-
-    @classmethod
-    def execute(cls, ctx, op: "Proxima2BuildIndex"):
-        if op.stage != OperandStage.agg:
-            return cls._execute_map(ctx, op)
-        else:
-            return cls._execute_agg(ctx, op)
-
-    @classmethod
-    def concat_tileable_chunks(cls, tileable):
-        assert not tileable.is_coarse()
-
-        op = cls(stage=OperandStage.agg)
-        chunk = cls(stage=OperandStage.agg).new_chunk(tileable.chunks)
-        return op.new_tileable([tileable], chunks=[chunk], nsplits=((1,),))
-
-
-class Proxima2SearchIndex(LearnOperand, LearnOperandMixin):
-    _op_type_ = opcodes.PROXIMA2_QUERY
-
-    _tensor = KeyField('tensor')
-    _pk = KeyField('pk')
-    _metric = StringField('metric')
+    _distance_metric = StringField('distance_metric')
     _dimension = Int32Field('dimension')
     _topk = Int32Field('topk')
     _index = KeyField('index')
+    _index_path = StringField('index_path')
+    _index_searcher = StringField('index_searcher')
+    _index_searcher_params = DictField('index_searcher_params')
 
-    def __init__(self, tensor=None, pk=None, metric=None, dimension=None,
-                 index=None, topk=None, output_types=None, stage=None, **kw):
-        super().__init__(_tensor=tensor, _pk=pk, _metric=metric,
-                         _dimension=dimension, _output_types=output_types,
-                         _index=index, _topk=topk, _stage=stage, **kw)
+    def __init__(self, tensor=None, pk=None, distance_metric=None, dimension=None,
+                 topk=None, index=None, index_path=None, index_searcher=None,
+                 index_searcher_params=None, output_types=None, stage=None, **kw):
+        super().__init__(_tensor=tensor, _pk=pk, _distance_metric=distance_metric,
+                         _dimension=dimension, _index_path=index_path,
+                         _index_searcher=index_searcher, _index_searcher_params=index_searcher_params,
+                         _output_types=output_types, _index=index, _topk=topk, _stage=stage, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor, OutputType.tensor]
 
@@ -181,31 +64,44 @@ class Proxima2SearchIndex(LearnOperand, LearnOperandMixin):
         return self._pk
 
     @property
-    def metric(self):
-        return self._metric
+    def distance_metric(self):
+        return self._distance_metric
 
     @property
     def dimension(self):
         return self._dimension
 
     @property
+    def topk(self):
+        return self._topk
+
+    @property
     def index(self):
         return self._index
 
     @property
-    def topk(self):
-        return self._topk
+    def index_path(self):
+        return self._index_path
+
+    @property
+    def index_searcher(self):
+        return self._index_searcher
+
+    @property
+    def _index_searcher_params(self):
+        return self._index_searcher_params
 
     @property
     def output_limit(self):
         return 2
 
-    def _set_inputs(self, inputs): # to Graph Node
+    def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         if self._stage != OperandStage.agg:
             self._tensor = self._inputs[0]
             self._pk = self._inputs[1]
-            self._index = self._inputs[2]
+            if self._index is not None:
+                self._index = self._inputs[2]
 
     def __call__(self, tensor, pk, index):
         kws = [
@@ -279,8 +175,8 @@ class Proxima2SearchIndex(LearnOperand, LearnOperandMixin):
                 distance_chunks, index=(distance_chunks[0].index[0], 0), shape=shape,
                 dtype=distance_chunks[0].dtype, order=distance_chunks[0].order)
 
-            agg_op = Proxima2SearchIndex(stage=OperandStage.agg,
-                                         topk=op.topk)
+            agg_op = ProximaSearcher(stage=OperandStage.agg,
+                                     topk=op.topk)
             agg_chunk_kws = [
                 {'index': pk_merge_chunk.index,
                  'dtype': outs[0].dtype,
@@ -310,17 +206,17 @@ class Proxima2SearchIndex(LearnOperand, LearnOperandMixin):
         return new_op.new_tileables(op.inputs, kws=kws)
 
     @classmethod
-    def _execute_map(cls, ctx, op: "Proxima2SearchIndex"):
+    def _execute_map(cls, ctx, op: "ProximaSearcher"):
         inp = ctx[op.tensor.key]
         pks = ctx[op.pk.key]
         index_path = ctx[op.index.key]
 
-        container = pp.IndexContainer(name="FileContainer", path=index_path)
-        searcher = pp.IndexSearcher("SsgSearcher")
-        pp_ctx = searcher.load(container).create_context(topk=op.topk)
+        container = proxima.IndexContainer(name="FileContainer", path=index_path)
+        searcher = proxima.IndexSearcher(op.index_searcher)
+        proxima_ctx = searcher.load(container).create_context(topk=op.topk)
 
         vecs = np.ascontiguousarray(inp)
-        search_results = pp_ctx.search(query=vecs, count=len(vecs))
+        search_results = proxima_ctx.search(query=vecs, count=len(vecs))
 
         result_pks = np.empty((len(vecs), op.topk), dtype=pks.dtype)
         result_distances = np.empty((len(vecs), op.topk),
@@ -335,7 +231,7 @@ class Proxima2SearchIndex(LearnOperand, LearnOperandMixin):
         ctx[op.outputs[1].key] = result_distances
 
     @classmethod
-    def _execute_agg(cls, ctx, op: "Proxima2SearchIndex"):
+    def _execute_agg(cls, ctx, op: "ProximaSearcher"):
         pks, distances = [ctx[inp.key] for inp in op.inputs]
         n_doc = len(pks)
         topk = op.topk
@@ -356,42 +252,20 @@ class Proxima2SearchIndex(LearnOperand, LearnOperandMixin):
         ctx[op.outputs[1].key] = result_distances
 
     @classmethod
-    def execute(cls, ctx, op: "Proxima2SearchIndex"):
+    def execute(cls, ctx, op: "ProximaSearcher"):
         if op.stage != OperandStage.agg:
             return cls._execute_map(ctx, op)
         else:
             return cls._execute_agg(ctx, op)
 
 
-def _validate_tensor(tensor):
-    if hasattr(tensor, 'to_tensor'):
-        tensor = tensor.to_tensor()
-    else:
-        tensor = mt.tensor(tensor)
-    if tensor.ndim != 2:
-        raise ValueError('Input tensor should be 2-d')
-    return tensor
-
-
-def build_proxima2_index(tensor, pk, shuffle=False, metric='l2',
-                         session=None, run_kwargs=None):
-    tensor = _validate_tensor(tensor)
-    if shuffle:
-        tensor = mt.random.permutation(tensor)
+def search_index(tensor, pk, index, topk, index_searcher="SsgSearcher",
+                 index_searcher_params=None, session=None, run_kwargs=None):
+    tensor = validate_tensor(tensor)
 
     if not isinstance(pk, (Base, Entity)):
         pk = mt.tensor(pk)
 
-    op = Proxima2BuildIndex(tensor=tensor, pk=pk,
-                            metric=metric, dimension=tensor.shape[1])
-    return op(tensor, pk).execute(session=session, **(run_kwargs or dict()))
-
-
-def search_proxima2_index(tensor, pk, index, topk, session=None, run_kwargs=None):
-    tensor = _validate_tensor(tensor)
-
-    if not isinstance(pk, (Base, Entity)):
-        pk = mt.tensor(pk)
-
-    op = Proxima2SearchIndex(tensor=tensor, pk=pk, index=index, topk=topk)
+    op = ProximaSearcher(tensor=tensor, pk=pk, index=index, index_searcher=index_searcher,
+                         index_searcher_params=index_searcher_params, topk=topk)
     return op(tensor, pk, index).execute(session=session, **(run_kwargs or dict()))

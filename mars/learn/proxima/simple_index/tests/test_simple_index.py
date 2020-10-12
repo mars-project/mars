@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover
 
 import mars.dataframe as md
 import mars.tensor as mt
-from mars.learn.neighbors._proxima2 import build_proxima2_index, search_proxima2_index
+from mars.learn.proxima.simple_index import build_index, search_index
 from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 
@@ -53,7 +53,7 @@ class Test(unittest.TestCase):
         ]
 
         for arg in args:
-            index = build_proxima2_index(arg[0], arg[1], session=self.session)
+            index = build_index(arg[0], arg[1], index_builder="HnswBuilder", session=self.session)
             paths = index.fetch()
             if not isinstance(paths, list):
                 paths = [paths]
@@ -63,8 +63,8 @@ class Test(unittest.TestCase):
                     with open(path, 'rb') as f:
                         self.assertGreater(len(f.read()), 0)
 
-                pk2, distance = search_proxima2_index(t, range(15), index, 2,
-                                                      session=self.session)
+                pk2, distance = search_index(t, range(15), index, 2, index_searcher="HnswSearcher",
+                                             session=self.session)
                 self.assertEqual(pk2.shape, (len(t), 2))
                 self.assertEqual(distance.shape, (len(t), 2))
             finally:
