@@ -634,6 +634,22 @@ class Test(TestBase):
         self.assertEqual(result2.chunks[0].dtype, data.dtype)
         self.assertTrue(result2.chunks[0].op.labels, [['i2', 'i4']])
 
+    def testSetitem(self):
+        data = pd.DataFrame(np.random.rand(10, 2), columns=['c1', 'c2'])
+        df = md.DataFrame(data, chunk_size=4)
+
+        df['new'] = 1
+        self.assertEqual(df.shape, (10, 3))
+        pd.testing.assert_series_equal(df.inputs[0].dtypes, data.dtypes)
+
+        tiled = df.tiles()
+        self.assertEqual(tiled.chunks[0].shape, (4, 3))
+        pd.testing.assert_series_equal(tiled.inputs[0].dtypes, data.dtypes)
+        self.assertEqual(tiled.chunks[1].shape, (4, 3))
+        pd.testing.assert_series_equal(tiled.inputs[0].dtypes, data.dtypes)
+        self.assertEqual(tiled.chunks[2].shape, (2, 3))
+        pd.testing.assert_series_equal(tiled.inputs[0].dtypes, data.dtypes)
+
     def testResetIndex(self):
         data = pd.DataFrame([('bird',    389.0),
                              ('bird',     24.0),

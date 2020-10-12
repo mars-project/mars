@@ -79,7 +79,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                                           'with different index for now')
 
         index_value = target.index_value
-        dtypes = target.dtypes
+        dtypes = target.dtypes.copy(deep=True)
         dtypes.loc[self._indexes] = value_dtype
         columns_value = parse_index(dtypes.index, store_data=True)
         ret = self.new_dataframe(inputs, shape=(target.shape[0], len(dtypes)),
