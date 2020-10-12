@@ -46,5 +46,5 @@ ignore:
   - "mars/worker/storage/vineyardhandler.py"
   # kubedl related things
   - "mars/deploy/kubedl"
-  # pyproxima2 related things
-  - "mars/learn/neighbors/_proxima2.py"
+  # proxima related things
+  - "mars/learn/proxima/*"
