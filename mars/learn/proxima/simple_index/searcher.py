@@ -28,7 +28,7 @@ from ....tiles import TilesError
 from ....tensor.utils import decide_unify_split
 from ....utils import check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
-from ..core import proxima, get_proxima_type, validate_tensor
+from ..core import proxima, validate_tensor
 
 
 class ProximaSearcher(LearnOperand, LearnOperandMixin):
