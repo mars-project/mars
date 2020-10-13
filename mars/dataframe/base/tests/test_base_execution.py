@@ -495,6 +495,16 @@ class Test(TestBase):
         expected = s_raw.apply(lambda x: [x, x + 1], convert_dtype=False)
         pd.testing.assert_series_equal(result, expected)
 
+        s_raw2 = pd.Series([np.array([1, 2, 3]), np.array([4, 5, 6])])
+        series = from_pandas_series(s_raw2)
+
+        dtypes = pd.Series([np.dtype(float)] * 3)
+        r = series.apply(pd.Series, output_type='dataframe',
+                         dtypes=dtypes)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw2.apply(pd.Series)
+        pd.testing.assert_frame_equal(result, expected)
+
     @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testApplyWithArrowDtypeExecution(self):
         df1 = pd.DataFrame({'a': [1, 2, 1],

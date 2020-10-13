@@ -172,8 +172,12 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             new_op = op.copy().reset_key()
             new_op._tileable_op_key = op.key
             kw = c.params.copy()
-            kw['dtype'] = out_series.dtype
-            if out_series.ndim == 2:
+            if out_series.ndim == 1:
+                kw['dtype'] = out_series.dtype
+            else:
+                kw['index'] = (c.index[0], 0)
+                kw['shape'] = (c.shape[0], out_series.shape[1])
+                kw['dtypes'] = out_series.dtypes
                 kw['columns_value'] = out_series.columns_value
             chunks.append(new_op.new_chunk([c], **kw))
 
@@ -181,6 +185,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         kw = out_series.params.copy()
         kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
         if out_series.ndim == 2:
+            kw['nsplits'] = (in_series.nsplits[0], (out_series.shape[1],))
             kw['columns_value'] = out_series.columns_value
         return new_op.new_tileables(op.inputs, **kw)
 
@@ -266,10 +271,6 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                 infer_series = None
 
             output_type = self._output_types[0]
-            if output_type is None and infer_series is not None:
-                output_type = OutputType.series if infer_series.ndim == 1 else OutputType.dataframe
-            elif output_type is None:
-                output_type = OutputType.series
 
             if index is not None:
                 index_value = parse_index(index)
@@ -352,9 +353,11 @@ def series_apply(series, func, convert_dtype=True, output_type=None,
         func_body = getattr(series, func, None)
         if func_body is not None:
             return func_body(*args, **kwds)
-        func = getattr(np, func, None)
+        func_str = func
+        func = getattr(np, func_str, None)
         if func is None:
-            raise AttributeError(f"'{func!r}' is not a valid function for '{type(series.__name__)}' object")
+            raise AttributeError(f"'{func_str!r}' is not a valid function "
+                                 f"for '{type(series).__name__}' object")
 
     output_types = kwds.pop('output_types', None)
     object_type = kwds.pop('object_type', None)

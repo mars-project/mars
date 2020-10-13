@@ -392,12 +392,29 @@ class Test(TestBase):
         s_raw2 = pd.Series([np.array([1, 2, 3]), np.array([4, 5, 6])])
         series = from_pandas_series(s_raw2)
 
+        r = series.apply(np.sum)
+        self.assertEqual(r.dtype, np.dtype(object))
+
+        r = series.apply(lambda x: pd.Series([1]), output_type='dataframe')
+        expected = s_raw2.apply(lambda x: pd.Series([1]))
+        pd.testing.assert_series_equal(r.dtypes, expected.dtypes)
+
         dtypes = pd.Series([np.dtype(float)] * 3)
         r = series.apply(pd.Series, output_type='dataframe',
                          dtypes=dtypes)
         self.assertEqual(r.ndim, 2)
         pd.testing.assert_series_equal(r.dtypes, dtypes)
         self.assertEqual(r.shape, (2, 3))
+
+        r = series.apply(pd.Series, output_type='dataframe',
+                         dtypes=dtypes, index=pd.RangeIndex(2))
+        self.assertEqual(r.ndim, 2)
+        pd.testing.assert_series_equal(r.dtypes, dtypes)
+        self.assertEqual(r.shape, (2, 3))
+
+        with self.assertRaises(AttributeError) as cm:
+            series.apply('abc')
+        self.assertIn('abc', str(cm.exception))
 
         with self.assertRaises(TypeError):
             # dtypes not provided
