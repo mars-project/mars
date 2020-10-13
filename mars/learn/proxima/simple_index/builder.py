@@ -151,7 +151,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         return op.new_tileable([tileable], chunks=[chunk], nsplits=((1,),))
 
 
-def build_index(tensor, pk, need_shuffle=False, distance_metric='l2', index_builder='SsgBuilder',
+def build_index(tensor, pk, need_shuffle=False, distance_metric='L2', index_builder='SsgBuilder',
                 index_builder_params=None, session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
     if need_shuffle:

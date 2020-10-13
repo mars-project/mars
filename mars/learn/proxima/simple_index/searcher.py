@@ -28,7 +28,7 @@ from ....tiles import TilesError
 from ....tensor.utils import decide_unify_split
 from ....utils import check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
-from ..core import proxima, validate_tensor
+from ..core import proxima, get_proxima_type, validate_tensor
 
 
 class ProximaSearcher(LearnOperand, LearnOperandMixin):
@@ -236,7 +236,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         topk = op.topk
 
         # calculate topk on rows
-        inds = np.argpartition(distances, topk, axis=1)[:, :topk]
+        # inds = np.argpartition(distances, topk, axis=1)[:, :topk]
+        inds = np.argsort(distances, axis=1)[:, :topk]
 
         result_pks = np.empty((n_doc, topk), dtype=pks.dtype)
         result_distances = np.empty((n_doc, topk), dtype=distances.dtype)
