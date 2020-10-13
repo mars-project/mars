@@ -495,6 +495,16 @@ class Test(TestBase):
         expected = s_raw.apply(lambda x: [x, x + 1], convert_dtype=False)
         pd.testing.assert_series_equal(result, expected)
 
+        s_raw2 = pd.Series([np.array([1, 2, 3]), np.array([4, 5, 6])])
+        series = from_pandas_series(s_raw2)
+
+        dtypes = pd.Series([np.dtype(float)] * 3)
+        r = series.apply(pd.Series, output_type='dataframe',
+                         dtypes=dtypes)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s_raw2.apply(pd.Series)
+        pd.testing.assert_frame_equal(result, expected)
+
     @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testApplyWithArrowDtypeExecution(self):
         df1 = pd.DataFrame({'a': [1, 2, 1],
@@ -1643,6 +1653,17 @@ class Test(TestBase):
                          dtypes=pd.Series([np.dtype(int), raw['b'].dtype], index=['a', 'b']))
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = f4(raw)
+        pd.testing.assert_frame_equal(result, expected)
+
+        raw2 = pd.DataFrame({'a': [np.array([1, 2, 3]), np.array([4, 5, 6])]})
+        df2 = from_pandas_df(raw2)
+        dtypes = pd.Series([np.dtype(float)] * 3)
+        r = df2.map_chunk(lambda x: x['a'].apply(pd.Series), output_type='dataframe',
+                          dtypes=dtypes)
+        self.assertEqual(r.shape, (2, 3))
+        pd.testing.assert_series_equal(r.dtypes, dtypes)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw2.apply(lambda x: x['a'], axis=1, result_type='expand')
         pd.testing.assert_frame_equal(result, expected)
 
     def testRebalanceExecution(self):
