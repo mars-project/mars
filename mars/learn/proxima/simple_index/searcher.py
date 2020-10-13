@@ -18,7 +18,7 @@ import numpy as np
 
 from .... import opcodes
 from .... import tensor as mt
-from ....context import get_context
+from ....context import get_context, RunningMode
 from ....core import Base, Entity
 from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, DictField
@@ -220,8 +220,17 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
     @classmethod
     def _execute_map(cls, ctx, op: "ProximaSearcher"):
         inp = ctx[op.tensor.key]
-        pks = ctx[op.pk.key]
         index_path = ctx[op.index.key]
+
+        if hasattr(ctx, 'running_mode') and ctx.running_mode == RunningMode.distributed:
+            # check if the worker to execute is identical to
+            # the worker where built index
+            expect_worker = op.expect_worker
+            curr_worker = ctx.get_local_address()
+            if curr_worker:
+                assert curr_worker == expect_worker, \
+                    f'the worker({curr_worker}) to execute should be identical ' \
+                    f'to the worker({expect_worker}) where built index'
 
         flow = proxima.IndexFlow(container_name='FileContainer', container_params={},
                                  searcher_name=op.index_searcher, searcher_params=op.index_searcher_params,
@@ -245,7 +254,6 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         topk = op.topk
 
         # calculate topk on rows
-        # inds = np.argpartition(distances, topk, axis=1)[:, :topk]
         inds = np.argsort(distances, axis=1)[:, :topk]
 
         result_pks = np.empty((n_doc, topk), dtype=pks.dtype)

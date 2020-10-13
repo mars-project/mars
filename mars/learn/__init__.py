@@ -19,10 +19,11 @@ from .contrib import pytorch, tensorflow, xgboost, lightgbm
 from .metrics import pairwise
 from . import cluster
 from . import preprocessing
+from . import proxima
 from . import neighbors
 from . import utils
 
-for _mod in [xgboost, tensorflow, pytorch, lightgbm, neighbors]:
+for _mod in [xgboost, tensorflow, pytorch, lightgbm, proxima, neighbors]:
     _mod.register_op()
 
 del _mod, pairwise, preprocessing, utils
