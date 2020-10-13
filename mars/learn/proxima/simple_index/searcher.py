@@ -43,13 +43,18 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
     _index_path = StringField('index_path')
     _index_searcher = StringField('index_searcher')
     _index_searcher_params = DictField('index_searcher_params')
+    _index_reformer = StringField('index_reformer')
+    _index_reformer_params = DictField('index_reformer_params')
 
     def __init__(self, tensor=None, pk=None, distance_metric=None, dimension=None,
-                 topk=None, index=None, index_path=None, index_searcher=None,
-                 index_searcher_params=None, output_types=None, stage=None, **kw):
+                 topk=None, index=None, index_path=None,
+                 index_searcher=None, index_searcher_params=None,
+                 index_reformer=None, index_reformer_params=None,
+                 output_types=None, stage=None, **kw):
         super().__init__(_tensor=tensor, _pk=pk, _distance_metric=distance_metric,
                          _dimension=dimension, _index_path=index_path,
                          _index_searcher=index_searcher, _index_searcher_params=index_searcher_params,
+                         _index_reformer=index_reformer, _index_reformer_params=index_reformer_params,
                          _output_types=output_types, _index=index, _topk=topk, _stage=stage, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor, OutputType.tensor]
@@ -87,8 +92,16 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         return self._index_searcher
 
     @property
-    def _index_searcher_params(self):
+    def index_searcher_params(self):
         return self._index_searcher_params
+
+    @property
+    def index_reformer(self):
+        return self._index_reformer
+
+    @property
+    def index_reformer_params(self):
+        return self._index_reformer_params
 
     @property
     def output_limit(self):
@@ -210,24 +223,20 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         pks = ctx[op.pk.key]
         index_path = ctx[op.index.key]
 
-        container = proxima.IndexContainer(name="FileContainer", path=index_path)
-        searcher = proxima.IndexSearcher(op.index_searcher)
-        proxima_ctx = searcher.load(container).create_context(topk=op.topk)
-
+        flow = proxima.IndexFlow(container_name='FileContainer', container_params={},
+                                 searcher_name=op.index_searcher, searcher_params=op.index_searcher_params,
+                                 # measure_name='Euclidean', measure_params={},
+                                 reformer_name=op.index_reformer, reformer_params=op.index_reformer_params
+                                 )
+        flow.load(index_path)
         vecs = np.ascontiguousarray(inp)
-        search_results = proxima_ctx.search(query=vecs, count=len(vecs))
 
-        result_pks = np.empty((len(vecs), op.topk), dtype=pks.dtype)
-        result_distances = np.empty((len(vecs), op.topk),
-                                    dtype=type(search_results[0][0].score()))
+        result_pks, result_distances = proxima.IndexUtility.ann_search(searcher=flow,
+                                                                       query=vecs,
+                                                                       topk=op.topk)
 
-        for i, it in enumerate(search_results):
-            for j, doc in enumerate(it):
-                result_pks[i, j] = doc.key()
-                result_distances[i, j] = doc.score()
-
-        ctx[op.outputs[0].key] = result_pks
-        ctx[op.outputs[1].key] = result_distances
+        ctx[op.outputs[0].key] = np.asarray(result_pks)
+        ctx[op.outputs[1].key] = np.asarray(result_distances)
 
     @classmethod
     def _execute_agg(cls, ctx, op: "ProximaSearcher"):
@@ -259,13 +268,18 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             return cls._execute_agg(ctx, op)
 
 
-def search_index(tensor, pk, index, topk, index_searcher="SsgSearcher",
-                 index_searcher_params=None, session=None, run_kwargs=None):
+def search_index(tensor, pk, dimension,
+                 topk, index, index_path, distance_metric="l2",
+                 index_searcher="", index_searcher_params={},
+                 index_reformer="", index_reformer_params={},
+                 session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
 
     if not isinstance(pk, (Base, Entity)):
-        pk = mt.tensor(pk)
+        pk = mt.tensor(pk, dtype=np.uint64)
 
-    op = ProximaSearcher(tensor=tensor, pk=pk, index=index, index_searcher=index_searcher,
-                         index_searcher_params=index_searcher_params, topk=topk)
+    op = ProximaSearcher(tensor=tensor, pk=pk, distance_metric=distance_metric, dimension=dimension,
+                         topk=topk, index=index, index_path=index_path,
+                         index_searcher=index_searcher, index_searcher_params=index_searcher_params,
+                         index_reformer=index_reformer, index_reformer_params=index_reformer_params)
     return op(tensor, pk, index).execute(session=session, **(run_kwargs or dict()))

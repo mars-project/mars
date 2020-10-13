@@ -47,11 +47,18 @@ class Test(unittest.TestCase):
         query = rs.rand(query_count, dimension).astype(np.float32)
         return doc, query
 
-    def computeDataViaMars(self, doc, query, dimension, topk, doc_chunk, query_chunk, index_builder, index_searcher):
+    def computeDataViaMars(self, doc, query, dimension, topk, doc_chunk, query_chunk,
+                           index_builder, builder_params,
+                           index_converter, index_converter_params,
+                           index_searcher, searcher_params,
+                           index_reformer, index_reformer_params):
         doc = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
         query = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-        index = build_index(doc, doc.index, index_builder=index_builder, session=self.session)
+        index = build_index(tensor=doc, pk=doc.index, need_shuffle=False, distance_metric='L2', dimension=dimension,
+                            index_builder=index_builder, index_builder_params=builder_params,
+                            index_converter=index_converter, index_converter_params=index_converter_params,
+                            session=self.session)
         paths = index.fetch()
         if not isinstance(paths, list):
             paths = [paths]
@@ -61,7 +68,11 @@ class Test(unittest.TestCase):
                 with open(path, 'rb') as f:
                     self.assertGreater(len(f.read()), 0)
 
-            pk2, distance = search_index(query, range(len(query)), index, topk, index_searcher=index_searcher,
+            pk2, distance = search_index(tensor=query, pk=range(len(query)),
+                                         distance_metric="L2", dimension=dimension,
+                                         topk=topk, index=index, index_path="",
+                                         index_searcher=index_searcher, index_searcher_params=searcher_params,
+                                         index_reformer=index_reformer, index_reformer_params=index_reformer_params,
                                          session=self.session)
             self.assertEqual(pk2.shape, (len(query), topk))
             self.assertEqual(distance.shape, (len(query), topk))
@@ -128,9 +139,14 @@ class Test(unittest.TestCase):
         doc, query = self.prepareData(doc_count=doc_count, query_count=query_count, dimension=dimension)
 
         # mars_data
-        pk_m, distance_m = self.computeDataViaMars(doc, query, dimension=dimension, topk=topk, doc_chunk=doc_chunk,
-                                                   query_chunk=query_chunk, index_builder=index_builder,
-                                                   index_searcher=index_searcher)
+        pk_m, distance_m = self.computeDataViaMars(doc, query, dimension=dimension, topk=topk,
+                                                   doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                                   index_builder=index_builder, builder_params=builder_params,
+                                                   index_converter=index_converter,
+                                                   index_converter_params=index_converter_params,
+                                                   index_searcher=index_searcher, searcher_params=searcher_params,
+                                                   index_reformer=index_reformer,
+                                                   index_reformer_params=index_reformer_params)
 
         # proxima_data
         pk_p, distance_p = self.computeDataViaProxima(doc=doc, query=query, dimension=dimension, topk=topk,
@@ -140,6 +156,13 @@ class Test(unittest.TestCase):
                                                       index_searcher=index_searcher, searcher_params=searcher_params,
                                                       index_reformer=index_reformer,
                                                       index_reformer_params=index_reformer_params)
+
+
+        # print(pk_m)
+        # print(pk_p)
+        #
+        # print(distance_m)
+        # print(distance_p)
 
         # testing
         np.testing.assert_array_equal(pk_p, pk_m)

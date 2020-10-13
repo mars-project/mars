@@ -29,19 +29,23 @@ from ..core import proxima, get_proxima_type, validate_tensor
 class ProximaBuilder(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.PROXIMA_SIMPLE_BUILDER
 
-    _tensor = KeyField('tensor')
-    _pk = KeyField('pk')
+    _tensor = KeyField('tensor')  # doc
+    _pk = KeyField('pk')  # doc_pk
     _distance_metric = StringField('distance_metric')
     _dimension = Int32Field('dimension')
     _index_builder = StringField('index_builder')
     _index_builder_params = DictField('index_builder_params')
+    _index_converter = StringField('index_converter')
+    _index_converter_params = DictField('index_converter_params')
 
     def __init__(self, tensor=None, pk=None, distance_metric=None, dimension=None,
                  index_builder=None, index_builder_params=None,
+                 index_converter=None, index_converter_params=None,
                  output_types=None, stage=None, **kw):
-        super().__init__(_tensor=tensor, _pk=pk, _distance_metric=distance_metric,
-                         _dimension=dimension, _index_builder=index_builder,
-                         _index_builder_params=index_builder_params,
+        super().__init__(_tensor=tensor, _pk=pk,
+                         _distance_metric=distance_metric, _dimension=dimension,
+                         _index_builder=index_builder, _index_builder_params=index_builder_params,
+                         _index_converter=index_converter, _index_converter_params=index_converter_params,
                          _output_types=output_types, _stage=stage, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
@@ -69,6 +73,14 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     @property
     def index_builder_params(self):
         return self._index_builder_params
+
+    @property
+    def index_converter(self):
+        return self._index_converter
+
+    @property
+    def index_converter_params(self):
+        return self._index_converter_params
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -113,15 +125,26 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         inp = ctx[op.tensor.key]
         pks = ctx[op.pk.key]
 
+        # holder
         holder = proxima.IndexHolder(type=get_proxima_type(inp.dtype),
                                      dimension=op.dimension)
         for pk, record in zip(pks, inp):
             pk = pk.item() if hasattr(pk, 'item') else pk
             holder.emplace(pk, record.copy())
 
+        # converter
+        meta = proxima.IndexMeta(proxima.IndexMeta.FT_FP32, dimension=op.dimension)
+        if op.index_converter is not None:
+            converter = proxima.IndexConverter(name=op.index_converter,
+                                               meta=meta, params=op.index_converter_params)
+            converter.train_and_transform(holder)
+            holder = converter.result()
+            meta = converter.meta()
+
+        # builder && dumper
         builder = proxima.IndexBuilder(name=op.index_builder,
-                                       meta=proxima.IndexMeta(type=get_proxima_type(inp.dtype),
-                                                              dimension=op.dimension))
+                                       meta=meta,
+                                       params=op.index_builder_params)
         builder = builder.train_and_build(holder)
 
         path = tempfile.mkstemp(prefix='proxima-', suffix='.index')[1]
@@ -151,8 +174,10 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         return op.new_tileable([tileable], chunks=[chunk], nsplits=((1,),))
 
 
-def build_index(tensor, pk, need_shuffle=False, distance_metric='L2', index_builder='SsgBuilder',
-                index_builder_params=None, session=None, run_kwargs=None):
+def build_index(tensor, pk, dimension, need_shuffle=False, distance_metric='L2',
+                index_builder='SsgBuilder', index_builder_params={},
+                index_converter=None, index_converter_params={},
+                session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
     if need_shuffle:
         tensor = mt.random.permutation(tensor)
@@ -161,6 +186,7 @@ def build_index(tensor, pk, need_shuffle=False, distance_metric='L2', index_buil
         pk = mt.tensor(pk)
 
     op = ProximaBuilder(tensor=tensor, pk=pk,
-                        distance_metric=distance_metric, dimension=tensor.shape[1],
-                        index_builder=index_builder, index_builder_params=index_builder_params)
+                        distance_metric=distance_metric, dimension=dimension,
+                        index_builder=index_builder, index_builder_params=index_builder_params,
+                        index_converter=index_converter, index_converter_params=index_converter_params)
     return op(tensor, pk).execute(session=session, **(run_kwargs or dict()))
