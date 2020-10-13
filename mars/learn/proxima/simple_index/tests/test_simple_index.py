@@ -41,7 +41,6 @@ class Test(unittest.TestCase):
     def tearDown(self) -> None:
         self.session._sess._executor = self._old_executor
 
-    @classmethod
     def prepareData(self, doc_count, query_count, dimension):
         rs = np.random.RandomState(0)
         doc = pd.DataFrame(rs.rand(doc_count, dimension).astype(np.float32))
@@ -71,35 +70,59 @@ class Test(unittest.TestCase):
             for path in paths:
                 os.remove(path)
 
-    def computeDataViaProxima(self, doc, query, topk, index_builder, index_searcher):
+    def computeDataViaProxima(self, doc, query, dimension, topk,
+                              index_builder, builder_params,
+                              index_converter, index_converter_params,
+                              index_searcher, searcher_params,
+                              index_reformer, index_reformer_params):
         import pyproxima2 as proxima
+
+        # holder
         holder = proxima.IndexHolder(type=proxima.IndexMeta.FT_FP32,
-                                     dimension=doc.shape[1])
+                                     dimension=dimension)
+        holder.mount(np.array(doc))  # 批量挂载 默认pk从0开始
+        # for pk, record in zip(doc.index, np.array(doc)):
+        #     holder.emplace(pk, record)
 
-        for pk, record in zip(doc.index, np.array(doc)):
-            holder.emplace(pk, record)
+        # converter
+        meta = proxima.IndexMeta(proxima.IndexMeta.FT_FP32, dimension=dimension)
+        if index_converter is not None:
+            converter = proxima.IndexConverter(name=index_converter, meta=meta, params=index_converter_params)
+            converter.train_and_transform(holder)
+            holder = converter.result()
+            meta = converter.meta()
 
+        # builder && dumper
         builder = proxima.IndexBuilder(name=index_builder,
-                                       meta=proxima.IndexMeta(type=proxima.IndexMeta.FT_FP32,
-                                                              dimension=doc.shape[1]))
+                                       meta=meta,
+                                       params=builder_params)
         builder = builder.train_and_build(holder)
         dumper = proxima.IndexDumper(name="MemoryDumper", path="test.index")
         builder.dump(dumper)
         dumper.close()
 
-        container = proxima.IndexContainer(name="MemoryContainer", path="test.index")
-        searcher = proxima.IndexSearcher(index_searcher)
-        proxima_ctx = searcher.load(container).create_context(topk=topk)
-        query = np.ascontiguousarray(query)
-        search_results = proxima_ctx.search(query=query, count=len(query))
-        return search_results
+        # indexflow for search
+        flow = proxima.IndexFlow(container_name='MemoryContainer', container_params={},
+                                 searcher_name=index_searcher, searcher_params=searcher_params,
+                                 # measure_name='Euclidean', measure_params={},
+                                 reformer_name=index_reformer, reformer_params=index_reformer_params
+                                 )
+        flow.load("test.index")
+        keys, scores = proxima.IndexUtility.ann_search(searcher=flow, query=query, topk=topk, threads=1)
+        return np.asarray(keys), np.asarray(scores)
 
     def testBuildAndSearchIndex(self):
         # params
-        doc_count, query_count, dimension = 200, 15, 10
-        topk = 10
-        doc_chunk, query_chunk = 50, 5
+        doc_count, query_count, dimension, topk = 200, 15, 5, 2
         index_builder, index_searcher = "SsgBuilder", "SsgSearcher"
+        builder_params = {}
+        searcher_params = {}
+        index_converter = None
+        index_converter_params = {}
+        index_reformer = ""
+        index_reformer_params = {}
+
+        doc_chunk, query_chunk = 50, 5
 
         # data
         doc, query = self.prepareData(doc_count=doc_count, query_count=query_count, dimension=dimension)
@@ -110,14 +133,13 @@ class Test(unittest.TestCase):
                                                    index_searcher=index_searcher)
 
         # proxima_data
-        result = self.computeDataViaProxima(doc, query, topk, index_builder=index_builder,
-                                            index_searcher=index_searcher)
-        pk_p = np.empty((len(result), topk), dtype=np.float32)
-        distance_p = np.empty((len(result), topk), dtype=np.float32)
-        for i, it in enumerate(result):
-            for j, doc in enumerate(it):
-                pk_p[i, j] = doc.key()
-                distance_p[i, j] = doc.score()
+        pk_p, distance_p = self.computeDataViaProxima(doc=doc, query=query, dimension=dimension, topk=topk,
+                                                      index_builder=index_builder, builder_params=builder_params,
+                                                      index_converter=index_converter,
+                                                      index_converter_params=index_converter_params,
+                                                      index_searcher=index_searcher, searcher_params=searcher_params,
+                                                      index_reformer=index_reformer,
+                                                      index_reformer_params=index_reformer_params)
 
         # testing
         np.testing.assert_array_equal(pk_p, pk_m)
