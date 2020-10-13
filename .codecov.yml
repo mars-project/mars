@@ -45,4 +45,4 @@ ignore:
   # kubedl related things
   - "mars/deploy/kubedl"
   # proxima related things
-  - "mars/learn/proxima/*"
+  - "mars/learn/proxima/**"
