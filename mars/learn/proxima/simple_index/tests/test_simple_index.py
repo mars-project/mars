@@ -26,11 +26,30 @@ from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 
 
-def proxima_build_and_query(doc, query, dimension, topk,
-                            index_builder, builder_params,
-                            index_converter, index_converter_params,
-                            index_searcher, searcher_params,
-                            index_reformer, index_reformer_params):
+def proxima_build_and_query(doc, query,  topk, measure_name=None, dimension=None,
+                            index_builder=None, builder_params=None,
+                            index_converter=None, index_converter_params=None,
+                            index_searcher=None, searcher_params=None,
+                            index_reformer=None, index_reformer_params=None):
+    if measure_name is None:
+        measure_name = "SquaredEuclidean"
+    if dimension is None:
+        dimension = doc.shape[1]
+    if index_builder is None:
+        index_builder = "SsgBuilder"
+    if builder_params is None:
+        builder_params = {}
+    if index_converter_params is None:
+        index_converter_params = {}
+    if index_searcher is None:
+        index_searcher = ""
+    if searcher_params is None:
+        searcher_params = {}
+    if index_reformer is None:
+        index_reformer = ""
+    if index_reformer_params is None:
+        index_reformer_params = {}
+
     # holder
     holder = proxima.IndexHolder(type=proxima.IndexMeta.FT_FP32,
                                  dimension=dimension)
@@ -58,7 +77,7 @@ def proxima_build_and_query(doc, query, dimension, topk,
     # indexflow for search
     flow = proxima.IndexFlow(container_name='MemoryContainer', container_params={},
                              searcher_name=index_searcher, searcher_params=searcher_params,
-                             # measure_name='Euclidean', measure_params={},
+                             measure_name=measure_name, measure_params={},
                              reformer_name=index_reformer, reformer_params=index_reformer_params
                              )
     flow.load("test.index")
@@ -84,15 +103,37 @@ class Test(unittest.TestCase):
     def tearDown(self) -> None:
         self.session._sess._executor = self._old_executor
 
-    def build_and_query(self, doc, query, dimension, topk, doc_chunk, query_chunk,
-                           index_builder, builder_params,
-                           index_converter, index_converter_params,
-                           index_searcher, searcher_params,
-                           index_reformer, index_reformer_params):
+    def build_and_query(self, doc, query, topk, doc_chunk, query_chunk,
+                        dimension=None, measure_name=None,
+                        index_builder=None, builder_params=None,
+                        index_converter=None, index_converter_params=None,
+                        index_searcher=None, searcher_params=None,
+                        index_reformer=None, index_reformer_params=None):
+
+        if measure_name is None:
+            measure_name = "SquaredEuclidean"
+        if dimension is None:
+            dimension = doc.shape[1]
+        if index_builder is None:
+            index_builder = "SsgBuilder"
+        if builder_params is None:
+            builder_params = {}
+        if index_converter_params is None:
+            index_converter_params = {}
+        if index_searcher is None:
+            index_searcher = ""
+        if searcher_params is None:
+            searcher_params = {}
+        if index_reformer is None:
+            index_reformer = ""
+        if index_reformer_params is None:
+            index_reformer_params = {}
+
         doc = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
         query = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-        index = build_index(tensor=doc, pk=doc.index, need_shuffle=False, distance_metric='L2', dimension=dimension,
+        index = build_index(tensor=doc, pk=mt.tensor(doc.index, dtype=np.uint64), need_shuffle=False,
+                            distance_metric=measure_name, dimension=dimension,
                             index_builder=index_builder, index_builder_params=builder_params,
                             index_converter=index_converter, index_converter_params=index_converter_params,
                             session=self.session)
@@ -105,9 +146,9 @@ class Test(unittest.TestCase):
                 with open(path, 'rb') as f:
                     self.assertGreater(len(f.read()), 0)
 
-            pk2, distance = search_index(tensor=query, pk=range(len(query)),
-                                         distance_metric="L2", dimension=dimension,
-                                         topk=topk, index=index, index_path="",
+            pk2, distance = search_index(tensor=query,
+                                         distance_metric=measure_name, dimension=dimension,
+                                         topk=topk, index=index, index_path=None,
                                          index_searcher=index_searcher, index_searcher_params=searcher_params,
                                          index_reformer=index_reformer, index_reformer_params=index_reformer_params,
                                          session=self.session)
@@ -121,6 +162,7 @@ class Test(unittest.TestCase):
     def testBuildAndSearchIndex(self):
         # params
         doc_count, query_count, dimension, topk = 200, 15, 5, 2
+        measure_name = "SquaredEuclidean"
         index_builder, index_searcher = "SsgBuilder", "SsgSearcher"
         builder_params = {}
         searcher_params = {}
@@ -135,7 +177,8 @@ class Test(unittest.TestCase):
         doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
 
         # mars_data
-        pk_m, distance_m = self.build_and_query(doc, query, dimension=dimension, topk=topk, doc_chunk=doc_chunk,
+        pk_m, distance_m = self.build_and_query(doc, query, dimension=dimension, topk=topk,
+                                                measure_name=measure_name, doc_chunk=doc_chunk,
                                                 query_chunk=query_chunk, index_builder=index_builder,
                                                 builder_params=builder_params,
                                                 index_converter=index_converter,
@@ -146,6 +189,7 @@ class Test(unittest.TestCase):
 
         # proxima_data
         pk_p, distance_p = proxima_build_and_query(doc=doc, query=query, dimension=dimension, topk=topk,
+                                                   measure_name=measure_name,
                                                    index_builder=index_builder, builder_params=builder_params,
                                                    index_converter=index_converter,
                                                    index_converter_params=index_converter_params,

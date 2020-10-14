@@ -174,11 +174,20 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         return op.new_tileable([tileable], chunks=[chunk], nsplits=((1,),))
 
 
-def build_index(tensor, pk, dimension, need_shuffle=False, distance_metric='L2',
-                index_builder='SsgBuilder', index_builder_params={},
-                index_converter=None, index_converter_params={},
+def build_index(tensor, pk, dimension=None, need_shuffle=False,
+                distance_metric='SquaredEuclidean',
+                index_builder='SsgBuilder', index_builder_params=None,
+                index_converter=None, index_converter_params=None,
                 session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
+
+    if dimension is None:
+        dimension = tensor.shape[1]
+    if index_builder_params is None:
+        index_builder_params = {}
+    if index_converter_params is None:
+        index_converter_params = {}
+
     if need_shuffle:
         tensor = mt.random.permutation(tensor)
 
@@ -187,6 +196,8 @@ def build_index(tensor, pk, dimension, need_shuffle=False, distance_metric='L2',
 
     op = ProximaBuilder(tensor=tensor, pk=pk,
                         distance_metric=distance_metric, dimension=dimension,
-                        index_builder=index_builder, index_builder_params=index_builder_params,
-                        index_converter=index_converter, index_converter_params=index_converter_params)
+                        index_builder=index_builder,
+                        index_builder_params=index_builder_params,
+                        index_converter=index_converter,
+                        index_converter_params=index_converter_params)
     return op(tensor, pk).execute(session=session, **(run_kwargs or dict()))
