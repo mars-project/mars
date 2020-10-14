@@ -172,8 +172,12 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             new_op = op.copy().reset_key()
             new_op._tileable_op_key = op.key
             kw = c.params.copy()
-            kw['dtype'] = out_series.dtype
-            if out_series.ndim == 2:
+            if out_series.ndim == 1:
+                kw['dtype'] = out_series.dtype
+            else:
+                kw['index'] = (c.index[0], 0)
+                kw['shape'] = (c.shape[0], out_series.shape[1])
+                kw['dtypes'] = out_series.dtypes
                 kw['columns_value'] = out_series.columns_value
             chunks.append(new_op.new_chunk([c], **kw))
 
@@ -181,6 +185,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         kw = out_series.params.copy()
         kw.update(dict(chunks=chunks, nsplits=in_series.nsplits))
         if out_series.ndim == 2:
+            kw['nsplits'] = (in_series.nsplits[0], (out_series.shape[1],))
             kw['columns_value'] = out_series.columns_value
         return new_op.new_tileables(op.inputs, **kw)
 
@@ -225,18 +230,6 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         self._elementwise = new_elementwise if self._elementwise is None else self._elementwise
         return dtypes, index_value
 
-    def _infer_series_func_returns(self, df):
-        try:
-            empty_series = build_series(df, size=2, name=df.name)
-            with np.errstate(all='ignore'):
-                infer_series = empty_series.apply(self._func, args=self.args, **self.kwds)
-            new_dtype = infer_series.dtype
-            name = infer_series.name
-        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
-            new_dtype = np.dtype('object')
-            name = None
-        return new_dtype, name
-
     def _call_dataframe(self, df, dtypes=None, index=None):
         dtypes, index_value = self._infer_df_func_returns(df, dtypes, index)
         if index_value is None:
@@ -268,22 +261,62 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         else:
             return self.new_series([df], shape=shape, dtype=dtypes, index_value=index_value)
 
-    def _call_series(self, series):
+    def _call_series(self, series, dtype=None, index=None):
         if self._convert_dtype:
-            dtype, name = self._infer_series_func_returns(series)
+            try:
+                test_series = build_series(series, size=2, name=series.name)
+                with np.errstate(all='ignore'):
+                    infer_series = test_series.apply(self._func, args=self.args, **self.kwds)
+            except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                infer_series = None
+
+            output_type = self._output_types[0]
+
+            if index is not None:
+                index_value = parse_index(index)
+            elif infer_series is not None:
+                index_value = parse_index(infer_series.index)
+            else:
+                index_value = parse_index(None, series)
+
+            if output_type == OutputType.dataframe:
+                if dtype is not None:
+                    dtypes = dtype
+                elif infer_series is not None and infer_series.ndim == 2:
+                    dtypes = infer_series.dtypes
+                else:
+                    raise TypeError('Cannot determine dtypes, '
+                                    'please specify `dtypes` as argument')
+
+                columns_value = parse_index(dtypes.index, store_data=True)
+
+                return self.new_dataframe([series], shape=(series.shape[0], len(dtypes)),
+                                          index_value=index_value, columns_value=columns_value,
+                                          dtypes=dtypes)
+            else:
+                if dtype is None and infer_series is not None and infer_series.ndim == 1:
+                    dtype = infer_series.dtype
+                else:
+                    dtype = np.dtype(object)
+                if infer_series is not None and infer_series.ndim == 1:
+                    name = infer_series.name
+                else:
+                    name = None
+                return self.new_series([series], dtype=dtype, shape=series.shape,
+                                       index_value=index_value, name=name)
         else:
             dtype, name = np.dtype('object'), None
-        return self.new_series([series], dtype=dtype, shape=series.shape,
-                               index_value=series.index_value, name=name)
+            return self.new_series([series], dtype=dtype, shape=series.shape,
+                                   index_value=series.index_value, name=name)
 
-    def __call__(self, df, dtypes=None, index=None):
+    def __call__(self, df_or_series, dtypes=None, index=None):
         axis = getattr(self, 'axis', None) or 0
-        self._axis = validate_axis(axis, df)
+        self._axis = validate_axis(axis, df_or_series)
 
-        if df.op.output_types[0] == OutputType.dataframe:
-            return self._call_dataframe(df, dtypes=dtypes, index=index)
+        if df_or_series.op.output_types[0] == OutputType.dataframe:
+            return self._call_dataframe(df_or_series, dtypes=dtypes, index=index)
         else:
-            return self._call_series(df)
+            return self._call_series(df_or_series, dtype=dtypes, index=index)
 
 
 def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None,
@@ -306,11 +339,12 @@ def df_apply(df, func, axis=0, raw=False, result_type=None, args=(), dtypes=None
         return func(*args, **kwds)
 
     op = ApplyOperand(func=func, axis=axis, raw=raw, result_type=result_type, args=args, kwds=kwds,
-                      output_types=output_type, elementwise=elementwise)
+                      output_type=output_type, elementwise=elementwise)
     return op(df, dtypes=dtypes, index=index)
 
 
-def series_apply(series, func, convert_dtype=True, args=(), **kwds):
+def series_apply(series, func, convert_dtype=True, output_type=None,
+                 args=(), index=None, **kwds):
     if isinstance(func, (list, dict)):
         return series.aggregate(func)
 
@@ -319,10 +353,19 @@ def series_apply(series, func, convert_dtype=True, args=(), **kwds):
         func_body = getattr(series, func, None)
         if func_body is not None:
             return func_body(*args, **kwds)
-        func = getattr(np, func, None)
+        func_str = func
+        func = getattr(np, func_str, None)
         if func is None:
-            raise AttributeError(f"'{func!r}' is not a valid function for '{type(series.__name__)}' object")
+            raise AttributeError(f"'{func_str!r}' is not a valid function "
+                                 f"for '{type(series).__name__}' object")
+
+    output_types = kwds.pop('output_types', None)
+    object_type = kwds.pop('object_type', None)
+    output_types = validate_output_types(
+        output_type=output_type, output_types=output_types, object_type=object_type)
+    output_type = output_types[0] if output_types else OutputType.series
+    dtypes = kwds.pop('dtypes', kwds.pop('dtype', None))
 
     op = ApplyOperand(func=func, convert_dtype=convert_dtype, args=args, kwds=kwds,
-                      output_type=OutputType.series)
-    return op(series)
+                      output_type=output_type)
+    return op(series, dtypes=dtypes, index=index)

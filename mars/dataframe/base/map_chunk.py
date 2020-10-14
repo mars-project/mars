@@ -101,18 +101,19 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                                    shape=shape, index_value=index_value,
                                    name=obj.name)
         else:
+            dtypes = dtypes if dtypes is not None else obj.dtypes
             # dataframe
             if obj.shape == test_obj.shape:
-                shape = (df_or_series.shape[0], obj.shape[1])
+                shape = (df_or_series.shape[0], len(dtypes))
             else:
-                shape = (np.nan, obj.shape[1])
-            columns_value = parse_index(obj.dtypes.index, store_data=True)
+                shape = (np.nan, len(dtypes))
+            columns_value = parse_index(dtypes.index, store_data=True)
             if index is None:
                 index = obj.index
             index_value = parse_index(index, df_or_series,
                                       self._func, self._args, self._kwargs)
             return self.new_dataframe([df_or_series], shape=shape,
-                                      dtypes=obj.dtypes, index_value=index_value,
+                                      dtypes=dtypes, index_value=index_value,
                                       columns_value=columns_value)
 
     @classmethod
