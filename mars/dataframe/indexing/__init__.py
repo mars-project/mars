@@ -56,6 +56,10 @@ def _install():
     for cls in INDEX_TYPE:
         setattr(cls, 'rename', index_rename)
 
+    # make sure operand is registered
+    from .set_label import DataFrameSetLabel
+    del DataFrameSetLabel
+
 
 _install()
 del _install

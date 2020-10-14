@@ -786,6 +786,10 @@ cpdef object get_serializable_by_index(object index):
     return _serializable_registry.get(index)
 
 
+cpdef dict get_serializables():
+    return _serializable_registry.copy()
+
+
 cdef class Provider:
     cpdef serialize_field(self, Field field, model_instance, obj):
         raise NotImplementedError
