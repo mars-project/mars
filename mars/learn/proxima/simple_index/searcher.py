@@ -19,13 +19,11 @@ import numpy as np
 from .... import opcodes
 from .... import tensor as mt
 from ....context import get_context, RunningMode
-from ....core import Base, Entity
 from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, DictField
 from ....tensor.core import TensorOrder
 from ....tensor.merge.concatenate import TensorConcatenate
 from ....tiles import TilesError
-from ....tensor.utils import decide_unify_split
 from ....utils import check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
 from ..core import proxima, validate_tensor
