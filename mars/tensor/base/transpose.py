@@ -47,7 +47,8 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
         return getattr(self, '_axes', None)
 
     def __call__(self, a):
-        shape = _reorder(a.shape, self._axes)
+        shape = tuple(s if np.isnan(s) else int(s)
+                      for s in _reorder(a.shape, self._axes))
         if self._axes == list(reversed(range(a.ndim))):
             # order reversed
             tensor_order = reverse_order(a.order)
@@ -74,7 +75,8 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
         out_chunks = []
         for c in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
-            chunk_shape = _reorder(c.shape, op.axes)
+            chunk_shape = tuple(s if np.isnan(s) else int(s)
+                                for s in _reorder(c.shape, op.axes))
             chunk_idx = _reorder(c.index, op.axes)
             out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
                                            index=chunk_idx, order=tensor.order)
