@@ -263,6 +263,7 @@ cpdef enum ProviderType:
 
 
 cpdef object get_serializable_by_index(object index)
+cpdef dict get_serializables()
 
 
 cdef class Provider:

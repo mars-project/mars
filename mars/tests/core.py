@@ -36,6 +36,7 @@ from mars.graph import SerializableGraph
 from mars.optimizes.chunk_graph.fuse import Fusion
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
+from mars.serialize.core import get_serializables
 from mars.utils import lazy_import
 
 try:
@@ -612,6 +613,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         super().__init__(*args, **kwargs)
         self._raw_chunk_shapes = dict()
         self._tileable_checked = dict()
+        if not hasattr(type(self), '_serializables_snapshot'):
+            type(self)._serializables_snapshot = get_serializables()
 
     @staticmethod
     def _extract_check_options(kw_dict):
@@ -682,6 +685,14 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                 self._tileable_checked[n.key] = True
         return super()._update_tileable_and_chunk_shape(tileable_graph, chunk_result, failed_ops)
 
+    def _check_serializable_registration(self):
+        cur_serializables = get_serializables()
+        if len(cur_serializables) == len(self._serializables_snapshot):
+            return
+        unregistered_set = set(cur_serializables.keys()) - set(self._serializables_snapshot.keys())
+        raise AssertionError('Operands %r not registered on initialization'
+                             % ([cur_serializables[k] for k in unregistered_set],))
+
     def execute_tileable(self, tileable, *args, **kwargs):
         self._extract_check_options(kwargs)
 
@@ -695,6 +706,7 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
             # check returned type
             if kwargs.get('concat', False):
                 self.assert_object_consistent(tileable, result[0])
+        self._check_serializable_registration()
         return result
 
     execute_tensor = execute_tileable
@@ -716,6 +728,7 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                     if _check_options['check_nsplits']:
                         self._check_nsplits(tileable)
                     self.assert_object_consistent(tileable, result)
+        self._check_serializable_registration()
         return results
 
     def fetch_tileables(self, tileables, **kw):

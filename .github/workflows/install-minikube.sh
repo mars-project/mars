@@ -3,9 +3,18 @@ set -e
 export CHANGE_MINIKUBE_NONE_USER=true
 
 sudo apt-get -q update || true
-sudo apt-get install -yq conntrack
+sudo apt-get install -yq conntrack jq
+
+get_latest_release() {
+  curl --silent "https://api.github.com/repos/$1/releases" |
+    jq -c '[.[] | select(.prerelease == false)][0].tag_name' |
+    sed -E 's/.*"([^"]+)".*/\1/'
+}
 
 K8S_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+if [[ "$K8S_VERSION" == *"alpha"* ]] || [[ "$K8S_VERSION" == *"beta"* ]] || [[ "$K8S_VERSION" == *"rc"* ]]; then
+  K8S_VERSION=$(get_latest_release "kubernetes/kubernetes")
+fi
 
 curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/$K8S_VERSION/bin/linux/amd64/kubectl && \
   chmod +x kubectl && sudo mv kubectl /usr/local/bin/
