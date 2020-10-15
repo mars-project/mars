@@ -58,7 +58,7 @@ def proxima_build_and_query(doc, query, topk, measure_name=None, dimension=None,
     #     holder.emplace(pk, record)
 
     # converter
-    meta = proxima.IndexMeta(proxima.IndexMeta.FT_FP32, dimension=dimension)
+    meta = proxima.IndexMeta(proxima.IndexMeta.FT_FP32, dimension=dimension, measure_name=measure_name)
     if index_converter is not None:
         converter = proxima.IndexConverter(name=index_converter, meta=meta, params=index_converter_params)
         converter.train_and_transform(holder)

@@ -24,7 +24,8 @@ if proxima:
     _type_mapping = {
         np.dtype(np.float16): proxima.IndexMeta.FT_FP16,
         np.dtype(np.float32): proxima.IndexMeta.FT_FP32,
-        np.dtype(np.float64): proxima.IndexMeta.FT_FP64,
+        # seems proxima does not support float64
+        # np.dtype(np.float64): proxima.IndexMeta.FT_FP64,
         np.dtype(np.int8): proxima.IndexMeta.FT_INT8,
         np.dtype(np.int16): proxima.IndexMeta.FT_INT16
     }
@@ -44,5 +45,5 @@ def get_proxima_type(np_dtype):
     try:
         return _type_mapping[np_dtype]
     except KeyError:
-        raise TypeError(f"not support {np_dtype}, "
-                        f"available types include float16, float32, float64, int8, int16")
+        raise TypeError(f"Does not support {np_dtype}, available types include "
+                        f"{', '.join(t.name for t in _type_mapping)}")

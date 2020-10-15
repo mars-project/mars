@@ -124,16 +124,18 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     def _execute_map(cls, ctx, op: "ProximaBuilder"):
         inp = ctx[op.tensor.key]
         pks = ctx[op.pk.key]
+        proxima_type = get_proxima_type(inp.dtype)
 
         # holder
-        holder = proxima.IndexHolder(type=get_proxima_type(inp.dtype),
+        holder = proxima.IndexHolder(type=proxima_type,
                                      dimension=op.dimension)
         for pk, record in zip(pks, inp):
             pk = pk.item() if hasattr(pk, 'item') else pk
             holder.emplace(pk, record.copy())
 
         # converter
-        meta = proxima.IndexMeta(proxima.IndexMeta.FT_FP32, dimension=op.dimension)
+        meta = proxima.IndexMeta(proxima_type, dimension=op.dimension,
+                                 measure_name=op.distance_metric)
         if op.index_converter is not None:
             converter = proxima.IndexConverter(name=op.index_converter,
                                                meta=meta, params=op.index_converter_params)

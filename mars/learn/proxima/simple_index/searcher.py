@@ -268,10 +268,10 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
 
 def search_index(tensor, topk, index=None, index_path=None,
-                 dimension=None, distance_metric="SquaredEuclidean",
+                 dimension=None, distance_metric=None,
                  index_searcher=None, index_searcher_params=None,
                  index_reformer=None, index_reformer_params=None,
-                 session=None, run_kwargs=None):
+                 run=True, session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
 
     if (index is None and index_path is None) or \
@@ -287,9 +287,17 @@ def search_index(tensor, topk, index=None, index_path=None,
         index_reformer = ""
     if index_reformer_params is None:
         index_reformer_params = {}
+    if distance_metric is None and index is not None:
+        distance_metric = index.op.distance_metric
+    elif distance_metric is None:
+        raise ValueError('`distance_metric` has to be specified')
 
     op = ProximaSearcher(tensor=tensor, distance_metric=distance_metric, dimension=dimension,
                          topk=topk, index=index, index_path=index_path,
                          index_searcher=index_searcher, index_searcher_params=index_searcher_params,
                          index_reformer=index_reformer, index_reformer_params=index_reformer_params)
-    return op(tensor, index).execute(session=session, **(run_kwargs or dict()))
+    result = op(tensor, index)
+    if run:
+        return result.execute(session=session, **(run_kwargs or dict()))
+    else:
+        return result
