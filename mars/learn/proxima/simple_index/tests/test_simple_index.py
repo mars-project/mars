@@ -26,7 +26,7 @@ from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 
 
-def proxima_build_and_query(doc, query,  topk, measure_name=None, dimension=None,
+def proxima_build_and_query(doc, query, topk, measure_name=None, dimension=None,
                             index_builder=None, builder_params=None,
                             index_converter=None, index_converter_params=None,
                             index_searcher=None, searcher_params=None,
@@ -160,43 +160,51 @@ class Test(unittest.TestCase):
                 os.remove(path)
 
     def testBuildAndSearchIndex(self):
-        # params
-        doc_count, query_count, dimension, topk = 200, 15, 5, 2
-        measure_name = "SquaredEuclidean"
-        index_builder, index_searcher = "SsgBuilder", "SsgSearcher"
-        builder_params = {}
-        searcher_params = {}
-        index_converter = None
-        index_converter_params = {}
-        index_reformer = ""
-        index_reformer_params = {}
+        measure_name_lists = ["Canberra", "Chebyshev", "SquaredEuclidean", "Euclidean", "InnerProduct", "Manhattan"]
+        index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder", "ClusteringBuilder"]
 
-        doc_chunk, query_chunk = 50, 5
+        for i, index_builder in enumerate(index_builder_lists):
+            for measure_name in measure_name_lists:
+                # params
+                doc_count, query_count, dimension, topk = 200, 15, 5, 2
+                builder_params_lists = [{}, {}, {}, {"proxima.hc.builder.max_document_count": doc_count}]
+                index_builder, index_searcher = index_builder, None
+                builder_params = builder_params_lists[i]
+                searcher_params = {}
+                index_converter = None
+                index_converter_params = {}
+                index_reformer = ""
+                index_reformer_params = {}
 
-        # data
-        doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+                doc_chunk, query_chunk = 50, 5
 
-        # mars_data
-        pk_m, distance_m = self.build_and_query(doc, query, dimension=dimension, topk=topk,
-                                                measure_name=measure_name, doc_chunk=doc_chunk,
-                                                query_chunk=query_chunk, index_builder=index_builder,
-                                                builder_params=builder_params,
-                                                index_converter=index_converter,
-                                                index_converter_params=index_converter_params,
-                                                index_searcher=index_searcher, searcher_params=searcher_params,
-                                                index_reformer=index_reformer,
-                                                index_reformer_params=index_reformer_params)
+                # data
+                doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
 
-        # proxima_data
-        pk_p, distance_p = proxima_build_and_query(doc=doc, query=query, dimension=dimension, topk=topk,
-                                                   measure_name=measure_name,
-                                                   index_builder=index_builder, builder_params=builder_params,
-                                                   index_converter=index_converter,
-                                                   index_converter_params=index_converter_params,
-                                                   index_searcher=index_searcher, searcher_params=searcher_params,
-                                                   index_reformer=index_reformer,
-                                                   index_reformer_params=index_reformer_params)
+                # proxima_data
+                pk_p, distance_p = proxima_build_and_query(doc=doc, query=query, dimension=dimension, topk=topk,
+                                                           measure_name=measure_name,
+                                                           index_builder=index_builder, builder_params=builder_params,
+                                                           index_converter=index_converter,
+                                                           index_converter_params=index_converter_params,
+                                                           index_searcher=index_searcher,
+                                                           searcher_params=searcher_params,
+                                                           index_reformer=index_reformer,
+                                                           index_reformer_params=index_reformer_params)
 
-        # testing
-        np.testing.assert_array_equal(pk_p, pk_m)
-        np.testing.assert_array_equal(distance_p, distance_m)
+                # mars_data
+                pk_m, distance_m = self.build_and_query(doc, query, dimension=dimension, topk=topk,
+                                                        measure_name=measure_name, doc_chunk=doc_chunk,
+                                                        query_chunk=query_chunk, index_builder=index_builder,
+                                                        builder_params=builder_params,
+                                                        index_converter=index_converter,
+                                                        index_converter_params=index_converter_params,
+                                                        index_searcher=index_searcher, searcher_params=searcher_params,
+                                                        index_reformer=index_reformer,
+                                                        index_reformer_params=index_reformer_params)
+
+
+                # testing
+                np.testing.assert_array_equal(pk_p, pk_m)
+                np.testing.assert_array_almost_equal(distance_p, distance_m)
+                print("successfully tested for :", i, index_builder, measure_name, builder_params_lists[i])

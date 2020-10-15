@@ -54,15 +54,13 @@ class Test(LearnIntegrationTestBase):
             df = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
             q = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-            index = build_index(df, df.index, dimension, index_builder=index_builder, session=sess)
-            pk_m, distance_m = search_index(q, range(len(query)), dimension, topk, index, None,
-                                            index_searcher=index_searcher, session=sess)
+            index = build_index(df, df.index, session=sess)
+
             # proxima_data
-            pk_p, distance_p = proxima_build_and_query(doc, query, dimension, topk,
-                                                       index_builder, {},
-                                                       None, {},
-                                                       index_searcher, {},
-                                                       "", {})
+            pk_p, distance_p = proxima_build_and_query(doc, query, topk)
+
+            pk_m, distance_m = search_index(q, topk, index, session=sess)
+
             # testing
             np.testing.assert_array_equal(pk_p, pk_m)
             np.testing.assert_array_equal(distance_p, distance_m)
