@@ -203,8 +203,6 @@ class Test(unittest.TestCase):
                                                         index_reformer=index_reformer,
                                                         index_reformer_params=index_reformer_params)
 
-
                 # testing
                 np.testing.assert_array_equal(pk_p, pk_m)
                 np.testing.assert_array_almost_equal(distance_p, distance_m)
-                print("successfully tested for :", i, index_builder, measure_name, builder_params_lists[i])

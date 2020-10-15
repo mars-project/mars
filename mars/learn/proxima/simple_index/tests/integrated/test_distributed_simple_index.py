@@ -44,7 +44,6 @@ class Test(LearnIntegrationTestBase):
         doc_count, query_count, dimension = 200, 15, 10
         topk = 10
         doc_chunk, query_chunk = 50, 5
-        index_builder, index_searcher = "SsgBuilder", "SsgSearcher"
 
         service_ep = 'http://127.0.0.1:' + self.web_port
         with new_session(service_ep) as sess:
