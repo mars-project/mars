@@ -37,16 +37,17 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     _index_builder_params = DictField('index_builder_params')
     _index_converter = StringField('index_converter')
     _index_converter_params = DictField('index_converter_params')
+    _topk = Int32Field('topk')
 
     def __init__(self, tensor=None, pk=None, distance_metric=None, dimension=None,
                  index_builder=None, index_builder_params=None,
                  index_converter=None, index_converter_params=None,
-                 output_types=None, stage=None, **kw):
+                 topk=None, output_types=None, stage=None, **kw):
         super().__init__(_tensor=tensor, _pk=pk,
                          _distance_metric=distance_metric, _dimension=dimension,
                          _index_builder=index_builder, _index_builder_params=index_builder_params,
                          _index_converter=index_converter, _index_converter_params=index_converter_params,
-                         _output_types=output_types, _stage=stage, **kw)
+                         _topk=topk, _output_types=output_types, _stage=stage, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
 
@@ -82,6 +83,10 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     def index_converter_params(self):
         return self._index_converter_params
 
+    @property
+    def topk(self):
+        return self._topk
+
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._tensor = self._inputs[0]
@@ -89,6 +94,31 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
 
     def __call__(self, tensor, pk):
         return self.new_tileable([tensor, pk])
+
+    @classmethod
+    def _get_atleast_topk_nsplit(cls, nsplit, topk):
+        new_nsplit = []
+        i = 0
+        while i < len(nsplit):
+            cur = nsplit[i]
+            i += 1
+            if cur >= topk:
+                new_nsplit.append(cur)
+            else:
+                while i < len(nsplit):
+                    cur += nsplit[i]
+                    i += 1
+                    if cur >= topk:
+                        break
+                if cur < topk and len(new_nsplit) > 0:
+                    new_nsplit[-1] += cur
+                elif cur >= topk:
+                    new_nsplit.append(cur)
+        new_nsplit = tuple(new_nsplit)
+        assert sum(new_nsplit) == sum(nsplit), f'sum of nsplit not equal, ' \
+                                               f'old: {nsplit}, new: {new_nsplit}'
+
+        return new_nsplit
 
     @classmethod
     def tile(cls, op):
@@ -100,6 +130,9 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         check_chunks_unknown_shape(op.inputs, TilesError)
 
         nsplit = decide_unify_split(tensor.nsplits[0], pk.nsplits[0])
+        if op.topk is not None:
+            nsplit = cls._get_atleast_topk_nsplit(nsplit, op.topk)
+
         if tensor.chunk_shape[1] > 1:
             tensor = tensor.rechunk({0: nsplit, 1: tensor.shape[1]})._inplace_tile()
         else:
@@ -180,7 +213,7 @@ def build_index(tensor, pk, dimension=None, need_shuffle=False,
                 distance_metric='SquaredEuclidean',
                 index_builder='SsgBuilder', index_builder_params=None,
                 index_converter=None, index_converter_params=None,
-                session=None, run_kwargs=None):
+                topk=None, session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
 
     if dimension is None:
@@ -201,5 +234,6 @@ def build_index(tensor, pk, dimension=None, need_shuffle=False,
                         index_builder=index_builder,
                         index_builder_params=index_builder_params,
                         index_converter=index_converter,
-                        index_converter_params=index_converter_params)
+                        index_converter_params=index_converter_params,
+                        topk=topk)
     return op(tensor, pk).execute(session=session, **(run_kwargs or dict()))

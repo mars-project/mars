@@ -160,7 +160,8 @@ class Test(unittest.TestCase):
                 os.remove(path)
 
     def testBuildAndSearchIndex(self):
-        measure_name_lists = ["Canberra", "Chebyshev", "SquaredEuclidean", "Euclidean", "InnerProduct", "Manhattan"]
+        measure_name_lists = ["SquaredEuclidean", "Euclidean"]
+        # measure_name_lists = ["Canberra", "Chebyshev", "SquaredEuclidean", "Euclidean", "InnerProduct", "Manhattan"]
         index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder", "ClusteringBuilder"]
 
         for i, index_builder in enumerate(index_builder_lists):
