@@ -272,11 +272,12 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def _execute_map(cls, ctx, op):
-        (data,), device_id, _ = as_same_device(
+        (data,), device_id, xp = as_same_device(
             [ctx[op.inputs[0].key]], device=op.device, ret_extra=True)
         index = ctx[op.inputs[1].key] if len(op.inputs) == 2 else None
 
         with device(device_id):
+            data = xp.ascontiguousarray(data)
             if index is not None:
                 # fetch the trained index
                 trained_index = _load_index(ctx, op, index, device_id)

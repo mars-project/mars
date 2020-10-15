@@ -18,6 +18,7 @@ import numpy as np
 import scipy.sparse as sps
 import pandas as pd
 
+from mars import dataframe as md
 from mars import tensor as mt
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
@@ -141,6 +142,15 @@ class Test(TestBase):
         np.testing.assert_array_equal(res, expected)
         self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        df = md.DataFrame(mt.random.rand(10, 5, chunk_size=5))
+        df = df[df[0] < 1]
+        # generate tensor with unknown shape
+        t = df.to_tensor()
+        t2 = transpose(t)
+
+        res = self.executor.execute_tensor(t2, concat=True)[0]
+        self.assertEqual(res.shape, (5, 10))
 
     def testSwapaxesExecution(self):
         raw = np.random.random((11, 8, 5))
