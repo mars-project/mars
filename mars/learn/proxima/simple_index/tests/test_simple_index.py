@@ -14,10 +14,6 @@
 
 import os
 import unittest
-import logging
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 
 import numpy as np
 import pandas as pd
@@ -108,7 +104,7 @@ class Test(unittest.TestCase):
         self.session._sess._executor = self._old_executor
 
     def build_and_query(self, doc, query, topk, doc_chunk, query_chunk,
-                        threads=1,dimension=None, measure_name=None,
+                        threads=1, dimension=None, measure_name=None,
                         index_builder=None, builder_params=None,
                         index_converter=None, index_converter_params=None,
                         index_searcher=None, searcher_params=None,
