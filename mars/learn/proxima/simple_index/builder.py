@@ -213,7 +213,7 @@ def build_index(tensor, pk, dimension=None, need_shuffle=False,
                 distance_metric='SquaredEuclidean',
                 index_builder='SsgBuilder', index_builder_params=None,
                 index_converter=None, index_converter_params=None,
-                topk=None, session=None, run_kwargs=None):
+                topk=None, run=True, session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
 
     if dimension is None:
@@ -236,4 +236,8 @@ def build_index(tensor, pk, dimension=None, need_shuffle=False,
                         index_converter=index_converter,
                         index_converter_params=index_converter_params,
                         topk=topk)
-    return op(tensor, pk).execute(session=session, **(run_kwargs or dict()))
+    result = op(tensor, pk)
+    if run:
+        return result.execute(session=session, **(run_kwargs or dict()))
+    else:
+        return result
