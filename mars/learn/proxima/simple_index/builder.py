@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import tempfile
+import logging
 
 from .... import opcodes
 from .... import tensor as mt
@@ -24,6 +25,8 @@ from ....tensor.utils import decide_unify_split
 from ....utils import check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
 from ..core import proxima, get_proxima_type, validate_tensor
+
+logger = logging.getLogger(__name__)
 
 
 class ProximaBuilder(LearnOperand, LearnOperandMixin):
@@ -146,6 +149,8 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
             out_chunk = chunk_op.new_chunk([chunk, pk_col_chunk],
                                            index=pk_col_chunk.index)
             out_chunks.append(out_chunk)
+
+        logger.info(f"index chunks count: {len(out_chunks)} ")
 
         params = out.params
         params['chunks'] = out_chunks

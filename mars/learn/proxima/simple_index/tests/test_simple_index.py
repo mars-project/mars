@@ -15,6 +15,7 @@
 import os
 import unittest
 
+
 import numpy as np
 import pandas as pd
 
@@ -104,7 +105,7 @@ class Test(unittest.TestCase):
         self.session._sess._executor = self._old_executor
 
     def build_and_query(self, doc, query, topk, doc_chunk, query_chunk,
-                        dimension=None, measure_name=None,
+                        threads=1,dimension=None, measure_name=None,
                         index_builder=None, builder_params=None,
                         index_converter=None, index_converter_params=None,
                         index_searcher=None, searcher_params=None,
@@ -146,7 +147,7 @@ class Test(unittest.TestCase):
                 with open(path, 'rb') as f:
                     self.assertGreater(len(f.read()), 0)
 
-            pk2, distance = search_index(tensor=query,
+            pk2, distance = search_index(tensor=query, threads=threads,
                                          distance_metric=measure_name, dimension=dimension,
                                          topk=topk, index=index, index_path=None,
                                          index_searcher=index_searcher, index_searcher_params=searcher_params,
@@ -168,6 +169,7 @@ class Test(unittest.TestCase):
             for measure_name in measure_name_lists:
                 # params
                 doc_count, query_count, dimension, topk = 200, 15, 5, 2
+                threads = 1
                 builder_params_lists = [{}, {}, {}, {"proxima.hc.builder.max_document_count": doc_count}]
                 index_builder, index_searcher = index_builder, None
                 builder_params = builder_params_lists[i]
@@ -194,7 +196,7 @@ class Test(unittest.TestCase):
                                                            index_reformer_params=index_reformer_params)
 
                 # mars_data
-                pk_m, distance_m = self.build_and_query(doc, query, dimension=dimension, topk=topk,
+                pk_m, distance_m = self.build_and_query(doc, query, dimension=dimension, topk=topk, threads=threads,
                                                         measure_name=measure_name, doc_chunk=doc_chunk,
                                                         query_chunk=query_chunk, index_builder=index_builder,
                                                         builder_params=builder_params,
