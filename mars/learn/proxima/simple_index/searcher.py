@@ -142,7 +142,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         index_chunks_workers = [m.workers[0] if m.workers else None for m in
                                 ctx.get_chunk_metas([c.key for c in index.chunks])]
 
-        logger.info(f"query chunks count: {len(tensor.chunks)} ")
+        logger.warning(f"query chunks count: {len(tensor.chunks)} ")
 
         out_chunks = [], []
         for tensor_chunk in tensor.chunks:
@@ -202,7 +202,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             out_chunks[0].append(pk_result_chunk)
             out_chunks[1].append(distance_result_chunk)
 
-        logger.info(f"query out_chunks count: {len(out_chunks)} ")
+        logger.warning(f"query out_chunks count: {len(out_chunks)} ")
 
         kws = []
         pk_params = outs[0].params
@@ -239,8 +239,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         flow.load(index_path)
         vecs = np.ascontiguousarray(inp)
 
-        logger.info(f"threads count:{op.threads}")
-        logger.info(f"vecs count:{len(vecs)}")
+        logger.warning(f"threads count:{op.threads}")
+        logger.warning(f"vecs count:{len(vecs)}")
 
         result_pks, result_distances = proxima.IndexUtility.ann_search(searcher=flow,
                                                                        query=vecs,
@@ -282,8 +282,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             return cls._execute_agg(ctx, op)
 
 
-def search_index(tensor, topk, threads=1, index=None, index_path=None,
-                 dimension=None, distance_metric=None,
+def search_index(tensor, topk, index=None, index_path=None,
+                 threads=1, dimension=None, distance_metric=None,
                  index_searcher=None, index_searcher_params=None,
                  index_reformer=None, index_reformer_params=None,
                  run=True, session=None, run_kwargs=None):

@@ -150,7 +150,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                                            index=pk_col_chunk.index)
             out_chunks.append(out_chunk)
 
-        logger.info(f"index chunks count: {len(out_chunks)} ")
+        logger.warning(f"index chunks count: {len(out_chunks)} ")
 
         params = out.params
         params['chunks'] = out_chunks

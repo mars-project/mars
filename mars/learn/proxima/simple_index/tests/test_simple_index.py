@@ -14,7 +14,10 @@
 
 import os
 import unittest
+import logging
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 import numpy as np
 import pandas as pd
