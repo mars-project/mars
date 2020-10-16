@@ -406,7 +406,12 @@ class AssignEvaluationActor(SchedulerActor):
                 rejects.append(worker_ep)
 
         if timeout_on_fail:
-            raise TimeoutError(f'Assign resources to operand {op_key} timed out')
+            running_ops = sum(len(metrics.get('progress', dict()).get(str(session_id), dict()))
+                              for metrics in self._worker_metrics.values())
+            if running_ops == 0:
+                raise TimeoutError(f'Assign resources to operand {op_key} timed out')
+            else:
+                self._session_last_assigns[session_id] = time.time()
         return None, rejects
 
     def _get_chunks_meta(self, session_id, keys):
