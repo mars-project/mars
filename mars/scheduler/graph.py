@@ -735,6 +735,11 @@ class GraphActor(SchedulerActor):
         ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
         input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
 
+        invalid_keys = [k for k, v in input_chunk_metas.items() if v is None]
+        if invalid_keys:
+            raise KeyError(f'Input metas for data chunks {invalid_keys!r} missing when '
+                           f'executing graph {self._graph_key}')
+
         def _do_assign():
             # do placements
             return self.assign_operand_workers(
