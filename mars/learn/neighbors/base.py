@@ -21,7 +21,7 @@ from sklearn.base import BaseEstimator, MultiOutputMixin
 from ... import tensor as mt
 from ...tensor.reshape.reshape import _reshape as reshape_unchecked
 from ..metrics.pairwise import PAIRWISE_DISTANCE_FUNCTIONS
-from ..metrics import pairwise_distances
+from ..metrics import pairwise_distances_topk
 from ..utils import check_array
 from ..utils.validation import check_is_fitted
 from ._ball_tree import create_ball_tree, ball_tree_query, SklearnBallTree
@@ -332,10 +332,9 @@ class KNeighborsMixin:
             kwds = ({'squared': True} if self.effective_metric_ == 'euclidean'
                     else self.effective_metric_params_)
 
-            dist = pairwise_distances(X, self._fit_X, metric=self.effective_metric_,
-                                      **kwds)
-            neigh_dist, neigh_ind = mt.topk(dist, n_neighbors, largest=False, sorted=True,
-                                            return_index=True)
+            neigh_dist, neigh_ind = pairwise_distances_topk(X, self._fit_X, k=n_neighbors,
+                                                            metric=self.effective_metric_,
+                                                            **kwds)
             if return_distance:
                 if self.effective_metric_ == 'euclidean':
                     result = mt.sqrt(neigh_dist), neigh_ind
