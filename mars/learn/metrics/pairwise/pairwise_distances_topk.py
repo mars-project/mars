@@ -161,7 +161,7 @@ def _pariwise_distance_chunked(X, Y, reduce_func=None, metric='euclidean',
         if ((X is Y or Y is None) and metric == 'euclidean'):
             # zeroing diagonal, taking care of aliases of "euclidean",
             # i.e. "l2"
-            D_chunk.flat[sl.start::_num_samples(X) + 1] = 0
+            D_chunk.flat[sl.start::_num_samples(X) + 1] = 0  # pylint: disable=invalid-slice-index
         if reduce_func is not None:
             chunk_size = D_chunk.shape[0]
             D_chunk = reduce_func(D_chunk, sl.start)
@@ -448,7 +448,7 @@ class PairwiseDistancesTopk(PairwiseDistances):
             if op.return_index:
                 inds = inputs[1]
                 ind_result = xp.empty_like(ind)
-                for i in range(len(ind_result)):
+                for i in range(len(ind_result)):  # pylint: disable=consider-using-enumerate
                     ind_result[i] = inds[i][ind[i]]
                 ctx[op.outputs[1].key] = ind_result
 
@@ -465,7 +465,7 @@ class PairwiseDistancesTopk(PairwiseDistances):
             ctx[op.outputs[0].key] = dist
             if op.return_index:
                 ind_result = xp.empty_like(ind_on_ind)
-                for i in range(len(ind_on_ind)):
+                for i in range(len(ind_on_ind)):  # pylint: disable=consider-using-enumerate
                     ind_result[i] = ind[i][ind_on_ind[i]]
                 ctx[op.outputs[1].key] = ind_result
 
