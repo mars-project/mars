@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .pairwise import euclidean_distances, pairwise_distances
+from .pairwise import euclidean_distances, pairwise_distances, pairwise_distances_topk
 from ._classification import accuracy_score
 from ._ranking import roc_curve, auc

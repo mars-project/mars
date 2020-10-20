@@ -22,13 +22,14 @@ try:
     import sklearn
 
     from sklearn.metrics import pairwise_distances as sk_pairwise_distances
+    from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
     from sklearn.exceptions import DataConversionWarning
     from sklearn.utils._testing import assert_warns
 except ImportError:
     sklearn = None
 
 from mars import tensor as mt
-from mars.learn.metrics import pairwise_distances
+from mars.learn.metrics import pairwise_distances, pairwise_distances_topk
 from mars.tests.core import ExecutorForTest
 
 
@@ -89,3 +90,51 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _ = pairwise_distances(x, y, metric='unknown')
+
+    def testPairwiseDistancesTopkExecution(self):
+        rs = np.random.RandomState(0)
+        raw_x = rs.rand(20, 5)
+        raw_y = rs.rand(21, 5)
+
+        x = mt.tensor(raw_x, chunk_size=11)
+        y = mt.tensor(raw_y, chunk_size=12)
+
+        d, i = pairwise_distances_topk(x, y, 3, metric='euclidean', return_index=True)
+        result = self.executor.execute_tensors([d, i])
+        nn = SkNearestNeighbors(n_neighbors=3, algorithm='brute',
+                                metric='euclidean')
+        nn.fit(raw_y)
+        expected = nn.kneighbors(raw_x, return_distance=True)
+        np.testing.assert_almost_equal(result[0], expected[0])
+        np.testing.assert_array_equal(result[1], expected[1])
+
+        x = mt.tensor(raw_x, chunk_size=(11, 3))
+
+        d = pairwise_distances_topk(x, k=4, metric='euclidean', return_index=False)
+        result = self.executor.execute_tensor(d, concat=True)[0]
+        nn = SkNearestNeighbors(n_neighbors=3, algorithm='brute',
+                                metric='euclidean')
+        nn.fit(raw_x)
+        expected = nn.kneighbors(return_distance=True)[0]
+        np.testing.assert_almost_equal(result[:, 1:], expected)
+
+        y = mt.tensor(raw_y, chunk_size=21)
+
+        d, i = pairwise_distances_topk(x, y, 3, metric='cosine',
+                                       return_index=True, working_memory='168')
+        result = self.executor.execute_tensors([d, i])
+        nn = SkNearestNeighbors(n_neighbors=3, algorithm='brute',
+                                metric='cosine')
+        nn.fit(raw_y)
+        expected = nn.kneighbors(raw_x, return_distance=True)
+        np.testing.assert_almost_equal(result[0], expected[0])
+        np.testing.assert_array_equal(result[1], expected[1])
+
+        d = pairwise_distances_topk(x, y, 3, metric='cosine',
+                                    axis=0, return_index=False)
+        result = self.executor.execute_tensor(d, concat=True)[0]
+        nn = SkNearestNeighbors(n_neighbors=3, algorithm='brute',
+                                metric='cosine')
+        nn.fit(raw_x)
+        expected = nn.kneighbors(raw_y, return_distance=True)[0]
+        np.testing.assert_almost_equal(result, expected)

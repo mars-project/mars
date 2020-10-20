@@ -16,7 +16,6 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from .... import tensor as mt
-from ....config import options
 from ....serialize import KeyField, BoolField
 from ....tensor.core import TensorOrder
 from ....tiles import TilesError
@@ -135,31 +134,7 @@ class EuclideanDistances(PairwiseDistances):
         if YY is None:
             YY = row_norms(Y, squared=True)[np.newaxis, :]
 
-        max_x_chunk_size = max(X.nsplits[0])
-        max_y_chunk_size = max(Y.nsplits[0])
-        itemsize = out.dtype.itemsize
-        max_chunk_bytes = max_x_chunk_size * max_y_chunk_size * itemsize
-        chunk_store_limit = options.chunk_store_limit * 2  # scale 2 times
-        if max_chunk_bytes > chunk_store_limit:
-            adjust_succeeded = False
-            # chunk is too huge, try to rechunk X and Y
-            if X.shape[0] > Y.shape[0]:
-                # y is smaller, rechunk y is more efficient
-                expected_y_chunk_size = max(int(chunk_store_limit / itemsize / max_x_chunk_size), 1)
-                if max_x_chunk_size * expected_y_chunk_size * itemsize <= chunk_store_limit:
-                    adjust_succeeded = True
-                    Y = Y.rechunk({0: expected_y_chunk_size})._inplace_tile()
-            else:
-                # x is smaller, rechunk x is more efficient
-                expected_x_chunk_size = max(int(chunk_store_limit / itemsize / max_y_chunk_size), 1)
-                if max_y_chunk_size * expected_x_chunk_size * itemsize <= chunk_store_limit:
-                    adjust_succeeded = True
-                    X = X.rechunk({0: expected_x_chunk_size})._inplace_tile()
-
-            if not adjust_succeeded:
-                expected_chunk_size = max(int(np.sqrt(chunk_store_limit / itemsize)), 1)
-                X = X.rechunk({0: expected_chunk_size})._inplace_tile()
-                Y = Y.rechunk({0: expected_chunk_size})._inplace_tile()
+        X, Y = cls._adjust_chunk_sizes(X, Y, out)
 
         distances = -2 * X.dot(Y.T)
         if distances.issparse():

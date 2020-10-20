@@ -262,7 +262,6 @@ def quantile_series(series, q=0.5, interpolation='linear'):
     q : float or array-like, default 0.5 (50% quantile)
         0 <= q <= 1, the quantile(s) to compute.
     interpolation : {'linear', 'lower', 'higher', 'midpoint', 'nearest'}
-        .. versionadded:: 0.18.0
 
         This optional parameter specifies the interpolation method to use,
         when the desired quantile lies between two data points `i` and `j`:
@@ -333,7 +332,7 @@ def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
         * higher: `j`.
         * nearest: `i` or `j` whichever is nearest.
         * midpoint: (`i` + `j`) / 2.
-        .. versionadded:: 0.18.0
+
     Returns
     -------
     Series or DataFrame
@@ -365,6 +364,7 @@ def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
 
     Specifying `numeric_only=False` will also compute the quantile of
     datetime and timedelta data.
+
     >>> df = md.DataFrame({'A': [1, 2],
     ...                    'B': [md.Timestamp('2010'),
     ...                          md.Timestamp('2011')],
