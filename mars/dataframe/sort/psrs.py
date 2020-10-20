@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import numpy as np
 import pandas as pd
 
@@ -189,7 +191,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
                                       dtype=out.dtype, name=out.name)
 
 
-def execute_sort_values(data, op, inplace=None):
+def execute_sort_values(data, op, inplace=None, by=None):
     if inplace is None:
         inplace = op.inplace
     # ignore_index is new in Pandas version 1.0.0.
@@ -198,7 +200,7 @@ def execute_sort_values(data, op, inplace=None):
         kwargs = dict(axis=op.axis, ascending=op.ascending, ignore_index=ignore_index,
                       na_position=op.na_position, kind=op.kind)
         if isinstance(data, pd.DataFrame):
-            kwargs['by'] = op.by
+            kwargs['by'] = by if by is not None else op.by
         if inplace:
             kwargs['inplace'] = True
             try:
@@ -334,20 +336,21 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
             ctx[op.outputs[0].key] = res = execute_sort_index(a, op)
 
         by = op.by
-        if getattr(ctx, 'running_mode', None) == RunningMode.distributed \
-                and isinstance(a, pd.DataFrame) and op.sort_type == 'sort_values':
+        add_distinct_col = bool(int(os.environ.get('PSRS_DISTINCT_COL', '0'))) \
+            or getattr(ctx, 'running_mode', None) == RunningMode.distributed
+        if add_distinct_col and isinstance(a, pd.DataFrame) and op.sort_type == 'sort_values':
             # when running under distributed mode, we introduce an extra column
             # to make sure pivots are distinct
             chunk_idx = op.inputs[0].index[0]
             distinct_col = _PSRS_DISTINCT_COL if a.columns.nlevels == 1 \
                 else (_PSRS_DISTINCT_COL,) + ('',) * (a.columns.nlevels - 1)
-            res[distinct_col] = np.arange(chunk_idx << 32, (chunk_idx << 32) + len(a))
+            res[distinct_col] = np.arange(chunk_idx << 32, (chunk_idx << 32) + len(a), dtype=np.int64)
             by = list(by) + [distinct_col]
 
         n = op.n_partition
         if a.shape[op.axis] < n:
             num = n // a.shape[op.axis] + 1
-            res = execute_sort_values(pd.concat([a] * num), op)
+            res = execute_sort_values(pd.concat([res] * num), op, by=by)
         w = int(res.shape[op.axis] // n)
 
         slc = (slice(None),) * op.axis + (slice(0, n * w, w),)
@@ -471,7 +474,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
             distinct_col = _PSRS_DISTINCT_COL if a.columns.nlevels == 1 \
                 else (_PSRS_DISTINCT_COL,) + ('',) * (a.columns.nlevels - 1)
-            if _PSRS_DISTINCT_COL in a.columns:
+            if distinct_col in a.columns:
                 by += [distinct_col]
 
             records = a[by].to_records(index=False)
