@@ -21,6 +21,7 @@ from distutils.version import LooseVersion
 from enum import Enum
 from io import BytesIO
 import pickle  # nosec
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -244,7 +245,7 @@ def loads(buf):
 
     if header.type == SerialType.ARROW:
         try:
-            return pyarrow.deserialize(memoryview(data), mars_serialize_context())
+            return deserialize(memoryview(data))
         except pyarrow.lib.ArrowInvalid:  # pragma: no cover
             # reconstruct value from buffers of arrow components
             data_view = memoryview(data)
@@ -290,6 +291,19 @@ def dumps(obj, *, serial_type=None, compress=None, pickle_protocol=None):
     return sio.getvalue()
 
 
+def _wrap_deprecates(fun):
+    @functools.wraps(fun)
+    def _wrapped(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=DeprecationWarning)
+            return fun(*args, **kwargs)
+
+    if pyarrow is not None and LooseVersion(pyarrow.__version__) >= '2.0':
+        return _wrapped
+    return fun
+
+
+@_wrap_deprecates
 def serialize(data):
     if isinstance(data, pyarrow.SerializedPyObject):
         return data
@@ -306,6 +320,7 @@ def serialize(data):
         raise SerializationFailed(obj=data)
 
 
+@_wrap_deprecates
 def deserialize(data):
     return pyarrow.deserialize(data, mars_serialize_context())
 
