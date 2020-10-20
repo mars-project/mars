@@ -16,6 +16,7 @@ import itertools
 
 import numpy as np
 
+from ....config import options
 from ....tensor.operands import TensorOperand, TensorOperandMixin
 from ....tensor import tensor as astensor
 from ....tiles import TilesError
@@ -122,3 +123,33 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
                 y = y.rechunk({1: y.shape[1]})._inplace_tile()
 
         return x, y
+
+    @classmethod
+    def _adjust_chunk_sizes(cls, X, Y, out):
+        max_x_chunk_size = max(X.nsplits[0])
+        max_y_chunk_size = max(Y.nsplits[0])
+        itemsize = out.dtype.itemsize
+        max_chunk_bytes = max_x_chunk_size * max_y_chunk_size * itemsize
+        chunk_store_limit = options.chunk_store_limit * 2  # scale 2 times
+        if max_chunk_bytes > chunk_store_limit:
+            adjust_succeeded = False
+            # chunk is too huge, try to rechunk X and Y
+            if X.shape[0] > Y.shape[0]:
+                # y is smaller, rechunk y is more efficient
+                expected_y_chunk_size = max(int(chunk_store_limit / itemsize / max_x_chunk_size), 1)
+                if max_x_chunk_size * expected_y_chunk_size * itemsize <= chunk_store_limit:
+                    adjust_succeeded = True
+                    Y = Y.rechunk({0: expected_y_chunk_size})._inplace_tile()
+            else:
+                # x is smaller, rechunk x is more efficient
+                expected_x_chunk_size = max(int(chunk_store_limit / itemsize / max_y_chunk_size), 1)
+                if max_y_chunk_size * expected_x_chunk_size * itemsize <= chunk_store_limit:
+                    adjust_succeeded = True
+                    X = X.rechunk({0: expected_x_chunk_size})._inplace_tile()
+
+            if not adjust_succeeded:
+                expected_chunk_size = max(int(np.sqrt(chunk_store_limit / itemsize)), 1)
+                X = X.rechunk({0: expected_chunk_size})._inplace_tile()
+                Y = Y.rechunk({0: expected_chunk_size})._inplace_tile()
+
+        return X, Y
