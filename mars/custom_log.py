@@ -96,6 +96,9 @@ class _LogWrapper:
         # write into previous stdout
         self.stdout.write(data)
 
+    def flush(self):
+        self.stdout.flush()
+
 
 def gen_log_path(session_id, op_key):
     filename = f"{str(session_id).replace('-', '_')}_{op_key}"
