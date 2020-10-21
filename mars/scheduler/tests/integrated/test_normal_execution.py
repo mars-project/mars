@@ -369,6 +369,7 @@ class Test(SchedulerIntegratedTest):
             # test multiple functions
             def f1(size):
                 print('f1' * size)
+                sys.stdout.flush()
 
             fs = ExecutableTuple([spawn(f1, 30), spawn(f1, 40)])
             fs.execute(session=sess)
