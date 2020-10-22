@@ -287,6 +287,28 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         else:
             ctx[chunk.key] = _base_concat(chunk, inputs)
 
+    @classmethod
+    def _concat_index(cls, prev_index: pd.Index, cur_index: pd.Index):
+        if isinstance(prev_index, pd.RangeIndex) and \
+                isinstance(cur_index, pd.RangeIndex):
+            # handle RangeIndex that append may generate huge amount of data
+            # e.g. pd.RangeIndex(10_000) and pd.RangeIndex(10_000)
+            # will generate a Int64Index full of data
+            # for details see GH#1647
+            prev_stop = prev_index.start + prev_index.size * prev_index.step
+            cur_start = cur_index.start
+            if prev_stop == cur_start and prev_index.step == cur_index.step:
+                # continuous RangeIndex, still return RangeIndex
+                return prev_index.append(cur_index)
+            else:
+                # otherwise, return an empty index
+                return pd.Index([], dtype=prev_index.dtype)
+        elif isinstance(prev_index, pd.RangeIndex):
+            return pd.Index([], prev_index.dtype).append(cur_index)
+        elif isinstance(cur_index, pd.RangeIndex):
+            return prev_index.append(pd.Index([], cur_index.dtype))
+        return prev_index.append(cur_index)
+
     def _call_series(self, objs):
         if self.axis == 0:
             row_length = 0
@@ -295,12 +317,12 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 if index is None:
                     index = series.index_value.to_pandas()
                 else:
-                    index = index.append(series.index_value.to_pandas())
+                    index = self._concat_index(index, series.index_value.to_pandas())
                 row_length += series.shape[0]
             if self.ignore_index:  # pragma: no cover
                 index_value = parse_index(pd.RangeIndex(row_length))
             else:
-                index_value = parse_index(index)
+                index_value = parse_index(index, objs)
             return self.new_series(objs, shape=(row_length,), dtype=objs[0].dtype,
                                    index_value=index_value, name=objs[0].name)
         else:
@@ -335,7 +357,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 if index is None:
                     index = df.index_value.to_pandas()
                 else:
-                    index = index.append(df.index_value.to_pandas())
+                    index = self._concat_index(index, df.index_value.to_pandas())
                 row_length += df.shape[0]
                 empty_dfs.append(build_empty_df(df.dtypes))
 
@@ -349,7 +371,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             if self.ignore_index:  # pragma: no cover
                 index_value = parse_index(pd.RangeIndex(row_length))
             else:
-                index_value = parse_index(index)
+                index_value = parse_index(index, objs)
             return self.new_dataframe(objs, shape=shape, dtypes=emtpy_result.dtypes,
                                       index_value=index_value, columns_value=columns_value)
         else:
