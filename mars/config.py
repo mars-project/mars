@@ -310,7 +310,11 @@ default_options.register_option('dataframe.arrow_array.pandas_only', None, valid
 assume_finite = os.environ.get('SKLEARN_ASSUME_FINITE')
 if assume_finite is not None:
     assume_finite = bool(assume_finite)
+working_memory = os.environ.get('SKLEARN_WORKING_MEMORY')
+if working_memory is not None:
+    working_memory = int(working_memory)
 default_options.register_option('learn.assume_finite', assume_finite, validator=any_validator(is_null, is_bool))
+default_options.register_option('learn.working_memory', working_memory, validator=any_validator(is_null, is_integer))
 
 # the number of combined chunks in tree reduction or tree add
 default_options.register_option('combine_size', 4, validator=is_integer, serialize=True)
