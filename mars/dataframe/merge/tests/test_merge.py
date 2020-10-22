@@ -273,6 +273,12 @@ class Test(TestBase):
         pd.testing.assert_series_equal(r.dtypes, df1.dtypes)
         pd.testing.assert_index_equal(r.index_value.to_pandas(), pd.Index([], dtype=np.int64))
 
+        r = concat([mdf4, mdf4], axis='index')
+
+        self.assertEqual(r.shape, (20, 4))
+        pd.testing.assert_series_equal(r.dtypes, df1.dtypes)
+        pd.testing.assert_index_equal(r.index_value.to_pandas(), pd.Index([], dtype=np.int64))
+
         mdf1 = from_pandas(df1, chunk_size=3)
         mdf2 = from_pandas(df2, chunk_size=4)
         r = concat([mdf1, mdf2], axis='columns')
