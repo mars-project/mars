@@ -247,6 +247,32 @@ class Test(TestBase):
         for i, c in enumerate(tiled.chunks):
             self.assertEqual(c.index, (i, 0))
 
+        df3 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'),
+                           index=pd.RangeIndex(10, 20))
+
+        mdf3 = from_pandas(df3, chunk_size=4)
+        r = concat([mdf1, mdf3], axis='index')
+
+        self.assertEqual(r.shape, (20, 4))
+        pd.testing.assert_series_equal(r.dtypes, df1.dtypes)
+        pd.testing.assert_index_equal(r.index_value.to_pandas(), pd.RangeIndex(20))
+
+        df4 = pd.DataFrame(np.random.rand(10, 4), columns=list('ABCD'),
+                           index=np.random.permutation(np.arange(10)))
+
+        mdf4 = from_pandas(df4, chunk_size=4)
+        r = concat([mdf1, mdf4], axis='index')
+
+        self.assertEqual(r.shape, (20, 4))
+        pd.testing.assert_series_equal(r.dtypes, df1.dtypes)
+        pd.testing.assert_index_equal(r.index_value.to_pandas(), pd.Index([], dtype=np.int64))
+
+        r = concat([mdf4, mdf1], axis='index')
+
+        self.assertEqual(r.shape, (20, 4))
+        pd.testing.assert_series_equal(r.dtypes, df1.dtypes)
+        pd.testing.assert_index_equal(r.index_value.to_pandas(), pd.Index([], dtype=np.int64))
+
         mdf1 = from_pandas(df1, chunk_size=3)
         mdf2 = from_pandas(df2, chunk_size=4)
         r = concat([mdf1, mdf2], axis='columns')
