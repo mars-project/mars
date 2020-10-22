@@ -1094,7 +1094,7 @@ def arrow_array_to_objects(obj):
                 out_cols[col_name] = pd.Series(obj[col_name].to_numpy(), index=obj.index)
             else:
                 out_cols[col_name] = obj[col_name]
-        obj = pd.DataFrame(out_cols, columns=list(obj.dtypes.keys()))
+        obj = pd.DataFrame(out_cols, columns=list(obj.dtypes.keys()), index=obj.index)
     elif isinstance(obj, pd.Series):
         if isinstance(obj.dtype, ArrowDtype):
             obj = pd.Series(obj.to_numpy(), index=obj.index, name=obj.name)
