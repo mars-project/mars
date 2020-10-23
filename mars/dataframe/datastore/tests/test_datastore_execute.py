@@ -34,6 +34,14 @@ try:
     import sqlalchemy
 except ImportError:
     sqlalchemy = None
+try:
+    import pyarrow as pa
+except ImportError:
+    pa = None
+try:
+    import fastparquet
+except ImportError:
+    fastparquet = None
 
 
 class Test(TestBase):
@@ -163,3 +171,44 @@ class Test(TestBase):
 
             with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
                 testWithGivenSession(web_session)
+
+    @unittest.skipIf(pa is None or fastparquet is None, 'pyarrow or fastparquet not installed')
+    def testToParquetExecution(self):
+        raw = pd.DataFrame({
+            'col1': np.random.rand(100),
+            'col2': np.arange(100),
+            'col3': np.random.choice(['a', 'b', 'c'], (100,)),
+        })
+        df = DataFrame(raw, chunk_size=33)
+
+        with tempfile.TemporaryDirectory() as base_path:
+            # DATAFRAME TESTS
+            path = os.path.join(base_path, 'out-*.parquet')
+            r = df.to_parquet(path)
+            self.executor.execute_dataframe(r)
+
+            read_df = md.read_parquet(path)
+            result = self.executor.execute_dataframe(read_df, concat=True)[0]
+            result = result.sort_index()
+            pd.testing.assert_frame_equal(result, raw)
+
+            # test fastparquet
+            path = os.path.join(base_path, 'out-fastparquet-*.parquet')
+            r = df.to_parquet(path, engine='fastparquet', compression='gzip')
+            self.executor.execute_dataframe(r)
+
+            read_df = md.read_parquet(path)
+            result = self.executor.execute_dataframe(read_df, concat=True)[0]
+            result = result.sort_index()
+            pd.testing.assert_frame_equal(result, raw)
+
+            # test partition_cols
+            path = os.path.join(base_path, 'out-partitioned')
+            r = df.to_parquet(path, partition_cols=['col3'])
+            self.executor.execute_dataframe(r)
+
+            read_df = md.read_parquet(path)
+            result = self.executor.execute_dataframe(read_df, concat=True)[0]
+            result['col3'] = result['col3'].astype('object')
+            pd.testing.assert_frame_equal(result.sort_values('col1').reset_index(drop=True),
+                                          raw.sort_values('col1').reset_index(drop=True))

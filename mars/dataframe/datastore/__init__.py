@@ -17,11 +17,13 @@ def _install():
     from .to_csv import to_csv
     from .to_sql import to_sql
     from .to_vineyard import to_vineyard
+    from .to_parquet import to_parquet
     from ..operands import DATAFRAME_TYPE, SERIES_TYPE
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'to_csv', to_csv)
         setattr(cls, 'to_sql', to_sql)
+        setattr(cls, 'to_parquet', to_parquet)
         setattr(cls, 'to_vineyard', to_vineyard)
 
     for cls in SERIES_TYPE:

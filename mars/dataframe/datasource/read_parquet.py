@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -33,7 +35,7 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...filesystem import open_file, glob
 from ...serialize import AnyField, BoolField, DictField, ListField,\
-    StringField, Int32Field
+    StringField, Int32Field, BytesField
 from ..arrays import ArrowStringDtype
 from ..operands import DataFrameOperandMixin, DataFrameOperand, OutputType
 from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype, \
@@ -138,15 +140,22 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
     _incremental_index = BoolField('incremental_index')
     _storage_options = DictField('storage_options')
 
+    # for chunk
+    _partitions = BytesField('partitions')
+    _partition_keys = ListField('partition_keys')
+
     def __init__(self, path=None, engine=None, columns=None, use_arrow_dtype=None,
                  groups_as_chunks=None, group_index=None, incremental_index=None,
-                 read_kwargs=None, storage_options=None, **kw):
+                 read_kwargs=None, partitions=None, partition_keys=None,
+                 storage_options=None, **kw):
         super().__init__(_path=path, _engine=engine, _columns=columns,
                          _use_arrow_dtype=use_arrow_dtype,
                          _groups_as_chunks=groups_as_chunks,
                          _group_index=group_index,
                          _read_kwargs=read_kwargs,
                          _incremental_index=incremental_index,
+                         _partitions=partitions,
+                         _partition_keys=partition_keys,
                          _storage_options=storage_options,
                          _output_types=[OutputType.dataframe], **kw)
 
@@ -183,21 +192,61 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
         return self._incremental_index
 
     @property
+    def partitions(self):
+        return self._partitions
+
+    @property
+    def partition_keys(self):
+        return self._partition_keys
+
+    @property
     def storage_options(self):
         return self._storage_options
 
     @classmethod
-    def tile(cls, op):
+    def _to_arrow_dtypes(cls, dtypes, op):
+        if op.use_arrow_dtype is None and not op.gpu and \
+                options.dataframe.use_arrow_dtype:  # pragma: no cover
+            # check if use_arrow_dtype set on the server side
+            dtypes = to_arrow_dtypes(dtypes)
+        return dtypes
+
+    @classmethod
+    def _tile_partitioned(cls, op):
+        out_df = op.outputs[0]
+        shape = (np.nan, out_df.shape[1])
+        dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
+        dataset = pq.ParquetDataset(op.path)
+
+        chunk_index = 0
+        out_chunks = []
+        for piece in dataset.pieces:
+            chunk_op = op.copy().reset_key()
+            chunk_op._path = piece.path
+            chunk_op._partitions = pickle.dumps(dataset.partitions)
+            chunk_op._partition_keys = piece.partition_keys
+            new_chunk = chunk_op.new_chunk(
+                None, shape=shape, index=(chunk_index, 0),
+                index_value=out_df.index_value,
+                columns_value=out_df.columns_value,
+                dtypes=dtypes)
+            out_chunks.append(new_chunk)
+            chunk_index += 1
+
+        new_op = op.copy()
+        nsplits = ((np.nan,) * len(out_chunks), (out_df.shape[1],))
+        return new_op.new_dataframes(None, out_df.shape, dtypes=dtypes,
+                                     index_value=out_df.index_value,
+                                     columns_value=out_df.columns_value,
+                                     chunks=out_chunks, nsplits=nsplits)
+
+    @classmethod
+    def _tile_no_partitioned(cls, op):
         chunk_index = 0
         out_chunks = []
         out_df = op.outputs[0]
 
-        dtypes = out_df.dtypes
-        if op.use_arrow_dtype is None and not op.gpu and \
-                options.dataframe.use_arrow_dtype:  # pragma: no cover
-            # check if use_arrow_dtype set on the server side
-            dtypes = to_arrow_dtypes(out_df.dtypes)
-
+        dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
         shape = (np.nan, out_df.shape[1])
 
         paths = op.path if isinstance(op.path, (tuple, list)) else \
@@ -238,9 +287,28 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
                                      chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
+    def tile(cls, op):
+        if os.path.isdir(op.path):
+            return cls._tile_partitioned(op)
+        else:
+            return cls._tile_no_partitioned(op)
+
+    @classmethod
+    def _execute_partitioned(cls, ctx, op):
+        out = op.outputs[0]
+        partitions = pickle.loads(op.partitions)
+        piece = pq.ParquetDatasetPiece(op.path, partition_keys=op.partition_keys,
+                                       open_file_func=open_file)
+        df = piece.read(partitions=partitions).to_pandas()
+        ctx[out.key] = df
+
+    @classmethod
     def execute(cls, ctx, op):
         out = op.outputs[0]
         path = op.path
+
+        if op.partitions is not None:
+            return cls._execute_partitioned(ctx, op)
 
         engine = get_engine(op.engine)
         with open_file(path, storage_options=op.storage_options) as f:
@@ -305,26 +373,37 @@ def read_parquet(path, engine: str = "auto", columns=None,
     Mars DataFrame
     """
 
-    if not isinstance(path, list):
-        file_path = glob(path, storage_options=storage_options)[0]
-    else:
-        file_path = path[0]
-
     engine_type = check_engine(engine)
     engine = get_engine(engine_type)
-    with open_file(file_path, storage_options=storage_options) as f:
-        dtypes = engine.read_dtypes(f)
 
-    if columns:
-        dtypes = dtypes[columns]
+    if os.path.isdir(path):
+        # If path is a directory, we will read as a partitioned datasets.
+        if engine_type != 'pyarrow':
+            raise TypeError('Only support pyarrow engine when reading from'
+                            'partitioned datasets.')
+        dataset = pq.ParquetDataset(path)
+        dtypes = dataset.schema.to_arrow_schema().empty_table().to_pandas().dtypes
+        for partition in dataset.partitions:
+            dtypes[partition.name] = pd.CategoricalDtype()
+    else:
+        if not isinstance(path, list):
+            file_path = glob(path, storage_options=storage_options)[0]
+        else:
+            file_path = path[0]
+
+        with open_file(file_path, storage_options=storage_options) as f:
+            dtypes = engine.read_dtypes(f)
+
+        if columns:
+            dtypes = dtypes[columns]
+
+        if use_arrow_dtype is None:
+            use_arrow_dtype = options.dataframe.use_arrow_dtype
+        if use_arrow_dtype:
+            dtypes = to_arrow_dtypes(dtypes)
 
     index_value = parse_index(pd.RangeIndex(-1))
     columns_value = parse_index(dtypes.index, store_data=True)
-    if use_arrow_dtype is None:
-        use_arrow_dtype = options.dataframe.use_arrow_dtype
-    if use_arrow_dtype:
-        dtypes = to_arrow_dtypes(dtypes)
-
     op = DataFrameReadParquet(path=path, engine=engine_type, columns=columns,
                               groups_as_chunks=groups_as_chunks,
                               use_arrow_dtype=use_arrow_dtype,
