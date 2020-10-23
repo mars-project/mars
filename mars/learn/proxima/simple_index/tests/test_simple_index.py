@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -148,9 +149,10 @@ class Test(unittest.TestCase):
 
             pk2, distance = search_index(tensor=query, threads=threads,
                                          distance_metric=measure_name, dimension=dimension,
-                                         topk=topk, index=index, index_path=None,
-                                         index_searcher=index_searcher, index_searcher_params=searcher_params,
-                                         index_reformer=index_reformer, index_reformer_params=index_reformer_params,
+                                         topk=topk, index=index, index_searcher=index_searcher,
+                                         index_searcher_params=searcher_params,
+                                         index_reformer=index_reformer,
+                                         index_reformer_params=index_reformer_params,
                                          session=self.session)
             self.assertEqual(pk2.shape, (len(query), topk))
             self.assertEqual(distance.shape, (len(query), topk))
@@ -208,3 +210,29 @@ class Test(unittest.TestCase):
                 # testing
                 np.testing.assert_array_equal(pk_p, pk_m)
                 np.testing.assert_array_almost_equal(distance_p, distance_m)
+
+    def testBuildAndSearchIndexWithFilesystem(self):
+        with tempfile.TemporaryDirectory() as f:
+            # params
+            doc_count, query_count, dimension = 200, 15, 10
+            topk = 10
+            doc_chunk, query_chunk = 50, 5
+
+            # data
+            doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+
+            df = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
+            q = mt.tensor(query, chunk_size=(query_chunk, dimension))
+
+            index = build_index(df, df.index, index_path=f)
+
+            self.assertGreater(len(os.listdir(f)), 0)
+
+            # proxima_data
+            pk_p, distance_p = proxima_build_and_query(doc, query, topk)
+
+            pk_m, distance_m = search_index(q, topk, index)
+
+            # testing
+            np.testing.assert_array_equal(pk_p, pk_m)
+            np.testing.assert_array_equal(distance_p, distance_m)

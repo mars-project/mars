@@ -17,7 +17,9 @@ import logging
 
 from .... import opcodes
 from .... import tensor as mt
+from ....context import get_context, RunningMode
 from ....core import Base, Entity
+from ....filesystem import get_fs, LocalFileSystem
 from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, DictField
 from ....tiles import TilesError
@@ -36,21 +38,25 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     _pk = KeyField('pk')  # doc_pk
     _distance_metric = StringField('distance_metric')
     _dimension = Int32Field('dimension')
+    _index_path = StringField('index_path')
     _index_builder = StringField('index_builder')
     _index_builder_params = DictField('index_builder_params')
     _index_converter = StringField('index_converter')
     _index_converter_params = DictField('index_converter_params')
     _topk = Int32Field('topk')
+    _storage_options = DictField('storage_options')
 
-    def __init__(self, tensor=None, pk=None, distance_metric=None, dimension=None,
+    def __init__(self, tensor=None, pk=None, distance_metric=None,
+                 index_path=None, dimension=None,
                  index_builder=None, index_builder_params=None,
                  index_converter=None, index_converter_params=None,
-                 topk=None, output_types=None, stage=None, **kw):
+                 topk=None, storage_options=None, output_types=None, stage=None, **kw):
         super().__init__(_tensor=tensor, _pk=pk,
-                         _distance_metric=distance_metric, _dimension=dimension,
+                         _distance_metric=distance_metric, _index_path=index_path, _dimension=dimension,
                          _index_builder=index_builder, _index_builder_params=index_builder_params,
                          _index_converter=index_converter, _index_converter_params=index_converter_params,
-                         _topk=topk, _output_types=output_types, _stage=stage, **kw)
+                         _topk=topk, _storage_options=storage_options,
+                         _output_types=output_types, _stage=stage, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
 
@@ -65,6 +71,10 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     @property
     def distance_metric(self):
         return self._distance_metric
+
+    @property
+    def index_path(self):
+        return self._index_path
 
     @property
     def dimension(self):
@@ -89,6 +99,10 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     @property
     def topk(self):
         return self._topk
+
+    @property
+    def storage_options(self):
+        return self._storage_options
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -128,6 +142,15 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         tensor = op.tensor
         pk = op.pk
         out = op.outputs[0]
+        index_path = op.index_path
+        ctx = get_context()
+
+        # check index_path for distributed
+        if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
+            if index_path is not None:
+                fs = get_fs(index_path, op.storage_options)
+                if isinstance(fs, LocalFileSystem):
+                    raise ValueError('`index_path` cannot be local file dir for distributed index building')
 
         # make sure all inputs have known chunk sizes
         check_chunks_unknown_shape(op.inputs, TilesError)
@@ -161,6 +184,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     @classmethod
     def _execute_map(cls, ctx, op: "ProximaBuilder"):
         inp = ctx[op.tensor.key]
+        out = op.outputs[0]
         pks = ctx[op.pk.key]
         proxima_type = get_proxima_type(inp.dtype)
 
@@ -190,8 +214,27 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         path = tempfile.mkstemp(prefix='proxima-', suffix='.index')[1]
         dumper = proxima.IndexDumper(name="FileDumper", path=path)
         builder.dump(dumper)
+        dumper.close()
 
-        ctx[op.outputs[0].key] = path
+        if op.index_path is None:
+            ctx[out.key] = path
+        else:
+            # write to external file system
+            fs = get_fs(op.index_path, op.storage_options)
+            filename = f'proxima-{out.index[0]}.index'
+            out_path = f'{op.index_path.rstrip("/")}/{filename}'
+            with fs.open(out_path, 'wb') as out_f:
+                with open(path, 'rb') as in_f:
+                    # 32M
+                    chunk_bytes = 32 * 1024 ** 2
+                    while True:
+                        data = in_f.read(chunk_bytes)
+                        if data:
+                            out_f.write(data)
+                        else:
+                            break
+
+            ctx[out.key] = filename
 
     @classmethod
     def _execute_agg(cls, ctx, op: "ProximaBuilder"):
@@ -214,11 +257,12 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         return op.new_tileable([tileable], chunks=[chunk], nsplits=((1,),))
 
 
-def build_index(tensor, pk, dimension=None, need_shuffle=False,
-                distance_metric='SquaredEuclidean',
+def build_index(tensor, pk, dimension=None, index_path=None,
+                need_shuffle=False, distance_metric='SquaredEuclidean',
                 index_builder='SsgBuilder', index_builder_params=None,
                 index_converter=None, index_converter_params=None,
-                topk=None, run=True, session=None, run_kwargs=None):
+                topk=None, storage_options=None,
+                run=True, session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
 
     if dimension is None:
@@ -234,13 +278,13 @@ def build_index(tensor, pk, dimension=None, need_shuffle=False,
     if not isinstance(pk, (Base, Entity)):
         pk = mt.tensor(pk)
 
-    op = ProximaBuilder(tensor=tensor, pk=pk,
-                        distance_metric=distance_metric, dimension=dimension,
+    op = ProximaBuilder(tensor=tensor, pk=pk, distance_metric=distance_metric,
+                        index_path=index_path, dimension=dimension,
                         index_builder=index_builder,
                         index_builder_params=index_builder_params,
                         index_converter=index_converter,
                         index_converter_params=index_converter_params,
-                        topk=topk)
+                        topk=topk, storage_options=storage_options)
     result = op(tensor, pk)
     if run:
         return result.execute(session=session, **(run_kwargs or dict()))
