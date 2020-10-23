@@ -225,6 +225,7 @@ Serialization / IO / conversion
    :toctree: api/
 
    DataFrame.to_csv
+   DataFrame.to_parquet
    DataFrame.to_sql
 
 Misc
