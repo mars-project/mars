@@ -24,8 +24,6 @@ if proxima:
     _type_mapping = {
         np.dtype(np.float16): proxima.IndexMeta.FT_FP16,
         np.dtype(np.float32): proxima.IndexMeta.FT_FP32,
-        # seems proxima does not support float64
-        # np.dtype(np.float64): proxima.IndexMeta.FT_FP64,
         np.dtype(np.int8): proxima.IndexMeta.FT_INT8,
         np.dtype(np.int16): proxima.IndexMeta.FT_INT16
     }

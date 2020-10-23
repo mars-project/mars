@@ -54,7 +54,7 @@ def proxima_build_and_query(doc, query, topk, measure_name=None, dimension=None,
     # holder
     holder = proxima.IndexHolder(type=proxima.IndexMeta.FT_FP32,
                                  dimension=dimension)
-    holder.mount(np.array(doc))  # 批量挂载 默认pk从0开始
+    holder.mount(np.array(doc))  # add batch data, pk starts from 0
     # for pk, record in zip(doc.index, np.array(doc)):
     #     holder.emplace(pk, record)
 
@@ -162,8 +162,10 @@ class Test(unittest.TestCase):
                 os.remove(path)
 
     def testBuildAndSearchIndex(self):
+        # for now, test SquaredEuclidean and Euclidean only,
+        # TODO: add more tests for "Canberra", "Chebyshev", "SquaredEuclidean",
+        #  "Euclidean", "InnerProduct", "Manhattan" when ready
         measure_name_lists = ["SquaredEuclidean", "Euclidean"]
-        # measure_name_lists = ["Canberra", "Chebyshev", "SquaredEuclidean", "Euclidean", "InnerProduct", "Manhattan"]
         index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder", "ClusteringBuilder"]
 
         for i, index_builder in enumerate(index_builder_lists):
