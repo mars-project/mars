@@ -27,6 +27,7 @@ from ..utils.validation import check_is_fitted
 from ._ball_tree import create_ball_tree, ball_tree_query, SklearnBallTree
 from ._kd_tree import create_kd_tree, kd_tree_query, SklearnKDTree
 from ._faiss import build_faiss_index, faiss_query, METRIC_TO_FAISS_METRIC_TYPE
+from ._proxima import build_proxima_index, proxima_query, METRIC_TO_PROXIMA_METRIC_TYPE
 from ._kneighbors_graph import KNeighborsGraph
 
 
@@ -42,7 +43,8 @@ VALID_METRICS = dict(ball_tree=SklearnBallTree.valid_metrics,
                              'russellrao', 'seuclidean', 'sokalmichener',
                              'sokalsneath', 'sqeuclidean',
                              'yule', 'wminkowski']),
-                     faiss=list(METRIC_TO_FAISS_METRIC_TYPE),)
+                     faiss=list(METRIC_TO_FAISS_METRIC_TYPE),
+                     proxima=list(METRIC_TO_PROXIMA_METRIC_TYPE))
 
 
 VALID_METRICS_SPARSE = dict(ball_tree=[],
@@ -70,7 +72,7 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
         self._check_algorithm_metric()
 
     def _check_algorithm_metric(self):
-        if self.algorithm not in ['auto', 'brute', 'kd_tree', 'ball_tree', 'faiss']:
+        if self.algorithm not in ['auto', 'brute', 'kd_tree', 'ball_tree', 'faiss', 'proxima']:
             raise ValueError(f"unrecognized algorithm: '{self.algorithm}'")
 
         if self.algorithm == 'auto':
@@ -212,6 +214,14 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
                                             **self.effective_metric_params_)
             faiss_index.execute(session=session, **(run_kwargs or dict()))
             self._faiss_index = faiss_index
+        elif self._fit_method == 'proxima':  # pragma: no cover
+            proxima_metric = METRIC_TO_PROXIMA_METRIC_TYPE[self.effective_metric_]
+            proxima_index = build_proxima_index(X, mt.arange(len(X), dtype=np.uint64),
+                                                distance_metric=proxima_metric,
+                                                topk=self.n_neighbors,
+                                                session=session, run_kwargs=run_kwargs,
+                                                **self.effective_metric_params_)
+            self._proxima_index = proxima_index
         else:  # pragma: no cover
             raise ValueError("algorithm = '%s' not recognized"
                              % self.algorithm)
@@ -356,6 +366,16 @@ class KNeighborsMixin:
                     f"{self._fit_method} does not work with sparse matrices. "
                     "Densify the data, or set algorithm='brute'")
             result = faiss_query(self._faiss_index, X, n_neighbors, return_distance, **kw)
+        elif self._fit_method == 'proxima':  # pragma: no cover
+            if X.issparse():
+                raise ValueError(
+                    f"{self._fit_method} does not work with sparse matrices. "
+                    "Densify the data, or set algorithm='brute'")
+            ind, dis = proxima_query(X, n_neighbors, index=self._proxima_index, run=False, **kw)
+            if not return_distance:
+                result = ind
+            else:
+                result = (dis, ind)
         else:  # pragma: no cover
             raise ValueError("internal: _fit_method not recognized")
 

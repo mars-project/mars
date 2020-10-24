@@ -366,10 +366,16 @@ def get_fs(path, storage_options):
     else:
         if scheme == 'hdfs' and HadoopFileSystem is object:
             raise ImportError('Need to install pyarrow to connect to HDFS.')
-        options = _parse_from_path(path)
+        if scheme not in file_systems:  # pragma: no cover
+            raise ValueError(f'Unknown file system type: {scheme}, '
+                             f'available include: {", ".join(file_systems)}')
+
+        fs_type = file_systems[scheme]
+        parse_from_path = getattr(fs_type, 'parse_from_path', _parse_from_path)
+        options = parse_from_path(path)
         storage_options = storage_options or dict()
         storage_options.update(options)
-        return file_systems[scheme](**storage_options)
+        return fs_type(**storage_options)
 
 
 def open_file(path, mode='rb', compression=None, storage_options=None):

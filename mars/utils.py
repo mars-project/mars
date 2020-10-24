@@ -1088,13 +1088,16 @@ def arrow_array_to_objects(obj):
     from .dataframe.arrays import ArrowDtype
 
     if isinstance(obj, pd.DataFrame):
-        out_cols = dict()
-        for col_name, dtype in obj.dtypes.items():
-            if isinstance(dtype, ArrowDtype):
-                out_cols[col_name] = pd.Series(obj[col_name].to_numpy(), index=obj.index)
-            else:
-                out_cols[col_name] = obj[col_name]
-        obj = pd.DataFrame(out_cols, columns=list(obj.dtypes.keys()))
+        if any(isinstance(dt, ArrowDtype) for dt in obj.dtypes):
+            # ArrowDtype exists
+            result = pd.DataFrame(columns=obj.columns)
+            for i, dtype in enumerate(obj.dtypes):
+                if isinstance(dtype, ArrowDtype):
+                    result.iloc[:, i] = pd.Series(obj.iloc[:, i].to_numpy(),
+                                                  index=obj.index)
+                else:
+                    result.iloc[:, i] = obj.iloc[:, i]
+            obj = result
     elif isinstance(obj, pd.Series):
         if isinstance(obj.dtype, ArrowDtype):
             obj = pd.Series(obj.to_numpy(), index=obj.index, name=obj.name)

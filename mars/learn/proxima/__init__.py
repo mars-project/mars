@@ -12,18 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-# import torch first, or some issue emerges,
-# see https://github.com/pytorch/pytorch/issues/2575
-from .contrib import pytorch, tensorflow, xgboost, lightgbm
-from .metrics import pairwise
-from . import cluster
-from . import preprocessing
-from . import proxima
-from . import neighbors
-from . import utils
 
-for _mod in [xgboost, tensorflow, pytorch, lightgbm, proxima, neighbors]:
-    _mod.register_op()
+def register_op():
+    from .simple_index.builder import ProximaBuilder
+    from .simple_index.searcher import ProximaSearcher
 
-del _mod, pairwise, preprocessing, utils
+    del ProximaBuilder
+    del ProximaSearcher

@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-# import torch first, or some issue emerges,
-# see https://github.com/pytorch/pytorch/issues/2575
-from .contrib import pytorch, tensorflow, xgboost, lightgbm
-from .metrics import pairwise
-from . import cluster
-from . import preprocessing
-from . import proxima
-from . import neighbors
-from . import utils
+from ..proxima.simple_index import build_index, search_index
 
-for _mod in [xgboost, tensorflow, pytorch, lightgbm, proxima, neighbors]:
-    _mod.register_op()
 
-del _mod, pairwise, preprocessing, utils
+METRIC_TO_PROXIMA_METRIC_TYPE = {
+    'l2': 'Euclidean',
+    'euclidean': 'Euclidean',
+    'canberra': 'Canberra',
+    'chebyshev': 'Chebyshev',
+    'sqeuclidean': 'SquaredEuclidean',
+    'innerproduct': 'InnerProduct',
+    'manhattan': 'Manhattan'
+}
+
+build_proxima_index = build_index
+proxima_query = search_index
