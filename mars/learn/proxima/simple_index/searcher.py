@@ -14,7 +14,7 @@
 
 import itertools
 import logging
-import pickle
+import pickle  # pylint: disable=import_pickle
 import tempfile
 
 import numpy as np
@@ -156,7 +156,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             # index path
             fs: FileSystem = get_fs(index, op.storage_options)
             built_indexes = [f for f in fs.ls(index)
-                             if f.rsplit('/', 1)[-1].startswith('proxima-')]
+                             if f.rsplit('/', 1)[-1].startswith('proxima_')]
 
         if hasattr(index, 'op'):
             ctx = get_context()

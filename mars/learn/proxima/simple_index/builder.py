@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import logging
-import pickle
+import pickle  # pylint: disable=import_pickle
 import tempfile
 
 from .... import opcodes
@@ -238,7 +238,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         else:
             # write to external file system
             fs = get_fs(op.index_path, op.storage_options)
-            filename = f'proxima-{out.index[0]}.index'
+            filename = f'proxima_{out.index[0]}_index'
             out_path = f'{op.index_path.rstrip("/")}/{filename}'
             with fs.open(out_path, 'wb') as out_f:
                 with open(path, 'rb') as in_f:
