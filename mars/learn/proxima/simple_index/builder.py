@@ -26,7 +26,7 @@ from ....tiles import TilesError
 from ....tensor.utils import decide_unify_split
 from ....utils import check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
-from ..core import proxima, get_proxima_type, validate_tensor
+from ..core import proxima, get_proxima_type, validate_tensor, available_numpy_dtypes
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +278,9 @@ def build_index(tensor, pk, dimension=None, index_path=None,
                 topk=None, storage_options=None,
                 run=True, session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
+    if tensor.dtype not in available_numpy_dtypes:
+        raise ValueError(f'Dtype to build index should be one of {available_numpy_dtypes}, '
+                         f'got {tensor.dtype}')
 
     if dimension is None:
         dimension = tensor.shape[1]
