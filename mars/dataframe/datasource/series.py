@@ -20,7 +20,7 @@ from ...config import options
 from ...core import OutputType
 from ...tensor.utils import get_chunk_slices
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import parse_index, decide_series_chunk_size
+from ..utils import parse_index, decide_series_chunk_size, is_cudf
 
 
 class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
@@ -30,30 +30,24 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     _op_type_ = OperandDef.SERIES_DATA_SOURCE
 
-    _data = SeriesField('data')
-    _dtype = DataTypeField('dtype')
+    data = SeriesField('data')
+    dtype = DataTypeField('dtype')
 
-    def __init__(self, data=None, dtype=None, gpu=None, sparse=None, **kw):
+    def __init__(self, data=None, dtype=None, gpu=None, **kw):
         if dtype is None and data is not None:
             dtype = data.dtype
-        super().__init__(_data=data, _dtype=dtype, _gpu=gpu, _sparse=sparse,
+        if gpu is None and is_cudf(data):  # pragma: no cover
+            gpu = True
+        super().__init__(data=data, dtype=dtype, gpu=gpu,
                          _output_types=[OutputType.series], **kw)
 
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def dtype(self):
-        return self._dtype
-
     def __call__(self, shape, chunk_size=None):
-        return self.new_series(None, shape=shape, dtype=self._dtype,
-                               index_value=parse_index(self._data.index),
-                               name=self._data.name, raw_chunk_size=chunk_size)
+        return self.new_series(None, shape=shape, dtype=self.dtype,
+                               index_value=parse_index(self.data.index),
+                               name=self.data.name, raw_chunk_size=chunk_size)
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "SeriesDataSource"):
         series = op.outputs[0]
         raw_series = op.data
 
@@ -67,8 +61,11 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
                                           itertools.product(*chunk_size_idxes)):
             chunk_op = op.copy().reset_key()
             slc = get_chunk_slices(chunk_size, chunk_idx)
-            chunk_op._data = raw_series.iloc[slc]
-            chunk_op._dtype = chunk_op._data.dtype
+            if is_cudf(raw_series):  # pragma: no cover
+                chunk_op.data = raw_series.iloc[slc[0]]
+            else:
+                chunk_op.data = raw_series.iloc[slc]
+            chunk_op.dtype = chunk_op.data.dtype
             out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, dtype=op.dtype, index=chunk_idx,
                                            index_value=parse_index(chunk_op.data.index),
                                            name=series.name)
