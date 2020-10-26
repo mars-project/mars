@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
 import logging
+import pickle
+import tempfile
 
 from .... import opcodes
 from .... import tensor as mt
@@ -21,7 +22,7 @@ from ....context import get_context, RunningMode
 from ....core import Base, Entity
 from ....filesystem import get_fs, LocalFileSystem
 from ....operands import OutputType, OperandStage
-from ....serialize import KeyField, StringField, Int32Field, DictField
+from ....serialize import KeyField, StringField, Int32Field, DictField, BytesField
 from ....tiles import TilesError
 from ....tensor.utils import decide_unify_split
 from ....utils import check_chunks_unknown_shape
@@ -44,7 +45,9 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     _index_converter = StringField('index_converter')
     _index_converter_params = DictField('index_converter_params')
     _topk = Int32Field('topk')
-    _storage_options = DictField('storage_options')
+    _storage_options = BytesField('storage_options',
+                                  on_serialize=pickle.dumps,
+                                  on_deserialize=pickle.loads)
 
     def __init__(self, tensor=None, pk=None, distance_metric=None,
                  index_path=None, dimension=None,
