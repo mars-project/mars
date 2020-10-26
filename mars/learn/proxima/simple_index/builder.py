@@ -144,13 +144,27 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         out = op.outputs[0]
         index_path = op.index_path
         ctx = get_context()
+        fs = None
+        if index_path is not None:
+            fs = get_fs(index_path, op.storage_options)
 
         # check index_path for distributed
         if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
             if index_path is not None:
-                fs = get_fs(index_path, op.storage_options)
                 if isinstance(fs, LocalFileSystem):
-                    raise ValueError('`index_path` cannot be local file dir for distributed index building')
+                    raise ValueError('`index_path` cannot be local file dir '
+                                     'for distributed index building')
+
+        if index_path is not None:
+            # check if the index path is empty
+            try:
+                files = [f for f in fs.ls(index_path) if 'proxima-' in f]
+                if files:
+                    raise ValueError(f'Directory {index_path} contains built proxima index, '
+                                     f'clean them to perform new index building')
+            except FileNotFoundError:
+                # if not exist, create directory
+                fs.mkdir(index_path)
 
         # make sure all inputs have known chunk sizes
         check_chunks_unknown_shape(op.inputs, TilesError)
