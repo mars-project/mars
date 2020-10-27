@@ -236,6 +236,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         if op.index_path is None:
             ctx[out.key] = path
         else:
+            # need add timer log
             # write to external file system
             fs = get_fs(op.index_path, op.storage_options)
             filename = f'proxima_{out.index[0]}_index'
