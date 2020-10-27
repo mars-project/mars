@@ -113,6 +113,14 @@ class ResourceActor(SchedulerActor):
         self.detach_dead_workers(dead_workers)
         self.ref().detect_dead_workers(_tell=True, _delay=1)
 
+    def mark_workers_alive(self, workers):
+        t = time.time()
+        for w in workers:
+            try:
+                self._meta_cache[w]['update_time'] = t
+            except KeyError:  # pragma: no cover
+                pass
+
     def detach_dead_workers(self, workers):
         from ..worker.execution import ExecutionActor
 

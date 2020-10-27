@@ -14,7 +14,7 @@
 
 import itertools
 import logging
-import pickle  # pylint: disable=import_pickle
+import pickle  # nosec  # pylint: disable=import_pickle
 import tempfile
 
 import numpy as np

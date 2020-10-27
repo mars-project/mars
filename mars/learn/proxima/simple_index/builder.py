@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import logging
-import pickle  # pylint: disable=import_pickle
+import pickle  # nosec  # pylint: disable=import_pickle
 import tempfile
 
 from .... import opcodes

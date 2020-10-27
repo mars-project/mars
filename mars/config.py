@@ -346,7 +346,7 @@ default_options.register_option('scheduler.retry_delay', 60, validator=is_intege
 default_options.register_option('scheduler.dump_graph_data', False, validator=is_bool)
 
 default_options.register_option('scheduler.enable_failover', True, validator=is_bool, serialize=True)
-default_options.register_option('scheduler.status_timeout', 60, validator=is_numeric, serialize=True)
+default_options.register_option('scheduler.status_timeout', 30, validator=is_numeric, serialize=True)
 default_options.register_option('scheduler.worker_blacklist_time', 3600, validator=is_numeric, serialize=True)
 
 # enqueue operands in a batch when creating OperandActors
