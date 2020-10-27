@@ -161,7 +161,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         if index_path is not None:
             # check if the index path is empty
             try:
-                files = [f for f in fs.ls(index_path) if 'proxima-' in f]
+                files = [f for f in fs.ls(index_path) if 'proxima_' in f]
                 if files:
                     raise ValueError(f'Directory {index_path} contains built proxima index, '
                                      f'clean them to perform new index building')
