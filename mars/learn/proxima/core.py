@@ -48,7 +48,6 @@ def validate_tensor(tensor):
         tensor = mt.tensor(tensor)
     if tensor.ndim != 2:
         raise ValueError('Input tensor should be 2-d')
-    # check
     return tensor
 
 
