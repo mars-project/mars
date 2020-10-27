@@ -14,6 +14,7 @@
 
 import itertools
 import logging
+import pickle  # nosec  # pylint: disable=import_pickle
 import tempfile
 
 import numpy as np
@@ -24,7 +25,7 @@ from ....context import get_context, RunningMode
 from ....core import Base, Entity
 from ....filesystem import get_fs, FileSystem
 from ....operands import OutputType, OperandStage
-from ....serialize import KeyField, StringField, Int32Field, DictField, AnyField
+from ....serialize import KeyField, StringField, Int32Field, DictField, AnyField, BytesField
 from ....tensor.core import TensorOrder
 from ....tensor.merge.concatenate import TensorConcatenate
 from ....tiles import TilesError
@@ -47,7 +48,9 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
     _index_searcher_params = DictField('index_searcher_params')
     _index_reformer = StringField('index_reformer')
     _index_reformer_params = DictField('index_reformer_params')
-    _storage_options = DictField('storage_options')
+    _storage_options = BytesField('storage_options',
+                                  on_serialize=pickle.dumps,
+                                  on_deserialize=pickle.loads)
 
     def __init__(self, tensor=None, distance_metric=None, dimension=None,
                  topk=None, index=None, threads=None,
@@ -153,7 +156,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             # index path
             fs: FileSystem = get_fs(index, op.storage_options)
             built_indexes = [f for f in fs.ls(index)
-                             if f.rsplit('/', 1)[-1].startswith('proxima-')]
+                             if f.rsplit('/', 1)[-1].startswith('proxima_')]
 
         if hasattr(index, 'op'):
             ctx = get_context()

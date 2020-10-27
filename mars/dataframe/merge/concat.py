@@ -15,10 +15,11 @@
 import pandas as pd
 import numpy as np
 
+from ... import opcodes as OperandDef
 from ...core import Base, Entity, OutputType
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
-from ... import opcodes as OperandDef
-from ...utils import lazy_import
+from ...tiles import TilesError
+from ...utils import lazy_import, check_chunks_unknown_shape
 from ..utils import parse_index, build_empty_df, standardize_range_index, validate_axis
 from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
 
@@ -90,6 +91,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
         inputs = op.inputs
 
+        check_chunks_unknown_shape(inputs, TilesError)
+
         normalized_nsplits = {1: inputs[0].nsplits[1]} if op.axis == 0 else {0: inputs[0].nsplits[0]}
         inputs = [item.rechunk(normalized_nsplits)._inplace_tile() for item in inputs]
         out_chunks = []
@@ -131,6 +134,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
 
         if op.axis == 1:
+            check_chunks_unknown_shape(inputs, TilesError)
             inputs = [item.rechunk(op.inputs[0].nsplits)._inplace_tile() for item in inputs]
 
         cum_index = 0

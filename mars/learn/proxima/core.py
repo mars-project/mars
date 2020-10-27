@@ -20,13 +20,25 @@ except ImportError:  # pragma: no cover
 
 from ... import tensor as mt
 
+
+available_numpy_dtypes = [
+    np.dtype(np.float16),
+    np.dtype(np.float32),
+    np.dtype(np.int8),
+    np.dtype(np.int16),
+]
+
 if proxima:
-    _type_mapping = {
-        np.dtype(np.float16): proxima.IndexMeta.FT_FP16,
-        np.dtype(np.float32): proxima.IndexMeta.FT_FP32,
-        np.dtype(np.int8): proxima.IndexMeta.FT_INT8,
-        np.dtype(np.int16): proxima.IndexMeta.FT_INT16
-    }
+    _proxima_types = [
+        proxima.IndexMeta.FT_FP16,
+        proxima.IndexMeta.FT_FP32,
+        proxima.IndexMeta.FT_INT8,
+        proxima.IndexMeta.FT_INT16,
+    ]
+    assert len(_proxima_types) == len(available_numpy_dtypes)
+    _type_mapping = {numpy_dtype: proxima_type
+                     for numpy_dtype, proxima_type
+                     in zip(available_numpy_dtypes, _proxima_types)}
 
 
 def validate_tensor(tensor):

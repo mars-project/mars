@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
 import logging
+import pickle  # nosec  # pylint: disable=import_pickle
+import tempfile
 
 from .... import opcodes
 from .... import tensor as mt
@@ -21,12 +22,12 @@ from ....context import get_context, RunningMode
 from ....core import Base, Entity
 from ....filesystem import get_fs, LocalFileSystem
 from ....operands import OutputType, OperandStage
-from ....serialize import KeyField, StringField, Int32Field, DictField
+from ....serialize import KeyField, StringField, Int32Field, DictField, BytesField
 from ....tiles import TilesError
 from ....tensor.utils import decide_unify_split
 from ....utils import check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
-from ..core import proxima, get_proxima_type, validate_tensor
+from ..core import proxima, get_proxima_type, validate_tensor, available_numpy_dtypes
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,9 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     _index_converter = StringField('index_converter')
     _index_converter_params = DictField('index_converter_params')
     _topk = Int32Field('topk')
-    _storage_options = DictField('storage_options')
+    _storage_options = BytesField('storage_options',
+                                  on_serialize=pickle.dumps,
+                                  on_deserialize=pickle.loads)
 
     def __init__(self, tensor=None, pk=None, distance_metric=None,
                  index_path=None, dimension=None,
@@ -144,13 +147,27 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         out = op.outputs[0]
         index_path = op.index_path
         ctx = get_context()
+        fs = None
+        if index_path is not None:
+            fs = get_fs(index_path, op.storage_options)
 
         # check index_path for distributed
         if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
             if index_path is not None:
-                fs = get_fs(index_path, op.storage_options)
                 if isinstance(fs, LocalFileSystem):
-                    raise ValueError('`index_path` cannot be local file dir for distributed index building')
+                    raise ValueError('`index_path` cannot be local file dir '
+                                     'for distributed index building')
+
+        if index_path is not None:
+            # check if the index path is empty
+            try:
+                files = [f for f in fs.ls(index_path) if 'proxima_' in f]
+                if files:
+                    raise ValueError(f'Directory {index_path} contains built proxima index, '
+                                     f'clean them to perform new index building')
+            except FileNotFoundError:
+                # if not exist, create directory
+                fs.mkdir(index_path)
 
         # make sure all inputs have known chunk sizes
         check_chunks_unknown_shape(op.inputs, TilesError)
@@ -221,7 +238,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         else:
             # write to external file system
             fs = get_fs(op.index_path, op.storage_options)
-            filename = f'proxima-{out.index[0]}.index'
+            filename = f'proxima_{out.index[0]}_index'
             out_path = f'{op.index_path.rstrip("/")}/{filename}'
             with fs.open(out_path, 'wb') as out_f:
                 with open(path, 'rb') as in_f:
@@ -264,6 +281,9 @@ def build_index(tensor, pk, dimension=None, index_path=None,
                 topk=None, storage_options=None,
                 run=True, session=None, run_kwargs=None):
     tensor = validate_tensor(tensor)
+    if tensor.dtype not in available_numpy_dtypes:
+        raise ValueError(f'Dtype to build index should be one of {available_numpy_dtypes}, '
+                         f'got {tensor.dtype}')
 
     if dimension is None:
         dimension = tensor.shape[1]
