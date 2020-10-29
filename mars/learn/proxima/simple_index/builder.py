@@ -16,6 +16,8 @@ import logging
 import pickle  # nosec  # pylint: disable=import_pickle
 import tempfile
 
+import numpy as np
+
 from .... import opcodes
 from .... import tensor as mt
 from ....context import get_context, RunningMode
@@ -25,7 +27,7 @@ from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, DictField, BytesField
 from ....tiles import TilesError
 from ....tensor.utils import decide_unify_split
-from ....utils import check_chunks_unknown_shape
+from ....utils import check_chunks_unknown_shape, Timer
 from ...operands import LearnOperand, LearnOperandMixin
 from ..core import proxima, get_proxima_type, validate_tensor, available_numpy_dtypes
 
@@ -200,57 +202,73 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def _execute_map(cls, ctx, op: "ProximaBuilder"):
-        inp = ctx[op.tensor.key]
+        inp = np.ascontiguousarray(ctx[op.tensor.key])
         out = op.outputs[0]
         pks = ctx[op.pk.key]
         proxima_type = get_proxima_type(inp.dtype)
 
         # holder
-        holder = proxima.IndexHolder(type=proxima_type,
-                                     dimension=op.dimension)
-        for pk, record in zip(pks, inp):
-            pk = pk.item() if hasattr(pk, 'item') else pk
-            holder.emplace(pk, record.copy())
+        with Timer() as timer:
+            holder = proxima.IndexHolder(type=proxima_type,
+                                         dimension=op.dimension,
+                                         shallow=False)
+            for pk, record in zip(pks, inp):
+                pk = pk.item() if hasattr(pk, 'item') else pk
+                holder.emplace(pk, record)
+
+        logger.warning(f'Holder({op.key}) costs {timer.duration} seconds')
 
         # converter
         meta = proxima.IndexMeta(proxima_type, dimension=op.dimension,
                                  measure_name=op.distance_metric)
         if op.index_converter is not None:
-            converter = proxima.IndexConverter(name=op.index_converter,
-                                               meta=meta, params=op.index_converter_params)
-            converter.train_and_transform(holder)
-            holder = converter.result()
-            meta = converter.meta()
+            with Timer() as timer:
+                converter = proxima.IndexConverter(name=op.index_converter,
+                                                   meta=meta, params=op.index_converter_params)
+                converter.train_and_transform(holder)
+                holder = converter.result()
+                meta = converter.meta()
 
-        # builder && dumper
-        builder = proxima.IndexBuilder(name=op.index_builder,
-                                       meta=meta,
-                                       params=op.index_builder_params)
-        builder = builder.train_and_build(holder)
+            logger.warning(f'Converter({op.key}) costs {timer.duration} seconds')
 
-        path = tempfile.mkstemp(prefix='proxima-', suffix='.index')[1]
-        dumper = proxima.IndexDumper(name="FileDumper", path=path)
-        builder.dump(dumper)
-        dumper.close()
+        # builder
+        with Timer() as timer:
+            builder = proxima.IndexBuilder(name=op.index_builder,
+                                           meta=meta,
+                                           params=op.index_builder_params)
+            builder = builder.train_and_build(holder)
+
+        logger.warning(f'Builder({op.key}) costs {timer.duration} seconds')
+
+        # dumper
+        with Timer() as timer:
+            path = tempfile.mkstemp(prefix='proxima-', suffix='.index')[1]
+            dumper = proxima.IndexDumper(name="FileDumper", path=path)
+            builder.dump(dumper)
+            dumper.close()
+
+        logger.warning(f'Dumper({op.key}) costs {timer.duration} seconds')
 
         if op.index_path is None:
             ctx[out.key] = path
         else:
-            # need add timer log
-            # write to external file system
-            fs = get_fs(op.index_path, op.storage_options)
-            filename = f'proxima_{out.index[0]}_index'
-            out_path = f'{op.index_path.rstrip("/")}/{filename}'
-            with fs.open(out_path, 'wb') as out_f:
-                with open(path, 'rb') as in_f:
-                    # 32M
-                    chunk_bytes = 32 * 1024 ** 2
-                    while True:
-                        data = in_f.read(chunk_bytes)
-                        if data:
-                            out_f.write(data)
-                        else:
-                            break
+            # write to external file
+            with Timer() as timer:
+                fs = get_fs(op.index_path, op.storage_options)
+                filename = f'proxima_{out.index[0]}_index'
+                out_path = f'{op.index_path.rstrip("/")}/{filename}'
+                with fs.open(out_path, 'wb') as out_f:
+                    with open(path, 'rb') as in_f:
+                        # 32M
+                        chunk_bytes = 32 * 1024 ** 2
+                        while True:
+                            data = in_f.read(chunk_bytes)
+                            if data:
+                                out_f.write(data)
+                            else:
+                                break
+
+            logger.warning(f'WritingToVolume({op.key}) costs {timer.duration} seconds')
 
             ctx[out.key] = filename
 
