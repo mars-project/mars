@@ -665,6 +665,12 @@ class Test(TestBase):
         expected = data.reset_index(level='class', col_level=1, col_fill='species')
         pd.testing.assert_frame_equal(result, expected)
 
+        df = md.DataFrame(data, chunk_size=3)
+        df.reset_index(level='class', col_level=1, col_fill='species', inplace=True)
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = data.reset_index(level='class', col_level=1, col_fill='species')
+        pd.testing.assert_frame_equal(result, expected)
+
         # Test Series
 
         s = pd.Series([1, 2, 3, 4], name='foo',
@@ -707,6 +713,11 @@ class Test(TestBase):
         result = result.sort_values(by=result.columns[0])
         expected = (data1 + data2).reset_index()
         np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
+
+        series1 = md.Series(data1, chunk_size=3)
+        series1.reset_index(inplace=True, drop=True)
+        result = self.executor.execute_dataframe(series1, concat=True)[0]
+        pd.testing.assert_index_equal(result.index, pd.RangeIndex(10))
 
         # case from https://github.com/mars-project/mars/issues/1286
         data = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
