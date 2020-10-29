@@ -705,6 +705,9 @@ class Test(TestBase):
         self.assertEqual(s2.chunks[1].shape, (2, 2))
         pd.testing.assert_index_equal(s2.chunks[1].index_value.to_pandas(), pd.RangeIndex(2, 4))
 
+        with self.assertRaises(TypeError):
+            md.Series(series_data, chunk_size=2).reset_index(inplace=True)
+
     def testHeadTailOptimize(self):
         raw = pd.DataFrame(np.random.rand(4, 3))
 
