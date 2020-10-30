@@ -23,7 +23,8 @@ import numpy as np
 from . import opcodes as OperandDef
 from .context import RunningMode, get_context
 from .core import Entity, Chunk, Tileable, AttributeAsDictKey, ExecutableTuple, \
-    FuseChunkData, FuseChunk, OutputType, get_chunk_types, get_tileable_types
+    FuseChunkData, FuseChunk, OutputType, get_chunk_types, get_tileable_types, \
+    register_fetch_class, get_fetch_class, get_output_types
 from .serialize import SerializableMetaclass, ValueType, ProviderType, IdentityField, \
     ListField, DictField, Int32Field, BoolField, StringField, ReferenceField
 from .tiles import NotSupportTile
@@ -527,7 +528,17 @@ class TileableOperandMixin(object):
         raise NotImplementedError
 
     def get_fetch_op_cls(self, obj):
-        raise NotImplementedError
+        output_types = get_output_types(obj, unknown_as=OutputType.object)
+        fetch_cls, fetch_shuffle_cls = get_fetch_class(output_types[0])
+        if isinstance(self, ShuffleProxy):
+            cls = fetch_shuffle_cls
+        else:
+            cls = fetch_cls
+
+        def _inner(**kw):
+            return cls(output_types=output_types, **kw)
+
+        return _inner
 
     def get_fuse_op_cls(self, obj):
         raise NotImplementedError
@@ -665,9 +676,6 @@ class ObjectOperand(Operand):
 class ObjectOperandMixin(TileableOperandMixin):
     _output_type_ = OutputType.object
 
-    def get_fetch_op_cls(self, obj):
-        return ObjectFetch
-
     def get_fuse_op_cls(self, obj):
         return ObjectFuseChunk
 
@@ -684,6 +692,8 @@ class ObjectFetch(FetchMixin, ObjectOperandMixin, Fetch):
     _output_type_ = OutputType.object
 
     def __init__(self, to_fetch_key=None, **kw):
+        kw.pop('output_types', None)
+        kw.pop('_output_types', None)
         super().__init__(_to_fetch_key=to_fetch_key, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
@@ -695,6 +705,9 @@ class ObjectFetch(FetchMixin, ObjectOperandMixin, Fetch):
         if '_key' in kw and self._to_fetch_key is None:
             self._to_fetch_key = kw['_key']
         return super()._new_tileables(inputs, kws=kws, **kw)
+
+
+register_fetch_class(OutputType.object, ObjectFetch, None)
 
 
 class MergeDictOperand(ObjectOperand, ObjectOperandMixin):
