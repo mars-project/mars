@@ -601,8 +601,16 @@ class Test(unittest.TestCase):
             r4 = df.groupby('c2').transform(execute_with_session_check(
                 func, session.session_id)).to_pandas()
             expected4 = raw.groupby('c2').transform(func)
-            print(r4, expected4)
             pd.testing.assert_frame_equal(r4.sort_index(), expected4.sort_index())
+
+            # test rerun gropuby
+            df = md.DataFrame(raw.copy(), chunk_size=4)
+            r5 = session.run(df.groupby('c2').count(method='shuffle').max())
+            r6 = session.run(df.groupby('c2').count(method='shuffle').min())
+            expected5 = raw.groupby('c2').count().max()
+            expected6 = raw.groupby('c2').count().min()
+            pd.testing.assert_series_equal(r5, expected5)
+            pd.testing.assert_series_equal(r6, expected6)
 
     def testMultiSessionDecref(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
