@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...core import register_fetch_class
 from ...operands import Fetch, FetchShuffle, FetchMixin, OutputType
 from ...serialize import DataTypeField
 from ..operands import TensorOperandMixin
@@ -26,6 +27,8 @@ class TensorFetch(TensorFetchMixin, Fetch):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, dtype=None, to_fetch_key=None, sparse=False, **kw):
+        kw.pop('output_types', None)
+        kw.pop('_output_types', None)
         super().__init__(
             _dtype=dtype, _to_fetch_key=to_fetch_key, _sparse=sparse, **kw)
 
@@ -48,9 +51,15 @@ class TensorFetchShuffle(TensorFetchMixin, FetchShuffle):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, dtype=None, to_fetch_keys=None, to_fetch_idxes=None, **kw):
+        kw.pop('output_types', None)
+        kw.pop('_output_types', None)
         super().__init__(
             _dtype=dtype, _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes, **kw)
 
     @property
     def dtype(self):
         return getattr(self, '_dtype', None)
+
+
+register_fetch_class(OutputType.tensor, TensorFetch, TensorFetchShuffle)
+register_fetch_class(OutputType.scalar, TensorFetch, TensorFetchShuffle)

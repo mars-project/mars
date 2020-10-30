@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...core import OutputType, register_fetch_class
 from ...serialize.core import TupleField, ValueType
 from ...operands import Fetch, FetchShuffle, FetchMixin
 from ...utils import on_serialize_shape, on_deserialize_shape
@@ -53,3 +54,11 @@ class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
         super().__init__(
             _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes,
             _output_types=output_types, **kw)
+
+
+register_fetch_class(OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle)
+register_fetch_class(OutputType.dataframe_groupby, DataFrameFetch, DataFrameFetchShuffle)
+register_fetch_class(OutputType.series, DataFrameFetch, DataFrameFetchShuffle)
+register_fetch_class(OutputType.series_groupby, DataFrameFetch, DataFrameFetchShuffle)
+register_fetch_class(OutputType.index, DataFrameFetch, DataFrameFetchShuffle)
+register_fetch_class(OutputType.categorical, DataFrameFetch, DataFrameFetchShuffle)
