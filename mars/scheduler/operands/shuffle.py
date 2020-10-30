@@ -81,6 +81,13 @@ class ShuffleProxyActor(BaseOperandActor):
         if all(k in self._finish_preds for k in self._pred_keys):
             self._start_successors()
 
+    def append_graph(self, graph_key, op_info):
+        super().append_graph(graph_key, op_info)
+
+        io_meta = op_info['io_meta']
+        self._shuffle_keys_to_op = dict(zip(io_meta['shuffle_keys'], io_meta['successors']))
+        self._op_to_shuffle_keys = dict(zip(io_meta['successors'], io_meta['shuffle_keys']))
+
     def _start_successors(self):
         self._all_deps_built = True
         futures = []
