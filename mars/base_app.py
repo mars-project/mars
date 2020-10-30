@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import faulthandler
 import json
 import logging
 import os
@@ -84,6 +85,9 @@ class BaseApplication(object):
         parser = argparse.ArgumentParser(description=self.service_description)
         self.config_args(parser)
         args = self.args = self.parse_args(parser, argv)
+
+        if int(os.environ.get('MARS_ENABLE_FAULTHANDLER', '1')):  # pragma: no branch
+            faulthandler.enable()
 
         endpoint = args.endpoint
         if endpoint is not None:
