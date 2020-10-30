@@ -55,15 +55,6 @@ class TensorOperandMixin(TileableOperandMixin):
         return op.new_tensor(inputs, shape=shape, chunks=chunks,
                              nsplits=nsplits, dtype=chunks[0].dtype, **kw)
 
-    def get_fetch_op_cls(self, _):
-        from ..operands import ShuffleProxy
-        from .fetch import TensorFetchShuffle, TensorFetch
-
-        if isinstance(self, ShuffleProxy):
-            return TensorFetchShuffle
-        else:
-            return TensorFetch
-
     def get_fuse_op_cls(self, _):
         from .fuse import TensorFuseChunk
 

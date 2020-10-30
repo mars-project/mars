@@ -239,19 +239,6 @@ class DataFrameOperandMixin(TileableOperandMixin):
         index_value = parse_index(pd_index)
         return {'dtype': chunks[0].dtype, 'index_value': index_value}
 
-    def get_fetch_op_cls(self, _):
-        from ..operands import ShuffleProxy
-        from .fetch import DataFrameFetchShuffle, DataFrameFetch
-        if isinstance(self, ShuffleProxy):
-            cls = DataFrameFetchShuffle
-        else:
-            cls = DataFrameFetch
-
-        def _inner(**kw):
-            return cls(output_types=self.output_types, **kw)
-
-        return _inner
-
     def get_fuse_op_cls(self, _):
         return DataFrameFuseChunk
 

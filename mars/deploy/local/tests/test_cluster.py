@@ -1019,6 +1019,13 @@ class Test(unittest.TestCase):
             r2 = web_session.run(merge(df1, df2, how='inner', on=['a', 'b']), timeout=_exec_timeout)
             pd.testing.assert_frame_equal(sort_dataframe_inplace(r1, 0), sort_dataframe_inplace(r2, 0))
 
+            df3 = from_pandas_df(data1, chunk_size=2)
+            df3 = df3.execute()
+            with tempfile.TemporaryDirectory() as tempdir:
+                csv_path = os.path.join(tempdir, 'test_out.csv')
+                df3.to_csv(csv_path).execute()
+                self.assertTrue(os.path.exists(csv_path))
+
     @require_cudf
     def testCudaCluster(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
