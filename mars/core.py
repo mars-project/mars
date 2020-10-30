@@ -16,6 +16,7 @@
 
 import builtins
 import enum
+import functools
 import itertools
 from concurrent.futures import ThreadPoolExecutor
 from operator import attrgetter
@@ -857,11 +858,16 @@ class OutputType(enum.Enum):
 
 _OUTPUT_TYPE_TO_CHUNK_TYPES = {OutputType.object: OBJECT_CHUNK_TYPE}
 _OUTPUT_TYPE_TO_TILEABLE_TYPES = {OutputType.object: OBJECT_TYPE}
+_OUTPUT_TYPE_TO_FETCH_CLS = {}
 
 
 def register_output_types(output_type, tileable_types, chunk_types):
     _OUTPUT_TYPE_TO_TILEABLE_TYPES[output_type] = tileable_types
     _OUTPUT_TYPE_TO_CHUNK_TYPES[output_type] = chunk_types
+
+
+def register_fetch_class(output_type, fetch_cls, fetch_shuffle_cls):
+    _OUTPUT_TYPE_TO_FETCH_CLS[output_type] = (fetch_cls, fetch_shuffle_cls)
 
 
 def get_tileable_types(output_type):
@@ -872,23 +878,36 @@ def get_chunk_types(output_type):
     return _OUTPUT_TYPE_TO_CHUNK_TYPES[output_type]
 
 
+def get_fetch_class(output_type):
+    return _OUTPUT_TYPE_TO_FETCH_CLS[output_type]
+
+
+@functools.lru_cache(100)
+def _get_output_type_by_cls(cls):
+    for tp in OutputType.__members__.values():
+        try:
+            tileable_types = _OUTPUT_TYPE_TO_TILEABLE_TYPES[tp]
+            chunk_types = _OUTPUT_TYPE_TO_CHUNK_TYPES[tp]
+            if issubclass(cls, (tileable_types, chunk_types)):
+                return tp
+        except KeyError:  # pragma: no cover
+            continue
+    raise TypeError('Output can only be tensor, dataframe or series')
+
+
 def get_output_types(*objs, unknown_as=None):
     output_types = []
     for obj in objs:
         if obj is None:
             continue
-        for tp in OutputType.__members__.values():
-            try:
-                tileable_types = _OUTPUT_TYPE_TO_TILEABLE_TYPES[tp]
-                chunk_types = _OUTPUT_TYPE_TO_CHUNK_TYPES[tp]
-                if isinstance(obj, (tileable_types, chunk_types)):
-                    output_types.append(tp)
-                    break
-            except KeyError:
-                continue
-        else:
+        elif isinstance(obj, (FuseChunk, FuseChunkData)):
+            obj = obj.chunk
+
+        try:
+            output_types.append(_get_output_type_by_cls(type(obj)))
+        except TypeError:
             if unknown_as is not None:
                 output_types.append(unknown_as)
             else:  # pragma: no cover
-                raise TypeError('Output can only be tensor, dataframe or series')
+                raise
     return output_types
