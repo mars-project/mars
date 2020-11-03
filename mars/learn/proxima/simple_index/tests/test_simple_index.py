@@ -216,9 +216,9 @@ class Test(unittest.TestCase):
     def testBuildAndSearchIndexWithFilesystem(self):
         with tempfile.TemporaryDirectory() as f:
             # params
-            doc_count, query_count, dimension = 200, 15, 10
+            doc_count, query_count, dimension = 2000, 15, 10
             topk = 10
-            doc_chunk, query_chunk = 50, 5
+            doc_chunk, query_chunk = 1000, 5
 
             # data
             doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
@@ -238,3 +238,32 @@ class Test(unittest.TestCase):
             # testing
             np.testing.assert_array_equal(pk_p, pk_m)
             np.testing.assert_array_equal(distance_p, distance_m)
+
+    def testRecall(self):
+        # params
+        doc_count, query_count, dimension = 2000, 150, 20
+        topk = 100
+        doc_chunk, query_chunk = 1000, 50
+
+        # data
+        doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+
+        # proxima_data
+        pk_p, distance_p = self.build_and_query(doc, query, dimension=dimension, topk=topk, threads=5,
+                                                doc_chunk=doc_chunk, query_chunk=query_chunk)
+
+        # sample & linear_data
+        sample_count = 100
+        idx = np.random.randint(query_count, size=sample_count)
+        sample_query = query[idx, :]
+        pk_l, distance_l = self.build_and_query(doc=doc, query=sample_query, dimension=dimension, topk=topk, threads=5,
+                                                doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                                index_builder="LinearBuilder",
+                                                builder_params={'proxima.linear.builder.column_major_order': False})
+        pk_p_sample, distance_p_sample = pk_p[idx, :], distance_p[idx, :]
+
+        # recall
+        from mars.learn.proxima.recall import recall
+        topk_ids = [1, 100]
+        recall(pk_l, distance_l, pk_p_sample, distance_p_sample, topk_ids, method="BYSCORE")
+        recall(pk_l, distance_l, pk_p_sample, distance_p_sample, topk_ids, method="BYID")
