@@ -156,6 +156,24 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(result1, result2)
 
+        # test copy, make sure it will not let the execution cache missed
+        df = md.DataFrame(mt.ones((10, 3), chunk_size=5))
+        executed = [False]
+
+        def add_one(x):
+            if executed[0]:  # pragma: no cover
+                raise ValueError('executed before')
+            return x + 1
+
+        df2 = df.apply(add_one)
+        pd.testing.assert_frame_equal(df2.to_pandas(), pd.DataFrame(np.ones((10, 3)) + 1))
+
+        executed[0] = True
+
+        df3 = df2.copy()
+        df4 = df3 * 2
+        pd.testing.assert_frame_equal(df4.to_pandas(), pd.DataFrame(np.ones((10, 3)) * 4))
+
     def testExecuteBothExecutedAndNot(self):
         data = np.random.random((5, 9))
 
