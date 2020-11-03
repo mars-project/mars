@@ -377,6 +377,7 @@ default_options.register_option('worker.plasma_socket', '/tmp/plasma', validator
 default_options.register_option('optimize.min_stats_count', 10, validator=is_integer)
 default_options.register_option('optimize.stats_sufficient_ratio', 0.9, validator=is_float, serialize=True)
 default_options.register_option('optimize.default_disk_io_speed', 10 * 1024 ** 2, validator=is_integer)
+default_options.register_option('optimize.head_optimize_threshold', 1000, validator=is_integer)
 
 default_options.register_option('optimize_tileable_graph', True, validator=is_bool)
 

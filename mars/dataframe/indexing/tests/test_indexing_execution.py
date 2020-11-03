@@ -888,10 +888,10 @@ class Test(TestBase):
 
             filename = os.path.join(tempdir, 'test_head.csv')
             rs = np.random.RandomState(0)
-            pd_df = pd.DataFrame({'a': rs.randint(1000, size=(100,)).astype(np.int64),
-                                  'b': rs.randint(1000, size=(100,)).astype(np.int64),
-                                  'c': ['sss' for _ in range(100)],
-                                  'd': ['eeee' for _ in range(100)]})
+            pd_df = pd.DataFrame({'a': rs.randint(1000, size=(2000,)).astype(np.int64),
+                                  'b': rs.randint(1000, size=(2000,)).astype(np.int64),
+                                  'c': ['sss' for _ in range(2000)],
+                                  'd': ['eeee' for _ in range(2000)]})
             pd_df.to_csv(filename, index=False)
 
             size = os.path.getsize(filename)
@@ -957,6 +957,19 @@ class Test(TestBase):
 
             result = executor.execute_tileables([r])[0]
             expected = pd_df.tail(99)
+            pd.testing.assert_frame_equal(result.reset_index(drop=True),
+                                          expected.reset_index(drop=True))
+
+            # test head number greater than limit
+            df = md.read_csv(filename, chunk_bytes=chunk_bytes)
+            r = df.head(1100)
+
+            with self.assertRaises(RuntimeError):
+                with self._inject_execute_data_source(3, DataFrameReadCSV):
+                    result = executor.execute_tileables([r])[0]
+
+            result = executor.execute_tileables([r])[0]
+            expected = pd_df.head(1100)
             pd.testing.assert_frame_equal(result.reset_index(drop=True),
                                           expected.reset_index(drop=True))
 

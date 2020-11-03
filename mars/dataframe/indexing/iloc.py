@@ -212,9 +212,10 @@ class HeadTailOptimizedOperandMixin(DataFrameOperandMixin):
         params['chunks'] = chunks
         return new_op.new_tileables(op.inputs, kws=[params])
 
-    def is_head(self):
+    def can_be_optimized(self):
         return self._is_indexes_head_or_tail(self._indexes) and \
-               self._is_head(self._indexes[0])
+               self._is_head(self._indexes[0]) and \
+               self._indexes[0].stop <= options.optimize.head_optimize_threshold
 
     @classmethod
     def tile(cls, op):
