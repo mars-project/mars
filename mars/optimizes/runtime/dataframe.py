@@ -134,7 +134,7 @@ class DataSourceHeadRule(DataFrameRuntimeOptimizeRule):
         op = chunk.op
         inputs = graph.predecessors(chunk)
         if len(inputs) == 1 and isinstance(op, (DataFrameIlocGetItem, SeriesIlocGetItem)) and \
-                op.is_head() and isinstance(inputs[0].op, (DataFrameReadCSV, DataFrameReadSQL)) and \
+                op.can_be_optimized() and isinstance(inputs[0].op, (DataFrameReadCSV, DataFrameReadSQL)) and \
                 inputs[0].key not in keys:
             return True
         return False
