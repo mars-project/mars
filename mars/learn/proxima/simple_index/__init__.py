@@ -14,3 +14,4 @@
 
 from .builder import build_index
 from .searcher import search_index
+from .recall import recall

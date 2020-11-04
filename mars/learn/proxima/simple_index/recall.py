@@ -1,5 +1,23 @@
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import math
+
 import numpy as np
+
+import mars.tensor as mt
+from mars.learn.proxima.simple_index.knn import sample_data, linear_build_and_search
 
 
 def recall_one(linear_score, ann_score, topk_ids):
@@ -61,7 +79,7 @@ def recall_one_byid(linear_key, ann_key, ann_score, topk_ids):
     return topk_matchs
 
 
-def recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID"):
+def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID"):
     pk_l, distance_l, pk_p, distance_p = np.array(pk_l), np.array(distance_l), np.array(pk_p), np.array(distance_p)
     topk_matchs = {}
     for ids in topk_ids:
@@ -78,3 +96,16 @@ def recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID"):
     for k, v in topk_matchs.items():
         topk_matchs[k] = v / length
     return topk_matchs
+
+
+def recall(doc, query, topk, sample_count, pk_p, distance_p, topk_ids=None, method=None):
+    if topk_ids is None:
+        topk_ids = [topk]
+    if method is None:
+        method = "BYSCORE"
+
+    query_sample, idx = sample_data(query, sample_count)
+    pk_p_sample, distance_p_sample = pk_p[idx, :], distance_p[idx, :]
+    pk_l, distance_l = linear_build_and_search(doc, mt.tensor(doc.index, dtype=np.uint64), query_sample, topk)
+
+    return compute_recall(pk_l, distance_l, pk_p_sample, distance_p_sample, topk_ids, method)

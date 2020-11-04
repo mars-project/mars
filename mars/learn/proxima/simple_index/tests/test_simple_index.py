@@ -22,7 +22,8 @@ import pandas as pd
 import mars.dataframe as md
 import mars.tensor as mt
 from mars.learn.proxima.core import proxima
-from mars.learn.proxima.simple_index import build_index, search_index
+from mars.learn.proxima.simple_index import build_index, search_index, recall
+from mars.learn.proxima.simple_index.knn import build_and_search
 from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 
@@ -249,21 +250,7 @@ class Test(unittest.TestCase):
         doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
 
         # proxima_data
-        pk_p, distance_p = self.build_and_query(doc, query, dimension=dimension, topk=topk, threads=5,
-                                                doc_chunk=doc_chunk, query_chunk=query_chunk)
+        pk_p, distance_p = build_and_search(doc, doc.index, query, dimension=dimension, topk=topk, threads=5,
+                                            doc_chunk=doc_chunk, query_chunk=query_chunk)
 
-        # sample & linear_data
-        sample_count = 100
-        idx = np.random.randint(query_count, size=sample_count)
-        sample_query = query[idx, :]
-        pk_l, distance_l = self.build_and_query(doc=doc, query=sample_query, dimension=dimension, topk=topk, threads=5,
-                                                doc_chunk=doc_chunk, query_chunk=query_chunk,
-                                                index_builder="LinearBuilder",
-                                                builder_params={'proxima.linear.builder.column_major_order': False})
-        pk_p_sample, distance_p_sample = pk_p[idx, :], distance_p[idx, :]
-
-        # recall
-        from mars.learn.proxima.recall import recall
-        topk_ids = [1, 100]
-        recall(pk_l, distance_l, pk_p_sample, distance_p_sample, topk_ids, method="BYSCORE")
-        recall(pk_l, distance_l, pk_p_sample, distance_p_sample, topk_ids, method="BYID")
+        recall(doc, query, topk, 100, pk_p, distance_p)
