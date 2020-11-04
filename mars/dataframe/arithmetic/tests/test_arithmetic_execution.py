@@ -22,6 +22,7 @@ import pandas as pd
 from mars.tests.core import TestBase, parameterized, ExecutorForTest
 from mars import tensor as mt
 from mars.tensor.datasource import array as from_array
+from mars.dataframe import to_datetime
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.arithmetic.tests.test_arithmetic import comp_func
@@ -706,6 +707,21 @@ class TestUnary(TestBase):
                     pd.testing.assert_frame_equal(result, expected)
                 else:
                     pd.testing.assert_series_equal(result, expected)
+
+    def testDateTimeBin(self):
+        rs = np.random.RandomState(0)
+        df_raw = pd.DataFrame({'a': rs.randint(1000, size=10),
+                               'b': rs.rand(10),
+                               'c': [pd.Timestamp(rs.randint(1604000000, 1604481373))
+                                     for _ in range(10)]},
+                              index=pd.RangeIndex(9, -1, -1))
+        df = from_pandas(df_raw, chunk_size=5)
+        r = (df['c'] > to_datetime('2000-01-01')) & (df['c'] < to_datetime('2021-01-01'))
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = (df_raw['c'] > pd.to_datetime('2000-01-01')) & \
+                   (df_raw['c'] < pd.to_datetime('2021-01-01'))
+        pd.testing.assert_series_equal(result, expected)
 
 
 if __name__ == '__main__':  # pragma: no cover

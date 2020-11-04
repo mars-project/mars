@@ -207,16 +207,23 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _tile_with_tensor(cls, op):
+        out = op.outputs[0]
+        axis = op.axis
+
         rhs_is_tensor = isinstance(op.rhs, TENSOR_TYPE)
         tensor, other = (op.rhs, op.lhs) if rhs_is_tensor else (op.lhs, op.rhs)
         if tensor.shape == other.shape:
             tensor = tensor.rechunk(other.nsplits)._inplace_tile()
         else:
             # shape differs only when dataframe add 1-d tensor, we need rechunk on columns axis.
-            rechunk_size = other.nsplits[1] if op.axis == 'columns' or op.axis == 1 else other.nsplits[0]
+            if op.axis in ['columns', 1] and other.ndim == 1:
+                # force axis == 0 if it's Series other than DataFrame
+                axis = 0
+            rechunk_size = other.nsplits[1] if axis == 'columns' or axis == 1 else other.nsplits[0]
             if tensor.ndim > 0:
                 tensor = tensor.rechunk((rechunk_size,))._inplace_tile()
 
+        cum_splits = [0] + np.cumsum(other.nsplits[axis]).tolist()
         out_chunks = []
         for out_index in itertools.product(*(map(range, other.chunk_shape))):
             tensor_chunk = tensor.cix[out_index[:tensor.ndim]]
@@ -224,19 +231,21 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             out_op = op.copy().reset_key()
             inputs = [other_chunk, tensor_chunk] if rhs_is_tensor else [tensor_chunk, other_chunk]
             if isinstance(other_chunk, DATAFRAME_CHUNK_TYPE):
+                start = cum_splits[out_index[axis]]
+                end = cum_splits[out_index[axis] + 1]
+                chunk_dtypes = out.dtypes.iloc[start: end]
                 out_chunk = out_op.new_chunk(inputs, shape=other_chunk.shape, index=other_chunk.index,
-                                             dtypes=other_chunk.dtypes,
+                                             dtypes=chunk_dtypes,
                                              index_value=other_chunk.index_value,
                                              columns_value=other.columns_value)
             else:
                 out_chunk = out_op.new_chunk(inputs, shape=other_chunk.shape, index=other_chunk.index,
-                                             dtype=other_chunk.dtype,
+                                             dtype=out.dtype,
                                              index_value=other_chunk.index_value,
                                              name=other_chunk.name)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        out = op.outputs[0]
         if isinstance(other, SERIES_TYPE):
             return new_op.new_seriess(op.inputs, other.shape, nsplits=other.nsplits, dtype=out.dtype,
                                       index_value=other.index_value, chunks=out_chunks)
@@ -288,6 +297,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         if op.level is not None:
             # logical function like and may don't have `level` (for Series type)
             kw['level'] = op.level
+        if hasattr(other, 'ndim') and other.ndim == 0:
+            other = other.item()
         ctx[op.outputs[0].key] = getattr(df, func_name)(other, **kw)
 
     @classproperty
@@ -315,7 +326,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 and (x2 is None or pd.api.types.is_scalar(x2) or isinstance(x2, TENSOR_TYPE)):
             x2_dtype = x2.dtype if hasattr(x2, 'dtype') else type(x2)
             dtype = infer_dtype(x1.dtype, np.dtype(x2_dtype), cls._operator)
-            return {'shape': x1.shape, 'dtype': dtype, 'index_value': x1.index_value}
+            ret = {'shape': x1.shape, 'dtype': dtype, 'index_value': x1.index_value}
+            if pd.api.types.is_scalar(x2) or (hasattr(x2, 'ndim') and x2.ndim == 0):
+                ret['name'] = x1.name
+            return ret
 
         if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and isinstance(
                 x2, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)):
@@ -408,7 +422,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                             (not np.isnan(x1.shape[0]) or not np.isnan(x2.shape[0])):
                         index_shape = x1.shape[0] if not np.isnan(x1.shape[0]) else x2.shape[0]
 
-            return {'shape': (index_shape,), 'dtype': dtype, 'index_value': index}
+            ret = {'shape': (index_shape,), 'dtype': dtype, 'index_value': index}
+            if x1.name == x2.name:
+                ret['name'] = x1.name
+            return ret
 
         raise NotImplementedError('Unknown combination of parameters')
 
