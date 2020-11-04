@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 from ... import __version__ as mars_version
 from ...utils import parse_readable_size
 
@@ -492,7 +494,10 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
             self.add_env('MARS_SPILL_DIRS', ':'.join(self._spill_volumes))
 
         if mount_shm:
-            self.add_volume(EmptyDirVolumeConfig('shm-volume', '/dev/shm', True))
+            vol_host_path = '/tmp' if sys.platform == 'darwin' else '/dev/shm'
+            vol_cfg = HostPathVolumeConfig('shm-volume', '/dev/shm', vol_host_path, 'Directory')
+            self.add_volume(vol_cfg)
+            self.add_env('MARS_MOUNT_HOST_SHM', '1')
         if worker_cache_mem:
             self.add_env('MARS_CACHE_MEM_SIZE', worker_cache_mem)
 
