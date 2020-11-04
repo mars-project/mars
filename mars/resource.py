@@ -91,7 +91,7 @@ def virtual_memory():
         used = cgroup_mem_info['rss'] + cgroup_mem_info.get('swap', 0)
         if _shm_path:
             if _host_shm_mounted:
-                used += cgroup_mem_info['mapped_file']
+                used += cgroup_mem_info['cache']
             else:
                 shm_stats = psutil.disk_usage(_shm_path)
                 used += shm_stats.used

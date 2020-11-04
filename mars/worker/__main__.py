@@ -49,6 +49,7 @@ class WorkerApplication(BaseApplication):
         parser.add_argument('--ignore-avail-mem', action='store_true', help='ignore available memory')
         parser.add_argument('--cache-mem', help='cache memory size limit')
         parser.add_argument('--min-mem', help='minimal free memory required to start worker')
+        parser.add_argument('--min-cache-mem', help='minimal cache memory required to start worker')
         parser.add_argument('--spill-dir', help='spill directory')
         parser.add_argument('--io-parallel-num', help='make file io lock free, add this when using a mounted dfs')
         parser.add_argument('--disable-proc-recover', action='store_true',
@@ -78,6 +79,7 @@ class WorkerApplication(BaseApplication):
         args.plasma_dir = args.plasma_dir or environ.get('MARS_PLASMA_DIRS')
         args.spill_dir = args.spill_dir or environ.get('MARS_SPILL_DIRS')
         args.cache_mem = args.cache_mem or environ.get('MARS_CACHE_MEM_SIZE')
+        args.min_cache_mem = args.min_cache_mem or environ.get('MARS_MIN_CACHE_MEM_SIZE')
         args.disable_proc_recover = args.disable_proc_recover \
             or bool(int(environ.get('MARS_DISABLE_PROC_RECOVER', '0')))
         args.write_shuffle_to_disk = args.write_shuffle_to_disk \
@@ -114,6 +116,7 @@ class WorkerApplication(BaseApplication):
             cache_mem_limit=self.args.cache_mem,
             ignore_avail_mem=self.args.ignore_avail_mem,
             min_mem_size=self.args.min_mem,
+            min_cache_mem_size=self.args.min_cache_mem,
             disk_compression=self.args.disk_compression.lower(),
             transfer_compression=self.args.transfer_compression.lower(),
             plasma_dir=self.args.plasma_dir,

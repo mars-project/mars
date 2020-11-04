@@ -155,8 +155,6 @@ class BaseCalcActor(WorkerActor):
         def _handle_load_fail(*exc):
             if self._remove_intermediate:
                 storage_client.delete(session_id, keys_to_fetch, [self._calc_intermediate_device])
-            self._release_local_quotas(session_id, keys_to_fetch)
-
             context_dict.clear()
             raise exc[1].with_traceback(exc[2])
 

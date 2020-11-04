@@ -478,6 +478,7 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
         mount_shm = kwargs.pop('mount_shm', True)
         self._limit_resources = kwargs['limit_resources'] = kwargs.get('limit_resources', True)
         worker_cache_mem = kwargs.pop('worker_cache_mem', None)
+        min_cache_mem = kwargs.pop('min_cache_mem', None)
 
         super().__init__(*args, **kwargs)
 
@@ -500,6 +501,8 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
             self.add_env('MARS_MOUNT_HOST_SHM', '1')
         if worker_cache_mem:
             self.add_env('MARS_CACHE_MEM_SIZE', worker_cache_mem)
+        if min_cache_mem:
+            self.add_env('MARS_MIN_CACHE_MEM_SIZE', min_cache_mem)
 
     def config_readiness_probe(self):
         readiness_cmd = [
