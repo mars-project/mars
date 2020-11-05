@@ -359,6 +359,7 @@ default_options.register_option('worker.spill_directory', None, validator=(is_nu
 default_options.register_option('worker.disk_compression', 'lz4', validator=is_string, serialize=True)
 default_options.register_option('worker.min_spill_size', '5%', validator=(is_string, is_integer))
 default_options.register_option('worker.max_spill_size', '95%', validator=(is_string, is_integer))
+default_options.register_option('worker.min_cache_mem_size', None, validator=(is_null, is_string, is_integer))
 default_options.register_option('worker.callback_preserve_time', 3600 * 24, validator=is_integer)
 default_options.register_option('worker.event_preserve_time', 3600 * 24, validator=(is_integer, is_float))
 default_options.register_option('worker.copy_block_size', 64 * 1024, validator=is_integer)

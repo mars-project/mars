@@ -65,6 +65,7 @@ import logging
 import multiprocessing
 import multiprocessing.process
 import pickle
+import faulthandler
 from itertools import chain
 
 try:
@@ -328,6 +329,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         raise TypeError('`kwargs` must be a dictionary.')
     log.debug("Invoke target `%s` in child process.", target)
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
+    kwargs['_faulthandler_enabled'] = faulthandler.is_enabled()
     if WINDOWS:
         for h in childhandles:
             h._winapi_childhandle_prepare_transfer()
@@ -364,6 +366,8 @@ def _child(target, args, kwargs):
     libev's state is reset before running the user-given function.
     """
     log.debug("_child start. target: `%s`", target)
+    if kwargs.pop('_faulthandler_enabled'):
+        faulthandler.enable()
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if not WINDOWS:
         # Restore default signal handlers (SIG_DFL). Orphaned libev signal

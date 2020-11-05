@@ -513,8 +513,11 @@ class ExecutionActor(WorkerActor):
             no_prepare_chunk_keys=io_meta.get('no_prepare_chunk_keys') or set(),
         )
 
+        _, long_op_string = concat_operand_keys(graph_record.graph, decompose=True)
+        if long_op_string != graph_record.op_string:
+            long_op_string = graph_record.op_string + ':' + long_op_string
         logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key,
-                     graph_record.op_string, graph_record.chunk_targets)
+                     long_op_string, graph_record.chunk_targets)
         self._update_state(session_id, graph_key, ExecutionState.ALLOCATING)
 
         try:

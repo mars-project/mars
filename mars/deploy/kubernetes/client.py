@@ -73,6 +73,7 @@ class KubernetesCluster:
                  scheduler_num=1, scheduler_cpu=None, scheduler_mem=None,
                  worker_num=1, worker_cpu=None, worker_mem=None,
                  worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
+                 worker_min_cache_mem=None,
                  web_num=1, web_cpu=None, web_mem=None, service_type=None,
                  timeout=None, **kwargs):
         from kubernetes import client as kube_client
@@ -125,6 +126,7 @@ class KubernetesCluster:
         self._worker_mem = worker_mem
         self._worker_spill_paths = worker_spill_paths
         self._worker_cache_mem = worker_cache_mem
+        self._worker_min_cache_men = worker_min_cache_mem
         self._min_worker_num = min_worker_num
         self._worker_extra_modules = _override_modules(kwargs.pop('worker_extra_modules', []))
         self._worker_extra_env = _override_envs(kwargs.pop('worker_extra_env', None))
@@ -235,6 +237,7 @@ class KubernetesCluster:
             memory=self._worker_mem, spill_volumes=self._worker_spill_paths,
             modules=self._worker_extra_modules, volumes=self._extra_volumes,
             worker_cache_mem=self._worker_cache_mem,
+            min_cache_mem=self._worker_min_cache_men,
             service_port=self._worker_service_port,
             pre_stop_command=self._pre_stop_command,
         )
