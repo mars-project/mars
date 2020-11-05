@@ -532,15 +532,26 @@ class TileableEntity(Entity):
         return super().copy()
 
     def copy(self):
-        new_op = self.op.copy().reset_key()
+        new_op = self.op.copy()
         if new_op.create_view:
             # if the operand is a view, make it a copy
             new_op._create_view = False
-        new_outs = new_op.new_tileables(self.op.inputs, kws=[t.params for t in self.op.outputs],
-                                        output_limit=len(self.op.outputs),
-                                        **self._data.extra_params)
+        params = []
+        for o in self.op.outputs:
+            param = o.params
+            param['_key'] = o.key
+            param.update(o.extra_params)
+            params.append(param)
+        new_outs = new_op.new_tileables(self.op.inputs, kws=params,
+                                        output_limit=len(params))
         pos = -1
         for i, out in enumerate(self.op.outputs):
+            # create a ref to copied one
+            new_out = new_outs[i]
+            if not hasattr(new_out.data, '_siblings'):
+                new_out.data._siblings = []
+            new_out.data._siblings.append(out)
+
             if self._data is out:
                 pos = i
                 break
