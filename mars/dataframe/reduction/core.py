@@ -328,6 +328,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             count = in_data.count(axis=op.axis, numeric_only=op.numeric_only)
         r = cls._execute_reduction(in_data, op, reduction_func=reduction_func)
         if isinstance(in_data, xdf.Series):
+            if op.output_types[0] == OutputType.series:
+                r = xdf.Series([r])
+                count = xdf.Series([count])
             ctx[op.outputs[0].key] = (r, count)
         else:
             # For dataframe, will keep dimensions for intermediate results.
@@ -343,6 +346,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         count = concat_count.sum(axis=op.axis)
         r = cls._execute_reduction(in_data, op, reduction_func=reduction_func)
         if isinstance(in_data, xdf.Series):
+            if op.output_types[0] == OutputType.series:
+                r = xdf.Series([r])
+                count = xdf.Series([count])
             ctx[op.outputs[0].key] = (r, count)
         else:
             # For dataframe, will keep dimensions for intermediate results.
@@ -373,6 +379,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         in_data = ctx[op.inputs[0].key]
         r = cls._execute_reduction(in_data, op, min_count=op.min_count, reduction_func=reduction_func)
         if isinstance(in_data, xdf.Series) or op.output_types[0] == OutputType.series:
+            if op.output_types[0] == OutputType.series and not isinstance(r, xdf.Series):
+                r = xdf.Series([r])
             ctx[op.outputs[0].key] = r
         else:
             if op.axis == 0:

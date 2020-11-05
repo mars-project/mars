@@ -66,6 +66,10 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
         var_square = ((in_data.subtract(avg)) ** 2).sum(**kwargs)
 
         if isinstance(in_data, xdf.Series):
+            if op.output_types[0] == OutputType.series and not isinstance(r, xdf.Series):
+                r = xdf.Series([r])
+                count = xdf.Series([count])
+                var_square = xdf.Series([var_square])
             ctx[op.outputs[0].key] = (r, count, var_square)
         else:
             ctx[op.outputs[0].key] = tuple(cls._keep_dim(df, op) for df in [r, count, var_square])
@@ -83,6 +87,10 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
         kwargs = dict(axis=op.axis, skipna=op.skipna)
         reduced_var_square = var_square.sum(**kwargs) + (concat_count * avg_diff ** 2).sum(**kwargs)
         if isinstance(data, xdf.Series):
+            if op.output_types[0] == OutputType.series and not isinstance(r, xdf.Series):
+                r = xdf.Series([r])
+                count = xdf.Series([count])
+                reduced_var_square = xdf.Series([reduced_var_square])
             ctx[op.outputs[0].key] = (r, count, reduced_var_square)
         else:
             ctx[op.outputs[0].key] = tuple(cls._keep_dim(df, op) for df in [r, count, reduced_var_square])
