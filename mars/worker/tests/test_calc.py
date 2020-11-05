@@ -151,12 +151,6 @@ class Test(WorkerCase):
             self.assertTrue(all((id(obj), type(obj)) not in id_type_set
                                 for obj in gc.get_objects()))
 
-            quota_dump = quota_ref.dump_data()
-            self.assertEqual(len(quota_dump.allocations), 0)
-            self.assertEqual(len(quota_dump.requests), 0)
-            self.assertEqual(len(quota_dump.proc_sizes), 0)
-            self.assertEqual(len(quota_dump.hold_sizes), 0)
-
             self.assertEqual(sorted(storage_client.get_data_locations(session_id, [fetch_chunks[0].key])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
             self.assertEqual(sorted(storage_client.get_data_locations(session_id, [fetch_chunks[1].key])[0]),
