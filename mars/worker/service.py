@@ -250,8 +250,9 @@ class WorkerService(object):
         self._storage_manager_ref = pool.create_actor(
             StorageManagerActor, uid=StorageManagerActor.default_uid())
         # create SharedHolderActor
-        self._shared_holder_ref = pool.create_actor(
-            SharedHolderActor, self._cache_mem_limit, uid=SharedHolderActor.default_uid())
+        future = pool.create_actor(
+            SharedHolderActor, self._cache_mem_limit, uid=SharedHolderActor.default_uid(), wait=False)
+        self._shared_holder_ref = future.result(60)
         # create DispatchActor
         self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         # create EventsActor
