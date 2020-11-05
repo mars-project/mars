@@ -42,6 +42,9 @@ class Test(unittest.TestCase):
         with self.assertRaises(MemoryError):
             WorkerService(soft_mem_limit='128m', cache_mem_limit='256m')
 
+        with self.assertRaises(MemoryError):
+            WorkerService(min_cache_mem_size='1g', cache_mem_limit='256m')
+
         svc = WorkerService(ignore_avail_mem=True, spill_dirs='/tmp/a')
         self.assertListEqual(svc._spill_dirs, ['/tmp/a'])
 

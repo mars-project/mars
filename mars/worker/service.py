@@ -99,6 +99,7 @@ class WorkerService(object):
         options.worker.io_parallel_num = kwargs.pop('io_parallel_num', None) or False
         options.worker.recover_dead_process = not (kwargs.pop('disable_proc_recover', None) or False)
         options.worker.write_shuffle_to_disk = kwargs.pop('write_shuffle_to_disk', None) or False
+        options.worker.min_cache_mem_size = kwargs.pop('min_cache_mem_size', None)
 
         if distributed and options.custom_log_dir is None:
             # gen custom_log_dir for distributed only
@@ -186,6 +187,12 @@ class WorkerService(object):
                     f'Memory not enough. soft_limit={readable_size(self._soft_mem_limit)}, '
                     f'cache_limit={readable_size(self._cache_mem_limit)}, '
                     f'used={readable_size(actual_used)}')
+
+        if options.worker.min_cache_mem_size:
+            min_cache_mem_size = _calc_size_limit(options.worker.min_cache_mem_size, self._total_mem)
+            if min_cache_mem_size > self._cache_mem_limit:
+                raise MemoryError(f'Cache memory size ({self._cache_mem_limit}) smaller than '
+                                  f'minimal size ({min_cache_mem_size}), worker cannot start')
 
         logger.info('Setting soft limit to %s.', readable_size(self._soft_quota_limit))
 

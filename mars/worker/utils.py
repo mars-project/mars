@@ -186,10 +186,21 @@ class ExpiringCache(dict):
         self.pop(item, None)
 
 
-def concat_operand_keys(graph, sep=','):
+def concat_operand_keys(graph, sep=',', decompose=False):
     from ..operands import Fetch
     graph_op_dict = OrderedDict()
-    for c in graph:
+
+    if not decompose:
+        chunk_iter = graph
+    else:
+        def _iter_composed():
+            for c in graph:
+                chunks = getattr(c, 'composed', None) or [c]
+                for chunk in chunks:
+                    yield chunk
+        chunk_iter = _iter_composed()
+
+    for c in chunk_iter:
         if isinstance(c.op, Fetch):
             continue
         if c.op.stage is None:

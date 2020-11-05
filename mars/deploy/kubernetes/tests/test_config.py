@@ -62,7 +62,8 @@ class Test(unittest.TestCase):
         worker_config_dict = MarsWorkersConfig(
             4, cpu=2, memory=10 * 1024 ** 3, limit_resources=False,
             spill_volumes=['/tmp/spill_vol', EmptyDirVolumeConfig('empty-dir', '/tmp/empty')],
-            worker_cache_mem='20%', modules='mars.test_mod', mount_shm=True).build()
+            worker_cache_mem='20%', min_cache_mem='10%', modules='mars.test_mod',
+            mount_shm=True).build()
         self.assertEqual(worker_config_dict['metadata']['name'], 'marsworker')
         self.assertEqual(worker_config_dict['spec']['replicas'], 4)
 
@@ -81,7 +82,7 @@ class Test(unittest.TestCase):
         volume_list = worker_config_dict['spec']['template']['spec']['volumes']
         volume_envs = dict((v['name'], v) for v in volume_list)
         self.assertIn('empty-dir', volume_envs)
-        self.assertEqual(volume_envs['shm-volume']['emptyDir']['medium'], 'Memory')
+        self.assertEqual(volume_envs['shm-volume']['hostPath']['type'], 'Directory')
         self.assertEqual(volume_envs['host-path-vol-0']['hostPath']['path'], '/tmp/spill_vol')
 
         volume_mounts = dict((v['name'], v) for v in container_dict['volumeMounts'])
