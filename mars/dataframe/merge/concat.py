@@ -202,7 +202,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                                 'and CategoricalChunk can be automatically concatenated')
 
         def _auto_concat_dataframe_chunks(chunk, inputs):
-            xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
+            xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) or cudf is None else cudf
 
             if chunk.op.axis is not None:
                 return xdf.concat(inputs, axis=op.axis)
@@ -251,7 +251,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 if len(inputs) == 1:
                     concat = inputs[0]
                 else:
-                    xdf = pd if isinstance(inputs[0], pd.Series) else cudf
+                    xdf = pd if isinstance(inputs[0], pd.Series) or cudf is None else cudf
                     if chunk.op.axis is not None:
                         concat = xdf.concat(inputs, axis=chunk.op.axis)
                     else:
@@ -262,10 +262,10 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
         def _auto_concat_index_chunks(chunk, inputs):
             if len(inputs) == 1:
-                xdf = pd if isinstance(inputs[0], pd.Index) else cudf
+                xdf = pd if isinstance(inputs[0], pd.Index) or cudf is None else cudf
                 concat_df = xdf.DataFrame(index=inputs[0])
             else:
-                xdf = pd if isinstance(inputs[0], pd.Index) else cudf
+                xdf = pd if isinstance(inputs[0], pd.Index) or cudf is None else cudf
                 empty_dfs = [xdf.DataFrame(index=inp) for inp in inputs]
                 concat_df = xdf.concat(empty_dfs, axis=0)
             if getattr(chunk.index_value, 'should_be_monotonic', False):
