@@ -245,20 +245,17 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
         def _auto_concat_series_chunks(chunk, inputs):
             # auto generated concat when executing a Series
-            if all(np.isscalar(inp) for inp in inputs):
-                return pd.Series(inputs)
+            if len(inputs) == 1:
+                concat = inputs[0]
             else:
-                if len(inputs) == 1:
-                    concat = inputs[0]
+                xdf = pd if isinstance(inputs[0], pd.Series) or cudf is None else cudf
+                if chunk.op.axis is not None:
+                    concat = xdf.concat(inputs, axis=chunk.op.axis)
                 else:
-                    xdf = pd if isinstance(inputs[0], pd.Series) or cudf is None else cudf
-                    if chunk.op.axis is not None:
-                        concat = xdf.concat(inputs, axis=chunk.op.axis)
-                    else:
-                        concat = xdf.concat(inputs)
-                if getattr(chunk.index_value, 'should_be_monotonic', False):
-                    concat.sort_index(inplace=True)
-                return concat
+                    concat = xdf.concat(inputs)
+            if getattr(chunk.index_value, 'should_be_monotonic', False):
+                concat.sort_index(inplace=True)
+            return concat
 
         def _auto_concat_index_chunks(chunk, inputs):
             if len(inputs) == 1:
