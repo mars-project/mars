@@ -1332,7 +1332,7 @@ class GraphActor(SchedulerActor):
             return
 
         if not options.scheduler.enable_failover:
-            if self._worker_removes:
+            if removes:
                 logger.exception('Failed as worker dead and fail-over not enabled.')
                 self._graph_meta_ref.set_exc_info(build_exc_info(WorkerDead), _tell=True, _wait=False)
                 self.stop_graph()
