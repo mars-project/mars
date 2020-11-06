@@ -94,7 +94,7 @@ def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID"):
 
     length = len(pk_l)
     for k, v in topk_matchs.items():
-        topk_matchs[k] = v / length
+        topk_matchs[k] = min(v / length, 1)
     return topk_matchs
 
 
@@ -106,6 +106,7 @@ def recall(doc, query, topk, sample_count, pk_p, distance_p, topk_ids=None, meth
 
     query_sample, idx = sample_data(query, sample_count)
     pk_p_sample, distance_p_sample = pk_p[idx, :], distance_p[idx, :]
-    pk_l, distance_l = linear_build_and_search(doc, mt.tensor(doc.index, dtype=np.uint64), query_sample, topk)
+    query_sample = query_sample.rechunk(query_sample.shape[0])
+    pk_l, distance_l = linear_build_and_search(doc, mt.arange(len(doc)), query_sample, topk)
 
     return compute_recall(pk_l, distance_l, pk_p_sample, distance_p_sample, topk_ids, method)
