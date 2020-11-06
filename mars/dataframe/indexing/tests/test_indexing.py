@@ -650,6 +650,9 @@ class Test(TestBase):
         self.assertEqual(tiled.chunks[2].shape, (2, 3))
         pd.testing.assert_series_equal(tiled.inputs[0].dtypes, data.dtypes)
 
+        for c in tiled.chunks:
+            pd.testing.assert_series_equal(c.inputs[0].dtypes, data.dtypes)
+
     def testResetIndex(self):
         data = pd.DataFrame([('bird',    389.0),
                              ('bird',     24.0),
