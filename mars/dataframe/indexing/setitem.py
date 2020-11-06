@@ -128,7 +128,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                         value_chunk = value.cix[c.index[0], ]
                         chunk_inputs = [c, value_chunk]
 
-                    dtypes = c.dtypes
+                    dtypes = c.dtypes.copy(deep=True)
                     dtypes.loc[out.dtypes.index[-1]] = out.dtypes.iloc[-1]
                     chunk = chunk_op.new_chunk(chunk_inputs,
                                                shape=(c.shape[0], c.shape[1] + 1),
