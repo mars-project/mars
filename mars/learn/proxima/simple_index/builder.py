@@ -22,12 +22,10 @@ import numpy as np
 from .... import opcodes
 from .... import tensor as mt
 from ....context import get_context, RunningMode
-from ....core import Base, Entity
 from ....filesystem import get_fs, LocalFileSystem
 from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, DictField, BytesField
 from ....tiles import TilesError
-from ....tensor.utils import decide_unify_split
 from ....utils import check_chunks_unknown_shape, Timer
 from ...operands import LearnOperand, LearnOperandMixin
 from ..core import proxima, get_proxima_type, validate_tensor, available_numpy_dtypes
@@ -39,7 +37,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.PROXIMA_SIMPLE_BUILDER
 
     _tensor = KeyField('tensor')  # doc
-    _pk = KeyField('pk')  # doc_pk
+    _pk = KeyField('pk')
     _distance_metric = StringField('distance_metric')
     _dimension = Int32Field('dimension')
     _index_path = StringField('index_path')
@@ -57,9 +55,9 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                  index_builder=None, index_builder_params=None,
                  index_converter=None, index_converter_params=None,
                  topk=None, storage_options=None, output_types=None, stage=None, **kw):
-        super().__init__(_tensor=tensor, _pk=pk,
-                         _distance_metric=distance_metric, _index_path=index_path, _dimension=dimension,
-                         _index_builder=index_builder, _index_builder_params=index_builder_params,
+        super().__init__(_tensor=tensor, _pk=pk, _distance_metric=distance_metric, _index_path=index_path,
+                         _dimension=dimension, _index_builder=index_builder,
+                         _index_builder_params=index_builder_params,
                          _index_converter=index_converter, _index_converter_params=index_converter_params,
                          _topk=topk, _storage_options=storage_options,
                          _output_types=output_types, _stage=stage, **kw)
@@ -113,10 +111,11 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._tensor = self._inputs[0]
-        self._pk = self._inputs[-1]
+        if len(self._inputs) == 2:
+            self._pk = self._inputs[-1]
 
-    def __call__(self, tensor, pk):
-        return self.new_tileable([tensor, pk])
+    def __call__(self, tensor):
+        return self.new_tileable([tensor])
 
     @classmethod
     def _get_atleast_topk_nsplit(cls, nsplit, topk):
@@ -146,7 +145,6 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     @classmethod
     def tile(cls, op):
         tensor = op.tensor
-        pk = op.pk
         out = op.outputs[0]
         index_path = op.index_path
         ctx = get_context()
@@ -175,7 +173,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         # make sure all inputs have known chunk sizes
         check_chunks_unknown_shape(op.inputs, TilesError)
 
-        nsplit = decide_unify_split(tensor.nsplits[0], pk.nsplits[0])
+        nsplit = tensor.nsplits[0]
         if op.topk is not None:
             nsplit = cls._get_atleast_topk_nsplit(nsplit, op.topk)
 
@@ -183,7 +181,8 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
             tensor = tensor.rechunk({0: nsplit, 1: tensor.shape[1]})._inplace_tile()
         else:
             tensor = tensor.rechunk({0: nsplit})._inplace_tile()
-        pk = pk.rechunk({0: nsplit})._inplace_tile()
+        pk = mt.arange(len(tensor), dtype=np.uint64,
+                       chunk_size=(tensor.nsplits[0],))._inplace_tile()
 
         out_chunks = []
         for chunk, pk_col_chunk in zip(tensor.chunks, pk.chunks):
@@ -295,7 +294,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         return op.new_tileable([tileable], chunks=[chunk], nsplits=((1,),))
 
 
-def build_index(tensor, pk, dimension=None, index_path=None,
+def build_index(tensor, dimension=None, index_path=None,
                 need_shuffle=False, distance_metric='SquaredEuclidean',
                 index_builder='SsgBuilder', index_builder_params=None,
                 index_converter=None, index_converter_params=None,
@@ -316,17 +315,14 @@ def build_index(tensor, pk, dimension=None, index_path=None,
     if need_shuffle:
         tensor = mt.random.permutation(tensor)
 
-    if not isinstance(pk, (Base, Entity)):
-        pk = mt.tensor(pk)
-
-    op = ProximaBuilder(tensor=tensor, pk=pk, distance_metric=distance_metric,
+    op = ProximaBuilder(tensor=tensor, distance_metric=distance_metric,
                         index_path=index_path, dimension=dimension,
                         index_builder=index_builder,
                         index_builder_params=index_builder_params,
                         index_converter=index_converter,
                         index_converter_params=index_converter_params,
                         topk=topk, storage_options=storage_options)
-    result = op(tensor, pk)
+    result = op(tensor)
     if run:
         return result.execute(session=session, **(run_kwargs or dict()))
     else:

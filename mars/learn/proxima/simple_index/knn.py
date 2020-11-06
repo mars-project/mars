@@ -14,7 +14,6 @@
 
 import random
 
-import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
@@ -31,13 +30,13 @@ def sample_data(query, sample_count=10000):
     return sample_query, idx
 
 
-def linear_build_and_search(doc, pk, query, topk, dimension=None, measure_name=None, threads=4):
+def linear_build_and_search(doc, query, topk, dimension=None, measure_name=None, threads=4):
     if measure_name is None:
         measure_name = "SquaredEuclidean"
     if dimension is None:
         dimension = doc.shape[1]
 
-    index = build_index(tensor=doc, pk=pk, dimension=dimension,
+    index = build_index(tensor=doc, dimension=dimension,
                         distance_metric=measure_name,
                         index_builder="LinearBuilder")
 
@@ -45,10 +44,10 @@ def linear_build_and_search(doc, pk, query, topk, dimension=None, measure_name=N
                                     distance_metric=measure_name, dimension=dimension,
                                     topk=topk, index=index)
 
-    return np.asarray(pk_l), np.asarray(distance_l)
+    return pk_l, distance_l
 
 
-def build_and_search(doc, pk, query, topk, doc_chunk, query_chunk,
+def build_and_search(doc, query, topk, doc_chunk, query_chunk,
                      index_path=None, threads=4, dimension=None, measure_name=None,
                      need_shuffle=False, storage_options=None,
                      index_builder=None, builder_params=None,
@@ -77,7 +76,7 @@ def build_and_search(doc, pk, query, topk, doc_chunk, query_chunk,
     doc = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
     query = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-    index = build_index(doc, pk, dimension, index_path,
+    index = build_index(doc, dimension, index_path,
                         need_shuffle, measure_name,
                         index_builder, builder_params,
                         index_converter, index_converter_params,
@@ -88,4 +87,4 @@ def build_and_search(doc, pk, query, topk, doc_chunk, query_chunk,
                                  index_reformer, index_reformer_params,
                                  storage_options)
 
-    return np.asarray(pk2), np.asarray(distance)
+    return pk2, distance

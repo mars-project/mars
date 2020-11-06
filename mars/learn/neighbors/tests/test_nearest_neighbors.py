@@ -384,7 +384,7 @@ class Test(unittest.TestCase):
         raw_Y = rs.rand(8, 5).astype('float32')
 
         # test faiss execution
-        X = mt.tensor(raw_X, chunk_size=7)
+        X = mt.tensor(raw_X, chunk_size=6)
         Y = mt.tensor(raw_Y, chunk_size=(5, 3))
 
         nn = NearestNeighbors(n_neighbors=3, algorithm='proxima', metric='l2')

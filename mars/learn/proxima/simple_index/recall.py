@@ -16,7 +16,7 @@ import math
 
 import numpy as np
 
-import mars.tensor as mt
+import mars.remote as mr
 from mars.learn.proxima.simple_index.knn import sample_data, linear_build_and_search
 
 
@@ -98,7 +98,8 @@ def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID"):
     return topk_matchs
 
 
-def recall(doc, query, topk, sample_count, pk_p, distance_p, topk_ids=None, method=None):
+def recall(doc, query, topk, sample_count, pk_p, distance_p,
+           topk_ids=None, method=None, session=None, run_kwargs=None):
     if topk_ids is None:
         topk_ids = [topk]
     if method is None:
@@ -106,7 +107,8 @@ def recall(doc, query, topk, sample_count, pk_p, distance_p, topk_ids=None, meth
 
     query_sample, idx = sample_data(query, sample_count)
     pk_p_sample, distance_p_sample = pk_p[idx, :], distance_p[idx, :]
-    query_sample = query_sample.rechunk(query_sample.shape[0])
-    pk_l, distance_l = linear_build_and_search(doc, mt.arange(len(doc)), query_sample, topk)
+    pk_l, distance_l = linear_build_and_search(doc, query_sample, topk)
 
-    return compute_recall(pk_l, distance_l, pk_p_sample, distance_p_sample, topk_ids, method)
+    r = mr.spawn(compute_recall, args=(pk_l, distance_l, pk_p_sample,
+                                       distance_p_sample, topk_ids, method))
+    return r.execute(session=session, **(run_kwargs or dict())).fetch()

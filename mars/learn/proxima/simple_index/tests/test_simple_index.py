@@ -134,7 +134,7 @@ class Test(unittest.TestCase):
         doc = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
         query = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-        index = build_index(tensor=doc, pk=mt.tensor(doc.index, dtype=np.uint64), need_shuffle=False,
+        index = build_index(tensor=doc, need_shuffle=False,
                             distance_metric=measure_name, dimension=dimension,
                             index_builder=index_builder, index_builder_params=builder_params,
                             index_converter=index_converter, index_converter_params=index_converter_params,
@@ -227,7 +227,7 @@ class Test(unittest.TestCase):
             df = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
             q = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-            index = build_index(df, df.index, index_path=f)
+            index = build_index(df, index_path=f)
 
             self.assertGreater(len(os.listdir(f)), 0)
 
@@ -245,12 +245,13 @@ class Test(unittest.TestCase):
         doc_count, query_count, dimension = 2000, 150, 20
         topk = 100
         doc_chunk, query_chunk = 1000, 50
+        sample_count = 100
 
         # data
         doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
 
         # proxima_data
-        pk_p, distance_p = build_and_search(doc, doc.index, query, dimension=dimension, topk=topk, threads=5,
+        pk_p, distance_p = build_and_search(doc, query, dimension=dimension, topk=topk, threads=5,
                                             doc_chunk=doc_chunk, query_chunk=query_chunk)
 
-        recall(doc, query, topk, 100, pk_p, distance_p)
+        self.assertIsInstance(recall(doc, query, topk, sample_count, pk_p, distance_p), dict)
