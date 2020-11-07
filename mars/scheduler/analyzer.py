@@ -41,7 +41,7 @@ class GraphAnalyzer(object):
         :param lost_chunks: keys of lost chunks, for fail-over analysis
         """
         self._graph = graph
-        self._undigraph = None
+        self._assign_graph = None
         self._worker_slots = OrderedDict(worker_slots)
         self._op_states = op_states or dict()
         self._lost_chunks = lost_chunks or []
@@ -205,6 +205,9 @@ class GraphAnalyzer(object):
             if (n.op.reassign_worker or not graph.predecessors(n)) \
                     and n.op.key not in fixed_assigns:
                 chunks_to_assign.append(n)
+            elif n.op.expect_worker is not None:
+                # force to assign to a worker
+                chunks_to_assign.append(n)
         random.shuffle(chunks_to_assign)
 
         # note that different orders can contribute to different efficiency
@@ -245,10 +248,10 @@ class GraphAnalyzer(object):
             return
 
         graph = graph or self._graph
-        if self._undigraph is None:
-            undigraph = self._undigraph = graph.build_undirected()
+        if self._assign_graph is None:
+            undigraph = self._assign_graph = graph.build_undirected()
         else:
-            undigraph = self._undigraph
+            undigraph = self._assign_graph
 
         assigned = 0
         spread_range = 0
