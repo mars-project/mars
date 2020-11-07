@@ -23,6 +23,7 @@ import uuid
 
 import gevent
 
+from mars.actors import register_actor_implementation
 from mars.config import options
 from mars.tiles import get_tiled
 from mars.promise import PromiseActor
@@ -30,7 +31,17 @@ from mars.utils import get_next_port, serialize_graph
 from mars.scheduler import ResourceActor, ChunkMetaActor, SessionManagerActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import require_cupy, create_actor_pool
-from mars.worker import DispatchActor, WorkerDaemonActor
+from mars.worker import DispatchActor, WorkerDaemonActor, SharedHolderActor
+
+
+class DeadSharedHolderActor(SharedHolderActor):
+    def post_create(self):
+        super().post_create()
+        os.kill(os.getpid(), signal.SIGKILL)
+
+
+if 'MARS_TEST_DEAD_SHARED_HOLDER' in os.environ:
+    register_actor_implementation(SharedHolderActor, DeadSharedHolderActor)
 
 
 class WorkerProcessTestActor(PromiseActor):
@@ -79,8 +90,9 @@ class Test(unittest.TestCase):
             shutil.rmtree(options.worker.spill_directory)
 
     @staticmethod
-    def _wait_worker_ready(proc, resource_ref):
+    def _wait_worker_ready(proc, resource_ref, timeout=None):
         worker_ips = []
+        timeout = timeout or 20
 
         def waiter():
             check_time = time.time()
@@ -89,7 +101,7 @@ class Test(unittest.TestCase):
                     gevent.sleep(0.1)
                     if proc.poll() is not None:
                         raise SystemError(f'Worker dead. exit code {proc.poll()}')
-                    if time.time() - check_time > 20:
+                    if time.time() - check_time > timeout:
                         raise TimeoutError('Check meta_timestamp timeout')
                     continue
                 else:
@@ -102,7 +114,8 @@ class Test(unittest.TestCase):
         return worker_ips[0]
 
     @contextlib.contextmanager
-    def _start_worker_process(self, cuda=False, cuda_device=None):
+    def _start_worker_process(self, cuda=False, cuda_device=None, extra_env=None, modules=None,
+                              check_timeout=None):
         mock_scheduler_addr = f'127.0.0.1:{get_next_port()}'
         try:
             with create_actor_pool(n_process=1, backend='gevent',
@@ -123,11 +136,14 @@ class Test(unittest.TestCase):
                         '--log-level', 'debug',
                         '--log-format', '%(asctime)-15s %(message)s',
                         '--ignore-avail-mem']
+                if modules:
+                    args.extend(['--load-modules', ','.join(modules)])
                 env = os.environ.copy()
+                env.update(extra_env or dict())
                 if cuda:
                     env['CUDA_VISIBLE_DEVICES'] = cuda_device
                 proc = subprocess.Popen(args, env=env)
-                worker_endpoint = self._wait_worker_ready(proc, resource_ref)
+                worker_endpoint = self._wait_worker_ready(proc, resource_ref, timeout=check_timeout)
 
                 yield pool, worker_endpoint
         finally:
@@ -153,6 +169,14 @@ class Test(unittest.TestCase):
                 gevent.sleep(0.1)
                 if time.time() - check_time > 20:
                     raise TimeoutError('Check reply timeout')
+
+    def testDeadWorker(self):
+        envs = {'MARS_SHARED_HOLDER_START_TIMEOUT': '10',
+                'MARS_TEST_DEAD_SHARED_HOLDER': '1'}
+        with self.assertRaises(SystemError):
+            with self._start_worker_process(extra_env=envs, check_timeout=120,
+                                            modules=['mars.worker.tests.test_main']) as _:
+                pass
 
     @require_cupy
     def testExecuteCudaWorker(self):
