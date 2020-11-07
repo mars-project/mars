@@ -41,7 +41,7 @@ class GraphAnalyzer(object):
         :param lost_chunks: keys of lost chunks, for fail-over analysis
         """
         self._graph = graph
-        self._undigraph = None
+        self._assign_graph = None
         self._worker_slots = OrderedDict(worker_slots)
         self._op_states = op_states or dict()
         self._lost_chunks = lost_chunks or []
@@ -205,6 +205,9 @@ class GraphAnalyzer(object):
             if (n.op.reassign_worker or not graph.predecessors(n)) \
                     and n.op.key not in fixed_assigns:
                 chunks_to_assign.append(n)
+            elif n.op.expect_worker is not None:
+                # force to assign to a worker
+                chunks_to_assign.append(n)
         random.shuffle(chunks_to_assign)
 
         # note that different orders can contribute to different efficiency
@@ -245,10 +248,10 @@ class GraphAnalyzer(object):
             return
 
         graph = graph or self._graph
-        if self._undigraph is None:
-            undigraph = self._undigraph = graph.build_undirected()
+        if self._assign_graph is None:
+            undigraph = self._assign_graph = graph.build_undirected()
         else:
-            undigraph = self._undigraph
+            undigraph = self._assign_graph
 
         assigned = 0
         spread_range = 0
@@ -278,14 +281,18 @@ class GraphAnalyzer(object):
         graph = self._graph
         op_states = self._op_states
         cur_assigns = OrderedDict(self._fixed_assigns)
+        expect_workers = dict()
 
         key_to_chunks = defaultdict(list)
         for n in graph:
             key_to_chunks[n.op.key].append(n)
+            if n.op.expect_worker is not None:
+                expect_workers[n.op.key] = cur_assigns[n.op.key] = n.op.expect_worker
 
         descendant_readies = set()
         op_keys = set(op_keys)
-        chunks_to_assign = [key_to_chunks[k][0] for k in op_keys]
+        requested_chunks = [key_to_chunks[k][0] for k in op_keys]
+        chunks_to_assign = [c for c in requested_chunks if c.op.expect_worker is None]
 
         if any(graph.count_predecessors(c) for c in chunks_to_assign):
             graph = graph.copy()
@@ -358,21 +365,9 @@ class GraphAnalyzer(object):
             self._assign_by_bfs(cur, worker, worker_quotas, spread_ranges, op_keys,
                                 cur_assigns, graph=graph)
 
-        # FIXME: force to assign vineyard source/sink ops to their `expect_worker` even when
-        # the worker has an input.
-        # The special case should be fixed by respecting the `expect_worker` attribute of an
-        # op, regardless it has inputs or not.
-        #
-        # See also: "TODO refine this to support mixed scenarios here" in graph.py.
-        keys_to_assign = {n.op.key: n.op for n in chunks_to_assign}
-        assignments = OrderedDict()
-        for k, v in cur_assigns.items():
-            if k in keys_to_assign:
-                if keys_to_assign[k].expect_worker is not None and \
-                        'Vineyard' in type(keys_to_assign[k]).__name__:
-                    assignments[k] = keys_to_assign[k].expect_worker
-                else:
-                    assignments[k] = v
+        keys_to_assign = {n.op.key: n.op for n in requested_chunks}
+        assignments = {k: v for k, v in cur_assigns.items() if k in keys_to_assign}
+        assignments.update({k: v for k, v in expect_workers.items() if k in keys_to_assign})
         return assignments
 
     def analyze_state_changes(self):
