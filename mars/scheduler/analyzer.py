@@ -250,12 +250,6 @@ class GraphAnalyzer(object):
         graph = graph or self._graph
         if self._assign_graph is None:
             undigraph = self._assign_graph = graph.build_undirected()
-
-            for n in undigraph:
-                if n.op.reassign_worker:
-                    for succ in self._graph.iter_successors(n):
-                        undigraph.remove_edge(n, succ)
-                        undigraph.remove_edge(succ, n)
         else:
             undigraph = self._assign_graph
 
@@ -287,14 +281,18 @@ class GraphAnalyzer(object):
         graph = self._graph
         op_states = self._op_states
         cur_assigns = OrderedDict(self._fixed_assigns)
+        expect_workers = dict()
 
         key_to_chunks = defaultdict(list)
         for n in graph:
             key_to_chunks[n.op.key].append(n)
+            if n.op.expect_worker is not None:
+                expect_workers[n.op.key] = cur_assigns[n.op.key] = n.op.expect_worker
 
         descendant_readies = set()
         op_keys = set(op_keys)
-        chunks_to_assign = [key_to_chunks[k][0] for k in op_keys]
+        requested_chunks = [key_to_chunks[k][0] for k in op_keys]
+        chunks_to_assign = [c for c in requested_chunks if c.op.expect_worker is None]
 
         if any(graph.count_predecessors(c) for c in chunks_to_assign):
             graph = graph.copy()
@@ -367,14 +365,9 @@ class GraphAnalyzer(object):
             self._assign_by_bfs(cur, worker, worker_quotas, spread_ranges, op_keys,
                                 cur_assigns, graph=graph)
 
-        keys_to_assign = {n.op.key: n.op for n in chunks_to_assign}
-        assignments = OrderedDict()
-        for k, v in cur_assigns.items():
-            if k in keys_to_assign:
-                if keys_to_assign[k].expect_worker is not None:
-                    assignments[k] = keys_to_assign[k].expect_worker
-                else:
-                    assignments[k] = v
+        keys_to_assign = {n.op.key: n.op for n in requested_chunks}
+        assignments = {k: v for k, v in cur_assigns.items() if k in keys_to_assign}
+        assignments.update({k: v for k, v in expect_workers.items() if k in keys_to_assign})
         return assignments
 
     def analyze_state_changes(self):

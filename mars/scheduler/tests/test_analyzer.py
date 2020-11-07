@@ -14,8 +14,12 @@
 
 import unittest
 
+import numpy as np
+
 import mars.tensor as mt
+from mars.scheduler import OperandState
 from mars.scheduler.analyzer import GraphAnalyzer
+from mars.scheduler.chunkmeta import WorkerMeta
 from mars.graph import DAG
 
 
@@ -83,33 +87,47 @@ class Test(unittest.TestCase):
         self.assertListEqual(ext_chunks[n3.op.key], [n2.key])
         self.assertEqual(len(analyzer.collect_external_input_chunks(initial=True)), 0)
 
-    def testFullInitialAssign(self):
-        import numpy as np
+    @staticmethod
+    def _build_chunk_dag(node_str, edge_str):
         from mars.tensor.random import TensorRandint
         from mars.tensor.arithmetic import TensorTreeAdd
 
-        graph = DAG()
+        char_dag = DAG()
+        for s in node_str.split(','):
+            char_dag.add_node(s.strip())
+        for s in edge_str.split(','):
+            l, r = s.split('->')
+            char_dag.add_edge(l.strip(), r.strip())
 
+        chunk_dag = DAG()
+        str_to_chunk = dict()
+        for s in char_dag.topological_iter():
+            if char_dag.count_predecessors(s):
+                c = TensorTreeAdd(_key=s, dtype=np.float32()).new_chunk(None, shape=(10, 10))
+                inputs = c.op._inputs = [str_to_chunk[ps] for ps in char_dag.predecessors(s)]
+            else:
+                c = TensorRandint(_key=s, dtype=np.float32()).new_chunk(None, shape=(10, 10))
+                inputs = []
+            str_to_chunk[s] = c
+            chunk_dag.add_node(c)
+            for inp in inputs:
+                chunk_dag.add_edge(inp, c)
+        return chunk_dag, str_to_chunk
+
+    def testFullInitialAssign(self):
         r"""
         Proper initial allocation should divide the graph like
 
-        U   U U   U  |  U   U U   U  |  U   U U   U
+        0   1 2   3  |  4   5 6   7  |  8   9 10 11
          \ /   \ /   |   \ /   \ /   |   \ /   \ /
-          U     U    |    U     U    |    U     U
+         12    13    |   14    15    |   16    17
         """
-
-        inputs = [
-            tuple(TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(2))
-            for _ in range(6)
-        ]
-        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(6)]
-        for inp, r in zip(inputs, results):
-            r.op._inputs = list(inp)
-
-            graph.add_node(r)
-            for n in inp:
-                graph.add_node(n)
-                graph.add_edge(n, r)
+        graph, str_to_chunk = self._build_chunk_dag(
+            '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17',
+            '0 -> 12, 1 -> 12, 2 -> 13, 3 -> 13, 4 -> 14, 5 -> 14, 6 -> 15, 7 -> 15, '
+            '8 -> 16, 9 -> 16, 10 -> 17, 11 -> 17'
+        )
+        inputs = [(str_to_chunk[str(i)], str_to_chunk[str(i + 1)]) for i in range(0, 12, 2)]
 
         analyzer = GraphAnalyzer(graph, dict(w1=24, w2=24, w3=24))
         assignments = analyzer.calc_operand_assignments(analyzer.get_initial_operand_keys())
@@ -117,66 +135,34 @@ class Test(unittest.TestCase):
             self.assertEqual(1, len(set(assignments[n.op.key] for n in inp)))
 
     def testSameKeyAssign(self):
-        import numpy as np
-        from mars.tensor.random import TensorRandint
-        from mars.tensor.arithmetic import TensorTreeAdd
-
-        graph = DAG()
-
         r"""
         Proper initial allocation should divide the graph like
 
-         U   U   |   U   U   |   U   U
+         0   1   |   2   3   |   4   5
         | | | |  |  | | | |  |  | | | |
-         U   U   |   U   U   |   U   U
+        6   7    |  8   9    |  10  11
         """
-
-        inputs = [
-            tuple(TensorRandint(_key=str(i), dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(2))
-            for i in range(6)
-        ]
-        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(6)]
-        for inp, r in zip(inputs, results):
-            r.op._inputs = list(inp)
-
-            graph.add_node(r)
-            for n in inp:
-                graph.add_node(n)
-                graph.add_edge(n, r)
-
+        graph, _ = self._build_chunk_dag(
+            '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11',
+            '0 -> 6, 0 -> 6, 1 -> 7, 1 -> 7, 2 -> 8, 2 -> 8, 3 -> 9, 3 -> 9, '
+            '4 -> 10, 4 -> 10, 5 -> 11, 5 -> 11'
+        )
         analyzer = GraphAnalyzer(graph, dict(w1=24, w2=24, w3=24))
         assignments = analyzer.calc_operand_assignments(analyzer.get_initial_operand_keys())
         self.assertEqual(len(assignments), 6)
 
     def testAssignWithPreviousData(self):
-        import numpy as np
-        from mars.scheduler.chunkmeta import WorkerMeta
-        from mars.tensor.random import TensorRandint
-        from mars.tensor.arithmetic import TensorTreeAdd
-
-        graph = DAG()
-
         r"""
         Proper initial allocation should divide the graph like
 
-         U   U  |  U   U  |  U   U
+         0   1  |  2   3  |  4   5
           \ /   |   \ /   |   \ /
-           U    |    U    |    U
+           6    |    7    |    8
         """
-
-        inputs = [
-            tuple(TensorRandint(_key=str(i * 2 + j), dtype=np.float32()).new_chunk(
-                None, shape=(10, 10)) for j in range(2))
-            for i in range(3)
-        ]
-        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(3)]
-        for inp, r in zip(inputs, results):
-            r.op._inputs = list(inp)
-
-            graph.add_node(r)
-            for n in inp:
-                graph.add_node(n)
-                graph.add_edge(n, r)
+        graph, _ = self._build_chunk_dag(
+            '0, 1, 2, 3, 4, 5, 6, 7, 8',
+            '0 -> 6, 1 -> 6, 2 -> 7, 3 -> 7, 4 -> 8, 5 -> 8'
+        )
 
         # assign with partial mismatch
         data_dist = {
@@ -250,41 +236,52 @@ class Test(unittest.TestCase):
             [c.op.key for c in graph.successors(shuffle_proxy_chunk)])
         self.assertSetEqual(set(assignments.values()), set(worker_res))
 
+    def testAssignWithExpectWorkers(self):
+        r"""
+        0   1   2   3   4   5
+        | x |   | x |   | x |
+        6   7E  8E  9E  10E 11
+        | x | x | x | x | x |
+        12  13  14  15  16  17
+        """
+        graph, str_to_chunk = self._build_chunk_dag(
+            '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17',
+            '0 -> 6, 0 -> 7, 1 -> 6, 1 -> 7, 2 -> 8, 2 -> 9, 3 -> 8, 3 -> 9, '
+            '4 -> 10, 4 -> 11, 5 -> 10, 5 -> 11, 6 -> 12, 6 -> 13, 7 -> 12, 7 -> 13, 7 -> 14, '
+            '8 -> 13, 8 -> 14, 8 -> 15, 9 -> 14, 9 -> 15, 9 -> 16, 10 -> 15, 10 -> 16, 10 -> 17, '
+            '11 -> 16, 11 -> 17'
+        )
+
+        worker_res = dict(w1=24, w2=24, w3=24, w4=24)
+
+        expects = {str(n): f'w{n - 6}' for n in range(7, 11)}
+        for key, worker in expects.items():
+            str_to_chunk[key].op._expect_worker = worker
+
+        analyzer = GraphAnalyzer(graph, worker_res)
+        assignments = analyzer.calc_operand_assignments(analyzer.get_initial_operand_keys())
+        self.assertSetEqual(set(assignments.values()), set(worker_res))
+        self.assertLessEqual(set(expects.items()), set(assignments.items()))
+
     def testAssignOnWorkerAdd(self):
-        import numpy as np
-        from mars.scheduler import OperandState
-        from mars.tensor.random import TensorRandint
-        from mars.tensor.arithmetic import TensorTreeAdd
-
-        graph = DAG()
-
         r"""
         Proper initial allocation should divide the graph like
 
-        F   F R   R  |  F   F R   R  |  R   R R   R
-        | x | | x |  |  | x | | x |  |  | x | | x |
-        R   R U   U  |  R   R U   U  |  U   U U   U
+        0F  1F  2R  3R   |  4F  5F  6R  7R  |  8R  9R  10R 11R
+        | x |   | x |    |  | x |   | x |   |  | x |   | x |
+        12R 13R 14U 15U  |  16R 17R 18U 19U |  20U 21U 22U 23U
 
         U: UNSCHEDULED  F: FINISHED  R: READY
         """
-
-        inputs = [
-            tuple(TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(2))
-            for _ in range(6)
-        ]
-        results = [
-            tuple(TensorTreeAdd(_key=f'{i}_{j}', dtype=np.float32()).new_chunk(None, shape=(10, 10))
-                  for j in range(2)) for i in range(6)
-        ]
-        for inp, outp in zip(inputs, results):
-            for o in outp:
-                o.op._inputs = list(inp)
-                graph.add_node(o)
-
-            for n in inp:
-                graph.add_node(n)
-                for o in outp:
-                    graph.add_edge(n, o)
+        graph, str_to_chunk = self._build_chunk_dag(
+            '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, '
+            '19, 20, 21, 22, 23',
+            '0 -> 12, 0 -> 13, 1 -> 12, 1 -> 13, 2 -> 14, 2 -> 15, 3 -> 14, 3 -> 15, '
+            '4 -> 16, 4 -> 17, 5 -> 16, 5 -> 17, 6 -> 18, 6 -> 19, 7 -> 18, 7 -> 19, '
+            '8 -> 20, 8 -> 21, 9 -> 20, 9 -> 21, 10 -> 22, 10 -> 23, 11 -> 22, 11 -> 23'
+        )
+        inputs = [(str_to_chunk[str(i)], str_to_chunk[str(i + 1)]) for i in range(0, 12, 2)]
+        results = [(str_to_chunk[str(i)], str_to_chunk[str(i + 1)]) for i in range(12, 24, 2)]
 
         # mark initial assigns
         fixed_assigns = dict()
@@ -316,43 +313,25 @@ class Test(unittest.TestCase):
         self.assertEqual(4, worker_assigns['w3'])
 
     def testAssignOnWorkerLost(self):
-        import numpy as np
-        from mars.scheduler import OperandState
-        from mars.tensor.random import TensorRandint
-        from mars.tensor.arithmetic import TensorTreeAdd
-
-        graph = DAG()
-
         r"""
         Proper initial allocation should divide the graph like
 
-        FL  FL F   F R   R  |  FL  FL F   F R   R
-        | x |  | x | | x |  |  | x |  | x | | x |
-        R   R  R   R U   U  |  R   R  R   R U   U
+        0FL 1FL 2F  3F  4R  5R  | 6FL 7FL 8F  9F  10R 11R
+        | x |   | x |   | x |   | | x |   | x |   | x |
+        12R 13R 14R 15R 16U 17U | 18R 19R 20R 21R 22U 23U
 
         U: UNSCHEDULED  F: FINISHED  R: READY  L: LOST
         """
-
         op_states = dict()
-        inputs = [
-            tuple(TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(2))
-            for _ in range(6)
-        ]
-        results = [
-            tuple(TensorTreeAdd(_key=f'{i}_{j}', dtype=np.float32()).new_chunk(None, shape=(10, 10))
-                  for j in range(2)) for i in range(6)
-        ]
-        for inp, outp in zip(inputs, results):
-            for o in outp:
-                o.op._inputs = list(inp)
-                op_states[o.op.key] = OperandState.UNSCHEDULED
-                graph.add_node(o)
-
-            for n in inp:
-                op_states[n.op.key] = OperandState.UNSCHEDULED
-                graph.add_node(n)
-                for o in outp:
-                    graph.add_edge(n, o)
+        graph, str_to_chunk = self._build_chunk_dag(
+            '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, '
+            '19, 20, 21, 22, 23',
+            '0 -> 12, 0 -> 13, 1 -> 12, 1 -> 13, 2 -> 14, 2 -> 15, 3 -> 14, 3 -> 15, '
+            '4 -> 16, 4 -> 17, 5 -> 16, 5 -> 17, 6 -> 18, 6 -> 19, 7 -> 18, 7 -> 19, '
+            '8 -> 20, 8 -> 21, 9 -> 20, 9 -> 21, 10 -> 22, 10 -> 23, 11 -> 22, 11 -> 23'
+        )
+        inputs = [(str_to_chunk[str(i)], str_to_chunk[str(i + 1)]) for i in range(0, 12, 2)]
+        results = [(str_to_chunk[str(i)], str_to_chunk[str(i + 1)]) for i in range(12, 24, 2)]
 
         fixed_assigns = dict()
         for idx in range(4):
