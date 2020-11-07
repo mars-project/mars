@@ -110,6 +110,7 @@ class WorkerService(object):
 
         self._total_mem = kwargs.pop('total_mem', None)
         self._cache_mem_limit = kwargs.pop('cache_mem_limit', None)
+        self._cache_mem_scale = float(kwargs.pop('cache_mem_scale', None) or 1)
         self._soft_mem_limit = kwargs.pop('soft_mem_limit', None) or '80%'
         self._hard_mem_limit = kwargs.pop('hard_mem_limit', None) or '90%'
         self._ignore_avail_mem = kwargs.pop('ignore_avail_mem', None) or False
@@ -174,6 +175,7 @@ class WorkerService(object):
         plasma_limit = self._get_plasma_limit()
         if plasma_limit is not None:
             self._cache_mem_limit = min(plasma_limit, self._cache_mem_limit)
+        self._cache_mem_limit = int(self._cache_mem_limit * self._cache_mem_scale)
 
         self._soft_mem_limit = _calc_size_limit(self._soft_mem_limit, self._total_mem)
         actual_used = self._total_mem - mem_stats.available
@@ -250,8 +252,10 @@ class WorkerService(object):
         self._storage_manager_ref = pool.create_actor(
             StorageManagerActor, uid=StorageManagerActor.default_uid())
         # create SharedHolderActor
-        self._shared_holder_ref = pool.create_actor(
-            SharedHolderActor, self._cache_mem_limit, uid=SharedHolderActor.default_uid())
+        start_timeout = int(os.environ.get('MARS_SHARED_HOLDER_START_TIMEOUT', None) or 60)
+        start_future = pool.create_actor(
+            SharedHolderActor, self._cache_mem_limit, uid=SharedHolderActor.default_uid(), wait=False)
+        self._shared_holder_ref = start_future.result(start_timeout)
         # create DispatchActor
         self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         # create EventsActor
