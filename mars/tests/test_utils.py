@@ -410,3 +410,9 @@ class Test(unittest.TestCase):
         self.assertEqual(ref_bio.read(5), fix_bio.read(5))
         self.assertEqual(ref_bio.readlines(25), fix_bio.readlines(25))
         self.assertEqual(list(ref_bio), list(fix_bio))
+
+    def testTimer(self):
+        with utils.Timer() as timer:
+            time.sleep(0.1)
+
+        self.assertGreaterEqual(timer.duration, 0.1)

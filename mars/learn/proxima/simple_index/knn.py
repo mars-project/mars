@@ -16,9 +16,9 @@ import random
 
 import pandas as pd
 
-import mars.dataframe as md
-import mars.tensor as mt
-from mars.learn.proxima.simple_index import build_index, search_index
+from .... import dataframe as md
+from .... import tensor as mt
+from . import build_index, search_index
 
 
 def sample_data(query, sample_count=10000):
