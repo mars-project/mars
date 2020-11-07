@@ -22,7 +22,8 @@ import pandas as pd
 import mars.dataframe as md
 import mars.tensor as mt
 from mars.learn.proxima.core import proxima
-from mars.learn.proxima.simple_index import build_index, search_index
+from mars.learn.proxima.simple_index import build_index, search_index, recall
+from mars.learn.proxima.simple_index.knn import build_and_search
 from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 
@@ -133,7 +134,7 @@ class Test(unittest.TestCase):
         doc = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
         query = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-        index = build_index(tensor=doc, pk=mt.tensor(doc.index, dtype=np.uint64), need_shuffle=False,
+        index = build_index(tensor=doc, need_shuffle=False,
                             distance_metric=measure_name, dimension=dimension,
                             index_builder=index_builder, index_builder_params=builder_params,
                             index_converter=index_converter, index_converter_params=index_converter_params,
@@ -216,9 +217,9 @@ class Test(unittest.TestCase):
     def testBuildAndSearchIndexWithFilesystem(self):
         with tempfile.TemporaryDirectory() as f:
             # params
-            doc_count, query_count, dimension = 200, 15, 10
+            doc_count, query_count, dimension = 2000, 15, 10
             topk = 10
-            doc_chunk, query_chunk = 50, 5
+            doc_chunk, query_chunk = 1000, 5
 
             # data
             doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
@@ -226,7 +227,7 @@ class Test(unittest.TestCase):
             df = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
             q = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-            index = build_index(df, df.index, index_path=f)
+            index = build_index(df, index_path=f)
 
             self.assertGreater(len(os.listdir(f)), 0)
 
@@ -238,3 +239,19 @@ class Test(unittest.TestCase):
             # testing
             np.testing.assert_array_equal(pk_p, pk_m)
             np.testing.assert_array_equal(distance_p, distance_m)
+
+    def testRecall(self):
+        # params
+        doc_count, query_count, dimension = 2000, 150, 20
+        topk = 100
+        doc_chunk, query_chunk = 1000, 50
+        sample_count = 100
+
+        # data
+        doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+
+        # proxima_data
+        pk_p, distance_p = build_and_search(doc, query, dimension=dimension, topk=topk, threads=5,
+                                            doc_chunk=doc_chunk, query_chunk=query_chunk)
+
+        self.assertIsInstance(recall(doc, query, topk, sample_count, pk_p, distance_p), dict)

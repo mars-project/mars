@@ -216,8 +216,7 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
             self._faiss_index = faiss_index
         elif self._fit_method == 'proxima':  # pragma: no cover
             proxima_metric = METRIC_TO_PROXIMA_METRIC_TYPE[self.effective_metric_]
-            proxima_index = build_proxima_index(X, mt.arange(len(X), dtype=np.uint64),
-                                                distance_metric=proxima_metric,
+            proxima_index = build_proxima_index(X, distance_metric=proxima_metric,
                                                 topk=self.n_neighbors,
                                                 session=session, run_kwargs=run_kwargs,
                                                 **self.effective_metric_params_)

@@ -53,7 +53,7 @@ class Test(LearnIntegrationTestBase):
             df = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
             q = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-            index = build_index(df, df.index, session=sess)
+            index = build_index(df, session=sess)
 
             # proxima_data
             pk_p, distance_p = proxima_build_and_query(doc, query, topk)

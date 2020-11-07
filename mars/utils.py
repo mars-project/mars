@@ -1130,3 +1130,13 @@ def enter_current_session(func):
         return result
 
     return wrapped
+
+
+class Timer:
+    def __enter__(self):
+        self._start = time.time()
+        return self
+
+    def __exit__(self, *_):
+        end = time.time()
+        self.duration = end - self._start

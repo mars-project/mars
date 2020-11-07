@@ -14,6 +14,7 @@
 
 import itertools
 import logging
+import os
 import pickle  # nosec  # pylint: disable=import_pickle
 import tempfile
 
@@ -29,7 +30,7 @@ from ....serialize import KeyField, StringField, Int32Field, DictField, AnyField
 from ....tensor.core import TensorOrder
 from ....tensor.merge.concatenate import TensorConcatenate
 from ....tiles import TilesError
-from ....utils import check_chunks_unknown_shape
+from ....utils import check_chunks_unknown_shape, Timer
 from ...operands import LearnOperand, LearnOperandMixin
 from ..core import proxima, validate_tensor
 
@@ -249,22 +250,27 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             index_path = ctx[op.index.key]
         else:
             check_expect_worker = False
-            index_path = op.index
+            raw_index_path = index_path = op.index
 
-            fs = get_fs(index_path, op.storage_options)
-            local_path = tempfile.mkstemp(prefix='proxima-', suffix='.index')[1]
-            with open(local_path, 'wb') as out_f:
-                with fs.open(index_path, 'rb') as in_f:
-                    # 32M
-                    chunk_bytes = 32 * 1024 ** 2
-                    while True:
-                        data = in_f.read(chunk_bytes)
-                        if data:
-                            out_f.write(data)
-                        else:
-                            break
+            with Timer() as timer:
+                fs = get_fs(index_path, op.storage_options)
+                local_path = tempfile.mkstemp(prefix='proxima-', suffix='.index')[1]
+                with open(local_path, 'wb') as out_f:
+                    with fs.open(index_path, 'rb') as in_f:
+                        # 32M
+                        chunk_bytes = 32 * 1024 ** 2
+                        while True:
+                            data = in_f.read(chunk_bytes)
+                            if data:
+                                out_f.write(data)
+                            else:
+                                break
 
-            index_path = local_path
+                index_path = local_path
+
+            logger.warning(f'ReadingFromVolume({op.key}), index path: {raw_index_path} '
+                           f'size {os.path.getsize(index_path)}, '
+                           f'costs {timer.duration} seconds')
 
         if hasattr(ctx, 'running_mode') and \
                 ctx.running_mode == RunningMode.distributed and check_expect_worker:
@@ -277,21 +283,27 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                     f'the worker({curr_worker}) to execute should be identical ' \
                     f'to the worker({expect_worker}) where built index'
 
-        flow = proxima.IndexFlow(container_name='FileContainer', container_params={},
-                                 searcher_name=op.index_searcher, searcher_params=op.index_searcher_params,
-                                 measure_name=op.distance_metric, measure_params={},
-                                 reformer_name=op.index_reformer, reformer_params=op.index_reformer_params
-                                 )
-        flow.load(index_path)
-        vecs = np.ascontiguousarray(inp)
+        with Timer() as timer:
+            flow = proxima.IndexFlow(container_name='FileContainer', container_params={},
+                                     searcher_name=op.index_searcher, searcher_params=op.index_searcher_params,
+                                     measure_name=op.distance_metric, measure_params={},
+                                     reformer_name=op.index_reformer, reformer_params=op.index_reformer_params
+                                     )
+            flow.load(index_path)
+            vecs = np.ascontiguousarray(inp)
+
+        logger.warning(f'LoadIndex({op.key}) costs {timer.duration} seconds')
 
         logger.warning(f"threads count:{op.threads}")
         logger.warning(f"vecs count:{len(vecs)}")
 
-        result_pks, result_distances = proxima.IndexUtility.ann_search(searcher=flow,
-                                                                       query=vecs,
-                                                                       topk=op.topk,
-                                                                       threads=op.threads)
+        with Timer() as timer:
+            result_pks, result_distances = proxima.IndexUtility.ann_search(searcher=flow,
+                                                                           query=vecs,
+                                                                           topk=op.topk,
+                                                                           threads=op.threads)
+
+        logger.warning(f'Search({op.key}) costs {timer.duration} seconds')
 
         ctx[op.outputs[0].key] = np.asarray(result_pks)
         ctx[op.outputs[1].key] = np.asarray(result_distances)
