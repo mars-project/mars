@@ -499,10 +499,13 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
             vol_cfg = HostPathVolumeConfig('shm-volume', '/dev/shm', vol_host_path, 'Directory')
             self.add_volume(vol_cfg)
             self.add_env('MARS_MOUNT_HOST_SHM', '1')
+
         if worker_cache_mem:
             self.add_env('MARS_CACHE_MEM_SIZE', worker_cache_mem)
         if min_cache_mem:
             self.add_env('MARS_MIN_CACHE_MEM_SIZE', min_cache_mem)
+            if worker_cache_mem:
+                self.add_env('MARS_CACHE_MEM_SCALE', 0.8)
 
     def config_readiness_probe(self):
         readiness_cmd = [

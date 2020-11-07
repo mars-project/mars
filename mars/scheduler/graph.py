@@ -1332,11 +1332,14 @@ class GraphActor(SchedulerActor):
             return
 
         if not options.scheduler.enable_failover:
-            logger.exception('Failed as worker dead and fail-over not enabled.')
-            self._graph_meta_ref.set_exc_info(build_exc_info(WorkerDead), _tell=True, _wait=False)
-            self.stop_graph()
-            self.state = GraphState.FAILED
-            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
+            if removes:
+                logger.exception('Failed as worker dead and fail-over not enabled.')
+                self._graph_meta_ref.set_exc_info(build_exc_info(WorkerDead), _tell=True, _wait=False)
+                self.stop_graph()
+                self.state = GraphState.FAILED
+                self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
+            else:  # pragma: no cover
+                logger.warning('New workers added. Existing operands will not be rescheduled.')
             return
 
         worker_slots = self._get_worker_slots()
