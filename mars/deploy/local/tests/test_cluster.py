@@ -261,11 +261,13 @@ class Test(unittest.TestCase):
             self.assertTrue(np.isscalar(res))
             self.assertLess(res, 10)
 
-            t = mt.random.rand(10)
-            r = t.sum() * 4 - 1
+            raw = np.random.rand(10)
+            t = mt.tensor(raw)
+            r = (mt.linalg.norm(t) * 4 - 1).sum()
 
             res = r.to_numpy()
-            self.assertLess(res, 39)
+            expected = (np.linalg.norm(raw) * 4 - 1).sum()
+            np.testing.assert_array_almost_equal(res, expected)
 
     def testMultipleOutputTensorExecute(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
