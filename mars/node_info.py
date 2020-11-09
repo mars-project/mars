@@ -20,6 +20,7 @@ import sys
 import time
 
 from . import resource
+from .config import options
 from .utils import git_info, lazy_import
 
 try:
@@ -64,6 +65,7 @@ def gather_node_info():
         'memory_used': mem_stats.used,
         'memory_total': mem_stats.total,
         'update_time': time.time(),
+        'options': options.to_dict(),
     }
 
     if 'MARS_K8S_POD_NAME' in os.environ:
