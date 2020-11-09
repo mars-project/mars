@@ -894,6 +894,8 @@ class ExecutionActor(WorkerActor):
         except KeyError:
             return
 
+        self.deallocate_scheduler_resource(session_id, graph_key)
+
         mem_quota_keys = tuple(graph_record.mem_request.keys())
         self._mem_quota_ref.cancel_requests(mem_quota_keys, _tell=True)
         if graph_record.mem_request:
