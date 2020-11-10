@@ -28,10 +28,10 @@ class Test(unittest.TestCase):
 
     def testServiceArgs(self):
         svc = WorkerService(ignore_avail_mem=True)
-        self.assertGreaterEqual(svc._cache_mem_limit, 0)
+        self.assertGreaterEqual(svc._cache_mem_size, 0)
         self.assertIsInstance(svc._soft_mem_limit, int)
         self.assertIsInstance(svc._hard_mem_limit, int)
-        self.assertIsInstance(svc._cache_mem_limit, int)
+        self.assertIsInstance(svc._cache_mem_size, int)
 
         svc = WorkerService(ignore_avail_mem=True, total_mem=256 * 1024 * 1024)
         self.assertEqual(svc._total_mem, 256 * 1024 ** 2)

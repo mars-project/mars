@@ -14,10 +14,13 @@
 
 import logging
 
+import psutil
+
 from ...actors import FunctionActor
+from ...config import options
 from ...errors import StorageFull, StorageDataExists, SerializationFailed
 from ...serialize import dataserializer
-from ...utils import lazy_import
+from ...utils import lazy_import, calc_size_by_str
 
 try:
     import pyarrow
@@ -99,6 +102,10 @@ class PlasmaSharedStore(object):
         self._mapper_ref = mapper_ref
         self._pool = mapper_ref.ctx.threadpool(1)
 
+        self._plasma_dir = options.worker.plasma_dir
+        self._plasma_limit = calc_size_by_str(
+            options.worker.plasma_limit, psutil.disk_usage(self._plasma_dir).used)
+
     def get_actual_capacity(self, store_limit):
         """
         Get actual capacity of plasma store
@@ -144,9 +151,17 @@ class PlasmaSharedStore(object):
             raise KeyError((session_id, data_key))
         return obj_id
 
+    def _check_plasma_limit(self, size):
+        if self._plasma_limit is not None:
+            used_size = psutil.disk_usage(self._plasma_dir).used
+            if used_size + size > self._plasma_limit:
+                raise plasma_errors.PlasmaStoreFull
+
     def create(self, session_id, data_key, size):
         obj_id = self._new_object_id(session_id, data_key)
         try:
+            self._check_plasma_limit(size)
+
             self._plasma_client.evict(size)
             buffer = self._plasma_client.create(obj_id, size)
             return buffer
@@ -238,7 +253,10 @@ class PlasmaSharedStore(object):
                 raise SerializationFailed(obj=value) from None
 
             del value
+
             data_size = serialized.total_bytes
+            self._check_plasma_limit(data_size)
+
             try:
                 buffer = self._plasma_client.create(obj_id, serialized.total_bytes)
                 stream = pyarrow.FixedSizeBufferWriter(buffer)
