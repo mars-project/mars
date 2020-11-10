@@ -312,3 +312,6 @@ class Test(unittest.TestCase):
                 if graph_meta_ref.get_state() in (GraphState.SUCCEEDED, GraphState.FAILED, GraphState.CANCELLED):
                     break
             self.assertEqual(graph_meta_ref.get_state(), GraphState.CANCELLED)
+
+            pool.sleep(1)
+            self.assertEqual(len(resource_ref.get_allocations()), 0)

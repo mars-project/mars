@@ -348,6 +348,7 @@ class OperandActor(BaseOperandActor):
     def submit_to_worker(self, worker, data_metas):
         # worker assigned, submit job
         if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
+            self._assigner_ref.remove_apply(self._op_key, _tell=True)
             self.start_operand()
             return
         if self.state == OperandState.RUNNING:
@@ -538,6 +539,7 @@ class OperandActor(BaseOperandActor):
             self.ref().free_data(state=OperandState.CANCELLED, _tell=True)
         elif self._last_state == OperandState.READY:
             self._assigned_workers = set()
+            self._assigner_ref.remove_apply(self._op_key, _tell=True)
             self.state = OperandState.CANCELLED
             self.ref().start_operand(OperandState.CANCELLED, _tell=True)
         else:

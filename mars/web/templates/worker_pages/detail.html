@@ -10,6 +10,7 @@
     <h2>Worker {{ worker_metrics['details']['host_name'] }}</h2>
     <ul class="nav nav-pills nav-justified">
         <li class="active"><a data-toggle="pill" role="tab" href="#worker-env">Environment</a></li>
+        <li><a data-toggle="pill" role="tab" href="#worker-cfg">Configurations</a></li>
         <li><a data-toggle="pill" role="tab" href="#worker-res">Resources</a></li>
         <li><a data-toggle="pill" role="tab" href="#worker-tasks">Tasks</a></li>
         <li><a data-toggle="pill" role="tab" href="#worker-slots">Slots</a></li>
@@ -72,6 +73,24 @@
                         <td>Packages</td>
                         <td><pre class="plain-pre">{{ worker_details['package_info'] }}</pre></td>
                     </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="worker-cfg" class="tab-pane fade">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Value</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for key, value in worker_details['options'].items() %}
+                        <tr>
+                            <td>{{ key }}</td>
+                            <td><pre class="plain-pre">{{ value }}</pre></td>
+                        </tr>
+                    {% endfor %}
                     </tbody>
                 </table>
             </div>

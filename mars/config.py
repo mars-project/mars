@@ -146,6 +146,17 @@ class AttributeDict(dict):
         else:
             self._setattr(key, value)
 
+    def to_dict(self):
+        d = dict()
+        for k, v in self.items():
+            if isinstance(v, AttributeDict):
+                d.update({k + '.' + sub_k: sub_v for sub_k, sub_v in v.to_dict().items()})
+            elif isinstance(v[0], Redirection):
+                continue
+            else:
+                d[k] = v[0]
+        return d
+
 
 class Config(object):
     def __init__(self, config=None):
@@ -241,6 +252,9 @@ class Config(object):
             for p in parts[:-1]:
                 cf = getattr(cf, p)
             setattr(cf, parts[-1], v)
+
+    def to_dict(self):
+        return self._config.to_dict()
 
 
 @contextlib.contextmanager
@@ -407,6 +421,9 @@ def _get_global_option():
 
 
 class OptionsProxy(object):
+    def __dir__(self):
+        return dir(_get_global_option())
+
     def __getattribute__(self, attr):
         return getattr(_get_global_option(), attr)
 

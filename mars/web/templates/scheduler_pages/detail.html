@@ -10,6 +10,7 @@
     <h2>Scheduler {{ scheduler_metrics['host_name'] }}</h2>
     <ul class="nav nav-pills nav-justified">
         <li class="active"><a data-toggle="pill" role="tab" href="#scheduler-env">Environment</a></li>
+        <li><a data-toggle="pill" role="tab" href="#scheduler-cfg">Configurations</a></li>
         <li><a data-toggle="pill" role="tab" href="#scheduler-res">Resources</a></li>
     </ul>
 {% endblock %}
@@ -51,6 +52,24 @@
                         <td>Python</td>
                         <td><pre class="plain-pre">{{ scheduler_metrics['sys_version'] }}</pre></td>
                     </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="scheduler-cfg" class="tab-pane fade">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Value</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for key, value in scheduler_metrics['options'].items() %}
+                        <tr>
+                            <td>{{ key }}</td>
+                            <td><pre class="plain-pre">{{ value }}</pre></td>
+                        </tr>
+                    {% endfor %}
                     </tbody>
                 </table>
             </div>

@@ -344,6 +344,10 @@ class BaseCalcActor(WorkerActor):
                   lambda *exc: self.tell_promise(callback, *exc, _accept=False)) \
             .then(_finalize)
 
+    def remove_cache(self, session_id, keys):
+        self.storage_client.delete(
+            session_id, keys, [self._calc_intermediate_device], _tell=True)
+
     def destroy_self(self):
         if self._executing_set:
             return

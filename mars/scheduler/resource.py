@@ -262,3 +262,6 @@ class ResourceActor(SchedulerActor):
             del self._worker_allocations[endpoint][session_id][op_key]
         except KeyError:
             pass
+
+    def get_allocations(self):
+        return self._worker_allocations

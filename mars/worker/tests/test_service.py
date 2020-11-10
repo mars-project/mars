@@ -45,16 +45,17 @@ class Test(unittest.TestCase):
         with self.assertRaises(MemoryError):
             WorkerService(min_cache_mem_size='1g', cache_mem_limit='256m')
 
-        svc = WorkerService(ignore_avail_mem=True, spill_dirs='/tmp/a')
+        svc = WorkerService(ignore_avail_mem=True, spill_dirs='/tmp/a', min_cache_mem_size=0)
         self.assertListEqual(svc._spill_dirs, ['/tmp/a'])
 
-        svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_net_process=2)
+        svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_net_process=2,
+                            min_cache_mem_size=0)
         self.assertEqual(svc.n_process, 7)
 
         svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_net_process=2,
-                            spill_dirs='/tmp/a')
+                            spill_dirs='/tmp/a', min_cache_mem_size=0)
         self.assertEqual(svc.n_process, 8)
 
         svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_net_process=2,
-                            spill_dirs=['/tmp/a', '/tmp/b'])
+                            spill_dirs=['/tmp/a', '/tmp/b'], min_cache_mem_size=0)
         self.assertEqual(svc.n_process, 8)
