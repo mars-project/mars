@@ -92,14 +92,21 @@ class WorkerService(object):
         else:
             self._spill_dirs = options.worker.spill_directory = []
 
-        options.worker.disk_compression = kwargs.pop('disk_compression', None) or \
-            options.worker.disk_compression
-        options.worker.transfer_compression = kwargs.pop('transfer_compression', None) or \
-            options.worker.transfer_compression
-        options.worker.io_parallel_num = kwargs.pop('io_parallel_num', None) or False
-        options.worker.recover_dead_process = not (kwargs.pop('disable_proc_recover', None) or False)
-        options.worker.write_shuffle_to_disk = kwargs.pop('write_shuffle_to_disk', None) or False
-        options.worker.min_cache_mem_size = kwargs.pop('min_cache_mem_size', None)
+        options.worker.disk_compression = kwargs.pop('disk_compression', None) \
+            or options.worker.disk_compression
+        options.worker.transfer_compression = kwargs.pop('transfer_compression', None) \
+            or options.worker.transfer_compression
+        options.worker.io_parallel_num = kwargs.pop('io_parallel_num', None) \
+            or options.worker.io_parallel_num
+        options.worker.recover_dead_process = not (kwargs.pop('disable_proc_recover', None)
+                                                   or not options.worker.recover_dead_process)
+        options.worker.write_shuffle_to_disk = kwargs.pop('write_shuffle_to_disk', None) \
+            or options.worker.write_shuffle_to_disk
+
+        min_cache_mem_size = kwargs.pop('min_cache_mem_size', None)
+        min_cache_mem_size = min_cache_mem_size if min_cache_mem_size is not None \
+            else options.worker.min_cache_mem_size
+        options.worker.min_cache_mem_size = min_cache_mem_size
 
         if distributed and options.custom_log_dir is None:
             # gen custom_log_dir for distributed only

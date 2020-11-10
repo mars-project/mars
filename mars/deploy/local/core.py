@@ -171,11 +171,12 @@ def gen_endpoint(address):
 
 
 def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
+    options_dict = kw.pop('options', None) or {}
+    options.update(options_dict)
+
     modules = kw.pop('modules', None) or []
     for m in modules:
         __import__(m, globals(), locals(), [])
-    options_dict = kw.pop('options', None) or {}
-    options.update(options_dict)
 
     cluster = LocalDistributedCluster(endpoint, n_process=n_process,
                                       shared_memory=shared_memory, **kw)
@@ -210,9 +211,11 @@ def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
     return process
 
 
-def _start_web(scheduler_address, ui_port, event):
+def _start_web(scheduler_address, ui_port, event, options_dict):
     import gevent.monkey
     gevent.monkey.patch_all(thread=False)
+
+    options.update(options_dict)
 
     from ...web import MarsWeb
 
@@ -225,10 +228,12 @@ def _start_web(scheduler_address, ui_port, event):
 
 def _start_web_process(scheduler_endpoint, web_endpoint):
     ui_port = int(web_endpoint.rsplit(':', 1)[1])
+    options_dict = options.to_dict()
 
     web_event = _mp_spawn_context.Event()
     web_process = _mp_spawn_context.Process(
-        target=_start_web, args=(scheduler_endpoint, ui_port, web_event), daemon=True)
+        target=_start_web, args=(scheduler_endpoint, ui_port, web_event, options_dict),
+        daemon=True)
     web_process.start()
 
     while True:
@@ -305,10 +310,9 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
         else:
             web_endpoint = gen_endpoint(web)
 
-    options_dict = kw.get('options', dict())
-    if options.custom_log_dir is not None:
-        options_dict['custom_log_dir'] = options.custom_log_dir
-        kw['options'] = options_dict
+    options_dict = options.to_dict()
+    options_dict.update(kw.get('options') or dict())
+    kw['options'] = options_dict
 
     process = _start_cluster_process(endpoint, n_process, shared_memory, **kw)
 
