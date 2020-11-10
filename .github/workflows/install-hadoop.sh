@@ -6,7 +6,7 @@ java -version
 sudo apt-get remove -yq yarn || true
 sudo apt-get install -yq ssh rsync
 
-VERSION=2.10.0
+VERSION=2.10.1
 HADOOP_URL="https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=hadoop/common/hadoop-$VERSION/hadoop-$VERSION.tar.gz"
 
 # download hadoop
