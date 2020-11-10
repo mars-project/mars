@@ -197,5 +197,15 @@ class ShuffleProxyActor(BaseOperandActor):
     def free_data(self, state=OperandState.FREED, check=True):
         pass
 
+    def _on_fatal(self):
+        if self._last_state == OperandState.FATAL:
+            return
+        futures = []
+        # set successors to FATAL
+        for k in self._succ_keys:
+            futures.append(self._get_operand_actor(k).stop_operand(
+                OperandState.FATAL, _tell=True, _wait=False))
+        [f.result() for f in futures]
+
 
 register_operand_class(ShuffleProxy, ShuffleProxyActor)

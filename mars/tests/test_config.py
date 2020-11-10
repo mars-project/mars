@@ -17,7 +17,7 @@
 import threading
 
 from mars.tests.core import TestBase
-from mars.config import options, option_context, is_integer, is_string
+from mars.config import options, option_context, is_integer, is_string, Config
 
 
 class Test(TestBase):
@@ -26,6 +26,8 @@ class Test(TestBase):
             _ = options.a.b.c
 
         options.register_option('c.d.e', 'a', is_string)
+        self.assertIn('c', dir(options))
+        self.assertIn('d', dir(options.c))
 
         try:
             with option_context() as ctx:
@@ -83,3 +85,18 @@ class Test(TestBase):
             b.join()
         finally:
             options.unregister_option('a.b.c')
+
+    def testConfigCopy(self):
+        cfg = Config()
+        cfg.register_option('a.b.c', 1)
+        cfg.redirect_option('a.c', 'a.b.c')
+
+        target_cfg = Config()
+        target_cfg.register_option('a.b.c', -1)
+        target_cfg.redirect_option('a.c', 'a.b.c')
+
+        src_cfg_dict = cfg.to_dict()
+        self.assertEqual(src_cfg_dict, {'a.b.c': 1})
+
+        target_cfg.update(src_cfg_dict)
+        self.assertEqual(target_cfg.a.b.c, 1)
