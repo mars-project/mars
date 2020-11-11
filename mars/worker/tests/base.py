@@ -85,7 +85,13 @@ class WorkerCase(unittest.TestCase):
         import pyarrow.plasma as plasma
         from mars import kvstore
 
-        cls._plasma_store = plasma.start_plasma_store(cls.plasma_storage_size)
+        if sys.platform == 'darwin':
+            options.worker.plasma_dir = '/tmp'
+        else:
+            options.worker.plasma_dir = '/dev/shm'
+
+        cls._plasma_store = plasma.start_plasma_store(
+            cls.plasma_storage_size, plasma_directory=options.worker.plasma_dir)
         cls.plasma_socket = options.worker.plasma_socket = cls._plasma_store.__enter__()[0]
 
         options.worker.spill_directory = cls.spill_dir

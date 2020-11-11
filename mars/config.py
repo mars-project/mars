@@ -386,6 +386,8 @@ default_options.register_option('worker.io_parallel_num', 1, validator=is_intege
 default_options.register_option('worker.recover_dead_process', True, validator=is_bool, serialize=True)
 default_options.register_option('worker.write_shuffle_to_disk', False, validator=is_bool, serialize=True)
 
+default_options.register_option('worker.plasma_dir', None, validator=(is_string, is_null))
+default_options.register_option('worker.plasma_limit', None, validator=(is_string, is_integer, is_null))
 default_options.register_option('worker.plasma_socket', '/tmp/plasma', validator=is_string)
 
 # optimization

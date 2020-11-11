@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 import uuid
 
 import numpy as np
 from numpy.testing import assert_allclose
 
-from mars.tests.core import create_actor_pool
+from mars.config import options
 from mars.errors import StorageDataExists, StorageFull, SerializationFailed
+from mars.tests.core import create_actor_pool
 from mars.utils import get_next_port
 from mars.worker.storage import PlasmaKeyMapActor
 from mars.worker.storage.sharedstore import PlasmaSharedStore
@@ -32,6 +34,7 @@ class Test(unittest.TestCase):
 
         store_size = 10 * 1024 ** 2
         test_addr = f'127.0.0.1:{get_next_port()}'
+        options.worker.plasma_dir = '/dev/shm' if os.path.exists('/dev/shm') else '/tmp'
         with plasma.start_plasma_store(store_size) as (sckt, _), \
                 create_actor_pool(n_process=1, address=test_addr) as pool:
             km_ref = pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
@@ -117,3 +120,7 @@ class Test(unittest.TestCase):
                 except StorageFull:
                     break
             del bufs
+
+            store._plasma_limit = 0
+            with self.assertRaises(StorageFull):
+                store.create(session_id, fake_data_key, store_size * 2)

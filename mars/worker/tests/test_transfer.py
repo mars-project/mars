@@ -16,6 +16,7 @@ import contextlib
 import multiprocessing
 import os
 import signal
+import sys
 import tempfile
 import time
 import uuid
@@ -168,6 +169,7 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
     from pyarrow import plasma
 
     options.worker.spill_directory = spill_dir
+    options.worker.plasma_dir = '/tmp' if sys.platform == 'darwin' else '/dev/shm'
     plasma_size = 1024 * 1024 * 10
 
     # don't use multiple with-statement as we need the options be forked
