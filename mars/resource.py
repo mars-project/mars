@@ -63,8 +63,6 @@ if not _shm_path:
 else:
     _shm_path = _shm_path[0]
 
-_host_shm_mounted = bool(int(os.environ.get('MARS_MOUNT_HOST_SHM', '0')))
-
 
 def _read_cgroup_stat_file():
     with open(CGROUP_MEM_STAT_FILE, 'r') as cg_file:
@@ -90,11 +88,8 @@ def virtual_memory():
         total = cgroup_mem_info['hierarchical_memory_limit']
         used = cgroup_mem_info['rss'] + cgroup_mem_info.get('swap', 0)
         if _shm_path:
-            if _host_shm_mounted:
-                used += cgroup_mem_info['cache']
-            else:
-                shm_stats = psutil.disk_usage(_shm_path)
-                used += shm_stats.used
+            shm_stats = psutil.disk_usage(_shm_path)
+            used += shm_stats.used
         available = free = total - used
         percent = 100.0 * (total - available) / total
         return _virt_memory_stat(total, available, percent, used, free)

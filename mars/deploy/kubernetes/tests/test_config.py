@@ -82,13 +82,11 @@ class Test(unittest.TestCase):
         volume_list = worker_config_dict['spec']['template']['spec']['volumes']
         volume_envs = dict((v['name'], v) for v in volume_list)
         self.assertIn('empty-dir', volume_envs)
-        self.assertEqual(volume_envs['shm-volume']['hostPath']['type'], 'Directory')
         self.assertEqual(volume_envs['host-path-vol-0']['hostPath']['path'], '/tmp/spill_vol')
 
         volume_mounts = dict((v['name'], v) for v in container_dict['volumeMounts'])
         self.assertEqual(volume_mounts['empty-dir']['mountPath'], '/tmp/empty')
         self.assertEqual(volume_mounts['host-path-vol-0']['mountPath'], '/mnt/hostpath0')
-        self.assertEqual(volume_mounts['shm-volume']['mountPath'], '/dev/shm')
 
         worker_config_dict = MarsWorkersConfig(
             4, cpu=2, memory=10 * 1024 ** 3, limit_resources=False,
