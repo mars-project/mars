@@ -121,7 +121,7 @@ class WorkerService(object):
             self._clear_custom_log_dir = False
 
         self._total_mem = kwargs.pop('total_mem', None)
-        self._cache_mem_size = kwargs.pop('cache_mem_limit', None)
+        self._cache_mem_size = kwargs.pop('cache_mem_size', None)
         self._cache_mem_scale = float(kwargs.pop('cache_mem_scale', None) or 1)
         self._soft_mem_limit = kwargs.pop('soft_mem_limit', None) or '80%'
         self._hard_mem_limit = kwargs.pop('hard_mem_limit', None) or '90%'
@@ -152,7 +152,7 @@ class WorkerService(object):
                + (1 if self._spill_dirs else 0)
 
     @staticmethod
-    def _get_plasma_limit():
+    def _get_plasma_size():
         fd = os.open(options.worker.plasma_dir, os.O_RDONLY)
         stats = os.fstatvfs(fd)
         os.close(fd)
@@ -175,9 +175,9 @@ class WorkerService(object):
         if self._cache_mem_size is None:
             self._cache_mem_size = mem_stats.free // 2
 
-        plasma_limit = self._get_plasma_limit()
-        if plasma_limit is not None:
-            self._cache_mem_size = min(plasma_limit, self._cache_mem_size)
+        plasma_size = self._get_plasma_size()
+        if plasma_size is not None:
+            self._cache_mem_size = min(plasma_size, self._cache_mem_size)
         self._cache_mem_size = int(self._cache_mem_size * self._cache_mem_scale)
 
         self._soft_mem_limit = calc_size_by_str(self._soft_mem_limit, self._total_mem)

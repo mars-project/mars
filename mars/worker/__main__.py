@@ -116,7 +116,7 @@ class WorkerApplication(BaseApplication):
             spill_dirs=self.args.spill_dir,
             io_parallel_num=self.args.io_parallel_num,
             total_mem=self.args.phy_mem,
-            cache_mem_limit=self.args.cache_mem,
+            cache_mem_size=self.args.cache_mem,
             cache_mem_scale=os.environ.get('MARS_CACHE_MEM_SCALE', 1),
             ignore_avail_mem=self.args.ignore_avail_mem,
             min_mem_size=self.args.min_mem,

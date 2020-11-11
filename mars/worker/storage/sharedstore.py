@@ -104,7 +104,7 @@ class PlasmaSharedStore(object):
 
         self._plasma_dir = options.worker.plasma_dir
         self._plasma_limit = calc_size_by_str(
-            options.worker.plasma_limit, psutil.disk_usage(self._plasma_dir).used)
+            options.worker.plasma_limit, psutil.disk_usage(self._plasma_dir).total)
 
     def get_actual_capacity(self, store_limit):
         """
