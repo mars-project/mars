@@ -111,6 +111,18 @@ def on_serialize_nsplits(value):
 _memory_size_indices = {'': 0, 'k': 1, 'm': 2, 'g': 3, 't': 4}
 
 
+def calc_size_by_str(value, total):
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    mem_limit, is_percent = parse_readable_size(value)
+    if is_percent:
+        return int(total * mem_limit)
+    else:
+        return int(mem_limit)
+
+
 def parse_readable_size(value):
     if isinstance(value, numbers.Number):
         return float(value), False

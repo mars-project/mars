@@ -21,7 +21,7 @@ import tempfile
 
 from .. import resource
 from ..config import options
-from ..utils import parse_readable_size, readable_size
+from ..utils import readable_size, calc_size_by_str
 from .calc import CpuCalcActor, CudaCalcActor
 from .custom_log import CustomLogFetchActor
 from .dispatcher import DispatchActor
@@ -108,6 +108,11 @@ class WorkerService(object):
             else options.worker.min_cache_mem_size
         options.worker.min_cache_mem_size = min_cache_mem_size
 
+        plasma_limit = kwargs.pop('plasma_limit', None)
+        plasma_limit = plasma_limit if plasma_limit is not None \
+            else options.worker.plasma_limit
+        options.worker.plasma_limit = plasma_limit
+
         if distributed and options.custom_log_dir is None:
             # gen custom_log_dir for distributed only
             options.custom_log_dir = tempfile.mkdtemp(prefix='mars-custom-log')
@@ -116,14 +121,22 @@ class WorkerService(object):
             self._clear_custom_log_dir = False
 
         self._total_mem = kwargs.pop('total_mem', None)
-        self._cache_mem_limit = kwargs.pop('cache_mem_limit', None)
+        self._cache_mem_size = kwargs.pop('cache_mem_size', None)
         self._cache_mem_scale = float(kwargs.pop('cache_mem_scale', None) or 1)
         self._soft_mem_limit = kwargs.pop('soft_mem_limit', None) or '80%'
         self._hard_mem_limit = kwargs.pop('hard_mem_limit', None) or '90%'
         self._ignore_avail_mem = kwargs.pop('ignore_avail_mem', None) or False
         self._min_mem_size = kwargs.pop('min_mem_size', None) or 128 * 1024 ** 2
 
-        self._plasma_dir = kwargs.pop('plasma_dir', None)
+        if sys.platform == 'win32':  # pragma: no cover
+            raise NotImplementedError('Mars worker cannot start under Windows')
+        elif sys.platform == 'darwin':
+            default_plasma_dir = '/tmp'
+        else:
+            default_plasma_dir = '/dev/shm'
+        options.worker.plasma_dir = kwargs.pop('plasma_dir', None) \
+            or options.worker.plasma_dir or default_plasma_dir
+
         self._use_ext_plasma_dir = kwargs.pop('use_ext_plasma_dir', None) or False
 
         self._soft_quota_limit = self._soft_mem_limit
@@ -138,15 +151,9 @@ class WorkerService(object):
         return 1 + self._n_cpu_process + self._n_cuda_process + self._n_net_process \
                + (1 if self._spill_dirs else 0)
 
-    def _get_plasma_limit(self):
-        if sys.platform == 'win32':  # pragma: no cover
-            return
-        elif sys.platform == 'darwin':
-            default_plasma_dir = '/tmp'
-        else:
-            default_plasma_dir = '/dev/shm'
-
-        fd = os.open(self._plasma_dir or default_plasma_dir, os.O_RDONLY)
+    @staticmethod
+    def _get_plasma_size():
+        fd = os.open(options.worker.plasma_dir, os.O_RDONLY)
         stats = os.fstatvfs(fd)
         os.close(fd)
         size = stats.f_bsize * stats.f_bavail
@@ -154,53 +161,42 @@ class WorkerService(object):
         return 8 * size // 10
 
     def _calc_memory_limits(self):
-        def _calc_size_limit(limit_str, total_size):
-            if limit_str is None:
-                return None
-            if isinstance(limit_str, int):
-                return limit_str
-            mem_limit, is_percent = parse_readable_size(limit_str)
-            if is_percent:
-                return int(total_size * mem_limit)
-            else:
-                return int(mem_limit)
-
         mem_stats = resource.virtual_memory()
 
         if self._total_mem:
-            self._total_mem = _calc_size_limit(self._total_mem, mem_stats.total)
+            self._total_mem = calc_size_by_str(self._total_mem, mem_stats.total)
         else:
             self._total_mem = mem_stats.total
 
-        self._min_mem_size = _calc_size_limit(self._min_mem_size, self._total_mem)
-        self._hard_mem_limit = _calc_size_limit(self._hard_mem_limit, self._total_mem)
+        self._min_mem_size = calc_size_by_str(self._min_mem_size, self._total_mem)
+        self._hard_mem_limit = calc_size_by_str(self._hard_mem_limit, self._total_mem)
 
-        self._cache_mem_limit = _calc_size_limit(self._cache_mem_limit, self._total_mem)
-        if self._cache_mem_limit is None:
-            self._cache_mem_limit = mem_stats.free // 2
+        self._cache_mem_size = calc_size_by_str(self._cache_mem_size, self._total_mem)
+        if self._cache_mem_size is None:
+            self._cache_mem_size = mem_stats.free // 2
 
-        plasma_limit = self._get_plasma_limit()
-        if plasma_limit is not None:
-            self._cache_mem_limit = min(plasma_limit, self._cache_mem_limit)
-        self._cache_mem_limit = int(self._cache_mem_limit * self._cache_mem_scale)
+        plasma_size = self._get_plasma_size()
+        if plasma_size is not None:
+            self._cache_mem_size = min(plasma_size, self._cache_mem_size)
+        self._cache_mem_size = int(self._cache_mem_size * self._cache_mem_scale)
 
-        self._soft_mem_limit = _calc_size_limit(self._soft_mem_limit, self._total_mem)
+        self._soft_mem_limit = calc_size_by_str(self._soft_mem_limit, self._total_mem)
         actual_used = self._total_mem - mem_stats.available
         if self._ignore_avail_mem:
             self._soft_quota_limit = self._soft_mem_limit
         else:
-            used_cache_size = 0 if self._use_ext_plasma_dir else self._cache_mem_limit
+            used_cache_size = 0 if self._use_ext_plasma_dir else self._cache_mem_size
             self._soft_quota_limit = self._soft_mem_limit - used_cache_size - actual_used
             if self._soft_quota_limit < self._min_mem_size:
                 raise MemoryError(
                     f'Memory not enough. soft_limit={readable_size(self._soft_mem_limit)}, '
-                    f'cache_limit={readable_size(self._cache_mem_limit)}, '
+                    f'cache_limit={readable_size(self._cache_mem_size)}, '
                     f'used={readable_size(actual_used)}')
 
         if options.worker.min_cache_mem_size:
-            min_cache_mem_size = _calc_size_limit(options.worker.min_cache_mem_size, self._total_mem)
-            if min_cache_mem_size > self._cache_mem_limit:
-                raise MemoryError(f'Cache memory size ({self._cache_mem_limit}) smaller than '
+            min_cache_mem_size = calc_size_by_str(options.worker.min_cache_mem_size, self._total_mem)
+            if min_cache_mem_size > self._cache_mem_size:
+                raise MemoryError(f'Cache memory size ({self._cache_mem_size}) smaller than '
                                   f'minimal size ({min_cache_mem_size}), worker cannot start')
 
         logger.info('Setting soft limit to %s.', readable_size(self._soft_quota_limit))
@@ -208,7 +204,7 @@ class WorkerService(object):
     def start_plasma(self):
         from pyarrow import plasma
         self._plasma_store = plasma.start_plasma_store(
-            self._cache_mem_limit, plasma_directory=self._plasma_dir)
+            self._cache_mem_size, plasma_directory=options.worker.plasma_dir)
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()
 
     def start(self, endpoint, pool, discoverer=None, process_start_index=0):
@@ -261,7 +257,7 @@ class WorkerService(object):
         # create SharedHolderActor
         start_timeout = int(os.environ.get('MARS_SHARED_HOLDER_START_TIMEOUT', None) or 60)
         start_future = pool.create_actor(
-            SharedHolderActor, self._cache_mem_limit, uid=SharedHolderActor.default_uid(), wait=False)
+            SharedHolderActor, self._cache_mem_size, uid=SharedHolderActor.default_uid(), wait=False)
         self._shared_holder_ref = start_future.result(start_timeout)
         # create DispatchActor
         self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
