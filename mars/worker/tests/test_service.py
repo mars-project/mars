@@ -28,10 +28,10 @@ class Test(unittest.TestCase):
 
     def testServiceArgs(self):
         svc = WorkerService(ignore_avail_mem=True)
-        self.assertGreaterEqual(svc._cache_mem_limit, 0)
+        self.assertGreaterEqual(svc._cache_mem_size, 0)
         self.assertIsInstance(svc._soft_mem_limit, int)
         self.assertIsInstance(svc._hard_mem_limit, int)
-        self.assertIsInstance(svc._cache_mem_limit, int)
+        self.assertIsInstance(svc._cache_mem_size, int)
 
         svc = WorkerService(ignore_avail_mem=True, total_mem=256 * 1024 * 1024)
         self.assertEqual(svc._total_mem, 256 * 1024 ** 2)
@@ -40,10 +40,10 @@ class Test(unittest.TestCase):
         self.assertEqual(svc._total_mem, 512 * 1024 ** 2)
 
         with self.assertRaises(MemoryError):
-            WorkerService(soft_mem_limit='128m', cache_mem_limit='256m')
+            WorkerService(soft_mem_limit='128m', cache_mem_size='256m')
 
         with self.assertRaises(MemoryError):
-            WorkerService(min_cache_mem_size='1g', cache_mem_limit='256m')
+            WorkerService(min_cache_mem_size='1g', cache_mem_size='256m')
 
         svc = WorkerService(ignore_avail_mem=True, spill_dirs='/tmp/a', min_cache_mem_size=0)
         self.assertListEqual(svc._spill_dirs, ['/tmp/a'])

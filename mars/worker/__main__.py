@@ -59,6 +59,8 @@ class WorkerApplication(BaseApplication):
         parser.add_argument('--plasma-dir', help='path of plasma directory. When specified, the size '
                                                  'of plasma store will not be taken into account when '
                                                  'managing host memory')
+        parser.add_argument('--plasma-limit', help='max size or percentage plasma store '
+                                                   'directory can take')
 
         compress_types = ', '.join(v.value for v in CompressType.__members__.values())
         parser.add_argument('--disk-compression',
@@ -77,6 +79,7 @@ class WorkerApplication(BaseApplication):
         environ = environ or os.environ
 
         args.plasma_dir = args.plasma_dir or environ.get('MARS_PLASMA_DIRS')
+        args.plasma_limit = args.plasma_limit or environ.get('MARS_PLASMA_LIMIT')
         args.spill_dir = args.spill_dir or environ.get('MARS_SPILL_DIRS')
         args.cache_mem = args.cache_mem or environ.get('MARS_CACHE_MEM_SIZE')
         args.min_cache_mem = args.min_cache_mem or environ.get('MARS_MIN_CACHE_MEM_SIZE')
@@ -113,7 +116,7 @@ class WorkerApplication(BaseApplication):
             spill_dirs=self.args.spill_dir,
             io_parallel_num=self.args.io_parallel_num,
             total_mem=self.args.phy_mem,
-            cache_mem_limit=self.args.cache_mem,
+            cache_mem_size=self.args.cache_mem,
             cache_mem_scale=os.environ.get('MARS_CACHE_MEM_SCALE', 1),
             ignore_avail_mem=self.args.ignore_avail_mem,
             min_mem_size=self.args.min_mem,
@@ -121,6 +124,7 @@ class WorkerApplication(BaseApplication):
             disk_compression=self.args.disk_compression.lower(),
             transfer_compression=self.args.transfer_compression.lower(),
             plasma_dir=self.args.plasma_dir,
+            plasma_limit=self.args.plasma_limit,
             use_ext_plasma_dir=bool(self.args.plasma_dir),
             disable_proc_recover=self.args.disable_proc_recover,
             write_shuffle_to_disk=self.args.write_shuffle_to_disk,

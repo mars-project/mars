@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import base64
+import datetime
 import json
 import logging
 import pickle
@@ -37,6 +38,16 @@ pickling_support.install()
 _actor_client = new_client()
 
 logger = logging.getLogger(__name__)
+
+
+def _with_timeout(timeout, future):
+    if timeout:
+        try:
+            yield gen.with_timeout(datetime.timedelta(seconds=timeout), future)
+        except gen.TimeoutError:  # pragma: no cover
+            raise TimeoutError
+    else:
+        yield future
 
 
 class MarsApiRequestHandler(MarsRequestHandler):
@@ -169,9 +180,13 @@ class GraphApiHandler(MarsApiRequestHandler):
                     web_api = MarsWebAPI(self._scheduler)
                     return web_api.wait_graph_finish(session_id, graph_key, wait_timeout)
 
-                _ = yield self._executor.submit(_wait_fun)  # noqa: F841
-
-            state = self.web_api.get_graph_state(session_id, graph_key)
+                try:
+                    yield from _with_timeout(wait_timeout, self._executor.submit(_wait_fun))
+                    state = self.web_api.get_graph_state(session_id, graph_key)
+                except TimeoutError:
+                    state = GraphState.PREPARING
+            else:
+                state = self.web_api.get_graph_state(session_id, graph_key)
         except GraphNotExists:
             raise web.HTTPError(404, 'Graph not exists')
 

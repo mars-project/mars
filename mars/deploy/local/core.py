@@ -55,7 +55,7 @@ class LocalDistributedCluster(object):
         self._scheduler_service = SchedulerService()
         cuda_devices = [cuda_device] if cuda_device is not None else None
         self._worker_service = WorkerService(ignore_avail_mem=ignore_avail_mem,
-                                             cache_mem_limit=shared_memory,
+                                             cache_mem_size=shared_memory,
                                              cuda_devices=cuda_devices,
                                              distributed=False)
 
