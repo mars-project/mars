@@ -93,8 +93,11 @@ class Base(HasKey):
             if (attr.startswith('__') and attr.endswith('__')) or attr in self._no_copy_attrs_:
                 # we don't copy id to identify that the copied one is new
                 continue
-            if hasattr(self, attr):
-                setattr(target, attr, getattr(self, attr))
+            try:
+                attr_val = getattr(self, attr)
+            except AttributeError:
+                continue
+            setattr(target, attr, attr_val)
 
         return target
 

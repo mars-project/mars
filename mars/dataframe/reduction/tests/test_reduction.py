@@ -26,7 +26,8 @@ from mars.tensor import Tensor
 from mars.dataframe.core import DataFrame, IndexValue, Series, OutputType
 from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, \
     DataFrameMax, DataFrameCount, DataFrameMean, DataFrameVar, DataFrameAll, \
-    DataFrameAny, DataFrameCummin, DataFrameCummax, DataFrameCumprod, \
+    DataFrameAny, DataFrameSkew, DataFrameKurtosis, DataFrameSem, \
+    DataFrameAggregate, DataFrameCummin, DataFrameCummax, DataFrameCumprod, \
     DataFrameCumsum, DataFrameNunique
 from mars.dataframe.merge import DataFrameConcat
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -41,12 +42,15 @@ reduction_functions = dict(
     count=dict(func_name='count', op=DataFrameCount, has_skipna=False),
     mean=dict(func_name='mean', op=DataFrameMean),
     var=dict(func_name='var', op=DataFrameVar),
-    all=dict(func_name='all', op=DataFrameAll, has_numeric_only=False),
-    any=dict(func_name='any', op=DataFrameAny, has_numeric_only=False),
+    skew=dict(func_name='skew', op=DataFrameSkew),
+    kurt=dict(func_name='kurt', op=DataFrameKurtosis),
+    sem=dict(func_name='sem', op=DataFrameSem),
+    all=dict(func_name='all', op=DataFrameAll, has_numeric_only=False, has_bool_only=True),
+    any=dict(func_name='any', op=DataFrameAny, has_numeric_only=False, has_bool_only=True),
 )
 
 
-@parameterized(defaults=dict(has_skipna=True, has_numeric_only=True),
+@parameterized(defaults=dict(has_skipna=True, has_numeric_only=True, has_bool_only=False),
                **reduction_functions)
 class TestReduction(TestBase):
     @property
@@ -59,7 +63,7 @@ class TestReduction(TestBase):
             kwargs = dict(axis='index', skipna=False)
         else:
             kwargs = dict()
-        reduction_df = getattr(from_pandas_series(data), self.func_name)(**kwargs).tiles()
+        reduction_df = getattr(from_pandas_series(data, chunk_size=3), self.func_name)(**kwargs).tiles()
 
         # pb
         chunk = reduction_df.chunks[0]
@@ -69,14 +73,15 @@ class TestReduction(TestBase):
         self.assertEqual(tuple(pb.index), chunk.index)
         self.assertEqual(pb.key, chunk.key)
         self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_name)
+        self.assertEqual(int(op.type.split('.', 1)[1]), DataFrameAggregate._op_type_)
 
         chunk2 = self._pb_deserial(serials)[chunk.data]
 
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
+        self.assertEqual(chunk.op.agg_funcs[0].kwds.get('skipna'),
+                         chunk2.op.agg_funcs[0].kwds.get('skipna'))
         self.assertEqual(chunk.op.axis, chunk2.op.axis)
 
         # json
@@ -88,7 +93,8 @@ class TestReduction(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
+        self.assertEqual(chunk.op.agg_funcs[0].kwds.get('skipna'),
+                         chunk2.op.agg_funcs[0].kwds.get('skipna'))
         self.assertEqual(chunk.op.axis, chunk2.op.axis)
 
     def testSeriesReduction(self):
@@ -96,12 +102,13 @@ class TestReduction(TestBase):
         series = getattr(from_pandas_series(data, chunk_size=3), self.func_name)()
 
         self.assertIsInstance(series, Tensor)
+        self.assertIsInstance(series.op, self.op)
         self.assertEqual(series.shape, ())
 
         series = series.tiles()
 
         self.assertEqual(len(series.chunks), 1)
-        self.assertIsInstance(series.chunks[0].op, self.op)
+        self.assertIsInstance(series.chunks[0].op, DataFrameAggregate)
         self.assertIsInstance(series.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(series.chunks[0].inputs[0].inputs), 2)
 
@@ -118,7 +125,7 @@ class TestReduction(TestBase):
         series = series.tiles()
 
         self.assertEqual(len(series.chunks), 1)
-        self.assertIsInstance(series.chunks[0].op, self.op)
+        self.assertIsInstance(series.chunks[0].op, DataFrameAggregate)
         self.assertIsInstance(series.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(series.chunks[0].inputs[0].inputs), 4)
 
@@ -129,26 +136,30 @@ class TestReduction(TestBase):
             kwargs['skipna'] = False
         if self.has_numeric_only:
             kwargs['numeric_only'] = True
+        if self.has_bool_only:
+            kwargs['bool_only'] = True
         reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)(**kwargs).tiles()
 
         # pb
         chunk = reduction_df.chunks[0]
         serials = self._pb_serial(chunk)
-        op, pb = serials[chunk.op, chunk.data]
+        chunk_op, chunk_pb = serials[chunk.op, chunk.data]
 
-        self.assertEqual(tuple(pb.index), chunk.index)
-        self.assertEqual(pb.key, chunk.key)
-        self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_name)
+        self.assertEqual(tuple(chunk_pb.index), chunk.index)
+        self.assertEqual(chunk_pb.key, chunk.key)
+        self.assertEqual(tuple(chunk_pb.shape), chunk.shape)
+        self.assertEqual(int(chunk_op.type.split('.', 1)[1]), DataFrameAggregate._op_type_)
 
         chunk2 = self._pb_deserial(serials)[chunk.data]
 
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
+        self.assertEqual(chunk.op.agg_funcs[0].kwds.get('skipna'),
+                         chunk2.op.agg_funcs[0].kwds.get('skipna'))
         self.assertEqual(chunk.op.axis, chunk2.op.axis)
         self.assertEqual(chunk.op.numeric_only, chunk2.op.numeric_only)
+        self.assertEqual(chunk.op.bool_only, chunk2.op.bool_only)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
         # json
@@ -160,9 +171,11 @@ class TestReduction(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
+        self.assertEqual(chunk.op.agg_funcs[0].kwds.get('skipna'),
+                         chunk2.op.agg_funcs[0].kwds.get('skipna'))
         self.assertEqual(chunk.op.axis, chunk2.op.axis)
         self.assertEqual(chunk.op.numeric_only, chunk2.op.numeric_only)
+        self.assertEqual(chunk.op.bool_only, chunk2.op.bool_only)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
     def testDataFrameReduction(self):
@@ -171,13 +184,14 @@ class TestReduction(TestBase):
         reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)()
 
         self.assertIsInstance(reduction_df, Series)
+        self.assertIsInstance(reduction_df.op, self.op)
         self.assertIsInstance(reduction_df.index_value._index_value, IndexValue.Index)
         self.assertEqual(reduction_df.shape, (2,))
 
         reduction_df = reduction_df.tiles()
 
         self.assertEqual(len(reduction_df.chunks), 1)
-        self.assertIsInstance(reduction_df.chunks[0].op, self.op)
+        self.assertIsInstance(reduction_df.chunks[0].op, DataFrameAggregate)
         self.assertIsInstance(reduction_df.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(reduction_df.chunks[0].inputs[0].inputs), 2)
 
@@ -192,7 +206,7 @@ class TestReduction(TestBase):
 
         self.assertEqual(len(reduction_df.chunks), 4)
         self.assertEqual(reduction_df.nsplits, ((3, 3, 3, 1),))
-        self.assertIsInstance(reduction_df.chunks[0].op, self.op)
+        self.assertIsInstance(reduction_df.chunks[0].op, DataFrameAggregate)
         self.assertIsInstance(reduction_df.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(reduction_df.chunks[0].inputs[0].inputs), 2)
 
@@ -205,7 +219,7 @@ class TestReduction(TestBase):
 
         self.assertEqual(len(reduction_df.chunks), 5)
         self.assertEqual(reduction_df.nsplits, ((4,) * 5,))
-        self.assertIsInstance(reduction_df.chunks[0].op, self.op)
+        self.assertIsInstance(reduction_df.chunks[0].op, DataFrameAggregate)
         self.assertIsInstance(reduction_df.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(reduction_df.chunks[0].inputs[0].inputs), 2)
 
@@ -374,6 +388,8 @@ class TestCumReduction(TestBase):
         self.assertEqual(reduction_df.chunks[-1].inputs[-1].op.stage, OperandStage.map)
         self.assertEqual(len(reduction_df.chunks[-1].inputs), 7)
 
+
+class TestNUnique(TestBase):
     def testNunique(self):
         data = pd.DataFrame(np.random.randint(0, 6, size=(20, 10)),
                             columns=['c' + str(i) for i in range(10)])
@@ -389,7 +405,7 @@ class TestCumReduction(TestBase):
         self.assertEqual(len(tiled.chunks), 4)
         self.assertEqual(tiled.nsplits, ((3, 3, 3, 1,),))
         self.assertEqual(tiled.chunks[0].op.stage, OperandStage.agg)
-        self.assertIsInstance(tiled.chunks[0].op, DataFrameNunique)
+        self.assertIsInstance(tiled.chunks[0].op, DataFrameAggregate)
 
         data2 = data.copy()
         df2 = from_pandas_df(data2, chunk_size=3)
@@ -404,13 +420,14 @@ class TestCumReduction(TestBase):
         self.assertEqual(len(tiled.chunks), 7)
         self.assertEqual(tiled.nsplits, ((3, 3, 3, 3, 3, 3, 2,),))
         self.assertEqual(tiled.chunks[0].op.stage, OperandStage.agg)
-        self.assertIsInstance(tiled.chunks[0].op, DataFrameNunique)
+        self.assertIsInstance(tiled.chunks[0].op, DataFrameAggregate)
 
 
 class TestAggregate(TestBase):
     def testDataFrameAggregate(self):
         data = pd.DataFrame(np.random.rand(20, 19))
-        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std', 'all', 'any']
+        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std', 'all', 'any',
+                     'skew', 'kurt', 'sem']
 
         df = from_pandas_df(data)
         result = df.agg(agg_funcs).tiles()
@@ -502,7 +519,8 @@ class TestAggregate(TestBase):
 
     def testSeriesAggregate(self):
         data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
-        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std', 'all', 'any']
+        agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std', 'all', 'any',
+                     'skew', 'kurt', 'sem']
 
         series = from_pandas_series(data)
 

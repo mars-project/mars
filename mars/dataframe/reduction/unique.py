@@ -21,10 +21,31 @@ from ...core import OutputType
 from ...serialize import StringField
 from ...tensor.core import TensorOrder
 from ...utils import lazy_import
-from .core import DataFrameReductionOperand, DataFrameReductionMixin
+from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
 
 cudf = lazy_import('cudf', globals=globals())
+
+
+def _unique_pre_fun(data, is_gpu=False):
+    xdf = cudf if is_gpu else pd
+    try:
+        uniques = xdf.unique(data)
+    except AttributeError:  # pragma: no cover
+        # for cudf
+        uniques = data.unique()
+    # convert to series data
+    return xdf.Series(uniques)
+
+
+def _unique_agg_fun(data, is_gpu=False):
+    xdf = cudf if is_gpu else pd
+    # convert to series data
+    return xdf.Series(data.unique())
+
+
+def _unique_post_fun(data, is_gpu=False):
+    return data.unique()
 
 
 class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
@@ -41,36 +62,16 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._method
 
     @classmethod
+    def _make_agg_object(cls, op):
+        return CustomReduction(_unique_pre_fun, _unique_agg_fun, _unique_post_fun,
+                               name=cls._func_name, output_limit=1, is_gpu=op.gpu)
+
+    @classmethod
     def tile(cls, op):
         if op.method == 'tree':
             return super().tile(op)
         else:
             raise NotImplementedError(f"Method {op.method} hasn't been supported")
-
-    @classmethod
-    def _execute_map(cls, ctx, op):
-        xdf = cudf if op.gpu else pd
-        in_data = ctx[op.inputs[0].key]
-        try:
-            uniques = xdf.unique(in_data)
-        except AttributeError:   # pragma: no cover
-            # for cudf
-            uniques = in_data.unique()
-        # convert to series data
-        ctx[op.outputs[0].key] = xdf.Series(uniques)
-
-    @classmethod
-    def _execute_combine(cls, ctx, op):
-        xdf = cudf if op.gpu else pd
-        in_data = ctx[op.inputs[0].key]
-
-        # convert to series data
-        ctx[op.outputs[0].key] = xdf.Series(in_data.unique())
-
-    @classmethod
-    def _execute_agg(cls, ctx, op):
-        in_data = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = in_data.unique()
 
     def __call__(self, a):
         self.output_types = [OutputType.tensor]

@@ -39,4 +39,5 @@ Misc
 .. autosummary::
    :toctree: api/
 
+   CustomReduction
    ExecutableTuple

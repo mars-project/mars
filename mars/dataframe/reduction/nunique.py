@@ -24,10 +24,86 @@ from ...config import options
 from ...serialize import BoolField
 from ...utils import lazy_import
 from ..arrays import ArrowListArray, ArrowListDtype
-from .core import DataFrameReductionOperand, DataFrameReductionMixin
+from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
 
 cudf = lazy_import('cudf', globals=globals())
+
+
+def _drop_duplicates_to_arrow(v, explode=False):
+    if explode:
+        v = v.explode()
+    try:
+        return ArrowListArray([v.drop_duplicates().to_numpy()])
+    except pa.ArrowInvalid:
+        # fallback due to diverse dtypes
+        return [v.drop_duplicates().to_list()]
+
+
+def _nunique_pre_fun(in_data, axis=None, is_gpu=False, **kw):
+    xdf = cudf if is_gpu else pd
+    use_arrow_dtype = kw.get('use_arrow_dtype')
+    if isinstance(in_data, xdf.Series):
+        unique_values = in_data.drop_duplicates()
+        return xdf.Series(unique_values, name=in_data.name)
+    else:
+        if axis == 0:
+            data = dict()
+            for d, v in in_data.iteritems():
+                if not use_arrow_dtype or xdf is cudf:
+                    data[d] = [v.drop_duplicates().to_list()]
+                else:
+                    data[d] = _drop_duplicates_to_arrow(v)
+            df = xdf.DataFrame(data)
+        else:
+            df = xdf.DataFrame(columns=[0])
+            for d, v in in_data.iterrows():
+                if not use_arrow_dtype or xdf is cudf:
+                    df.loc[d] = [v.drop_duplicates().to_list()]
+                else:
+                    df.loc[d] = _drop_duplicates_to_arrow(v)
+        return df
+
+
+def _nunique_agg_fun(in_data, axis=None, is_gpu=False, **kw):
+    xdf = cudf if is_gpu else pd
+    use_arrow_dtype = kw.get('use_arrow_dtype')
+    if isinstance(in_data, xdf.Series):
+        unique_values = in_data.explode().drop_duplicates()
+        return xdf.Series(unique_values, name=in_data.name)
+    else:
+        if axis == 0:
+            data = dict()
+            for d, v in in_data.iteritems():
+                if not use_arrow_dtype or xdf is cudf:
+                    data[d] = [v.explode().drop_duplicates().to_list()]
+                else:
+                    v = pd.Series(v.to_numpy())
+                    data[d] = _drop_duplicates_to_arrow(v, explode=True)
+            df = xdf.DataFrame(data)
+        else:
+            df = xdf.DataFrame(columns=[0])
+            for d, v in in_data.iterrows():
+                if not use_arrow_dtype or xdf is cudf:
+                    df.loc[d] = [v.explode().drop_duplicates().to_list()]
+                else:
+                    df.loc[d] = _drop_duplicates_to_arrow(v, explode=True)
+        return df
+
+
+def _nunique_post_fun(in_data, axis=None, is_gpu=False, **kw):
+    xdf = cudf if is_gpu else pd
+    dropna = kw['dropna']
+    if isinstance(in_data, xdf.Series):
+        return in_data.explode().nunique(dropna=dropna)
+    else:
+        in_data_iter = in_data.iteritems() if axis == 0 else in_data.iterrows()
+        data = dict()
+        for d, v in in_data_iter:
+            if isinstance(v.dtype, ArrowListDtype):
+                v = xdf.Series(v.to_numpy())
+            data[d] = v.explode().nunique(dropna=dropna)
+        return xdf.Series(data)
 
 
 class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
@@ -50,101 +126,11 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._use_arrow_dtype
 
     @classmethod
-    def _if_use_arrow_dtype(cls, op):
-        use_arrow_dtype = op.use_arrow_dtype
-        if use_arrow_dtype is None:
-            # get options again,
-            # options may different when running
-            use_arrow_dtype = options.dataframe.use_arrow_dtype
-        return use_arrow_dtype
-
-    @classmethod
-    def _drop_duplicates_to_arrow(cls, v, explode=False):
-        if explode:
-            v = v.explode()
-        try:
-            return ArrowListArray([v.drop_duplicates().to_numpy()])
-        except pa.ArrowInvalid:
-            # fallback due to diverse dtypes
-            return [v.drop_duplicates().to_list()]
-
-    @classmethod
-    def _execute_map(cls, ctx, op: "DataFrameNunique"):
-        use_arrow_dtype = cls._if_use_arrow_dtype(op)
-
-        xdf = cudf if op.gpu else pd
-        in_data = ctx[op.inputs[0].key]
-        if isinstance(in_data, xdf.Series) or op.output_types[0] == OutputType.series:
-            unique_values = in_data.drop_duplicates()
-            ctx[op.outputs[0].key] = xdf.Series(unique_values, name=in_data.name)
-        else:
-            if op.axis == 0:
-                data = dict()
-                for d, v in in_data.iteritems():
-                    if not use_arrow_dtype or xdf is cudf:
-                        data[d] = [v.drop_duplicates().to_list()]
-                    else:
-                        data[d] = cls._drop_duplicates_to_arrow(v)
-                df = xdf.DataFrame(data)
-            else:
-                df = xdf.DataFrame(columns=[0])
-                for d, v in in_data.iterrows():
-                    if not use_arrow_dtype or xdf is cudf:
-                        df.loc[d] = [v.drop_duplicates().to_list()]
-                    else:
-                        df.loc[d] = cls._drop_duplicates_to_arrow(v)
-            ctx[op.outputs[0].key] = df
-
-    @classmethod
-    def _execute_combine(cls, ctx, op):
-        use_arrow_dtype = cls._if_use_arrow_dtype(op)
-
-        xdf = cudf if op.gpu else pd
-        in_data = ctx[op.inputs[0].key]
-        if isinstance(in_data, xdf.Series):
-            unique_values = in_data.explode().drop_duplicates()
-            ctx[op.outputs[0].key] = xdf.Series(unique_values, name=in_data.name)
-        else:
-            if op.axis == 0:
-                data = dict()
-                for d, v in in_data.iteritems():
-                    if not use_arrow_dtype or xdf is cudf:
-                        data[d] = [v.explode().drop_duplicates().to_list()]
-                    else:
-                        v = pd.Series(v.to_numpy())
-                        data[d] = cls._drop_duplicates_to_arrow(v, explode=True)
-                df = xdf.DataFrame(data)
-            else:
-                df = xdf.DataFrame(columns=[0])
-                for d, v in in_data.iterrows():
-                    if not use_arrow_dtype or xdf is cudf:
-                        df.loc[d] = [v.explode().drop_duplicates().to_list()]
-                    else:
-                        df.loc[d] = cls._drop_duplicates_to_arrow(v, explode=True)
-            ctx[op.outputs[0].key] = df
-
-    @classmethod
-    def _execute_agg(cls, ctx, op):
-        xdf = cudf if op.gpu else pd
-        in_data = ctx[op.inputs[0].key]
-        dropna = op.dropna
-        if isinstance(in_data, xdf.Series):
-            ctx[op.outputs[0].key] = in_data.explode().nunique(dropna=dropna)
-        else:
-            in_data_iter = in_data.iteritems() if op.axis == 0 else in_data.iterrows()
-            data = dict()
-            for d, v in in_data_iter:
-                if isinstance(v.dtype, ArrowListDtype):
-                    v = xdf.Series(v.to_numpy())
-                data[d] = v.explode().nunique(dropna=dropna)
-            ctx[op.outputs[0].key] = xdf.Series(data)
-
-    @classmethod
-    def _execute_reduction(cls, in_data, op, min_count=None, reduction_func=None):
-        kwargs = dict()
-        if op.axis is not None:
-            kwargs['axis'] = op.axis
-        return in_data.nunique(dropna=op.dropna, **kwargs)
+    def _make_agg_object(cls, op):
+        return CustomReduction(_nunique_pre_fun, _nunique_agg_fun, _nunique_post_fun,
+                               name=cls._func_name, output_limit=1, axis=op.axis,
+                               dropna=op.dropna, use_arrow_dtype=op.use_arrow_dtype,
+                               output_type=op.output_types[0], is_gpu=op.gpu)
 
 
 def nunique_dataframe(df, axis=0, dropna=True, combine_size=None):

@@ -198,7 +198,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                         infer_df = test_df.agg(self._func, args=self.args, **self.kwds)
                     else:
                         infer_df = test_df.transform(self._func, convert_dtype=self.convert_dtype,
-                                                      args=self.args, **self.kwds)
+                                                     args=self.args, **self.kwds)
             except:  # noqa: E722
                 infer_df = None
 

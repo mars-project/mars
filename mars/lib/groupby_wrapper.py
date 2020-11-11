@@ -14,9 +14,13 @@
 
 import sys
 from collections.abc import Iterable
+from distutils.version import LooseVersion
 
 import cloudpickle
+import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
+
+_HAS_SQUEEZE = LooseVersion(pd.__version__) < '1.1.0'
 
 
 class GroupByWrapper:
@@ -42,16 +46,16 @@ class GroupByWrapper:
         self.mutated = fill_value(mutated, 'mutated')
 
         if groupby_obj is None:
+            groupby_kw = dict(keys=keys, axis=axis, level=level, grouper=grouper,
+                              exclusions=exclusions, as_index=as_index, group_keys=group_keys,
+                              squeeze=squeeze, observed=observed, mutated=mutated)
+            if not _HAS_SQUEEZE:  # pragma: no branch
+                groupby_kw.pop('squeeze')
+
             if obj.ndim == 2:
-                self.groupby_obj = DataFrameGroupBy(
-                    obj, keys=keys, axis=axis, level=level, grouper=grouper, exclusions=exclusions,
-                    as_index=as_index, group_keys=group_keys, squeeze=squeeze, observed=observed,
-                    mutated=mutated)
+                self.groupby_obj = DataFrameGroupBy(obj, **groupby_kw)
             else:
-                self.groupby_obj = SeriesGroupBy(
-                    obj, keys=keys, axis=axis, level=level, grouper=grouper, exclusions=exclusions,
-                    as_index=as_index, group_keys=group_keys, squeeze=squeeze, observed=observed,
-                    mutated=mutated)
+                self.groupby_obj = SeriesGroupBy(obj, **groupby_kw)
         else:
             self.groupby_obj = groupby_obj
 
@@ -141,6 +145,10 @@ class GroupByWrapper:
 
 def wrapped_groupby(obj, by=None, axis=0, level=None, as_index=True, sort=True, group_keys=True,
                     squeeze=False, observed=False):
-    groupby_obj = obj.groupby(by=by, axis=axis, level=level, as_index=as_index, sort=sort,
-                              group_keys=group_keys, squeeze=squeeze, observed=observed)
+    groupby_kw = dict(by=by, axis=axis, level=level, as_index=as_index, sort=sort,
+                      group_keys=group_keys, squeeze=squeeze, observed=observed)
+    if not _HAS_SQUEEZE:  # pragma: no branch
+        groupby_kw.pop('squeeze')
+
+    groupby_obj = obj.groupby(**groupby_kw)
     return GroupByWrapper(obj, groupby_obj=groupby_obj)

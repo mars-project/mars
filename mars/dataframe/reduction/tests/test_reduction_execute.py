@@ -36,6 +36,9 @@ reduction_functions = dict(
     mean=dict(func_name='mean', has_min_count=False),
     var=dict(func_name='var', has_min_count=False),
     std=dict(func_name='std', has_min_count=False),
+    sem=dict(func_name='sem', has_min_count=False),
+    skew=dict(func_name='skew', has_min_count=False),
+    kurt=dict(func_name='kurt', has_min_count=False),
 )
 
 
@@ -50,7 +53,7 @@ class TestReduction(TestBase):
     def testSeriesReduction(self):
         data = pd.Series(np.random.randint(0, 8, (10,)), index=[str(i) for i in range(10)], name='a')
         reduction_df1 = self.compute(from_pandas_series(data))
-        self.assertEqual(
+        self.assertAlmostEqual(
             self.compute(data), self.executor.execute_dataframe(reduction_df1, concat=True)[0])
 
         reduction_df2 = self.compute(from_pandas_series(data, chunk_size=6))
@@ -576,7 +579,8 @@ class TestAggregate(TestBase):
         self.executor = ExecutorForTest()
 
     def testDataFrameAggregate(self):
-        all_aggs = ['sum', 'prod', 'min', 'max', 'count', 'size', 'mean', 'var', 'std']
+        all_aggs = ['sum', 'prod', 'min', 'max', 'count', 'size',
+                    'mean', 'var', 'std', 'sem', 'skew', 'kurt']
         data = pd.DataFrame(np.random.rand(20, 20))
 
         df = from_pandas_df(data)
@@ -632,7 +636,8 @@ class TestAggregate(TestBase):
                                       data.agg({0: ['sum', 'min', 'var'], 9: ['mean', 'var', 'std']}))
 
     def testSeriesAggregate(self):
-        all_aggs = ['sum', 'prod', 'min', 'max', 'count', 'size', 'mean', 'var', 'std']
+        all_aggs = ['sum', 'prod', 'min', 'max', 'count', 'size',
+                    'mean', 'var', 'std', 'sem', 'skew', 'kurt']
         data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
 
         series = from_pandas_series(data)

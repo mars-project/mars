@@ -683,7 +683,10 @@ class TestUnary(TestBase):
             [np.exp, mt.exp],
             [np.exp2, mt.exp2],
             [np.expm1, mt.expm1],
-            [np.sqrt, mt.sqrt]
+            [np.sqrt, mt.sqrt],
+            [np.isnan, mt.isnan],
+            [np.isfinite, mt.isfinite],
+            [np.isinf, mt.isinf],
         ]
 
         for raw, data in [(df_raw, df), (series_raw, series)]:

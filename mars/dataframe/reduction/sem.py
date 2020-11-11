@@ -21,9 +21,9 @@ from ...serialize import Int32Field
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 
-class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
-    _op_type_ = OperandDef.VAR
-    _func_name = 'var'
+class DataFrameSem(DataFrameReductionOperand, DataFrameReductionMixin):
+    _op_type_ = OperandDef.SEM
+    _func_name = 'sem'
 
     _ddof = Int32Field('ddof')
 
@@ -36,23 +36,23 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
 
     @classmethod
     def _make_agg_object(cls, op):
-        from .aggregation import var_function
-        pf = functools.partial(var_function, ddof=op.ddof, skipna=op.skipna)
+        from .aggregation import sem_function
+        pf = functools.partial(sem_function, ddof=op.ddof, skipna=op.skipna)
         pf.__name__ = cls._func_name
         return pf
 
 
-def var_series(series, axis=None, skipna=None, level=None, ddof=1, combine_size=None):
+def sem_series(series, axis=None, skipna=None, level=None, ddof=1, combine_size=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameVar(axis=axis, skipna=skipna, level=level, ddof=ddof,
+    op = DataFrameSem(axis=axis, skipna=skipna, level=level, ddof=ddof,
                       combine_size=combine_size, output_types=[OutputType.scalar],
                       use_inf_as_na=use_inf_as_na)
     return op(series)
 
 
-def var_dataframe(df, axis=None, skipna=None, level=None, ddof=1, numeric_only=None, combine_size=None):
+def sem_dataframe(df, axis=None, skipna=None, level=None, ddof=1, numeric_only=None, combine_size=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameVar(axis=axis, skipna=skipna, level=level, ddof=ddof,
+    op = DataFrameSem(axis=axis, skipna=skipna, level=level, ddof=ddof,
                       numeric_only=numeric_only, combine_size=combine_size,
                       output_types=[OutputType.series], use_inf_as_na=use_inf_as_na)
     return op(df)
