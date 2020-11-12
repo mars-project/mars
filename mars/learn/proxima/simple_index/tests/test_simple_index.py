@@ -23,6 +23,7 @@ import mars.dataframe as md
 import mars.tensor as mt
 from mars.learn.proxima.core import proxima
 from mars.learn.proxima.simple_index import build_index, search_index, recall
+from mars.learn.proxima.simple_index.knn import build_and_search
 from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 
