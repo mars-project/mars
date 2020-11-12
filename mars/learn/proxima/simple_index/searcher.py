@@ -284,11 +284,16 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                     f'to the worker({expect_worker}) where built index'
 
         with Timer() as timer:
-            flow = proxima.IndexFlow(container_name='FileContainer', container_params={},
+            container = proxima.IndexContainer(name='MMapFileContainer')
+            measure_name = op.distance_metric
+            if container.load(index_path).meta().reformer_name() == "MipsReformer":
+                measure_name = ""
+            flow = proxima.IndexFlow(container_name='MMapFileContainer', container_params={},
                                      searcher_name=op.index_searcher, searcher_params=op.index_searcher_params,
-                                     measure_name=op.distance_metric, measure_params={},
+                                     measure_name=measure_name, measure_params={},
                                      reformer_name=op.index_reformer, reformer_params=op.index_reformer_params
                                      )
+
             flow.load(index_path)
             vecs = np.ascontiguousarray(inp)
 

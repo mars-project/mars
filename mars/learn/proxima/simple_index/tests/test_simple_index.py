@@ -52,16 +52,20 @@ def proxima_build_and_query(doc, query, topk, measure_name=None, dimension=None,
     if index_reformer_params is None:
         index_reformer_params = {}
 
+    map_dtype = {np.dtype(np.float32): proxima.IndexMeta.FT_FP32,
+                 np.dtype(np.int16): proxima.IndexMeta.FT_INT16}
     # holder
-    holder = proxima.IndexHolder(type=proxima.IndexMeta.FT_FP32,
+    holder = proxima.IndexHolder(type=map_dtype[doc.dtypes[0]],
                                  dimension=dimension)
     holder.mount(np.array(doc))  # add batch data, pk starts from 0
     # for pk, record in zip(doc.index, np.array(doc)):
     #     holder.emplace(pk, record)
 
     # converter
-    meta = proxima.IndexMeta(proxima.IndexMeta.FT_FP32, dimension=dimension, measure_name=measure_name)
+    meta = proxima.IndexMeta(map_dtype[doc.dtypes[0]], dimension=dimension, measure_name=measure_name)
     if index_converter is not None:
+        if index_converter == "MipsConverter":
+            measure_name = ""
         converter = proxima.IndexConverter(name=index_converter, meta=meta, params=index_converter_params)
         converter.train_and_transform(holder)
         holder = converter.result()
@@ -87,10 +91,15 @@ def proxima_build_and_query(doc, query, topk, measure_name=None, dimension=None,
     return np.asarray(keys), np.asarray(scores)
 
 
-def gen_data(doc_count, query_count, dimension):
-    rs = np.random.RandomState(0)
-    doc = pd.DataFrame(rs.rand(doc_count, dimension).astype(np.float32))
-    query = rs.rand(query_count, dimension).astype(np.float32)
+def gen_data(doc_count, query_count, dimension, dtype=np.float32):
+    if dtype == np.float32:
+        rs = np.random.RandomState(0)
+        doc = pd.DataFrame(rs.rand(doc_count, dimension).astype(dtype))
+        query = rs.rand(query_count, dimension).astype(dtype)
+    elif dtype == np.int32:
+        rs = np.random.RandomState(0)
+        doc = pd.DataFrame((rs.rand(doc_count, dimension) * 1000).astype(dtype))
+        query = (rs.rand(query_count, dimension) * 1000).astype(dtype)
     return doc, query
 
 
@@ -162,57 +171,250 @@ class Test(unittest.TestCase):
             for path in paths:
                 os.remove(path)
 
+    def consistency_checking(self, doc, query, dimension, topk, measure_name,
+                             doc_chunk, query_chunk, threads,
+                             index_builder, builder_params,
+                             index_converter, index_converter_params,
+                             index_searcher, searcher_params,
+                             index_reformer, index_reformer_params,
+                             decimal=6):
+        # proxima_data
+        pk_p, distance_p = proxima_build_and_query(doc=doc, query=query, dimension=dimension, topk=topk,
+                                                   measure_name=measure_name,
+                                                   index_builder=index_builder, builder_params=builder_params,
+                                                   index_converter=index_converter,
+                                                   index_converter_params=index_converter_params,
+                                                   index_searcher=index_searcher,
+                                                   searcher_params=searcher_params,
+                                                   index_reformer=index_reformer,
+                                                   index_reformer_params=index_reformer_params)
+
+        # mars_data
+        pk_m, distance_m = self.build_and_query(doc, query, dimension=dimension, topk=topk, threads=threads,
+                                                measure_name=measure_name, doc_chunk=doc_chunk,
+                                                query_chunk=query_chunk, index_builder=index_builder,
+                                                builder_params=builder_params,
+                                                index_converter=index_converter,
+                                                index_converter_params=index_converter_params,
+                                                index_searcher=index_searcher, searcher_params=searcher_params,
+                                                index_reformer=index_reformer,
+                                                index_reformer_params=index_reformer_params)
+
+        # testing
+        np.testing.assert_array_equal(pk_p, pk_m)
+        np.testing.assert_array_almost_equal(distance_p, distance_m, decimal=decimal)
+
     def testBuildAndSearchIndex(self):
         # for now, test SquaredEuclidean and Euclidean only,
-        # TODO: add more tests for "Canberra", "Chebyshev", "SquaredEuclidean",
-        #  "Euclidean", "InnerProduct", "Manhattan" when ready
+        # TODO: add more tests for "Canberra", "Chebyshev"
+        #  "Manhattan" when ready
+
+        # L2 space
+        # params
+        doc_count, query_count, dimension, topk = 200, 15, 5, 3
+        threads, doc_chunk, query_chunk = 4, 50, 5
         measure_name_lists = ["SquaredEuclidean", "Euclidean"]
-        index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder", "ClusteringBuilder"]
+        index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
+                               "ClusteringBuilder", "GcBuilder", "QcBuilder"]
+        builder_params_lists = [{}, {}, {}, {"proxima.hc.builder.max_document_count": doc_count},
+                                {"proxima.gc.builder.centroid_count": "16"},
+                                {"proxima.qc.builder.centroid_count": "16"}]
+        index_searcher_lists = ["SsgSearcher", "HnswSearcher", "LinearSearcher",
+                                "ClusteringSearcher", "GcSearcher", "QcSearcher"]
+        searcher_params = {}
+        index_converter, index_converter_params = None, {}
+        index_reformer, index_reformer_params = "", {}
+
+        # data
+        doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+
+        # test
+        for i, index_builder in enumerate(index_builder_lists):
+            for measure_name in measure_name_lists:
+                self.consistency_checking(doc=doc, query=query, dimension=dimension, topk=topk, threads=threads,
+                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          index_builder=index_builder, builder_params=builder_params_lists[i],
+                                          index_converter=index_converter,
+                                          index_converter_params=index_converter_params,
+                                          index_searcher=index_searcher_lists[i], searcher_params=searcher_params,
+                                          index_reformer=index_reformer, index_reformer_params=index_reformer_params)
+
+        # L2 space with HalfFloatConverter
+        # params
+        doc_count, query_count, dimension, topk = 200, 15, 5, 3
+        threads, doc_chunk, query_chunk = 4, 50, 5
+        measure_name_lists = ["SquaredEuclidean", "Euclidean"]
+        index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
+                               "ClusteringBuilder", "GcBuilder", "QcBuilder"]
+        builder_params_lists = [{}, {}, {}, {"proxima.hc.builder.max_document_count": doc_count},
+                                {"proxima.gc.builder.centroid_count": "16"},
+                                {"proxima.qc.builder.centroid_count": "16"}]
+        index_searcher_lists = ["SsgSearcher", "HnswSearcher", "LinearSearcher",
+                                "ClusteringSearcher", "GcSearcher", "QcSearcher"]
+        index_converter_lists = ["HalfFloatConverter", "HalfFloatConverter", "HalfFloatConverter",
+                                 "HalfFloatConverter", "HalfFloatConverter", "HalfFloatConverter"]
+        searcher_params = {}
+        index_converter, index_converter_params = None, {}
+        index_reformer, index_reformer_params = "", {}
+
+        # data
+        doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+
+        # test
+        for i, index_builder in enumerate(index_builder_lists):
+            for measure_name in measure_name_lists:
+                self.consistency_checking(doc=doc, query=query, dimension=dimension, topk=topk, threads=threads,
+                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          index_builder=index_builder, builder_params=builder_params_lists[i],
+                                          index_converter=index_converter_lists[i],
+                                          index_converter_params=index_converter_params,
+                                          index_searcher=index_searcher_lists[i], searcher_params=searcher_params,
+                                          index_reformer=index_reformer, index_reformer_params=index_reformer_params,
+                                          decimal=7)
+
+        # L2 space with Int8QuantizerConverter
+        # params
+        doc_count, query_count, dimension, topk = 2000, 1, 32, 5
+        threads, doc_chunk, query_chunk = 4, 1000, 1
+
+        measure_name_lists = ["SquaredEuclidean", "Euclidean"]
+        index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
+                               "ClusteringBuilder", "GcBuilder", "QcBuilder"]
+        builder_params_lists = [{}, {}, {}, {"proxima.hc.builder.max_document_count": doc_count},
+                                {"proxima.gc.builder.centroid_count": "16"},
+                                {"proxima.qc.builder.centroid_count": "16",
+                                 "proxima.qc.builder.quantizer_class": "Int8QuantizerConverter"}]
+        index_searcher_lists = ["SsgSearcher", "HnswSearcher", "LinearSearcher",
+                                "ClusteringSearcher", "GcSearcher", "QcSearcher"]
+        searcher_params_lists = [{}, {}, {}, {"proxima.hc.searcher.scan_ratio": 1},
+                                 {"proxima.gc.searcher.scan_ratio": 1}, {"proxima.qc.searcher.scan_ratio": 1}]
+        index_converter_lists = ["Int8QuantizerConverter", "Int8QuantizerConverter", "Int8QuantizerConverter",
+                                 "Int8QuantizerConverter", "Int8QuantizerConverter", None]
+        index_converter_params = {}
+        index_reformer, index_reformer_params = "", {}
+
+        # data
+        doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+
+        # test
+        for i, index_builder in enumerate(index_builder_lists):
+            for measure_name in measure_name_lists:
+                self.consistency_checking(doc=doc, query=query, dimension=dimension, topk=topk, threads=threads,
+                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          index_builder=index_builder, builder_params=builder_params_lists[i],
+                                          index_converter=index_converter_lists[i],
+                                          index_converter_params=index_converter_params,
+                                          index_searcher=index_searcher_lists[i],
+                                          searcher_params=searcher_params_lists[i],
+                                          index_reformer=index_reformer, index_reformer_params=index_reformer_params,
+                                          decimal=2)
+
+        # L2 space with Int4QuantizerConverter
+        # params
+        doc_count, query_count, dimension, topk = 2000, 1, 32, 5
+        threads, doc_chunk, query_chunk = 4, 1000, 1
+
+        measure_name_lists = ["SquaredEuclidean", "Euclidean"]
+        index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
+                               "ClusteringBuilder", "GcBuilder", "QcBuilder"]
+        builder_params_lists = [{}, {}, {}, {"proxima.hc.builder.max_document_count": doc_count},
+                                {"proxima.gc.builder.centroid_count": "16"},
+                                {"proxima.qc.builder.centroid_count": "16",
+                                 "proxima.qc.builder.quantizer_class": "Int4QuantizerConverter"}]
+        index_searcher_lists = ["SsgSearcher", "HnswSearcher", "LinearSearcher",
+                                "ClusteringSearcher", "GcSearcher", "QcSearcher"]
+        searcher_params_lists = [{}, {}, {}, {"proxima.hc.searcher.scan_ratio": 1},
+                                 {"proxima.gc.searcher.scan_ratio": 1}, {"proxima.qc.searcher.scan_ratio": 1}]
+        index_converter_lists = ["Int4QuantizerConverter", "Int4QuantizerConverter", "Int4QuantizerConverter",
+                                 "Int4QuantizerConverter", "Int4QuantizerConverter", None]
+        index_converter_params = {}
+        index_reformer, index_reformer_params = "", {}
+
+        # data
+        doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension,
+                              dtype=np.float32)
 
         for i, index_builder in enumerate(index_builder_lists):
             for measure_name in measure_name_lists:
+                self.consistency_checking(doc=doc, query=query, dimension=dimension, topk=topk, threads=threads,
+                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          index_builder=index_builder, builder_params=builder_params_lists[i],
+                                          index_converter=index_converter_lists[i],
+                                          index_converter_params=index_converter_params,
+                                          index_searcher=index_searcher_lists[i],
+                                          searcher_params=searcher_params_lists[i],
+                                          index_reformer=index_reformer, index_reformer_params=index_reformer_params,
+                                          decimal=2)
+
+        # L2 space with NormalizeConverter
+        # params
+        doc_count, query_count, dimension, topk = 2000, 1, 32, 5
+        threads, doc_chunk, query_chunk = 4, 1000, 1
+
+        measure_name_lists = ["SquaredEuclidean", "Euclidean"]
+        index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
+                               "ClusteringBuilder", "GcBuilder", "QcBuilder"]
+        builder_params_lists = [{}, {}, {}, {"proxima.hc.builder.max_document_count": doc_count},
+                                {"proxima.gc.builder.centroid_count": "16"},
+                                {"proxima.qc.builder.centroid_count": "16"}]
+        index_searcher_lists = ["SsgSearcher", "HnswSearcher", "LinearSearcher",
+                                "ClusteringSearcher", "GcSearcher", "QcSearcher"]
+        searcher_params_lists = [{}, {}, {}, {"proxima.hc.searcher.scan_ratio": 1},
+                                 {"proxima.gc.searcher.scan_ratio": 1}, {"proxima.qc.searcher.scan_ratio": 1}]
+        index_converter_lists = ["NormalizeConverter", "NormalizeConverter", "NormalizeConverter",
+                                 "NormalizeConverter", "NormalizeConverter", "NormalizeConverter"]
+        index_converter_params = {}
+        index_reformer, index_reformer_params = "", {}
+        # data
+        doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension, dtype=np.float32)
+
+        for i, index_builder in enumerate(index_builder_lists):
+            for measure_name in measure_name_lists:
+                self.consistency_checking(doc, query, dimension=dimension, topk=topk, threads=threads,
+                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          index_builder=index_builder, builder_params=builder_params_lists[i],
+                                          index_converter=index_converter_lists[i],
+                                          index_converter_params=index_converter_params,
+                                          index_searcher=index_searcher_lists[i],
+                                          searcher_params=searcher_params_lists[i],
+                                          index_reformer=index_reformer,
+                                          index_reformer_params=index_reformer_params,
+                                          decimal=2)
+
+                # InnerProduct space
                 # params
                 doc_count, query_count, dimension, topk = 200, 15, 5, 2
-                threads = 1
-                builder_params_lists = [{}, {}, {}, {"proxima.hc.builder.max_document_count": doc_count}]
-                index_builder, index_searcher = index_builder, None
-                builder_params = builder_params_lists[i]
-                searcher_params = {}
-                index_converter = None
-                index_converter_params = {}
-                index_reformer = ""
-                index_reformer_params = {}
+                threads, doc_chunk, query_chunk = 4, 50, 5
 
-                doc_chunk, query_chunk = 50, 5
+                measure_name_lists = ["InnerProduct"]
+                index_builder_lists = ["LinearBuilder", "QcBuilder", "HnswBuilder",
+                                       "SsgBuilder", "ClusteringBuilder", "GcBuilder"]
+                builder_params_lists = [{}, {"proxima.qc.builder.centroid_count": "16"}, {}, {},
+                                        {"proxima.hc.builder.max_document_count": doc_count},
+                                        {"proxima.gc.builder.centroid_count": "16"}]
+                index_searcher_lists = ["LinearSearcher", "QcSearcher", "HnswSearcher",
+                                        "SsgSearcher", "ClusteringSearcher", "GcSearcher"]
+                index_converter_lists = [None, None, "MipsConverter", "MipsConverter", "MipsConverter", "MipsConverter"]
+
+                searcher_params = {}
+                index_converter_params = {}
+                index_reformer, index_reformer_params = "", {}
 
                 # data
                 doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
 
-                # proxima_data
-                pk_p, distance_p = proxima_build_and_query(doc=doc, query=query, dimension=dimension, topk=topk,
-                                                           measure_name=measure_name,
-                                                           index_builder=index_builder, builder_params=builder_params,
-                                                           index_converter=index_converter,
-                                                           index_converter_params=index_converter_params,
-                                                           index_searcher=index_searcher,
-                                                           searcher_params=searcher_params,
-                                                           index_reformer=index_reformer,
-                                                           index_reformer_params=index_reformer_params)
-
-                # mars_data
-                pk_m, distance_m = self.build_and_query(doc, query, dimension=dimension, topk=topk, threads=threads,
-                                                        measure_name=measure_name, doc_chunk=doc_chunk,
-                                                        query_chunk=query_chunk, index_builder=index_builder,
-                                                        builder_params=builder_params,
-                                                        index_converter=index_converter,
-                                                        index_converter_params=index_converter_params,
-                                                        index_searcher=index_searcher, searcher_params=searcher_params,
-                                                        index_reformer=index_reformer,
-                                                        index_reformer_params=index_reformer_params)
-
-                # testing
-                np.testing.assert_array_equal(pk_p, pk_m)
-                np.testing.assert_array_almost_equal(distance_p, distance_m)
+                for i, index_builder in enumerate(index_builder_lists):
+                    for measure_name in measure_name_lists:
+                        self.consistency_checking(doc, query, dimension=dimension, topk=topk, threads=threads,
+                                                  measure_name=measure_name, doc_chunk=doc_chunk,
+                                                  query_chunk=query_chunk, index_builder=index_builder,
+                                                  builder_params=builder_params_lists[i],
+                                                  index_converter=index_converter_lists[i],
+                                                  index_converter_params=index_converter_params,
+                                                  index_searcher=index_searcher_lists[i],
+                                                  searcher_params=searcher_params,
+                                                  index_reformer=index_reformer,
+                                                  index_reformer_params=index_reformer_params, decimal=5)
 
     def testBuildAndSearchIndexWithFilesystem(self):
         with tempfile.TemporaryDirectory() as f:
@@ -233,7 +435,6 @@ class Test(unittest.TestCase):
 
             # proxima_data
             pk_p, distance_p = proxima_build_and_query(doc, query, topk)
-
             pk_m, distance_m = search_index(q, topk, index)
 
             # testing
