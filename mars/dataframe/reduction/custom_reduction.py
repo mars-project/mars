@@ -16,15 +16,14 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
 from ...serialize import AnyField
-from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
+from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 
 class DataFrameCustomReduction(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.CUSTOM_REDUCTION
     _func_name = 'custom_reduction'
 
-    _custom_reduction = AnyField('custom_reduction', on_serialize=lambda x: x.to_tuple(),
-                                 on_deserialize=CustomReduction.from_tuple)
+    _custom_reduction = AnyField('custom_reduction')
 
     @property
     def custom_reduction(self):

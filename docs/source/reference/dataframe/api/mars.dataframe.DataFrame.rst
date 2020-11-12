@@ -1,4 +1,4 @@
-mars.dataframe.DataFrame
+﻿mars.dataframe.DataFrame
 ========================
 
 .. currentmodule:: mars.dataframe
@@ -18,6 +18,8 @@ mars.dataframe.DataFrame
       ~DataFrame.add
       ~DataFrame.agg
       ~DataFrame.aggregate
+      ~DataFrame.all
+      ~DataFrame.any
       ~DataFrame.append
       ~DataFrame.apply
       ~DataFrame.astype
@@ -25,6 +27,8 @@ mars.dataframe.DataFrame
       ~DataFrame.copy
       ~DataFrame.copy_from
       ~DataFrame.copy_to
+      ~DataFrame.corr
+      ~DataFrame.corrwith
       ~DataFrame.count
       ~DataFrame.cummax
       ~DataFrame.cummin
@@ -51,11 +55,14 @@ mars.dataframe.DataFrame
       ~DataFrame.gt
       ~DataFrame.head
       ~DataFrame.insert
+      ~DataFrame.isin
       ~DataFrame.isna
       ~DataFrame.isnull
       ~DataFrame.iterrows
       ~DataFrame.itertuples
       ~DataFrame.join
+      ~DataFrame.kurt
+      ~DataFrame.kurtosis
       ~DataFrame.le
       ~DataFrame.lt
       ~DataFrame.map_chunk
@@ -94,8 +101,10 @@ mars.dataframe.DataFrame
       ~DataFrame.rsub
       ~DataFrame.rtruediv
       ~DataFrame.select_dtypes
+      ~DataFrame.sem
       ~DataFrame.set_index
       ~DataFrame.shift
+      ~DataFrame.skew
       ~DataFrame.sort_index
       ~DataFrame.sort_values
       ~DataFrame.stack
@@ -108,6 +117,7 @@ mars.dataframe.DataFrame
       ~DataFrame.to_csv
       ~DataFrame.to_gpu
       ~DataFrame.to_pandas
+      ~DataFrame.to_parquet
       ~DataFrame.to_sql
       ~DataFrame.to_tensor
       ~DataFrame.to_vineyard

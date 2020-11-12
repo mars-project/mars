@@ -120,6 +120,8 @@ Computations / descriptive stats
    DataFrame.cumprod
    DataFrame.cumsum
    DataFrame.describe
+   DataFrame.kurt
+   DataFrame.kurtosis
    DataFrame.max
    DataFrame.mean
    DataFrame.min
@@ -128,6 +130,8 @@ Computations / descriptive stats
    DataFrame.product
    DataFrame.quantile
    DataFrame.round
+   DataFrame.sem
+   DataFrame.skew
    DataFrame.std
    DataFrame.sum
    DataFrame.var

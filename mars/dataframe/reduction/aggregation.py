@@ -575,7 +575,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             if isinstance(value, (np.generic, int, float, complex)):
                 value = xdf.DataFrame([value], columns=index)
             elif not isinstance(value, xdf.DataFrame):
-                value = xdf.DataFrame(value, columns=index)
+                new_index = None if not op.gpu else getattr(value, 'index', None)
+                value = xdf.DataFrame(value, columns=index, index=new_index)
             else:
                 return value
             return value.T if axis == 0 else value
@@ -625,10 +626,19 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 _output_key, _output_limit, kwds in op.agg_funcs:
             input_obj = ret_map_dfs[input_key]
             if map_func_name == 'custom_reduction':
-                pre_result = custom_reduction.pre(input_obj, **custom_reduction.kwds)
+                pre_result = custom_reduction.pre(input_obj)
                 if not isinstance(pre_result, tuple):
                     pre_result = (pre_result,)
-                agg_dfs.extend([cls._wrap_df(op, r, index=[axis_index]) for r in pre_result])
+
+                if custom_reduction.pre_with_agg:
+                    # when custom_reduction.pre already aggregates, skip
+                    agg_result = pre_result
+                else:
+                    agg_result = custom_reduction.agg(*pre_result)
+                    if not isinstance(agg_result, tuple):
+                        agg_result = (agg_result,)
+
+                agg_dfs.extend([cls._wrap_df(op, r, index=[axis_index]) for r in agg_result])
             elif map_func_name == 'size':
                 agg_dfs.append(cls._wrap_df(op, input_obj.agg(lambda x: x.size, axis=axis),
                                             index=[axis_index]))
@@ -649,13 +659,15 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 output_key, _output_limit, kwds in op.agg_funcs:
             input_obj = in_data_dict[output_key]
             if agg_func_name == 'custom_reduction':
-                agg_fun = custom_reduction.agg or custom_reduction.pre
-                pre_result = agg_fun(*input_obj, **custom_reduction.kwds)
-                if not isinstance(pre_result, tuple):
-                    pre_result = (pre_result,)
+                agg_result = custom_reduction.agg(*input_obj)
+                if not isinstance(agg_result, tuple):
+                    agg_result = (agg_result,)
                 combines.extend([cls._wrap_df(op, r, index=[axis_index])
-                                 for r in pre_result])
+                                 for r in agg_result])
             else:
+                if op.gpu:
+                    if kwds.pop('numeric_only', None):
+                        raise NotImplementedError('numeric_only not implemented under cudf')
                 result = cls._wrap_df(op, getattr(input_obj, agg_func_name)(**kwds), index=[axis_index])
                 combines.append(result)
         ctx[op.outputs[0].key] = tuple(combines)
@@ -668,21 +680,20 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         in_data_dict = cls._pack_inputs(op.agg_funcs, in_data)
         axis = op.axis
 
+        # perform agg
         for _input_key, _map_func_name, agg_func_name, custom_reduction, \
                 output_key, _output_limit, kwds in op.agg_funcs:
             input_obj = in_data_dict[output_key]
             if agg_func_name == 'custom_reduction':
-                pre_result = custom_reduction.agg(*input_obj, **custom_reduction.kwds)
-                if custom_reduction.post is None:
-                    in_data_dict[output_key] = pre_result
-                else:
-                    if not isinstance(pre_result, tuple):
-                        pre_result = (pre_result,)
-                    in_data_dict[output_key] = custom_reduction.post(*pre_result, **custom_reduction.kwds)
+                agg_result = custom_reduction.agg(*input_obj)
+                if not isinstance(agg_result, tuple):
+                    agg_result = (agg_result,)
+                in_data_dict[output_key] = custom_reduction.post(*agg_result)
             else:
                 in_data_dict[output_key] = getattr(input_obj, agg_func_name)(**kwds)
 
         aggs = []
+        # perform post op
         for input_keys, _output_key, func_name, cols, func in op.post_funcs:
             if cols is None:
                 func_inputs = [in_data_dict[k] for k in input_keys]
@@ -693,16 +704,12 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             agg_series_ndim = getattr(agg_series, 'ndim', 0)
 
             ser_index = None
-            if agg_series_ndim == 0 and out.ndim == 1:
+            if agg_series_ndim < out.ndim:
                 ser_index = [func_name]
-            elif agg_series_ndim == 1 and out.ndim == 2:
-                agg_series.name = func_name
             aggs.append(cls._wrap_df(op, agg_series, index=ser_index))
 
-        try:
-            concat_df = xdf.concat(aggs, axis=axis)
-        except TypeError:
-            raise
+        # concatenate to produce final result
+        concat_df = xdf.concat(aggs, axis=axis)
         if op.output_types[0] == OutputType.series:
             if concat_df.ndim > 1:
                 if op.inputs[0].ndim == 2:

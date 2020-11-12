@@ -22,6 +22,7 @@ except ImportError:  # pragma: no cover
     pa = None
 
 from mars.config import option_context
+from mars.dataframe import CustomReduction
 from mars.dataframe.base import to_gpu
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
@@ -187,13 +188,19 @@ class TestReduction(TestBase):
 
     @require_cudf
     def testGPUExecution(self):
-        pdf = pd.DataFrame(np.random.rand(30, 3), columns=list('abc'))
-        df = from_pandas_df(pdf, chunk_size=6)
-        cdf = to_gpu(df).sum()
+        df_raw = pd.DataFrame(np.random.rand(30, 3), columns=list('abc'))
+        df = to_gpu(from_pandas_df(df_raw, chunk_size=6))
 
-        res = self.executor.execute_dataframe(cdf, concat=True)[0]
-        expected = pdf.sum()
-        pd.testing.assert_series_equal(res.to_pandas(), expected)
+        r = df.sum()
+        res = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_series_equal(res.to_pandas(), df_raw.sum())
+
+        s_raw = pd.Series(np.random.rand(30))
+        s = to_gpu(from_pandas_series(s_raw, chunk_size=6))
+
+        r = s.sum()
+        res = self.executor.execute_dataframe(r, concat=True)[0]
+        self.assertAlmostEqual(res, s_raw.sum())
 
 
 bool_reduction_functions = dict(
@@ -660,6 +667,69 @@ class TestAggregate(TestBase):
         result = series.agg(all_aggs)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
                                        data.agg(all_aggs))
+
+
+class MockReduction1(CustomReduction):
+    def agg(self, v1):
+        return v1.sum()
+
+
+class MockReduction2(CustomReduction):
+    def pre(self, value):
+        return value + 1, value ** 2
+
+    def agg(self, v1, v2):
+        return v1.sum(), v2.prod()
+
+    def post(self, v1, v2):
+        return v1 + v2
+
+
+class TestCustomAggregate(TestBase):
+    def setUp(self):
+        self.executor = ExecutorForTest()
+
+    def testDataFrameAggregate(self):
+        data = pd.DataFrame(np.random.rand(30, 20))
+
+        df = from_pandas_df(data)
+        result = df.agg(MockReduction1())
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
+                                       data.agg(MockReduction1()))
+
+        result = df.agg(MockReduction2())
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
+                                       data.agg(MockReduction2()))
+
+        df = from_pandas_df(data, chunk_size=5)
+        result = df.agg(MockReduction2())
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
+                                       data.agg(MockReduction2()))
+
+        result = df.agg(MockReduction2())
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
+                                       data.agg(MockReduction2()))
+
+    def testSeriesAggregate(self):
+        data = pd.Series(np.random.rand(20))
+
+        s = from_pandas_series(data)
+        result = s.agg(MockReduction1())
+        self.assertEqual(self.executor.execute_dataframe(result, concat=True)[0],
+                         data.agg(MockReduction1()))
+
+        result = s.agg(MockReduction2())
+        self.assertEqual(self.executor.execute_dataframe(result, concat=True)[0],
+                         data.agg(MockReduction2()))
+
+        s = from_pandas_series(data, chunk_size=5)
+        result = s.agg(MockReduction2())
+        self.assertAlmostEqual(self.executor.execute_dataframe(result, concat=True)[0],
+                               data.agg(MockReduction2()))
+
+        result = s.agg(MockReduction2())
+        self.assertAlmostEqual(self.executor.execute_dataframe(result, concat=True)[0],
+                               data.agg(MockReduction2()))
 
 
 if __name__ == '__main__':  # pragma: no cover

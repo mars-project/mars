@@ -42,7 +42,7 @@ class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
     @classmethod
     def _make_agg_object(cls, op):
         from .aggregation import kurt_function
-        pf = functools.partial(kurt_function, bias=op.bias, skipna=op.skipna)
+        pf = functools.partial(kurt_function, bias=op.bias, skipna=op.skipna, fisher=op.fisher)
         pf.__name__ = cls._func_name
         return pf
 

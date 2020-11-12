@@ -23,29 +23,21 @@ from ...tensor.core import TensorOrder
 from ...utils import lazy_import
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
-
 cudf = lazy_import('cudf', globals=globals())
 
 
-def _unique_pre_fun(data, is_gpu=False):
-    xdf = cudf if is_gpu else pd
-    try:
-        uniques = xdf.unique(data)
-    except AttributeError:  # pragma: no cover
-        # for cudf
-        uniques = data.unique()
-    # convert to series data
-    return xdf.Series(uniques)
+class UniqueReduction(CustomReduction):
+    def __init__(self, name='unique', is_gpu=False):
+        super().__init__(name)
+        self._is_gpu = is_gpu
 
+    def agg(self, data):  # noqa: W0221  # pylint: disable=arguments-differ
+        xdf = cudf if self._is_gpu else pd
+        # convert to series data
+        return xdf.Series(data.unique())
 
-def _unique_agg_fun(data, is_gpu=False):
-    xdf = cudf if is_gpu else pd
-    # convert to series data
-    return xdf.Series(data.unique())
-
-
-def _unique_post_fun(data, is_gpu=False):
-    return data.unique()
+    def post(self, data):  # noqa: W0221  # pylint: disable=arguments-differ
+        return data.unique()
 
 
 class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
@@ -63,8 +55,7 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
 
     @classmethod
     def _make_agg_object(cls, op):
-        return CustomReduction(_unique_pre_fun, _unique_agg_fun, _unique_post_fun,
-                               name=cls._func_name, output_limit=1, is_gpu=op.gpu)
+        return UniqueReduction(name=cls._func_name, is_gpu=op.gpu)
 
     @classmethod
     def tile(cls, op):
