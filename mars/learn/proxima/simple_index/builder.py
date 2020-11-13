@@ -153,6 +153,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     @classmethod
     def tile(cls, op):
         tensor = op.tensor
+        pk = op.pk
         out = op.outputs[0]
         index_path = op.index_path
         ctx = get_context()
