@@ -303,11 +303,25 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         logger.warning(f"vecs count:{len(vecs)}")
 
         with Timer() as timer:
-            result_pks, result_distances = proxima.IndexUtility.ann_search(searcher=flow,
-                                                                           query=vecs,
-                                                                           topk=op.topk,
-                                                                           threads=op.threads)
+            batch = 10000
+            s_idx = 0
+            e_idx = min(s_idx + batch, len(vecs))
+            result_pks, result_distances = None, None
+            while s_idx < len(vecs):
+                result_pks_b, result_distances_b = proxima.IndexUtility.ann_search(searcher=flow,
+                                                                                   query=vecs[s_idx:e_idx],
+                                                                                   topk=op.topk,
+                                                                                   threads=op.threads)
+                if result_pks is None:
+                    result_pks = np.asarray(result_pks_b)
+                    result_distances = np.asarray(result_distances_b)
+                else:
+                    result_pks = np.concatenate((result_pks, np.asarray(result_pks_b)))
+                    result_distances = np.concatenate((result_distances, np.asarray(result_distances_b)))
 
+                s_idx = e_idx
+                e_idx = min(s_idx + batch, len(vecs))
+                logger.warning(f'Search({op.key}) count {s_idx}/{len(vecs)}:{round(s_idx * 100 / len(vecs), 2)}%')
         logger.warning(f'Search({op.key}) costs {timer.duration} seconds')
 
         ctx[op.outputs[0].key] = np.asarray(result_pks)
