@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import os
 import pickle  # nosec  # pylint: disable=import_pickle
 import tempfile
 
@@ -268,8 +267,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                             else:
                                 break
 
-            logger.warning(f'WritingToVolume({op.key}) size {os.path.getsize(path)}, '
-                           f'costs {timer.duration} seconds')
+            logger.warning(f'WritingToVolume({op.key}) costs {timer.duration} seconds')
 
             ctx[out.key] = filename
 

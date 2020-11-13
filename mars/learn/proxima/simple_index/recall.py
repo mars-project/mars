@@ -15,7 +15,6 @@
 import math
 
 import numpy as np
-
 import mars.remote as mr
 from mars.learn.proxima.simple_index.knn import sample_data, linear_build_and_search
 
