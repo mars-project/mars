@@ -381,40 +381,40 @@ class Test(unittest.TestCase):
                                           index_reformer_params=index_reformer_params,
                                           decimal=2)
 
-                # InnerProduct space
-                # params
-                doc_count, query_count, dimension, topk = 200, 15, 5, 2
-                threads, doc_chunk, query_chunk = 4, 50, 5
+        # InnerProduct space
+        # params
+        doc_count, query_count, dimension, topk = 200, 15, 5, 2
+        threads, doc_chunk, query_chunk = 4, 50, 5
 
-                measure_name_lists = ["InnerProduct"]
-                index_builder_lists = ["LinearBuilder", "QcBuilder", "HnswBuilder",
-                                       "SsgBuilder", "ClusteringBuilder", "GcBuilder"]
-                builder_params_lists = [{}, {"proxima.qc.builder.centroid_count": "16"}, {}, {},
-                                        {"proxima.hc.builder.max_document_count": doc_count},
-                                        {"proxima.gc.builder.centroid_count": "16"}]
-                index_searcher_lists = ["LinearSearcher", "QcSearcher", "HnswSearcher",
-                                        "SsgSearcher", "ClusteringSearcher", "GcSearcher"]
-                index_converter_lists = [None, None, "MipsConverter", "MipsConverter", "MipsConverter", "MipsConverter"]
+        measure_name_lists = ["InnerProduct"]
+        index_builder_lists = ["LinearBuilder", "QcBuilder", "HnswBuilder",
+                               "SsgBuilder", "ClusteringBuilder", "GcBuilder"]
+        builder_params_lists = [{}, {"proxima.qc.builder.centroid_count": "16"}, {}, {},
+                                {"proxima.hc.builder.max_document_count": doc_count},
+                                {"proxima.gc.builder.centroid_count": "16"}]
+        index_searcher_lists = ["LinearSearcher", "QcSearcher", "HnswSearcher",
+                                "SsgSearcher", "ClusteringSearcher", "GcSearcher"]
+        index_converter_lists = [None, None, "MipsConverter", "MipsConverter", "MipsConverter", "MipsConverter"]
 
-                searcher_params = {}
-                index_converter_params = {}
-                index_reformer, index_reformer_params = "", {}
+        searcher_params = {}
+        index_converter_params = {}
+        index_reformer, index_reformer_params = "", {}
 
-                # data
-                doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+        # data
+        doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
 
-                for i, index_builder in enumerate(index_builder_lists):
-                    for measure_name in measure_name_lists:
-                        self.consistency_checking(doc, query, dimension=dimension, topk=topk, threads=threads,
-                                                  measure_name=measure_name, doc_chunk=doc_chunk,
-                                                  query_chunk=query_chunk, index_builder=index_builder,
-                                                  builder_params=builder_params_lists[i],
-                                                  index_converter=index_converter_lists[i],
-                                                  index_converter_params=index_converter_params,
-                                                  index_searcher=index_searcher_lists[i],
-                                                  searcher_params=searcher_params,
-                                                  index_reformer=index_reformer,
-                                                  index_reformer_params=index_reformer_params, decimal=5)
+        for i, index_builder in enumerate(index_builder_lists):
+            for measure_name in measure_name_lists:
+                self.consistency_checking(doc, query, dimension=dimension, topk=topk, threads=threads,
+                                          measure_name=measure_name, doc_chunk=doc_chunk,
+                                          query_chunk=query_chunk, index_builder=index_builder,
+                                          builder_params=builder_params_lists[i],
+                                          index_converter=index_converter_lists[i],
+                                          index_converter_params=index_converter_params,
+                                          index_searcher=index_searcher_lists[i],
+                                          searcher_params=searcher_params,
+                                          index_reformer=index_reformer,
+                                          index_reformer_params=index_reformer_params, decimal=5)
 
     def testBuildAndSearchIndexWithFilesystem(self):
         with tempfile.TemporaryDirectory() as f:
