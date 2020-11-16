@@ -155,17 +155,17 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         chunk_op = op.copy().reset_key()
 
         chunk_inputs = []
-        prepare_inputs = []
+        pure_depends = []
         for inp in op.inputs:
             if cls._no_prepare(inp):  # pragma: no cover
                 # if input is tensor, DataFrame etc,
-                # do not prepare data, because the data mey be to huge,
+                # do not prepare data, because the data may be to huge,
                 # and users can choose to fetch slice of the data themselves
-                prepare_inputs.extend([False] * len(inp.chunks))
+                pure_depends.extend([True] * len(inp.chunks))
             else:
-                prepare_inputs.extend([True] * len(inp.chunks))
+                pure_depends.extend([False] * len(inp.chunks))
             chunk_inputs.extend(inp.chunks)
-        chunk_op._prepare_inputs = prepare_inputs
+        chunk_op._pure_depends = pure_depends
         # record tileable op key for chunk op
         chunk_op._tileable_op_key = op.key
 
@@ -193,8 +193,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     @redirect_custom_log
     @enter_current_session
     def execute(cls, ctx, op: "RemoteFunction"):
-        mapping = {inp: ctx[inp.key] for inp, prepare_inp
-                   in zip(op.inputs, op.prepare_inputs) if prepare_inp}
+        mapping = {inp: ctx[inp.key] for inp, is_pure_dep
+                   in zip(op.inputs, op.pure_depends) if not is_pure_dep}
         for to_search in [op.function_args, op.function_kwargs]:
             tileable_placeholders = find_objects(to_search, _TileablePlaceholder)
             for ph in tileable_placeholders:
