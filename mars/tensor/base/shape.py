@@ -29,9 +29,9 @@ class TensorGetShape(TensorOperand, TensorOperandMixin):
     _a = KeyField('a')
     _ndim = Int32Field('ndim')
 
-    def __init__(self, prepare_inputs=None, a=None, ndim=None, dtype=None, **kw):
+    def __init__(self, pure_depends=None, a=None, ndim=None, dtype=None, **kw):
         super().__init__(_dtype=dtype, _a=a, _ndim=ndim,
-                         _prepare_inputs=prepare_inputs, **kw)
+                         _pure_depends=pure_depends, **kw)
 
     @property
     def a(self):
@@ -70,7 +70,7 @@ class TensorGetShape(TensorOperand, TensorOperandMixin):
         a = op.a
         outs = op.outputs
 
-        chunk_op = TensorGetShape(prepare_inputs=[False] * len(a.chunks),
+        chunk_op = TensorGetShape(pure_depends=[True] * len(a.chunks),
                                   ndim=op.ndim)
         chunk_kws = []
         for out in outs:
