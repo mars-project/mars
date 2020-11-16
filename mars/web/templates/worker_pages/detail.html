@@ -148,8 +148,10 @@ Send Speed: {{ worker_metrics['hardware']['net_send'] | readable_size }}/s</pre>
                     <tr>
                         <td>Disk Info</td>
                         {% if worker_metrics['hardware']['disk_used'] is defined %}
-                            <td><pre class="plain-pre">Usage: {{ worker_metrics['hardware']['disk_used'] | readable_size }}
-Total: {{ worker_metrics['hardware']['disk_total'] | readable_size }}</pre></td>
+                            <td><pre class="plain-pre">Bytes Used: {{ worker_metrics['hardware']['disk_used'] | readable_size }}
+Bytes Total: {{ worker_metrics['hardware']['disk_total'] | readable_size }}
+INode Used: {{ worker_metrics['hardware']['inode_used'] }}
+INode Total: {{ worker_metrics['hardware']['inode_total'] }}</pre></td>
                         {% else %}
                             <td>Not available</td>
                         {% endif %}
@@ -195,8 +197,10 @@ Temperature: {{ item['temperature'] }} C</pre></td>
                         {% for key, value in worker_metrics['hardware']['disk_stats'].items() %}
                             <tr>
                                 <td>{{ key }}</td>
-                                <td><pre class="plain-pre">Usage: {{ value['disk_used'] | readable_size }}
-Total: {{ value['disk_total'] | readable_size }}</pre></td>
+                                <td><pre class="plain-pre">Bytes Used: {{ value['disk_used'] | readable_size }}
+Bytes Total: {{ value['disk_total'] | readable_size }}
+INode Used: {{ value['inode_used'] }}
+INode Total: {{ value['inode_total'] }}</pre></td>
                             </tr>
                         {% endfor %}
                         </tbody>

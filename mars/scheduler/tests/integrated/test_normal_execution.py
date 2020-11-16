@@ -275,6 +275,10 @@ class Test(SchedulerIntegratedTest):
         t.op._prepare_inputs = [False, False]
         t.execute(session=sess, timeout=self.timeout)
 
+        t = NoPrepareOperand().new_tileable([t1, t2])
+        t.op._pure_depends = [True, True]
+        t.execute(session=sess, timeout=self.timeout)
+
     def testRemoteWithoutEtcd(self):
         from mars.scheduler.resource import ResourceActor
         from mars.worker.dispatcher import DispatchActor
