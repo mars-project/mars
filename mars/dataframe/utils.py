@@ -856,7 +856,7 @@ def standardize_range_index(chunks, axis=0):
     for c in chunks:
         inputs = row_chunks[:c.index[axis]] + [c]
         op = ChunkStandardizeRangeIndex(
-            prepare_inputs=[False] * (len(inputs) - 1) + [True], axis=axis, output_types=c.op.output_types)
+            pure_depends=[True] * (len(inputs) - 1) + [False], axis=axis, output_types=c.op.output_types)
         out_chunks.append(op.new_chunk(inputs, **c.params.copy()))
 
     return out_chunks

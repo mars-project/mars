@@ -325,6 +325,7 @@ class SharedHolderActor(ObjectHolderActor):
         if pin_token:
             self.pin_data_keys(session_id, data_keys, pin_token)
 
+        self._finish_put_objects(session_id, data_keys)
         self.storage_client.register_data(
             session_id, data_keys, (0, self._storage_device), sizes, shapes=shapes)
 
