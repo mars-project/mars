@@ -21,9 +21,10 @@ from .procmemhandler import ProcMemHandler
 from .sharedhandler import SharedStorageHandler
 from .vineyardhandler import VineyardHandler
 
+from .diskmerge import DiskFileMergerActor
 from .iorunner import IORunnerActor
 from .manager import StorageManagerActor
-from .sharedstore import PlasmaKeyMapActor
 from .objectholder import ObjectHolderActor, SharedHolderActor, InProcHolderActor, \
     CudaHolderActor
+from .sharedstore import PlasmaKeyMapActor
 from .vineyardhandler import VineyardKeyMapActor
