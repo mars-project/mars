@@ -265,6 +265,10 @@ class Test(TestBase):
         self.assertEqual(r15.op.method, 'auto')
         self.assertTrue(all((not isinstance(c.op, ShuffleProxy)) for c in r15.build_graph(tiled=True)))
 
+        # r16 = mdf2.groupby('c2').agg(MockReduction2())
+        # pd.testing.assert_frame_equal(self.executor.execute_dataframe(r16, concat=True)[0],
+        #                               df2.groupby('c2').agg(MockReduction2()))
+
     def testSeriesGroupByAgg(self):
         rs = np.random.RandomState(0)
         series1 = pd.Series(rs.rand(10))
