@@ -427,6 +427,7 @@ def search_index(tensor, topk, index, threads=4, row_number=None, dimension=None
                  distance_metric=None, index_searcher=None, index_searcher_params=None,
                  index_reformer=None, index_reformer_params=None,
                  storage_options=None, run=True, session=None, run_kwargs=None):
+
     tensor = validate_tensor(tensor)
 
     if dimension is None:
