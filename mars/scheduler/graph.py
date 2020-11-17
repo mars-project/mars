@@ -834,7 +834,7 @@ class GraphActor(SchedulerActor):
         successor_keys = set()
         input_chunk_keys = set()
         shared_input_chunk_keys = set()
-        no_prepare_chunk_keys = set()
+        pure_dep_chunk_keys = set()
         chunk_keys = set()
         shuffle_keys = dict()
         predecessors_to_successors = dict()
@@ -848,9 +848,9 @@ class GraphActor(SchedulerActor):
                 if graph.count_successors(pn) > 1:
                     shared_input_chunk_keys.add(pn.key)
 
-            for inp, prep in zip(c.op.inputs or (), c.op.prepare_inputs):
-                if not prep and inp.key in input_chunk_keys:
-                    no_prepare_chunk_keys.add(inp.key)
+            for inp, is_dep in zip(c.op.inputs or (), c.op.pure_depends):
+                if is_dep and inp.key in input_chunk_keys:
+                    pure_dep_chunk_keys.add(inp.key)
 
             # handling successor args
             for sn in graph.iter_successors(c):
@@ -868,7 +868,7 @@ class GraphActor(SchedulerActor):
             predecessors=list(predecessor_keys),
             successors=list(successor_keys),
             input_chunks=list(input_chunk_keys),
-            no_prepare_chunk_keys=list(no_prepare_chunk_keys),
+            pure_dep_chunk_keys=list(pure_dep_chunk_keys),
             shared_input_chunks=list(shared_input_chunk_keys),
             chunks=list(chunk_keys),
         )

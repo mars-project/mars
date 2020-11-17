@@ -115,8 +115,8 @@ class StatusReporterActor(WorkerActor):
                     hw_metrics['disk_stats'] = dict()
                 disk_stats = hw_metrics['disk_stats']
 
-                agg_disk_used = 0.0
-                agg_disk_total = 0.0
+                agg_disk_used = agg_disk_total = 0.0
+                agg_inode_used = agg_inode_total = 0
                 for spill_dir in spill_dirs:
                     if not os.path.exists(spill_dir):
                         continue
@@ -128,8 +128,16 @@ class StatusReporterActor(WorkerActor):
                     agg_disk_total += disk_usage.total
                     disk_stats[spill_dir]['disk_used'] = disk_usage.used
                     agg_disk_used += disk_usage.used
+
+                    vfs_stat = os.statvfs(spill_dir)
+                    disk_stats[spill_dir]['inode_total'] = vfs_stat.f_files
+                    agg_inode_total += vfs_stat.f_files
+                    disk_stats[spill_dir]['inode_used'] = vfs_stat.f_files - vfs_stat.f_favail
+                    agg_inode_used += vfs_stat.f_files - vfs_stat.f_favail
                 hw_metrics['disk_used'] = agg_disk_used
                 hw_metrics['disk_total'] = agg_disk_total
+                hw_metrics['inode_used'] = agg_inode_used
+                hw_metrics['inode_total'] = agg_inode_total
 
             cuda_card_stats = resource.cuda_card_stats() if self._with_gpu else None
             if cuda_card_stats:

@@ -380,7 +380,9 @@ class AssignEvaluationActor(SchedulerActor):
         try:
             mem_usage = self._mem_usage_cache[op_key]
         except KeyError:
-            mem_usage = self._mem_usage_cache[op_key] = sum(v.chunk_size for v in input_metas.values())
+            pure_dep_keys = set(op_io_meta.get('pure_dep_chunk_keys', ()))
+            mem_usage = self._mem_usage_cache[op_key] = \
+                sum(v.chunk_size for k, v in input_metas.items() if k not in pure_dep_keys)
 
         if calc_device == 'cpu':
             alloc_dict = dict(cpu=options.scheduler.default_cpu_usage, mem_quota=mem_usage)

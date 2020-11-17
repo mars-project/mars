@@ -17,7 +17,7 @@ import numpy as np
 from mars.tensor.arithmetic import TensorAdd
 
 
-class NoPrepareOperand(TensorAdd):
+class PureDependsOperand(TensorAdd):
     _op_type_ = 9870104312
 
     @classmethod

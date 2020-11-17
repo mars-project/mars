@@ -31,7 +31,7 @@ from mars.errors import ExecutionFailed
 from mars.scheduler.custom_log import CustomLogMetaActor
 from mars.scheduler.resource import ResourceActor
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
-from mars.scheduler.tests.integrated.no_prepare_op import NoPrepareOperand
+from mars.scheduler.tests.integrated.no_prepare_op import PureDependsOperand
 from mars.session import new_session
 from mars.remote import spawn, ExecutableTuple
 from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf
@@ -258,7 +258,7 @@ class Test(SchedulerIntegratedTest):
         r = context.get_tileable_data(a.key, indexes)
         np.testing.assert_array_equal(raw1[[9, 1, 2, 0], [0, 0, 4, 4]], r)
 
-    def testOperandsWithoutPrepareInputs(self):
+    def testOperandsWithPureDepends(self):
         self.start_processes(etcd=False, modules=['mars.scheduler.tests.integrated.no_prepare_op'])
         sess = new_session(self.session_manager_ref.address)
 
@@ -271,8 +271,8 @@ class Test(SchedulerIntegratedTest):
         t2 = mt.random.rand(10)
         t2.op._expect_worker = worker_endpoints[1]
 
-        t = NoPrepareOperand().new_tileable([t1, t2])
-        t.op._prepare_inputs = [False, False]
+        t = PureDependsOperand().new_tileable([t1, t2])
+        t.op._pure_depends = [True, True]
         t.execute(session=sess, timeout=self.timeout)
 
     def testRemoteWithoutEtcd(self):

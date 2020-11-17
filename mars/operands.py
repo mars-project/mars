@@ -89,7 +89,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     _reassign_worker = BoolField('reassign_worker')
 
     _inputs = ListField('inputs', ValueType.key)
-    _prepare_inputs = ListField('prepare_inputs', ValueType.bool)
+    _pure_depends = ListField('pure_depends', ValueType.bool)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
 
     _output_types = ListField('output_type', tp=ValueType.int8,
@@ -186,10 +186,10 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         return getattr(self, '_expect_worker', None)
 
     @property
-    def prepare_inputs(self):
-        val = getattr(self, '_prepare_inputs', None)
+    def pure_depends(self):
+        val = getattr(self, '_pure_depends', None)
         if not val:
-            return [True] * len(self.inputs or ())
+            return [False] * len(self.inputs or ())
         return val
 
     @property
@@ -459,12 +459,16 @@ class TileableOperandMixin(object):
     def estimate_size(cls, ctx, op):
         exec_size = 0
         outputs = op.outputs
+        pure_dep_keys = \
+            set(inp.key for inp, is_dep in zip(op.inputs or (), op.pure_depends or ()) if is_dep)
         if all(not c.is_sparse() and hasattr(c, 'nbytes') and not np.isnan(c.nbytes) for c in outputs):
             for out in outputs:
                 ctx[out.key] = (out.nbytes, out.nbytes)
 
         all_overhead = 0
         for inp in op.inputs or ():
+            if inp.key in pure_dep_keys:
+                continue
             try:
                 if isinstance(inp.op, FetchShuffle):
                     keys_and_shapes = inp.extra_params.get('_shapes', dict()).items()

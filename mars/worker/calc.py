@@ -101,8 +101,8 @@ class BaseCalcActor(WorkerActor):
                 for k in chunk.op.to_fetch_keys:
                     fetch_keys.add((k, shuffle_key))
             else:
-                for inp, prepare_inp in zip(chunk.inputs, chunk.op.prepare_inputs):
-                    if not prepare_inp:
+                for inp, is_pure_dep in zip(chunk.inputs, chunk.op.pure_depends):
+                    if is_pure_dep:
                         exclude_fetch_keys.add(inp.key)
         return list(fetch_keys - exclude_fetch_keys)
 
@@ -174,8 +174,8 @@ class BaseCalcActor(WorkerActor):
         start_time = time.time()
 
         for chunk in graph:
-            for inp, prepare_inp in zip(chunk.inputs, chunk.op.prepare_inputs):
-                if not prepare_inp:
+            for inp, is_pure_dep in zip(chunk.inputs, chunk.op.pure_depends):
+                if is_pure_dep:
                     context_dict[inp.key] = None
 
         local_context_dict = DistributedDictContext(

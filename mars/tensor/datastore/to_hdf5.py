@@ -115,7 +115,7 @@ class TensorHDF5DataStore(TensorDataStore):
             chunk_op._lock = exclusive_chunk
             chunk_op._out_shape = in_tensor.shape
             chunk_op._axis_offsets = tuple(acc[ax][i] for ax, i in enumerate(chunk.index))
-            chunk_op._prepare_inputs = [True, False]
+            chunk_op._pure_depends = [False, True]
             out_chunk = chunk_op.new_chunk([chunk, exclusive_chunk], shape=(0,) * chunk.ndim,
                                            index=chunk.index)
             out_chunks.append(out_chunk)
