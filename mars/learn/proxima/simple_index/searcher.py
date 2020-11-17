@@ -166,7 +166,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             download_op._tensor = None
             download_op._index = next(indexes_iter)
             download_chunks[i % len(indexes)].append(
-                download_op.new_chunk(None, index=(i,), shape=()))
+                download_op.new_chunk(None, index=(i,), shape=(),
+                                      dtype=op.inputs[0].dtype))
         return download_chunks
 
     @classmethod
@@ -184,7 +185,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         if tensor.chunk_shape[1] > 1:
             rechunk_size[1] = tensor.shape[1]
         if row_number is not None:
-            rechunk_size[0] = row_number
+            rechunk_size[0] = tensor.shape[0] // row_number
         if len(rechunk_size) > 0:
             tensor = tensor.rechunk(rechunk_size)._inplace_tile()
 

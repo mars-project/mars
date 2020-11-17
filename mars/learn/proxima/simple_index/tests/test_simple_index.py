@@ -438,7 +438,6 @@ class Test(unittest.TestCase):
             pk_m, distance_m = search_index(q, topk, index)
 
             # testing
-            np.testing.assert_array_equal(1, 2)
             np.testing.assert_array_equal(pk_p, pk_m)
             np.testing.assert_array_equal(distance_p, distance_m)
 
