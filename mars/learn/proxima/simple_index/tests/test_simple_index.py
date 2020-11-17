@@ -419,7 +419,7 @@ class Test(unittest.TestCase):
     def testBuildAndSearchIndexWithFilesystem(self):
         with tempfile.TemporaryDirectory() as f:
             # params
-            doc_count, query_count, dimension = 2000, 15, 10
+            doc_count, query_count, dimension = 2000, 50, 10
             topk = 10
             doc_chunk, query_chunk = 1000, 5
 
@@ -438,6 +438,7 @@ class Test(unittest.TestCase):
             pk_m, distance_m = search_index(q, topk, index)
 
             # testing
+            np.testing.assert_array_equal(1, 2)
             np.testing.assert_array_equal(pk_p, pk_m)
             np.testing.assert_array_equal(distance_p, distance_m)
 

@@ -126,11 +126,11 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
     @property
     def output_limit(self):
-        return 2
+        return 1 if self._download_index else 2
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if self._stage != OperandStage.agg:
+        if self._stage != OperandStage.agg and not self._download_index:
             self._tensor = self._inputs[0]
             if isinstance(self._index, (Base, Entity)):
                 self._index = self._inputs[-1]
@@ -152,7 +152,9 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
     @classmethod
     def _build_download_chunks(cls, op, indexes):
         ctx = get_context()
-        workers = ctx.get_worker_addresses()
+        workers = ctx.get_worker_addresses() or [None]
+        if len(workers) < len(indexes):
+            workers = [workers[i % len(workers)] for i in range(len(indexes))]
         indexes_iter = iter(itertools.cycle(indexes))
 
         download_chunks = defaultdict(list)
@@ -160,6 +162,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             download_op = op.copy().reset_key()
             download_op._stage = OperandStage.map
             download_op._expect_worker = worker
+            download_op._download_index = True
+            download_op._tensor = None
             download_op._index = next(indexes_iter)
             download_chunks[i % len(indexes)].append(
                 download_op.new_chunk(None, index=(i,), shape=()))
@@ -217,7 +221,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                     chunk_op._expect_worker = worker
                     chunk_op._index = chunk_index
                 else:
-                    chunk_op._expect_worker = chunk_index.op.expected_worker
+                    chunk_op._expect_worker = chunk_index.op.expect_worker
                 chunk_kws = [
                     {'index': (tensor_chunk.index[0], j),
                      'dtype': outs[0].dtype,
@@ -299,7 +303,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                         else:
                             break
 
-        logger.warning(f'ReadingFromVolume({op.key}), index path: {raw_index_path} '
+        logger.warning(f'ReadingFromVolume({op.key}), index path: {index_path} '
                        f'size {os.path.getsize(index_path)}, '
                        f'costs {timer.duration} seconds')
         ctx[op.outputs[0].key] = local_path
@@ -312,7 +316,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
         inp = ctx[op.tensor.key]
         check_expect_worker = True
-        index_path = ctx[op.inputs[1]]
+        index_path = ctx[op.inputs[1].key]
 
         if hasattr(ctx, 'running_mode') and \
                 ctx.running_mode == RunningMode.distributed and check_expect_worker:
