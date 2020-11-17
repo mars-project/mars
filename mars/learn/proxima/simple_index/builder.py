@@ -182,11 +182,11 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         check_chunks_unknown_shape(op.inputs, TilesError)
 
         if op.column_number:
-            index_chunk_size = op.inputs[0].shape // op.column_number
+            index_chunk_size = op.inputs[0].shape[0] // op.column_number
         else:
             worker_num = len(ctx.get_worker_addresses() or [])
             if worker_num > 0:
-                index_chunk_size = max(op.inputs[0].shape // worker_num, DEFAULT_INDEX_SIZE)
+                index_chunk_size = max(op.inputs[0].shape[0] // worker_num, DEFAULT_INDEX_SIZE)
             else:
                 index_chunk_size = DEFAULT_INDEX_SIZE
 
