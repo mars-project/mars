@@ -293,7 +293,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         return op.new_tileable([tileable], chunks=[chunk], nsplits=((1,),))
 
 
-def build_index(tensor, dimension=None, index_path=None,
+def build_index(tensor, dimension=None, index_path=None, column_number=None,
                 need_shuffle=False, distance_metric='SquaredEuclidean',
                 index_builder='SsgBuilder', index_builder_params=None,
                 index_converter=None, index_converter_params=None,
