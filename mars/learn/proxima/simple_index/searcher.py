@@ -16,6 +16,7 @@ import itertools
 import logging
 import os
 import pickle  # nosec  # pylint: disable=import_pickle
+import random
 import tempfile
 from collections import defaultdict
 
@@ -292,7 +293,15 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         index_path = op.index
         with Timer() as timer:
             fs = get_fs(index_path, op.storage_options)
-            local_path = tempfile.mkstemp(prefix='proxima-', suffix='.index')[1]
+
+            # TODO
+            dirs = os.environ.get('MARS_SPILL_DIRS')
+            if dirs:
+                temp_dir = random.choice(dirs.split(':'))
+            else:
+                temp_dir = None
+
+            local_path = tempfile.mkstemp(prefix='proxima-', suffix='.index', dir=temp_dir)[1]
             with open(local_path, 'wb') as out_f:
                 with fs.open(index_path, 'rb') as in_f:
                     # 32M
