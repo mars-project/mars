@@ -452,7 +452,6 @@ class Test(unittest.TestCase):
         doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
 
         # proxima_data
-        pk_p, distance_p = build_and_search(doc, query, dimension=dimension, topk=topk, threads=5,
-                                            doc_chunk=doc_chunk, query_chunk=query_chunk)
-
+        pk_p, distance_p = self.build_and_query(doc, query, dimension=dimension, topk=topk, threads=1,
+                                                doc_chunk=doc_chunk, query_chunk=query_chunk, )
         self.assertIsInstance(recall(doc, query, topk, sample_count, pk_p, distance_p), dict)
