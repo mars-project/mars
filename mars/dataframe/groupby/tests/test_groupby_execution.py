@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover
 
 import mars.dataframe as md
 from mars.operands import ShuffleProxy
-from mars.tests.core import TestBase, ExecutorForTest, assert_groupby_equal
+from mars.tests.core import TestBase, ExecutorForTest, assert_groupby_equal, require_cudf
 from mars.utils import arrow_array_to_objects
 
 
@@ -188,7 +188,7 @@ class Test(TestBase):
         rs = np.random.RandomState(0)
         df1 = pd.DataFrame({'a': rs.choice([2, 3, 4], size=(100,)),
                             'b': rs.choice([2, 3, 4], size=(100,))})
-        mdf = md.DataFrame(df1, chunk_size=3)
+        mdf = md.DataFrame(df1, chunk_size=13)
 
         df2 = pd.DataFrame({'c1': np.arange(10).astype(np.int64),
                             'c2': rs.choice(['a', 'b', 'c'], (10,)),
@@ -299,6 +299,42 @@ class Test(TestBase):
         r11 = ms1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0].sort_index(),
                                       series1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount']).sort_index())
+
+    @require_cudf
+    def testGPUGroupByAgg(self):
+        rs = np.random.RandomState(0)
+        df1 = pd.DataFrame({'a': rs.choice([2, 3, 4], size=(100,)),
+                            'b': rs.choice([2, 3, 4], size=(100,))})
+        mdf = md.DataFrame(df1, chunk_size=13).to_gpu()
+
+        r = mdf.groupby('a').sum()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
+                                      df1.groupby('a').sum())
+
+        r = mdf.groupby('a').var()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
+                                      df1.groupby('a').var())
+
+        r = mdf.groupby('a').agg(['sum', 'var'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
+                                      df1.groupby('a').agg(['sum', 'var']))
+
+        rs = np.random.RandomState(0)
+        idx = pd.Index(np.where(rs.rand(10) > 0.5, 'A', 'B'))
+        series1 = pd.Series(rs.rand(10), index=idx)
+        ms = md.Series(series1, index=idx, chunk_size=3).to_gpu().to_gpu()
+
+        r = ms.groupby(level=0).sum()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
+                                       series1.groupby(level=0).sum())
+
+        r = ms.groupby(level=0).var()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
+                                       series1.groupby(level=0).var())
+
+        r = ms.groupby(level=0).agg(['sum', 'var'])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
+                                      series1.groupby(level=0).agg(['sum', 'var']))
 
     def testGroupByApply(self):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
