@@ -46,6 +46,10 @@ def _install():
         setattr(cls, 'std', lambda groupby, **kw: agg(groupby, 'std', **kw))
         setattr(cls, 'all', lambda groupby, **kw: agg(groupby, 'all', **kw))
         setattr(cls, 'any', lambda groupby, **kw: agg(groupby, 'any', **kw))
+        setattr(cls, 'skew', lambda groupby, **kw: agg(groupby, 'skew', **kw))
+        setattr(cls, 'kurt', lambda groupby, **kw: agg(groupby, 'kurt', **kw))
+        setattr(cls, 'kurtosis', lambda groupby, **kw: agg(groupby, 'kurtosis', **kw))
+        setattr(cls, 'sem', lambda groupby, **kw: agg(groupby, 'sem', **kw))
 
         setattr(cls, 'apply', groupby_apply)
         setattr(cls, 'transform', groupby_transform)

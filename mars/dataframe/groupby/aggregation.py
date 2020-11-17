@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import itertools
-from collections import namedtuple
+from collections import OrderedDict
 from collections.abc import Iterable
-from functools import partial
+from typing import List
 
 import numpy as np
 import pandas as pd
-from pandas.core.groupby import SeriesGroupBy
 
 from ... import opcodes as OperandDef
 from ...config import options
@@ -27,24 +26,60 @@ from ...context import get_context, RunningMode
 from ...core import Base, Entity, OutputType
 from ...custom_log import redirect_custom_log
 from ...operands import OperandStage
-from ...serialize import ValueType, AnyField, StringField, ListField, DictField
-from ...utils import enter_current_session
+from ...serialize import Int32Field, AnyField, BoolField, StringField, ListField, DictField
+from ...utils import enter_current_session, lazy_import
+from ..core import GROUPBY_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
-from ..core import GROUPBY_TYPE
-from ..utils import parse_index, build_concatenated_rows_frame, tokenize
+from ..reduction.core import CustomReduction, ReductionCompiler, ReductionSteps, \
+    ReductionPreStep, ReductionAggStep, ReductionPostStep
+from ..reduction.aggregation import mean_function, var_function, sem_function, \
+    skew_function, kurt_function, is_funcs_aggregate
+from ..utils import parse_index, build_concatenated_rows_frame
 from .core import DataFrameGroupByOperand
 
+cp = lazy_import('cupy', globals=globals(), rename='cp')
+cudf = lazy_import('cudf', globals=globals())
 
-_available_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count', 'size',
-                                    'mean', 'var', 'std', 'all', 'any'}
 
-_stage_infos = namedtuple('stage_infos', ('intermediate_cols', 'agg_cols',
-                                          'map_func', 'map_output_column_to_func',
-                                          'combine_func', 'combine_output_column_to_func',
-                                          'agg_func', 'agg_output_column_to_func'))
-
+_agg_functions = {
+    'sum': lambda x: x.sum(),
+    'prod': lambda x: x.prod(),
+    'product': lambda x: x.product(),
+    'min': lambda x: x.min(),
+    'max': lambda x: x.max(),
+    'all': lambda x: x.all(),
+    'any': lambda x: x.any(),
+    'count': lambda x: x.count(),
+    'size': lambda x: x._reduction_size(),
+    'mean': mean_function,
+    'var': var_function,
+    'std': lambda x, ddof=1: var_function(x, ddof=ddof) ** 0.5,
+    'sem': sem_function,
+    'skew': skew_function,
+    'kurt': kurt_function,
+    'kurtosis': kurt_function,
+}
 _series_col_name = 'col_name'
+
+
+def _patch_groupby_kurt():
+    try:
+        from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
+        if not hasattr(DataFrameGroupBy, 'kurt'):
+            DataFrameGroupBy.kurt = lambda x: x.agg(pd.Series.kurt)
+            SeriesGroupBy.kurt = lambda x: x.agg(pd.Series.kurt)
+
+            def kurtosis(x, *args, **kwargs):
+                return pd.Series.kurt(x, *args, **kwargs)
+
+            DataFrameGroupBy.kurtosis = lambda x: x.agg(kurtosis)
+            SeriesGroupBy.kurtosis = lambda x: x.agg(kurtosis)
+    except (AttributeError, ImportError):
+        pass
+
+
+_patch_groupby_kurt()
 
 
 class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
@@ -56,19 +91,22 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     _groupby_params = DictField('groupby_params')
 
     _method = StringField('method')
+    _use_inf_as_na = BoolField('use_inf_as_na')
+
     # for chunk
-    # store the intermediate aggregated columns for the result
-    _agg_columns = ListField('agg_columns', ValueType.string)
-    # store output columns -> function to apply on DataFrameGroupBy
-    _output_column_to_func = DictField('output_column_to_func')
+    _combine_size = Int32Field('combine_size')
+    _pre_funcs = ListField('pre_funcs')
+    _agg_funcs = ListField('agg_funcs')
+    _post_funcs = ListField('post_funcs')
     # for chunk
     _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, func=None, method=None, groupby_params=None, raw_func=None,
-                 agg_columns=None, output_column_to_func=None, stage=None,
-                 output_types=None, tileable_op_key=None, **kw):
+                 use_inf_as_na=None, combine_size=None, pre_funcs=None, agg_funcs=None,
+                 post_funcs=None, stage=None, output_types=None, tileable_op_key=None, **kw):
         super().__init__(_func=func, _method=method, _groupby_params=groupby_params,
-                         _agg_columns=agg_columns, _output_column_to_func=output_column_to_func,
+                         _combine_size=combine_size, _use_inf_as_na=use_inf_as_na,
+                         _pre_funcs=pre_funcs, _agg_funcs=agg_funcs, _post_funcs=post_funcs,
                          _raw_func=raw_func, _stage=stage, _output_types=output_types,
                          _tileable_op_key=tileable_op_key, **kw)
 
@@ -89,12 +127,24 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return self._method
 
     @property
-    def agg_columns(self):
-        return self._agg_columns
+    def use_inf_as_na(self):
+        return self._use_inf_as_na
 
     @property
-    def output_column_to_func(self):
-        return self._output_column_to_func
+    def combine_size(self) -> int:
+        return self._combine_size
+
+    @property
+    def pre_funcs(self) -> List[ReductionPreStep]:
+        return self._pre_funcs
+
+    @property
+    def agg_funcs(self) -> List[ReductionAggStep]:
+        return self._agg_funcs
+
+    @property
+    def post_funcs(self) -> List[ReductionPostStep]:
+        return self._post_funcs
 
     @property
     def tileable_op_key(self):
@@ -112,37 +162,31 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     by.append(v)
             self._groupby_params['by'] = by
 
-    def _normalize_keyword_aggregations(self, groupby):
-        raw_func = self._raw_func
-        if isinstance(raw_func, dict):
-            func = dict()
-            for col, function in raw_func.items():
-                if isinstance(function, Iterable) and not isinstance(function, str):
-                    func[col] = list(function)
-                else:
-                    func[col] = [function]
-            self._func = func
-        else:
-            # force as_index=True
-            grouped = groupby.op.build_mock_groupby(as_index=True)
-            agg_df = grouped.aggregate(self.func)
+    def _normalize_funcs(self):
+        self._raw_func = self._func
 
-            if isinstance(agg_df, pd.Series):
-                self._func = dict([(agg_df.name or _series_col_name, [raw_func])])
-            else:
-                if groupby.op.output_types[0] == OutputType.series_groupby:
-                    func = dict()
-                    for f in agg_df.columns:
-                        self._safe_append(func, groupby.name or _series_col_name, f)
-                    self._func = func
-                elif not isinstance(agg_df.columns, pd.MultiIndex):
-                    # 1 func, the columns of agg_df is the columns to aggregate
-                    self._func = {c: [raw_func] for c in agg_df.columns}
+        if isinstance(self._func, dict):
+            new_func = OrderedDict()
+            for k, v in self._func.items():
+                if isinstance(v, str) or callable(v):
+                    new_func[k] = [v]
                 else:
-                    func = dict()
-                    for c, f in agg_df.columns:
-                        self._safe_append(func, c, f)
-                    self._func = func
+                    new_func[k] = v
+            self._func = new_func
+        elif isinstance(self._func, Iterable) and not isinstance(self._func, str):
+            self._func = list(self._func)
+        else:
+            self._func = [self._func]
+
+        custom_idx = 0
+        if isinstance(self._func, list):
+            custom_iter = (f for f in self._func if isinstance(f, CustomReduction))
+        else:
+            custom_iter = (f for f in self._func.values() if isinstance(f, CustomReduction))
+        for r in custom_iter:
+            if r.name == '<custom>':
+                r.name = f'<custom_{custom_idx}>'
+                custom_idx += 1
 
     def _get_inputs(self, inputs):
         if isinstance(self._groupby_params['by'], list):
@@ -153,14 +197,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     def _call_dataframe(self, groupby, input_df):
         grouped = groupby.op.build_mock_groupby()
-        agg_df = grouped.aggregate(self.func)
+        agg_df = grouped.aggregate(self.raw_func)
 
         shape = (np.nan, agg_df.shape[1])
         index_value = parse_index(agg_df.index, groupby.key, groupby.index_value.key)
         index_value.value.should_be_monotonic = True
-
-        # convert func to dict always
-        self._normalize_keyword_aggregations(groupby)
 
         as_index = self.groupby_params.get('as_index')
         # make sure if as_index=False takes effect
@@ -179,13 +220,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                                   columns_value=parse_index(agg_df.columns, store_data=True))
 
     def _call_series(self, groupby, in_series):
-        agg_result = groupby.op.build_mock_groupby().aggregate(self.func)
+        agg_result = groupby.op.build_mock_groupby().aggregate(self.raw_func)
 
         index_value = parse_index(agg_result.index, groupby.key, groupby.index_value.key)
         index_value.value.should_be_monotonic = True
-
-        # convert func to dict always
-        self._normalize_keyword_aggregations(groupby)
 
         inputs = self._get_inputs([in_series])
         # update value type
@@ -198,11 +236,12 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                                    name=agg_result.name, index_value=index_value)
 
     def __call__(self, groupby):
+        self._normalize_funcs()
         df = groupby
         while df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
             df = df.inputs[0]
 
-        if self.func == 'size':
+        if self.raw_func == 'size':
             self.output_types = [OutputType.series]
         else:
             self.output_types = [OutputType.dataframe] \
@@ -212,92 +251,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             return self._call_dataframe(groupby, df)
         else:
             return self._call_series(groupby, df)
-
-    @staticmethod
-    def _safe_append(d, key, val):
-        if key not in d:
-            d[key] = []
-        d[key].append(val)
-
-    @classmethod
-    def _append_func(cls, func_dict, callable_func_dict, col, func, src_cols):
-        if callable(func):
-            callable_func_dict[col] = partial(func, columns=list(src_cols))
-            func = None
-        cls._safe_append(func_dict, col, func)
-
-    @classmethod
-    def _gen_stages_columns_and_funcs(cls, func):
-        intermediate_cols = []
-        intermediate_cols_set = set()
-        agg_cols = []
-        map_func = dict()
-        map_output_column_to_func = dict()
-        combine_func = dict()
-        combine_output_column_to_func = dict()
-        agg_func = dict()
-        agg_output_column_to_func = dict()
-
-        def _add_column_to_functions(col, fun_name, mappers, combiners, aggregator):
-            final_col = tokenize(col, fun_name)
-            agg_cols.append(final_col)
-            mapper_to_cols = {mapper: tokenize(col, mapper) for mapper in mappers}
-            for mapper, combiner in zip(mappers, combiners):
-                mapper_col = mapper_to_cols[mapper]
-                if mapper_col not in intermediate_cols_set:
-                    intermediate_cols.append(mapper_col)
-                    intermediate_cols_set.add(mapper_col)
-
-                    cls._append_func(map_func, map_output_column_to_func,
-                                     col, mapper, (mapper_col,))
-                    cls._append_func(combine_func, combine_output_column_to_func,
-                                     mapper_col, combiner, mapper_to_cols.values())
-
-            cls._append_func(agg_func, agg_output_column_to_func,
-                             final_col, aggregator, mapper_to_cols.values())
-
-        for col, functions in func.items():
-            for f in functions:
-                if f in {'sum', 'prod', 'min', 'max', 'all', 'any'}:
-                    _add_column_to_functions(col, f, [f], [f], f)
-                elif f in {'count', 'size'}:
-                    _add_column_to_functions(col, f, [f], ['sum'], 'sum')
-                elif f == 'mean':
-                    def _mean(_, grouped, columns):
-                        return grouped[columns[0]].sum() / grouped[columns[1]].sum()
-
-                    _add_column_to_functions(col, f, ['sum', 'count'], ['sum', 'sum'], _mean)
-                elif f in {'var', 'std'}:
-                    def _reduce_var(df, grouped, columns):
-                        grouper = grouped.grouper
-
-                        data = df[columns[0]]
-                        cnt = df[columns[1]]
-                        var_square = df[columns[2]] * (cnt - 1)
-
-                        reduced_cnt = grouped[columns[1]].sum()
-                        avg = grouped[columns[0]].sum() / reduced_cnt
-                        avg_diff_square = (data / cnt - avg.loc[df.index]) ** 2
-                        var_square = var_square.groupby(grouper).sum() + \
-                                     (cnt * avg_diff_square).groupby(grouper).sum()
-                        return var_square / (reduced_cnt - 1)
-
-                    def _reduce_std(df, grouped, columns):
-                        return np.sqrt(_reduce_var(df, grouped, columns))
-
-                    _add_column_to_functions(col, f, ['sum', 'count', 'var'],
-                                             ['sum', 'sum', _reduce_var],
-                                             _reduce_var if f == 'var' else _reduce_std)
-                else:  # pragma: no cover
-                    raise NotImplementedError
-
-        return _stage_infos(intermediate_cols=intermediate_cols, agg_cols=agg_cols,
-                            map_func=map_func,
-                            map_output_column_to_func=map_output_column_to_func,
-                            combine_func=combine_func,
-                            combine_output_column_to_func=combine_output_column_to_func,
-                            agg_func=agg_func,
-                            agg_output_column_to_func=agg_output_column_to_func)
 
     @classmethod
     def _gen_shuffle_chunks(cls, op, in_df, chunks):
@@ -327,7 +280,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return reduce_chunks
 
     @classmethod
-    def _gen_map_chunks(cls, op, in_df, out_df, stage_infos: _stage_infos):
+    def _gen_map_chunks(cls, op: "DataFrameGroupByAgg", in_df, out_df, func_infos: ReductionSteps):
         agg_chunks = []
         for chunk in in_df.chunks:
             chunk_inputs = [chunk]
@@ -347,22 +300,40 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                         by.append(v)
                 agg_op._groupby_params['by'] = by
             agg_op._stage = OperandStage.map
-            agg_op._func = stage_infos.map_func
-            agg_op._output_column_to_func = stage_infos.map_output_column_to_func
-            columns_value = parse_index(pd.Index(stage_infos.intermediate_cols), store_data=True)
+            agg_op._pre_funcs = func_infos.pre_funcs
+            agg_op._agg_funcs = func_infos.agg_funcs
             new_index = chunk.index if len(chunk.index) == 2 else (chunk.index[0], 0)
             if op.output_types[0] == OutputType.dataframe:
                 agg_chunk = agg_op.new_chunk(chunk_inputs, shape=out_df.shape, index=new_index,
                                              index_value=out_df.index_value,
-                                             columns_value=columns_value)
+                                             columns_value=out_df.columns_value)
             else:
                 agg_chunk = agg_op.new_chunk(chunk_inputs, shape=(out_df.shape[0], 1), index=new_index,
-                                             index_value=out_df.index_value, columns_value=columns_value)
+                                             index_value=out_df.index_value)
             agg_chunks.append(agg_chunk)
         return agg_chunks
 
     @classmethod
-    def _tile_with_shuffle(cls, op):
+    def _compile_funcs(cls, op: "DataFrameGroupByAgg", in_df) -> ReductionSteps:
+        compiler = ReductionCompiler(store_source=True)
+        if isinstance(op.func, list):
+            func_iter = ((None, f) for f in op.func)
+        else:
+            func_iter = ((col, f) for col, funcs in op.func.items() for f in funcs)
+
+        for col, f in func_iter:
+            func_name = None
+            if isinstance(f, str):
+                f, func_name = _agg_functions[f], f
+
+            func_cols = None
+            if col is not None:
+                func_cols = [col]
+            compiler.add_function(f, in_df.ndim, cols=func_cols, func_name=func_name)
+        return compiler.compile()
+
+    @classmethod
+    def _tile_with_shuffle(cls, op: "DataFrameGroupByAgg"):
         in_df = op.inputs[0]
         if len(in_df.shape) > 1:
             in_df = build_concatenated_rows_frame(in_df)
@@ -371,10 +342,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         index = out_df.index_value.to_pandas()
         level = 0 if not isinstance(index, pd.MultiIndex) else list(range(len(index.levels)))
 
-        stage_infos = cls._gen_stages_columns_and_funcs(op.func)
+        func_infos = cls._compile_funcs(op, in_df)
 
         # First, perform groupby and aggregation on each chunk.
-        agg_chunks = cls._gen_map_chunks(op, in_df, out_df, stage_infos)
+        agg_chunks = cls._gen_map_chunks(op, in_df, out_df, func_infos)
 
         # Shuffle the aggregation chunk.
         reduce_chunks = cls._gen_shuffle_chunks(op, in_df, agg_chunks)
@@ -390,9 +361,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_op._groupby_params.pop('by', None)
             agg_op._groupby_params['level'] = level
             agg_op._stage = OperandStage.agg
-            agg_op._func = stage_infos.agg_func
-            agg_op._output_column_to_func = stage_infos.agg_output_column_to_func
-            agg_op._agg_columns = stage_infos.agg_cols
+            agg_op._agg_funcs = func_infos.agg_funcs
+            agg_op._post_funcs = func_infos.post_funcs
             if op.output_types[0] == OutputType.dataframe:
                 agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
                                              index_value=out_df.index_value, dtypes=out_df.dtypes,
@@ -413,7 +383,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables([in_df], **kw)
 
     @classmethod
-    def _tile_with_tree(cls, op):
+    def _tile_with_tree(cls, op: "DataFrameGroupByAgg"):
         in_df = op.inputs[0]
         if len(in_df.shape) > 1:
             in_df = build_concatenated_rows_frame(in_df)
@@ -422,9 +392,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         index = out_df.index_value.to_pandas()
         level = 0 if not isinstance(index, pd.MultiIndex) else list(range(len(index.levels)))
 
-        stage_infos = cls._gen_stages_columns_and_funcs(op.func)
-        combine_size = options.combine_size
-        chunks = cls._gen_map_chunks(op, in_df, out_df, stage_infos)
+        func_infos = cls._compile_funcs(op, in_df)
+        combine_size = op.combine_size
+        chunks = cls._gen_map_chunks(op, in_df, out_df, func_infos)
         while len(chunks) > combine_size:
             new_chunks = []
             for idx, i in enumerate(range(0, len(chunks), combine_size)):
@@ -446,15 +416,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 # use levels instead of by for agg
                 chunk_op._groupby_params.pop('by', None)
                 chunk_op._groupby_params['level'] = level
-                chunk_op._func = stage_infos.combine_func
-                chunk_op._output_column_to_func = stage_infos.combine_output_column_to_func
+                chunk_op._agg_funcs = func_infos.agg_funcs
 
-                columns_value = parse_index(pd.Index(stage_infos.intermediate_cols), store_data=True)
                 new_shape = (np.nan, out_df.shape[1]) if len(out_df.shape) == 2 else (np.nan,)
 
                 new_chunks.append(chunk_op.new_chunk([chk], index=(idx, 0), shape=new_shape,
                                                      index_value=chks[0].index_value,
-                                                     columns_value=columns_value))
+                                                     columns_value=getattr(out_df, 'columns_value', None)))
             chunks = new_chunks
 
         concat_op = DataFrameConcat(output_types=[OutputType.dataframe])
@@ -467,9 +435,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         # use levels instead of by for agg
         chunk_op._groupby_params.pop('by', None)
         chunk_op._groupby_params['level'] = level
-        chunk_op._func = stage_infos.agg_func
-        chunk_op._output_column_to_func = stage_infos.agg_output_column_to_func
-        chunk_op._agg_columns = stage_infos.agg_cols
+        chunk_op._agg_funcs = func_infos.agg_funcs
+        chunk_op._post_funcs = func_infos.post_funcs
         kw = out_df.params.copy()
         kw['index'] = (0, 0) if op.output_types[0] == OutputType.dataframe else (0,)
         chunk = chunk_op.new_chunk([chk], **kw)
@@ -499,7 +466,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             raise NotImplementedError
 
     @classmethod
-    def _get_grouped(cls, op: "DataFrameGroupByAgg", df, ctx, copy=False):
+    def _get_grouped(cls, op: "DataFrameGroupByAgg", df, ctx, copy=False, grouper=None):
         if copy:
             df = df.copy()
 
@@ -507,7 +474,9 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         params.pop('as_index', None)
         selection = params.pop('selection', None)
 
-        if isinstance(params.get('by'), list):
+        if grouper is not None:
+            params['by'] = grouper
+        elif isinstance(params.get('by'), list):
             new_by = []
             for v in params['by']:
                 if isinstance(v, Base):
@@ -527,119 +496,188 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             grouped = grouped[selection]
         return grouped
 
+    @staticmethod
+    def _pack_inputs(agg_funcs: List[ReductionAggStep], in_data):
+        pos = 0
+        out_dict = dict()
+        for step in agg_funcs:
+            if step.custom_reduction is None:
+                out_dict[step.output_key] = in_data[pos]
+            else:
+                out_dict[step.output_key] = tuple(in_data[pos:pos + step.output_limit])
+            pos += step.output_limit
+        return out_dict
+
     @classmethod
-    def _is_raw_one_func(cls, op):
-        raw_func = op.raw_func
-        func = None
-        if isinstance(raw_func, str):
-            func = raw_func
-        elif isinstance(raw_func, list) and len(raw_func) == 1:
-            func = raw_func[0]
-        if func is None:
-            return False
-        return func in {'min', 'max', 'prod', 'sum', 'count', 'size'}
+    def _execute_map(cls, ctx, op: "DataFrameGroupByAgg"):
+        in_data = ctx[op.inputs[0].key]
+        if isinstance(in_data, pd.Series) and op.output_types[0] == OutputType.dataframe:
+            in_data = pd.DataFrame(
+                in_data, columns=[in_data.name] if in_data.name is not None else None)
+
+        # map according to map groups
+        ret_map_groupbys = dict()
+        grouped = cls._get_grouped(op, in_data, ctx)
+        for input_key, output_key, cols, func in op.pre_funcs:
+            if input_key == output_key:
+                ret_map_groupbys[output_key] = grouped if cols is None else grouped[cols]
+            else:
+                def _wrapped_func(col):
+                    try:
+                        return func(col)
+                    except TypeError:
+                        return col
+
+                pre_df = in_data if cols is None else in_data[cols]
+                try:
+                    pre_df = func(pre_df)
+                except TypeError:
+                    pre_df = pre_df.transform(_wrapped_func)
+                ret_map_groupbys[output_key] = \
+                    cls._get_grouped(op, pre_df, ctx, grouper=grouped.grouper)
+
+        agg_dfs = []
+        for input_key, map_func_name, _agg_func_name, custom_reduction, \
+                _output_key, _output_limit, kwds in op.agg_funcs:
+            input_obj = ret_map_groupbys[input_key]
+            if map_func_name == 'custom_reduction':
+                pre_result = custom_reduction.pre(input_obj)
+                if not isinstance(pre_result, tuple):
+                    pre_result = (pre_result,)
+                agg_dfs.extend(pre_result)
+            elif input_obj.ndim == 2:
+                result = input_obj.agg([map_func_name])
+                result.columns = result.columns.droplevel(-1)
+                agg_dfs.append(result)
+            else:
+                agg_dfs.append(input_obj.agg(map_func_name))
+        ctx[op.outputs[0].key] = tuple(agg_dfs)
+
+    @classmethod
+    def _execute_combine(cls, ctx, op: "DataFrameGroupByAgg"):
+        in_data_tuple = ctx[op.inputs[0].key]
+        in_data_list = []
+        for in_data in in_data_tuple:
+            if isinstance(in_data, pd.Series) and op.output_types[0] == OutputType.dataframe:
+                in_data = pd.DataFrame(
+                    in_data, columns=[in_data.name] if in_data.name is not None else None)
+            in_data_list.append(cls._get_grouped(op, in_data, ctx))
+        in_data_tuple = tuple(in_data_list)
+        in_data_dict = cls._pack_inputs(op.agg_funcs, in_data_tuple)
+
+        combines = []
+        for _input_key, _map_func_name, agg_func_name, custom_reduction, \
+            output_key, _output_limit, kwds in op.agg_funcs:
+            input_obj = in_data_dict[output_key]
+            if agg_func_name == 'custom_reduction':
+                agg_fun = custom_reduction.agg or custom_reduction.pre
+                pre_result = agg_fun(*input_obj, **custom_reduction.kwds)
+                if not isinstance(pre_result, tuple):
+                    pre_result = (pre_result,)
+                combines.extend(pre_result)
+            elif input_obj.ndim == 2:
+                result = input_obj.agg([agg_func_name])
+                result.columns = result.columns.droplevel(-1)
+                combines.append(result)
+            else:
+                combines.append(input_obj.agg(agg_func_name))
+            ctx[op.outputs[0].key] = tuple(combines)
+
+    @classmethod
+    def _execute_agg(cls, ctx, op: "DataFrameGroupByAgg"):
+        xdf = cudf if op.gpu else pd
+        out = op.outputs[0]
+        col_value = out.columns_value.to_pandas() if hasattr(out, 'columns_value') else None
+
+        in_data_tuple = ctx[op.inputs[0].key]
+        in_data_list = []
+        for in_data in in_data_tuple:
+            if isinstance(in_data, pd.Series) and op.output_types[0] == OutputType.dataframe:
+                in_data = pd.DataFrame(
+                    in_data, columns=[in_data.name] if in_data.name is not None else None)
+            in_data_list.append(in_data)
+        in_data_tuple = tuple(in_data_list)
+        in_data_dict = cls._pack_inputs(op.agg_funcs, in_data_tuple)
+
+        for _input_key, _map_func_name, agg_func_name, custom_reduction, \
+            output_key, _output_limit, kwds in op.agg_funcs:
+            input_obj = cls._get_grouped(op, in_data_dict[output_key], ctx)
+            if agg_func_name == 'custom_reduction':
+                pre_result = custom_reduction.agg(*input_obj)
+                if custom_reduction.post is None:
+                    in_data_dict[output_key] = pre_result
+                else:
+                    if not isinstance(pre_result, tuple):
+                        pre_result = (pre_result,)
+                    in_data_dict[output_key] = custom_reduction.post(*pre_result)
+            elif input_obj.ndim == 2:
+                result = input_obj.agg([agg_func_name])
+                result.columns = result.columns.droplevel(-1)
+                in_data_dict[output_key] = result
+            else:
+                in_data_dict[output_key] = input_obj.agg(agg_func_name)
+
+        aggs = []
+        for input_keys, _output_key, func_name, cols, func in op.post_funcs:
+            if cols is None:
+                func_inputs = [in_data_dict[k] for k in input_keys]
+            else:
+                func_inputs = [in_data_dict[k][cols] for k in input_keys]
+
+            agg_df = func(*func_inputs)
+            if isinstance(agg_df, np.ndarray):
+                agg_df = pd.DataFrame(agg_df, index=func_inputs[0].index)
+
+            new_cols = None
+            if out.ndim == 2 and col_value is not None:
+                if col_value.nlevels > agg_df.columns.nlevels:
+                    new_cols = pd.MultiIndex.from_product([agg_df.columns, [func_name]])
+                elif agg_df.shape[-1] == 1 and func_name in col_value:
+                    new_cols = pd.Index([func_name])
+            aggs.append((agg_df, new_cols))
+
+        for agg_df, new_cols in aggs:
+            if new_cols is not None:
+                agg_df.columns = new_cols
+        aggs = [item[0] for item in aggs]
+
+        if out.ndim == 2:
+            result = xdf.concat(aggs, axis=1)
+            if not op.groupby_params.get('as_index', True) \
+                    and col_value.nlevels == result.columns.nlevels:
+                result.reset_index(inplace=True)
+            result = result.reindex(col_value, axis=1)
+        else:
+            result = xdf.concat(aggs)
+            if result.ndim == 2:
+                result = result.iloc[:, 0]
+            result.name = out.name
+        ctx[op.outputs[0].key] = result
 
     @classmethod
     @redirect_custom_log
     @enter_current_session
-    def execute(cls, ctx, op):
-        df = ctx[op.inputs[0].key]
-        out = op.outputs[0]
-
-        if isinstance(df, pd.Series) and op.output_types[0] == OutputType.dataframe:
-            df = pd.DataFrame(df, columns=[df.name or _series_col_name])
-
-        grouped = cls._get_grouped(op, df, ctx)
-        if op.stage == OperandStage.agg:
-            # use intermediate columns
-            columns = op.agg_columns
-        else:
-            columns = op.outputs[0].columns_value.to_pandas().tolist()
-
-        func = dict()
-        processed_cols = []
-        col_iter = iter(columns)
-        for col, funcs in op.func.items():
-            for f in funcs:
-                c = next(col_iter)
-                if f is not None:
-                    cls._safe_append(func, col, f)
-                    processed_cols.append(c)
-
-        if cls._is_raw_one_func(op):
-            # do some optimization if the raw func is a str or list whose length is 1
-            func = next(iter(func.values()))[0]
-            try:
-                result = grouped.agg(func)
-                if result.empty and not df.empty:
-                    # fix for py35, due to buffer read-only
-                    raise ValueError
-            except ValueError:
-                # fail due to buffer read-only
-                # force to get grouped again by copy
-                grouped = cls._get_grouped(op, df, ctx, copy=True)
-                result = grouped.agg(func)
-        else:
-            # SeriesGroupBy does not support aggregating with dicts
-            if isinstance(grouped, SeriesGroupBy) and len(func) == 1:
-                func = next(iter(func.values()))
-            # agg the funcs that can be done
-            try:
-                result = grouped.agg(func)
-            except ValueError:  # pragma: no cover
-                # fail due to buffer read-only
-                # force to get grouped again by copy
-                grouped = cls._get_grouped(op, df, ctx, copy=True)
-                result = grouped.agg(func)
-        result.columns = processed_cols
-        if len(op.output_column_to_func) > 0:
-            # process the functions that require operating on the grouped data
-            for out_col, f in op.output_column_to_func.items():
-                if len(df) > 0:
-                    result[out_col] = f(df, grouped)
-                else:
-                    result[out_col] = []
-
-            # sort columns as origin
-            result = result[columns]
-            if hasattr(result.index, 'name') and result.index.name is None and \
-                    out.index_value.name is not None:
-                # set index name, lost when pandas 1.1.2 released
-                result.index.name = out.index_value.name
-
-        if len(result) == 0:
-            # empty data, set index manually
-            result.index = out.index_value.to_pandas()
-
-        if op.output_types[0] == OutputType.series:
-            if isinstance(result, pd.DataFrame):
-                result = result.iloc[:, 0]
-            result.name = out.name
-        else:
-            if op.stage == OperandStage.agg:
-                if not op.groupby_params.get('as_index', True):
-                    result.reset_index(inplace=True)
-                result.columns = out.columns_value.to_pandas()
-        ctx[out.key] = result
-
-
-def _check_if_func_available(func):
-    to_check = []
-    if isinstance(func, list):
-        to_check.extend(func)
-    elif isinstance(func, dict):
-        for f in func.values():
-            if isinstance(f, Iterable) and not isinstance(f, str):
-                to_check.extend(f)
+    def execute(cls, ctx, op: "DataFrameGroupByAgg"):
+        try:
+            pd.set_option('mode.use_inf_as_na', op.use_inf_as_na)
+            if op.stage == OperandStage.map:
+                cls._execute_map(ctx, op)
+            elif op.stage == OperandStage.combine:
+                cls._execute_combine(ctx, op)
+            elif op.stage == OperandStage.agg:
+                cls._execute_agg(ctx, op)
+            elif op.raw_func == 'size':
+                xp = cp if op.gpu else np
+                ctx[op.outputs[0].key] = xp.array(ctx[op.inputs[0].key].agg(op.raw_func)) \
+                    .reshape(op.outputs[0].shape)
             else:
-                to_check.append(f)
-    else:
-        to_check.append(func)
-
-    for f in to_check:
-        if f not in _available_aggregation_functions:
-            return False
-    return True
+                xp = cp if op.gpu else np
+                result = ctx[op.inputs[0].key].agg(op.raw_func)
+                if op.output_types[0] == OutputType.tensor:
+                    result = xp.array(result)
+                ctx[op.outputs[0].key] = result
+        finally:
+            pd.reset_option('mode.use_inf_as_na')
 
 
 def agg(groupby, func, method='auto', *args, **kwargs):
@@ -672,9 +710,12 @@ def agg(groupby, func, method='auto', *args, **kwargs):
         raise ValueError(f"Method {method} is not available, "
                          "please specify 'tree' or 'shuffle")
 
-    if not _check_if_func_available(func):
+    if not is_funcs_aggregate(func):
         return groupby.transform(func, *args, _call_agg=True, **kwargs)
 
+    use_inf_as_na = kwargs.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
     agg_op = DataFrameGroupByAgg(func=func, method=method, raw_func=func,
-                                 groupby_params=groupby.op.groupby_params)
+                                 groupby_params=groupby.op.groupby_params,
+                                 combine_size=options.combine_size,
+                                 use_inf_as_na=use_inf_as_na)
     return agg_op(groupby)

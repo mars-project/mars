@@ -295,7 +295,11 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             on = by
         else:
             on = None
-        filters = hash_dataframe_on(df, on, op.shuffle_size, level=op.level)
+
+        if isinstance(df, tuple):
+            filters = hash_dataframe_on(df[0], on, op.shuffle_size, level=op.level)
+        else:
+            filters = hash_dataframe_on(df, on, op.shuffle_size, level=op.level)
 
         for index_idx, index_filter in enumerate(filters):
             if is_dataframe_obj:
@@ -310,9 +314,16 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
                         filtered_by.append(v.loc[index_filter])
                     else:
                         filtered_by.append(v)
-                ctx[(chunk.key, group_key)] = (df.loc[index_filter], filtered_by)
+                if isinstance(df, tuple):
+                    ctx[(chunk.key, group_key)] = tuple(x.loc[index_filter] for x in df) \
+                        + (filtered_by, deliver_by)
+                else:
+                    ctx[(chunk.key, group_key)] = (df.loc[index_filter], filtered_by, deliver_by)
             else:
-                ctx[(chunk.key, group_key)] = df.loc[index_filter]
+                if isinstance(df, tuple):
+                    ctx[(chunk.key, group_key)] = tuple(x.loc[index_filter] for x in df) + (deliver_by,)
+                else:
+                    ctx[(chunk.key, group_key)] = df.loc[index_filter]
 
     @classmethod
     def execute_reduce(cls, ctx, op):
@@ -334,23 +345,38 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         by = None
         if isinstance(res[0], tuple):
             # By is series
-            r = pd.concat([it[0] for it in res], axis=0)
-            by = [None] * len(res[0][1])
-            for it in res:
-                for i, v in enumerate(it[1]):
-                    if isinstance(v, pd.Series):
-                        if by[i] is None:
-                            by[i] = v
+            deliver_by = res[0][-1]
+            r = []
+            part_len = len(res[0])
+            part_len -= 1 if not deliver_by else 2
+            for n in range(part_len):
+                r.append(pd.concat([it[n] for it in res], axis=0))
+            r = tuple(r)
+
+            if deliver_by:
+                by = [None] * len(res[0][-2])
+                for it in res:
+                    for i, v in enumerate(it[1]):
+                        if isinstance(v, pd.Series):
+                            if by[i] is None:
+                                by[i] = v
+                            else:
+                                by[i] = pd.concat([by[i], v], axis=0)
                         else:
-                            by[i] = pd.concat([by[i], v], axis=0)
-                    else:
-                        by[i] = v
+                            by[i] = v
         else:
             r = pd.concat(res, axis=0)
+
         if chunk.index_value is not None:
-            r.index.name = chunk.index_value.name
+            if isinstance(r, tuple):
+                for s in r:
+                    s.index.name = chunk.index_value.name
+            else:
+                r.index.name = chunk.index_value.name
         if by is None:
             ctx[chunk.key] = r
+        elif isinstance(r, tuple):
+            ctx[chunk.key] = r + (by,)
         else:
             ctx[chunk.key] = (r, by)
 
