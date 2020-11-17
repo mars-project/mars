@@ -23,13 +23,17 @@ from .... import tensor as mt
 from ....context import get_context, RunningMode
 from ....filesystem import get_fs, LocalFileSystem
 from ....operands import OutputType, OperandStage
-from ....serialize import KeyField, StringField, Int32Field, DictField, BytesField
+from ....serialize import KeyField, StringField, Int32Field, Int64Field, \
+    DictField, BytesField
 from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape, Timer
 from ...operands import LearnOperand, LearnOperandMixin
 from ..core import proxima, get_proxima_type, validate_tensor, available_numpy_dtypes
 
 logger = logging.getLogger(__name__)
+
+
+DEFAULT_INDEX_SIZE = 5 * 10 ** 6
 
 
 class ProximaBuilder(LearnOperand, LearnOperandMixin):
@@ -39,6 +43,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     _pk = KeyField('pk')
     _distance_metric = StringField('distance_metric')
     _dimension = Int32Field('dimension')
+    _column_number = Int64Field('column_number')
     _index_path = StringField('index_path')
     _index_builder = StringField('index_builder')
     _index_builder_params = DictField('index_builder_params')
@@ -50,12 +55,12 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                                   on_deserialize=pickle.loads)
 
     def __init__(self, tensor=None, pk=None, distance_metric=None,
-                 index_path=None, dimension=None,
+                 index_path=None, dimension=None, column_number=None,
                  index_builder=None, index_builder_params=None,
                  index_converter=None, index_converter_params=None,
                  topk=None, storage_options=None, output_types=None, stage=None, **kw):
         super().__init__(_tensor=tensor, _pk=pk, _distance_metric=distance_metric, _index_path=index_path,
-                         _dimension=dimension, _index_builder=index_builder,
+                         _dimension=dimension, _column_number=column_number, _index_builder=index_builder,
                          _index_builder_params=index_builder_params,
                          _index_converter=index_converter, _index_converter_params=index_converter_params,
                          _topk=topk, _storage_options=storage_options,
@@ -74,6 +79,10 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     @property
     def distance_metric(self):
         return self._distance_metric
+
+    @property
+    def column_number(self):
+        return self._column_number
 
     @property
     def index_path(self):
@@ -144,7 +153,6 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     @classmethod
     def tile(cls, op):
         tensor = op.tensor
-        pk = op.pk
         out = op.outputs[0]
         index_path = op.index_path
         ctx = get_context()
@@ -173,14 +181,22 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         # make sure all inputs have known chunk sizes
         check_chunks_unknown_shape(op.inputs, TilesError)
 
-        nsplit = tensor.nsplits[0]
+        if op.column_number:
+            index_chunk_size = op.inputs[0].shape // op.column_number
+        else:
+            worker_num = len(ctx.get_worker_addresses() or [])
+            if worker_num > 0:
+                index_chunk_size = max(op.inputs[0].shape // worker_num, DEFAULT_INDEX_SIZE)
+            else:
+                index_chunk_size = DEFAULT_INDEX_SIZE
+
         if op.topk is not None:
-            nsplit = cls._get_atleast_topk_nsplit(nsplit, op.topk)
+            index_chunk_size = cls._get_atleast_topk_nsplit(index_chunk_size, op.topk)
 
         if tensor.chunk_shape[1] > 1:
-            tensor = tensor.rechunk({0: nsplit, 1: tensor.shape[1]})._inplace_tile()
+            tensor = tensor.rechunk({0: index_chunk_size, 1: tensor.shape[1]})._inplace_tile()
         else:
-            tensor = tensor.rechunk({0: nsplit})._inplace_tile()
+            tensor = tensor.rechunk({0: index_chunk_size})._inplace_tile()
         pk = mt.arange(len(tensor), dtype=np.uint64,
                        chunk_size=(tensor.nsplits[0],))._inplace_tile()
 
@@ -316,6 +332,7 @@ def build_index(tensor, dimension=None, index_path=None, column_number=None,
 
     op = ProximaBuilder(tensor=tensor, distance_metric=distance_metric,
                         index_path=index_path, dimension=dimension,
+                        column_number=column_number,
                         index_builder=index_builder,
                         index_builder_params=index_builder_params,
                         index_converter=index_converter,
