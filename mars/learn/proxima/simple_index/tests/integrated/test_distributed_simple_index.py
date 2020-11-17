@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -63,3 +64,29 @@ class Test(LearnIntegrationTestBase):
             # testing
             np.testing.assert_array_equal(pk_p, pk_m)
             np.testing.assert_array_equal(distance_p, distance_m)
+
+    # def testDistributedProximaWithFilesystem(self):
+    #     # params
+    #     doc_count, query_count, dimension = 200, 15, 10
+    #     topk = 10
+    #     doc_chunk, query_chunk = 50, 5
+    #
+    #     service_ep = 'http://127.0.0.1:' + self.web_port
+    #     with new_session(service_ep) as sess:
+    #         with tempfile.TemporaryDirectory() as f:
+    #             # data
+    #             doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+    #
+    #             df = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
+    #             q = mt.tensor(query, chunk_size=(query_chunk, dimension))
+    #
+    #             index = build_index(df, index_path=f, session=sess)
+    #
+    #             # proxima_data
+    #             pk_p, distance_p = proxima_build_and_query(doc, query, topk)
+    #             #
+    #             pk_m, distance_m = search_index(q, topk, index, row_number=1, session=sess)
+    #
+    #             # testing
+    #             np.testing.assert_array_equal(pk_p, pk_m)
+    #             np.testing.assert_array_equal(distance_p, distance_m)
