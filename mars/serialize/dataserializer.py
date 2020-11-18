@@ -241,9 +241,9 @@ def load(file):
             file.close()
 
     if header.type == SerialType.ARROW:
-        return pyarrow.deserialize(memoryview(buf), mars_serialize_context())
+        return deserialize(memoryview(buf))
     else:
-        return _patch_pandas_mgr(pickle.loads(buf))
+        return _patch_pandas_mgr(pickle.loads(buf))  # nosec
 
 
 def loads(buf):
@@ -268,9 +268,9 @@ def loads(buf):
             bounds = np.cumsum([4 + meta_block_size] + buffer_sizes)
             meta['data'] = [pyarrow.py_buffer(data_view[bounds[idx]:bounds[idx + 1]])
                             for idx in range(len(buffer_sizes))]
-            return pyarrow.deserialize_components(meta, mars_serialize_context())
+            return _patch_pandas_mgr(pyarrow.deserialize_components(meta, mars_serialize_context()))
     else:
-        return _patch_pandas_mgr(pickle.loads(data))
+        return _patch_pandas_mgr(pickle.loads(data))  # nosec
 
 
 def dump(obj, file, *, serial_type=None, compress=None, pickle_protocol=None):
