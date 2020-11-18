@@ -217,6 +217,21 @@ def peek_file_header(file):
         file.seek(pos)
 
 
+_PANDAS_HAS_MGR = hasattr(pd.Series([0]), '_mgr')
+
+
+def _patch_pandas_mgr(pd_obj):  # pragma: no cover
+    # as pandas prior to 1.1.0 use _data instead of _mgr to hold BlockManager,
+    # deserializing from high versions may produce mal-functioned pandas objects,
+    # thus the patch is needed
+    if _PANDAS_HAS_MGR:
+        return pd_obj
+    if hasattr(pd_obj, '_mgr') and isinstance(pd_obj, (pd.DataFrame, pd.Series)):
+        pd_obj._data = pd_obj._mgr
+        del pd_obj._mgr
+    return pd_obj
+
+
 def load(file):
     header = read_file_header(file)
     file = open_decompression_file(file, header.compress)
@@ -228,9 +243,9 @@ def load(file):
             file.close()
 
     if header.type == SerialType.ARROW:
-        return pyarrow.deserialize(memoryview(buf), mars_serialize_context())
+        return deserialize(memoryview(buf))
     else:
-        return pickle.loads(buf)
+        return _patch_pandas_mgr(pickle.loads(buf))  # nosec
 
 
 def loads(buf):
@@ -255,9 +270,9 @@ def loads(buf):
             bounds = np.cumsum([4 + meta_block_size] + buffer_sizes)
             meta['data'] = [pyarrow.py_buffer(data_view[bounds[idx]:bounds[idx + 1]])
                             for idx in range(len(buffer_sizes))]
-            return pyarrow.deserialize_components(meta, mars_serialize_context())
+            return _patch_pandas_mgr(pyarrow.deserialize_components(meta, mars_serialize_context()))
     else:
-        return pickle.loads(data)
+        return _patch_pandas_mgr(pickle.loads(data))  # nosec
 
 
 def dump(obj, file, *, serial_type=None, compress=None, pickle_protocol=None):
@@ -322,7 +337,8 @@ def serialize(data):
 
 @_wrap_deprecates
 def deserialize(data):
-    return pyarrow.deserialize(data, mars_serialize_context())
+    result = pyarrow.deserialize(data, mars_serialize_context())
+    return _patch_pandas_mgr(result)
 
 
 _FreezeGrouping = namedtuple('_FreezeGrouping', 'name codes grouper ')

@@ -154,6 +154,7 @@ Reshaping, sorting
 .. autosummary::
    :toctree: api/
 
+   Series.explode
    Series.sort_values
    Series.sort_index
 
