@@ -314,7 +314,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                             break
 
         logger.warning(f'ReadingFromVolume({op.key}), index path: {index_path} '
-                       f'size {os.path.getsize(index_path)}, '
+                       f'size {os.path.getsize(local_path)}, '
                        f'costs {timer.duration} seconds')
         ctx[op.outputs[0].key] = local_path
 
