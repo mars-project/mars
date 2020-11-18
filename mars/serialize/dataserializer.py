@@ -221,7 +221,9 @@ _PANDAS_HAS_MGR = hasattr(pd.Series([0]), '_mgr')
 
 
 def _patch_pandas_mgr(pd_obj):  # pragma: no cover
-    """"""
+    # as pandas prior to 1.1.0 use _data instead of _mgr to hold BlockManager,
+    # deserializing from high versions may produce mal-functioned pandas objects,
+    # thus the patch is needed
     if _PANDAS_HAS_MGR:
         return pd_obj
     if hasattr(pd_obj, '_mgr') and isinstance(pd_obj, (pd.DataFrame, pd.Series)):
