@@ -1706,3 +1706,22 @@ class Test(TestBase):
                     pd.testing.assert_series_equal if expected.ndim == 1 \
                         else pd.testing.assert_frame_equal
                 assert_method(result, expected)
+
+    def testExplodeExecution(self):
+        raw = pd.DataFrame({'a': np.random.rand(10),
+                            'b': [np.random.rand(random.randint(1, 10)) for _ in range(10)],
+                            'c': np.random.rand(10),
+                            'd': np.random.rand(10)})
+        df = from_pandas_df(raw, chunk_size=(4, 2))
+
+        for ignore_index in [False, True]:
+            r = df.explode('b', ignore_index=ignore_index)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          raw.explode('b', ignore_index=ignore_index))
+
+        series = from_pandas_series(raw.b, chunk_size=4)
+
+        for ignore_index in [False, True]:
+            r = series.explode(ignore_index=ignore_index)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                           raw.b.explode(ignore_index=ignore_index))
