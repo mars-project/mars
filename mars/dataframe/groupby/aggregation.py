@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import itertools
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -514,15 +513,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @staticmethod
     def _do_custom_agg(op, custom_reduction, *input_objs):
         xdf = cudf if op.gpu else pd
-        group_keys = functools.reduce(
-            lambda x, y: x & y, (set(o.groups.keys()) for o in input_objs))
-
         results = []
-        for group_key in group_keys:
+        out = op.outputs[0]
+        for group_key in input_objs[0].groups.keys():
             group_objs = [o.get_group(group_key) for o in input_objs]
             agg_done = False
             if op.stage == OperandStage.map:
-                result = group_objs[0].transform(custom_reduction.pre)
+                result = custom_reduction.pre(group_objs[0])
                 agg_done = custom_reduction.pre_with_agg
                 if not isinstance(result, tuple):
                     result = (result,)
@@ -539,8 +536,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 if not isinstance(result, tuple):
                     result = (result,)
 
+            if out.ndim == 2:
+                result = tuple(r.to_frame().T for r in result)
+                if op.stage == OperandStage.agg:
+                    result = tuple(r.astype(out.dtypes) for r in result)
+            else:
+                result = tuple(xdf.Series(r) for r in result)
+
             for r in result:
-                r.index = xdf.Index([group_key], names=input_objs[0].grouper.keys)
+                if len(input_objs[0].grouper.names) == 1:
+                    r.index = xdf.Index([group_key], name=input_objs[0].grouper.names[0])
+                else:
+                    r.index = xdf.MultiIndex.from_tuples([group_key], names=input_objs[0].grouper.names)
             results.append(result)
         concat_result = tuple(xdf.concat(parts) for parts in zip(*results))
         return concat_result
