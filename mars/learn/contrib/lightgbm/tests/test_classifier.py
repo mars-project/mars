@@ -22,8 +22,9 @@ from mars.tests.core import ExecutorForTest
 try:
     import lightgbm
     from mars.learn.contrib.lightgbm import LGBMClassifier
+    from mars.learn.contrib.lightgbm import predict, predict_proba
 except ImportError:
-    lightgbm = LGBMClassifier = None
+    lightgbm = LGBMClassifier = predict = None
 
 
 @unittest.skipIf(lightgbm is None, 'LightGBM not installed')
@@ -97,7 +98,23 @@ class Test(unittest.TestCase):
         new_y = (self.y > 0.5).astype(mt.int32)
         classifier = LGBMClassifier(n_estimators=2)
         classifier.fit(X, new_y, verbose=True)
-        prediction = classifier.predict(X)
 
+        prediction = classifier.predict(X)
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))
+
+        prediction = classifier.predict_proba(X)
+        self.assertEqual(prediction.ndim, 2)
+        self.assertEqual(prediction.shape[0], len(self.X))
+
+        # test with existing model
+        classifier = lightgbm.LGBMClassifier(n_estimators=2)
+        classifier.fit(X, new_y, verbose=True)
+
+        label_result = predict(classifier, X_df)
+        self.assertEqual(label_result.ndim, 1)
+        self.assertEqual(label_result.shape[0], len(self.X))
+
+        proba_result = predict_proba(classifier, X_df)
+        self.assertEqual(proba_result.ndim, 2)
+        self.assertEqual(proba_result.shape[0], len(self.X))

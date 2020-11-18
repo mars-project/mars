@@ -67,7 +67,7 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
 
     def __call__(self):
         num_class = int(getattr(self.model, 'n_classes_', 2))
-        if self.proba and num_class > 2:
+        if self.proba:
             shape = (self.data.shape[0], num_class)
         else:
             shape = (self.data.shape[0],)
@@ -77,7 +77,7 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
         elif hasattr(self.model, 'classes_'):
             dtype = np.array(self.model.classes_).dtype
         else:
-            dtype = self.model.out_dtype_
+            dtype = getattr(self.model, 'out_dtype_', np.dtype('float'))
 
         if self.output_types[0] == OutputType.tensor:
             # tensor
@@ -86,8 +86,9 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
         elif self.output_types[0] == OutputType.dataframe:
             # dataframe
             dtypes = pd.Series([dtype] * num_class)
+            columns_value = parse_index(pd.Index(self.model.classes_), store_data=True)
             return self.new_tileable([self.data], shape=shape, dtypes=dtypes,
-                                     columns_value=parse_index(dtypes.index),
+                                     columns_value=columns_value,
                                      index_value=self.data.index_value)
         else:
             return self.new_tileable([self.data], shape=shape, index_value=self.data.index_value,
@@ -118,8 +119,8 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
             elif op.output_types[0] == OutputType.dataframe:
                 # dataframe chunk
                 out_chunk = chunk_op.new_chunk([in_chunk], shape=chunk_shape,
-                                               dtypes=data.dtypes,
-                                               columns_value=data.columns_value,
+                                               dtypes=out.dtypes,
+                                               columns_value=out.columns_value,
                                                index_value=in_chunk.index_value,
                                                index=chunk_index)
             else:
@@ -159,7 +160,7 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
         ctx[out.key] = result
 
 
-def predict(model, data, session=None, run_kwargs=None, run=True, **kwargs):
+def predict_base(model, data, session=None, run_kwargs=None, run=True, **kwargs):
     from lightgbm import LGBMModel
 
     if not isinstance(model, LGBMModel):
@@ -168,10 +169,9 @@ def predict(model, data, session=None, run_kwargs=None, run=True, **kwargs):
 
     proba = kwargs.pop('proba', hasattr(model, 'classes_'))
 
-    num_class = getattr(model, 'n_classes_', 2)
     if isinstance(data, TENSOR_TYPE):
         output_types = [OutputType.tensor]
-    elif proba and num_class > 2:
+    elif proba:
         output_types = [OutputType.dataframe]
     else:
         output_types = [OutputType.series]
@@ -182,3 +182,17 @@ def predict(model, data, session=None, run_kwargs=None, run=True, **kwargs):
     if run:
         result.execute(session=session, **(run_kwargs or dict()))
     return result
+
+
+def predict(model, data, session=None, run_kwargs=None, run=True, **kw):
+    if hasattr(model, 'classes_'):
+        return predict_base(model, data, session=session, run_kwargs=run_kwargs,
+                            proba=False, run=run, **kw)
+    else:
+        return predict_base(model, data, session=session, run_kwargs=run_kwargs,
+                            run=run, **kw)
+
+
+def predict_proba(model, data, session=None, run_kwargs=None, run=True, **kw):
+    return predict_base(model, data, session=session, run_kwargs=run_kwargs,
+                        run=run, proba=True, **kw)
