@@ -81,3 +81,10 @@ class Test(unittest.TestCase):
 
         for c1, c2 in zip(op.outputs, new_op.outputs):
             self.assertEqual(c1.key, c2.key)
+
+    def testRayClusterMode(self):
+        with new_session(backend='ray', _load_code_from_local=True).as_default():
+            t = mt.random.rand(100, 4, chunk_size=30)
+            df = md.DataFrame(t, columns=list('abcd'))
+            r = df.describe().execute()
+            self.assertEqual(r.shape, (8, 4))
