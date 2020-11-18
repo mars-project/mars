@@ -161,6 +161,7 @@ Reshaping, sorting, transposing
 .. autosummary::
    :toctree: api/
 
+   DataFrame.explode
    DataFrame.melt
    DataFrame.sort_values
    DataFrame.sort_index
