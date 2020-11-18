@@ -23,7 +23,6 @@ import mars.dataframe as md
 import mars.tensor as mt
 from mars.learn.proxima.core import proxima
 from mars.learn.proxima.simple_index import build_index, search_index, recall
-from mars.learn.proxima.simple_index.knn import build_and_search
 from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 
@@ -58,8 +57,6 @@ def proxima_build_and_query(doc, query, topk, measure_name=None, dimension=None,
     holder = proxima.IndexHolder(type=map_dtype[doc.dtypes[0]],
                                  dimension=dimension)
     holder.mount(np.array(doc))  # add batch data, pk starts from 0
-    # for pk, record in zip(doc.index, np.array(doc)):
-    #     holder.emplace(pk, record)
 
     # converter
     meta = proxima.IndexMeta(map_dtype[doc.dtypes[0]], dimension=dimension, measure_name=measure_name)
