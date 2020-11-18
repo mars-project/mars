@@ -94,37 +94,37 @@ class GraphExecutionForRay(GraphExecution):
 ChunkMeta = namedtuple('ChunkMeta', ['shape', 'object_id'])
 
 
+@ray.remote
+class RemoteMetaStore:
+    def __init__(self):
+        self._store = dict()
+
+    def set_meta(self, chunk_key, meta):
+        self._store[chunk_key] = meta
+
+    def get_meta(self, chunk_key):
+        return self._store[chunk_key]
+
+    def get_shape(self, chunk_key):
+        return self._store[chunk_key].shape
+
+    def chunk_keys(self):
+        return list(self._store.keys())
+
+    def delete_keys(self, keys):
+        if not isinstance(keys, (list, tuple)):
+            keys = [keys]
+        for k in keys:
+            del self._store[k]
+
+
 class RayStorage:
     """
     `RayStorage` is a dict-like class. When executed in local, Mars executor will store chunk result in a
     dict(chunk_key -> chunk_result), here uses Ray actor to store them as remote objects.
     """
-
-    @ray.remote
-    class RemoteMetaStore:
-        def __init__(self):
-            self._store = dict()
-
-        def set_meta(self, chunk_key, meta):
-            self._store[chunk_key] = meta
-
-        def get_meta(self, chunk_key):
-            return self._store[chunk_key]
-
-        def get_shape(self, chunk_key):
-            return self._store[chunk_key].shape
-
-        def chunk_keys(self):
-            return list(self._store.keys())
-
-        def delete_keys(self, keys):
-            if not isinstance(keys, (list, tuple)):
-                keys = [keys]
-            for k in keys:
-                del self._store[k]
-
     def __init__(self, meta_store=None):
-        self.meta_store = meta_store or RayStorage.RemoteMetaStore.remote()
+        self.meta_store = meta_store or RemoteMetaStore.remote()
 
     def __getitem__(self, item):
         meta: ChunkMeta = ray.get(self.meta_store.get_meta.remote(item))
