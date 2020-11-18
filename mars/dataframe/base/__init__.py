@@ -38,6 +38,7 @@ from .select_dtypes import select_dtypes
 from .map_chunk import map_chunk
 from .rebalance import rebalance
 from .stack import stack
+from .explode import df_explode, series_explode
 
 
 def _install():
@@ -77,6 +78,7 @@ def _install():
         setattr(t, 'map_chunk', map_chunk)
         setattr(t, 'rebalance', rebalance)
         setattr(t, 'stack', stack)
+        setattr(t, 'explode', df_explode)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -105,6 +107,7 @@ def _install():
         setattr(t, 'memory_usage', series_memory_usage)
         setattr(t, 'map_chunk', map_chunk)
         setattr(t, 'rebalance', rebalance)
+        setattr(t, 'explode', series_explode)
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
