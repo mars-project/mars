@@ -71,9 +71,9 @@ def skew_function(x, skipna=None, bias=False):
         - 3 * (x ** 2).sum(skipna=skipna) / cnt * mean \
         + 2 * mean ** 3
     var = var_function(x, skipna=skipna, ddof=0)
-    val = where_function((var > 0) | np.isnan(var), divided / var ** 1.5, 0.0)
+    val = where_function(var > 0, divided / var ** 1.5, np.nan)
     if not bias:
-        val = where_function((var > 0) & (cnt > 2), val * ((cnt * (cnt - 1)) ** 0.5 / (cnt - 2)), val)
+        val = where_function((var > 0) & (cnt > 2), val * ((cnt * (cnt - 1)) ** 0.5 / (cnt - 2)), np.nan)
     return val
 
 
@@ -85,10 +85,10 @@ def kurt_function(x, skipna=None, bias=False, fisher=True):
         + 6 * (x ** 2).sum(skipna=skipna) / cnt * mean ** 2 \
         - 3 * mean ** 4
     var = var_function(x, skipna=skipna, ddof=0)
-    val = where_function((var > 0) | np.isnan(var), divided / var ** 2, 0.0)
+    val = where_function(var > 0, divided / var ** 2, np.nan)
     if not bias:
         val = where_function((var > 0) & (cnt > 3),
-                             (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3), val)
+                             (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3), np.nan)
     if not fisher:
         val += 3
     return val
@@ -619,7 +619,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             if input_key == output_key:
                 ret_map_dfs[output_key] = src_df
             else:
-                ret_map_dfs[output_key] = func(src_df)
+                ret_map_dfs[output_key] = func(src_df, gpu=op.is_gpu())
 
         agg_dfs = []
         for input_key, map_func_name, _agg_func_name, custom_reduction, \
@@ -675,6 +675,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _execute_agg(cls, ctx, op: "DataFrameAggregate"):
         xdf = cudf if op.gpu else pd
+        xp = cp if op.gpu else np
+
         out = op.outputs[0]
         in_data = ctx[op.inputs[0].key]
         in_data_dict = cls._pack_inputs(op.agg_funcs, in_data)
@@ -690,6 +692,9 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     agg_result = (agg_result,)
                 in_data_dict[output_key] = custom_reduction.post(*agg_result)
             else:
+                if op.gpu:
+                    if kwds.pop('numeric_only', None):
+                        raise NotImplementedError('numeric_only not implemented under cudf')
                 in_data_dict[output_key] = getattr(input_obj, agg_func_name)(**kwds)
 
         aggs = []
@@ -700,7 +705,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             else:
                 func_inputs = [in_data_dict[k][cols] for k in input_keys]
 
-            agg_series = func(*func_inputs)
+            agg_series = func(*func_inputs, gpu=op.is_gpu())
             agg_series_ndim = getattr(agg_series, 'ndim', 0)
 
             ser_index = None
@@ -725,7 +730,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         elif op.output_types[0] == OutputType.scalar:
             concat_df = concat_df.iloc[0].astype(op.outputs[0].dtype)
         elif op.output_types[0] == OutputType.tensor:
-            concat_df = concat_df.to_numpy(dtype=out.dtype)
+            concat_df = xp.array(concat_df).astype(dtype=out.dtype)
         else:
             if axis == 0:
                 concat_df = concat_df.reindex(op.outputs[0].index_value.to_pandas())
@@ -761,7 +766,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             pd.reset_option('mode.use_inf_as_na')
 
 
-def _is_funcs_agg(func, ndim=2):
+def is_funcs_aggregate(func, ndim=2):
     to_check = []
     if isinstance(func, list):
         to_check.extend(func)
@@ -792,7 +797,7 @@ def _is_funcs_agg(func, ndim=2):
 
 
 def aggregate(df, func, axis=0, **kw):
-    if not _is_funcs_agg(func, df.ndim):
+    if not is_funcs_aggregate(func, df.ndim):
         return df.transform(func, axis=axis, _call_agg=True)
 
     axis = validate_axis(axis, df)

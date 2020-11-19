@@ -27,12 +27,8 @@ cudf = lazy_import('cudf', globals=globals())
 
 
 class UniqueReduction(CustomReduction):
-    def __init__(self, name='unique', is_gpu=False):
-        super().__init__(name)
-        self._is_gpu = is_gpu
-
     def agg(self, data):  # noqa: W0221  # pylint: disable=arguments-differ
-        xdf = cudf if self._is_gpu else pd
+        xdf = cudf if self.is_gpu() else pd
         # convert to series data
         return xdf.Series(data.unique())
 
@@ -55,7 +51,7 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
 
     @classmethod
     def _make_agg_object(cls, op):
-        return UniqueReduction(name=cls._func_name, is_gpu=op.gpu)
+        return UniqueReduction(name=cls._func_name, is_gpu=op.is_gpu())
 
     @classmethod
     def tile(cls, op):

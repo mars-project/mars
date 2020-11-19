@@ -26,7 +26,11 @@ from mars.dataframe import CustomReduction
 from mars.dataframe.base import to_gpu
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
-from mars.tests.core import TestBase, parameterized, ExecutorForTest, require_cudf
+from mars.tests.core import TestBase, parameterized, ExecutorForTest, \
+    require_cudf, require_cupy
+from mars.utils import lazy_import
+
+cp = lazy_import('cupy', rename='cp', globals=globals())
 
 
 reduction_functions = dict(
@@ -187,6 +191,7 @@ class TestReduction(TestBase):
             self.executor.execute_dataframe(reduction_df, concat=True)[0].sort_index())
 
     @require_cudf
+    @require_cupy
     def testGPUExecution(self):
         df_raw = pd.DataFrame(np.random.rand(30, 3), columns=list('abc'))
         df = to_gpu(from_pandas_df(df_raw, chunk_size=6))
@@ -195,12 +200,36 @@ class TestReduction(TestBase):
         res = self.executor.execute_dataframe(r, concat=True)[0]
         pd.testing.assert_series_equal(res.to_pandas(), df_raw.sum())
 
+        r = df.kurt()
+        res = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_series_equal(res.to_pandas(), df_raw.kurt())
+
+        r = df.agg(['sum', 'var'])
+        res = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(res.to_pandas(), df_raw.agg(['sum', 'var']))
+
         s_raw = pd.Series(np.random.rand(30))
         s = to_gpu(from_pandas_series(s_raw, chunk_size=6))
 
         r = s.sum()
         res = self.executor.execute_dataframe(r, concat=True)[0]
         self.assertAlmostEqual(res, s_raw.sum())
+
+        r = s.kurt()
+        res = self.executor.execute_dataframe(r, concat=True)[0]
+        self.assertAlmostEqual(res, s_raw.kurt())
+
+        r = s.agg(['sum', 'var'])
+        res = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_series_equal(res.to_pandas(), s_raw.agg(['sum', 'var']))
+
+        s_raw = pd.Series(np.random.randint(0, 3, size=(30,))
+                          * np.random.randint(0, 5, size=(30,)))
+        s = to_gpu(from_pandas_series(s_raw, chunk_size=6))
+
+        r = s.unique()
+        res = self.executor.execute_dataframe(r, concat=True)[0]
+        np.testing.assert_array_equal(cp.asnumpy(res).sort(), s_raw.unique().sort())
 
 
 bool_reduction_functions = dict(

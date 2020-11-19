@@ -418,9 +418,10 @@ class CustomReduction:
     # set to True when pre() already performs aggregation
     pre_with_agg = False
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, is_gpu=False):
         self.name = name or '<custom>'
         self.output_limit = 1
+        self._is_gpu = is_gpu
 
     @property
     def __name__(self):
@@ -446,6 +447,9 @@ class CustomReduction:
 
         r = self.post(*r)
         return r
+
+    def is_gpu(self):
+        return self._is_gpu if not is_build_mode() else False
 
     def pre(self, value):  # noqa: R0201  # pylint: disable=no-self-use
         return value,
@@ -504,6 +508,23 @@ _func_name_converts = dict(
     true_divide='truediv',
     floor_divide='floordiv',
     power='pow',
+)
+_func_name_to_op = dict(
+    greater='>', gt='>',
+    greater_equal='>=', ge='>',
+    less='<', lt='<',
+    less_equal='<=', le='<=',
+    equal='==', eq='==',
+    not_equal='!=', ne='!=',
+    bitwise_and='&', __and__='&',
+    bitwise_or='|', __or__='|',
+    add='+',
+    subtract='-', sub='-',
+    multiply='*', mul='*',
+    true_divide='/', truediv='/',
+    floor_divide='//', floordiv='//',
+    power='**', pow='**',
+    mod='%',
 )
 _func_compile_cache = dict()  # type: Dict[str, ReductionSteps]
 
@@ -782,28 +803,35 @@ class ReductionCompiler:
                     lhs = _interpret_var(lhs)
                     rhs = _interpret_var(rhs)
                     axis_expr = f'axis={op_axis!r}, ' if op_axis is not None else ''
+                    op_str = _func_name_to_op[func_name]
                     if t.op.lhs is t.inputs[0]:
                         statements = [f'try:',
                                       f'    {var_name} = {lhs}.{func_name}({rhs}, {axis_expr})',
                                       f'except AttributeError:',
-                                      f'    {var_name} = np.{func_name_raw}({lhs}, {rhs})']
+                                      f'    {var_name} = {lhs} {op_str} {rhs}']
                     else:
                         statements = [f'try:',
                                       f'    {var_name} = {rhs}.{rfunc_name}({lhs}, {axis_expr})',
                                       f'except AttributeError:',
-                                      f'    {var_name} = np.{func_name_raw}({rhs}, {lhs})']
+                                      f'    {var_name} = {rhs} {op_str} {lhs}']
                 elif isinstance(t.op, TensorWhere):
                     cond = _interpret_var(t.op.condition)
                     x = _interpret_var(t.op.x)
                     y = _interpret_var(t.op.y)
-                    statements = [f'{var_name} = np.where({cond}, {x}, {y})']
+                    statements = [f'if not gpu:',
+                                  f'    {var_name} = np.where({cond}, {x}, {y})',
+                                  f'else:',  # there is a bug with cudf.where
+                                  f'    {var_name} = {x}']
                 elif isinstance(t.op, DataFrameWhere):
                     func_name = 'mask' if t.op.replace_true else 'where'
                     inp = _interpret_var(t.op.input)
                     cond = _interpret_var(t.op.cond)
                     other = _interpret_var(t.op.other)
-                    statements = [f'{var_name} = {inp}.{func_name}({cond}, {other}, '
-                                  f'axis={t.op.axis!r}, level={t.op.level!r})']
+                    statements = [f'if not gpu:',
+                                  f'    {var_name} = {inp}.{func_name}({cond}, {other}, '
+                                  f'axis={t.op.axis!r}, level={t.op.level!r})',
+                                  f'else:',  # there is a bug with cudf.where
+                                  f'    {var_name} = {inp}']
                 elif isinstance(t.op, Scalar):
                     # for scalar inputs of other operands
                     data = _interpret_var(t.op.data)
@@ -822,7 +850,7 @@ class ReductionCompiler:
 
         args_str = ', '.join(input_key_to_var.values())
         lines_str = '\n    '.join(local_lines)
-        return f"def expr_function({args_str}):\n" \
+        return f"def expr_function({args_str}, gpu=False):\n" \
                f"    {lines_str}\n" \
                f"    return {local_key_to_var[out_tileable.key]}", \
             list(input_key_to_var.keys())

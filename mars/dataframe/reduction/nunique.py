@@ -34,11 +34,10 @@ class NuniqueReduction(CustomReduction):
 
     def __init__(self, name='unique', axis=0, dropna=True, use_arrow_dtype=False,
                  is_gpu=False):
-        super().__init__(name)
+        super().__init__(name, is_gpu=is_gpu)
         self._axis = axis
         self._dropna = dropna
         self._use_arrow_dtype = use_arrow_dtype
-        self._is_gpu = is_gpu
 
     @staticmethod
     def _drop_duplicates_to_arrow(v, explode=False):
@@ -51,7 +50,7 @@ class NuniqueReduction(CustomReduction):
             return [v.drop_duplicates().to_list()]
 
     def pre(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
-        xdf = cudf if self._is_gpu else pd
+        xdf = cudf if self.is_gpu() else pd
         if isinstance(in_data, xdf.Series):
             unique_values = in_data.drop_duplicates()
             return xdf.Series(unique_values, name=in_data.name)
@@ -74,7 +73,7 @@ class NuniqueReduction(CustomReduction):
             return df
 
     def agg(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
-        xdf = cudf if self._is_gpu else pd
+        xdf = cudf if self.is_gpu() else pd
         if isinstance(in_data, xdf.Series):
             unique_values = in_data.explode().drop_duplicates()
             return xdf.Series(unique_values, name=in_data.name)
@@ -98,7 +97,7 @@ class NuniqueReduction(CustomReduction):
             return df
 
     def post(self, in_data):  # noqa: W0221  # pylint: disable=arguments-differ
-        xdf = cudf if self._is_gpu else pd
+        xdf = cudf if self.is_gpu() else pd
         if isinstance(in_data, xdf.Series):
             return in_data.explode().nunique(dropna=self._dropna)
         else:
@@ -133,7 +132,7 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
     @classmethod
     def _make_agg_object(cls, op):
         return NuniqueReduction(name=cls._func_name, axis=op.axis, dropna=op.dropna,
-                                use_arrow_dtype=op.use_arrow_dtype, is_gpu=op.gpu)
+                                use_arrow_dtype=op.use_arrow_dtype, is_gpu=op.is_gpu())
 
 
 def nunique_dataframe(df, axis=0, dropna=True, combine_size=None):
