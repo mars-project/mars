@@ -17,7 +17,7 @@ import logging
 import os
 import pickle  # nosec  # pylint: disable=import_pickle
 import random
-import tempfile
+from hashlib import md5
 from collections import defaultdict
 
 import numpy as np
@@ -299,19 +299,22 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             if dirs:
                 temp_dir = random.choice(dirs.split(':'))
             else:
-                temp_dir = None
+                temp_dir = "/tmp/proxima-index/"
 
-            local_path = tempfile.mkstemp(prefix='proxima-', suffix='.index', dir=temp_dir)[1]
-            with open(local_path, 'wb') as out_f:
-                with fs.open(index_path, 'rb') as in_f:
-                    # 32M
-                    chunk_bytes = 32 * 1024 ** 2
-                    while True:
-                        data = in_f.read(chunk_bytes)
-                        if data:
-                            out_f.write(data)
-                        else:
-                            break
+            local_path = os.path.join(temp_dir, md5(str(index_path).encode('utf-8')).hexdigest())
+            if not os.path.exists(local_path):
+                if not os.path.exists(local_path.rsplit("/", 1)[0]):
+                    os.mkdir(local_path.rsplit("/", 1)[0])
+                with open(local_path, 'wb') as out_f:
+                    with fs.open(index_path, 'rb') as in_f:
+                        # 32M
+                        chunk_bytes = 32 * 1024 ** 2
+                        while True:
+                            data = in_f.read(chunk_bytes)
+                            if data:
+                                out_f.write(data)
+                            else:
+                                break
 
         logger.warning(f'ReadingFromVolume({op.key}), index path: {index_path} '
                        f'size {os.path.getsize(local_path)}, '
@@ -421,7 +424,6 @@ def search_index(tensor, topk, index, threads=4, row_number=None, dimension=None
                  distance_metric=None, index_searcher=None, index_searcher_params=None,
                  index_reformer=None, index_reformer_params=None,
                  storage_options=None, run=True, session=None, run_kwargs=None):
-
     tensor = validate_tensor(tensor)
 
     if dimension is None:
