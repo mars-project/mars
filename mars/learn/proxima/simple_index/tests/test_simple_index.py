@@ -451,4 +451,6 @@ class Test(unittest.TestCase):
         # proxima_data
         pk_p, distance_p = self.build_and_query(doc, query, dimension=dimension, topk=topk, threads=1,
                                                 doc_chunk=doc_chunk, query_chunk=query_chunk, )
-        self.assertIsInstance(recall(doc, query, topk, sample_count, pk_p, distance_p), dict)
+        self.assertIsInstance(
+            recall(doc=doc, query=query, topk=topk, sample_count=sample_count, pk_p=pk_p, distance_p=distance_p,
+                   column_number=2, row_number=2), dict)

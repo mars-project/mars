@@ -364,20 +364,22 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             e_idx = min(s_idx + batch, len(vecs))
             result_pks, result_distances = None, None
             while s_idx < len(vecs):
-                result_pks_b, result_distances_b = proxima.IndexUtility.ann_search(searcher=flow,
-                                                                                   query=vecs[s_idx:e_idx],
-                                                                                   topk=op.topk,
-                                                                                   threads=op.threads)
-                if result_pks is None:
-                    result_pks = np.asarray(result_pks_b)
-                    result_distances = np.asarray(result_distances_b)
-                else:
-                    result_pks = np.concatenate((result_pks, np.asarray(result_pks_b)))
-                    result_distances = np.concatenate((result_distances, np.asarray(result_distances_b)))
+                with Timer() as timer_s:
+                    result_pks_b, result_distances_b = proxima.IndexUtility.ann_search(searcher=flow,
+                                                                                       query=vecs[s_idx:e_idx],
+                                                                                       topk=op.topk,
+                                                                                       threads=op.threads)
+                    if result_pks is None:
+                        result_pks = np.asarray(result_pks_b)
+                        result_distances = np.asarray(result_distances_b)
+                    else:
+                        result_pks = np.concatenate((result_pks, np.asarray(result_pks_b)))
+                        result_distances = np.concatenate((result_distances, np.asarray(result_distances_b)))
 
-                s_idx = e_idx
-                e_idx = min(s_idx + batch, len(vecs))
-                logger.warning(f'Search({op.key}) count {s_idx}/{len(vecs)}:{round(s_idx * 100 / len(vecs), 2)}%')
+                    s_idx = e_idx
+                    e_idx = min(s_idx + batch, len(vecs))
+                logger.warning(
+                    f'Search({op.key}) count {s_idx}/{len(vecs)}:{round(s_idx * 100 / len(vecs), 2)}% costs {round(timer_s.duration, 2)} seconds')
         logger.warning(f'Search({op.key}) costs {timer.duration} seconds')
 
         ctx[op.outputs[0].key] = np.asarray(result_pks)
@@ -419,7 +421,6 @@ def search_index(tensor, topk, index, threads=4, row_number=None, dimension=None
                  distance_metric=None, index_searcher=None, index_searcher_params=None,
                  index_reformer=None, index_reformer_params=None,
                  storage_options=None, run=True, session=None, run_kwargs=None):
-
     tensor = validate_tensor(tensor)
 
     if dimension is None:
