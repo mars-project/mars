@@ -20,7 +20,7 @@ from mars.tests.core import ExecutorForTest
 
 try:
     import lightgbm
-    from mars.learn.contrib.lightgbm import LGBMRanker
+    from mars.learn.contrib.lightgbm import LGBMRanker, predict
 except ImportError:
     lightgbm = LGBMRanker = None
 
@@ -65,6 +65,13 @@ class Test(unittest.TestCase):
 
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))
-
         result = prediction.fetch()
         self.assertEqual(prediction.dtype, result.dtype)
+
+        # test local model
+        classifier = lightgbm.LGBMRanker(verbosity=1, n_estimators=2)
+        classifier.fit(X, y, group=[X.shape[0]])
+        prediction = predict(classifier, X)
+
+        self.assertEqual(prediction.ndim, 1)
+        self.assertEqual(prediction.shape[0], len(self.X))

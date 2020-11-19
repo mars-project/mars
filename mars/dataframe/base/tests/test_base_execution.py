@@ -160,6 +160,15 @@ class Test(TestBase):
         expected = raw.map(lambda x: x + 1.)
         pd.testing.assert_series_equal(result, expected)
 
+        def f(x: int):
+            return x + 1.
+
+        # dtype can be inferred for function
+        r = s.map(f)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map(lambda x: x + 1.)
+        pd.testing.assert_series_equal(result, expected)
+
         # test arg is a md.Series
         raw2 = pd.Series([10], index=[5])
         s2 = from_pandas_series(raw2)
@@ -1205,7 +1214,7 @@ class Test(TestBase):
 
     def testValueCountsExecution(self):
         rs = np.random.RandomState(0)
-        s = pd.Series(rs.randint(5, size=100))
+        s = pd.Series(rs.randint(5, size=100), name='s')
         s[rs.randint(100)] = np.nan
 
         ctx, executor = self._create_test_context(self.executor)

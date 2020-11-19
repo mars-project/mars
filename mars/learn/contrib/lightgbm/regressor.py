@@ -14,8 +14,8 @@
 
 from ...utils import check_consistent_length
 from .core import lightgbm, LGBMScikitLearnBase, LGBMModelType
-from .train import train
-from .predict import predict
+from ._train import train
+from ._predict import predict_base
 
 
 LGBMRegressor = None
@@ -39,7 +39,7 @@ if lightgbm:
             session = kw.pop('session', None)
             run_kwargs = kw.pop('run_kwargs', None)
             X = self._convert_tileable(X)
-            return predict(self, X, session=session, run_kwargs=run_kwargs, **kw)
+            return predict_base(self, X, session=session, run_kwargs=run_kwargs, **kw)
 
         def to_local(self):
             model = lightgbm.LGBMRegressor(**self.get_params())
