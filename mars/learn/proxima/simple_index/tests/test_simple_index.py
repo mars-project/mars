@@ -462,7 +462,6 @@ class Test(unittest.TestCase):
         # params
         doc_count, query_count, dimension = 2000, 150, 20
         topk = 100
-        doc_chunk, query_chunk = 1000, 50
         sample_count = 100
 
         # data
