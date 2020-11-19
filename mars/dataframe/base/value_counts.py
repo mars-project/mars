@@ -141,24 +141,23 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
 
         ret = recursive_tile(inp)
 
-        if op.convert_index_to_interval:
-            # convert index to IntervalDtype
-            chunks = []
-            for c in ret.chunks:
-                chunk_op = DataFrameValueCounts(convert_index_to_interval=True,
-                                                stage=OperandStage.map)
-                chunk_params = c.params
+        chunks = []
+        for c in ret.chunks:
+            chunk_op = DataFrameValueCounts(
+                convert_index_to_interval=op.convert_index_to_interval,
+                stage=OperandStage.map)
+            chunk_params = c.params
+            if op.convert_index_to_interval:
+                # convert index to IntervalDtype
                 chunk_params['index_value'] = parse_index(pd.IntervalIndex([]),
                                                           c, store_data=False)
-                chunks.append(chunk_op.new_chunk([c], kws=[chunk_params]))
+            chunks.append(chunk_op.new_chunk([c], kws=[chunk_params]))
 
-            new_op = op.copy()
-            params = out.params
-            params['chunks'] = chunks
-            params['nsplits'] = ret.nsplits
-            return new_op.new_seriess(out.inputs, kws=[params])
-
-        return [ret]
+        new_op = op.copy()
+        params = out.params
+        params['chunks'] = chunks
+        params['nsplits'] = ret.nsplits
+        return new_op.new_seriess(out.inputs, kws=[params])
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameValueCounts"):
@@ -182,6 +181,8 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
                         bins=op.bins, dropna=op.dropna)
         else:
             result = ctx[op.input.key]
+            # set index name to None to keep consistency with pandas
+            result.index.name = None
         if op.convert_index_to_interval:
             # convert CategoricalDtype which generated in `cut`
             # to IntervalDtype

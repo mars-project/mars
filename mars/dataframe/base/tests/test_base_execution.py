@@ -1214,7 +1214,7 @@ class Test(TestBase):
 
     def testValueCountsExecution(self):
         rs = np.random.RandomState(0)
-        s = pd.Series(rs.randint(5, size=100))
+        s = pd.Series(rs.randint(5, size=100), name='s')
         s[rs.randint(100)] = np.nan
 
         ctx, executor = self._create_test_context(self.executor)
