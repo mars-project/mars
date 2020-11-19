@@ -111,7 +111,7 @@ class Test(unittest.TestCase):
     def tearDown(self) -> None:
         self.session._sess._executor = self._old_executor
 
-    def build_and_query(self, doc, query, topk, doc_chunk, query_chunk,
+    def build_and_query(self, doc, query, topk, column_number, row_number,
                         threads=1, dimension=None, measure_name=None,
                         index_builder=None, builder_params=None,
                         index_converter=None, index_converter_params=None,
@@ -137,10 +137,10 @@ class Test(unittest.TestCase):
         if index_reformer_params is None:
             index_reformer_params = {}
 
-        doc = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
-        query = mt.tensor(query, chunk_size=(query_chunk, dimension))
+        doc = md.DataFrame(pd.DataFrame(doc))
+        query = mt.tensor(query)
 
-        index = build_index(tensor=doc, need_shuffle=False,
+        index = build_index(tensor=doc, need_shuffle=False, column_number=column_number,
                             distance_metric=measure_name, dimension=dimension,
                             index_builder=index_builder, index_builder_params=builder_params,
                             index_converter=index_converter, index_converter_params=index_converter_params,
@@ -154,7 +154,7 @@ class Test(unittest.TestCase):
                 with open(path, 'rb') as f:
                     self.assertGreater(len(f.read()), 0)
 
-            pk2, distance = search_index(tensor=query, threads=threads,
+            pk2, distance = search_index(tensor=query, threads=threads, row_number=row_number,
                                          distance_metric=measure_name, dimension=dimension,
                                          topk=topk, index=index, index_searcher=index_searcher,
                                          index_searcher_params=searcher_params,
@@ -169,7 +169,7 @@ class Test(unittest.TestCase):
                 os.remove(path)
 
     def consistency_checking(self, doc, query, dimension, topk, measure_name,
-                             doc_chunk, query_chunk, threads,
+                             column_number, row_number, threads,
                              index_builder, builder_params,
                              index_converter, index_converter_params,
                              index_searcher, searcher_params,
@@ -188,8 +188,8 @@ class Test(unittest.TestCase):
 
         # mars_data
         pk_m, distance_m = self.build_and_query(doc, query, dimension=dimension, topk=topk, threads=threads,
-                                                measure_name=measure_name, doc_chunk=doc_chunk,
-                                                query_chunk=query_chunk, index_builder=index_builder,
+                                                measure_name=measure_name, column_number=column_number,
+                                                row_number=row_number, index_builder=index_builder,
                                                 builder_params=builder_params,
                                                 index_converter=index_converter,
                                                 index_converter_params=index_converter_params,
@@ -209,7 +209,7 @@ class Test(unittest.TestCase):
         # L2 space
         # params
         doc_count, query_count, dimension, topk = 200, 15, 5, 3
-        threads, doc_chunk, query_chunk = 4, 50, 5
+        threads, column_number, row_number = 4, 4, 3
         measure_name_lists = ["SquaredEuclidean", "Euclidean"]
         index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
                                "ClusteringBuilder", "GcBuilder", "QcBuilder"]
@@ -229,7 +229,7 @@ class Test(unittest.TestCase):
         for i, index_builder in enumerate(index_builder_lists):
             for measure_name in measure_name_lists:
                 self.consistency_checking(doc=doc, query=query, dimension=dimension, topk=topk, threads=threads,
-                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          measure_name=measure_name, column_number=column_number, row_number=row_number,
                                           index_builder=index_builder, builder_params=builder_params_lists[i],
                                           index_converter=index_converter,
                                           index_converter_params=index_converter_params,
@@ -239,7 +239,7 @@ class Test(unittest.TestCase):
         # L2 space with HalfFloatConverter
         # params
         doc_count, query_count, dimension, topk = 200, 15, 5, 3
-        threads, doc_chunk, query_chunk = 4, 50, 5
+        threads, column_number, row_number = 4, 4, 3
         measure_name_lists = ["SquaredEuclidean", "Euclidean"]
         index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
                                "ClusteringBuilder", "GcBuilder", "QcBuilder"]
@@ -261,7 +261,7 @@ class Test(unittest.TestCase):
         for i, index_builder in enumerate(index_builder_lists):
             for measure_name in measure_name_lists:
                 self.consistency_checking(doc=doc, query=query, dimension=dimension, topk=topk, threads=threads,
-                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          measure_name=measure_name, column_number=column_number, row_number=row_number,
                                           index_builder=index_builder, builder_params=builder_params_lists[i],
                                           index_converter=index_converter_lists[i],
                                           index_converter_params=index_converter_params,
@@ -272,7 +272,7 @@ class Test(unittest.TestCase):
         # L2 space with Int8QuantizerConverter
         # params
         doc_count, query_count, dimension, topk = 2000, 1, 32, 5
-        threads, doc_chunk, query_chunk = 4, 1000, 1
+        threads, column_number, row_number = 4, 2, 1
 
         measure_name_lists = ["SquaredEuclidean", "Euclidean"]
         index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
@@ -297,7 +297,7 @@ class Test(unittest.TestCase):
         for i, index_builder in enumerate(index_builder_lists):
             for measure_name in measure_name_lists:
                 self.consistency_checking(doc=doc, query=query, dimension=dimension, topk=topk, threads=threads,
-                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          measure_name=measure_name, column_number=column_number, row_number=row_number,
                                           index_builder=index_builder, builder_params=builder_params_lists[i],
                                           index_converter=index_converter_lists[i],
                                           index_converter_params=index_converter_params,
@@ -309,7 +309,7 @@ class Test(unittest.TestCase):
         # L2 space with Int4QuantizerConverter
         # params
         doc_count, query_count, dimension, topk = 2000, 1, 32, 5
-        threads, doc_chunk, query_chunk = 4, 1000, 1
+        threads, column_number, row_number = 4, 2, 1
 
         measure_name_lists = ["SquaredEuclidean", "Euclidean"]
         index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
@@ -334,7 +334,7 @@ class Test(unittest.TestCase):
         for i, index_builder in enumerate(index_builder_lists):
             for measure_name in measure_name_lists:
                 self.consistency_checking(doc=doc, query=query, dimension=dimension, topk=topk, threads=threads,
-                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          measure_name=measure_name, column_number=column_number, row_number=row_number,
                                           index_builder=index_builder, builder_params=builder_params_lists[i],
                                           index_converter=index_converter_lists[i],
                                           index_converter_params=index_converter_params,
@@ -346,7 +346,7 @@ class Test(unittest.TestCase):
         # L2 space with NormalizeConverter
         # params
         doc_count, query_count, dimension, topk = 2000, 1, 32, 5
-        threads, doc_chunk, query_chunk = 4, 1000, 1
+        threads, column_number, row_number = 4, 2, 1
 
         measure_name_lists = ["SquaredEuclidean", "Euclidean"]
         index_builder_lists = ["SsgBuilder", "HnswBuilder", "LinearBuilder",
@@ -368,7 +368,7 @@ class Test(unittest.TestCase):
         for i, index_builder in enumerate(index_builder_lists):
             for measure_name in measure_name_lists:
                 self.consistency_checking(doc, query, dimension=dimension, topk=topk, threads=threads,
-                                          measure_name=measure_name, doc_chunk=doc_chunk, query_chunk=query_chunk,
+                                          measure_name=measure_name, column_number=column_number, row_number=row_number,
                                           index_builder=index_builder, builder_params=builder_params_lists[i],
                                           index_converter=index_converter_lists[i],
                                           index_converter_params=index_converter_params,
@@ -381,7 +381,7 @@ class Test(unittest.TestCase):
         # InnerProduct space
         # params
         doc_count, query_count, dimension, topk = 200, 15, 5, 2
-        threads, doc_chunk, query_chunk = 4, 50, 5
+        threads, column_number, row_number = 4, 4, 3
 
         measure_name_lists = ["InnerProduct"]
         index_builder_lists = ["LinearBuilder", "QcBuilder", "HnswBuilder",
@@ -403,8 +403,8 @@ class Test(unittest.TestCase):
         for i, index_builder in enumerate(index_builder_lists):
             for measure_name in measure_name_lists:
                 self.consistency_checking(doc, query, dimension=dimension, topk=topk, threads=threads,
-                                          measure_name=measure_name, doc_chunk=doc_chunk,
-                                          query_chunk=query_chunk, index_builder=index_builder,
+                                          measure_name=measure_name, column_number=column_number, row_number=row_number,
+                                          index_builder=index_builder,
                                           builder_params=builder_params_lists[i],
                                           index_converter=index_converter_lists[i],
                                           index_converter_params=index_converter_params,
@@ -418,6 +418,30 @@ class Test(unittest.TestCase):
             # params
             doc_count, query_count, dimension = 2000, 50, 10
             topk = 10
+
+            # data
+            doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
+
+            df = md.DataFrame(pd.DataFrame(doc))
+            q = mt.tensor(query)
+
+            index = build_index(tensor=df, index_path=f, column_number=2)
+
+            self.assertGreater(len(os.listdir(f)), 0)
+
+            # proxima_data
+            pk_p, distance_p = proxima_build_and_query(doc, query, topk)
+            pk_m, distance_m = search_index(tensor=q, topk=topk, index=index, row_number=5)
+
+            # testing
+            np.testing.assert_array_equal(pk_p, pk_m)
+            np.testing.assert_array_equal(distance_p, distance_m)
+
+    def testBuildAndSearchIndexWithFilesystem_download(self):
+        with tempfile.TemporaryDirectory() as f:
+            # params
+            doc_count, query_count, dimension = 2000, 15, 10
+            topk = 10
             doc_chunk, query_chunk = 1000, 5
 
             # data
@@ -426,31 +450,27 @@ class Test(unittest.TestCase):
             df = md.DataFrame(pd.DataFrame(doc), chunk_size=(doc_chunk, dimension))
             q = mt.tensor(query, chunk_size=(query_chunk, dimension))
 
-            index = build_index(df, index_path=f)
+            index = build_index(tensor=df, index_path=f, column_number=2)
 
             self.assertGreater(len(os.listdir(f)), 0)
 
-            # proxima_data
-            pk_p, distance_p = proxima_build_and_query(doc, query, topk)
-            pk_m, distance_m = search_index(q, topk, index)
-
-            # testing
-            np.testing.assert_array_equal(pk_p, pk_m)
-            np.testing.assert_array_equal(distance_p, distance_m)
+            search_index(q[0:5], topk, index)
+            search_index(q[5:10], topk, index)
+            search_index(q[10:15], topk, index)
 
     def testRecall(self):
         # params
         doc_count, query_count, dimension = 2000, 150, 20
         topk = 100
-        doc_chunk, query_chunk = 1000, 50
         sample_count = 100
 
         # data
         doc, query = gen_data(doc_count=doc_count, query_count=query_count, dimension=dimension)
 
         # proxima_data
-        pk_p, distance_p = self.build_and_query(doc, query, dimension=dimension, topk=topk, threads=1,
-                                                doc_chunk=doc_chunk, query_chunk=query_chunk, )
+        pk_p, distance_p = self.build_and_query(doc, query, dimension=dimension, topk=topk,
+                                                threads=1, column_number=2, row_number=3)
         self.assertIsInstance(
-            recall(doc=doc, query=query, topk=topk, sample_count=sample_count, pk_p=pk_p, distance_p=distance_p,
+            recall(doc=doc, query=query, topk=topk, sample_count=sample_count,
+                   pk_p=pk_p, distance_p=distance_p,
                    column_number=2, row_number=2), dict)

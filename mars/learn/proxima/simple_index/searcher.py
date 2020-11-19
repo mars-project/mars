@@ -302,7 +302,9 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                 temp_dir = "/tmp/proxima-index/"
 
             local_path = os.path.join(temp_dir, md5(str(index_path).encode('utf-8')).hexdigest())
+            exist_state = True
             if not os.path.exists(local_path):
+                exist_state = False
                 if not os.path.exists(local_path.rsplit("/", 1)[0]):
                     os.mkdir(local_path.rsplit("/", 1)[0])
                 with open(local_path, 'wb') as out_f:
@@ -316,8 +318,9 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                             else:
                                 break
 
-        logger.warning(f'ReadingFromVolume({op.key}), index path: {index_path} '
+        logger.warning(f'ReadingFromVolume({op.key}), index path: {index_path}, '
                        f'size {os.path.getsize(local_path)}, '
+                       f'already exist: {exist_state}, '
                        f'costs {timer.duration} seconds')
         ctx[op.outputs[0].key] = local_path
 
