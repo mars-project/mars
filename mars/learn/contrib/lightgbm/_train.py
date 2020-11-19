@@ -28,7 +28,7 @@ from ....context import get_context, RunningMode
 from ....core import ExecutableTuple
 from ....serialize import DictField, Int32Field, KeyField, ListField, StringField, ValueType
 from ...utils import concat_chunks
-from .align import align_data_set
+from ._align import align_data_set
 from .core import LGBMModelType, get_model_cls_from_type
 
 logger = logging.getLogger(__name__)

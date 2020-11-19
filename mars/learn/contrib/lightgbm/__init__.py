@@ -16,10 +16,11 @@ from .classifier import LGBMClassifier
 from .regressor import LGBMRegressor
 from .ranker import LGBMRanker
 
+from ._predict import predict, predict_proba
+
 
 def register_op():
-    from .train import train
-    from .predict import predict
-    from .align import align_data_set
+    from ._train import train
+    from ._align import align_data_set
 
-    del train, predict, align_data_set
+    del train, align_data_set
