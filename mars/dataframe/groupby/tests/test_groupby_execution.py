@@ -315,9 +315,9 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
                                       df1.groupby('a').sum())
 
-        r = mdf.groupby('a').var()
+        r = mdf.groupby('a').kurt()
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
-                                      df1.groupby('a').var())
+                                      df1.groupby('a').kurt())
 
         r = mdf.groupby('a').agg(['sum', 'var'])
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
@@ -332,9 +332,9 @@ class Test(TestBase):
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
                                        series1.groupby(level=0).sum())
 
-        r = ms.groupby(level=0).var()
+        r = ms.groupby(level=0).kurt()
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),
-                                       series1.groupby(level=0).var())
+                                       series1.groupby(level=0).kurt())
 
         r = ms.groupby(level=0).agg(['sum', 'var'])
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].to_pandas(),

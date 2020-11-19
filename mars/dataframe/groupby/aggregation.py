@@ -583,6 +583,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         ret_map_groupbys = dict()
         grouped = cls._get_grouped(op, in_data, ctx)
         grouper = None
+        drop_names = False
 
         for input_key, output_key, cols, func in op.pre_funcs:
             if input_key == output_key:
@@ -590,13 +591,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             else:
                 def _wrapped_func(col):
                     try:
-                        return func(col)
+                        return func(col, gpu=op.is_gpu())
                     except TypeError:
                         return col
 
                 pre_df = in_data if cols is None else in_data[cols]
                 try:
-                    pre_df = func(pre_df)
+                    pre_df = func(pre_df, gpu=op.is_gpu())
                 except TypeError:
                     pre_df = pre_df.transform(_wrapped_func)
 
@@ -605,7 +606,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                         grouper = grouped.grouper
                     except AttributeError:  # cudf does not have GroupBy.grouper
                         grouper = xdf.Series(grouped.grouping.keys, index=grouped.obj.index)
+                        if in_data.ndim == 2:
+                            drop_names = True
 
+                if drop_names:
+                    pre_df = pre_df.drop(columns=grouped.grouping.names, errors='ignore')
                 ret_map_groupbys[output_key] = cls._get_grouped(op, pre_df, ctx, grouper=grouper)
 
         agg_dfs = []
@@ -672,7 +677,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             else:
                 func_inputs = [in_data_dict[k][cols] for k in input_keys]
 
-            agg_df = func(*func_inputs)
+            agg_df = func(*func_inputs, gpu=op.is_gpu())
             if isinstance(agg_df, np.ndarray):
                 agg_df = xdf.DataFrame(agg_df, index=func_inputs[0].index)
 
