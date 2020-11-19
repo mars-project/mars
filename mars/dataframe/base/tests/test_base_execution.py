@@ -160,6 +160,15 @@ class Test(TestBase):
         expected = raw.map(lambda x: x + 1.)
         pd.testing.assert_series_equal(result, expected)
 
+        def f(x: int):
+            return x + 1.
+
+        # dtype can be inferred for function
+        r = s.map(f)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map(lambda x: x + 1.)
+        pd.testing.assert_series_equal(result, expected)
+
         # test arg is a md.Series
         raw2 = pd.Series([10], index=[5])
         s2 = from_pandas_series(raw2)
