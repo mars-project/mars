@@ -14,8 +14,8 @@
 
 from ...utils import check_consistent_length
 from .core import lightgbm, LGBMScikitLearnBase, LGBMModelType
-from .train import train
-from .predict import predict
+from ._train import train
+from ._predict import predict_base
 
 
 LGBMClassifier = None
@@ -36,10 +36,10 @@ if lightgbm:
             return self
 
         def predict(self, X, **kwargs):
-            return predict(self, X, proba=False, **kwargs)
+            return predict_base(self, X, proba=False, **kwargs)
 
         def predict_proba(self, X, **kwargs):
-            return predict(self, X, proba=True, **kwargs)
+            return predict_base(self, X, proba=True, **kwargs)
 
         def to_local(self):
             model = lightgbm.LGBMClassifier(**self.get_params())

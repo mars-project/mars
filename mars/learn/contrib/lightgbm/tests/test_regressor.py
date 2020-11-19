@@ -22,7 +22,7 @@ from mars.tests.core import ExecutorForTest
 
 try:
     import lightgbm
-    from mars.learn.contrib.lightgbm import LGBMRegressor
+    from mars.learn.contrib.lightgbm import LGBMRegressor, predict
 except ImportError:
     lightgbm = LGBMRegressor = None
 
@@ -90,3 +90,11 @@ class Test(unittest.TestCase):
             self.assertEqual(prediction.shape[0], len(X_df))
         except ImportError:
             pass
+
+        # test existing model
+        classifier = lightgbm.LGBMRegressor(verbosity=1, n_estimators=2)
+        classifier.fit(X, y)
+        prediction = predict(classifier, X)
+
+        self.assertEqual(prediction.ndim, 1)
+        self.assertEqual(prediction.shape[0], len(self.X))
