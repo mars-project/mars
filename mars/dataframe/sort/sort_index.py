@@ -183,7 +183,7 @@ def sort_index(a, axis=0, level=None, ascending=True, inplace=False, kind='quick
     op = DataFrameSortIndex(level=level, axis=axis, ascending=ascending, inplace=inplace,
                             kind=kind, na_position=na_position, sort_remaining=sort_remaining,
                             ignore_index=ignore_index, parallel_kind=parallel_kind,
-                            psrs_kinds=psrs_kinds)
+                            psrs_kinds=psrs_kinds, gpu=a.op.is_gpu())
     sorted_a = op(a)
     if inplace:
         a.data = sorted_a.data
