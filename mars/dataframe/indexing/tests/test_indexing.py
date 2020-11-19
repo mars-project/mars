@@ -566,7 +566,9 @@ class Test(TestBase):
             self.assertEqual(c.shape, (2, 1))
 
     def testDataFrameGetitemBool(self):
-        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        data = pd.DataFrame(np.random.rand(10, 5),
+                            columns=['c1', 'c2', 'c3', 'c4', 'c5'],
+                            index=pd.RangeIndex(10, name='i'))
         df = md.DataFrame(data, chunk_size=2)
 
         mask_data1 = data.c1 > 0.5
@@ -582,6 +584,7 @@ class Test(TestBase):
         self.assertNotEqual(r1.index_value.key, mask1.index_value.key)
         self.assertEqual(r1.columns_value.key, df.columns_value.key)
         self.assertIs(r1.columns_value, df.columns_value)
+        self.assertEqual(r1.index_value.name, 'i')
 
         self.assertNotEqual(r1.index_value.key, r2.index_value.key)
         self.assertEqual(r1.columns_value.key, r2.columns_value.key)

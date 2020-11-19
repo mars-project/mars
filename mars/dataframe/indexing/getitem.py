@@ -253,12 +253,14 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                        name=self._col_names)
         else:
             if isinstance(self.mask, (SERIES_TYPE, DATAFRAME_TYPE)):
-                index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype),
+                index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype,
+                                                   name=df.index_value.name),
                                           df, self._mask)
                 return self.new_dataframe([df, self._mask], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
                                           index_value=index_value, columns_value=df.columns_value)
             else:
-                index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype),
+                index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype,
+                                                   name=df.index_value.name),
                                           df, self._mask)
                 return self.new_dataframe([df], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
                                           index_value=index_value, columns_value=df.columns_value)
