@@ -39,10 +39,11 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         from .sort_values import DataFrameSortValues
         if isinstance(op, DataFrameSortValues):
             properties = dict(sort_type='sort_values', axis=op.axis, by=op.by, ascending=op.ascending,
-                              inplace=op.inplace, na_position=op.na_position)
+                              inplace=op.inplace, na_position=op.na_position, gpu=op.is_gpu())
         else:
             properties = dict(sort_type='sort_index', axis=op.axis, level=op.level, ascending=op.ascending,
-                              inplace=op.inplace, na_position=op.na_position, sort_remaining=op.sort_remaining)
+                              inplace=op.inplace, na_position=op.na_position, sort_remaining=op.sort_remaining,
+                              gpu=op.is_gpu())
         return properties
 
     @classmethod
@@ -272,11 +273,12 @@ class DataFramePSRSChunkOperand(DataFrameOperand):
     _n_partition = Int32Field('n_partition')
 
     def __init__(self, sort_type=None, by=None, axis=None, ascending=None, inplace=None, kind=None,
-                 na_position=None, level=None, sort_remaining=None, n_partition=None, output_types=None, **kw):
+                 na_position=None, level=None, sort_remaining=None, n_partition=None, gpu=None,
+                 output_types=None, **kw):
         super().__init__(_sort_type=sort_type, _by=by, _axis=axis, _ascending=ascending,
                          _inplace=inplace, _kind=kind, _na_position=na_position,
                          _level=level, _sort_remaining=sort_remaining, _n_partition=n_partition,
-                         _output_types=output_types, **kw)
+                         _gpu=gpu, _output_types=output_types, **kw)
 
     @property
     def sort_type(self):
@@ -329,6 +331,7 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
     @classmethod
     def execute(cls, ctx, op):
         a = ctx[op.inputs[0].key]
+        xdf = pd if isinstance(a, (pd.DataFrame, pd.Series)) else cudf
 
         if op.sort_type == 'sort_values':
             ctx[op.outputs[0].key] = res = execute_sort_values(a, op)
@@ -338,7 +341,7 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
         by = op.by
         add_distinct_col = bool(int(os.environ.get('PSRS_DISTINCT_COL', '0'))) \
             or getattr(ctx, 'running_mode', None) == RunningMode.distributed
-        if add_distinct_col and isinstance(a, pd.DataFrame) and op.sort_type == 'sort_values':
+        if add_distinct_col and isinstance(a, xdf.DataFrame) and op.sort_type == 'sort_values':
             # when running under distributed mode, we introduce an extra column
             # to make sure pivots are distinct
             chunk_idx = op.inputs[0].index[0]
@@ -350,10 +353,12 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
         n = op.n_partition
         if a.shape[op.axis] < n:
             num = n // a.shape[op.axis] + 1
-            res = execute_sort_values(pd.concat([res] * num), op, by=by)
+            res = execute_sort_values(xdf.concat([res] * num), op, by=by)
         w = int(res.shape[op.axis] // n)
 
-        slc = (slice(None),) * op.axis + (slice(0, n * w, w),)
+        slc = slice(0, n * w, w)
+        if op.axis == 1:
+            slc = (slice(None), slc)
         if op.sort_type == 'sort_values':
             # do regular sample
             if op.by is not None:
@@ -381,8 +386,9 @@ class DataFramePSRSConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin)
         p = len(inputs)
         assert a.shape[op.axis] == p ** 2
 
-        select = slice(p - 1, (p - 1) ** 2 + 1, p - 1)
-        slc = (slice(None),) * op.axis + (select,)
+        slc = slice(p - 1, (p - 1) ** 2 + 1, p - 1)
+        if op.axis == 1:
+            slc = (slice(None), slc)
         if op.sort_type == 'sort_values':
             a = execute_sort_values(a, op, inplace=False)
             ctx[op.outputs[-1].key] = a.iloc[slc]
@@ -468,43 +474,26 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         a, pivots = [ctx[c.key] for c in op.inputs]
         out = op.outputs[0]
 
-        if isinstance(a, pd.DataFrame):
-            # use numpy.searchsorted to find split positions.
-            by = op.by
+        # use numpy.searchsorted to find split positions.
+        by = op.by
 
-            distinct_col = _PSRS_DISTINCT_COL if a.columns.nlevels == 1 \
-                else (_PSRS_DISTINCT_COL,) + ('',) * (a.columns.nlevels - 1)
-            if distinct_col in a.columns:
-                by += [distinct_col]
+        distinct_col = _PSRS_DISTINCT_COL if a.columns.nlevels == 1 \
+            else (_PSRS_DISTINCT_COL,) + ('',) * (a.columns.nlevels - 1)
+        if distinct_col in a.columns:
+            by += [distinct_col]
 
-            records = a[by].to_records(index=False)
-            p_records = pivots.to_records(index=False)
-            if op.ascending:
-                poses = records.searchsorted(p_records, side='right')
-            else:
-                poses = len(records) - records[::-1].searchsorted(p_records, side='right')
-            del records, p_records
+        records = a[by].to_records(index=False)
+        p_records = pivots.to_records(index=False)
+        if op.ascending:
+            poses = records.searchsorted(p_records, side='right')
+        else:
+            poses = len(records) - records[::-1].searchsorted(p_records, side='right')
+        del records, p_records
 
-            poses = (None,) + tuple(poses) + (None,)
-            for i in range(op.n_partition):
-                values = a.iloc[poses[i]: poses[i + 1]]
-                ctx[(out.key, str(i))] = values
-        else:  # pragma: no cover
-            # for cudf, find split positions in loops.
-            if op.ascending:
-                pivots.append(a.iloc[-1][op.by])
-                for i in range(op.n_partition):
-                    selected = a
-                    for label in op.by:
-                        selected = selected.loc[a[label] <= pivots.iloc[i][label]]
-                    ctx[(out.key, str(i))] = selected
-            else:
-                pivots.append(a.iloc[-1][op.by])
-                for i in range(op.n_partition):
-                    selected = a
-                    for label in op.by:
-                        selected = selected.loc[a[label] >= pivots.iloc[i][label]]
-                    ctx[(out.key, str(i))] = selected
+        poses = (None,) + tuple(poses) + (None,)
+        for i in range(op.n_partition):
+            values = a.iloc[poses[i]: poses[i + 1]]
+            ctx[(out.key, str(i))] = values
 
     @classmethod
     def _execute_series_map(cls, ctx, op):
@@ -554,7 +543,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
         xdf = pd if isinstance(raw_inputs[0], (pd.DataFrame, pd.Series)) else cudf
         concat_values = xdf.concat(raw_inputs, axis=op.axis)
-        if isinstance(concat_values, pd.DataFrame):
+        if isinstance(concat_values, xdf.DataFrame):
             concat_values.drop(_PSRS_DISTINCT_COL, axis=1, inplace=True, errors='ignore')
 
         del raw_inputs[:]
