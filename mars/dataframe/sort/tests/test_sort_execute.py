@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import ExecutorForTest, require_cudf
 from mars.dataframe import DataFrame, Series, ArrowStringDtype
 from mars.session import new_session
 
@@ -281,3 +281,42 @@ class Test(unittest.TestCase):
         result = self.executor.execute_dataframe(df, concat=True)[0]
         expected = raw.sort_values(by='b')
         pd.testing.assert_frame_equal(result, expected)
+
+    @require_cudf
+    def testGPUExecution(self):
+        # test sort_values
+        distinct_opts = ['0'] if sys.platform.lower().startswith('win') else ['0', '1']
+        for add_distinct in distinct_opts:
+            os.environ['PSRS_DISTINCT_COL'] = add_distinct
+
+            # test dataframe
+            raw = pd.DataFrame(np.random.rand(100, 10), columns=['a' + str(i) for i in range(10)])
+            mdf = DataFrame(raw, chunk_size=30).to_gpu()
+
+            result = self.executor.execute_dataframe(mdf.sort_values(by='a0'), concat=True)[0]
+            expected = raw.sort_values(by='a0')
+            pd.testing.assert_frame_equal(result.to_pandas(), expected)
+
+            # test series
+            raw = pd.Series(np.random.rand(10))
+            series = Series(raw).to_gpu()
+
+            result = self.executor.execute_dataframe(series.sort_values(), concat=True)[0]
+            expected = raw.sort_values()
+            pd.testing.assert_series_equal(result.to_pandas(), expected)
+
+        # test DataFrame.sort_index
+        raw = pd.DataFrame(np.random.rand(10, 10), columns=np.random.rand(10))
+        mdf = DataFrame(raw).to_gpu()
+
+        result = self.executor.execute_dataframe(mdf.sort_index(), concat=True)[0]
+        expected = raw.sort_index()
+        pd.testing.assert_frame_equal(result.to_pandas(), expected)
+
+        # test Series.sort_index
+        raw = pd.Series(np.random.rand(10, ), index=np.random.rand(10))
+        series = Series(raw).to_gpu()
+
+        result = self.executor.execute_dataframe(series.sort_index(), concat=True)[0]
+        expected = raw.sort_index()
+        pd.testing.assert_series_equal(result.to_pandas(), expected)

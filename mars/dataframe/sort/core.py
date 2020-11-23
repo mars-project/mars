@@ -27,14 +27,12 @@ class DataFrameSortOperand(DataFrameOperand):
     _parallel_kind = StringField('parallel_kind')
     _psrs_kinds = ListField('psrs_kinds', ValueType.string)
 
-    def __init__(self, axis=None, ascending=None, inplace=None, kind=None,
-                 na_position=None, ignore_index=None, parallel_kind=None, psrs_kinds=None, **kw):
-        super(DataFrameSortOperand, self).__init__(_axis=axis, _ascending=ascending,
-                                                   _inplace=inplace, _kind=kind,
-                                                   _na_position=na_position,
-                                                   _ignore_index=ignore_index,
-                                                   _parallel_kind=parallel_kind,
-                                                   _psrs_kinds=psrs_kinds, **kw)
+    def __init__(self, axis=None, ascending=None, inplace=None, kind=None, na_position=None,
+                 ignore_index=None, parallel_kind=None, psrs_kinds=None, gpu=False, **kw):
+        super().__init__(_axis=axis, _ascending=ascending, _inplace=inplace, _kind=kind,
+                         _na_position=na_position, _ignore_index=ignore_index,
+                         _parallel_kind=parallel_kind, _psrs_kinds=psrs_kinds,
+                         _gpu=gpu, **kw)
 
     @property
     def axis(self):
