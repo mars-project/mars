@@ -112,6 +112,8 @@ Computations / descriptive stats
    Series.cumprod
    Series.cumsum
    Series.describe
+   Series.kurt
+   Series.kurtosis
    Series.max
    Series.mean
    Series.min
@@ -119,6 +121,8 @@ Computations / descriptive stats
    Series.product
    Series.quantile
    Series.round
+   Series.sem
+   Series.skew
    Series.std
    Series.sum
    Series.var

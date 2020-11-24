@@ -21,10 +21,19 @@ from ...core import OutputType
 from ...serialize import StringField
 from ...tensor.core import TensorOrder
 from ...utils import lazy_import
-from .core import DataFrameReductionOperand, DataFrameReductionMixin
-
+from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
 cudf = lazy_import('cudf', globals=globals())
+
+
+class UniqueReduction(CustomReduction):
+    def agg(self, data):  # noqa: W0221  # pylint: disable=arguments-differ
+        xdf = cudf if self.is_gpu() else pd
+        # convert to series data
+        return xdf.Series(data.unique())
+
+    def post(self, data):  # noqa: W0221  # pylint: disable=arguments-differ
+        return data.unique()
 
 
 class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
@@ -41,36 +50,15 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._method
 
     @classmethod
+    def _make_agg_object(cls, op):
+        return UniqueReduction(name=cls._func_name, is_gpu=op.is_gpu())
+
+    @classmethod
     def tile(cls, op):
         if op.method == 'tree':
             return super().tile(op)
         else:
             raise NotImplementedError(f"Method {op.method} hasn't been supported")
-
-    @classmethod
-    def _execute_map(cls, ctx, op):
-        xdf = cudf if op.gpu else pd
-        in_data = ctx[op.inputs[0].key]
-        try:
-            uniques = xdf.unique(in_data)
-        except AttributeError:   # pragma: no cover
-            # for cudf
-            uniques = in_data.unique()
-        # convert to series data
-        ctx[op.outputs[0].key] = xdf.Series(uniques)
-
-    @classmethod
-    def _execute_combine(cls, ctx, op):
-        xdf = cudf if op.gpu else pd
-        in_data = ctx[op.inputs[0].key]
-
-        # convert to series data
-        ctx[op.outputs[0].key] = xdf.Series(in_data.unique())
-
-    @classmethod
-    def _execute_agg(cls, ctx, op):
-        in_data = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = in_data.unique()
 
     def __call__(self, a):
         self.output_types = [OutputType.tensor]

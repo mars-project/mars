@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 from collections import OrderedDict
+from typing import NamedTuple, Any, List, Dict, Union, Callable
 
 import numpy as np
 import pandas as pd
 
-from ...config import options
-from ...core import OutputType
+from ...core import OutputType, Entity, Base
 from ...operands import OperandStage
-from ...utils import lazy_import
+from ...utils import tokenize, is_build_mode, enter_mode, recursive_tile
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
-from ..utils import parse_index, build_df, build_empty_df, build_series, validate_axis
+from ..core import SERIES_TYPE
+from ..utils import parse_index, build_df, build_empty_df, build_series, \
+    build_empty_series, validate_axis
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DATAFRAME_TYPE
-from ..merge import DataFrameConcat
-
-cudf = lazy_import('cudf', globals=globals())
 
 
 class DataFrameReductionOperand(DataFrameOperand):
@@ -115,323 +115,48 @@ class DataFrameCumReductionOperand(DataFrameOperand):
         return self._use_inf_as_na
 
 
+def _default_agg_fun(value, func_name=None, **kw):
+    if value.ndim == 1:
+        kw.pop('bool_only', None)
+        kw.pop('numeric_only', None)
+        return getattr(value, func_name)(**kw)
+    else:
+        return getattr(value, func_name)(**kw)
+
+
 class DataFrameReductionMixin(DataFrameOperandMixin):
     @classmethod
-    def _tile_one_chunk(cls, op):
-        df = op.outputs[0]
-
-        chk = op.inputs[0].chunks[0]
-        chunk_params = {k: v for k, v in chk.params.items()
-                        if k in df.params}
-        chunk_params['shape'] = df.shape
-        chunk_params['index'] = chk.index
-        if op.output_types[0] == OutputType.series:
-            chunk_params.update(dict(dtype=df.dtype, index_value=df.index_value, index=(0,)))
-        elif op.output_types[0] == OutputType.dataframe:
-            chunk_params.update(dict(dtypes=df.dtypes, index_value=df.index_value,
-                                     columns_value=df.columns_value))
-        else:
-            chunk_params.update(dict(dtype=df.dtype, order=df.order))
-        new_chunk_op = op.copy().reset_key()
-        chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, kws=[chunk_params])
-
-        new_op = op.copy()
-        nsplits = tuple((s,) for s in chunk.shape)
-        params = df.params.copy()
-        params.update(dict(chunks=[chunk], nsplits=nsplits))
-        return new_op.new_tileables(op.inputs, kws=[params])
-
-    @classmethod
-    def _tree_reduction(cls, chunks, op, combine_size, idx):
-        while len(chunks) > combine_size:
-            new_chunks = []
-            for i in range(0, len(chunks), combine_size):
-                chks = chunks[i: i + combine_size]
-                for j, c in enumerate(chunks):
-                    c._index = (j,)
-
-                # concatenate chunks into one chunk
-                concat_op = DataFrameConcat(axis=op.axis, output_types=[OutputType.dataframe])
-                if op.axis == 0:
-                    concat_index = parse_index(pd.RangeIndex(len(chks)))
-                    concat_dtypes = chks[0].dtypes
-                    concat_shape = (sum([c.shape[0] for c in chks]), chks[0].shape[1])
-                else:
-                    concat_index = chks[0].index_value
-                    concat_dtypes = pd.Series([c.dtypes[0] for c in chks])
-                    concat_shape = (chks[0].shape[0], (sum([c.shape[1] for c in chks])))
-                chk = concat_op.new_chunk(chks, shape=concat_shape, index=(i,),
-                                          dtypes=concat_dtypes, index_value=concat_index)
-
-                # do reduction
-                if op.axis == 0:
-                    reduced_shape = (1, chk.shape[1])
-                    index_value = parse_index(pd.RangeIndex(1))
-                    dtypes = chk.dtypes
-                else:
-                    reduced_shape = (chk.shape[0], 1)
-                    index_value = chk.index_value
-                    dtypes = pd.Series(op.outputs[0].dtype)
-                new_op = op.copy().reset_key()
-                new_op._stage = OperandStage.combine
-                # all intermediate results' type is dataframe
-                new_op.output_types = [OutputType.dataframe]
-                new_chunks.append(new_op.new_chunk([chk], shape=reduced_shape, index=(i,), dtypes=dtypes,
-                                                   index_value=index_value))
-            chunks = new_chunks
-
-        if op.axis == 0:
-            concat_shape = (sum([c.shape[0] for c in chunks]), chunks[0].shape[1])
-        else:
-            concat_shape = (chunks[0].shape[0], (sum([c.shape[1] for c in chunks])))
-        concat_op = DataFrameConcat(axis=op.axis, output_types=[OutputType.dataframe])
-        chk = concat_op.new_chunk(chunks, index=(idx,), shape=concat_shape)
-        empty_df = build_df(chunks[0])
-        reduced_df = cls._execute_reduction(empty_df, op)
-        reduced_shape = (chk.shape[0],) if op.axis == 1 else reduced_df.shape
-        new_op = op.copy().reset_key()
-        new_op._stage = OperandStage.agg
-        return new_op.new_chunk([chk], shape=reduced_shape, index=(idx,), dtype=reduced_df.dtype,
-                                index_value=parse_index(reduced_df.index))
-
-    @classmethod
-    def _tile_dataframe(cls, op):
-        in_df = op.inputs[0]
-        df = op.outputs[0]
-        combine_size = op.combine_size or options.combine_size
-
-        n_rows, n_cols = in_df.chunk_shape
-
-        chunk_dtypes = []
-        if (op.numeric_only or op.bool_only) and op.axis == 0:
-            sel_dtypes = [np.number, 'bool'] if op.numeric_only else ['bool']
-            cum_nsplits = np.cumsum((0,) + in_df.nsplits[1])
-            for i in range(len(cum_nsplits) - 1):
-                chunk_empty_df = build_empty_df(in_df.dtypes[cum_nsplits[i]: cum_nsplits[i + 1]])
-                chunk_dtypes.append(chunk_empty_df.select_dtypes(sel_dtypes).dtypes)
-
-        # build reduction chunks
-        reduction_chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
-        for c in op.inputs[0].chunks:
-            new_chunk_op = op.copy().reset_key()
-            new_chunk_op._stage = OperandStage.map
-            new_chunk_op.output_types = [OutputType.dataframe]
-            if op.axis == 0:
-                if op.numeric_only or op.bool_only:
-                    dtypes = chunk_dtypes[c.index[1]]
-                else:
-                    dtypes = c.dtypes
-                reduced_shape = (1, len(dtypes))
-                index_value = parse_index(pd.RangeIndex(1), new_chunk_op)
-            else:
-                reduced_shape = (c.shape[0], 1)
-                index_value = c.index_value
-                dtypes = pd.Series(op.outputs[0].dtype)
-            reduction_chunks[c.index] = new_chunk_op.new_chunk([c], shape=reduced_shape,
-                                                               dtypes=dtypes, index_value=index_value)
-        # Tree reduction
-        out_chunks = []
-        if op.axis is None or op.axis == 0:
-            for col in range(n_cols):
-                chunks = [reduction_chunks[i, col] for i in range(n_rows)]
-                out_chunks.append(cls._tree_reduction(chunks, op, combine_size, col))
-        elif op.axis == 1:
-            for row in range(n_rows):
-                chunks = [reduction_chunks[row, i] for i in range(n_cols)]
-                out_chunks.append(cls._tree_reduction(chunks, op, combine_size, row))
-        new_op = op.copy()
-        nsplits = (tuple(c.shape[0] for c in out_chunks),)
-        return new_op.new_seriess(op.inputs, df.shape, nsplits=nsplits, chunks=out_chunks,
-                                  dtype=df.dtype, index_value=df.index_value)
-
-    @classmethod
-    def _tile_series(cls, op):
-        series = op.outputs[0]
-        combine_size = op.combine_size or options.combine_size
-
-        chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
-        for c in op.inputs[0].chunks:
-            new_chunk_op = op.copy().reset_key()
-            new_chunk_op.output_types = [OutputType.series]
-            new_chunk_op._stage = OperandStage.map
-            chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=series.dtype)
-
-        while len(chunks) > combine_size:
-            new_chunks = []
-            for i in range(0, len(chunks), combine_size):
-                chks = chunks[i: i + combine_size]
-                concat_op = DataFrameConcat(output_types=[OutputType.series])
-                length = sum([c.shape[0] for c in chks if len(c.shape) > 0])
-                range_num = -1 if np.isnan(length) else length
-                chk = concat_op.new_chunk(chks, shape=(length,), index=(i,), dtype=chks[0].dtype,
-                                          index_value=parse_index(pd.RangeIndex(range_num), [c.key for c in chks]))
-                new_op = op.copy().reset_key()
-                new_op.output_types = [OutputType.series]
-                new_op._stage = OperandStage.combine
-                new_chunks.append(new_op.new_chunk([chk], shape=(), index=(i,), dtype=chk.dtype,
-                                                   index_value=parse_index(pd.RangeIndex(-1))))
-            chunks = new_chunks
-
-        concat_op = DataFrameConcat(output_types=[OutputType.series])
-        length = sum([c.shape[0] for c in chunks if len(c.shape) > 0])
-        range_num = -1 if np.isnan(length) else length
-        chk = concat_op.new_chunk(chunks, shape=(length,), index=(0,), dtype=chunks[0].dtype,
-                                  index_value=parse_index(pd.RangeIndex(range_num)))
-        chunk_op = op.copy().reset_key()
-        chunk_op._stage = OperandStage.agg
-
-        chunk_params = series.params.copy()
-        chunk_params.update(dict(index=(0,)))
-        chunk = chunk_op.new_chunk([chk], **chunk_params)
-
-        new_op = op.copy().reset_key()
-        nsplits = tuple((s,) for s in chunk.shape)
-        params = series.params.copy()
-        params.update(dict(nsplits=nsplits, chunks=[chunk]))
-        return new_op.new_tileables(op.inputs, **params)
+    def _make_agg_object(cls, op):
+        func_name = getattr(op, '_func_name')
+        kw = dict(skipna=op.skipna, numeric_only=op.numeric_only,
+                  bool_only=op.bool_only)
+        kw = {k: v for k, v in kw.items() if v is not None}
+        fun = functools.partial(_default_agg_fun, func_name=func_name, **kw)
+        fun.__name__ = func_name
+        return fun
 
     @classmethod
     def tile(cls, op):
         in_df = op.inputs[0]
-        if len(in_df.chunks) == 1:
-            return cls._tile_one_chunk(op)
-        if isinstance(in_df, DATAFRAME_TYPE):
-            return cls._tile_dataframe(op)
+        out_df = op.outputs[0]
+
+        if isinstance(out_df, SERIES_TYPE):
+            output_type = OutputType.series
+            dtypes = pd.Series([out_df.dtype], index=[out_df.name])
+            index = out_df.index_value.to_pandas()
+        elif out_df.ndim == 1:
+            output_type = OutputType.tensor
+            dtypes, index = out_df.dtype, None
         else:
-            return cls._tile_series(op)
+            output_type = OutputType.scalar
+            dtypes, index = out_df.dtype, None
 
-    @classmethod
-    def _execute_reduction(cls, in_data, op, min_count=None, reduction_func=None):
-        kwargs = dict()
-        if op.axis is not None:
-            kwargs['axis'] = op.axis
-        if op.skipna is not None:
-            kwargs['skipna'] = op.skipna
-        if op.numeric_only is not None:
-            kwargs['numeric_only'] = op.numeric_only
-        if op.bool_only is not None:
-            kwargs['bool_only'] = op.bool_only
-        if min_count is not None:
-            kwargs['min_count'] = op.min_count
-        reduction_func = reduction_func or getattr(cls, '_func_name')
-        return getattr(in_data, reduction_func)(**kwargs)
-
-    @classmethod
-    def _execute_map_with_count(cls, ctx, op, reduction_func=None):
-        # Execution with specified `min_count` in the map stage
-
-        xdf = cudf if op.gpu else pd
-        in_data = ctx[op.inputs[0].key]
-        if isinstance(in_data, pd.Series):
-            count = in_data.count()
-        else:
-            count = in_data.count(axis=op.axis, numeric_only=op.numeric_only)
-        r = cls._execute_reduction(in_data, op, reduction_func=reduction_func)
-        if isinstance(in_data, xdf.Series):
-            if op.output_types[0] == OutputType.series:
-                r = xdf.Series([r])
-                count = xdf.Series([count])
-            ctx[op.outputs[0].key] = (r, count)
-        else:
-            # For dataframe, will keep dimensions for intermediate results.
-            ctx[op.outputs[0].key] = (xdf.DataFrame(r), xdf.DataFrame(count)) if op.axis == 1 \
-                else (xdf.DataFrame(r).transpose(), xdf.DataFrame(count).transpose())
-
-    @classmethod
-    def _execute_combine_with_count(cls, ctx, op, reduction_func=None):
-        # Execution with specified `min_count` in the combine stage
-
-        xdf = cudf if op.gpu else pd
-        in_data, concat_count = ctx[op.inputs[0].key]
-        count = concat_count.sum(axis=op.axis)
-        r = cls._execute_reduction(in_data, op, reduction_func=reduction_func)
-        if isinstance(in_data, xdf.Series):
-            if op.output_types[0] == OutputType.series:
-                r = xdf.Series([r])
-                count = xdf.Series([count])
-            ctx[op.outputs[0].key] = (r, count)
-        else:
-            # For dataframe, will keep dimensions for intermediate results.
-            ctx[op.outputs[0].key] = (xdf.DataFrame(r), xdf.DataFrame(count)) if op.axis == 1 \
-                else (xdf.DataFrame(r).transpose(), xdf.DataFrame(count).transpose())
-
-    @classmethod
-    def _execute_agg_with_count(cls, ctx, op, reduction_func=None):
-        # Execution with specified `min_count` in the aggregate stage
-
-        # When specify `min_count`, the terminal chunk has two inputs one of which is for count.
-        # The output should be determined by comparing `count` with `min_count`.
-        in_data, concat_count = ctx[op.inputs[0].key]
-        count = concat_count.sum(axis=op.axis)
-        r = cls._execute_reduction(in_data, op, reduction_func=reduction_func)
-        if np.isscalar(r):
-            ctx[op.outputs[0].key] = np.nan if count < op.min_count else r
-        else:
-            r[count < op.min_count] = np.nan
-            ctx[op.outputs[0].key] = r
-
-    @classmethod
-    def _execute_without_count(cls, ctx, op, reduction_func=None):
-        # Execution for normal reduction operands.
-
-        # For dataframe, will keep dimensions for intermediate results.
-        xdf = cudf if op.gpu else pd
-        in_data = ctx[op.inputs[0].key]
-        r = cls._execute_reduction(in_data, op, min_count=op.min_count, reduction_func=reduction_func)
-        if isinstance(in_data, xdf.Series) or op.output_types[0] == OutputType.series:
-            if op.output_types[0] == OutputType.series and not isinstance(r, xdf.Series):
-                r = xdf.Series([r])
-            ctx[op.outputs[0].key] = r
-        else:
-            if op.axis == 0:
-                if op.gpu:
-                    df = xdf.DataFrame(r).transpose()
-                    df.columns = r.index.to_arrow().to_pylist()
-                else:
-                    # cannot just do xdf.DataFrame(r).T
-                    # cuz the dtype will be object since pandas 1.0
-                    df = xdf.DataFrame(OrderedDict((d, [v]) for d, v in r.iteritems()))
-            else:
-                df = xdf.DataFrame(r)
-            ctx[op.outputs[0].key] = df
-
-    @classmethod
-    def _execute_map(cls, ctx, op):
-        if op.min_count is not None and op.min_count > 0:
-            cls._execute_map_with_count(ctx, op)
-        else:
-            cls._execute_without_count(ctx, op)
-
-    @classmethod
-    def _execute_combine(cls, ctx, op):
-        if op.min_count is not None and op.min_count > 0:
-            cls._execute_combine_with_count(ctx, op)
-        else:
-            cls._execute_without_count(ctx, op)
-
-    @classmethod
-    def _execute_agg(cls, ctx, op):
-        if op.min_count is not None and op.min_count > 0:
-            cls._execute_agg_with_count(ctx, op)
-        else:
-            cls._execute_without_count(ctx, op)
-
-    @classmethod
-    def execute(cls, ctx, op):
-        try:
-            pd.set_option('mode.use_inf_as_na', op.use_inf_as_na)
-            if op.stage == OperandStage.combine:
-                cls._execute_combine(ctx, op)
-            elif op.stage == OperandStage.agg:
-                cls._execute_agg(ctx, op)
-            elif op.stage == OperandStage.map:
-                cls._execute_map(ctx, op)
-            else:
-                in_data = ctx[op.inputs[0].key]
-                min_count = getattr(op, 'min_count', None)
-                ctx[op.outputs[0].key] = cls._execute_reduction(in_data, op, min_count)
-        finally:
-            pd.reset_option('mode.use_inf_as_na')
+        out_df = recursive_tile(in_df.agg(
+            cls._make_agg_object(op), axis=op.axis or 0, numeric_only=op.numeric_only,
+            bool_only=op.bool_only, combine_size=op.combine_size, _output_type=output_type,
+            _dtypes=dtypes, _index=index
+        ))
+        return [out_df]
 
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None) or 0
@@ -452,6 +177,10 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced_df = getattr(empty_df, func_name)(axis=axis)
         elif func_name in ('all', 'any'):
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, bool_only=bool_only)
+        elif func_name == 'size':
+            reduced_df = pd.Series(np.zeros(df.shape[1 - axis]), index=empty_df.columns if axis == 0 else None)
+        elif func_name == 'custom_reduction':
+            reduced_df = getattr(self, 'custom_reduction').__call_agg__(empty_df)
         else:
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, skipna=skipna,
                                                       numeric_only=numeric_only)
@@ -481,6 +210,10 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced_series = empty_series.nunique()
         elif func_name in ('all', 'any'):
             reduced_series = getattr(empty_series, func_name)(axis=axis, level=level, bool_only=bool_only)
+        elif func_name == 'size':
+            reduced_series = empty_series.size
+        elif func_name == 'custom_reduction':
+            reduced_series = getattr(self, 'custom_reduction').__call_agg__(empty_series)
         else:
             reduced_series = getattr(empty_series, func_name)(axis=axis, level=level, skipna=skipna,
                                                               numeric_only=numeric_only)
@@ -675,3 +408,466 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
             return self._call_dataframe(a)
         else:
             return self._call_series(a)
+
+
+class CustomReduction:
+    name: Union[str, None]
+    output_limit: Union[int, None]
+    kwds: Dict
+
+    # set to True when pre() already performs aggregation
+    pre_with_agg = False
+
+    def __init__(self, name=None, is_gpu=False):
+        self.name = name or '<custom>'
+        self.output_limit = 1
+        self._is_gpu = is_gpu
+
+    @property
+    def __name__(self):
+        return self.name
+
+    def __call__(self, value):
+        if is_build_mode():
+            return value._custom_reduction(self)
+        return self.__call_agg__(value)
+
+    def __call_agg__(self, value):
+        r = self.pre(value)
+        if not isinstance(r, tuple):
+            r = (r,)
+        # update output limit into actual size
+        self.output_limit = len(r)
+
+        # only perform aggregation when pre() does not perform aggregation
+        if not self.pre_with_agg:
+            r = self.agg(*r)
+            if not isinstance(r, tuple):
+                r = (r,)
+
+        r = self.post(*r)
+        return r
+
+    def is_gpu(self):
+        return self._is_gpu if not is_build_mode() else False
+
+    def pre(self, value):  # noqa: R0201  # pylint: disable=no-self-use
+        return value,
+
+    def agg(self, *values):  # noqa: R0201  # pylint: disable=no-self-use
+        raise NotImplementedError
+
+    def post(self, *value):  # noqa: R0201  # pylint: disable=no-self-use
+        assert len(value) == 1
+        return value[0]
+
+    def __mars_tokenize__(self):
+        import cloudpickle
+        return cloudpickle.dumps(self)
+
+
+class ReductionPreStep(NamedTuple):
+    input_key: str
+    output_key: str
+    columns: Union[List[str], None]
+    func: Callable
+
+
+class ReductionAggStep(NamedTuple):
+    input_key: str
+    map_func_name: Union[str, None]
+    agg_func_name: Union[str, None]
+    custom_reduction: Union[CustomReduction, None]
+    output_key: str
+    output_limit: int
+    kwds: Dict[str, Any]
+
+
+class ReductionPostStep(NamedTuple):
+    input_keys: List[str]
+    output_key: str
+    func_name: str
+    columns: Union[List[str], None]
+    func: Callable
+
+
+class ReductionSteps(NamedTuple):
+    pre_funcs: List[ReductionPreStep]
+    agg_funcs: List[ReductionAggStep]
+    post_funcs: List[ReductionPostStep]
+
+
+# lookup table for numpy arithmetics in pandas
+_func_name_converts = dict(
+    greater='gt',
+    greater_equal='ge',
+    less='lt',
+    less_equal='le',
+    equal='eq',
+    not_equal='ne',
+    true_divide='truediv',
+    floor_divide='floordiv',
+    power='pow',
+)
+_func_name_to_op = dict(
+    greater='>', gt='>',
+    greater_equal='>=', ge='>',
+    less='<', lt='<',
+    less_equal='<=', le='<=',
+    equal='==', eq='==',
+    not_equal='!=', ne='!=',
+    bitwise_and='&', __and__='&',
+    bitwise_or='|', __or__='|',
+    add='+',
+    subtract='-', sub='-',
+    multiply='*', mul='*',
+    true_divide='/', truediv='/',
+    floor_divide='//', floordiv='//',
+    power='**', pow='**',
+    mod='%',
+)
+_func_compile_cache = dict()  # type: Dict[str, ReductionSteps]
+
+
+class ReductionCompiler:
+    def __init__(self, axis=0, store_source=False):
+        self._axis = axis
+        self._store_source = store_source
+
+        self._key_to_tileable = dict()
+        self._output_tileables = []
+        self._lambda_counter = 0
+        self._custom_counter = 0
+        self._func_cache = dict()
+
+        self._compiled_funcs = []
+        self._output_key_to_pre_steps = dict()
+        self._output_key_to_pre_cols = dict()
+        self._output_key_to_agg_steps = dict()
+        self._output_key_to_post_steps = dict()
+        self._output_key_to_post_cols = dict()
+
+    @classmethod
+    def _check_function_valid(cls, func):
+        if isinstance(func, functools.partial):
+            return cls._check_function_valid(func.func)
+        elif isinstance(func, CustomReduction):
+            return
+
+        func_code = func.__code__
+        func_vars = {n: func.__globals__.get(n) for n in func_code.co_names}
+        if func.__closure__:
+            func_vars.update({n: cell.cell_contents for
+                              n, cell in zip(func_code.co_freevars, func.__closure__)})
+        # external Mars objects shall not be referenced
+        for var_name, val in func_vars.items():
+            if isinstance(val, (Base, Entity)):
+                raise ValueError(f'Variable {var_name} used by {func.__name__} '
+                                 'cannot be a Mars object')
+
+    def add_function(self, func, ndim, cols=None, func_name=None):
+        cols = cols if cols is not None and self._axis == 0 else None
+
+        func_name = func_name or getattr(func, '__name__', None)
+        if func_name == '<lambda>' or func_name is None:
+            func_name = f'<lambda_{self._lambda_counter}>'
+            self._lambda_counter += 1
+        if func_name == '<custom>' or func_name is None:
+            func_name = f'<custom_{self._custom_counter}>'
+            self._custom_counter += 1
+
+        compile_result = self._compile_function(func, func_name, ndim=ndim)
+        self._compiled_funcs.append(compile_result)
+
+        for step in compile_result.pre_funcs:
+            self._output_key_to_pre_steps[step.output_key] = step
+            if step.output_key in self._output_key_to_pre_cols:
+                existing_cols = self._output_key_to_pre_cols[step.output_key]
+                if existing_cols is not None:
+                    existing_col_set = set(existing_cols)
+                    self._output_key_to_pre_cols[step.output_key].extend(
+                        [c for c in cols if c not in existing_col_set])
+            else:
+                self._output_key_to_pre_cols[step.output_key] = list(cols) if cols is not None else None
+
+        for step in compile_result.agg_funcs:
+            self._output_key_to_agg_steps[step.output_key] = step
+
+        for step in compile_result.post_funcs:
+            self._output_key_to_post_steps[step.output_key] = step
+            self._output_key_to_post_cols[step.output_key] = cols
+
+    @functools.lru_cache(100)
+    def _compile_expr_function(self, py_src):
+        from ... import tensor, dataframe
+        result_store = dict()
+        global_vars = globals()
+        global_vars.update(dict(mt=tensor, md=dataframe, array=np.array, nan=np.nan))
+        exec(py_src, global_vars, result_store)  # noqa: W0122  # nosec  # pylint: disable=exec-used
+        fun = result_store['expr_function']
+        if self._store_source:
+            fun.__source__ = py_src
+        return fun
+
+    @enter_mode(build=True)
+    def _compile_function(self, func, func_name=None, ndim=1) -> ReductionSteps:
+        from . import DataFrameAll, DataFrameAny, DataFrameSum, DataFrameProd, \
+            DataFrameCount, DataFrameMin, DataFrameMax, DataFrameSize, \
+            DataFrameCustomReduction
+        from ...tensor.arithmetic.core import TensorBinOp, TensorUnaryOp
+        from ...tensor.base import TensorWhere
+        from ..arithmetic.core import DataFrameBinOp, DataFrameUnaryOp
+        from ..datasource.dataframe import DataFrameDataSource
+        from ..indexing.where import DataFrameWhere
+        from ..datasource.series import SeriesDataSource
+        from ..initializer import DataFrame as MarsDataFrame, Series as MarsSeries
+
+        func_token = tokenize(func, self._axis, func_name, ndim)
+        if func_token in _func_compile_cache:
+            return _func_compile_cache[func_token]
+        custom_reduction = func if isinstance(func, CustomReduction) else None
+
+        atomic_agg_op_types = (DataFrameAll, DataFrameAny, DataFrameSum, DataFrameProd,
+                               DataFrameCount, DataFrameMin, DataFrameMax, DataFrameSize,
+                               DataFrameCustomReduction)
+
+        if ndim == 1:
+            mock_series = build_empty_series(np.dtype(float))
+            mock_obj = MarsSeries(mock_series)
+        else:
+            mock_df = build_empty_df(pd.Series([np.dtype(float)] * 2, index=['A', 'B']))
+            mock_obj = MarsDataFrame(mock_df)
+
+        self._check_function_valid(func)
+
+        # calc target tileable to generate DAG
+        func_ret = func(mock_obj)
+        output_limit = getattr(func, 'output_limit', None) or 1
+
+        if not isinstance(func_ret, (Base, Entity)):
+            raise ValueError(f'Custom function should return a Mars object, not {type(func_ret)}')
+        if func_ret.ndim >= mock_obj.ndim:
+            raise ValueError('Function not a reduction')
+
+        agg_graph = func_ret.build_graph()
+        agg_tileables = set(t for t in agg_graph if isinstance(t.op, atomic_agg_op_types))
+        # check operands before aggregation
+        for t in agg_graph.dfs(list(agg_tileables), visit_predicate='all', reverse=True):
+            if t not in agg_tileables and \
+                    not isinstance(t.op, (DataFrameUnaryOp, DataFrameBinOp,
+                                          TensorUnaryOp, TensorBinOp,
+                                          TensorWhere, DataFrameWhere,
+                                          DataFrameDataSource, SeriesDataSource)):
+                raise ValueError(f'Cannot support operand {type(t.op)} in aggregation')
+        # check operands after aggregation
+        for t in agg_graph.dfs(list(agg_tileables), visit_predicate='all'):
+            if t not in agg_tileables and \
+                    not isinstance(t.op, (DataFrameUnaryOp, DataFrameBinOp,
+                                          TensorWhere, DataFrameWhere,
+                                          TensorUnaryOp, TensorBinOp)):
+                raise ValueError(f'Cannot support operand {type(t.op)} in aggregation')
+
+        pre_funcs, agg_funcs, post_funcs = [], [], []
+        visited_inputs = set()
+        # collect aggregations and their inputs
+        for t in agg_tileables:
+            agg_input_key = t.inputs[0].key
+
+            # collect agg names
+            step_func_name = getattr(t.op, '_func_name')
+            if step_func_name in ('count', 'size'):
+                map_func_name, agg_func_name = step_func_name, 'sum'
+            else:
+                map_func_name, agg_func_name = step_func_name, step_func_name
+
+            # collect agg args
+            func_args = dict(skipna=t.op.skipna)
+            if t.inputs[0].ndim > 1:
+                func_args['axis'] = self._axis
+            if t.op.numeric_only is not None:
+                func_args['numeric_only'] = t.op.numeric_only
+            if t.op.bool_only is not None:
+                func_args['bool_only'] = t.op.bool_only
+
+            # build agg description
+            agg_funcs.append(ReductionAggStep(
+                agg_input_key, map_func_name, agg_func_name, custom_reduction, t.key, output_limit,
+                {k: v for k, v in func_args.items() if v is not None}
+            ))
+            # collect agg input and build function
+            if agg_input_key not in visited_inputs:
+                visited_inputs.add(agg_input_key)
+                initial_inputs = list(t.inputs[0].build_graph().iter_indep())
+                assert len(initial_inputs) == 1
+                input_key = initial_inputs[0].key
+
+                func_str, _ = self._generate_function_str(t.inputs[0])
+                pre_funcs.append(ReductionPreStep(
+                    input_key, agg_input_key, None, self._compile_expr_function(func_str)
+                ))
+        # collect function output after agg
+        func_str, input_keys = self._generate_function_str(func_ret)
+        post_funcs.append(ReductionPostStep(
+            input_keys, func_ret.key, func_name, None, self._compile_expr_function(func_str)
+        ))
+        if len(_func_compile_cache) > 100:  # pragma: no cover
+            _func_compile_cache.pop(next(iter(_func_compile_cache.keys())))
+        result = _func_compile_cache[func_token] = ReductionSteps(pre_funcs, agg_funcs, post_funcs)
+        return result
+
+    def _generate_function_str(self, out_tileable):
+        """
+        Generate python code from tileable DAG
+        """
+        from ...tensor.arithmetic.core import TensorBinOp, TensorUnaryOp
+        from ...tensor.base import TensorWhere
+        from ...tensor.datasource import Scalar
+        from ..arithmetic.core import DataFrameBinOp, DataFrameUnaryOp, DataFrameUnaryUfunc
+        from ..datasource.dataframe import DataFrameDataSource
+        from ..datasource.series import SeriesDataSource
+        from ..indexing.where import DataFrameWhere
+
+        input_key_to_var = OrderedDict()
+        local_key_to_var = dict()
+        ref_counts = dict()
+        ref_visited = set()
+        local_lines = []
+
+        input_op_types = (DataFrameDataSource, SeriesDataSource, DataFrameReductionOperand)
+
+        def _calc_ref_counts(t):
+            # calculate object refcount for t, this reduces memory usage in functions
+            if t.key in ref_visited:
+                return
+            ref_visited.add(t.key)
+            for inp in t.inputs:
+                _calc_ref_counts(inp)
+
+                if not isinstance(inp.op, input_op_types):
+                    if inp.key not in ref_counts:
+                        ref_counts[inp.key] = 0
+                    ref_counts[inp.key] += 1
+
+        def _gen_expr_str(t):
+            # generate code for t
+            if t.key in local_key_to_var:
+                return
+
+            if isinstance(t.op, input_op_types):
+                # tileable is an input arg, build a function variable
+                if t.key not in input_key_to_var:  # pragma: no branch
+                    input_key_to_var[t.key] = local_key_to_var[t.key] = f'invar{len(input_key_to_var)}'
+            else:
+                keys_to_del = []
+                for inp in t.inputs:
+                    _gen_expr_str(inp)
+
+                    if inp.key in ref_counts:
+                        ref_counts[inp.key] -= 1
+                        if ref_counts[inp.key] == 0:
+                            # the input is no longer referenced, a del statement will be produced
+                            keys_to_del.append(inp.key)
+
+                var_name = local_key_to_var[t.key] = f'var{len(local_key_to_var)}'
+                keys_to_vars = {inp.key: local_key_to_var[inp.key] for inp in t.inputs}
+
+                def _interpret_var(v):
+                    # get representation for variables
+                    if hasattr(v, 'key'):
+                        return keys_to_vars[v.key]
+                    return v
+
+                func_name = func_name_raw = getattr(t.op, '_func_name', None)
+                rfunc_name = getattr(t.op, '_rfunc_name', func_name)
+
+                # handle function name differences between numpy and pandas arithmetic ops
+                if func_name in _func_name_converts:
+                    func_name = _func_name_converts[func_name]
+                if rfunc_name in _func_name_converts:
+                    rfunc_name = 'r' + _func_name_converts[rfunc_name]
+
+                # build given different op types
+                if isinstance(t.op, (DataFrameUnaryOp, TensorUnaryOp)):
+                    val = _interpret_var(t.inputs[0])
+                    if isinstance(t.op, DataFrameUnaryUfunc):
+                        statements = [f'{var_name} = np.{func_name_raw}({val})']
+                    else:
+                        statements = [f'try:',
+                                      f'    {var_name} = {val}.{func_name}()',
+                                      f'except AttributeError:',
+                                      f'    {var_name} = np.{func_name_raw}({val})']
+                elif isinstance(t.op, (DataFrameBinOp, TensorBinOp)):
+                    lhs, rhs = t.op.lhs, t.op.rhs
+                    op_axis = 1 - self._axis if hasattr(lhs, 'ndim') and hasattr(rhs, 'ndim') \
+                        and lhs.ndim != rhs.ndim else None
+                    lhs = _interpret_var(lhs)
+                    rhs = _interpret_var(rhs)
+                    axis_expr = f'axis={op_axis!r}, ' if op_axis is not None else ''
+                    op_str = _func_name_to_op[func_name]
+                    if t.op.lhs is t.inputs[0]:
+                        statements = [f'try:',
+                                      f'    {var_name} = {lhs}.{func_name}({rhs}, {axis_expr})',
+                                      f'except AttributeError:',
+                                      f'    {var_name} = {lhs} {op_str} {rhs}']
+                    else:
+                        statements = [f'try:',
+                                      f'    {var_name} = {rhs}.{rfunc_name}({lhs}, {axis_expr})',
+                                      f'except AttributeError:',
+                                      f'    {var_name} = {rhs} {op_str} {lhs}']
+                elif isinstance(t.op, TensorWhere):
+                    cond = _interpret_var(t.op.condition)
+                    x = _interpret_var(t.op.x)
+                    y = _interpret_var(t.op.y)
+                    statements = [f'if not gpu:',
+                                  f'    {var_name} = np.where({cond}, {x}, {y})',
+                                  f'else:',  # there is a bug with cudf.where
+                                  f'    {var_name} = {x}']
+                elif isinstance(t.op, DataFrameWhere):
+                    func_name = 'mask' if t.op.replace_true else 'where'
+                    inp = _interpret_var(t.op.input)
+                    cond = _interpret_var(t.op.cond)
+                    other = _interpret_var(t.op.other)
+                    statements = [f'if not gpu:',
+                                  f'    {var_name} = {inp}.{func_name}({cond}, {other}, '
+                                  f'axis={t.op.axis!r}, level={t.op.level!r})',
+                                  f'else:',  # there is a bug with cudf.where
+                                  f'    {var_name} = {inp}']
+                elif isinstance(t.op, Scalar):
+                    # for scalar inputs of other operands
+                    data = _interpret_var(t.op.data)
+                    statements = [f'{var_name} = {data}']
+                else:  # pragma: no cover
+                    raise NotImplementedError(f'Does not support aggregating on {type(t.op)}')
+
+                # append del statements for used inputs
+                for key in keys_to_del:
+                    statements.append(f'del {local_key_to_var[key]}')
+
+                local_lines.extend(statements)
+
+        _calc_ref_counts(out_tileable)
+        _gen_expr_str(out_tileable)
+
+        args_str = ', '.join(input_key_to_var.values())
+        lines_str = '\n    '.join(local_lines)
+        return f"def expr_function({args_str}, gpu=False):\n" \
+               f"    {lines_str}\n" \
+               f"    return {local_key_to_var[out_tileable.key]}", \
+            list(input_key_to_var.keys())
+
+    def compile(self) -> ReductionSteps:
+        pre_funcs, agg_funcs, post_funcs = [], [], []
+        for key, step in self._output_key_to_pre_steps.items():
+            cols = self._output_key_to_pre_cols[key]
+            pre_funcs.append(ReductionPreStep(
+                step.input_key, step.output_key, cols, step.func))
+
+        for step in self._output_key_to_agg_steps.values():
+            agg_funcs.append(step)
+
+        for key, step in self._output_key_to_post_steps.items():
+            cols = self._output_key_to_post_cols[key]
+            post_funcs.append(ReductionPostStep(
+                step.input_keys, step.output_key, step.func_name, cols, step.func))
+
+        return ReductionSteps(pre_funcs, agg_funcs, post_funcs)

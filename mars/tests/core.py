@@ -87,7 +87,7 @@ def parameterized(defaults=None, **params):
                 try:
                     fun(self, *args, **kwargs)
                 except:  # noqa: E722
-                    logger.error('Failed when running %s with param %s', fun.__name__, n)
+                    logger.error('Failed when running %s with param %s', fun.__qualname__, n)
                     raise
         return test_fun
 

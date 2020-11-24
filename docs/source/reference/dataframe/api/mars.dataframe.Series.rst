@@ -18,13 +18,17 @@
       ~Series.add
       ~Series.agg
       ~Series.aggregate
+      ~Series.all
+      ~Series.any
       ~Series.append
       ~Series.apply
       ~Series.astype
+      ~Series.autocorr
       ~Series.bfill
       ~Series.copy
       ~Series.copy_from
       ~Series.copy_to
+      ~Series.corr
       ~Series.count
       ~Series.cummax
       ~Series.cummin
@@ -52,6 +56,8 @@
       ~Series.isin
       ~Series.isna
       ~Series.isnull
+      ~Series.kurt
+      ~Series.kurtosis
       ~Series.le
       ~Series.lt
       ~Series.map
@@ -87,7 +93,9 @@
       ~Series.rpow
       ~Series.rsub
       ~Series.rtruediv
+      ~Series.sem
       ~Series.shift
+      ~Series.skew
       ~Series.sort_index
       ~Series.sort_values
       ~Series.std

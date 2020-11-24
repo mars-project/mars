@@ -12,32 +12,106 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import namedtuple, OrderedDict
+import copy
+from collections import OrderedDict
 from collections.abc import Iterable
-from typing import Union, List, Dict
+from typing import List, Dict, Union
 
 import numpy as np
 import pandas as pd
 
-from ... import opcodes
+from ... import opcodes, tensor as mars_tensor
 from ...config import options
-from ...core import OutputType
+from ...core import OutputType, Base, Entity
+from ...custom_log import redirect_custom_log
 from ...operands import OperandStage
-from ...serialize import BoolField, AnyField, DictField
-from ...utils import tokenize, ceildiv, lazy_import
+from ...serialize import BoolField, AnyField, Int32Field, ListField
+from ...utils import ceildiv, lazy_import, enter_mode, enter_current_session
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import build_df, build_series, parse_index, validate_axis
+from ..utils import build_df, build_empty_df, build_series, parse_index, validate_axis
+from .core import CustomReduction, ReductionCompiler, ReductionSteps, ReductionPreStep, \
+    ReductionAggStep, ReductionPostStep
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())
 
-_builtin_aggregation_functions = {'sum', 'prod', 'min', 'max', 'count', 'size', 'mean', 'var', 'std',
-                                  'all', 'any'}
-_stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_groups', 'combine_sources',
-                                         'agg_sources', 'agg_columns', 'agg_funcs', 'key_to_funcs',
-                                         'valid_columns'))
-_series_col_name = 'col_name'
+
+def where_function(cond, var1, var2):
+    if var1.ndim >= 1:
+        return var1.where(cond, var2)
+    else:
+        if isinstance(var1, (Base, Entity)):
+            return mars_tensor.where(cond, var1, var2)
+        else:
+            return np.where(cond, var1, var2).item()
+
+
+def mean_function(x, skipna=None):
+    return x.sum(skipna=skipna) / x.count()
+
+
+def var_function(x, skipna=None, ddof=1):
+    cnt = x.count()
+    if ddof == 0:
+        return (x ** 2).sum(skipna=skipna) / cnt - (x.sum(skipna=skipna) / cnt) ** 2
+    return ((x ** 2).sum(skipna=skipna) - x.sum(skipna=skipna) ** 2 / cnt) / (cnt - ddof)
+
+
+def sem_function(x, skipna=None, ddof=1):
+    var = var_function(x, skipna=skipna, ddof=ddof)
+    cnt = x.count()
+    return (var / cnt) ** 0.5
+
+
+def skew_function(x, skipna=None, bias=False):
+    cnt = x.count()
+    mean = x.sum(skipna=skipna) / cnt
+    divided = (x ** 3).sum(skipna=skipna) / cnt \
+        - 3 * (x ** 2).sum(skipna=skipna) / cnt * mean \
+        + 2 * mean ** 3
+    var = var_function(x, skipna=skipna, ddof=0)
+    val = where_function(var > 0, divided / var ** 1.5, np.nan)
+    if not bias:
+        val = where_function((var > 0) & (cnt > 2), val * ((cnt * (cnt - 1)) ** 0.5 / (cnt - 2)), np.nan)
+    return val
+
+
+def kurt_function(x, skipna=None, bias=False, fisher=True):
+    cnt = x.count()
+    mean = x.sum(skipna=skipna) / cnt
+    divided = (x ** 4).sum(skipna=skipna) / cnt \
+        - 4 * (x ** 3).sum(skipna=skipna) / cnt * mean \
+        + 6 * (x ** 2).sum(skipna=skipna) / cnt * mean ** 2 \
+        - 3 * mean ** 4
+    var = var_function(x, skipna=skipna, ddof=0)
+    val = where_function(var > 0, divided / var ** 2, np.nan)
+    if not bias:
+        val = where_function((var > 0) & (cnt > 3),
+                             (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3), np.nan)
+    if not fisher:
+        val += 3
+    return val
+
+
+_agg_functions = {
+    'sum': lambda x, skipna=None: x.sum(skipna=skipna),
+    'prod': lambda x, skipna=None: x.prod(skipna=skipna),
+    'product': lambda x, skipna=None: x.product(skipna=skipna),
+    'min': lambda x, skipna=None: x.min(skipna=skipna),
+    'max': lambda x, skipna=None: x.max(skipna=skipna),
+    'all': lambda x, skipna=None: x.all(skipna=skipna),
+    'any': lambda x, skipna=None: x.any(skipna=skipna),
+    'count': lambda x: x.count(),
+    'size': lambda x: x._reduction_size(),
+    'mean': mean_function,
+    'var': var_function,
+    'std': lambda x, skipna=None, ddof=1: var_function(x, skipna=skipna, ddof=ddof) ** 0.5,
+    'sem': sem_function,
+    'skew': skew_function,
+    'kurt': kurt_function,
+    'kurtosis': kurt_function,
+}
 
 
 class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
@@ -46,28 +120,25 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
     _func = AnyField('func')
     _raw_func = AnyField('raw_func')
     _axis = AnyField('axis')
+    _numeric_only = BoolField('numeric_only')
+    _bool_only = BoolField('bool_only')
     _use_inf_as_na = BoolField('use_inf_as_na')
 
-    _map_groups = DictField('map_groups')
-    _map_sources = DictField('map_sources')
-    _combine_groups = DictField('combine_groups')
-    _combine_sources = DictField('combine_sources')
-    _agg_sources = DictField('agg_sources')
-    _agg_columns = DictField('agg_columns')
-    _agg_funcs = DictField('agg_funcs')
-    _key_to_funcs = DictField('keys_to_funcs')
+    _combine_size = Int32Field('combine_size')
+    _pre_funcs = ListField('pre_funcs')
+    _agg_funcs = ListField('agg_funcs')
+    _post_funcs = ListField('post_funcs')
 
-    def __init__(self, func=None, raw_func=None, axis=None, use_inf_as_na=None, map_groups=None,
-                 map_sources=None, combine_groups=None, combine_sources=None, agg_sources=None,
-                 agg_columns=None, agg_funcs=None, key_to_funcs=None, output_types=None, stage=None, **kw):
+    def __init__(self, func=None, raw_func=None, axis=None, use_inf_as_na=None, numeric_only=None,
+                 bool_only=None, combine_size=None, pre_funcs=None, agg_funcs=None, post_funcs=None,
+                 output_types=None, stage=None, **kw):
         super().__init__(_func=func, _raw_func=raw_func, _axis=axis, _use_inf_as_na=use_inf_as_na,
-                         _map_groups=map_groups, _map_sources=map_sources, _combine_groups=combine_groups,
-                         _combine_sources=combine_sources, _agg_sources=agg_sources,
-                         _agg_columns=agg_columns, _agg_funcs=agg_funcs, _key_to_funcs=key_to_funcs,
-                         _stage=stage, _output_types=output_types, **kw)
+                         _numeric_only=numeric_only, _bool_only=bool_only, _combine_size=combine_size,
+                         _pre_funcs=pre_funcs, _agg_funcs=agg_funcs, _post_funcs=post_funcs, _stage=stage,
+                         _output_types=output_types, **kw)
 
     @property
-    def func(self):
+    def func(self) -> Union[List, Dict[str, List]]:
         return self._func
 
     @property
@@ -79,48 +150,59 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         return self._axis
 
     @property
+    def numeric_only(self) -> bool:
+        return self._numeric_only
+
+    @property
+    def bool_only(self) -> bool:
+        return self._bool_only
+
+    @property
     def use_inf_as_na(self) -> int:
         return self._use_inf_as_na
 
     @property
-    def map_groups(self) -> Dict:
-        return self._map_groups
+    def combine_size(self) -> int:
+        return self._combine_size
 
     @property
-    def map_sources(self) -> Dict:
-        return self._map_sources
+    def pre_funcs(self) -> List[ReductionPreStep]:
+        return self._pre_funcs
 
     @property
-    def combine_groups(self) -> Dict:
-        return self._combine_groups
-
-    @property
-    def combine_sources(self) -> Dict:
-        return self._combine_sources
-
-    @property
-    def agg_sources(self) -> Dict:
-        return self._agg_sources
-
-    @property
-    def agg_columns(self) -> Dict:
-        return self._agg_columns
-
-    @property
-    def agg_funcs(self) -> Dict:
+    def agg_funcs(self) -> List[ReductionAggStep]:
         return self._agg_funcs
 
     @property
-    def key_to_funcs(self) -> Dict:
-        return self._key_to_funcs
+    def post_funcs(self) -> List[ReductionPostStep]:
+        return self._post_funcs
+
+    @staticmethod
+    def _filter_dtypes(op: "DataFrameAggregate", dtypes):
+        if not op.numeric_only and not op.bool_only:
+            return dtypes
+        empty_df = build_empty_df(dtypes)
+        return empty_df.select_dtypes([np.number, np.bool_] if op.numeric_only else [np.bool_]).dtypes
 
     def _calc_result_shape(self, df):
-        if self.output_types[0] == OutputType.dataframe:
-            test_obj = build_df(df, size=10)
-        else:
-            test_obj = build_series(df, size=10, name=df.name)
+        if df.ndim == 2:
+            if self._numeric_only:
+                df = df.select_dtypes([np.number, np.bool_])
+            elif self._bool_only:
+                df = df.select_dtypes([np.bool_])
 
-        result_df = test_obj.agg(self.func, axis=self.axis)
+        if self.output_types[0] == OutputType.dataframe:
+            test_obj = pd.concat([
+                build_df(df, size=2, fill_value=1),
+                build_df(df, size=2, fill_value=2),
+            ])
+        else:
+            test_obj = pd.concat([
+                build_series(df, size=2, fill_value=1, name=df.name),
+                build_series(df, size=2, fill_value=2, name=df.name),
+            ])
+
+        result_df = test_obj.agg(self.raw_func, axis=self.axis)
 
         if isinstance(result_df, pd.DataFrame):
             self.output_types = [OutputType.dataframe]
@@ -148,9 +230,24 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         else:
             self._func = [self._func]
 
-    def __call__(self, df):
-        dtypes, index = self._calc_result_shape(df)
+        custom_idx = 0
+        if isinstance(self._func, list):
+            custom_iter = (f for f in self._func if isinstance(f, CustomReduction))
+        else:
+            custom_iter = (f for f in self._func.values() if isinstance(f, CustomReduction))
+        for r in custom_iter:
+            if r.name == '<custom>':
+                r.name = f'<custom_{custom_idx}>'
+                custom_idx += 1
+
+    def __call__(self, df, output_type=None, dtypes=None, index=None):
         self._normalize_funcs()
+        if output_type is None or dtypes is None:
+            with enter_mode(kernel=False, build=False):
+                dtypes, index = self._calc_result_shape(df)
+        else:
+            self.output_types = [output_type]
+
         if self.output_types[0] == OutputType.dataframe:
             if self.axis == 0:
                 new_shape = (len(index), len(dtypes))
@@ -161,14 +258,19 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             return self.new_dataframe([df], shape=new_shape, dtypes=dtypes, index_value=new_index,
                                       columns_value=parse_index(dtypes.index, store_data=True))
         elif self.output_types[0] == OutputType.series:
-            if df.op.output_types[0] == OutputType.series:
+            if df.ndim == 1:
+                new_shape = (len(index),)
+                new_index = parse_index(index, store_data=True)
+            elif self.axis == 0:
                 new_shape = (len(index),)
                 new_index = parse_index(index, store_data=True)
             else:
-                new_shape = (df.shape[1 - self.axis],)
-                new_index = [df.columns_value, df.index_value][self.axis]
+                new_shape = (df.shape[0],)
+                new_index = df.index_value
             return self.new_series([df], shape=new_shape, dtype=dtypes[0], name=dtypes.index[0],
                                    index_value=new_index)
+        elif self.output_types[0] == OutputType.tensor:
+            return self.new_tileable([df], dtype=dtypes, shape=(np.nan,))
         else:
             return self.new_scalar([df], dtype=dtypes)
 
@@ -180,129 +282,52 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             d[key].append(val)
 
     @classmethod
-    def _gen_chunk_stage_info(cls, op_func: Union[List, Dict], chunk_cols=None):
-        map_groups = OrderedDict()
-        map_sources = OrderedDict()
-        combine_groups = OrderedDict()
-        combine_sources = OrderedDict()
-        agg_sources = OrderedDict()
-        agg_columns = OrderedDict()
-        agg_funcs = OrderedDict()
-        key_to_funcs = OrderedDict()
-        valid_columns = []
-
-        def _clean_dict(d):
-            return OrderedDict((k, sorted(v) if v != [None] else None) for k, v in d.items())
-
-        def _fun_to_str(fun):
-            if isinstance(fun, str):
-                return fun
-            fun_str = tokenize(fun)
-            key_to_funcs[fun_str] = fun
-            return fun if isinstance(fun, str) else tokenize(fun)
-
-        def _add_column_to_functions(col, fun_name, mappers, combiners, aggregator):
-            sources = []
-            for mapper, combiner in zip(mappers, combiners):
-                mapper_str, combiner_str = _fun_to_str(mapper), _fun_to_str(combiner)
-                cls._safe_append(map_groups, mapper_str, col)
-                cls._safe_append(combine_groups, (mapper_str, combiner_str), col)
-                sources.append((mapper_str, combiner_str))
-
-            for mapper, combiner in zip(mappers, combiners):
-                if callable(combiner):
-                    combine_sources[(_fun_to_str(mapper), _fun_to_str(combiner))] = sources
-
-            agg_sources[fun_name] = sources
-            cls._safe_append(agg_columns, fun_name, col)
-            agg_funcs[fun_name] = _fun_to_str(aggregator)
-
-        chunk_cols = set(chunk_cols) if chunk_cols is not None else None
-        if isinstance(op_func, list):
-            op_func = {None: op_func}
-        for col, funcs in op_func.items():
-            if col is not None:
-                if chunk_cols is not None and col not in chunk_cols:
-                    continue
-                valid_columns.append(col)
-            for func in funcs:
-                if func in {'sum', 'prod', 'min', 'max', 'all', 'any'}:
-                    _add_column_to_functions(col, func, [func], [func], func)
-                elif func in {'count', 'size'}:
-                    _add_column_to_functions(col, func, [func], ['sum'], 'sum')
-                elif func == 'mean':
-                    def _mean(sum_data, count_data, axis=0):
-                        return sum_data.sum(axis=axis) / count_data.sum(axis=axis)
-
-                    _add_column_to_functions(col, func, ['sum', 'count'], ['sum', 'sum'], _mean)
-                elif func in {'var', 'std'}:
-                    def _reduce_var(sum_data, count_data, var_data, axis=0):
-                        reduced_cnt = count_data.sum(axis=axis)
-                        var_square = var_data * (count_data - 1)
-                        avg = sum_data.sum(axis=axis) / reduced_cnt
-                        avg_diff = (sum_data / count_data).subtract(avg, axis=1 - axis)
-                        var_square = var_square.sum(axis=axis) + (count_data * avg_diff ** 2).sum(axis=axis)
-                        return var_square / (reduced_cnt - 1)
-
-                    def _reduce_std(*args, **kwargs):
-                        return np.sqrt(_reduce_var(*args, **kwargs))
-
-                    _add_column_to_functions(col, func, ['sum', 'count', 'var'],
-                                             ['sum', 'sum', _reduce_var],
-                                             _reduce_var if func == 'var' else _reduce_std)
-                else:  # pragma: no cover
-                    raise NotImplementedError
-
-        return _stage_info(map_groups=_clean_dict(map_groups), map_sources=map_sources,
-                           combine_groups=_clean_dict(combine_groups), combine_sources=combine_sources,
-                           agg_sources=agg_sources, agg_columns=_clean_dict(agg_columns),
-                           agg_funcs=agg_funcs, key_to_funcs=key_to_funcs, valid_columns=valid_columns or None)
-
-    @classmethod
-    def _gen_map_chunks(cls, op, in_df, out_df, stage_infos: List[_stage_info],
+    def _gen_map_chunks(cls, op, in_df, out_df, func_infos: List[ReductionSteps],
                         input_index_to_output: Dict[int, int]):
         axis = op.axis
 
         if axis == 0:
-            agg_chunks_shape = (in_df.chunk_shape[0], len(stage_infos)) \
+            agg_chunks_shape = (in_df.chunk_shape[0], len(func_infos)) \
                                if len(in_df.chunk_shape) == 2 else (in_df.chunk_shape[0], 1)
         else:
-            agg_chunks_shape = (len(stage_infos), in_df.chunk_shape[1])
+            agg_chunks_shape = (len(func_infos), in_df.chunk_shape[1])
 
         agg_chunks = np.empty(agg_chunks_shape, dtype=np.object)
         for chunk in in_df.chunks:
             input_index = chunk.index[1 - axis] if len(chunk.index) > 1 else 0
             if input_index not in input_index_to_output:
                 continue
-            map_op = op.copy().reset_key()
+            map_op = op.copy().reset_key()  # type: "DataFrameAggregate"
             new_axis_index = input_index_to_output[input_index]
-            stage_info = stage_infos[new_axis_index]
+            func_info = func_infos[new_axis_index]
             # force as_index=True for map phase
-            map_op.output_types = [OutputType.dataframe]
+            map_op.output_types = [OutputType.dataframe] if chunk.ndim == 2 else [OutputType.series]
             map_op._stage = OperandStage.map
-            map_op._map_groups = stage_info.map_groups
-            map_op._map_sources = stage_info.map_sources
-            map_op._combine_groups = stage_info.combine_groups
-            map_op._key_to_funcs = stage_info.key_to_funcs
+            map_op._pre_funcs = func_info.pre_funcs
+            map_op._agg_funcs = func_info.agg_funcs
 
             if axis == 0:
                 new_index = (chunk.index[0], new_axis_index) if len(chunk.index) == 2 else (chunk.index[0], 0)
             else:
                 new_index = (new_axis_index, chunk.index[1])
 
-            if op.output_types[0] == OutputType.dataframe:
+            if map_op.output_types[0] == OutputType.dataframe:
                 if axis == 0:
-                    new_shape = (1, chunk.shape[1] if len(chunk.shape) > 1 else 1)
+                    shape = (1, out_df.shape[-1])
+                    if out_df.ndim == 2:
+                        columns_value = out_df.columns_value
+                        index_value = out_df.index_value
+                    else:
+                        columns_value = out_df.index_value
+                        index_value = parse_index(pd.Index([0]), out_df.key)
                 else:
-                    new_shape = (chunk.shape[1] if len(chunk.shape) > 1 else 1, 1)
-                agg_chunk = map_op.new_chunk(
-                    [chunk], shape=new_shape, index=new_index, index_value=chunk.index_value,
-                    columns_value=chunk.columns_value)
-            elif op.output_types[0] == OutputType.series:
-                agg_chunk = map_op.new_chunk([chunk], shape=(out_df.shape[0], 1), index=new_index,
-                                             index_value=out_df.index_value, name=out_df.name)
-            else:  # scalar target
-                agg_chunk = map_op.new_chunk([chunk], shape=(1, 1), index=new_index)
+                    shape = (out_df.shape[0], 1)
+                    columns_value = parse_index(pd.Index([0]), out_df.key, store_data=True)
+                    index_value = out_df.index_value
+                agg_chunk = map_op.new_chunk([chunk], shape=shape, index=new_index,
+                                             columns_value=columns_value, index_value=index_value)
+            else:
+                agg_chunk = map_op.new_chunk([chunk], shape=(1,), index=new_index)
             agg_chunks[agg_chunk.index] = agg_chunk
         return agg_chunks
 
@@ -319,12 +344,14 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         elif op.output_types[0] == OutputType.series:
             chunk = chunk_op.new_chunk(in_df.chunks, index=(0,), shape=out_df.shape, dtype=out_df.dtype,
                                        index_value=out_df.index_value, name=out_df.name)
+        elif op.output_types[0] == OutputType.tensor:
+            chunk = chunk_op.new_chunk(in_df.chunks, index=(0,), dtype=out_df.dtype, shape=(np.nan,))
         else:
-            chunk = chunk_op.new_chunk(in_df.chunks, dtype=out_df.dtype, shape=())
+            chunk = chunk_op.new_chunk(in_df.chunks, dtype=out_df.dtype, index=(), shape=())
 
         tileable_op = op.copy().reset_key()
         kw = out_df.params.copy()
-        kw.update(dict(chunks=[chunk], nsplits=((x,) for x in out_df.shape)))
+        kw.update(dict(chunks=[chunk], nsplits=tuple((x,) for x in out_df.shape)))
         return tileable_op.new_tileables([in_df], **kw)
 
     @classmethod
@@ -344,32 +371,59 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                                             shape=in_df.chunk_shape, dtype=out_df.dtype)
         return [tileable.sum()._inplace_tile()]
 
+    @staticmethod
+    def _add_functions(op: "DataFrameAggregate", compiler: ReductionCompiler,
+                       cols=None):
+        if isinstance(op.func, list):
+            func_iter = ((None, f) for f in op.func)
+            cols_set = set(cols) if cols is not None else None
+        else:
+            assert cols is not None
+            cols_set = set(cols) & set(op.func.keys())
+            if len(cols_set) == 0:
+                return False
+            func_iter = ((col, f) for col, funcs in op.func.items() for f in funcs)
+
+        for col, f in func_iter:
+            if cols_set is not None and col is not None and col not in cols_set:
+                continue
+            func_name = None
+            if isinstance(f, str):
+                f, func_name = _agg_functions[f], f
+            ndim = 1 if cols is None else 2
+            func_cols = [col] if col is not None else None
+            compiler.add_function(f, ndim, cols=func_cols, func_name=func_name)
+        return True
+
     @classmethod
     def _tile_tree(cls, op: "DataFrameAggregate"):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
-        combine_size = options.combine_size
+        combine_size = op.combine_size
         axis = op.axis
 
         input_index_to_output = dict()
         output_index_to_input = []
-        axis_stage_infos = []
+        axis_func_infos = []
+        dtypes_list = []
         if len(in_df.chunk_shape) > 1:
             for col_idx in range(in_df.chunk_shape[1 - axis]):
+                compiler = ReductionCompiler(axis=op.axis)
                 idx_chunk = in_df.cix[0, col_idx] if axis == 0 else in_df.cix[col_idx, 0]
-                stage_info = cls._gen_chunk_stage_info(
-                    op.func, idx_chunk.dtypes.index if axis == 0 else None)
-                if not stage_info.map_groups:
+                new_dtypes = cls._filter_dtypes(op, idx_chunk.dtypes)
+                if not cls._add_functions(op, compiler, cols=list(new_dtypes.index)):
                     continue
-                input_index_to_output[col_idx] = len(axis_stage_infos)
+                input_index_to_output[col_idx] = len(axis_func_infos)
                 output_index_to_input.append(col_idx)
-                axis_stage_infos.append(stage_info)
+                axis_func_infos.append(compiler.compile())
+                dtypes_list.append(new_dtypes)
         else:
-            stage_info = cls._gen_chunk_stage_info(op.func, [_series_col_name])
+            compiler = ReductionCompiler(axis=op.axis)
+            cls._add_functions(op, compiler)
             input_index_to_output[0] = 0
-            axis_stage_infos.append(stage_info)
+            axis_func_infos.append(compiler.compile())
 
-        chunks = cls._gen_map_chunks(op, in_df, out_df, axis_stage_infos, input_index_to_output)
+        chunks = cls._gen_map_chunks(op, in_df, out_df, axis_func_infos, input_index_to_output)
         while chunks.shape[axis] > combine_size:
             if axis == 0:
                 new_chunks_shape = (ceildiv(chunks.shape[0], combine_size), chunks.shape[1])
@@ -379,13 +433,21 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             new_chunks = np.empty(new_chunks_shape, dtype=np.object)
             for idx0, i in enumerate(range(0, chunks.shape[axis], combine_size)):
                 for idx1 in range(chunks.shape[1 - axis]):
-                    stage_info = axis_stage_infos[idx1]
+                    func_info = axis_func_infos[idx1]
                     if axis == 0:
                         chks = chunks[i: i + combine_size, idx1]
                         chunk_index = (idx0, idx1)
+                        if chks[0].ndim == 1:
+                            concat_shape = (len(chks),)
+                            agg_shape = (1,)
+                        else:
+                            concat_shape = (len(chks), chks[0].shape[1])
+                            agg_shape = (chks[0].shape[1], 1)
                     else:
                         chks = chunks[idx1, i: i + combine_size]
                         chunk_index = (idx1, idx0)
+                        concat_shape = (chks[0].shape[0], len(chks))
+                        agg_shape = (chks[0].shape[0], 1)
 
                     chks = chks.reshape((chks.shape[0],)).tolist()
                     if len(chks) == 1:
@@ -395,53 +457,57 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                         # Change index for concatenate
                         for j, c in enumerate(chks):
                             c._index = (j, 0) if axis == 0 else (0, j)
-                        chk = concat_op.new_chunk(chks, dtypes=chks[0].dtypes)
+                        chk = concat_op.new_chunk(chks, dtypes=dtypes_list[idx1] if dtypes_list else None,
+                                                  shape=concat_shape, index_value=chks[0].index_value)
                     chunk_op = op.copy().reset_key()
                     chunk_op.output_types = [OutputType.dataframe]
                     chunk_op._stage = OperandStage.combine
-                    chunk_op._combine_groups = stage_info.combine_groups
-                    chunk_op._combine_sources = stage_info.combine_sources
-                    chunk_op._key_to_funcs = stage_info.key_to_funcs
+                    chunk_op._agg_funcs = func_info.agg_funcs
 
                     if axis == 0:
                         new_chunks[chunk_index] = chunk_op.new_chunk(
-                            [chk], index=chunk_index, shape=(np.nan, chks[0].shape[1]),
+                            [chk], index=chunk_index, shape=agg_shape,
                             index_value=chks[0].index_value)
                     else:
                         new_chunks[chunk_index] = chunk_op.new_chunk(
-                            [chk], index=chunk_index, shape=(chks[0].shape[0], np.nan),
+                            [chk], index=chunk_index, shape=agg_shape,
                             index_value=chks[0].columns_value)
             chunks = new_chunks
 
         agg_chunks = []
         for idx in range(chunks.shape[1 - axis]):
-            stage_info = axis_stage_infos[idx]
+            func_info = axis_func_infos[idx]
 
             concat_op = DataFrameConcat(output_types=[OutputType.dataframe], axis=axis)
             if axis == 0:
                 chks = chunks[:, idx]
+                if chks[0].ndim == 1:
+                    concat_shape = (len(chks),)
+                else:
+                    concat_shape = (len(chks), chks[0].shape[1])
             else:
                 chks = chunks[idx, :]
+                concat_shape = (chks[0].shape[0], len(chks))
             chks = chks.reshape((chks.shape[0],)).tolist()
-            chk = concat_op.new_chunk(chks, dtypes=chks[0].dtypes)
+            chk = concat_op.new_chunk(chks, dtypes=dtypes_list[idx] if dtypes_list else None,
+                                      shape=concat_shape, index_value=chks[0].index_value)
             chunk_op = op.copy().reset_key()
             chunk_op._stage = OperandStage.agg
-            chunk_op._combine_groups = stage_info.combine_groups
-            chunk_op._agg_columns = stage_info.agg_columns
-            chunk_op._agg_funcs = stage_info.agg_funcs
-            chunk_op._agg_sources = stage_info.agg_sources
-            chunk_op._key_to_funcs = stage_info.key_to_funcs
+            chunk_op._agg_funcs = func_info.agg_funcs
+            chunk_op._post_funcs = func_info.post_funcs
 
             kw = out_df.params.copy()
             if op.output_types[0] == OutputType.dataframe:
                 if axis == 0:
                     src_col_chunk = in_df.cix[0, output_index_to_input[idx]]
-                    if axis_stage_infos[idx].valid_columns is None:
+                    valid_cols = [c for pre in func_info.pre_funcs for c in pre.columns or ()]
+                    if not valid_cols:
                         columns_value = src_col_chunk.columns_value
                         shape_len = src_col_chunk.shape[1]
                     else:
-                        columns_value = parse_index(pd.Index(axis_stage_infos[idx].valid_columns), store_data=True)
-                        shape_len = len(axis_stage_infos[idx].valid_columns)
+                        col_index = pd.Index(valid_cols).unique()
+                        columns_value = parse_index(col_index, store_data=True)
+                        shape_len = len(col_index)
                     kw.update(dict(shape=(out_df.shape[0], shape_len), columns_value=columns_value,
                                    index=(0, idx), dtypes=out_df.dtypes[columns_value.to_pandas()]))
                 else:
@@ -451,16 +517,19 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                                    dtypes=out_df.dtypes))
             else:
                 if op.output_types[0] == OutputType.series:
-                    if in_df.op.output_types[0] == OutputType.series:
+                    if in_df.ndim == 1:
                         index_value, shape = out_df.index_value, out_df.shape
                     elif axis == 0:
-                        src_chunk = in_df.cix[0, output_index_to_input[idx]]
-                        index_value, shape = src_chunk.columns_value, (src_chunk.shape[1],)
+                        out_dtypes = dtypes_list[idx]
+                        index_value = parse_index(out_dtypes.index, store_data=True)
+                        shape = (len(out_dtypes),)
                     else:
                         src_chunk = in_df.cix[output_index_to_input[idx], 0]
                         index_value, shape = src_chunk.index_value, (src_chunk.shape[0],)
                     kw.update(dict(name=out_df.name, dtype=out_df.dtype, index=(idx,),
                                    index_value=index_value, shape=shape))
+                elif op.output_types[0] == OutputType.tensor:
+                    kw.update(dict(index=(0,), shape=(np.nan,), dtype=out_df.dtype))
                 else:
                     kw.update(dict(index=(), shape=(), dtype=out_df.dtype))
             agg_chunks.append(chunk_op.new_chunk([chk], **kw))
@@ -478,6 +547,9 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             nsplits = (tuple(c.shape[0] for c in agg_chunks),)
             return new_op.new_tileables(op.inputs, chunks=agg_chunks, nsplits=nsplits, dtype=out_df.dtype,
                                         shape=out_df.shape, index_value=out_df.index_value, name=out_df.name)
+        elif op.output_types[0] == OutputType.tensor:  # unique
+            return new_op.new_tileables(op.inputs, chunks=agg_chunks, dtype=out_df.dtype,
+                                        shape=out_df.shape, nsplits=((np.nan,),))
         else:  # scalar
             return new_op.new_tileables(op.inputs, chunks=agg_chunks, dtype=out_df.dtype,
                                         shape=(), nsplits=())
@@ -493,97 +565,172 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         else:
             return cls._tile_tree(op)
 
-    @staticmethod
-    def _wrap_df(xdf, value, columns=None, transform=False):
-        if isinstance(value, (np.generic, int, float, complex)):
-            value = xdf.DataFrame([value], columns=columns)
+    @classmethod
+    def _wrap_df(cls, op, value, index=None):
+        xdf = cudf if op.gpu else pd
+        axis = op.axis
+        ndim = op.inputs[0].ndim
+
+        if ndim == 2:
+            if isinstance(value, (np.generic, int, float, complex)):
+                value = xdf.DataFrame([value], columns=index)
+            elif not isinstance(value, xdf.DataFrame):
+                new_index = None if not op.gpu else getattr(value, 'index', None)
+                value = xdf.DataFrame(value, columns=index, index=new_index)
+            else:
+                return value
+            return value.T if axis == 0 else value
         else:
-            value = xdf.DataFrame(value, columns=columns)
-        return value.T if transform else value
+            if isinstance(value, (np.generic, int, float, complex)):
+                value = xdf.Series([value], index=index)
+            elif isinstance(value, np.ndarray):
+                # assert value.ndim == 0
+                value = xdf.Series(value.tolist(), index=index)
+            return value
+
+    @staticmethod
+    def _pack_inputs(agg_funcs: List[ReductionAggStep], in_data):
+        pos = 0
+        out_dict = dict()
+        for step in agg_funcs:
+            if step.custom_reduction is None:
+                out_dict[step.output_key] = in_data[pos]
+            else:
+                out_dict[step.output_key] = tuple(in_data[pos:pos + step.output_limit])
+            pos += step.output_limit
+        return out_dict
 
     @classmethod
     def _execute_map(cls, ctx, op: "DataFrameAggregate"):
-        xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
         axis = op.axis
-        axis_index = op.outputs[0].index[axis]
+        axis_index = op.outputs[0].index[op.axis]
+
+        if in_data.ndim == 2:
+            if op.numeric_only:
+                in_data = in_data.select_dtypes([np.number, np.bool_])
+            elif op.bool_only:
+                in_data = in_data.select_dtypes([np.bool_])
 
         # map according to map groups
         ret_map_dfs = dict()
-        for map_func_str, cols in op.map_groups.items():
-            if cols is None:
-                src_df = in_data
+        for input_key, output_key, cols, func in op.pre_funcs:
+            src_df = in_data if cols is None else in_data[cols]
+            if input_key == output_key:
+                ret_map_dfs[output_key] = src_df
             else:
-                src_df = in_data[cols]
-            map_func = map_func_str if map_func_str != 'size' else (lambda x: x.size)
-            ret_map_dfs[map_func_str] = cls._wrap_df(xdf, src_df.agg(map_func, axis=axis),
-                                                     columns=[axis_index], transform=axis == 0)
+                ret_map_dfs[output_key] = func(src_df, gpu=op.is_gpu())
 
-        ret_combine_dfs = OrderedDict()
-        for func_strs, cols in op.combine_groups.items():
-            if cols is None:
-                ret_combine_dfs[func_strs] = ret_map_dfs[func_strs[0]]
+        agg_dfs = []
+        for input_key, map_func_name, _agg_func_name, custom_reduction, \
+                _output_key, _output_limit, kwds in op.agg_funcs:
+            input_obj = ret_map_dfs[input_key]
+            if map_func_name == 'custom_reduction':
+                pre_result = custom_reduction.pre(input_obj)
+                if not isinstance(pre_result, tuple):
+                    pre_result = (pre_result,)
+
+                if custom_reduction.pre_with_agg:
+                    # when custom_reduction.pre already aggregates, skip
+                    agg_result = pre_result
+                else:
+                    agg_result = custom_reduction.agg(*pre_result)
+                    if not isinstance(agg_result, tuple):
+                        agg_result = (agg_result,)
+
+                agg_dfs.extend([cls._wrap_df(op, r, index=[axis_index]) for r in agg_result])
+            elif map_func_name == 'size':
+                agg_dfs.append(cls._wrap_df(op, input_obj.agg(lambda x: x.size, axis=axis),
+                                            index=[axis_index]))
             else:
-                ret_combine_dfs[func_strs] = ret_map_dfs[func_strs[0]][cols]
-        ctx[op.outputs[0].key] = tuple(ret_combine_dfs.values())
+                agg_dfs.append(cls._wrap_df(op, getattr(input_obj, map_func_name)(**kwds),
+                                            index=[axis_index]))
+        ctx[op.outputs[0].key] = tuple(agg_dfs)
 
     @classmethod
     def _execute_combine(cls, ctx, op: "DataFrameAggregate"):
-        xdf = cudf if op.gpu else pd
         in_data = ctx[op.inputs[0].key]
-        in_data_dict = dict(zip(op.combine_groups.keys(), in_data))
+        in_data_dict = cls._pack_inputs(op.agg_funcs, in_data)
         axis = op.axis
         axis_index = op.outputs[0].index[axis]
 
         combines = []
-        for fun_strs, df in zip(op.combine_groups.keys(), in_data):
-            if fun_strs[-1] in op.key_to_funcs:
-                func = op.key_to_funcs[fun_strs[-1]]
-                sources = [in_data_dict[fs] for fs in op.combine_sources[fun_strs]]
-                result = cls._wrap_df(xdf, func(*sources, axis=axis), columns=[axis_index],
-                                      transform=axis == 0)
+        for _input_key, _map_func_name, agg_func_name, custom_reduction, \
+                output_key, _output_limit, kwds in op.agg_funcs:
+            input_obj = in_data_dict[output_key]
+            if agg_func_name == 'custom_reduction':
+                agg_result = custom_reduction.agg(*input_obj)
+                if not isinstance(agg_result, tuple):
+                    agg_result = (agg_result,)
+                combines.extend([cls._wrap_df(op, r, index=[axis_index])
+                                 for r in agg_result])
             else:
-                result = cls._wrap_df(xdf, df.agg(fun_strs[-1], axis=axis), columns=[axis_index],
-                                      transform=axis == 0)
-            combines.append(result)
+                if op.gpu:
+                    if kwds.pop('numeric_only', None):
+                        raise NotImplementedError('numeric_only not implemented under cudf')
+                result = cls._wrap_df(op, getattr(input_obj, agg_func_name)(**kwds), index=[axis_index])
+                combines.append(result)
         ctx[op.outputs[0].key] = tuple(combines)
 
     @classmethod
     def _execute_agg(cls, ctx, op: "DataFrameAggregate"):
         xdf = cudf if op.gpu else pd
+        xp = cp if op.gpu else np
+
+        out = op.outputs[0]
         in_data = ctx[op.inputs[0].key]
-        in_data_dict = dict(zip(op.combine_groups.keys(), in_data))
+        in_data_dict = cls._pack_inputs(op.agg_funcs, in_data)
         axis = op.axis
 
+        # perform agg
+        for _input_key, _map_func_name, agg_func_name, custom_reduction, \
+                output_key, _output_limit, kwds in op.agg_funcs:
+            input_obj = in_data_dict[output_key]
+            if agg_func_name == 'custom_reduction':
+                agg_result = custom_reduction.agg(*input_obj)
+                if not isinstance(agg_result, tuple):
+                    agg_result = (agg_result,)
+                in_data_dict[output_key] = custom_reduction.post(*agg_result)
+            else:
+                if op.gpu:
+                    if kwds.pop('numeric_only', None):
+                        raise NotImplementedError('numeric_only not implemented under cudf')
+                in_data_dict[output_key] = getattr(input_obj, agg_func_name)(**kwds)
+
         aggs = []
-        for func_name, func_sources in op.agg_sources.items():
-            func_str = op.agg_funcs[func_name]
-            func_cols = op.agg_columns[func_name]
-            if func_cols is None:
-                func_inputs = [in_data_dict[src] for src in func_sources]
+        # perform post op
+        for input_keys, _output_key, func_name, cols, func in op.post_funcs:
+            if cols is None:
+                func_inputs = [in_data_dict[k] for k in input_keys]
             else:
-                func_inputs = [in_data_dict[src][func_cols] for src in func_sources]
+                func_inputs = [in_data_dict[k][cols] for k in input_keys]
 
-            if func_str in op.key_to_funcs:
-                func = op.key_to_funcs[func_str]
-                agg_series = func(*func_inputs, axis=axis)
-            else:
-                agg_series = func_inputs[0].agg(func_str, axis=axis)
+            agg_series = func(*func_inputs, gpu=op.is_gpu())
+            agg_series_ndim = getattr(agg_series, 'ndim', 0)
 
-            agg_series.name = func_name
-            aggs.append(cls._wrap_df(xdf, agg_series, transform=axis == 0))
+            ser_index = None
+            if agg_series_ndim < out.ndim:
+                ser_index = [func_name]
+            aggs.append(cls._wrap_df(op, agg_series, index=ser_index))
 
+        # concatenate to produce final result
         concat_df = xdf.concat(aggs, axis=axis)
         if op.output_types[0] == OutputType.series:
-            if concat_df.shape[1] > 1:
-                concat_df = concat_df.iloc[0, :]
-            else:
-                concat_df = concat_df.iloc[:, 0]
+            if concat_df.ndim > 1:
+                if op.inputs[0].ndim == 2:
+                    if axis == 0:
+                        concat_df = concat_df.iloc[0, :]
+                    else:
+                        concat_df = concat_df.iloc[:, 0]
+                else:
+                    concat_df = concat_df.iloc[:, 0]
             concat_df.name = op.outputs[0].name
 
             concat_df = concat_df.astype(op.outputs[0].dtype, copy=False)
         elif op.output_types[0] == OutputType.scalar:
-            concat_df = concat_df.iloc[0, 0].astype(op.outputs[0].dtype)
+            concat_df = concat_df.iloc[0].astype(op.outputs[0].dtype)
+        elif op.output_types[0] == OutputType.tensor:
+            concat_df = xp.array(concat_df).astype(dtype=out.dtype)
         else:
             if axis == 0:
                 concat_df = concat_df.reindex(op.outputs[0].index_value.to_pandas())
@@ -594,6 +741,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = concat_df
 
     @classmethod
+    @redirect_custom_log
+    @enter_current_session
     def execute(cls, ctx, op: "DataFrameAggregate"):
         try:
             pd.set_option('mode.use_inf_as_na', op.use_inf_as_na)
@@ -608,12 +757,16 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 ctx[op.outputs[0].key] = xp.array(ctx[op.inputs[0].key].agg(op.raw_func, axis=op.axis)) \
                     .reshape(op.outputs[0].shape)
             else:
-                ctx[op.outputs[0].key] = ctx[op.inputs[0].key].agg(op.raw_func, axis=op.axis)
+                xp = cp if op.gpu else np
+                result = ctx[op.inputs[0].key].agg(op.raw_func, axis=op.axis)
+                if op.output_types[0] == OutputType.tensor:
+                    result = xp.array(result)
+                ctx[op.outputs[0].key] = result
         finally:
             pd.reset_option('mode.use_inf_as_na')
 
 
-def _is_funcs_agg(func):
+def is_funcs_aggregate(func, ndim=2):
     to_check = []
     if isinstance(func, list):
         to_check.extend(func)
@@ -626,14 +779,25 @@ def _is_funcs_agg(func):
     else:
         to_check.append(func)
 
+    compiler = ReductionCompiler()
     for f in to_check:
-        if f not in _builtin_aggregation_functions:
+        if f in _agg_functions:
+            continue
+        elif callable(f):
+            try:
+                if ndim == 2:
+                    compiler.add_function(f, 2, cols=['A', 'B'])
+                else:
+                    compiler.add_function(f, 1)
+            except ValueError:
+                return False
+        else:
             return False
     return True
 
 
 def aggregate(df, func, axis=0, **kw):
-    if not _is_funcs_agg(func):
+    if not is_funcs_aggregate(func, df.ndim):
         return df.transform(func, axis=axis, _call_agg=True)
 
     axis = validate_axis(axis, df)
@@ -641,6 +805,15 @@ def aggregate(df, func, axis=0, **kw):
     if (df.op.output_types[0] == OutputType.series or axis == 1) and isinstance(func, dict):
         raise NotImplementedError('Currently cannot aggregate dicts over axis=1 on %s'
                                   % type(df).__name__)
-    op = DataFrameAggregate(func=func, axis=axis, output_types=df.op.output_types,
+    combine_size = kw.get('combine_size') or options.combine_size
+    numeric_only = kw.get('numeric_only')
+    bool_only = kw.get('bool_only')
+
+    op = DataFrameAggregate(func=copy.deepcopy(func), axis=axis, output_types=df.op.output_types,
+                            combine_size=combine_size, numeric_only=numeric_only, bool_only=bool_only,
                             use_inf_as_na=use_inf_as_na)
-    return op(df)
+
+    output_type = kw.get('_output_type')
+    dtypes = kw.get('_dtypes')
+    index = kw.get('_index')
+    return op(df, output_type=output_type, dtypes=dtypes, index=index)

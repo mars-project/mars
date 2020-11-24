@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...utils import lazy_import
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
-
-cudf = lazy_import('cudf', globals=globals())
 
 
 class DataFrameMean(DataFrameReductionOperand, DataFrameReductionMixin):
@@ -26,19 +25,11 @@ class DataFrameMean(DataFrameReductionOperand, DataFrameReductionMixin):
     _func_name = 'mean'
 
     @classmethod
-    def _execute_map(cls, ctx, op):
-        cls._execute_map_with_count(ctx, op, reduction_func='sum')
-
-    @classmethod
-    def _execute_combine(cls, ctx, op):
-        cls._execute_combine_with_count(ctx, op, reduction_func='sum')
-
-    @classmethod
-    def _execute_agg(cls, ctx, op):
-        in_data, concat_count = ctx[op.inputs[0].key]
-        count = concat_count.sum(axis=op.axis)
-        r = cls._execute_reduction(in_data, op, reduction_func='sum')
-        ctx[op.outputs[0].key] = r / count
+    def _make_agg_object(cls, op):
+        from .aggregation import mean_function
+        pf = functools.partial(mean_function, skipna=op.skipna)
+        pf.__name__ = cls._func_name
+        return pf
 
 
 def mean_series(df, axis=None, skipna=None, level=None, combine_size=None):

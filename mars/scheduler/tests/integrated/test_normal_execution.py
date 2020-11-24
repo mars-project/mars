@@ -110,6 +110,7 @@ class Test(SchedulerIntegratedTest):
         self.start_processes(etcd=False, scheduler_args=['-Dscheduler.aggressive_assign=true'])
         sess = new_session(self.session_manager_ref.address)
 
+        # test binary arithmetics with different indices
         raw1 = pd.DataFrame(np.random.rand(10, 10))
         df1 = md.DataFrame(raw1, chunk_size=5)
         raw2 = pd.DataFrame(np.random.rand(10, 10))
@@ -138,6 +139,7 @@ class Test(SchedulerIntegratedTest):
         result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
         pd.testing.assert_frame_equal(result, raw1 + raw2)
 
+        # test sort_values
         raw1 = pd.DataFrame(np.random.rand(10, 10))
         raw1[0] = raw1[0].apply(str)
         raw1.columns = pd.MultiIndex.from_product([list('AB'), list('CDEFG')])
@@ -163,9 +165,9 @@ class Test(SchedulerIntegratedTest):
         result = series1.execute(session=sess, timeout=self.timeout).fetch(session=sess)
         pd.testing.assert_series_equal(result, s1)
 
+        # test reindex
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
         df3 = md.DataFrame(data, chunk_size=4)
-
         r = df3.reindex(index=mt.arange(10, 1, -1, chunk_size=3))
 
         result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
@@ -174,7 +176,6 @@ class Test(SchedulerIntegratedTest):
 
         # test rebalance
         df4 = md.DataFrame(data)
-
         r = df4.rebalance()
 
         result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
@@ -182,6 +183,16 @@ class Test(SchedulerIntegratedTest):
         chunk_metas = sess.get_tileable_chunk_metas(r.key)
         workers = list(set(itertools.chain(*(m.workers for m in chunk_metas.values()))))
         self.assertEqual(len(workers), 2)
+
+        # test nunique
+        data = pd.DataFrame(np.random.randint(0, 10, (100, 5)),
+                            columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df5 = md.DataFrame(data, chunk_size=4)
+        r = df5.nunique()
+
+        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        expected = data.nunique()
+        pd.testing.assert_series_equal(result, expected)
 
     def testIterativeTilingWithoutEtcd(self):
         self.start_processes(etcd=False)

@@ -116,8 +116,8 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
     def _tile_pearson_cross(left, right, min_periods):
         left_tensor, right_tensor = left.fillna(0).to_tensor(), right.fillna(0).to_tensor()
 
-        nna_left = left.notna().to_tensor().astype(np.int_)
-        nna_right = right.notna().to_tensor().astype(np.int_)
+        nna_left = left.notna().to_tensor().astype(np.float_)
+        nna_right = right.notna().to_tensor().astype(np.float_)
 
         sum_left = left_tensor.T.dot(nna_right)
         sum_right = right_tensor.T.dot(nna_left)
@@ -136,8 +136,8 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_pearson_align(cls, left, right, axis):
-        nna_left = left.notna().astype(np.int_)
-        nna_right = right.notna().astype(np.int_)
+        nna_left = left.notna().astype(np.float_)
+        nna_right = right.notna().astype(np.float_)
 
         left, right = left.fillna(0), right.fillna(0)
 

@@ -256,6 +256,11 @@ message OperandDef {
         CUMMIN = 345;
         CUMCOUNT = 346;
         CORR = 347;
+        REDUCTION_SIZE = 348;
+        CUSTOM_REDUCTION = 349;
+        SKEW = 350;
+        KURTOSIS = 351;
+        SEM = 352;
 
         // tensor operand
         RESHAPE = 401;

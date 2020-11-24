@@ -649,6 +649,14 @@ class TestUnary(TestBase):
         expected = ~data1
         pd.testing.assert_frame_equal(expected, result)
 
+    def testNegative(self):
+        data1 = pd.DataFrame(np.random.randint(low=0, high=100, size=(10, 10)))
+        df1 = from_pandas(data1, chunk_size=5)
+
+        result = self.executor.execute_dataframe(-df1, concat=True)[0]
+        expected = -data1
+        pd.testing.assert_frame_equal(expected, result)
+
     def testUfunc(self):
         df_raw = pd.DataFrame(np.random.uniform(size=(10, 10)),
                               index=pd.RangeIndex(9, -1, -1))
@@ -683,7 +691,11 @@ class TestUnary(TestBase):
             [np.exp, mt.exp],
             [np.exp2, mt.exp2],
             [np.expm1, mt.expm1],
-            [np.sqrt, mt.sqrt]
+            [np.sqrt, mt.sqrt],
+            [np.isnan, mt.isnan],
+            [np.isfinite, mt.isfinite],
+            [np.isinf, mt.isinf],
+            [np.negative, mt.negative],
         ]
 
         for raw, data in [(df_raw, df), (series_raw, series)]:

@@ -32,6 +32,8 @@ from .less import lt, DataFrameLess
 from .greater import gt, DataFrameGreater
 from .less_equal import le, DataFrameLessEqual
 from .greater_equal import ge, DataFrameGreaterEqual
+from .is_ufuncs import DataFrameIsNan, DataFrameIsInf, DataFrameIsFinite
+from .negative import DataFrameNegative, negative
 from .log import DataFrameLog
 from .log2 import DataFrameLog2
 from .log10 import DataFrameLog10
@@ -144,7 +146,8 @@ def _install():
         DataFrameRadians, DataFrameDegrees,
         DataFrameCeil, DataFrameFloor, DataFrameAround,
         DataFrameExp, DataFrameExp2, DataFrameExpm1,
-        DataFrameSqrt, DataFrameNot,
+        DataFrameSqrt, DataFrameNot, DataFrameIsNan,
+        DataFrameIsInf, DataFrameIsFinite, DataFrameNegative
     ]
     for unary_op in unary_ops:
         register_tensor_unary_ufunc(unary_op)
@@ -218,6 +221,8 @@ def _install():
 
         setattr(entity, '__xor__', wrap_notimplemented_exception(logical_xor))
         setattr(entity, '__rxor__', wrap_notimplemented_exception(logical_rxor))
+
+        setattr(entity, '__neg__', wrap_notimplemented_exception(negative))
 
     for entity in INDEX_TYPE:
         setattr(entity, '__eq__', _wrap_eq())

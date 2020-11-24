@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .core import CustomReduction
+from .aggregation import DataFrameAggregate
+
 from .sum import DataFrameSum
 from .prod import DataFrameProd
 from .max import DataFrameMax
@@ -21,6 +24,11 @@ from .mean import DataFrameMean
 from .var import DataFrameVar
 from .all import DataFrameAll
 from .any import DataFrameAny
+from .skew import DataFrameSkew
+from .kurtosis import DataFrameKurtosis
+from .sem import DataFrameSem
+from .reduction_size import DataFrameSize
+from .custom_reduction import DataFrameCustomReduction
 
 from .cummax import DataFrameCummax
 from .cummin import DataFrameCummin
@@ -49,6 +57,11 @@ def _install():
     from .cumprod import cumprod
     from .cumsum import cumsum
     from .nunique import nunique_dataframe, nunique_series
+    from .sem import sem_dataframe, sem_series
+    from .skew import skew_dataframe, skew_series
+    from .kurtosis import kurt_dataframe, kurt_series
+    from .reduction_size import size_dataframe, size_series
+    from .custom_reduction import custom_reduction_dataframe, custom_reduction_series
 
     funcs = [
         ('sum', sum_series, sum_dataframe),
@@ -69,7 +82,13 @@ def _install():
         ('agg', aggregate, aggregate),
         ('aggregate', aggregate, aggregate),
         ('nunique', nunique_series, nunique_dataframe),
+        ('sem', sem_series, sem_dataframe),
+        ('skew', skew_series, skew_dataframe),
+        ('kurt', kurt_series, kurt_dataframe),
+        ('kurtosis', kurt_series, kurt_dataframe),
         ('unique', unique, None),
+        ('_reduction_size', size_dataframe, size_series),
+        ('_custom_reduction', custom_reduction_dataframe, custom_reduction_series),
     ]
     for func_name, series_func, df_func in funcs:
         if df_func is not None:  # pragma: no branch

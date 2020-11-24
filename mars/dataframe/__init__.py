@@ -27,10 +27,10 @@ from .datasource.read_csv import read_csv
 from .datasource.read_sql import read_sql, read_sql_table, read_sql_query
 from .datasource.read_parquet import read_parquet
 from .datasource.date_range import date_range
-from .tseries.to_datetime import to_datetime
-from .merge import concat, merge
-from .reduction import unique
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
+from .merge import concat, merge
+from .reduction import CustomReduction, unique
+from .tseries.to_datetime import to_datetime
 
 from . import arithmetic
 from . import base
