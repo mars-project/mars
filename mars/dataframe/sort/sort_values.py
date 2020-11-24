@@ -217,7 +217,7 @@ def dataframe_sort_values(df, by, axis=0, ascending=True, inplace=False, kind='q
     by = by if isinstance(by, (list, tuple)) else [by]
     op = DataFrameSortValues(by=by, axis=axis, ascending=ascending, inplace=inplace, kind=kind,
                              na_position=na_position, ignore_index=ignore_index, parallel_kind=parallel_kind,
-                             psrs_kinds=psrs_kinds, output_types=[OutputType.dataframe])
+                             psrs_kinds=psrs_kinds, gpu=df.op.is_gpu(), output_types=[OutputType.dataframe])
     sorted_df = op(df)
     if inplace:
         df.data = sorted_df.data
@@ -312,7 +312,7 @@ def series_sort_values(series, axis=0, ascending=True, inplace=False, kind='quic
     op = DataFrameSortValues(axis=axis, ascending=ascending, inplace=inplace, kind=kind,
                              na_position=na_position, ignore_index=ignore_index,
                              parallel_kind=parallel_kind, psrs_kinds=psrs_kinds,
-                             output_types=[OutputType.series])
+                             output_types=[OutputType.series], gpu=series.op.is_gpu())
     sorted_series = op(series)
     if inplace:
         series.data = sorted_series.data
