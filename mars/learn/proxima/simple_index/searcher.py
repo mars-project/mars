@@ -301,7 +301,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             else:
                 temp_dir = "/tmp/proxima-index/"
 
-            local_path = os.path.join(temp_dir, md5(str(index_path).encode('utf-8')).hexdigest())
+            local_path = os.path.join(temp_dir, md5(str(index_path).encode('utf-8')).hexdigest())  # noqa: B303  # nosec
             exist_state = True
             if not os.path.exists(local_path):
                 exist_state = False
