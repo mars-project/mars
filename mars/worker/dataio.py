@@ -313,17 +313,26 @@ class FileBufferIO(WorkerBufferIO):
     File-like object handling input of one compression type and outputs another
     """
     def __init__(self, file, mode='r', compress_in=None, compress_out=None,
-                 block_size=8192, managed=True):
+                 block_size=8192, managed=True, header=None, file_end=None):
         super().__init__(
             mode=mode, compress_in=compress_in, compress_out=compress_out, block_size=block_size)
 
         self._managed = managed
         self._file = file
+        self._header = header
+        self._file_end = file_end
 
     def _read_header(self):
+        if self._header is not None:
+            return self._header
         return read_file_header(self._file)
 
     def _read_block(self, size):
+        if self._file_end is not None:
+            max_size = self._file_end - self._file.tell()
+            if size == -1:
+                size = max_size
+            size = max(min(size, max_size), 0)
         return self._file.read(size)
 
     def _write_header(self, header):
@@ -334,6 +343,9 @@ class FileBufferIO(WorkerBufferIO):
 
     def close(self):
         super().close()
-        if self._file and self._managed:
-            self._file.close()
+        if self._file:
+            if self._managed:
+                self._file.close()
+            else:
+                self._file.flush()
         self._file = None

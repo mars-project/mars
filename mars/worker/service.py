@@ -31,7 +31,7 @@ from .prochelper import ProcessHelperActor
 from .quota import QuotaActor, MemQuotaActor
 from .status import StatusActor
 from .storage import IORunnerActor, StorageManagerActor, SharedHolderActor, \
-    InProcHolderActor, CudaHolderActor
+    InProcHolderActor, CudaHolderActor, DiskFileMergerActor
 from .transfer import SenderActor, ReceiverManagerActor, ReceiverWorkerActor, ResultSenderActor
 from .utils import WorkerClusterInfoActor
 
@@ -66,6 +66,7 @@ class WorkerService(object):
         self._process_helper_actors = []
         self._custom_log_fetch_actors = []
         self._result_sender_ref = None
+        self._file_merger_ref = None
 
         self._distributed = distributed = kwargs.pop('distributed', True)
         self._advertise_addr = kwargs.pop('advertise_addr', None)
@@ -222,6 +223,11 @@ class WorkerService(object):
         self._cluster_info_ref = pool.create_actor(
             WorkerClusterInfoActor, discoverer, distributed=distributed,
             uid=WorkerClusterInfoActor.default_uid())
+
+        # create DiskFileMergerActor
+        if options.worker.filemerger.enabled and options.worker.spill_directory:
+            self._file_merger_ref = pool.create_actor(
+                DiskFileMergerActor, uid=DiskFileMergerActor.default_uid())
 
         if distributed:
             # create process daemon
