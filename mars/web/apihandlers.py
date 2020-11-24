@@ -234,7 +234,7 @@ class GraphDataApiHandler(MarsApiRequestHandler):
 
             def _fetch_fun():
                 web_api = MarsWebAPI(self._scheduler)
-                return web_api.fetch_data(session_id, graph_key, tileable_key, index_obj=slices_arg,
+                return web_api.fetch_data(session_id, tileable_key, index_obj=slices_arg,
                                           serial_type=serial_type, compressions=compressions_arg,
                                           pickle_protocol=pickle_protocol)
 

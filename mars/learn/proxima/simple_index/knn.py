@@ -30,17 +30,18 @@ def sample_data(query, sample_count=10000):
     return sample_query, idx
 
 
-def linear_build_and_search(doc, query, topk, dimension=None, measure_name=None, threads=4):
+def linear_build_and_search(doc, query, topk, column_number=None, row_number=None, dimension=None, measure_name=None,
+                            threads=4):
     if measure_name is None:
         measure_name = "SquaredEuclidean"
     if dimension is None:
         dimension = doc.shape[1]
 
-    index = build_index(tensor=doc, dimension=dimension,
+    index = build_index(tensor=doc, dimension=dimension, column_number=column_number,
                         distance_metric=measure_name,
                         index_builder="LinearBuilder")
 
-    pk_l, distance_l = search_index(tensor=query, threads=threads,
+    pk_l, distance_l = search_index(tensor=query, threads=threads, row_number=row_number,
                                     distance_metric=measure_name, dimension=dimension,
                                     topk=topk, index=index)
 

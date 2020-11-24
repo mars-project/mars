@@ -377,8 +377,7 @@ class ClusterSession(object):
                     self._session_id, chunk_indexes, chunk_keys, nsplits,
                     serial=False, index_obj=indexes, compressions=compressions)
             else:
-                graph_key = self._get_tileable_graph_key(key)
-                result = self._api.fetch_data(self._session_id, graph_key, key, serial=False,
+                result = self._api.fetch_data(self._session_id, key, serial=False,
                                               index_obj=indexes, compressions=compressions)
             tileable_results.append(sort_dataframe_result(tileable, result))
         return tileable_results
