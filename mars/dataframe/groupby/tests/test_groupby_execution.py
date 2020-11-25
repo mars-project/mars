@@ -35,10 +35,10 @@ class MockReduction1(md.CustomReduction):
 
 class MockReduction2(md.CustomReduction):
     def pre(self, value):
-        return value + 1, value ** 2
+        return value + 1, value * 2
 
     def agg(self, v1, v2):
-        return v1.sum(), v2.prod()
+        return v1.sum(), v2.min()
 
     def post(self, v1, v2):
         return v1 + v2
@@ -185,89 +185,89 @@ class Test(TestBase):
                                        df1.groupby('b').a.cumsum().sort_index())
 
     def testDataFrameGroupByAgg(self):
-        rs = np.random.RandomState(0)
-        df1 = pd.DataFrame({'a': rs.choice([2, 3, 4], size=(100,)),
-                            'b': rs.choice([2, 3, 4], size=(100,))})
-        mdf = md.DataFrame(df1, chunk_size=13)
-
-        df2 = pd.DataFrame({'c1': np.arange(10).astype(np.int64),
-                            'c2': rs.choice(['a', 'b', 'c'], (10,)),
-                            'c3': rs.rand(10)})
-        mdf2 = md.DataFrame(df2, chunk_size=2)
-
         agg_funs = ['std', 'mean', 'var', 'max', 'count', 'size', 'all', 'any', 'skew', 'kurt', 'sem']
 
-        for method in ['tree', 'shuffle']:
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame({'c1': np.arange(100).astype(np.int64),
+                            'c2': rs.choice(['a', 'b', 'c'], (100,)),
+                            'c3': rs.rand(100)})
+        mdf = md.DataFrame(raw, chunk_size=13)
 
-            r0 = mdf2.groupby('c2').agg('size', method=method)
-            pd.testing.assert_series_equal(self.executor.execute_dataframe(r0, concat=True)[0],
-                                           df2.groupby('c2').agg('size'))
+        for method in ['tree', 'shuffle']:
+            r = mdf.groupby('c2').agg('size', method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                           raw.groupby('c2').agg('size'))
 
             for agg_fun in agg_funs:
                 if agg_fun == 'size':
                     continue
-                r1 = mdf.groupby('a').agg(agg_fun, method=method)
-                pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
-                                              df1.groupby('a').agg(agg_fun))
+                r = mdf.groupby('c2').agg(agg_fun, method=method)
+                pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                              raw.groupby('c2').agg(agg_fun))
 
-            r3 = mdf2.groupby('c2').agg(agg_funs, method=method)
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
-                                          df2.groupby('c2').agg(agg_funs))
+            r = mdf.groupby('c2').agg(agg_funs, method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          raw.groupby('c2').agg(agg_funs))
 
             agg = OrderedDict([('c1', ['min', 'mean']), ('c3', 'std')])
-            r3 = mdf2.groupby('c2').agg(agg, method=method)
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
-                                          df2.groupby('c2').agg(agg))
+            r = mdf.groupby('c2').agg(agg, method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          raw.groupby('c2').agg(agg))
 
             agg = OrderedDict([('c1', 'min'), ('c3', 'sum')])
-            r3 = mdf2.groupby('c2').agg(agg, method=method)
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
-                                          df2.groupby('c2').agg(agg))
+            r = mdf.groupby('c2').agg(agg, method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          raw.groupby('c2').agg(agg))
 
-            r3 = mdf2.groupby('c2').agg({'c1': 'min'}, method=method)
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
-                                          df2.groupby('c2').agg({'c1': 'min'}))
+            r = mdf.groupby('c2').agg({'c1': 'min'}, method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          raw.groupby('c2').agg({'c1': 'min'}))
 
             # test groupby series
-            r3 = mdf2.groupby(mdf2['c2']).sum(method=method)
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
-                                          df2.groupby(df2['c2']).sum())
+            r = mdf.groupby(mdf['c2']).sum(method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          raw.groupby(raw['c2']).sum())
 
-        r8 = mdf2.groupby('c2').size(method='tree')
-        pd.testing.assert_series_equal(self.executor.execute_dataframe(r8, concat=True)[0],
-                                       df2.groupby('c2').size())
+        r = mdf.groupby('c2').size(method='tree')
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.groupby('c2').size())
+
+        # test inserted kurt method
+        r = mdf.groupby('c2').kurtosis(method='tree')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.groupby('c2').kurtosis())
 
         for agg_fun in agg_funs:
             if agg_fun == 'size' or callable(agg_fun):
                 continue
-            r4 = getattr(mdf2.groupby('c2'), agg_fun)(method='tree')
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r4, concat=True)[0],
-                                          getattr(df2.groupby('c2'), agg_fun)())
+            r = getattr(mdf.groupby('c2'), agg_fun)(method='tree')
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          getattr(raw.groupby('c2'), agg_fun)())
 
         # test as_index=False
-        r12 = mdf2.groupby('c2', as_index=False).agg('mean', method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r12, concat=True)[0],
-                                      df2.groupby('c2', as_index=False).agg('mean'))
-        self.assertFalse(r12.op.groupby_params['as_index'])
+        r = mdf.groupby('c2', as_index=False).agg('mean', method='tree')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.groupby('c2', as_index=False).agg('mean'))
+        self.assertFalse(r.op.groupby_params['as_index'])
 
         # test as_index=False takes no effect
-        r13 = mdf2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count'], method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r13, concat=True)[0],
-                                      df2.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
-        self.assertTrue(r13.op.groupby_params['as_index'])
+        r = mdf.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count'], method='tree')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
+        self.assertTrue(r.op.groupby_params['as_index'])
 
-        r14 = mdf2.groupby('c2').agg(['cumsum', 'cumcount'], method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r14, concat=True)[0].sort_index(),
-                                      df2.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
+        r = mdf.groupby('c2').agg(['cumsum', 'cumcount'], method='tree')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      raw.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
 
         # test auto method
-        r15 = mdf2.groupby('c2').agg('prod')
-        self.assertEqual(r15.op.method, 'auto')
-        self.assertTrue(all((not isinstance(c.op, ShuffleProxy)) for c in r15.build_graph(tiled=True)))
+        r = mdf.groupby('c2').agg('prod')
+        self.assertEqual(r.op.method, 'auto')
+        self.assertTrue(all((not isinstance(c.op, ShuffleProxy)) for c in r.build_graph(tiled=True)))
 
-        r16 = mdf2[['c1', 'c3']].groupby(mdf2['c2']).agg(MockReduction2())
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r16, concat=True)[0],
-                                      df2[['c1', 'c3']].groupby(df2['c2']).agg(MockReduction2()))
+        r = mdf[['c1', 'c3']].groupby(mdf['c2']).agg(MockReduction2())
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw[['c1', 'c3']].groupby(raw['c2']).agg(MockReduction2()))
 
     def testSeriesGroupByAgg(self):
         rs = np.random.RandomState(0)
@@ -278,31 +278,36 @@ class Test(TestBase):
 
         for method in ['tree', 'shuffle']:
             for agg_fun in agg_funs:
-                r0 = ms1.groupby(lambda x: x % 2).agg(agg_fun, method=method)
-                pd.testing.assert_series_equal(self.executor.execute_dataframe(r0, concat=True)[0],
+                r = ms1.groupby(lambda x: x % 2).agg(agg_fun, method=method)
+                pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                                series1.groupby(lambda x: x % 2).agg(agg_fun))
 
-            r3 = ms1.groupby(lambda x: x % 2).agg(agg_funs, method=method)
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r3, concat=True)[0],
+            r = ms1.groupby(lambda x: x % 2).agg(agg_funs, method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                           series1.groupby(lambda x: x % 2).agg(agg_funs))
 
             # test groupby series
-            r3 = ms1.groupby(ms1).sum(method=method)
-            pd.testing.assert_series_equal(self.executor.execute_dataframe(r3, concat=True)[0],
+            r = ms1.groupby(ms1).sum(method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                            series1.groupby(series1).sum())
 
+        # test inserted kurt method
+        r = ms1.groupby(ms1).kurtosis()
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       series1.groupby(series1).kurtosis())
+
         for agg_fun in agg_funs:
-            r4 = getattr(ms1.groupby(lambda x: x % 2), agg_fun)(method='tree')
-            pd.testing.assert_series_equal(self.executor.execute_dataframe(r4, concat=True)[0],
+            r = getattr(ms1.groupby(lambda x: x % 2), agg_fun)(method='tree')
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                            getattr(series1.groupby(lambda x: x % 2), agg_fun)())
 
-        r11 = ms1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount'], method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r11, concat=True)[0].sort_index(),
+        r = ms1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount'], method='tree')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
                                       series1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount']).sort_index())
 
-        r16 = ms1.groupby(lambda x: x % 2).agg(MockReduction2())
-        pd.testing.assert_series_equal(self.executor.execute_dataframe(r16, concat=True)[0],
-                                       series1.groupby(lambda x: x % 2).agg(MockReduction2()))
+        r = ms1.groupby(lambda x: x % 2).agg(MockReduction2(name='custom_r'))
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       series1.groupby(lambda x: x % 2).agg(MockReduction2(name='custom_r')))
 
     @require_cudf
     def testGPUGroupByAgg(self):

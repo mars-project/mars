@@ -66,7 +66,7 @@ _series_col_name = 'col_name'
 def _patch_groupby_kurt():
     try:
         from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
-        if not hasattr(DataFrameGroupBy, 'kurt'):
+        if not hasattr(DataFrameGroupBy, 'kurt'):  # pragma: no branch
             DataFrameGroupBy.kurt = lambda x: x.agg(pd.Series.kurt)
             SeriesGroupBy.kurt = lambda x: x.agg(pd.Series.kurt)
 
@@ -75,7 +75,7 @@ def _patch_groupby_kurt():
 
             DataFrameGroupBy.kurtosis = lambda x: x.agg(kurtosis)
             SeriesGroupBy.kurtosis = lambda x: x.agg(kurtosis)
-    except (AttributeError, ImportError):
+    except (AttributeError, ImportError):  # pragma: no cover
         pass
 
 
@@ -719,16 +719,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 cls._execute_combine(ctx, op)
             elif op.stage == OperandStage.agg:
                 cls._execute_agg(ctx, op)
-            elif op.raw_func == 'size':
-                xp = cp if op.gpu else np
-                ctx[op.outputs[0].key] = xp.array(ctx[op.inputs[0].key].agg(op.raw_func)) \
-                    .reshape(op.outputs[0].shape)
-            else:
-                xp = cp if op.gpu else np
-                result = ctx[op.inputs[0].key].agg(op.raw_func)
-                if op.output_types[0] == OutputType.tensor:
-                    result = xp.array(result)
-                ctx[op.outputs[0].key] = result
+            else:  # pragma: no cover
+                raise ValueError('Aggregation operand not executable')
         finally:
             pd.reset_option('mode.use_inf_as_na')
 
