@@ -15,7 +15,7 @@
 import itertools
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, AnyField, Int32Field, Int64Field
+from ...serialize import KeyField, AnyField, BoolField, Int32Field, Int64Field
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..utils import calc_sliced_size
@@ -30,9 +30,13 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
     _chunk_size = AnyField('chunk_size')
     _threshold = Int32Field('threshold')
     _chunk_size_limit = Int64Field('chunk_size_limit')
+    _reassign_worker = BoolField('reassign_worker')
 
-    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, dtype=None, sparse=False, **kw):
-        super().__init__(_chunk_size=chunk_size, _threshold=threshold, _chunk_size_limit=chunk_size_limit,
+    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None,
+                 reassign_worker=None, dtype=None, sparse=False, **kw):
+        super().__init__(_chunk_size=chunk_size, _threshold=threshold,
+                         _chunk_size_limit=chunk_size_limit,
+                         _reassign_worker=reassign_worker,
                          _dtype=dtype, _sparse=sparse, **kw)
 
     @property
@@ -65,15 +69,20 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
         for c in steps:
             tensor = compute_rechunk(tensor.inputs[0], c)
 
+        if op.reassign_worker:
+            for c in tensor.chunks:
+                c.op._reassign_worker = True
+
         return [tensor]
 
 
-def rechunk(tensor, chunk_size, threshold=None, chunk_size_limit=None):
+def rechunk(tensor, chunk_size, threshold=None, chunk_size_limit=None,
+            reassign_worker=False):
     chunk_size = get_nsplits(tensor, chunk_size, tensor.dtype.itemsize)
     if chunk_size == tensor.nsplits:
         return tensor
 
-    op = TensorRechunk(chunk_size, threshold, chunk_size_limit,
+    op = TensorRechunk(chunk_size, threshold, chunk_size_limit, reassign_worker=reassign_worker,
                        dtype=tensor.dtype, sparse=tensor.issparse())
     return op(tensor)
 

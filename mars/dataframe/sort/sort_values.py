@@ -30,7 +30,7 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
     _by = ListField('by')
 
     def __init__(self, by=None, output_types=None, **kw):
-        super(DataFrameSortValues, self).__init__(_by=by, _output_types=output_types, **kw)
+        super().__init__(_by=by, _output_types=output_types, **kw)
 
     @property
     def by(self):

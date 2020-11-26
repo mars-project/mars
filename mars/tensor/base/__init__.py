@@ -58,6 +58,7 @@ from .trapz import trapz
 from .shape import shape
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
+from .rebalance import rebalance
 
 
 def _install():
@@ -73,6 +74,7 @@ def _install():
         setattr(cls, 'flatten', flatten)
         setattr(cls, 'to_gpu', to_gpu)
         setattr(cls, 'to_cpu', to_cpu)
+        setattr(cls, 'rebalance', rebalance)
 
 
 _install()
