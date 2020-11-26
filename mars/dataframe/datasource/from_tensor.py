@@ -350,9 +350,13 @@ def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=Fal
 
 
 def dataframe_from_1d_tileables(d, index=None, columns=None, gpu=None, sparse=False):
-    tileables = list(d.values())
-    columns = list(d.keys()) if columns is None else columns
-    gpu = next(t.op.gpu for t in tileables if hasattr(t, 'op')) if gpu is None else gpu
+    if columns is not None:
+        tileables = [d.get(c) for c in columns]
+    else:
+        columns = list(d.keys())
+        tileables = list(d.values())
+
+    gpu = next((t.op.gpu for t in tileables if hasattr(t, 'op')), False) if gpu is None else gpu
     dtypes = pd.Series([t.dtype if hasattr(t, 'dtype') else pd.Series(t).dtype
                         for t in tileables], index=columns)
     op = DataFrameFromTensor(input_=d, dtypes=dtypes,

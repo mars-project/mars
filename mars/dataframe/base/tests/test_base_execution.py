@@ -1679,13 +1679,21 @@ class Test(TestBase):
         raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
         df = from_pandas_df(raw)
 
-        df2 = df.rebalance()
+        r = df.rebalance(num_partitions=3)
+        results = self.executor.execute_dataframe(r)
+        self.assertEqual(len(results), 3)
+        pd.testing.assert_frame_equal(pd.concat(results), raw)
+
+        r = df.rebalance(factor=1.5)
+        results = self.executor.execute_dataframe(r)
+        pd.testing.assert_frame_equal(results[0], raw)
 
         self.ctx.set_ncores(2)
         with self.ctx:
-            result = self.executor.execute_dataframe(df2)
-            self.assertEqual(len(result), 2)
-            pd.testing.assert_frame_equal(pd.concat(result), raw)
+            r = df.rebalance()
+            results = self.executor.execute_dataframe(r)
+            self.assertEqual(len(results), 2)
+            pd.testing.assert_frame_equal(pd.concat(results), raw)
 
     def testStackExecution(self):
         raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'),
