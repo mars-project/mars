@@ -50,6 +50,7 @@ message OperandDef {
         TIMEDELTA_RANGE = 35;
         // misc
         MEMORY_USAGE = 36;
+        REBALANCE = 37;
 
         // GPU
         TO_GPU = 30;
@@ -364,7 +365,6 @@ message OperandDef {
         RENAME = 731;
         INSERT = 732;
         MAP_CHUNK = 733;
-        REBALANCE = 734;
         EXPLODE = 735;
 
         FUSE = 801;

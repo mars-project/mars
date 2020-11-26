@@ -38,8 +38,7 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
     _use_arrow_dtype = BoolField('use_arrow_dtype')
 
     def __init__(self, dropna=None, use_arrow_dtype=None, **kw):
-        super(DataFrameNunique, self).__init__(
-            _dropna=dropna, _use_arrow_dtype=use_arrow_dtype, **kw)
+        super().__init__(_dropna=dropna, _use_arrow_dtype=use_arrow_dtype, **kw)
 
     @property
     def dropna(self):

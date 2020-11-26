@@ -31,7 +31,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
     _sort_remaining = BoolField('sort_remaining')
 
     def __init__(self, level=None, sort_remaining=None, **kw):
-        super(DataFrameSortIndex, self).__init__(_level=level, _sort_remaining=sort_remaining, **kw)
+        super().__init__(_level=level, _sort_remaining=sort_remaining, **kw)
 
     @property
     def level(self):

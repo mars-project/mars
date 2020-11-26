@@ -26,13 +26,13 @@ from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcas
     isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, \
     trapz, shape, to_gpu, to_cpu, swapaxes
 from mars.tensor.datasource import tensor, ones, zeros, arange
-from mars.tests.core import require_cupy, ExecutorForTest, TestBase
+from mars.tests.core import require_cupy, TestBase
 from mars.tiles import get_tiled
 
 
 class Test(TestBase):
     def setUp(self):
-        self.executor = ExecutorForTest('numpy')
+        self.ctx, self.executor = self._create_test_context()
 
     def testRechunkExecution(self):
         raw = np.random.RandomState(0).random((11, 8))
@@ -1629,3 +1629,23 @@ class Test(TestBase):
             result = executor.execute_tensors(s)
             expected = np.shape(0)
             self.assertSequenceEqual(result, expected)
+
+    def testRebalanceExecution(self):
+        raw = np.random.rand(10, 3)
+        x = mt.tensor(raw)
+
+        r = x.rebalance(num_partitions=3)
+        results = self.executor.execute_tensor(r)
+        self.assertEqual(len(results), 3)
+        np.testing.assert_array_equal(np.concatenate(results), raw)
+
+        r = x.rebalance(factor=1.5)
+        results = self.executor.execute_tensor(r)
+        np.testing.assert_array_equal(results[0], raw)
+
+        self.ctx.set_ncores(2)
+        with self.ctx:
+            r = x.rebalance()
+            results = self.executor.execute_tensor(r)
+            self.assertEqual(len(results), 2)
+            np.testing.assert_array_equal(np.concatenate(results), raw)

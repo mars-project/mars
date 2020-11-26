@@ -31,10 +31,8 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
     _sort = BoolField('sort')
 
     def __init__(self, ignore_index=None, verify_integrity=None, sort=None, output_types=None, **kw):
-        super(DataFrameAppend, self).__init__(_ignore_index=ignore_index,
-                                              _verify_integrity=verify_integrity,
-                                              _sort=sort,
-                                              _output_types=output_types, **kw)
+        super().__init__(_ignore_index=ignore_index, _verify_integrity=verify_integrity,
+                         _sort=sort, _output_types=output_types, **kw)
 
     @property
     def ignore_index(self):

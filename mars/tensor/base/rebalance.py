@@ -13,15 +13,50 @@
 # limitations under the License.
 
 from ... import opcodes
+from ...context import get_context
 from ...serialize import KeyField, Float64Field, Int64Field, BoolField
-from ...tensor.base.rebalance import RebalanceMixin
-from ..core import INDEX_TYPE
-from ..initializer import DataFrame as asdataframe, Series as asseries, Index as asindex
-from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import validate_axis
+from ...tensor.datasource import tensor as astensor
+from ...tiles import TilesError
+from ...utils import check_chunks_unknown_shape, ceildiv
+from ..operands import TensorOperandMixin, TensorOperand
 
 
-class DataFrameRebalance(RebalanceMixin, DataFrameOperandMixin, DataFrameOperand):
+class RebalanceMixin:
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        self._input = self._inputs[0]
+
+    def __call__(self, df_or_series):
+        self._output_types = df_or_series.op.output_types
+        return self.new_tileable([df_or_series], kws=[df_or_series.params])
+
+    def _get_input_object(self):
+        raise NotImplementedError
+
+    @classmethod
+    def tile(cls, op: "RebalanceMixin"):
+        in_obj = op._get_input_object()
+        ctx = get_context()
+
+        if ctx is None and op.factor is not None:
+            return [in_obj]
+
+        check_chunks_unknown_shape([in_obj], TilesError)
+
+        size = in_obj.shape[op.axis]
+        if op.factor is not None:
+            cluster_cpu_count = ctx.get_total_ncores()
+            assert cluster_cpu_count > 0
+            expect_n_chunk = int(cluster_cpu_count * op.factor)
+        else:
+            expect_n_chunk = op.num_partitions
+
+        expect_chunk_size = max(ceildiv(size, expect_n_chunk), 1)
+        return [in_obj.rechunk(
+            {op.axis: expect_chunk_size}, reassign_worker=op.reassign_worker)._inplace_tile()]
+
+
+class TensorRebalance(RebalanceMixin, TensorOperandMixin, TensorOperand):
     _op_type_ = opcodes.REBALANCE
 
     _input = KeyField('input')
@@ -56,15 +91,10 @@ class DataFrameRebalance(RebalanceMixin, DataFrameOperandMixin, DataFrameOperand
         return self._reassign_worker
 
     def _get_input_object(self):
-        in_obj = self.input
-        if isinstance(in_obj, INDEX_TYPE):
-            convert = asindex
-        else:
-            convert = asdataframe if in_obj.ndim == 2 else asseries
-        return convert(in_obj)
+        return astensor(self.inputs[0])
 
 
-def rebalance(df_or_series, factor=None, axis=0, num_partitions=None, reassign_worker=True):
+def rebalance(tensor, factor=None, axis=0, num_partitions=None, reassign_worker=True):
     """
     Make Data more balanced across entire cluster.
 
@@ -86,10 +116,9 @@ def rebalance(df_or_series, factor=None, axis=0, num_partitions=None, reassign_w
     Series or DataFrame
         Result of DataFrame or Series after rebalanced.
     """
-    axis = validate_axis(axis, df_or_series)
     if num_partitions is None:
         factor = factor if factor is not None else 1.2
 
-    op = DataFrameRebalance(input=df_or_series, factor=factor, axis=axis,
-                            num_partitions=num_partitions, reassign_worker=reassign_worker)
-    return op(df_or_series)
+    op = TensorRebalance(input=tensor, factor=factor, axis=axis, num_partitions=num_partitions,
+                         reassign_worker=reassign_worker)
+    return op(tensor)
