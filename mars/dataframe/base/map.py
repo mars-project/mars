@@ -26,7 +26,7 @@ from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, enter_current_session
 from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import build_series, suspend_stdio
+from ..utils import build_series, quiet_stdio
 
 
 class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
@@ -79,7 +79,7 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
                     inferred_dtype = np.dtype(return_type)
                 else:
                     try:
-                        with suspend_stdio():
+                        with quiet_stdio():
                             # try to infer dtype by calling the function
                             inferred_dtype = build_series(series).map(
                                 self._arg, na_action=self._na_action).dtype

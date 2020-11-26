@@ -1021,36 +1021,36 @@ def to_arrow_dtypes(dtypes, test_df=None):
     return new_dtypes
 
 
-_io_suspend_local = threading.local()
-_io_suspend_lock = threading.Lock()
+_io_quiet_local = threading.local()
+_io_quiet_lock = threading.Lock()
+
+
+class _QuietIOWrapper:
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+
+    def __getattr__(self, item):
+        return getattr(self.wrapped, item)
+
+    def write(self, d):
+        if getattr(_io_quiet_local, 'is_wrapped', False):
+            return 0
+        return self.wrapped.write(d)
 
 
 @contextmanager
-def suspend_stdio():
-    """Suspends standard outputs when inferring types of functions"""
-
-    class _IOWrapper:
-        def __init__(self, wrapped):
-            self.wrapped = wrapped
-
-        def __getattr__(self, item):
-            return getattr(self.wrapped, item)
-
-        def write(self, d):
-            if getattr(_io_suspend_local, 'is_wrapped', False):
-                return 0
-            return self.wrapped.write(d)
-
-    with _io_suspend_lock:
-        _io_suspend_local.is_wrapped = True
-        sys.stdout = _IOWrapper(sys.stdout)
-        sys.stderr = _IOWrapper(sys.stderr)
+def quiet_stdio():
+    """Quiets standard outputs when inferring types of functions"""
+    with _io_quiet_lock:
+        _io_quiet_local.is_wrapped = True
+        sys.stdout = _QuietIOWrapper(sys.stdout)
+        sys.stderr = _QuietIOWrapper(sys.stderr)
 
     try:
         yield
     finally:
-        with _io_suspend_lock:
+        with _io_quiet_lock:
             sys.stdout = sys.stdout.wrapped
             sys.stderr = sys.stderr.wrapped
-            if not isinstance(sys.stdout, _IOWrapper):
-                _io_suspend_local.is_wrapped = False
+            if not isinstance(sys.stdout, _QuietIOWrapper):
+                _io_quiet_local.is_wrapped = False

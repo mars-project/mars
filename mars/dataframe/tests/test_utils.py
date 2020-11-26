@@ -26,7 +26,7 @@ from mars.dataframe.initializer import DataFrame
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
     split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
-    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, suspend_stdio
+    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, quiet_stdio
 from mars.session import new_session
 
 
@@ -415,7 +415,7 @@ class Test(unittest.TestCase):
                              pdf.to_string(max_rows=max_rows, min_rows=min_rows),
                              f'failed when row == {row}')
 
-    def testSuspendStdio(self):
+    def testQuietStdio(self):
         old_stdout, old_stderr = sys.stdout, sys.stderr
 
         class _IOWrapper:
@@ -438,13 +438,15 @@ class Test(unittest.TestCase):
             sys.stdout = stdout_w
             sys.stderr = stderr_w
 
-            with suspend_stdio(), suspend_stdio():
-                self.assertTrue(sys.stdout.writable())
-                self.assertTrue(sys.stderr.writable())
+            with quiet_stdio():
+                with quiet_stdio():
+                    self.assertTrue(sys.stdout.writable())
+                    self.assertTrue(sys.stderr.writable())
 
-                print('LINE 1', end='\n')
-                print('LINE 2', file=sys.stderr, end='\n')
-                executor.submit(print, 'LINE T').result()
+                    print('LINE 1', end='\n')
+                    print('LINE 2', file=sys.stderr, end='\n')
+                    executor.submit(print, 'LINE T').result()
+                print('LINE 3', end='\n')
 
             print('LINE 1', end='\n')
             print('LINE 2', file=sys.stderr, end='\n')

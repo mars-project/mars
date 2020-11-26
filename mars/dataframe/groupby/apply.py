@@ -22,7 +22,7 @@ from ...serialize import TupleField, DictField, FunctionField, StringField
 from ...utils import enter_current_session
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_empty_df, build_series, build_empty_series, \
-    parse_index, validate_output_types, suspend_stdio
+    parse_index, validate_output_types, quiet_stdio
 
 
 class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
@@ -157,7 +157,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
         while in_df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
             in_df = in_df.inputs[0]
 
-        with suspend_stdio():
+        with quiet_stdio():
             dtypes, index_value = self._infer_df_func_returns(groupby, in_df, dtypes, index)
         if index_value is None:
             index_value = parse_index(None, (in_df.key, in_df.index_value.key))
