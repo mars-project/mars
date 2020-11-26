@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-from numbers import Integral
 import operator
+import sys
+import unittest
+from concurrent.futures import ThreadPoolExecutor
+from numbers import Integral
 
 import numpy as np
 import pandas as pd
@@ -24,7 +26,7 @@ from mars.dataframe.initializer import DataFrame
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
     split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
-    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data
+    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, quiet_stdio
 from mars.session import new_session
 
 
@@ -412,3 +414,44 @@ class Test(unittest.TestCase):
             self.assertEqual(corner.to_string(max_rows=corner_max_rows, min_rows=min_rows),
                              pdf.to_string(max_rows=max_rows, min_rows=min_rows),
                              f'failed when row == {row}')
+
+    def testQuietStdio(self):
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+
+        class _IOWrapper:
+            def __init__(self, name=None):
+                self.name = name
+                self.content = ''
+
+            @staticmethod
+            def writable():
+                return True
+
+            def write(self, d):
+                self.content += d
+                return len(d)
+
+        stdout_w = _IOWrapper('stdout')
+        stderr_w = _IOWrapper('stderr')
+        executor = ThreadPoolExecutor(1)
+        try:
+            sys.stdout = stdout_w
+            sys.stderr = stderr_w
+
+            with quiet_stdio():
+                with quiet_stdio():
+                    self.assertTrue(sys.stdout.writable())
+                    self.assertTrue(sys.stderr.writable())
+
+                    print('LINE 1', end='\n')
+                    print('LINE 2', file=sys.stderr, end='\n')
+                    executor.submit(print, 'LINE T').result()
+                print('LINE 3', end='\n')
+
+            print('LINE 1', end='\n')
+            print('LINE 2', file=sys.stderr, end='\n')
+        finally:
+            sys.stdout, sys.stderr = old_stdout, old_stderr
+
+        self.assertEqual(stdout_w.content, 'LINE T\nLINE 1\n')
+        self.assertEqual(stderr_w.content, 'LINE 2\n')

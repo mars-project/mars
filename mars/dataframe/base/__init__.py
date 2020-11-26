@@ -111,6 +111,7 @@ def _install():
 
     for t in INDEX_TYPE:
         setattr(t, 'rechunk', rechunk)
+        setattr(t, 'rebalance', rebalance)
         setattr(t, 'drop', index_drop)
         setattr(t, 'drop_duplicates', index_drop_duplicates)
         setattr(t, 'memory_usage', index_memory_usage)
