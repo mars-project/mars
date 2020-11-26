@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import itertools
 import operator
-import functools
+import sys
+import threading
 from contextlib import contextmanager
 from numbers import Integral
 
@@ -1017,3 +1019,38 @@ def to_arrow_dtypes(dtypes, test_df=None):
                 # empty, set arrow string dtype
                 new_dtypes.iloc[i] = ArrowStringDtype()
     return new_dtypes
+
+
+_io_suspend_local = threading.local()
+_io_suspend_lock = threading.Lock()
+
+
+@contextmanager
+def suspend_stdio():
+    """Suspends standard outputs when inferring types of functions"""
+
+    class _IOWrapper:
+        def __init__(self, wrapped):
+            self.wrapped = wrapped
+
+        def __getattr__(self, item):
+            return getattr(self.wrapped, item)
+
+        def write(self, d):
+            if getattr(_io_suspend_local, 'is_wrapped', False):
+                return 0
+            return self.wrapped.write(d)
+
+    with _io_suspend_lock:
+        _io_suspend_local.is_wrapped = True
+        sys.stdout = _IOWrapper(sys.stdout)
+        sys.stderr = _IOWrapper(sys.stderr)
+
+    try:
+        yield
+    finally:
+        with _io_suspend_lock:
+            sys.stdout = sys.stdout.wrapped
+            sys.stderr = sys.stderr.wrapped
+            if not isinstance(sys.stdout, _IOWrapper):
+                _io_suspend_local.is_wrapped = False

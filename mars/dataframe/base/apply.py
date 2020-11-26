@@ -26,7 +26,7 @@ from ...serialize import StringField, AnyField, BoolField, \
 from ...utils import enter_current_session
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_series, parse_index, validate_axis, \
-    validate_output_types
+    validate_output_types, suspend_stdio
 
 
 class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
@@ -205,7 +205,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
 
         try:
             empty_df = build_df(df, size=2)
-            with np.errstate(all='ignore'):
+            with np.errstate(all='ignore'), suspend_stdio():
                 infer_df = empty_df.apply(self._func, axis=self._axis, raw=self._raw,
                                           result_type=self._result_type, args=self.args, **self.kwds)
             if index_value is None:
@@ -265,7 +265,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         if self._convert_dtype:
             try:
                 test_series = build_series(series, size=2, name=series.name)
-                with np.errstate(all='ignore'):
+                with np.errstate(all='ignore'), suspend_stdio():
                     infer_series = test_series.apply(self._func, args=self.args, **self.kwds)
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 infer_series = None

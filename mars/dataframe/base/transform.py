@@ -24,7 +24,7 @@ from ...utils import enter_current_session
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_series, validate_axis, \
-    parse_index, filter_dtypes_by_index
+    parse_index, filter_dtypes_by_index, suspend_stdio
 
 
 class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
@@ -183,7 +183,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         if self.output_types[0] == OutputType.dataframe:
             test_df = build_df(df, fill_value=1, size=2)
             try:
-                with np.errstate(all='ignore'):
+                with np.errstate(all='ignore'), suspend_stdio():
                     if self.call_agg:
                         infer_df = test_df.agg(self._func, axis=self._axis, *self.args, **self.kwds)
                     else:
@@ -193,7 +193,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         else:
             test_df = build_series(df, size=2, name=df.name)
             try:
-                with np.errstate(all='ignore'):
+                with np.errstate(all='ignore'), suspend_stdio():
                     if self.call_agg:
                         infer_df = test_df.agg(self._func, args=self.args, **self.kwds)
                     else:

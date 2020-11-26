@@ -21,7 +21,7 @@ from ...custom_log import redirect_custom_log
 from ...serialize import BoolField, TupleField, DictField, AnyField, StringField
 from ...utils import enter_current_session
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_empty_df, build_empty_series, parse_index
+from ..utils import build_empty_df, build_empty_series, parse_index, suspend_stdio
 
 
 class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
@@ -70,7 +70,7 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
 
         try:
             empty_groupby = in_groupby.op.build_mock_groupby()
-            with np.errstate(all='ignore'):
+            with np.errstate(all='ignore'), suspend_stdio():
                 if self.call_agg:
                     infer_df = empty_groupby.agg(self.func, *self.args, **self.kwds)
                 else:
