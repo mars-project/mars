@@ -14,10 +14,11 @@
 
 from ... import opcodes
 from ...context import get_context
-from ...serialize import KeyField, Float64Field
+from ...serialize import KeyField, Float64Field, Int64Field, BoolField
 from ...tiles import TilesError
-from ...utils import check_chunks_unknown_shape
-from ..initializer import DataFrame as asdataframe, Series as asseries
+from ...utils import check_chunks_unknown_shape, ceildiv
+from ..core import INDEX_TYPE
+from ..initializer import DataFrame as asdataframe, Series as asseries, Index as asindex
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
@@ -26,10 +27,13 @@ class DataFrameRebalance(DataFrameOperand, DataFrameOperandMixin):
 
     _input = KeyField('input')
     _factor = Float64Field('factor')
+    _num_partitions = Int64Field('num_partitions')
+    _reassign_worker = BoolField('reassign_worker')
 
-    def __init__(self, input=None, factor=None, output_types=None, **kw):  # pylint: disable=redefined-builtin
-        super().__init__(_input=input, _factor=factor,
-                         _output_types=output_types, **kw)
+    def __init__(self, input=None, factor=None,  # pylint: disable=redefined-builtin
+                 num_partitions=None, reassign_worker=None, output_types=None, **kw):
+        super().__init__(_input=input, _factor=factor, _num_partitions=num_partitions,
+                         _output_types=output_types, _reassign_worker=reassign_worker, **kw)
 
     @property
     def input(self):
@@ -38,6 +42,14 @@ class DataFrameRebalance(DataFrameOperand, DataFrameOperandMixin):
     @property
     def factor(self):
         return self._factor
+
+    @property
+    def num_partitions(self):
+        return self._num_partitions
+
+    @property
+    def reassign_worker(self):
+        return self._reassign_worker
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -49,26 +61,34 @@ class DataFrameRebalance(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op: "DataFrameRebalance"):
-        df_or_series = op.input
-        convert = asdataframe if df_or_series.ndim == 2 else asseries
-        df_or_series = convert(df_or_series)
+        in_obj = op.input
+        if isinstance(in_obj, INDEX_TYPE):
+            convert = asindex
+        else:
+            convert = asdataframe if in_obj.ndim == 2 else asseries
+        in_obj = convert(in_obj)
 
         ctx = get_context()
-        if ctx is None:
-            return [df_or_series]
 
-        check_chunks_unknown_shape([df_or_series], TilesError)
+        if ctx is None and op.factor is not None:
+            return [in_obj]
 
-        cluster_cpu_count = ctx.get_total_ncores()
-        assert cluster_cpu_count > 0
+        check_chunks_unknown_shape([in_obj], TilesError)
 
-        size = len(df_or_series)
-        expect_n_chunk = int(cluster_cpu_count * op.factor)
-        expect_chunk_size = max(size // expect_n_chunk, 1)
-        return [df_or_series.rechunk({0: expect_chunk_size}, reassign_worker=True)._inplace_tile()]
+        size = len(in_obj)
+        if op.factor is not None:
+            cluster_cpu_count = ctx.get_total_ncores()
+            assert cluster_cpu_count > 0
+            expect_n_chunk = int(cluster_cpu_count * op.factor)
+        else:
+            expect_n_chunk = op.num_partitions
+
+        expect_chunk_size = max(ceildiv(size, expect_n_chunk), 1)
+        return [in_obj.rechunk(
+            {0: expect_chunk_size}, reassign_worker=op.reassign_worker)._inplace_tile()]
 
 
-def rebalance(df_or_series, factor=1.2):
+def rebalance(df_or_series, factor=None, num_partitions=None, reassign_worker=True):
     """
     Make Data more balanced across entire cluster.
 
@@ -77,11 +97,20 @@ def rebalance(df_or_series, factor=1.2):
     factor : float
         Specified so that number of chunks after balance is
         total CPU count of cluster * factor.
+    num_partitions: int
+        Specified so the number of chunks are at most
+        num_partitions.
+    reassign_worker: bool
+        If True, workers will be reassigned.
 
     Returns
     -------
     Series or DataFrame
         Result of DataFrame or Series after rebalanced.
     """
-    op = DataFrameRebalance(input=df_or_series, factor=factor)
+    if num_partitions is None:
+        factor = factor if factor is not None else 1.2
+
+    op = DataFrameRebalance(input=df_or_series, factor=factor, num_partitions=num_partitions,
+                            reassign_worker=reassign_worker)
     return op(df_or_series)
