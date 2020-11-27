@@ -501,6 +501,10 @@ message OperandDef {
         // PyTorch
         RUN_PYTORCH = 3011;
 
+        // statsmodels
+        STATSMODELS_TRAIN = 3012;
+        STATSMODELS_PREDICT = 3013;
+
         // learn
         // checks
         CHECK_NON_NEGATIVE = 3300;

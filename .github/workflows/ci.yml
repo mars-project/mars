@@ -70,7 +70,7 @@ jobs:
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
-                libxgboost py-xgboost xgboost lightgbm tensorflow
+                libxgboost py-xgboost xgboost lightgbm tensorflow statsmodels
             fi
             if [[ $UNAME == "linux" ]] && [[ "$PYTHON" =~ "3.6" ]]; then
               pip install torch==1.4.0 torchvision==0.5.0 faiss-cpu
