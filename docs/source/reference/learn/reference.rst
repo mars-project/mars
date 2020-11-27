@@ -200,12 +200,12 @@ Utilities
    utils.validation.check_is_fitted
    utils.validation.column_or_1d
 
-.. _tensorflow_ref:
+.. _lightgbm_ref:
 
-TensorFlow Integration
-======================
+LightGBM Integration
+====================
 
-.. automodule:: mars.learn.contrib.tensorflow
+.. automodule:: mars.learn.contrib.lightgbm
    :no-members:
    :no-inherited-members:
 
@@ -214,7 +214,9 @@ TensorFlow Integration
 .. autosummary::
    :toctree: generated/
 
-   contrib.tensorflow.run_tensorflow_script
+   contrib.lightgbm.LGBMClassifier
+   contrib.lightgbm.LGBMRegressor
+   contrib.lightgbm.LGBMRanker
 
 .. _pytorch_ref:
 
@@ -235,6 +237,39 @@ PyTorch Integration
    contrib.pytorch.MarsDistributedSampler
    contrib.pytorch.MarsRandomSampler
 
+.. _statsmodels_ref:
+
+StatsModels Integration
+=======================
+
+.. automodule:: mars.learn.contrib.statsmodels
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   contrib.statsmodels.MarsDistributedModel
+   contrib.statsmodels.MarsResults
+
+.. _tensorflow_ref:
+
+TensorFlow Integration
+======================
+
+.. automodule:: mars.learn.contrib.tensorflow
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   contrib.tensorflow.run_tensorflow_script
+
 .. _xgboost_ref:
 
 XGBoost Integration
@@ -254,21 +289,3 @@ XGBoost Integration
    contrib.xgboost.predict
    contrib.xgboost.XGBClassifier
    contrib.xgboost.XGBRegressor
-
-.. _lightgbm_ref:
-
-LightGBM Integration
-====================
-
-.. automodule:: mars.learn.contrib.lightgbm
-   :no-members:
-   :no-inherited-members:
-
-.. currentmodule:: mars.learn
-
-.. autosummary::
-   :toctree: generated/
-
-   contrib.lightgbm.LGBMClassifier
-   contrib.lightgbm.LGBMRegressor
-   contrib.lightgbm.LGBMRanker

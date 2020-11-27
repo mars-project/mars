@@ -137,7 +137,7 @@ class StatsModelsTrain(MergeDictOperand):
         check_chunks_unknown_shape([op.exog, op.endog], TilesError)
 
         exog = op.exog
-        if exog.ndim > 1:
+        if exog.ndim > 1 and exog.chunk_shape[1] > 1:
             exog = exog.rechunk({1: exog.shape[1]})._inplace_tile()
         exog = exog.rebalance(num_partitions=num_partitions)._inplace_tile()
         endog = op.endog.rebalance(num_partitions=num_partitions)._inplace_tile()
@@ -191,7 +191,7 @@ class StatsModelsTrain(MergeDictOperand):
 
     @classmethod
     def execute(cls, ctx, op: "StatsModelsTrain"):
-        if op.merge:
+        if op.merge:  # pragma: no cover
             super().execute(ctx, op)
         elif op.stage == OperandStage.combine:
             cls._execute_combine(ctx, op)

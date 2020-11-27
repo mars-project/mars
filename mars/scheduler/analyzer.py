@@ -363,7 +363,7 @@ class GraphAnalyzer(object):
                 cur = sorted_candidates.pop()
                 while cur.op.key in cur_assigns:
                     cur = sorted_candidates.pop()
-            except IndexError:
+            except IndexError:  # pragma: no cover
                 break
             self._assign_by_bfs(cur, worker, worker_quotas, spread_ranges, op_keys,
                                 cur_assigns, graph=graph)

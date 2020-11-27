@@ -12,6 +12,7 @@ can be obtained in the :ref:`API reference <learn_api>`.
 .. toctree::
    :maxdepth: 2
 
+   lightgbm
+   statsmodels
    tensorflow
    xgboost
-   lightgbm

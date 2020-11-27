@@ -35,8 +35,8 @@ class Test(unittest.TestCase):
         rs = mt.random.RandomState(0)
         self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
-        self.X_df = md.DataFrame(self.X)
-        self.y_s = md.Series(self.y)
+        self.X_df = md.DataFrame(self.X, chunk_size=(100, 5))
+        self.y_s = md.Series(self.y, chunk_size=100)
 
         self.session = new_session().as_default()
         self._old_executor = self.session._sess._executor
