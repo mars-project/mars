@@ -156,7 +156,7 @@ def compute_rechunk(a, chunk_size):
                                                    output_types=a.op.output_types)
                 merge_chunk = merge_chunk_op.new_chunk([old_chunk], shape=merge_chunk_shape,
                                                        index=merge_idx, index_value=new_index_value,
-                                                       dtype=old_chunk.dtype)
+                                                       dtype=old_chunk.dtype, name=old_chunk.name)
             to_merge.append(merge_chunk)
         if len(to_merge) == 1:
             chunk_op = to_merge[0].op.copy()
@@ -183,7 +183,8 @@ def compute_rechunk(a, chunk_size):
                 index_value = _concat_series_index(to_merge)
                 out_chunk = chunk_op.new_chunk(to_merge, shape=chunk_shape,
                                                index=idx, index_value=index_value,
-                                               dtype=to_merge[0].dtype)
+                                               dtype=to_merge[0].dtype,
+                                               name=to_merge[0].name)
             result_chunks.append(out_chunk)
 
     if is_dataframe:
@@ -197,4 +198,4 @@ def compute_rechunk(a, chunk_size):
         else:
             f = op.new_series
         return f([a], a.shape, dtype=a.dtype, index_value=a.index_value,
-                 nsplits=chunk_size, chunks=result_chunks)
+                 nsplits=chunk_size, chunks=result_chunks, name=a.name)
