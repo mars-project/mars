@@ -628,6 +628,15 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
             b = f.read(head_end - head_start)
         mini_df = pd.read_csv(BytesIO(b), sep=sep, index_col=index_col, dtype=dtype,
                               names=names, header=header)
+        if names is None:
+            names = list(mini_df.columns)
+        else:
+            # if names specified, header should be None
+            header = None
+        if usecols:
+            usecols = usecols if isinstance(usecols, list) else [usecols]
+            col_index = sorted(mini_df.columns.get_indexer(usecols))
+            mini_df = mini_df.iloc[:, col_index]
 
     if isinstance(mini_df.index, pd.RangeIndex):
         index_value = parse_index(pd.RangeIndex(-1))
@@ -636,7 +645,6 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     columns_value = parse_index(mini_df.columns, store_data=True)
     if index_col and not isinstance(index_col, int):
         index_col = list(mini_df.columns).index(index_col)
-    names = list(mini_df.columns)
     op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col,
                           usecols=usecols, compression=compression, gpu=gpu,
                           incremental_index=incremental_index, use_arrow_dtype=use_arrow_dtype,
