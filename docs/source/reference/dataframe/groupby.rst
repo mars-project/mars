@@ -44,10 +44,14 @@ Computations / descriptive stats
    GroupBy.cummin
    GroupBy.cumprod
    GroupBy.cumsum
+   GroupBy.kurt
+   GroupBy.kurtosis
    GroupBy.max
    GroupBy.mean
    GroupBy.min
    GroupBy.size
+   GroupBy.sem
+   GroupBy.skew
    GroupBy.std
    GroupBy.sum
    GroupBy.var

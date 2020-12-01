@@ -24,7 +24,8 @@ from ...config import options
 from ...serialize import BoolField
 from ...utils import lazy_import
 from ..arrays import ArrowListArray, ArrowListDtype
-from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
+from .core import DataFrameReductionOperand, DataFrameReductionMixin, \
+    CustomReduction
 
 cudf = lazy_import('cudf', globals=globals())
 
