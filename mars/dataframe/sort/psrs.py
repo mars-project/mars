@@ -567,7 +567,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         super().estimate_size(ctx, op)
         result = ctx[op.outputs[0].key]
         if op.stage == OperandStage.reduce:
-            ctx[op.outputs[0].key] = (result[0], result[1] * 2)
+            ctx[op.outputs[0].key] = (result[0], result[1] * 1.5)
         else:
             ctx[op.outputs[0].key] = result
 

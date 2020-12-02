@@ -101,7 +101,8 @@ class OperandActor(BaseOperandActor):
         elif self.state in OperandState.STORED_STATES:
             for out_key in self._succ_keys:
                 self._get_operand_actor(out_key).add_finished_predecessor(
-                    self._op_key, self.worker, _tell=True, _wait=False)
+                    self._op_key, self.worker, output_sizes=self._data_sizes,
+                    output_shapes=self._data_shapes, _tell=True, _wait=False)
             # require more chunks to execute if the completion caused no successors to run
             if self._is_terminal:
                 # update records in GraphActor to help decide if the whole graph finished execution
@@ -221,8 +222,6 @@ class OperandActor(BaseOperandActor):
                 max_score = v
                 max_worker = k
         if max_score > 0.5:
-            logger.debug('Operand %s(%s) now owning a dominant worker %s. scores=%r',
-                         self._op_key, self._op_name, max_worker, self._worker_scores)
             return self._input_chunks, max_worker
 
     def _is_worker_alive(self):
