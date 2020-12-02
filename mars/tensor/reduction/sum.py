@@ -122,7 +122,10 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):
     """
     a = astensor(a)
     if dtype is None:
-        dtype = np.empty((1,), dtype=a.dtype).sum().dtype
+        if a.dtype == np.object_:
+            dtype = a.dtype
+        else:
+            dtype = np.empty((1,), dtype=a.dtype).sum().dtype
     else:
         dtype = np.dtype(dtype)
     op = TensorSum(axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size)
