@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import contextlib
+import logging
 from enum import Enum
 
 from ...actors import ActorNotExist
 from ...errors import WorkerDead
 from ...utils import classproperty
+
+logger = logging.getLogger(__name__)
 
 
 class OperandState(Enum):
@@ -60,9 +63,10 @@ def rewrite_worker_errors(ignore_error=False):
     rewrite = False
     try:
         yield
-    except (BrokenPipeError, ConnectionRefusedError, ActorNotExist, TimeoutError):
+    except (BrokenPipeError, ConnectionRefusedError, ActorNotExist):
         # we don't raise here, as we do not want
         # the actual stack be dumped
+        logger.exception('Worker connection error detected, will raise WorkerDead')
         rewrite = not ignore_error
     if rewrite:
         raise WorkerDead

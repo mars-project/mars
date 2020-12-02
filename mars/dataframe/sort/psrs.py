@@ -354,9 +354,10 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
         if a.shape[op.axis] < n:
             num = n // a.shape[op.axis] + 1
             res = execute_sort_values(xdf.concat([res] * num), op, by=by)
-        w = int(res.shape[op.axis] // n)
 
-        slc = slice(0, n * w, w)
+        w = res.shape[op.axis] * 1.0 / (n + 1)
+        slc = np.linspace(max(w - 1, 0), res.shape[op.axis] - 1,
+                          num=n, endpoint=False).astype(int)
         if op.axis == 1:
             slc = (slice(None), slc)
         if op.sort_type == 'sort_values':
@@ -386,7 +387,8 @@ class DataFramePSRSConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin)
         p = len(inputs)
         assert a.shape[op.axis] == p ** 2
 
-        slc = slice(p - 1, (p - 1) ** 2 + 1, p - 1)
+        slc = np.linspace(p - 1, a.shape[op.axis] - 1,
+                          num=p - 1, endpoint=False).astype(int)
         if op.axis == 1:
             slc = (slice(None), slc)
         if op.sort_type == 'sort_values':
@@ -540,21 +542,34 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def _execute_reduce(cls, ctx, op):
         input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+        if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
+            raw_inputs = [ctx.pop((input_key, op.shuffle_key)) for input_key in input_keys]
+        else:
+            raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+
         xdf = pd if isinstance(raw_inputs[0], (pd.DataFrame, pd.Series)) else cudf
-        concat_values = xdf.concat(raw_inputs, axis=op.axis)
+        if xdf is pd:
+            concat_values = xdf.concat(raw_inputs, axis=op.axis, copy=False)
+        else:
+            concat_values = xdf.concat(raw_inputs, axis=op.axis)
+        del raw_inputs[:]
+
         if isinstance(concat_values, xdf.DataFrame):
             concat_values.drop(_PSRS_DISTINCT_COL, axis=1, inplace=True, errors='ignore')
-
-        del raw_inputs[:]
-        if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
-            for input_key in input_keys:
-                ctx.pop((input_key, op.shuffle_key), None)
 
         if op.sort_type == 'sort_values':
             ctx[op.outputs[0].key] = execute_sort_values(concat_values, op)
         else:
             ctx[op.outputs[0].key] = execute_sort_index(concat_values, op)
+
+    @classmethod
+    def estimate_size(cls, ctx, op):
+        super().estimate_size(ctx, op)
+        result = ctx[op.outputs[0].key]
+        if op.stage == OperandStage.reduce:
+            ctx[op.outputs[0].key] = (result[0], result[1] * 1.5)
+        else:
+            ctx[op.outputs[0].key] = result
 
     @classmethod
     def execute(cls, ctx, op):
