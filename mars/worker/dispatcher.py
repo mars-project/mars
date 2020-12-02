@@ -53,7 +53,7 @@ class DispatchActor(WorkerActor):
 
             callback_addr = callback[0][-1]
             if callback_addr != self.address and self.get_schedulers() and \
-                    not isinstance(ex, (TimeoutError, promise.PromiseTimeout)):
+                    isinstance(ex, (ActorNotExist, BrokenPipeError, ConnectionRefusedError)):
                 self.get_actor_ref(ResourceActor.default_uid()).detach_dead_workers([callback_addr], _tell=True)
 
             if slot is not None:

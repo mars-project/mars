@@ -395,14 +395,15 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
 
         with device(device_id):
             n = op.n_partition
-            w = int(a.shape[op.axis] // n)
+            w = a.shape[op.axis] * 1.0 / (n + 1)
             if not op.return_indices:
                 if op.kind is not None:
                     # sort
                     res = ctx[op.outputs[0].key] = _sort(a, op, xp)
                 else:
                     # do not sort, prepare for sample by `xp.partition`
-                    kth = np.arange(0, n * w, w)
+                    kth = xp.linspace(max(w - 1, 0), a.shape[op.axis] - 1,
+                                      num=n, endpoint=False).astype(int)
                     ctx[op.outputs[0].key] = res = xp.partition(
                         a, kth, axis=op.axis, order=op.order)
             else:
@@ -411,7 +412,8 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
                     indices = _argsort(a, op, xp)
                 else:
                     # do not sort, use `xp.argpartition`
-                    kth = np.arange(0, n * w, w)
+                    kth = xp.linspace(max(w - 1, 0), a.shape[op.axis] - 1,
+                                      num=n, endpoint=False).astype(int)
                     indices = xp.argpartition(
                         a, kth, axis=op.axis, order=op.order)
                 ctx[op.outputs[0].key] = res = xp.take_along_axis(a, indices, op.axis)
@@ -420,7 +422,9 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
             # do regular sample
             if op.order is not None:
                 res = res[op.order]
-            slc = (slice(None),) * op.axis + (slice(0, n * w, w),)
+            slc = xp.linspace(max(w - 1, 0), a.shape[op.axis] - 1,
+                              num=n, endpoint=False).astype(int)
+            slc = (slice(None),) * op.axis + (slc,)
             ctx[op.outputs[-1].key] = res[slc]
 
 
@@ -461,10 +465,12 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
                 _sort(a, op, xp, inplace=True)
             else:
                 # prepare for sampling via `partition`
-                kth = xp.arange(p - 1, (p - 1) ** 2 + 1, p - 1)
+                kth = xp.linspace(p - 1, a.shape[op.axis] - 1,
+                                  num=p - 1, endpoint=False).astype(int)
                 a.partition(kth, axis=op.axis)
 
-            select = slice(p, p ** 2 + 1, p)
+            select = xp.linspace(p - 1, a.shape[op.axis] - 1,
+                                 num=p - 1, endpoint=False).astype(int)
             slc = (slice(None),) * op.axis + (select,)
             ctx[op.outputs[0].key] = result = a[slc]
             assert result.shape[op.axis] == p - 1
