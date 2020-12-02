@@ -56,6 +56,6 @@ from .arrays import ArrowStringDtype, ArrowStringArray, ArrowListDtype, ArrowLis
 # noinspection PyUnresolvedReferences
 from pandas import Timedelta, Timestamp, offsets, NaT, Interval
 try:
-    from pandas import NA
+    from pandas import NA, NamedAgg
 except ImportError:  # pragma: no cover
     pass

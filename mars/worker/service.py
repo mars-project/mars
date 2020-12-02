@@ -172,9 +172,10 @@ class WorkerService(object):
         self._min_mem_size = calc_size_by_str(self._min_mem_size, self._total_mem)
         self._hard_mem_limit = calc_size_by_str(self._hard_mem_limit, self._total_mem)
 
-        self._cache_mem_size = calc_size_by_str(self._cache_mem_size, self._total_mem)
+        raw_cache_mem_size = self._cache_mem_size = \
+            calc_size_by_str(self._cache_mem_size, self._total_mem)
         if self._cache_mem_size is None:
-            self._cache_mem_size = mem_stats.free // 2
+            raw_cache_mem_size = self._cache_mem_size = mem_stats.free // 2
 
         plasma_size = self._get_plasma_size()
         if plasma_size is not None:
@@ -196,7 +197,7 @@ class WorkerService(object):
 
         if options.worker.min_cache_mem_size:
             min_cache_mem_size = calc_size_by_str(options.worker.min_cache_mem_size, self._total_mem)
-            if min_cache_mem_size > self._cache_mem_size:
+            if min(min_cache_mem_size, raw_cache_mem_size) > self._cache_mem_size:
                 raise MemoryError(f'Cache memory size ({self._cache_mem_size}) smaller than '
                                   f'minimal size ({min_cache_mem_size}), worker cannot start')
 
