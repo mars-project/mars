@@ -58,6 +58,12 @@ class Test(unittest.TestCase):
         self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
+        # test string dtype
+        a = tensor(list('abcdefghi'), dtype=object)
+        self.assertEqual(self.executor.execute_tensor(a.sum(), concat=True)[0], 'abcdefghi')
+        a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
+        self.assertEqual(self.executor.execute_tensor(a.sum(), concat=True)[0], 'abcdefghi')
+
     def testMaxMinExecution(self):
         raw = np.random.randint(10000, size=(10, 10, 10))
 
@@ -94,6 +100,12 @@ class Test(unittest.TestCase):
             self.executor.execute_tensor(arr.min(axis=1), concat=True)[0].toarray())
         self.assertTrue(arr.min(axis=1).issparse())
 
+        # test string dtype
+        a = tensor(list('abcdefghi'), dtype=object)
+        self.assertEqual(self.executor.execute_tensor(a.max(), concat=True)[0], 'i')
+        a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
+        self.assertEqual(self.executor.execute_tensor(a.max(), concat=True)[0], 'i')
+
     def testAllAnyExecution(self):
         raw1 = np.zeros((10, 15))
         raw2 = np.ones((10, 15))
@@ -119,6 +131,12 @@ class Test(unittest.TestCase):
 
         self.assertEqual(raw.A.all(), self.executor.execute_tensor(arr.all())[0])
         self.assertEqual(raw.A.any(), self.executor.execute_tensor(arr.any())[0])
+
+        # test string dtype
+        a = tensor(list('abcdefghi'), dtype=object)
+        self.assertEqual(self.executor.execute_tensor(a.all(), concat=True)[0], 'i')
+        a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
+        self.assertEqual(self.executor.execute_tensor(a.any(), concat=True)[0], 'a')
 
     def testMeanExecution(self):
         raw1 = np.random.random((20, 25))
@@ -168,6 +186,9 @@ class Test(unittest.TestCase):
 
         arr = mean(1)
         self.assertEqual(self.executor.execute_tensor(arr)[0], 1)
+
+        with self.assertRaises(TypeError):
+            self.executor.execute_tensor(tensor(list('abcdefghi'), dtype=object).mean())
 
     def testVarExecution(self):
         raw1 = np.random.random((20, 25))
@@ -322,6 +343,9 @@ class Test(unittest.TestCase):
         self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
+        with self.assertRaises(TypeError):
+            self.executor.execute_tensor(tensor(list('abcdefghi'), dtype=object).argmax())
+
     @ignore_warning
     def testNanReduction(self):
         raw = np.random.choice(a=[0, 1, np.nan], size=(10, 10), p=[0.3, 0.4, 0.3])
@@ -419,6 +443,14 @@ class Test(unittest.TestCase):
         np.testing.assert_allclose(res, expected)
         self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        # test string dtype
+        a = tensor(list('abcdefghi'), dtype=object)
+        np.testing.assert_array_equal(self.executor.execute_tensor(a.cumsum(), concat=True)[0],
+                                      np.cumsum(np.array(list('abcdefghi'), dtype=object)))
+        a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
+        np.testing.assert_array_equal(self.executor.execute_tensor(a.cumsum(), concat=True)[0],
+                                      np.cumsum(np.array(list('abcdefghi'), dtype=object)))
 
     def testNanCumReduction(self):
         raw = np.random.randint(5, size=(8, 8, 8))
@@ -518,6 +550,12 @@ class Test(unittest.TestCase):
         expected = np.count_nonzero(raw.A, axis=1)
         np.testing.assert_equal(res, expected)
 
+        # test string dtype
+        a = tensor(list('abcdefghi'), dtype=object)
+        self.assertEqual(self.executor.execute_tensor(count_nonzero(a), concat=True)[0], 9)
+        a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
+        self.assertEqual(self.executor.execute_tensor(count_nonzero(a), concat=True)[0], 9)
+
     def testAllcloseExecution(self):
         a = tensor([1e10, 1e-7], chunk_size=1)
         b = tensor([1.00001e10, 1e-8], chunk_size=1)
@@ -550,6 +588,11 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(t)[0]
         self.assertFalse(res)
+
+        # test string dtype
+        with self.assertRaises(TypeError):
+            a = tensor(list('abcdefghi'), dtype=object)
+            self.executor.execute_tensor(allclose(a, a))
 
     def testArrayEqual(self):
         a = ones((10, 5), chunk_size=1)

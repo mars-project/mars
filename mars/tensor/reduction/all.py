@@ -102,5 +102,9 @@ def all(a, axis=None, out=None, keepdims=None, combine_size=None):
 
     """
     a = astensor(a)
-    op = TensorAll(axis=axis, dtype=np.dtype(bool), keepdims=keepdims, combine_size=combine_size)
+    if a.dtype == np.object_:
+        dtype = a.dtype
+    else:
+        dtype = np.dtype(bool)
+    op = TensorAll(axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size)
     return op(a, out=out)
