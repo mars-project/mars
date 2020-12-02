@@ -104,5 +104,9 @@ def any(a, axis=None, out=None, keepdims=None, combine_size=None):
 
     """
     a = astensor(a)
-    op = TensorAny(axis=axis, dtype=np.dtype(bool), keepdims=keepdims, combine_size=combine_size)
+    if a.dtype == np.object_:
+        dtype = a.dtype
+    else:
+        dtype = np.dtype(bool)
+    op = TensorAny(axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size)
     return op(a, out=out)
