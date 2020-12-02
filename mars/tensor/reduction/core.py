@@ -272,7 +272,10 @@ class TensorReductionMixin(TensorOperandMixin):
                 ret = reduce_func(input_chunk, axis=axis,
                                   keepdims=bool(op.keepdims))
 
-            ctx[out.key] = ret.astype(op.dtype, order=out.order.value, copy=False)
+            if hasattr(ret, 'astype'):
+                # for non-object dtype
+                ret = ret.astype(op.dtype, order=out.order.value, copy=False)
+            ctx[out.key] = ret
 
     @classmethod
     def execute_one_chunk(cls, ctx, op):
@@ -378,9 +381,13 @@ class TensorArgReductionMixin(TensorReductionMixin):
         offset = op.offset
         chunk = op.outputs[0]
         with device(device_id):
-            vals = agg_func_name(in_chunk, axis=arg_axis).reshape(chunk.shape)
+            vals = agg_func_name(in_chunk, axis=arg_axis)
+            if hasattr(vals, 'reshape'):
+                vals = vals.reshape(chunk.shape)
             try:
-                arg = arg_func(in_chunk, axis=arg_axis).reshape(chunk.shape)
+                arg = arg_func(in_chunk, axis=arg_axis)
+                if hasattr(arg, 'reshape'):
+                    arg = arg.reshape(chunk.shape)
             except ValueError:
                 # handle all NaN
                 arg = arg_func(xp.where(xp.isnan(in_chunk), np.inf, in_chunk),
@@ -474,7 +481,7 @@ class TensorCumReductionMixin(TensorReductionMixin):
                 output_chunks.append(chunk)
                 continue
 
-            to_cum_chunks = [chunk]
+            to_cum_chunks = []
             for i in range(chunk.index[axis]):
                 to_cum_index = chunk.index[:axis] + (i,) + chunk.index[axis + 1:]
                 shape = chunk.shape[:axis] + (1,) + chunk.shape[axis + 1:]
@@ -483,6 +490,7 @@ class TensorCumReductionMixin(TensorReductionMixin):
                 sliced_chunk = slice_op.new_chunk([to_cum_chunk], shape=shape,
                                                   index=to_cum_index, order=out_tensor.order)
                 to_cum_chunks.append(sliced_chunk)
+            to_cum_chunks.append(chunk)
 
             bin_op = bin_op_type(dtype=chunk.dtype)
             output_chunk = bin_op.new_chunk(to_cum_chunks, shape=chunk.shape,
