@@ -14,8 +14,6 @@
 
 from collections.abc import Iterable
 
-from pandas.core import groupby as pd_groupby
-
 from ... import opcodes
 from ...core import OutputType
 from ...serialize import AnyField
@@ -49,7 +47,7 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
     def __call__(self, groupby):
         indexed = groupby.op.build_mock_groupby()[self.selection]
 
-        if isinstance(indexed, pd_groupby.SeriesGroupBy):
+        if indexed.ndim == 1:
             self.output_types = [OutputType.series_groupby]
             params = dict(shape=(groupby.shape[0],), name=self.selection,
                           dtype=groupby.dtypes[self.selection],

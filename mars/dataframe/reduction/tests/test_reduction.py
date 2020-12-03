@@ -517,6 +517,8 @@ class TestAggregate(TestBase):
         self.assertSetEqual(set(agg_chunk.index_value.to_pandas()), all_cols)
         self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
 
+        with self.assertRaises(TypeError):
+            df.agg(sum_0='sum', mean_0='mean')
         with self.assertRaises(NotImplementedError):
             df.agg({0: ['sum', 'min', 'var'], 9: ['mean', 'var', 'std']}, axis=1)
 
@@ -554,6 +556,9 @@ class TestAggregate(TestBase):
         self.assertEqual(agg_chunk.shape, (len(agg_funcs),))
         self.assertListEqual(list(agg_chunk.index_value.to_pandas()), agg_funcs)
         self.assertEqual(agg_chunk.op.stage, OperandStage.agg)
+
+        with self.assertRaises(TypeError):
+            series.agg(sum_0=(0, 'sum'), mean_0=(0, 'mean'))
 
 
 class TestReductionCompiler(TestBase):

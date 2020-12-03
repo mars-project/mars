@@ -17,6 +17,7 @@ import unittest
 
 from mars.worker.service import WorkerService
 from mars.config import options
+from mars.tests.core import patch_method
 
 
 class Test(unittest.TestCase):
@@ -42,7 +43,8 @@ class Test(unittest.TestCase):
         with self.assertRaises(MemoryError):
             WorkerService(soft_mem_limit='128m', cache_mem_size='256m')
 
-        with self.assertRaises(MemoryError):
+        with self.assertRaises(MemoryError), \
+                patch_method(WorkerService._get_plasma_size, new=lambda *_, **__: 0):
             WorkerService(min_cache_mem_size='1g', cache_mem_size='256m')
 
         svc = WorkerService(ignore_avail_mem=True, spill_dirs='/tmp/a', min_cache_mem_size=0)
