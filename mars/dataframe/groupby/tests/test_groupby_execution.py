@@ -168,9 +168,17 @@ class Test(TestBase):
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                        df1.groupby('b').a.sum())
 
+        r = mdf.groupby('b', as_index=False).b.count()
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b', as_index=False).b.count())
+
         r = mdf.groupby('b').a.agg(['sum', 'mean', 'var'], method='tree')
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       df1.groupby('b').a.agg(['sum', 'mean', 'var']))
+
+        r = mdf.groupby('b', as_index=False).b.agg({'cnt': 'count'})
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      df1.groupby('b', as_index=False).b.agg({'cnt': 'count'}))
 
         r = mdf.groupby('b').a.apply(lambda x: x + 1)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
@@ -269,6 +277,13 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw[['c1', 'c3']].groupby(raw['c2']).agg(MockReduction2()))
 
+        r = mdf.groupby('c2').agg(sum_c1=md.NamedAgg('c1', 'sum'), min_c1=md.NamedAgg('c1', 'min'),
+                                  mean_c3=md.NamedAgg('c3', 'mean'))
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.groupby('c2').agg(sum_c1=md.NamedAgg('c1', 'sum'),
+                                                            min_c1=md.NamedAgg('c1', 'min'),
+                                                            mean_c3=md.NamedAgg('c3', 'mean')))
+
     def testSeriesGroupByAgg(self):
         rs = np.random.RandomState(0)
         series1 = pd.Series(rs.rand(10))
@@ -308,6 +323,10 @@ class Test(TestBase):
         r = ms1.groupby(lambda x: x % 2).agg(MockReduction2(name='custom_r'))
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                        series1.groupby(lambda x: x % 2).agg(MockReduction2(name='custom_r')))
+
+        r = ms1.groupby(lambda x: x % 2).agg(col_var='var', col_skew='skew')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      series1.groupby(lambda x: x % 2).agg(col_var='var', col_skew='skew'))
 
     @require_cudf
     def testGPUGroupByAgg(self):

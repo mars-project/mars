@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import itertools
-from collections import OrderedDict
-from collections.abc import Iterable
-from typing import List
+from typing import List, Dict
 
 import numpy as np
 import pandas as pd
@@ -31,10 +29,10 @@ from ...utils import enter_current_session, lazy_import
 from ..core import GROUPBY_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
-from ..reduction.core import CustomReduction, ReductionCompiler, ReductionSteps, \
-    ReductionPreStep, ReductionAggStep, ReductionPostStep
+from ..reduction.core import ReductionCompiler, ReductionSteps, ReductionPreStep, \
+    ReductionAggStep, ReductionPostStep
 from ..reduction.aggregation import mean_function, var_function, sem_function, \
-    skew_function, kurt_function, is_funcs_aggregate
+    skew_function, kurt_function, is_funcs_aggregate, normalize_reduction_funcs
 from ..utils import parse_index, build_concatenated_rows_frame
 from .core import DataFrameGroupByOperand
 
@@ -86,8 +84,10 @@ del _patch_groupby_kurt
 class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_AGG
 
-    _func = AnyField('func')
     _raw_func = AnyField('raw_func')
+    _raw_func_kw = DictField('raw_func_kw')
+    _func = AnyField('func')
+    _func_rename = ListField('func_rename')
 
     _groupby_params = DictField('groupby_params')
 
@@ -102,22 +102,32 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     # for chunk
     _tileable_op_key = StringField('tileable_op_key')
 
-    def __init__(self, func=None, method=None, groupby_params=None, raw_func=None,
-                 use_inf_as_na=None, combine_size=None, pre_funcs=None, agg_funcs=None,
-                 post_funcs=None, stage=None, output_types=None, tileable_op_key=None, **kw):
-        super().__init__(_func=func, _method=method, _groupby_params=groupby_params,
+    def __init__(self, raw_func=None, raw_func_kw=None, func=None, func_rename=None,
+                 method=None, groupby_params=None, use_inf_as_na=None, combine_size=None,
+                 pre_funcs=None, agg_funcs=None, post_funcs=None, stage=None,
+                 output_types=None, tileable_op_key=None, **kw):
+        super().__init__(_raw_func=raw_func, _raw_func_kw=raw_func_kw, _func=func,
+                         _func_rename=func_rename, _method=method, _groupby_params=groupby_params,
                          _combine_size=combine_size, _use_inf_as_na=use_inf_as_na,
                          _pre_funcs=pre_funcs, _agg_funcs=agg_funcs, _post_funcs=post_funcs,
-                         _raw_func=raw_func, _stage=stage, _output_types=output_types,
+                         _stage=stage, _output_types=output_types,
                          _tileable_op_key=tileable_op_key, **kw)
+
+    @property
+    def raw_func(self):
+        return self._raw_func
+
+    @property
+    def raw_func_kw(self) -> Dict:
+        return self._raw_func_kw
 
     @property
     def func(self):
         return self._func
 
     @property
-    def raw_func(self):
-        return self._raw_func
+    def func_rename(self) -> List:
+        return self._func_rename
 
     @property
     def groupby_params(self) -> dict:
@@ -163,32 +173,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                     by.append(v)
             self._groupby_params['by'] = by
 
-    def _normalize_funcs(self):
-        self._raw_func = self._func
-
-        if isinstance(self._func, dict):
-            new_func = OrderedDict()
-            for k, v in self._func.items():
-                if isinstance(v, str) or callable(v):
-                    new_func[k] = [v]
-                else:
-                    new_func[k] = v
-            self._func = new_func
-        elif isinstance(self._func, Iterable) and not isinstance(self._func, str):
-            self._func = list(self._func)
-        else:
-            self._func = [self._func]
-
-        custom_idx = 0
-        if isinstance(self._func, list):
-            custom_iter = (f for f in self._func if isinstance(f, CustomReduction))
-        else:
-            custom_iter = (f for f in self._func.values() if isinstance(f, CustomReduction))
-        for r in custom_iter:
-            if r.name == '<custom>':
-                r.name = f'<custom_{custom_idx}>'
-                custom_idx += 1
-
     def _get_inputs(self, inputs):
         if isinstance(self._groupby_params['by'], list):
             for v in self._groupby_params['by']:
@@ -197,8 +181,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return inputs
 
     def _call_dataframe(self, groupby, input_df):
-        grouped = groupby.op.build_mock_groupby()
-        agg_df = grouped.aggregate(self.raw_func)
+        agg_df = groupby.op.build_mock_groupby().aggregate(self.raw_func, **self.raw_func_kw)
 
         shape = (np.nan, agg_df.shape[1])
         index_value = parse_index(agg_df.index, groupby.key, groupby.index_value.key)
@@ -221,7 +204,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                                   columns_value=parse_index(agg_df.columns, store_data=True))
 
     def _call_series(self, groupby, in_series):
-        agg_result = groupby.op.build_mock_groupby().aggregate(self.raw_func)
+        agg_result = groupby.op.build_mock_groupby().aggregate(self.raw_func, **self.raw_func_kw)
 
         index_value = parse_index(agg_result.index, groupby.key, groupby.index_value.key)
         index_value.value.should_be_monotonic = True
@@ -237,7 +220,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                                    name=agg_result.name, index_value=index_value)
 
     def __call__(self, groupby):
-        self._normalize_funcs()
+        normalize_reduction_funcs(self, ndim=groupby.ndim)
         df = groupby
         while df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
             df = df.inputs[0]
@@ -322,10 +305,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         else:
             func_iter = ((col, f) for col, funcs in op.func.items() for f in funcs)
 
-        for col, f in func_iter:
+        func_renames = op.func_rename if op.func_rename is not None else itertools.repeat(None)
+        for func_rename, (col, f) in zip(func_renames, func_iter):
             func_name = None
             if isinstance(f, str):
                 f, func_name = _agg_functions[f], f
+            if func_rename is not None:
+                func_name = func_rename
 
             func_cols = None
             if col is not None:
@@ -698,7 +684,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             result = xdf.concat(aggs, axis=1)
             if not op.groupby_params.get('as_index', True) \
                     and col_value.nlevels == result.columns.nlevels:
-                result.reset_index(inplace=True)
+                result.reset_index(inplace=True, drop=result.index.name in result.columns)
             result = result.reindex(col_value, axis=1)
         else:
             result = xdf.concat(aggs)
@@ -725,7 +711,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             pd.reset_option('mode.use_inf_as_na')
 
 
-def agg(groupby, func, method='auto', *args, **kwargs):
+def agg(groupby, func=None, method='auto', *args, **kwargs):
     """
     Aggregate using one or more operations on grouped data.
 
@@ -755,11 +741,11 @@ def agg(groupby, func, method='auto', *args, **kwargs):
         raise ValueError(f"Method {method} is not available, "
                          "please specify 'tree' or 'shuffle")
 
-    if not is_funcs_aggregate(func):
+    if not is_funcs_aggregate(func, ndim=groupby.ndim):
         return groupby.transform(func, *args, _call_agg=True, **kwargs)
 
     use_inf_as_na = kwargs.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
-    agg_op = DataFrameGroupByAgg(func=func, method=method, raw_func=func,
+    agg_op = DataFrameGroupByAgg(raw_func=func, raw_func_kw=kwargs, method=method,
                                  groupby_params=groupby.op.groupby_params,
                                  combine_size=options.combine_size,
                                  use_inf_as_na=use_inf_as_na)
