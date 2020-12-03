@@ -15,7 +15,10 @@
 import os
 import unittest
 
+import numpy as np
+
 from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+import mars.dataframe as md
 import mars.tensor as mt
 from mars.session import new_session
 
@@ -72,3 +75,13 @@ class Test(LearnIntegrationTestBase):
             self.assertEqual(prediction.shape[0], len(self.X))
 
             self.assertIsInstance(prediction, mt.Tensor)
+
+            X = md.DataFrame(np.random.rand(100, 20), chunk_size=20)
+            y = md.DataFrame(np.random.randint(0, 2, (100, 1)), chunk_size=20)
+            classifier = LGBMClassifier(n_estimators=2)
+            classifier.fit(X, y, session=sess, run_kwargs=run_kwargs)
+            prediction = classifier.predict(X, session=sess, run_kwargs=run_kwargs)
+
+            self.assertEqual(prediction.ndim, 1)
+            self.assertEqual(prediction.shape[0], len(X))
+            self.assertIsInstance(prediction, md.Series)
