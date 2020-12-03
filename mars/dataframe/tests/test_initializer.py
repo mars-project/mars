@@ -65,6 +65,10 @@ class Test(TestBase):
         self.assertEqual(len(results), 10)
         pd.testing.assert_frame_equal(pd.concat(results), raw)
 
+        # test check instance
+        r = r * 2
+        self.assertIsInstance(r, md.DataFrame)
+
     def testSeriesInitializer(self):
         # from tensor
         raw = np.random.rand(100)
@@ -100,6 +104,10 @@ class Test(TestBase):
         results = self.executor.execute_dataframe(r)
         self.assertEqual(len(results), 10)
         pd.testing.assert_series_equal(pd.concat(results), raw)
+
+        # test check instance
+        r = r * 2
+        self.assertIsInstance(r, md.Series)
 
     def testIndexInitializer(self):
         def _concat_idx(results):

@@ -60,7 +60,14 @@ class ShuffleProxyActor(BaseOperandActor):
         reducer_workers = self._reducer_workers
         data_to_addresses = dict()
 
+        unused_keys = []
+
         for (chunk_key, shuffle_key), data_size in output_sizes.items() or ():
+            if shuffle_key not in shuffle_keys_to_op:
+                # outputs may be pruned, hence those keys become useless
+                unused_keys.append((chunk_key, shuffle_key))
+                continue
+
             succ_op_key = shuffle_keys_to_op[shuffle_key]
             meta = self._reducer_to_mapper[succ_op_key][op_key] = \
                 WorkerMeta(chunk_size=data_size, workers=(worker,),
@@ -69,6 +76,9 @@ class ShuffleProxyActor(BaseOperandActor):
             if reducer_worker and reducer_worker != worker:
                 data_to_addresses[(chunk_key, shuffle_key)] = [reducer_worker]
                 meta.workers += (reducer_worker,)
+
+        if unused_keys:
+            self._free_data_in_worker(unused_keys, [(worker,)] * len(unused_keys))
 
         if data_to_addresses:
             try:

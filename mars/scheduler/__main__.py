@@ -16,6 +16,7 @@ import logging
 import os
 
 from .. import resource
+from ..config import options
 from ..base_app import BaseApplication
 from ..distributor import MarsDistributor
 from .service import SchedulerService
@@ -42,6 +43,7 @@ class SchedulerApplication(BaseApplication):
         environ = environ or os.environ
         args.disable_failover = args.disable_failover \
             or bool(int(environ.get('MARS_DISABLE_FAILOVER', '0')))
+        options.scheduler.dump_graph_data = bool(int(environ.get('MARS_DUMP_GRAPH_DATA', '0')))
         return args
 
     def create_pool(self, *args, **kwargs):
