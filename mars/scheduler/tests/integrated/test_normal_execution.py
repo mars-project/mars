@@ -80,6 +80,12 @@ class Test(SchedulerIntegratedTest):
         result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
         np.testing.assert_array_equal(result, raw[raw.argmin(axis=1), np.arange(10)])
 
+        raw = np.random.RandomState(0).rand(1000)
+        a = mt.tensor(raw, chunk_size=100)
+        r = mt.median(a)
+        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        np.testing.assert_array_equal(result, np.median(raw))
+
     @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
                      'does not run without etcd')
     def testMainTensorWithEtcd(self):

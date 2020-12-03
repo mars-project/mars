@@ -70,3 +70,6 @@ class Test(LearnIntegrationTestBase):
             classifier = XGBClassifier(verbosity=1, n_estimators=2)
             classifier.fit(X, y, session=sess, run_kwargs=run_kwargs)
             prediction = classifier.predict(X, session=sess, run_kwargs=run_kwargs)
+
+            self.assertIsInstance(prediction, md.Series)
+            self.assertEqual(prediction.shape[0], len(X))
