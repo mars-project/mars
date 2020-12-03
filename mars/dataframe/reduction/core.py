@@ -152,8 +152,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             dtypes, index = out_df.dtype, None
 
         out_df = recursive_tile(in_df.agg(
-            cls._make_agg_object(op), axis=op.axis or 0, numeric_only=op.numeric_only,
-            bool_only=op.bool_only, combine_size=op.combine_size, _output_type=output_type,
+            cls._make_agg_object(op), axis=op.axis or 0, _numeric_only=op.numeric_only,
+            _bool_only=op.bool_only, _combine_size=op.combine_size, _output_type=output_type,
             _dtypes=dtypes, _index=index
         ))
         return [out_df]

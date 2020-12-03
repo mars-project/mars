@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
     pa = None
 
 from mars.config import option_context
-from mars.dataframe import CustomReduction
+from mars.dataframe import CustomReduction, NamedAgg
 from mars.dataframe.base import to_gpu
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
@@ -671,12 +671,18 @@ class TestAggregate(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(result, concat=True)[0],
                                       data.agg({0: ['sum', 'min', 'var'], 9: ['mean', 'var', 'std']}))
 
+        result = df.agg(sum_0=NamedAgg(0, 'sum'), min_0=NamedAgg(0, 'min'),
+                        mean_9=NamedAgg(9, 'mean'))
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(result, concat=True)[0],
+                                      data.agg(sum_0=NamedAgg(0, 'sum'), min_0=NamedAgg(0, 'min'),
+                                               mean_9=NamedAgg(9, 'mean')))
+
     def testSeriesAggregate(self):
         all_aggs = ['sum', 'prod', 'min', 'max', 'count', 'size',
                     'mean', 'var', 'std', 'sem', 'skew', 'kurt']
         data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
-
         series = from_pandas_series(data)
+
         result = series.agg(all_aggs)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
                                        data.agg(all_aggs))
@@ -696,6 +702,14 @@ class TestAggregate(TestBase):
         result = series.agg(all_aggs)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
                                        data.agg(all_aggs))
+
+        result = series.agg({'col_sum': 'sum', 'col_count': 'count'})
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
+                                       data.agg({'col_sum': 'sum', 'col_count': 'count'}))
+
+        result = series.agg(col_var='var', col_skew='skew')
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(result, concat=True)[0],
+                                       data.agg(col_var='var', col_skew='skew'))
 
 
 class MockReduction1(CustomReduction):
