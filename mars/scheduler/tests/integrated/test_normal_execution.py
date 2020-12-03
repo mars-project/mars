@@ -110,89 +110,105 @@ class Test(SchedulerIntegratedTest):
         self.start_processes(etcd=False, scheduler_args=['-Dscheduler.aggressive_assign=true'])
         sess = new_session(self.session_manager_ref.address)
 
-        # test binary arithmetics with different indices
-        raw1 = pd.DataFrame(np.random.rand(10, 10))
-        df1 = md.DataFrame(raw1, chunk_size=5)
-        raw2 = pd.DataFrame(np.random.rand(10, 10))
-        df2 = md.DataFrame(raw2, chunk_size=6)
-        r = df1 + df2
-        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        pd.testing.assert_frame_equal(result, raw1 + raw2)
+        # # test binary arithmetics with different indices
+        # raw1 = pd.DataFrame(np.random.rand(10, 10))
+        # df1 = md.DataFrame(raw1, chunk_size=5)
+        # raw2 = pd.DataFrame(np.random.rand(10, 10))
+        # df2 = md.DataFrame(raw2, chunk_size=6)
+        # r = df1 + df2
+        # result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        # pd.testing.assert_frame_equal(result, raw1 + raw2)
+        #
+        # raw1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
+        #                     columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        # df1 = md.DataFrame(raw1, chunk_size=(10, 5))
+        # raw2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
+        #                     columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+        # df2 = md.DataFrame(raw2, chunk_size=(10, 6))
+        # r = df1 + df2
+        # result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        # pd.testing.assert_frame_equal(result, raw1 + raw2)
+        #
+        # raw1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
+        #                     columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        # df1 = md.DataFrame(raw1, chunk_size=5)
+        # raw2 = pd.DataFrame(np.random.rand(10, 10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
+        #                     columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+        # df2 = md.DataFrame(raw2, chunk_size=6)
+        # r = df1 + df2
+        # result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        # pd.testing.assert_frame_equal(result, raw1 + raw2)
+        #
+        # # test sort_values
+        # raw1 = pd.DataFrame(np.random.rand(10, 10))
+        # raw1[0] = raw1[0].apply(str)
+        # raw1.columns = pd.MultiIndex.from_product([list('AB'), list('CDEFG')])
+        # df1 = md.DataFrame(raw1, chunk_size=5)
+        # r = df1.sort_values([('A', 'C')])
+        # result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        # pd.testing.assert_frame_equal(result, raw1.sort_values([('A', 'C')]))
+        #
+        # rs = np.random.RandomState(0)
+        # raw2 = pd.DataFrame({'a': rs.rand(10),
+        #                     'b': [f's{rs.randint(1000)}' for _ in range(10)]
+        #                     })
+        # raw2['b'] = raw2['b'].astype(md.ArrowStringDtype())
+        # mdf = md.DataFrame(raw2, chunk_size=4)
+        # filtered = mdf[mdf['a'] > 0.5]
+        # df2 = filtered.sort_values(by='b')
+        # result = df2.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        # expected = raw2[raw2['a'] > 0.5].sort_values(by='b')
+        # pd.testing.assert_frame_equal(result, expected)
+        #
+        # s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
+        # series1 = md.Series(s1, chunk_size=6)
+        # result = series1.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        # pd.testing.assert_series_equal(result, s1)
+        #
+        # # test reindex
+        # data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        # df3 = md.DataFrame(data, chunk_size=4)
+        # r = df3.reindex(index=mt.arange(10, 1, -1, chunk_size=3))
+        #
+        # result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        # expected = data.reindex(index=np.arange(10, 1, -1))
+        # pd.testing.assert_frame_equal(result, expected)
+        #
+        # # test rebalance
+        # df4 = md.DataFrame(data)
+        # r = df4.rebalance()
+        #
+        # result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        # pd.testing.assert_frame_equal(result, data)
+        # chunk_metas = sess.get_tileable_chunk_metas(r.key)
+        # workers = list(set(itertools.chain(*(m.workers for m in chunk_metas.values()))))
+        # self.assertEqual(len(workers), 2)
+        #
+        # # test nunique
+        # data = pd.DataFrame(np.random.randint(0, 10, (100, 5)),
+        #                     columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        # df5 = md.DataFrame(data, chunk_size=4)
+        # r = df5.nunique()
+        #
+        # result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
+        # expected = data.nunique()
+        # pd.testing.assert_series_equal(result, expected)
 
-        raw1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
-                            columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
-        df1 = md.DataFrame(raw1, chunk_size=(10, 5))
-        raw2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
-                            columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
-        df2 = md.DataFrame(raw2, chunk_size=(10, 6))
-        r = df1 + df2
-        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        pd.testing.assert_frame_equal(result, raw1 + raw2)
-
-        raw1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
-                            columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
-        df1 = md.DataFrame(raw1, chunk_size=5)
-        raw2 = pd.DataFrame(np.random.rand(10, 10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
-                            columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
-        df2 = md.DataFrame(raw2, chunk_size=6)
-        r = df1 + df2
-        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        pd.testing.assert_frame_equal(result, raw1 + raw2)
-
-        # test sort_values
-        raw1 = pd.DataFrame(np.random.rand(10, 10))
-        raw1[0] = raw1[0].apply(str)
-        raw1.columns = pd.MultiIndex.from_product([list('AB'), list('CDEFG')])
-        df1 = md.DataFrame(raw1, chunk_size=5)
-        r = df1.sort_values([('A', 'C')])
-        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        pd.testing.assert_frame_equal(result, raw1.sort_values([('A', 'C')]))
-
+        # test re-execute df.groupby().agg().sort_values()
         rs = np.random.RandomState(0)
-        raw2 = pd.DataFrame({'a': rs.rand(10),
-                            'b': [f's{rs.randint(1000)}' for _ in range(10)]
-                            })
-        raw2['b'] = raw2['b'].astype(md.ArrowStringDtype())
-        mdf = md.DataFrame(raw2, chunk_size=4)
-        filtered = mdf[mdf['a'] > 0.5]
-        df2 = filtered.sort_values(by='b')
-        result = df2.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        expected = raw2[raw2['a'] > 0.5].sort_values(by='b')
-        pd.testing.assert_frame_equal(result, expected)
-
-        s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
-        series1 = md.Series(s1, chunk_size=6)
-        result = series1.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        pd.testing.assert_series_equal(result, s1)
-
-        # test reindex
-        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
-        df3 = md.DataFrame(data, chunk_size=4)
-        r = df3.reindex(index=mt.arange(10, 1, -1, chunk_size=3))
-
-        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        expected = data.reindex(index=np.arange(10, 1, -1))
-        pd.testing.assert_frame_equal(result, expected)
-
-        # test rebalance
-        df4 = md.DataFrame(data)
-        r = df4.rebalance()
-
-        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        pd.testing.assert_frame_equal(result, data)
-        chunk_metas = sess.get_tileable_chunk_metas(r.key)
-        workers = list(set(itertools.chain(*(m.workers for m in chunk_metas.values()))))
-        self.assertEqual(len(workers), 2)
-
-        # test nunique
-        data = pd.DataFrame(np.random.randint(0, 10, (100, 5)),
-                            columns=['c1', 'c2', 'c3', 'c4', 'c5'])
-        df5 = md.DataFrame(data, chunk_size=4)
-        r = df5.nunique()
-
-        result = r.execute(session=sess, timeout=self.timeout).fetch(session=sess)
-        expected = data.nunique()
-        pd.testing.assert_series_equal(result, expected)
+        data = pd.DataFrame({'col1': rs.rand(100), 'col2': rs.randint(10, size=100)})
+        df6 = md.DataFrame(data, chunk_size=40)
+        grouped = df6.groupby('col2', as_index=False)['col2'].agg({"cnt": "count"}) \
+            .execute(session=sess, timeout=self.timeout)
+        r = grouped.sort_values(by='cnt').head().execute(session=sess, timeout=self.timeout)
+        result = r.fetch(session=sess)
+        expected = data.groupby('col2', as_index=False)['col2'].agg({"cnt": "count"}) \
+            .sort_values(by='cnt').head()
+        pd.testing.assert_frame_equal(result.reset_index(drop=True), expected.reset_index(drop=True))
+        r = df6.groupby('col2', as_index=False)['col2'].agg({"cnt": "count"}).sort_values(by='cnt').head() \
+            .execute(session=sess, timeout=self.timeout)
+        result = r.fetch(session=sess)
+        pd.testing.assert_frame_equal(result.reset_index(drop=True), expected.reset_index(drop=True))
 
     def testIterativeTilingWithoutEtcd(self):
         self.start_processes(etcd=False)
