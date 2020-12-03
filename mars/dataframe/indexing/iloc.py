@@ -204,6 +204,7 @@ class HeadTailOptimizedOperandMixin(DataFrameOperandMixin):
                 chunk_op = op.copy().reset_key()
                 params = out.params
                 params['index'] = chunk_index
+                params['shape'] = in_chunks[0].shape if np.isnan(in_chunks[0].shape[0]) else out.shape
                 new_chunks.append(chunk_op.new_chunk([concat_chunk], kws=[params]))
             chunks = new_chunks
 
