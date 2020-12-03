@@ -995,21 +995,26 @@ class GraphActor(SchedulerActor):
         tileable_keys = self._terminal_chunk_op_key_to_tileable_key[op_key]
         is_failed = final_state in (GraphState.CANCELLED, GraphState.FAILED)
         terminal_tileable_count = len(self._terminal_tileable_key_to_chunk_op_keys)
-        for tileable_key in tileable_keys:
-            self._target_tileable_finished[tileable_key].add(op_key)
-            if final_state == GraphState.FAILED:
-                if self.final_state != GraphState.CANCELLED:
-                    self.final_state = GraphState.FAILED
-            elif final_state == GraphState.CANCELLED:
-                self.final_state = final_state
+        try:
+            for tileable_key in tileable_keys:
+                self._target_tileable_finished[tileable_key].add(op_key)
+                if final_state == GraphState.FAILED:
+                    if self.final_state != GraphState.CANCELLED:
+                        self.final_state = GraphState.FAILED
+                elif final_state == GraphState.CANCELLED:
+                    self.final_state = final_state
 
-            if self._target_tileable_finished[tileable_key] == \
-                    self._terminal_tileable_key_to_chunk_op_keys[tileable_key]:
-                self._terminated_tileable_keys.add(tileable_key)
-                self._all_terminated_tileable_keys.add(tileable_key)
-                if not is_failed and len(self._terminated_tileable_keys) == terminal_tileable_count:
-                    # update shape if tileable or its chunks have unknown shape
-                    self._update_tileable_and_its_chunk_shapes()
+                if self._target_tileable_finished[tileable_key] == \
+                        self._terminal_tileable_key_to_chunk_op_keys[tileable_key]:
+                    self._terminated_tileable_keys.add(tileable_key)
+                    self._all_terminated_tileable_keys.add(tileable_key)
+                    if not is_failed and len(self._terminated_tileable_keys) == terminal_tileable_count:
+                        # update shape if tileable or its chunks have unknown shape
+                        self._update_tileable_and_its_chunk_shapes()
+        except:
+            for tileable_key in tileable_keys:
+                self._target_tileable_finished[tileable_key].remove(op_key)
+            raise
 
         terminated_chunks = self._op_key_to_chunk[op_key]
         self._terminated_chunk_keys.update([c.key for c in terminated_chunks
@@ -1048,8 +1053,18 @@ class GraphActor(SchedulerActor):
         need_update_chunks = list(c for t in need_update_tileable_to_tiled.values() for c in t.chunks)
         chunk_metas = self.chunk_meta.batch_get_chunk_meta(
             self._session_id, list(c.key for c in need_update_chunks))
+        ops_to_restart = set()
+        keys = []
         for chunk, chunk_meta in zip(need_update_chunks, chunk_metas):
-            chunk.data._shape = chunk_meta.chunk_shape
+            if chunk_meta is None:
+                ops_to_restart.add(chunk.op.key)
+                keys.append(chunk.key)
+            else:
+                chunk.data._shape = chunk_meta.chunk_shape
+        if ops_to_restart:
+            for op_key in ops_to_restart:
+                self._get_operand_ref(op_key).start_operand(OperandState.READY, _tell=True, _wait=False)
+            raise RuntimeError(f'Cannot find chunks {keys}. Operands {ops_to_restart} restarted.')
 
         for tileable, tiled in need_update_tileable_to_tiled.items():
             chunk_idx_to_shape = OrderedDict((c.index, c.shape) for c in tiled.chunks)
