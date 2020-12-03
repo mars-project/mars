@@ -301,6 +301,12 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         else:
             filters = hash_dataframe_on(df, on, op.shuffle_size, level=op.level)
 
+        def _take_index(src, f):
+            result = src.loc[f]
+            if src.index.names:
+                result.index.names = src.index.names
+            return result
+
         for index_idx, index_filter in enumerate(filters):
             if is_dataframe_obj:
                 group_key = ','.join([str(index_idx), str(chunk.index[1])])
@@ -311,19 +317,19 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
                 filtered_by = []
                 for v in by:
                     if isinstance(v, pd.Series):
-                        filtered_by.append(v.loc[index_filter])
+                        filtered_by.append(_take_index(v, index_filter))
                     else:
                         filtered_by.append(v)
                 if isinstance(df, tuple):
-                    ctx[(chunk.key, group_key)] = tuple(x.loc[index_filter] for x in df) \
+                    ctx[(chunk.key, group_key)] = tuple(_take_index(x, index_filter) for x in df) \
                         + (filtered_by, deliver_by)
                 else:
-                    ctx[(chunk.key, group_key)] = (df.loc[index_filter], filtered_by, deliver_by)
+                    ctx[(chunk.key, group_key)] = (_take_index(df, index_filter), filtered_by, deliver_by)
             else:
                 if isinstance(df, tuple):
-                    ctx[(chunk.key, group_key)] = tuple(x.loc[index_filter] for x in df) + (deliver_by,)
+                    ctx[(chunk.key, group_key)] = tuple(_take_index(x, index_filter) for x in df) + (deliver_by,)
                 else:
-                    ctx[(chunk.key, group_key)] = df.loc[index_filter]
+                    ctx[(chunk.key, group_key)] = _take_index(df, index_filter)
 
     @classmethod
     def execute_reduce(cls, ctx, op):
