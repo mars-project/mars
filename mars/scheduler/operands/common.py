@@ -93,6 +93,11 @@ class OperandActor(BaseOperandActor):
         if not self._is_terminal:
             self._is_terminal = op_info.get('is_terminal')
 
+        if self.state in OperandState.STORED_STATES:
+            metas = self.chunk_meta.batch_get_chunk_meta(self._session_id, self._io_meta.get('chunks'))
+            if any(meta is None for meta in metas):
+                self.state = OperandState.UNSCHEDULED
+
         if self.state not in OperandState.TERMINATED_STATES:
             for in_key in self._pred_keys:
                 self._get_operand_actor(in_key).remove_finished_successor(

@@ -259,7 +259,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 output_types=[OutputType.dataframe_groupby])
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx,
-                                    index_value=op.outputs[0].index_value))
+                                    index_value=None))
 
         return reduce_chunks
 

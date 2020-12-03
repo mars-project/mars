@@ -177,9 +177,9 @@ cdef inline _extract_range_index_attr(object range_index, str attr):
 
 
 cdef list tokenize_pandas_index(ob):
-    cdef int start
-    cdef int stop
-    cdef int end
+    cdef long long start
+    cdef long long stop
+    cdef long long end
     if isinstance(ob, pd.RangeIndex):
         start = _extract_range_index_attr(ob, 'start')
         stop = _extract_range_index_attr(ob, 'stop')

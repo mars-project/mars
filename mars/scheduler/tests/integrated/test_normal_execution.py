@@ -194,6 +194,22 @@ class Test(SchedulerIntegratedTest):
         expected = data.nunique()
         pd.testing.assert_series_equal(result, expected)
 
+        # test re-execute df.groupby().agg().sort_values()
+        rs = np.random.RandomState(0)
+        data = pd.DataFrame({'col1': rs.rand(100), 'col2': rs.randint(10, size=100)})
+        df6 = md.DataFrame(data, chunk_size=40)
+        grouped = df6.groupby('col2', as_index=False)['col2'].agg({"cnt": "count"}) \
+            .execute(session=sess, timeout=self.timeout)
+        r = grouped.sort_values(by='cnt').head().execute(session=sess, timeout=self.timeout)
+        result = r.fetch(session=sess)
+        expected = data.groupby('col2', as_index=False)['col2'].agg({"cnt": "count"}) \
+            .sort_values(by='cnt').head()
+        pd.testing.assert_frame_equal(result.reset_index(drop=True), expected.reset_index(drop=True))
+        r2 = df6.groupby('col2', as_index=False)['col2'].agg({"cnt": "count"}).sort_values(by='cnt').head() \
+            .execute(session=sess, timeout=self.timeout)
+        result = r2.fetch(session=sess)
+        pd.testing.assert_frame_equal(result.reset_index(drop=True), expected.reset_index(drop=True))
+
     def testIterativeTilingWithoutEtcd(self):
         self.start_processes(etcd=False)
         sess = new_session(self.session_manager_ref.address)
