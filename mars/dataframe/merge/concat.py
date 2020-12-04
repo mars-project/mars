@@ -211,9 +211,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             if len(inputs) == 1:
                 ret = inputs[0]
             else:
-                max_rows = max(inp.index[0] for inp in chunk.inputs)
-                min_rows = min(inp.index[0] for inp in chunk.inputs)
-                n_rows = max_rows - min_rows + 1
+                n_rows = len(set(inp.index[0] for inp in chunk.inputs))
                 n_cols = int(len(inputs) // n_rows)
                 assert n_rows * n_cols == len(inputs)
 

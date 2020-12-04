@@ -29,7 +29,12 @@ from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
 from .fetch import DataFrameFetch
 
 
-class DataFrame(_Frame):
+class InitializerMeta(type):
+    def __instancecheck__(cls, instance):
+        return isinstance(instance, (cls.__base__,) + getattr(cls, '_allow_data_type_'))
+
+
+class DataFrame(_Frame, metaclass=InitializerMeta):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None, num_partitions=None):
         # make sure __getattr__ does not result in stack overflow
@@ -73,7 +78,7 @@ class DataFrame(_Frame):
         super().__init__(df.data)
 
 
-class Series(_Series):
+class Series(_Series, metaclass=InitializerMeta):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None, num_partitions=None):
         # make sure __getattr__ does not result in stack overflow
@@ -108,7 +113,7 @@ class Series(_Series):
         super().__init__(series.data)
 
 
-class Index(_Index):
+class Index(_Index, metaclass=InitializerMeta):
     def __new__(cls, data, **_):
         # just return cls always until we support other Index's initializers
         return object.__new__(cls)

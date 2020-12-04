@@ -15,6 +15,9 @@
 import os
 import unittest
 
+import numpy as np
+
+import mars.dataframe as md
 import mars.tensor as mt
 from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
@@ -61,3 +64,12 @@ class Test(LearnIntegrationTestBase):
             self.assertEqual(list(history['validation_0'])[0], 'merror')
             self.assertEqual(len(history['validation_0']), 1)
             self.assertEqual(len(history['validation_0']['merror']), 2)
+
+            X = md.DataFrame(np.random.rand(100, 20), chunk_size=20)
+            y = md.DataFrame(np.random.randint(0, 2, (100, 1)), chunk_size=20)
+            classifier = XGBClassifier(verbosity=1, n_estimators=2)
+            classifier.fit(X, y, session=sess, run_kwargs=run_kwargs)
+            prediction = classifier.predict(X, session=sess, run_kwargs=run_kwargs)
+
+            self.assertIsInstance(prediction, md.Series)
+            self.assertEqual(prediction.shape[0], len(X))
