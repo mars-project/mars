@@ -612,12 +612,14 @@ class Test(TestBase):
         df['c3'] = df['c3'] + 1
         df['c10'] = 10
         df[4] = mt.tensor(data2, chunk_size=4)
+        df['d1'] = df['c4'].mean()
 
         result = self.executor.execute_dataframe(df, concat=True)[0]
         expected = data.copy()
         expected['c3'] = expected['c3'] + 1
         expected['c10'] = 10
         expected[4] = data2
+        expected['d1'] = data['c4'].mean()
         pd.testing.assert_frame_equal(result, expected)
 
     def testResetIndexExecution(self):
