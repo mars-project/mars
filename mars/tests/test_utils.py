@@ -105,8 +105,8 @@ class Test(unittest.TestCase):
             mmp_array2 = np.memmap(filename, dtype=float, shape=(3, 4))
 
             try:
-                v = [1, 2.3, '456', u'789', b'101112', None, np.ndarray, [912, 'uvw'],
-                     np.arange(0, 10), np.array(10), np.array([b'\x01\x32\xff']),
+                v = [1, 2.3, '456', u'789', b'101112', 2147483649, None, np.ndarray,
+                     [912, 'uvw'], np.arange(0, 10), np.array(10), np.array([b'\x01\x32\xff']),
                      np.int64, TestEnum.VAL1]
                 copy_v = copy.deepcopy(v)
                 self.assertEqual(utils.tokenize(v + [mmp_array1], ext_data=1234),

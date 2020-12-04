@@ -120,9 +120,10 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
                              df1.groupby(level=0)[['a', 'b']], with_selection=True)
 
-        r = mdf.groupby(level=0)[['a', 'b']].sum(method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      df1.groupby(level=0)[['a', 'b']].sum())
+        for method in ('tree', 'shuffle'):
+            r = mdf.groupby(level=0)[['a', 'b']].sum(method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          df1.groupby(level=0)[['a', 'b']].sum())
 
         r = mdf.groupby(level=0)[['a', 'b']].apply(lambda x: x + 1)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
@@ -136,17 +137,18 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
                              df1.groupby('b')[['a', 'c']], with_selection=True)
 
-        r = mdf.groupby('b')[['a', 'b']].sum(method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      df1.groupby('b')[['a', 'b']].sum())
+        for method in ('tree', 'shuffle'):
+            r = mdf.groupby('b')[['a', 'b']].sum(method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          df1.groupby('b')[['a', 'b']].sum())
 
-        r = mdf.groupby('b')[['a', 'b']].agg(['sum', 'count'], method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      df1.groupby('b')[['a', 'b']].agg(['sum', 'count']))
+            r = mdf.groupby('b')[['a', 'b']].agg(['sum', 'count'], method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          df1.groupby('b')[['a', 'b']].agg(['sum', 'count']))
 
-        r = mdf.groupby('b')[['a', 'c']].agg(['sum', 'count'], method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      df1.groupby('b')[['a', 'c']].agg(['sum', 'count']))
+            r = mdf.groupby('b')[['a', 'c']].agg(['sum', 'count'], method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          df1.groupby('b')[['a', 'c']].agg(['sum', 'count']))
 
         r = mdf.groupby('b')[['a', 'b']].apply(lambda x: x + 1)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
@@ -164,21 +166,29 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(r, concat=True)[0],
                              df1.groupby('b').a, with_selection=True)
 
-        r = mdf.groupby('b').a.sum(method='tree')
-        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                       df1.groupby('b').a.sum())
+        for method in ('shuffle', 'tree'):
+            r = mdf.groupby('b').a.sum(method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                           df1.groupby('b').a.sum())
 
-        r = mdf.groupby('b', as_index=False).b.count()
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      df1.groupby('b', as_index=False).b.count())
+            r = mdf.groupby('b').a.agg(['sum', 'mean', 'var'], method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          df1.groupby('b').a.agg(['sum', 'mean', 'var']))
 
-        r = mdf.groupby('b').a.agg(['sum', 'mean', 'var'], method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      df1.groupby('b').a.agg(['sum', 'mean', 'var']))
+            r = mdf.groupby('b', as_index=False).a.sum(method=method)
+            pd.testing.assert_frame_equal(
+                self.executor.execute_dataframe(r, concat=True)[0].sort_values('b', ignore_index=True),
+                df1.groupby('b', as_index=False).a.sum().sort_values('b', ignore_index=True))
 
-        r = mdf.groupby('b', as_index=False).b.agg({'cnt': 'count'})
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      df1.groupby('b', as_index=False).b.agg({'cnt': 'count'}))
+            r = mdf.groupby('b', as_index=False).b.count(method=method)
+            pd.testing.assert_frame_equal(
+                self.executor.execute_dataframe(r, concat=True)[0].sort_values('b', ignore_index=True),
+                df1.groupby('b', as_index=False).b.count().sort_values('b', ignore_index=True))
+
+            r = mdf.groupby('b', as_index=False).b.agg({'cnt': 'count'}, method=method)
+            pd.testing.assert_frame_equal(
+                self.executor.execute_dataframe(r, concat=True)[0].sort_values('b', ignore_index=True),
+                df1.groupby('b', as_index=False).b.agg({'cnt': 'count'}).sort_values('b', ignore_index=True))
 
         r = mdf.groupby('b').a.apply(lambda x: x + 1)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
@@ -252,11 +262,13 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                           getattr(raw.groupby('c2'), agg_fun)())
 
-        # test as_index=False
-        r = mdf.groupby('c2', as_index=False).agg('mean', method='tree')
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.groupby('c2', as_index=False).agg('mean'))
-        self.assertFalse(r.op.groupby_params['as_index'])
+        for method in ['tree', 'shuffle']:
+            # test as_index=False
+            r = mdf.groupby('c2', as_index=False).agg('mean', method=method)
+            pd.testing.assert_frame_equal(
+                self.executor.execute_dataframe(r, concat=True)[0].sort_values('c2', ignore_index=True),
+                raw.groupby('c2', as_index=False).agg('mean').sort_values('c2', ignore_index=True))
+            self.assertFalse(r.op.groupby_params['as_index'])
 
         # test as_index=False takes no effect
         r = mdf.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count'], method='tree')
@@ -302,6 +314,10 @@ class Test(TestBase):
                                           series1.groupby(lambda x: x % 2).agg(agg_funs))
 
             # test groupby series
+            r = ms1.groupby(ms1).sum(method=method)
+            pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                           series1.groupby(series1).sum())
+
             r = ms1.groupby(ms1).sum(method=method)
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                            series1.groupby(series1).sum())

@@ -144,7 +144,7 @@ class StorageClient(object):
             return self.copy_to(session_id, [data_key], source_devices) \
                 .then(lambda *_: self.create_reader(session_id, data_key, source_devices, packed=packed))
         else:
-            raise IOError('Cannot return a non-promise result')
+            raise IOError(f'Cannot return a non-promise result for key {data_key}, stored_devs {stored_devs!r}')
 
     def create_writer(self, session_id, data_key, total_bytes, device_order, packed=False,
                       packed_compression=None, pin_token=None, _promise=True):
