@@ -58,10 +58,17 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
         if len(inputs) > 1:
             self._value = self._inputs[-1]
 
+    @staticmethod
+    def _is_scalar_tensor(t):
+        return isinstance(t, TENSOR_TYPE) and t.ndim == 0
+
     def __call__(self, target: DataFrame, value):
         inputs = [target]
         if np.isscalar(value):
             value_dtype = np.array(value).dtype
+        elif self._is_scalar_tensor(value):
+            inputs.append(value)
+            value_dtype = value.dtype
         else:
             if isinstance(value, (pd.Series, SERIES_TYPE)):
                 value = asseries(value)
@@ -94,8 +101,9 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
         value = op.value
         col = op.indexes
         columns = target.columns_value.to_pandas()
+        is_value_scalar = np.isscalar(value) or cls._is_scalar_tensor(value)
 
-        if not np.isscalar(value):
+        if not is_value_scalar:
             # check if all chunk's index_value are identical
             target_chunk_index_values = [c.index_value for c in target.chunks
                                          if c.index[1] == 0]
@@ -122,8 +130,10 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                     out_chunks.append(c)
                 else:
                     chunk_op = op.copy().reset_key()
-                    if np.isscalar(value):
+                    if pd.api.types.is_scalar(value):
                         chunk_inputs = [c]
+                    elif is_value_scalar:
+                        chunk_inputs = [c, value.chunks[0]]
                     else:
                         value_chunk = value.cix[c.index[0], ]
                         chunk_inputs = [c, value_chunk]
