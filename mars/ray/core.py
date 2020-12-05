@@ -226,6 +226,10 @@ class RaySession:
     def executor(self):
         return self._executor
 
+    @staticmethod
+    def get_cpu_count():
+        return int(ray.state.cluster_resources()["CPU"])
+
     def fetch(self, *tileables, **kw):
         return self._executor.fetch_tileables(tileables, **kw)
 

@@ -289,6 +289,8 @@ class WorkersApiHandler(MarsApiRequestHandler):
         action = self.get_argument('action', None)
         if action == 'count':
             self.write(json.dumps(self.web_api.count_workers()))
+        elif action == 'count_cpu':
+            self.write(json.dumps(self.web_api.get_cpu_count()))
         else:
             self.write(json.dumps(self.web_api.get_workers_meta()))
 

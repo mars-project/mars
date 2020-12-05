@@ -79,6 +79,9 @@ class LocalSession(object):
         self._context = new_context
         self._executor.storage = new_context
 
+    def get_cpu_count(self):
+        return self._context.get_ncores()
+
     @property
     def executed_tileables(self):
         return self._executor.stored_tileables.keys()
@@ -218,6 +221,9 @@ class ClusterSession(object):
     @property
     def context(self):
         return self._context
+
+    def get_cpu_count(self):
+        return self._context.get_total_ncores()
 
     def _get_tileable_graph_key(self, tileable_key):
         return self._executed_tileables[tileable_key][0]
@@ -548,6 +554,9 @@ class Session(object):
     @property
     def session_id(self):
         return self._sess.session_id
+
+    def get_cpu_count(self):
+        return self._sess.get_cpu_count()
 
     def decref(self, *keys):
         if hasattr(self._sess, 'decref'):
