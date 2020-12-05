@@ -49,6 +49,7 @@ cpdef enum ExtendType:
     interval_arr = 28
     freq = 29
     namedtuple = 30
+    pickled = 32767
 
 
 cdef class Identity:

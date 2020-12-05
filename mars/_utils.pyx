@@ -117,7 +117,10 @@ cdef class Tokenizer:
                 if clz in self._handlers:
                     handler = self._handlers[object_type] = self._handlers[clz]
                     return handler(obj)
-            raise TypeError(f'Cannot generate token for {obj}, type: {object_type}')
+            try:
+                return cloudpickle.dumps(obj)
+            except:
+                raise TypeError(f'Cannot generate token for {obj}, type: {object_type}') from None
 
 
 cdef inline list iterative_tokenize(object ob):
@@ -259,7 +262,7 @@ def tokenize_function(ob):
 
 
 @lru_cache(500)
-def tokenize_pickled(ob):
+def tokenize_pickled_with_cache(ob):
     return pickle.dumps(ob)
 
 
@@ -288,7 +291,7 @@ tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)
 tokenize_handler.register(pd.Categorical, tokenize_pandas_categorical)
 tokenize_handler.register(pd.CategoricalDtype, tokenize_categories_dtype)
 tokenize_handler.register(pd.IntervalDtype, tokenize_interval_dtype)
-tokenize_handler.register(tzinfo, tokenize_pickled)
+tokenize_handler.register(tzinfo, tokenize_pickled_with_cache)
 tokenize_handler.register(pd.arrays.DatetimeArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.TimedeltaArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.PeriodArray, tokenize_pandas_time_arrays)

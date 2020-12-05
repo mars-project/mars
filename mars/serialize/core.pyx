@@ -114,6 +114,7 @@ cdef class ValueType:
     interval_arr = ExtendType.interval_arr
     freq = ExtendType.freq
     namedtuple = ExtendType.namedtuple
+    pickled = ExtendType.pickled
 
     identity = Identity()
 

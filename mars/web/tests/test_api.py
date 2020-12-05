@@ -309,7 +309,9 @@ class Test(unittest.TestCase):
         self.assertEqual(len(json.loads(res.text)), 1)
         res = requests.get(f'{service_ep}/api/worker?action=count')
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(int(res.text), 1)
+        res = requests.get(f'{service_ep}/api/worker?action=count_cpu')
+        self.assertEqual(res.status_code, 200)
+        self.assertGreaterEqual(int(res.text), 1)
         res = requests.patch(f'{service_ep}/api/worker?action=count',
                              data=json.dumps(dict(new_scale=2)))
         self.assertEqual(res.status_code, 405)

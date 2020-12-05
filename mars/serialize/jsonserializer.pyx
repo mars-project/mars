@@ -73,6 +73,7 @@ cdef dict EXTEND_TYPE_TO_NAME = {
     ValueType.complex64: 'complex64',
     ValueType.complex128: 'complex128',
     ValueType.namedtuple: 'namedtuple',
+    ValueType.pickled: 'pickled',
 }
 
 
@@ -428,6 +429,20 @@ cdef class JsonSerializeProvider(Provider):
         value = obj['value']
         return to_offset(value)
 
+    cdef inline _serialize_pickled(self, value):
+        return {
+            'type': 'pickled',
+            'value': self._to_str(base64.b64encode(cloudpickle.dumps(value, protocol=self.pickle_protocol))),
+        }
+
+    cdef inline _deserialize_pickled(self, obj, list callbacks):
+        value = obj['value']
+        v = base64.b64decode(value)
+
+        if v is not None:
+            return cloudpickle.loads(v)
+        return None
+
     cdef inline object _serialize_typed_value(self, value, tp, bint weak_ref=False):
         if type(tp) not in (List, Tuple, Dict) and weak_ref:
             # not iterable, and is weak ref
@@ -547,7 +562,10 @@ cdef class JsonSerializeProvider(Provider):
         elif callable(value):
             return self._serialize_function(value)
         else:
-            raise TypeError(f'Unknown type to serialize: {type(value)}')
+            try:
+                return self._serialize_pickled(value)
+            except:
+                raise TypeError(f'Unknown type to serialize: {type(value)}') from None
 
     cdef inline object _serialize_value(self, value, tp=None, bint weak_ref=False):
         if tp is None:
@@ -677,6 +695,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._deserialize_dict(obj, callbacks, weak_ref)
         elif tp is ValueType.namedtuple:
             return self._deserialize_namedtuple(obj, callbacks)
+        elif tp is ValueType.pickled:
+            return self._deserialize_pickled(obj, callbacks)
         else:
             raise TypeError(f'Unknown type to deserialize {obj["type"]}')
 

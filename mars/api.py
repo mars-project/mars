@@ -83,6 +83,13 @@ class MarsAPI(object):
         except KeyError:
             return 0
 
+    def get_cpu_count(self):
+        try:
+            uid = ResourceActor.default_uid()
+            return self.get_actor_ref(uid).get_total_cpu_count()
+        except KeyError:
+            return 0
+
     def rescale_workers(self, new_scale, min_workers=None, wait=True, timeout=None):
         min_workers = min_workers or new_scale
         resource_ref = self.get_actor_ref(ResourceActor.default_uid())

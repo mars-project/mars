@@ -1,7 +1,7 @@
 numpy==1.14.5
 pandas==1.0.4
 scipy==1.4.1
-cython==0.29.3
+cython==0.29.14
 protobuf==3.6.1
 requests>=2.4.0
 cloudpickle>=1.0.0
