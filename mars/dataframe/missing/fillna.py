@@ -482,8 +482,24 @@ def fillna(df, value=None, method=None, axis=None, inplace=False, limit=None, do
 
 
 def ffill(df, axis=None, inplace=False, limit=None, downcast=None):
+    """
+    Synonym for :meth:`DataFrame.fillna` with ``method='ffill'``.
+
+    Returns
+    -------
+    {klass} or None
+        Object with missing values filled or None if ``inplace=True``.
+    """
     return fillna(df, method='ffill', axis=axis, inplace=inplace, limit=limit, downcast=downcast)
 
 
 def bfill(df, axis=None, inplace=False, limit=None, downcast=None):
+    """
+    Synonym for :meth:`DataFrame.fillna` with ``method='bfill'``.
+
+    Returns
+    -------
+    {klass} or None
+        Object with missing values filled or None if ``inplace=True``.
+    """
     return fillna(df, method='bfill', axis=axis, inplace=inplace, limit=limit, downcast=downcast)

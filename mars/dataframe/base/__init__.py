@@ -18,11 +18,8 @@ from .to_cpu import to_cpu
 from .rechunk import rechunk
 from .describe import describe
 from .apply import df_apply, series_apply
-from .fillna import fillna, ffill, bfill
 from .transform import df_transform, series_transform
 from .isin import series_isin, df_isin
-from .checkna import isna, notna, isnull, notnull
-from .dropna import df_dropna, series_dropna
 from .cut import cut
 from .qcut import qcut
 from .shift import shift, tshift
@@ -55,15 +52,7 @@ def _install():
         setattr(t, 'describe', describe)
         setattr(t, 'apply', df_apply)
         setattr(t, 'transform', df_transform)
-        setattr(t, 'fillna', fillna)
-        setattr(t, 'ffill', ffill)
-        setattr(t, 'bfill', bfill)
         setattr(t, 'isin', df_isin)
-        setattr(t, 'isna', isna)
-        setattr(t, 'isnull', isnull)
-        setattr(t, 'notna', notna)
-        setattr(t, 'notnull', notnull)
-        setattr(t, 'dropna', df_dropna)
         setattr(t, 'shift', shift)
         setattr(t, 'tshift', tshift)
         setattr(t, 'diff', df_diff)
@@ -88,15 +77,7 @@ def _install():
         setattr(t, 'describe', describe)
         setattr(t, 'apply', series_apply)
         setattr(t, 'transform', series_transform)
-        setattr(t, 'fillna', fillna)
-        setattr(t, 'ffill', ffill)
-        setattr(t, 'bfill', bfill)
         setattr(t, 'isin', series_isin)
-        setattr(t, 'isna', isna)
-        setattr(t, 'isnull', isnull)
-        setattr(t, 'notna', notna)
-        setattr(t, 'notnull', notnull)
-        setattr(t, 'dropna', series_dropna)
         setattr(t, 'shift', shift)
         setattr(t, 'tshift', tshift)
         setattr(t, 'diff', series_diff)

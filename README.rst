@@ -38,7 +38,7 @@ for development:
     pip install -e ".[dev]"
 
 More details about installing Mars can be found at
-`getting started <https://docs.pymars.org/en/latest/install.html>`_ section in
+`getting started <https://docs.pymars.org/en/latest/installation/index.html>`_ section in
 Mars document.
 
 

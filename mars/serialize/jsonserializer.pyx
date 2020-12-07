@@ -16,6 +16,7 @@
 
 import base64
 import pickle
+import re
 import sys
 import weakref
 from collections import OrderedDict
@@ -41,6 +42,10 @@ try:
     from pandas.tseries.frequencies import to_offset
 except ImportError:
     PDTick = to_offset = None
+try:
+    from re import Pattern as RE_Pattern
+except ImportError:
+    RE_Pattern = type(re.compile('a'))
 
 
 cdef dict PRIMITIVE_TYPE_TO_NAME = {
@@ -73,6 +78,7 @@ cdef dict EXTEND_TYPE_TO_NAME = {
     ValueType.complex64: 'complex64',
     ValueType.complex128: 'complex128',
     ValueType.namedtuple: 'namedtuple',
+    ValueType.regex: 'regex',
     ValueType.pickled: 'pickled',
 }
 
@@ -363,6 +369,19 @@ cdef class JsonSerializeProvider(Provider):
     cdef inline _deserialize_namedtuple(self, obj, list callbacks):
         return cloudpickle.loads(base64.b64decode(obj['value']))
 
+    cdef inline dict _serialize_regex(self, value):
+        return {
+            'type': 'regex',
+            'value': {
+                'pattern': value.pattern,
+                'flags': value.flags,
+            } if value is not None else None,
+        }
+
+    cdef inline _deserialize_regex(self, obj, list callbacks):
+        val = obj['value']
+        return re.compile(val['pattern'], flags=val['flags']) if val is not None else None
+
     cdef inline dict _serialize_function(self, value):
         return {
             'type': 'function',
@@ -489,6 +508,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_freq(value)
         elif tp is ValueType.namedtuple:
             return self._serialize_namedtuple(value)
+        elif tp is ValueType.regex:
+            return self._serialize_regex(value)
         elif isinstance(tp, List):
             if not isinstance(value, list):
                 value = list(value)
@@ -557,6 +578,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_tzinfo(value)
         elif isinstance(value, IntervalArray):
             return self._serialize_interval_arr(value)
+        elif isinstance(value, RE_Pattern):
+            return self._serialize_regex(value)
         elif PDTick is not None and isinstance(value, PDTick):
             return self._serialize_freq(value)
         elif callable(value):
@@ -695,6 +718,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._deserialize_dict(obj, callbacks, weak_ref)
         elif tp is ValueType.namedtuple:
             return self._deserialize_namedtuple(obj, callbacks)
+        elif tp is ValueType.regex:
+            return self._deserialize_regex(obj, callbacks)
         elif tp is ValueType.pickled:
             return self._deserialize_pickled(obj, callbacks)
         else:
