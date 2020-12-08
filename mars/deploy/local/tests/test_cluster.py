@@ -582,7 +582,7 @@ class Test(unittest.TestCase):
 
             func = lambda x: x[1] + 1
             r2 = df.apply(execute_with_session_check(func, session.session_id),
-                          dtypes=np.dtype('int'), axis=1).to_pandas()
+                          dtype=np.dtype('int'), axis=1).to_pandas()
             expected2 = raw.apply(func, axis=1)
             pd.testing.assert_series_equal(r2, expected2)
 

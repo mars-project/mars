@@ -15,6 +15,7 @@
 import operator
 import sys
 import unittest
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from numbers import Integral
 
@@ -26,7 +27,7 @@ from mars.dataframe.initializer import DataFrame
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
     split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
-    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, quiet_stdio
+    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, make_dtypes, quiet_stdio
 from mars.session import new_session
 
 
@@ -414,6 +415,19 @@ class Test(unittest.TestCase):
             self.assertEqual(corner.to_string(max_rows=corner_max_rows, min_rows=min_rows),
                              pdf.to_string(max_rows=max_rows, min_rows=min_rows),
                              f'failed when row == {row}')
+
+    def testMakeDtypes(self):
+        s = make_dtypes([int, float, np.dtype(int)])
+        pd.testing.assert_series_equal(s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)]))
+
+        s = make_dtypes(OrderedDict([('a', int), ('b', float), ('c', np.dtype(int))]))
+        pd.testing.assert_series_equal(s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)],
+                                                    index=list('abc')))
+
+        s = make_dtypes(pd.Series([int, float, np.dtype(int)]))
+        pd.testing.assert_series_equal(s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)]))
+
+        self.assertIsNone(make_dtypes(None))
 
     def testQuietStdio(self):
         old_stdout, old_stderr = sys.stdout, sys.stderr

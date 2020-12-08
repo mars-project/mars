@@ -188,6 +188,20 @@ class Test(TestBase):
 
             df = from_pandas_df(df_raw, chunk_size=5)
 
+            def df_func_with_err(v):
+                assert len(v) > 2
+                return v.sort_values()
+
+            with self.assertRaises(TypeError):
+                df.apply(df_func_with_err)
+
+            r = df.apply(df_func_with_err, output_type='dataframe',
+                         dtypes=df_raw.dtypes)
+            self.assertEqual(r.shape, (np.nan, df.shape[-1]))
+            self.assertEqual(r.op._op_type_, opcodes.APPLY)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
+            self.assertFalse(r.op.elementwise)
+
             r = df.apply('ffill')
             self.assertEqual(r.op._op_type_, opcodes.FILL_NA)
 
@@ -351,6 +365,23 @@ class Test(TestBase):
             options.chunk_store_limit = 20
 
             # DATAFRAME CASES
+
+            # test transform with infer failure
+            def transform_df_with_err(v):
+                assert len(v) > 2
+                return v.sort_values()
+
+            with self.assertRaises(TypeError):
+                df.transform(transform_df_with_err)
+
+            r = df.transform(transform_df_with_err, dtypes=df_raw.dtypes).tiles()
+            self.assertEqual(r.shape, df.shape)
+            self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+            self.assertEqual(r.op.output_types[0], OutputType.dataframe)
+            self.assertEqual(r.chunks[0].shape, (df.shape[0], 20 // df.shape[0]))
+            self.assertEqual(r.chunks[0].inputs[0].shape[0], df_raw.shape[0])
+            self.assertEqual(r.chunks[0].inputs[0].op._op_type_, opcodes.CONCATENATE)
+
             # test transform scenarios on data frames
             r = df.transform(lambda x: list(range(len(x)))).tiles()
             self.assertTrue(all(v == np.dtype('int64') for v in r.dtypes))
