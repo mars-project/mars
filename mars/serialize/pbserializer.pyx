@@ -282,6 +282,13 @@ cdef class ProtobufSerializeProvider(Provider):
     cdef inline object _get_freq(self, obj):
         return to_offset(obj.freq)
 
+    cdef inline int _set_pickled(self, value, obj, tp=None) except -1:
+        obj.pickled = cloudpickle.dumps(value, protocol=self.pickle_protocol)
+        return 0
+
+    cdef inline object _get_pickled(self, obj):
+        return cloudpickle.loads(obj.pickled)
+
     @cython.boundscheck(False)
     @cython.wraparound(False)
     @cython.nonecheck(False)
@@ -570,7 +577,10 @@ cdef class ProtobufSerializeProvider(Provider):
         elif callable(value):
             self._set_function(value, obj)
         else:
-            raise TypeError(f'Unknown type to serialize: {type(value)}')
+            try:
+                self._set_pickled(value, obj)
+            except:
+                raise TypeError(f'Unknown type to serialize: {type(value)}') from None
 
     cdef inline void _set_value(cls, value, obj, tp=None, bint weak_ref=False) except *:
         if tp is None:
@@ -865,6 +875,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_namedtuple(obj))
         elif field == 'regex':
             return ref(self._get_regex(obj))
+        elif field == 'pickled':
+            return ref(self._get_pickled(obj))
         else:
             raise TypeError('Unknown type to deserialize')
 

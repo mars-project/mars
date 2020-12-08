@@ -22,6 +22,7 @@ message Node1Def {
     bool e = 13;
     Value f1 = 14;
     Value f2 = 15;
+    Value f3 = 27;
     Node2Def g = 16;
     repeated Value h = 17;
     repeated Node1Def i = 20;

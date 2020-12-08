@@ -115,6 +115,7 @@ cdef class ValueType:
     freq = ExtendType.freq
     namedtuple = ExtendType.namedtuple
     regex = ExtendType.regex
+    pickled = ExtendType.pickled
 
     identity = Identity()
 

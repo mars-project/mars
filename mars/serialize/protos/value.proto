@@ -83,6 +83,7 @@ message Value {
         string freq = 24;  // pandas.tseries.offsets.Tick
         bytes namedtuple = 25;
         RegexValue regex = 26;
+        bytes pickled = 32767;
     }
 
 }

@@ -50,6 +50,7 @@ cpdef enum ExtendType:
     freq = 29
     namedtuple = 30
     regex = 31
+    pickled = 32767
 
 
 cdef class Identity:

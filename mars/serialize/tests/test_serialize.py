@@ -63,6 +63,11 @@ except ImportError:
 nt = namedtuple('nt', 'a b')
 
 
+class ClassToPickle:
+    def __init__(self, a):
+        self.a = a
+
+
 class Node1(Serializable):
     a = IdentityField('a', ValueType.string)
     b1 = Int8Field('b1')
@@ -81,6 +86,7 @@ class Node1(Serializable):
     e = BoolField('e')
     f1 = KeyField('f1')
     f2 = AnyField('f2')
+    f3 = AnyField('f3')
     g = ReferenceField('g', 'Node2')
     h = ListField('h')
     i = ListField('i', ValueType.reference('self'))
@@ -233,6 +239,7 @@ class Test(unittest.TestCase):
                           e=False,
                           f1=Node2Entity(node2),
                           f2=Node2Entity(node2),
+                          f3=ClassToPickle(1285),
                           g=Node2(a=[['1', '2'], ['3', '4']]),
                           h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
                              np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
@@ -282,6 +289,8 @@ class Test(unittest.TestCase):
             self.assertEqual(node3.value.f1.a, d_node3.value.f1.a)
             self.assertIsNot(node3.value.f2, d_node3.value.f2)
             self.assertEqual(node3.value.f2.a, d_node3.value.f2.a)
+            self.assertIsNot(node3.value.f3, d_node3.value.f3)
+            self.assertEqual(node3.value.f3.a, d_node3.value.f3.a)
             self.assertIsNot(node3.value.g, d_node3.value.g)
             self.assertEqual(node3.value.g.a, d_node3.value.g.a)
             self.assertEqual(node3.value.h[0], d_node3.value.h[0])
@@ -331,6 +340,7 @@ class Test(unittest.TestCase):
                           e=False,
                           f1=Node2Entity(node2),
                           f2=Node2Entity(node2),
+                          f3=ClassToPickle(1285),
                           g=Node2(a=[['1', '2'], ['3', '4']]),
                           h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
                              np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
@@ -381,6 +391,8 @@ class Test(unittest.TestCase):
             self.assertEqual(node3.value.f1.a, d_node3.value.f1.a)
             self.assertIsNot(node3.value.f2, d_node3.value.f2)
             self.assertEqual(node3.value.f2.a, d_node3.value.f2.a)
+            self.assertIsNot(node3.value.f3, d_node3.value.f3)
+            self.assertEqual(node3.value.f3.a, d_node3.value.f3.a)
             self.assertIsNot(node3.value.g, d_node3.value.g)
             self.assertEqual(node3.value.g.a, d_node3.value.g.a)
             self.assertEqual(node3.value.h[0], d_node3.value.h[0])
@@ -682,7 +694,11 @@ class Test(unittest.TestCase):
         self.assertIsInstance(d_node62.rl[0], Node6)
 
     def testException(self):
-        node1 = Node1(h=[object()])
+        class Unserializable:
+            def __getstate__(self):
+                raise SystemError
+
+        node1 = Node1(h=[Unserializable()])
 
         pbs = ProtobufSerializeProvider()
 
