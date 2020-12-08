@@ -28,6 +28,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 import mars.tensor as mt
+from mars.tests.core import flaky
 from mars.deploy.yarn import new_cluster
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ MARS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(mt.__file__)))
 
 
 @unittest.skipIf(not os.environ.get('HADOOP_HOME'), 'Only run when hadoop is installed')
+@flaky(max_runs=3)
 class Test(unittest.TestCase):
     def tearDown(self):
         time.sleep(5)

@@ -51,6 +51,11 @@ message Value {
         bytes dtype = 4;
     }
 
+    message RegexValue {
+        string pattern = 1;
+        uint32 flags = 2;
+    }
+
     oneof value {
         bool is_null = 1; // NULL
         bool b = 2;  // bool
@@ -77,6 +82,8 @@ message Value {
         IntervalArray interval_arr = 22;  // pandas.arrays.IntervalArray
         string freq = 24;  // pandas.tseries.offsets.Tick
         bytes namedtuple = 25;
+        RegexValue regex = 26;
+        bytes pickled = 32767;
     }
 
 }

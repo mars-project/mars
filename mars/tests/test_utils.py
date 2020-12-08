@@ -132,13 +132,16 @@ class Test(unittest.TestCase):
             v = [df, df.index, df.columns, df['data'], pd.Categorical(list('ABCD'))]
             self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
 
-        non_tokenizable_cls = type('non_tokenizable_cls', (object,), {})
+        class NonTokenizableCls:
+            def __getstate__(self):
+                raise SystemError
+
         with self.assertRaises(TypeError):
-            utils.tokenize(non_tokenizable_cls())
+            utils.tokenize(NonTokenizableCls())
 
         class CustomizedTokenize(object):
             def __mars_tokenize__(self):
-                return id(type(self)), id(non_tokenizable_cls)
+                return id(type(self)), id(NonTokenizableCls)
 
         self.assertEqual(utils.tokenize(CustomizedTokenize()),
                          utils.tokenize(CustomizedTokenize()))

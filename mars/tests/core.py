@@ -43,6 +43,16 @@ try:
     import pytest
 except ImportError:
     pytest = None
+try:
+    from flaky import flaky
+except ImportError:
+    def flaky(o=None, **_):
+        if o is not None:
+            return o
+
+        def ident(x):
+            return x
+        return ident
 
 from unittest import mock
 _mock = mock
