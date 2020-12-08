@@ -97,14 +97,19 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def build_mock_groupby(self, **kwargs):
         in_df = self.inputs[0]
         if self.is_dataframe_obj:
-            empty_df = build_df(in_df, size=1)
+            mock_obj = pd.concat([
+                build_df(in_df, size=2, fill_value=1),
+                build_df(in_df, size=2, fill_value=2),
+            ])
             obj_dtypes = in_df.dtypes[in_df.dtypes == np.dtype('O')]
-            empty_df[obj_dtypes.index] = 'O'
+            mock_obj[obj_dtypes.index] = mock_obj[obj_dtypes.index].radd('O')
         else:
+            mock_obj = pd.concat([
+                build_series(in_df, size=2, fill_value=1, name=in_df.name),
+                build_series(in_df, size=2, fill_value=2, name=in_df.name),
+            ])
             if in_df.dtype == np.dtype('O'):
-                empty_df = pd.Series('O', index=pd.RangeIndex(2), name=in_df.name, dtype=np.dtype('O'))
-            else:
-                empty_df = build_series(in_df, size=1, name=in_df.name)
+                mock_obj = mock_obj.radd('O')
 
         new_kw = self.groupby_params
         new_kw.update(kwargs)
@@ -114,11 +119,16 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             new_by = []
             for v in new_kw['by']:
                 if isinstance(v, (Base, Entity)):
-                    new_by.append(build_series(v, size=1, name=v.name))
+                    build_fun = build_df if v.ndim == 2 else build_series
+                    mock_by = pd.concat([
+                        build_fun(v, size=2, fill_value=1, name=v.name),
+                        build_fun(v, size=2, fill_value=2, name=v.name),
+                    ])
+                    new_by.append(mock_by)
                 else:
                     new_by.append(v)
             new_kw['by'] = new_by
-        return empty_df.groupby(**new_kw)
+        return mock_obj.groupby(**new_kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)

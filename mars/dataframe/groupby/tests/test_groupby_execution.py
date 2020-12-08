@@ -385,11 +385,14 @@ class Test(TestBase):
                             'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
                             'c': list('aabaaddce')})
 
-        def apply_df(df):
+        def apply_df(df, ret_series=False):
             df = df.sort_index()
             df.a += df.b
             if len(df.index) > 0:
-                df = df.iloc[:-1, :]
+                if not ret_series:
+                    df = df.iloc[:-1, :]
+                else:
+                    df = df.iloc[-1, :]
             return df
 
         def apply_series(s, truncate=True):
@@ -407,6 +410,10 @@ class Test(TestBase):
         applied = mdf.groupby('b').apply(apply_df)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
                                       df1.groupby('b').apply(apply_df).sort_index())
+
+        applied = mdf.groupby('b').apply(apply_df, ret_series=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
+                                      df1.groupby('b').apply(apply_df, ret_series=True).sort_index())
 
         applied = mdf.groupby('b').apply(lambda df: df.a, output_type='series')
         pd.testing.assert_series_equal(self.executor.execute_dataframe(applied, concat=True)[0].sort_index(),
@@ -428,7 +435,7 @@ class Test(TestBase):
                                        series1.groupby(lambda x: x % 3).apply(apply_series).sort_index())
 
         sindex2 = pd.MultiIndex.from_arrays([list(range(9)), list('ABCDEFGHI')])
-        series2 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3], index=sindex2)
+        series2 = pd.Series(list('CDECEDABC'), index=sindex2)
         ms2 = md.Series(series2, chunk_size=3)
 
         applied = ms2.groupby(lambda x: x[0] % 3).apply(apply_series)

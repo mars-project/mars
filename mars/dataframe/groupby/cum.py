@@ -45,13 +45,13 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
         return self._ascending
 
     def _calc_out_dtypes(self, in_groupby):
-        empty_groupby = in_groupby.op.build_mock_groupby()
+        mock_groupby = in_groupby.op.build_mock_groupby()
         func_name = getattr(self, '_func_name')
 
         if func_name == 'cumcount':
-            result_df = empty_groupby.cumcount(ascending=self.ascending)
+            result_df = mock_groupby.cumcount(ascending=self.ascending)
         else:
-            result_df = getattr(empty_groupby, func_name)(axis=self.axis)
+            result_df = getattr(mock_groupby, func_name)(axis=self.axis)
 
         if isinstance(result_df, pd.DataFrame):
             self.output_types = [OutputType.dataframe]
