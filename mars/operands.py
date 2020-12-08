@@ -96,6 +96,8 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
                               on_serialize=OutputType.serialize_list,
                               on_deserialize=OutputType.deserialize_list)
 
+    _memory_scale = Int32Field('memory_scale')
+
     _stage = Int32Field('stage', on_serialize=lambda s: s.value if s is not None else s,
                         on_deserialize=lambda n: OperandStage(n) if n is not None else n)
 
@@ -191,6 +193,10 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         if not val:
             return [False] * len(self.inputs or ())
         return val
+
+    @property
+    def memory_scale(self):
+        return getattr(self, '_memory_scale', None) or 1
 
     @property
     def stage(self) -> Union[None, "OperandStage"]:
@@ -521,7 +527,7 @@ class TileableOperandMixin(object):
                 max_sparse_size = np.nan
             if not np.isnan(max_sparse_size):
                 store_size = min(store_size, max_sparse_size)
-            ctx[out.key] = (store_size, exec_size // len(outputs))
+            ctx[out.key] = (store_size, exec_size * op.memory_scale // len(outputs))
 
     @classmethod
     def concat_tileable_chunks(cls, tileable):
