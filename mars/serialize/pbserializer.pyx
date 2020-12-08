@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import pickle
+import re
 import sys
 import weakref
 from collections import OrderedDict
@@ -43,6 +44,10 @@ try:
     from pandas.tseries.frequencies import to_offset
 except ImportError:
     PDTick = to_offset = None
+try:
+    from re import Pattern as RE_Pattern
+except ImportError:
+    RE_Pattern = type(re.compile('a'))
 
 
 cdef dict PRIMITIVE_TYPE_TO_VALUE_FIELD = {
@@ -234,6 +239,16 @@ cdef class ProtobufSerializeProvider(Provider):
     cdef inline object _get_namedtuple(self, obj):
         x = obj.namedtuple
         return cloudpickle.loads(x) if x is not None and len(x) > 0 else None
+
+    cdef inline void _set_regex(self, value, obj, tp=None):
+        if value is not None:
+            obj.regex.pattern = value.pattern
+            obj.regex.flags = value.flags
+
+    cdef inline object _get_regex(self, obj):
+        pattern = obj.regex.pattern
+        flags = obj.regex.flags
+        return re.compile(pattern, flags=flags) if pattern is not None else None
 
     cdef inline void _set_tzinfo(self, value, obj, tp=None):
         obj.tzinfo = pickle.dumps(value, protocol=self.pickle_protocol)
@@ -472,6 +487,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_complex(value, obj, tp)
         elif tp is ValueType.namedtuple:
             self._set_namedtuple(value, obj, tp)
+        elif tp is ValueType.regex:
+            self._set_regex(value, obj, tp)
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             setattr(obj, value_field, value)
@@ -546,6 +563,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_tzinfo(value, obj)
         elif isinstance(value, IntervalArray):
             self._set_interval_arr(value, obj)
+        elif isinstance(value, RE_Pattern):
+            self._set_regex(value, obj)
         elif PDTick is not None and isinstance(value, PDTick):
             self._set_freq(value, obj)
         elif callable(value):
@@ -762,6 +781,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_freq(obj))
         elif tp is ValueType.namedtuple:
             return ref(self._get_namedtuple(obj))
+        elif tp is ValueType.regex:
+            return ref(self._get_regex(obj))
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             return ref(getattr(obj, value_field))
@@ -842,6 +863,8 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_freq(obj))
         elif field == 'namedtuple':
             return ref(self._get_namedtuple(obj))
+        elif field == 'regex':
+            return ref(self._get_regex(obj))
         else:
             raise TypeError('Unknown type to deserialize')
 

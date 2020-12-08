@@ -20,6 +20,7 @@ import itertools
 import json
 import os
 import pickle
+import re
 import tempfile
 import unittest.mock
 from collections import OrderedDict, namedtuple
@@ -42,7 +43,7 @@ from mars.serialize.core import Serializable, IdentityField, StringField, Unicod
     ListField, NDArrayField, DictField, TupleField, ValueType, serializes, deserializes, \
     IndexField, SeriesField, DataFrameField, SliceField, Complex64Field, Complex128Field, \
     AnyField, FunctionField, TZInfoField, IntervalArrayField, NamedtupleField, \
-    ProviderType, AttributeAsDict
+    RegexField, ProviderType, AttributeAsDict
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
@@ -89,6 +90,7 @@ class Node1(Serializable):
     m = TZInfoField('m')
     n = IntervalArrayField('n')
     o = NamedtupleField('o')
+    p = RegexField('p')
 
     def __new__(cls, *args, **kwargs):
         if 'a' in kwargs and kwargs['a'] == 'test1':
@@ -187,6 +189,7 @@ class Node4(AttributeAsDict):
     y = DataFrameField('x')
     z = ListField('y')
     o = FunctionField('p')
+    p = RegexField('q')
 
     @classmethod
     def cls(cls, provider):
@@ -235,14 +238,15 @@ class Test(unittest.TestCase):
                              np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
                              lambda x: x + 2, pytz.timezone('Asia/Shanghai'),
                              pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)]),
-                             nt(1, 2)],
+                             nt(1, 2), re.compile(r'.\(\d+\)', flags=re.M)],
                           i=[Node8(b1=111), Node8(b1=222)],
                           j=Node2(a=[['u'], ['v']]),
                           k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None],
                           l=lambda x: x + 1,
                           m=pytz.timezone('Asia/Shanghai'),
                           n=pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)]),
-                          o=nt(3, 4))
+                          o=nt(3, 4),
+                          p=re.compile(r'\S\d', flags=re.IGNORECASE))
             node3 = Node3(value=node1)
 
             serials = serializes(provider, [node2, node3])
@@ -290,6 +294,8 @@ class Test(unittest.TestCase):
             self.assertEqual(node3.value.h[9], d_node3.value.h[9])
             np.testing.assert_array_equal(node3.value.h[10], d_node3.value.h[10])
             self.assertEqual(node3.value.h[11], d_node3.value.h[11])
+            self.assertEqual(node3.value.h[12].pattern, d_node3.value.h[12].pattern)
+            self.assertEqual(node3.value.h[12].flags, d_node3.value.h[12].flags)
             self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
             self.assertIsInstance(d_node3.value.i[0], Node8)
             self.assertIsInstance(d_node3.value.j, Node2)
@@ -305,6 +311,8 @@ class Test(unittest.TestCase):
             self.assertEqual(d_node3.value.m, node3.value.m)
             np.testing.assert_array_equal(d_node3.value.n, node3.value.n)
             self.assertEqual(d_node3.value.o, node3.value.o)
+            self.assertEqual(d_node3.value.p.pattern, node3.value.p.pattern)
+            self.assertEqual(d_node3.value.p.flags, node3.value.p.flags)
 
             with self.assertRaises(ValueError):
                 serializes(provider, [Node3(value='sth else')])
@@ -328,14 +336,15 @@ class Test(unittest.TestCase):
                              np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j),
                              lambda x: x + 2, pytz.timezone('Asia/Shanghai'),
                              pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)]),
-                             nt(1, 2)],
+                             nt(1, 2), re.compile(r'.\(\d+\)', flags=re.M)],
                           i=[Node8(b1=111), Node8(b1=222)],
                           j=Node2(a=[['u'], ['v']]),
                           k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None],
                           l=lambda x: x + 1,
                           m=pytz.timezone('Asia/Shanghai'),
                           n=pd.arrays.IntervalArray([pd.Interval(0, 1), pd.Interval(1, 5)]),
-                          o=nt(3, 4))
+                          o=nt(3, 4),
+                          p=re.compile(r'\S\d', flags=re.IGNORECASE))
             node3 = Node3(value=node1)
 
             serials = serializes(provider, [node2, node3])
@@ -384,6 +393,8 @@ class Test(unittest.TestCase):
             self.assertEqual(node3.value.h[9], d_node3.value.h[9])
             np.testing.assert_array_equal(node3.value.h[10], d_node3.value.h[10])
             self.assertEqual(node3.value.h[11], d_node3.value.h[11])
+            self.assertEqual(node3.value.h[12].pattern, d_node3.value.h[12].pattern)
+            self.assertEqual(node3.value.h[12].flags, d_node3.value.h[12].flags)
             self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
             self.assertIsInstance(d_node3.value.i[0], Node8)
             self.assertIsInstance(d_node3.value.j, Node2)
@@ -399,6 +410,8 @@ class Test(unittest.TestCase):
             self.assertEqual(d_node3.value.m, node3.value.m)
             np.testing.assert_array_equal(d_node3.value.n, node3.value.n)
             self.assertEqual(d_node3.value.o, node3.value.o)
+            self.assertEqual(d_node3.value.p.pattern, node3.value.p.pattern)
+            self.assertEqual(d_node3.value.p.flags, node3.value.p.flags)
 
             with self.assertRaises(ValueError):
                 serializes(provider, [Node3(value='sth else')])
@@ -536,6 +549,7 @@ class Test(unittest.TestCase):
                       l=Node6(b=3, nid=1),
                       m=Node6(b=4, nid=2),
                       n=[Node5(a='cc', b=slice(100, -2, -5)), None],
+                      p=re.compile(r'[^\d]+', re.A),
                       **other_data)
 
         pbs = ProtobufSerializeProvider()
@@ -565,6 +579,8 @@ class Test(unittest.TestCase):
         self.assertEqual(node4.n[0].a, d_node4.n[0].a)
         self.assertEqual(node4.n[0].b, d_node4.n[0].b)
         self.assertIsNone(d_node4.n[1])
+        self.assertEqual(node4.p.pattern, d_node4.p.pattern)
+        self.assertEqual(node4.p.flags, d_node4.p.flags)
         if pd:
             pd.testing.assert_index_equal(node4.w, d_node4.w)
             pd.testing.assert_index_equal(node4.ww, d_node4.ww)
@@ -627,6 +643,8 @@ class Test(unittest.TestCase):
         self.assertEqual(node4.n[0].a, d_node4.n[0].a)
         self.assertEqual(node4.n[0].b, d_node4.n[0].b)
         self.assertIsNone(d_node4.n[1])
+        self.assertEqual(node4.p.pattern, d_node4.p.pattern)
+        self.assertEqual(node4.p.flags, d_node4.p.flags)
         if pd:
             pd.testing.assert_index_equal(node4.w, d_node4.w)
             pd.testing.assert_index_equal(node4.ww, d_node4.ww)

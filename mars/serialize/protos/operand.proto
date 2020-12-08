@@ -371,6 +371,7 @@ message OperandDef {
         INSERT = 732;
         MAP_CHUNK = 733;
         EXPLODE = 735;
+        REPLACE = 736;
 
         FUSE = 801;
 
