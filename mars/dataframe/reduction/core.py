@@ -857,8 +857,11 @@ class ReductionCompiler:
 
     def compile(self) -> ReductionSteps:
         pre_funcs, agg_funcs, post_funcs = [], [], []
+        referred_cols = set()
         for key, step in self._output_key_to_pre_steps.items():
             cols = self._output_key_to_pre_cols[key]
+            if cols:
+                referred_cols.update(cols)
             pre_funcs.append(ReductionPreStep(
                 step.input_key, step.output_key, cols, step.func))
 
@@ -867,7 +870,12 @@ class ReductionCompiler:
 
         for key, step in self._output_key_to_post_steps.items():
             cols = self._output_key_to_post_cols[key]
+            if set(cols) == set(referred_cols):
+                post_cols = None
+            else:
+                post_cols = cols
+
             post_funcs.append(ReductionPostStep(
-                step.input_keys, step.output_key, step.func_name, cols, step.func))
+                step.input_keys, step.output_key, step.func_name, post_cols, step.func))
 
         return ReductionSteps(pre_funcs, agg_funcs, post_funcs)
