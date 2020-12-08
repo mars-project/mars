@@ -49,6 +49,7 @@ cpdef enum ExtendType:
     interval_arr = 28
     freq = 29
     namedtuple = 30
+    regex = 31
     pickled = 32767
 
 
@@ -235,6 +236,10 @@ cdef class OneOfField(Field):
     cdef public list fields
 
 
+cdef class NamedtupleField(Field):
+    pass
+
+
 cdef class FunctionField(Field):
     pass
 
@@ -244,6 +249,10 @@ cdef class TZInfoField(Field):
 
 
 cdef class IntervalArrayField(Field):
+    pass
+
+
+cdef class RegexField(Field):
     pass
 
 
