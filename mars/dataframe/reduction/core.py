@@ -870,7 +870,7 @@ class ReductionCompiler:
 
         for key, step in self._output_key_to_post_steps.items():
             cols = self._output_key_to_post_cols[key]
-            if set(cols) == set(referred_cols):
+            if cols and set(cols) == set(referred_cols):
                 post_cols = None
             else:
                 post_cols = cols

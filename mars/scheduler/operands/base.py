@@ -94,8 +94,6 @@ class BaseOperandActor(SchedulerActor):
         if self._with_kvstore:
             self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
 
-        self.ref().start_operand(_tell=True)
-
     def pre_destroy(self):
         self.unset_cluster_info_ref()
 

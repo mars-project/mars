@@ -962,11 +962,17 @@ class GraphActor(SchedulerActor):
 
         if _start:
             existing_keys = []
+            created_keys = []
             for op_key, future in op_refs.items():
                 try:
                     op_refs[op_key] = future.result()
+                    created_keys.append(op_key)
                 except ActorAlreadyExist:
                     existing_keys.append(op_key)
+
+            # start operands when all operands are created
+            for op_key in created_keys:
+                op_refs[op_key].start_operand(_tell=True, _wait=False)
 
             append_futures = []
             for op_key in existing_keys:
