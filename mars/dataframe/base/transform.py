@@ -24,7 +24,7 @@ from ...utils import enter_current_session
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_series, validate_axis, \
-    parse_index, filter_dtypes_by_index, quiet_stdio
+    parse_index, filter_dtypes_by_index, make_dtypes, quiet_stdio
 
 
 class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
@@ -41,10 +41,10 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
     _call_agg = BoolField('call_agg')
 
     def __init__(self, func=None, axis=None, convert_dtype=None, args=None, kwds=None,
-                 call_agg=None, output_types=None, tileable_op_key=None, **kw):
+                 call_agg=None, output_types=None, tileable_op_key=None, memory_scale=None, **kw):
         super().__init__(_func=func, _axis=axis, _convert_dtype=convert_dtype, _args=args,
                          _kwds=kwds, _call_agg=call_agg, _output_types=output_types,
-                         _tileable_op_key=tileable_op_key, **kw)
+                         _tileable_op_key=tileable_op_key, _memory_scale=memory_scale, **kw)
 
     @property
     def func(self):
@@ -211,10 +211,10 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
             is_df = isinstance(infer_df, pd.DataFrame)
 
         if is_df:
-            new_dtypes = dtypes or infer_df.dtypes
+            new_dtypes = make_dtypes(dtypes) if dtypes is not None else infer_df.dtypes
             self.output_types = [OutputType.dataframe]
         else:
-            new_dtypes = dtypes or (infer_df.name, infer_df.dtype)
+            new_dtypes = dtypes if dtypes is not None else (infer_df.name, infer_df.dtype)
             self.output_types = [OutputType.series]
 
         return new_dtypes
@@ -224,11 +224,6 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         self._axis = validate_axis(axis, df)
 
         dtypes = self._infer_df_func_returns(df, dtypes)
-
-        for arg, desc in zip((self.output_types, dtypes), ('output_types', 'dtypes')):
-            if arg is None:
-                raise TypeError(f'Cannot determine {desc} by calculating with enumerate data, '
-                                'please specify it as arguments')
 
         if self.output_types[0] == OutputType.dataframe:
             new_shape = list(df.shape)
@@ -257,12 +252,173 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
 
 def df_transform(df, func, axis=0, *args, dtypes=None, **kwargs):
+    """
+    Call ``func`` on self producing a DataFrame with transformed values.
+
+    Produced DataFrame will have same axis length as self.
+
+    Parameters
+    ----------
+    func : function, str, list or dict
+        Function to use for transforming the data. If a function, must either
+        work when passed a DataFrame or when passed to DataFrame.apply.
+
+        Accepted combinations are:
+
+        - function
+        - string function name
+        - list of functions and/or function names, e.g. ``[np.exp. 'sqrt']``
+        - dict of axis labels -> functions, function names or list of such.
+    axis : {0 or 'index', 1 or 'columns'}, default 0
+            If 0 or 'index': apply function to each column.
+            If 1 or 'columns': apply function to each row.
+
+    dtypes : Series, default None
+        Specify dtypes of returned DataFrames. See `Notes` for more details.
+
+    *args
+        Positional arguments to pass to `func`.
+    **kwargs
+        Keyword arguments to pass to `func`.
+
+    Returns
+    -------
+    DataFrame
+        A DataFrame that must have the same length as self.
+
+    Raises
+    ------
+    ValueError : If the returned DataFrame has a different length than self.
+
+    See Also
+    --------
+    DataFrame.agg : Only perform aggregating type operations.
+    DataFrame.apply : Invoke function on a DataFrame.
+
+    Notes
+    -----
+    When deciding output dtypes and shape of the return value, Mars will
+    try applying ``func`` onto a mock DataFrame and the apply call may
+    fail. When this happens, you need to specify a list or a pandas
+    Series as ``dtypes`` of output DataFrame.
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'A': range(3), 'B': range(1, 4)})
+    >>> df.execute()
+       A  B
+    0  0  1
+    1  1  2
+    2  2  3
+    >>> df.transform(lambda x: x + 1).execute()
+       A  B
+    0  1  2
+    1  2  3
+    2  3  4
+
+    Even though the resulting DataFrame must have the same length as the
+    input DataFrame, it is possible to provide several input functions:
+
+    >>> s = md.Series(range(3))
+    >>> s.execute()
+    0    0
+    1    1
+    2    2
+    dtype: int64
+    >>> s.transform([mt.sqrt, mt.exp]).execute()
+           sqrt        exp
+    0  0.000000   1.000000
+    1  1.000000   2.718282
+    2  1.414214   7.389056
+    """
     op = TransformOperand(func=func, axis=axis, args=args, kwds=kwargs, output_types=[OutputType.dataframe],
                           call_agg=kwargs.pop('_call_agg', False))
     return op(df, dtypes=dtypes)
 
 
 def series_transform(series, func, convert_dtype=True, axis=0, *args, dtype=None, **kwargs):
+    """
+    Call ``func`` on self producing a Series with transformed values.
+
+    Produced Series will have same axis length as self.
+
+    Parameters
+    ----------
+    func : function, str, list or dict
+    Function to use for transforming the data. If a function, must either
+    work when passed a Series or when passed to Series.apply.
+
+    Accepted combinations are:
+
+    - function
+    - string function name
+    - list of functions and/or function names, e.g. ``[np.exp. 'sqrt']``
+    - dict of axis labels -> functions, function names or list of such.
+    axis : {0 or 'index'}
+        Parameter needed for compatibility with DataFrame.
+
+    dtype : numpy.dtype, default None
+        Specify dtypes of returned DataFrames. See `Notes` for more details.
+
+    *args
+    Positional arguments to pass to `func`.
+    **kwargs
+    Keyword arguments to pass to `func`.
+
+    Returns
+    -------
+    Series
+    A Series that must have the same length as self.
+
+    Raises
+    ------
+    ValueError : If the returned Series has a different length than self.
+
+    See Also
+    --------
+    Series.agg : Only perform aggregating type operations.
+    Series.apply : Invoke function on a Series.
+
+    Notes
+    -----
+    When deciding output dtypes and shape of the return value, Mars will
+    try applying ``func`` onto a mock Series, and the transform call may
+    fail. When this happens, you need to specify ``dtype`` of output
+    Series.
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame({'A': range(3), 'B': range(1, 4)})
+    >>> df.execute()
+    A  B
+    0  0  1
+    1  1  2
+    2  2  3
+    >>> df.transform(lambda x: x + 1).execute()
+    A  B
+    0  1  2
+    1  2  3
+    2  3  4
+
+    Even though the resulting Series must have the same length as the
+    input Series, it is possible to provide several input functions:
+
+    >>> s = md.Series(range(3))
+    >>> s.execute()
+    0    0
+    1    1
+    2    2
+    dtype: int64
+    >>> s.transform([mt.sqrt, mt.exp]).execute()
+       sqrt        exp
+    0  0.000000   1.000000
+    1  1.000000   2.718282
+    2  1.414214   7.389056
+   """
     op = TransformOperand(func=func, axis=axis, convert_dtype=convert_dtype, args=args, kwds=kwargs,
                           output_types=[OutputType.series], call_agg=kwargs.pop('_call_agg', False))
     dtypes = (series.name, dtype) if dtype is not None else None

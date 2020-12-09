@@ -23,6 +23,7 @@ from numbers import Integral
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_string_dtype
+from pandas.api.extensions import ExtensionDtype
 from pandas.core.dtypes.cast import find_common_type
 try:
     import pyarrow as pa
@@ -1019,6 +1020,23 @@ def to_arrow_dtypes(dtypes, test_df=None):
                 # empty, set arrow string dtype
                 new_dtypes.iloc[i] = ArrowStringDtype()
     return new_dtypes
+
+
+def make_dtype(dtype):
+    if isinstance(dtype, (np.dtype, ExtensionDtype)):
+        return dtype
+    return np.dtype(dtype) if dtype is not None else None
+
+
+def make_dtypes(dtypes):
+    if dtypes is None:
+        return None
+    if not isinstance(dtypes, pd.Series):
+        if isinstance(dtypes, dict):
+            dtypes = pd.Series(dtypes.values(), index=dtypes.keys())
+        else:
+            dtypes = pd.Series(dtypes)
+    return dtypes.apply(make_dtype)
 
 
 _io_quiet_local = threading.local()

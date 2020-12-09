@@ -134,10 +134,28 @@ class Test(TestBase):
         def apply_df(df):
             return df.sort_index()
 
+        def apply_df_with_error(df):
+            assert len(df) > 2
+            return df.sort_index()
+
         def apply_series(s):
             return s.sort_index()
 
         mdf = md.DataFrame(df1, chunk_size=3)
+
+        with self.assertRaises(TypeError):
+            mdf.groupby('b').apply(apply_df_with_error)
+
+        applied = mdf.groupby('b').apply(
+            apply_df_with_error, output_type='dataframe',
+            dtypes=df1.dtypes).tiles()
+        pd.testing.assert_series_equal(applied.dtypes, df1.dtypes)
+        self.assertEqual(applied.shape, (np.nan, 3))
+        self.assertEqual(applied.op._op_type_, opcodes.APPLY)
+        self.assertEqual(applied.op.output_types[0], OutputType.dataframe)
+        self.assertEqual(len(applied.chunks), 3)
+        self.assertEqual(applied.chunks[0].shape, (np.nan, 3))
+        pd.testing.assert_series_equal(applied.chunks[0].dtypes, df1.dtypes)
 
         applied = mdf.groupby('b').apply(apply_df).tiles()
         pd.testing.assert_series_equal(applied.dtypes, df1.dtypes)
@@ -191,10 +209,27 @@ class Test(TestBase):
         def transform_df(df):
             return df.sort_index()
 
+        def transform_df_with_err(df):
+            assert len(df) > 2
+            return df.sort_index()
+
         mdf = md.DataFrame(df1, chunk_size=3)
 
         with self.assertRaises(TypeError):
             mdf.groupby('b').transform(['cummax', 'cumcount'])
+
+        with self.assertRaises(TypeError):
+            mdf.groupby('b').transform(transform_df_with_err)
+
+        r = mdf.groupby('b').transform(transform_df_with_err,
+                                       dtypes=df1.dtypes.drop('b')).tiles()
+        self.assertListEqual(r.dtypes.index.tolist(), list('acdef'))
+        self.assertEqual(r.shape, (9, 5))
+        self.assertEqual(r.op._op_type_, opcodes.TRANSFORM)
+        self.assertEqual(r.op.output_types[0], OutputType.dataframe)
+        self.assertEqual(len(r.chunks), 3)
+        self.assertEqual(r.chunks[0].shape, (np.nan, 5))
+        self.assertListEqual(r.chunks[0].dtypes.index.tolist(), list('acdef'))
 
         r = mdf.groupby('b').transform(transform_df).tiles()
         self.assertListEqual(r.dtypes.index.tolist(), list('acdef'))

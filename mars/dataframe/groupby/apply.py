@@ -16,13 +16,13 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import OutputType, get_output_types
+from ...core import OutputType
 from ...custom_log import redirect_custom_log
 from ...serialize import TupleField, DictField, FunctionField, StringField
 from ...utils import enter_current_session
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_df, build_empty_df, build_series, build_empty_series, \
-    parse_index, validate_output_types, quiet_stdio
+from ..utils import build_empty_df, build_empty_series, parse_index, \
+    validate_output_types, make_dtypes, make_dtype, quiet_stdio
 
 
 class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
@@ -109,41 +109,27 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             kw['nsplits'] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
 
-    def _infer_df_func_returns(self, in_groupby, in_df, dtypes, index):
+    def _infer_df_func_returns(self, in_groupby, in_df, dtypes, dtype=None,
+                               name=None, index=None):
         index_value, output_type, new_dtypes = None, None, None
 
         try:
-            if in_df.op.output_types[0] == OutputType.dataframe:
-                test_df = build_df(in_df, size=2)
-            else:
-                test_df = build_series(in_df, size=2, name=in_df.name)
-
-            selection = getattr(in_groupby.op, 'selection', None)
-            if selection:
-                test_df = test_df[selection]
-
-            with np.errstate(all='ignore'):
-                infer_df = self.func(test_df, *self.args, **self.kwds)
+            infer_df = in_groupby.op.build_mock_groupby().apply(self.func, *self.args, **self.kwds)
 
             # todo return proper index when sort=True is implemented
             index_value = parse_index(None, in_df.key, self.func)
 
-            if infer_df is None:
-                output_type = get_output_types(in_df)[0]
-                index_value = parse_index(pd.Index([], dtype=np.object))
-                if output_type == OutputType.dataframe:
-                    new_dtypes = pd.Series([], index=pd.Index([]))
-                else:
-                    new_dtypes = (None, np.dtype('O'))
-            elif isinstance(infer_df, pd.DataFrame):
+            # for backward compatibility
+            dtype = dtype if dtype is not None else dtypes
+            if isinstance(infer_df, pd.DataFrame):
                 output_type = output_type or OutputType.dataframe
                 new_dtypes = new_dtypes or infer_df.dtypes
             elif isinstance(infer_df, pd.Series):
                 output_type = output_type or OutputType.series
-                new_dtypes = new_dtypes or (infer_df.name, infer_df.dtype)
+                new_dtypes = new_dtypes or (name or infer_df.name, dtype or infer_df.dtype)
             else:
                 output_type = OutputType.series
-                new_dtypes = (None, pd.Series(infer_df).dtype)
+                new_dtypes = (name, dtype or pd.Series(infer_df).dtype)
         except:  # noqa: E722  # nosec
             pass
 
@@ -152,13 +138,14 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
         index_value = index_value if index is None else parse_index(index)
         return dtypes, index_value
 
-    def __call__(self, groupby, dtypes=None, index=None):
+    def __call__(self, groupby, dtypes=None, dtype=None, name=None, index=None):
         in_df = groupby
         while in_df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
             in_df = in_df.inputs[0]
 
         with quiet_stdio():
-            dtypes, index_value = self._infer_df_func_returns(groupby, in_df, dtypes, index)
+            dtypes, index_value = self._infer_df_func_returns(
+                groupby, in_df, dtypes, dtype=dtype, name=name, index=index)
         if index_value is None:
             index_value = parse_index(None, (in_df.key, in_df.index_value.key))
         for arg, desc in zip((self.output_types, dtypes), ('output_types', 'dtypes')):
@@ -171,21 +158,87 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             return self.new_dataframe([groupby], shape=new_shape, dtypes=dtypes, index_value=index_value,
                                       columns_value=parse_index(dtypes.index, store_data=True))
         else:
-            name, dtype = dtypes
+            name = name or dtypes[0]
+            dtype = dtype or dtypes[1]
             new_shape = (np.nan,)
             return self.new_series([groupby], name=name, shape=new_shape, dtype=dtype,
                                    index_value=index_value)
 
 
-def groupby_apply(groupby, func, *args, dtypes=None, index=None, output_type=None, **kwargs):
-    # todo this can be done with sort_index implemented
-    if not groupby.op.groupby_params.get('as_index', True):
-        raise NotImplementedError('apply when set_index == False is not supported')
+def groupby_apply(groupby, func, *args, output_type=None, dtypes=None, dtype=None,
+                  name=None, index=None, **kwargs):
+    """
+    Apply function `func` group-wise and combine the results together.
 
+    The function passed to `apply` must take a dataframe as its first
+    argument and return a DataFrame, Series or scalar. `apply` will
+    then take care of combining the results back together into a single
+    dataframe or series. `apply` is therefore a highly flexible
+    grouping method.
+
+    While `apply` is a very flexible method, its downside is that
+    using it can be quite a bit slower than using more specific methods
+    like `agg` or `transform`. Pandas offers a wide range of method that will
+    be much faster than using `apply` for their specific purposes, so try to
+    use them before reaching for `apply`.
+
+    Parameters
+    ----------
+    func : callable
+        A callable that takes a dataframe as its first argument, and
+        returns a dataframe, a series or a scalar. In addition the
+        callable may take positional and keyword arguments.
+
+    output_type : {'dataframe', 'series'}, default None
+        Specify type of returned object. See `Notes` for more details.
+
+    dtypes : Series, default None
+        Specify dtypes of returned DataFrames. See `Notes` for more details.
+
+    dtype : numpy.dtype, default None
+        Specify dtype of returned Series. See `Notes` for more details.
+
+    name : str, default None
+        Specify name of returned Series. See `Notes` for more details.
+
+    index : Index, default None
+        Specify index of returned object. See `Notes` for more details.
+
+    args, kwargs : tuple and dict
+        Optional positional and keyword arguments to pass to `func`.
+
+    Returns
+    -------
+    applied : Series or DataFrame
+
+    See Also
+    --------
+    pipe : Apply function to the full GroupBy object instead of to each
+        group.
+    aggregate : Apply aggregate function to the GroupBy object.
+    transform : Apply function column-by-column to the GroupBy object.
+    Series.apply : Apply a function to a Series.
+    DataFrame.apply : Apply a function to each row or column of a DataFrame.
+
+    Notes
+    -----
+    When deciding output dtypes and shape of the return value, Mars will
+    try applying ``func`` onto a mock grouped object, and the apply call
+    may fail. When this happens, you need to specify the type of apply
+    call (DataFrame or Series) in output_type.
+
+    * For DataFrame output, you need to specify a list or a pandas Series
+      as ``dtypes`` of output DataFrame. ``index`` of output can also be
+      specified.
+    * For Series output, you need to specify ``dtype`` and ``name`` of
+      output Series.
+    """
     output_types = kwargs.pop('output_types', None)
     object_type = kwargs.pop('object_type', None)
     output_types = validate_output_types(
         output_types=output_types, output_type=output_type, object_type=object_type)
 
+    dtypes = make_dtypes(dtypes)
+    dtype = make_dtype(dtype)
     op = GroupByApply(func=func, args=args, kwds=kwargs, output_types=output_types)
-    return op(groupby, dtypes=dtypes, index=index)
+    return op(groupby, dtypes=dtypes, dtype=dtype, name=name, index=index)
