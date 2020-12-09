@@ -893,6 +893,10 @@ class GraphActor(SchedulerActor):
         meta_op_infos = dict()
         initial_keys = []
         to_allocate_op_keys = set()
+
+        total_ops = len(self._op_key_to_chunk)
+        processed_ops = 0
+        last_progress = 0
         for op_key in self._op_key_to_chunk:
             chunks = self._op_key_to_chunk[op_key]
             op = chunks[0].op
@@ -908,7 +912,8 @@ class GraphActor(SchedulerActor):
             io_meta = self._collect_operand_io_meta(chunk_graph, chunks)
             op_info['op_name'] = meta_op_info['op_name'] = op_name
             op_info['io_meta'] = io_meta
-            op_info['executable_dag'] = self.get_executable_operand_dag(op_key)
+            op_info['executable_dag'] = self._graph_analyze_pool.submit(
+                self.get_executable_operand_dag, op_key).result()
             # todo change this when other calc devices supported
             op_info['calc_device'] = 'cuda' if op.gpu else 'cpu'
 
@@ -946,16 +951,28 @@ class GraphActor(SchedulerActor):
                 op_info.pop('executable_dag', None)
                 del op_info['io_meta']
 
+            processed_ops += 1
+            progress = processed_ops * 1.0 / total_ops
+            if int(progress * 20) > last_progress:
+                last_progress = int(progress * 20)
+                logger.info('Operand actor creation progress: %d / %d', processed_ops, total_ops)
+
         self.state = GraphState.RUNNING
         self._graph_meta_ref.update_op_infos(meta_op_infos, _tell=True, _wait=False)
 
         if _start:
             existing_keys = []
+            created_keys = []
             for op_key, future in op_refs.items():
                 try:
                     op_refs[op_key] = future.result()
+                    created_keys.append(op_key)
                 except ActorAlreadyExist:
                     existing_keys.append(op_key)
+
+            # start operands when all operands are created
+            for op_key in created_keys:
+                op_refs[op_key].start_operand(_tell=True, _wait=False)
 
             append_futures = []
             for op_key in existing_keys:
