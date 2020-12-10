@@ -420,8 +420,9 @@ def _get_chunk_index_min_max(index_chunks):
         max_val = chunk.max_val
         max_val_close = chunk.max_val_close
         if min_val is None or max_val is None:
-            return
-        chunk_index_min_max.append((min_val, min_val_close, max_val, max_val_close))
+            chunk_index_min_max.append((None, True, None, True))
+        else:
+            chunk_index_min_max.append((min_val, min_val_close, max_val, max_val_close))
     return chunk_index_min_max
 
 
@@ -442,8 +443,8 @@ def _get_monotonic_chunk_index_min_max(index, index_chunks):
 
 def _need_align_map(input_chunk, index_min_max, column_min_max,
                     dummy_index_splits=False, dummy_column_splits=False):
-    if not dummy_index_splits:
-        assert not index_min_max[0] is None and not index_min_max[2] is None
+    # if not dummy_index_splits:
+    #     assert not index_min_max[0] is None and not index_min_max[2] is None
     if isinstance(input_chunk, SERIES_CHUNK_TYPE):
         if input_chunk.index_value is None:
             return True
