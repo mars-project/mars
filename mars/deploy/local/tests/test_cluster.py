@@ -603,7 +603,7 @@ class Test(unittest.TestCase):
             expected4 = raw.groupby('c2').transform(func)
             pd.testing.assert_frame_equal(r4.sort_index(), expected4.sort_index())
 
-            # test rerun gropuby
+            # test rerun groupby
             df = md.DataFrame(raw.copy(), chunk_size=4)
             r5 = session.run(df.groupby('c2').count(method='shuffle').max())
             r6 = session.run(df.groupby('c2').count(method='shuffle').min())

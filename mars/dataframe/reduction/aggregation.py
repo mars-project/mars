@@ -605,7 +605,11 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
         # map according to map groups
         ret_map_dfs = dict()
+        in_cols_set = set(in_data.columns) if in_data.ndim == 2 else None
         for input_key, output_key, cols, func in op.pre_funcs:
+            if cols and in_cols_set == set(cols):
+                cols = None
+
             src_df = in_data if cols is None else in_data[cols]
             if input_key == output_key:
                 ret_map_dfs[output_key] = src_df
