@@ -443,8 +443,6 @@ def _get_monotonic_chunk_index_min_max(index, index_chunks):
 
 def _need_align_map(input_chunk, index_min_max, column_min_max,
                     dummy_index_splits=False, dummy_column_splits=False):
-    # if not dummy_index_splits:
-    #     assert not index_min_max[0] is None and not index_min_max[2] is None
     if isinstance(input_chunk, SERIES_CHUNK_TYPE):
         if input_chunk.index_value is None:
             return True

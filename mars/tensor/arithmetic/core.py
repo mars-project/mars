@@ -240,7 +240,28 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         else:
             return TensorOrder.F_ORDER
 
+    @property
+    def ufunc_extra_params(self):
+        return dict()
+
+    def _call_tensor_ufunc(self, x1, x2, out=None, where=None):
+        if hasattr(x1, '__tensor_ufunc__') or hasattr(x2, '__tensor_ufunc__'):
+            ufunc = x1.__tensor_ufunc__ if hasattr(x1, '__tensor_ufunc__') \
+                else x2.__tensor_ufunc__
+            ret = ufunc(type(self), [x1, x2], out, where,
+                        **self.ufunc_extra_params)
+            if ret is NotImplemented:
+                return
+            return ret
+
     def _call(self, x1, x2, out=None, where=None):
+        # check tensor ufunc, if x1 or x2 is not a tensor, e.g. Mars DataFrame
+        # which implements tensor ufunc, will delegate the computation
+        # to it if possible
+        ret = self._call_tensor_ufunc(x1, x2, out=out, where=where)
+        if ret is not None:
+            return ret
+
         x1, x2, out, where = self._process_inputs(x1, x2, out, where)
         # check broadcast
         x1_shape = () if np.isscalar(x1) else x1.shape

@@ -17,9 +17,12 @@ import functools
 from ...utils import is_build_mode
 from ..core import DATAFRAME_TYPE
 from ..utils import wrap_notimplemented_exception
-from ..ufunc.tensor import register_tensor_unary_ufunc
+from ..ufunc.tensor import register_tensor_ufunc
 from .abs import abs_, DataFrameAbs
 from .add import add, radd, DataFrameAdd
+from .bitwise_and import bitand, rbitand, DataFrameAnd
+from .bitwise_or import bitor, rbitor, DataFrameOr
+from .bitwise_xor import bitxor, rbitxor, DataFrameXor
 from .subtract import subtract, rsubtract, DataFrameSubtract
 from .multiply import mul, rmul, DataFrameMul
 from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
@@ -32,15 +35,12 @@ from .less import lt, DataFrameLess
 from .greater import gt, DataFrameGreater
 from .less_equal import le, DataFrameLessEqual
 from .greater_equal import ge, DataFrameGreaterEqual
+from .invert import invert, DataFrameNot
 from .is_ufuncs import DataFrameIsNan, DataFrameIsInf, DataFrameIsFinite
 from .negative import DataFrameNegative, negative
 from .log import DataFrameLog
 from .log2 import DataFrameLog2
 from .log10 import DataFrameLog10
-from .logical_and import logical_and, logical_rand, DataFrameAnd
-from .logical_not import logical_not, DataFrameNot
-from .logical_or import logical_or, logical_ror, DataFrameOr
-from .logical_xor import logical_xor, logical_rxor, DataFrameXor
 from .sin import DataFrameSin
 from .cos import DataFrameCos
 from .tan import DataFrameTan
@@ -136,8 +136,9 @@ def _install():
             call = None
         return _register_method(cls, name, func, wrapper=call)
 
-    # register mars unary ufuncs
-    unary_ops = [
+    # register mars tensor ufuncs
+    ufunc_ops = [
+        # unary
         DataFrameAbs, DataFrameLog, DataFrameLog2, DataFrameLog10,
         DataFrameSin, DataFrameCos, DataFrameTan,
         DataFrameSinh, DataFrameCosh, DataFrameTanh,
@@ -147,16 +148,22 @@ def _install():
         DataFrameCeil, DataFrameFloor, DataFrameAround,
         DataFrameExp, DataFrameExp2, DataFrameExpm1,
         DataFrameSqrt, DataFrameNot, DataFrameIsNan,
-        DataFrameIsInf, DataFrameIsFinite, DataFrameNegative
+        DataFrameIsInf, DataFrameIsFinite, DataFrameNegative,
+        # binary
+        DataFrameAdd, DataFrameEqual, DataFrameFloorDiv,
+        DataFrameGreater, DataFrameGreaterEqual, DataFrameLess,
+        DataFrameLessEqual, DataFrameAnd, DataFrameOr, DataFrameXor,
+        DataFrameMod, DataFrameMul, DataFrameNotEqual, DataFramePower,
+        DataFrameSubtract, DataFrameTrueDiv,
     ]
-    for unary_op in unary_ops:
-        register_tensor_unary_ufunc(unary_op)
+    for ufunc_op in ufunc_ops:
+        register_tensor_ufunc(ufunc_op)
 
     for entity in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(entity, '__abs__', abs_)
         setattr(entity, 'abs', abs_)
         _register_method(entity, 'round', around)
-        setattr(entity, '__invert__', logical_not)
+        setattr(entity, '__invert__', invert)
 
         setattr(entity, '__add__', wrap_notimplemented_exception(add))
         setattr(entity, '__radd__', wrap_notimplemented_exception(radd))
@@ -213,14 +220,14 @@ def _install():
         setattr(entity, '__matmul__', dot)
         _register_method(entity, 'dot', dot)
 
-        setattr(entity, '__and__', wrap_notimplemented_exception(logical_and))
-        setattr(entity, '__rand__', wrap_notimplemented_exception(logical_rand))
+        setattr(entity, '__and__', wrap_notimplemented_exception(bitand))
+        setattr(entity, '__rand__', wrap_notimplemented_exception(rbitand))
 
-        setattr(entity, '__or__', wrap_notimplemented_exception(logical_or))
-        setattr(entity, '__ror__', wrap_notimplemented_exception(logical_ror))
+        setattr(entity, '__or__', wrap_notimplemented_exception(bitor))
+        setattr(entity, '__ror__', wrap_notimplemented_exception(rbitor))
 
-        setattr(entity, '__xor__', wrap_notimplemented_exception(logical_xor))
-        setattr(entity, '__rxor__', wrap_notimplemented_exception(logical_rxor))
+        setattr(entity, '__xor__', wrap_notimplemented_exception(bitxor))
+        setattr(entity, '__rxor__', wrap_notimplemented_exception(rbitxor))
 
         setattr(entity, '__neg__', wrap_notimplemented_exception(negative))
 
