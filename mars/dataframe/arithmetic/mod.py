@@ -16,11 +16,11 @@ import operator
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .core import DataFrameBinopUfunc
 from .docstring import bin_arithmetic_doc
 
 
-class DataFrameMod(DataFrameBinOp, DataFrameBinOpMixin):
+class DataFrameMod(DataFrameBinopUfunc):
     _op_type_ = OperandDef.MOD
 
     _func_name = 'mod'
@@ -29,6 +29,11 @@ class DataFrameMod(DataFrameBinOp, DataFrameBinOpMixin):
     @classproperty
     def _operator(self):
         return operator.mod
+
+    @classproperty
+    def tensor_op_type(self):
+        from ...tensor.arithmetic import TensorMod
+        return TensorMod
 
 
 _mod_example = """

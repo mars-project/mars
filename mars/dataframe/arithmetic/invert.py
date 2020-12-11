@@ -27,6 +27,6 @@ class DataFrameNot(DataFrameUnaryUfunc):
         return TensorNot
 
 
-def logical_not(df):
+def invert(df):
     op = DataFrameNot()
     return op(df)

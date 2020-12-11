@@ -16,11 +16,11 @@ import operator
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .core import DataFrameBinopUfunc
 from .docstring import bin_arithmetic_doc
 
 
-class DataFrameSubtract(DataFrameBinOp, DataFrameBinOpMixin):
+class DataFrameSubtract(DataFrameBinopUfunc):
     _op_type_ = OperandDef.SUB
 
     _func_name = 'sub'
@@ -29,6 +29,11 @@ class DataFrameSubtract(DataFrameBinOp, DataFrameBinOpMixin):
     @classproperty
     def _operator(self):
         return operator.sub
+
+    @classproperty
+    def tensor_op_type(self):
+        from ...tensor.arithmetic import TensorSubtract
+        return TensorSubtract
 
 
 _sub_example = """

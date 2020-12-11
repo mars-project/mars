@@ -22,7 +22,7 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...core import Base, Entity, OutputType
 from ...serialize import AnyField, Int32Field, BoolField
-from ...tensor.core import TENSOR_TYPE
+from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...tensor.datasource import tensor as astensor
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
@@ -252,7 +252,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 return self.new_series([df], shape=(df.shape[0],), dtype=dtype, index_value=df.index_value,
                                        name=self._col_names)
         else:
-            if isinstance(self.mask, (SERIES_TYPE, DATAFRAME_TYPE)):
+            if isinstance(self.mask, (SERIES_TYPE, DATAFRAME_TYPE, TENSOR_TYPE)):
                 index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype,
                                                    name=df.index_value.name),
                                           df, self._mask)
@@ -279,15 +279,22 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
 
         out_chunks = []
 
-        if isinstance(op.mask, (SERIES_TYPE, DATAFRAME_TYPE)):
+        if isinstance(op.mask, (SERIES_TYPE, DATAFRAME_TYPE, TENSOR_TYPE)):
             mask = op.inputs[1]
 
             if isinstance(op.mask, SERIES_TYPE):
                 nsplits, out_shape, df_chunks, mask_chunks = \
                     align_dataframe_series(in_df, mask, axis='index')
-            else:
+            elif isinstance(op.mask, DATAFRAME_TYPE):
                 nsplits, out_shape, df_chunks, mask_chunks = \
                     align_dataframe_dataframe(in_df, mask)
+            else:
+                # tensor
+                nsplits = in_df.nsplits
+                mask = mask.rechunk(nsplits[:mask.ndim])._inplace_tile()
+                out_shape = in_df.chunk_shape
+                df_chunks = in_df.chunks
+                mask_chunks = mask.chunks
             out_chunk_indexes = itertools.product(*(range(s) for s in out_shape))
 
             out_chunks = []
@@ -303,8 +310,6 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                                             index_value=index_value,
                                                             columns_value=df_chunk.columns_value)
                 out_chunks.append(out_chunk)
-
-            nsplits = ((np.nan,) * len(nsplits[0]), nsplits[1])
         else:
             check_chunks_unknown_shape([in_df], TilesError)
             nsplits_acc = np.cumsum((0,) + in_df.nsplits[0])
@@ -385,11 +390,13 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = df[op.col_names]
         else:
             df = ctx[op.inputs[0].key]
-            if isinstance(op.mask, (SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE)):
+            if isinstance(op.mask, (SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE,
+                                    TENSOR_CHUNK_TYPE)):
                 mask = ctx[op.inputs[1].key]
             else:
                 mask = op.mask
-            mask = mask.reindex_like(df).fillna(False)
+            if hasattr(mask, 'reindex_like'):
+                mask = mask.reindex_like(df).fillna(False)
             if mask.ndim == 2:
                 mask = mask[df.columns.tolist()]
             ctx[op.outputs[0].key] = df[mask]

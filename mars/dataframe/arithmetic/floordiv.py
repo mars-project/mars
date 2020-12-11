@@ -16,11 +16,11 @@ import operator
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .core import DataFrameBinopUfunc
 from .docstring import bin_arithmetic_doc
 
 
-class DataFrameFloorDiv(DataFrameBinOp, DataFrameBinOpMixin):
+class DataFrameFloorDiv(DataFrameBinopUfunc):
     _op_type_ = OperandDef.FLOORDIV
 
     _func_name = 'floordiv'
@@ -29,6 +29,11 @@ class DataFrameFloorDiv(DataFrameBinOp, DataFrameBinOpMixin):
     @classproperty
     def _operator(self):
         return operator.floordiv
+
+    @classproperty
+    def tensor_op_type(self):
+        from ...tensor.arithmetic import TensorFloorDiv
+        return TensorFloorDiv
 
 
 _floordiv_example = """

@@ -16,10 +16,10 @@ import operator
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .core import DataFrameBinopUfunc
 
 
-class DataFrameOr(DataFrameBinOp, DataFrameBinOpMixin):
+class DataFrameOr(DataFrameBinopUfunc):
     _op_type_ = OperandDef.OR
 
     _func_name = '__or__'
@@ -29,12 +29,17 @@ class DataFrameOr(DataFrameBinOp, DataFrameBinOpMixin):
     def _operator(self):
         return operator.or_
 
+    @classproperty
+    def tensor_op_type(self):
+        from ...tensor.arithmetic import TensorBitor
+        return TensorBitor
 
-def logical_or(df, other, axis='columns', level=None, fill_value=None):
+
+def bitor(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameOr(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
-def logical_ror(df, other, axis='columns', level=None, fill_value=None):
+def rbitor(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameOr(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)
