@@ -30,50 +30,6 @@ from ..ufunc.tensor import TensorUfuncMixin
 from ..utils import parse_index, infer_dtypes, infer_dtype, infer_index_value, build_empty_df
 
 
-class DataFrameBinOp(DataFrameOperand):
-    _axis = AnyField('axis')
-    _level = AnyField('level')
-    _fill_value = Float64Field('fill_value')
-    _lhs = AnyField('lhs')
-    _rhs = AnyField('rhs')
-
-    def __init__(self, axis=None, level=None, fill_value=None,
-                 output_types=None, lhs=None, rhs=None, **kw):
-        super().__init__(_axis=axis, _level=level, _fill_value=fill_value,
-                         _output_types=output_types, _lhs=lhs, _rhs=rhs, **kw)
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def fill_value(self):
-        return self._fill_value
-
-    @property
-    def lhs(self):
-        return self._lhs
-
-    @property
-    def rhs(self):
-        return self._rhs
-
-    def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
-        if len(self._inputs) == 2:
-            self._lhs = self._inputs[0]
-            self._rhs = self._inputs[1]
-        else:
-            if isinstance(self._lhs, (DATAFRAME_TYPE, SERIES_TYPE)):
-                self._lhs = self._inputs[0]
-            elif pd.api.types.is_scalar(self._lhs):
-                self._rhs = self._inputs[0]
-
-
 class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
@@ -209,6 +165,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def _tile_with_tensor(cls, op):
         out = op.outputs[0]
         axis = op.axis
+        if axis is None:
+            axis = 0
 
         rhs_is_tensor = isinstance(op.rhs, TENSOR_TYPE)
         tensor, other = (op.rhs, op.lhs) if rhs_is_tensor else (op.lhs, op.rhs)
@@ -216,7 +174,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             tensor = tensor.rechunk(other.nsplits)._inplace_tile()
         else:
             # shape differs only when dataframe add 1-d tensor, we need rechunk on columns axis.
-            if op.axis in ['columns', 1] and other.ndim == 1:
+            if axis in ['columns', 1] and other.ndim == 1:
                 # force axis == 0 if it's Series other than DataFrame
                 axis = 0
             rechunk_size = other.nsplits[1] if axis == 'columns' or axis == 1 else other.nsplits[0]
@@ -524,6 +482,50 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return self._call(x2, x1)
 
 
+class DataFrameBinOp(DataFrameOperand, DataFrameBinOpMixin):
+    _axis = AnyField('axis')
+    _level = AnyField('level')
+    _fill_value = Float64Field('fill_value')
+    _lhs = AnyField('lhs')
+    _rhs = AnyField('rhs')
+
+    def __init__(self, axis=None, level=None, fill_value=None,
+                 output_types=None, lhs=None, rhs=None, **kw):
+        super().__init__(_axis=axis, _level=level, _fill_value=fill_value,
+                         _output_types=output_types, _lhs=lhs, _rhs=rhs, **kw)
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def level(self):
+        return self._level
+
+    @property
+    def fill_value(self):
+        return self._fill_value
+
+    @property
+    def lhs(self):
+        return self._lhs
+
+    @property
+    def rhs(self):
+        return self._rhs
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        if len(self._inputs) == 2:
+            self._lhs = self._inputs[0]
+            self._rhs = self._inputs[1]
+        else:
+            if isinstance(self._lhs, (DATAFRAME_TYPE, SERIES_TYPE)):
+                self._lhs = self._inputs[0]
+            elif pd.api.types.is_scalar(self._lhs):
+                self._rhs = self._inputs[0]
+
+
 class DataFrameUnaryOpMixin(DataFrameOperandMixin):
     __slots__ = ()
 
@@ -582,4 +584,8 @@ class DataFrameUnaryOp(DataFrameOperand, DataFrameUnaryOpMixin):
 
 
 class DataFrameUnaryUfunc(DataFrameUnaryOp, TensorUfuncMixin):
+    pass
+
+
+class DataFrameBinopUfunc(DataFrameBinOp, TensorUfuncMixin):
     pass

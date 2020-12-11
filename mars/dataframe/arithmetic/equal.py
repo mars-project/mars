@@ -14,11 +14,11 @@
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .core import DataFrameBinopUfunc
 from .docstring import bin_compare_doc
 
 
-class DataFrameEqual(DataFrameBinOp, DataFrameBinOpMixin):
+class DataFrameEqual(DataFrameBinopUfunc):
     _op_type_ = OperandDef.EQ
 
     _func_name = 'eq'
@@ -27,6 +27,11 @@ class DataFrameEqual(DataFrameBinOp, DataFrameBinOpMixin):
     @classproperty
     def _operator(self):
         return lambda lhs, rhs: lhs.eq(rhs)
+
+    @classproperty
+    def tensor_op_type(self):
+        from ...tensor.arithmetic import TensorEqual
+        return TensorEqual
 
 
 _eq_example = """

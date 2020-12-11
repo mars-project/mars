@@ -115,6 +115,7 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
 
+        # series tiling will go here
         if len(in_df.chunk_shape) == 1 or in_df.chunk_shape[1] == 1:
             return cls._tile_drop_directly(op)
 
@@ -129,7 +130,7 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for out_idx, df_chunk in zip(out_chunk_indexes, left_chunks):
             series_chunk = right_chunks[out_idx[0]]
-            kw = dict(shape=(np.nan, nsplits[1][out_idx[1]]),
+            kw = dict(shape=(np.nan, nsplits[1][out_idx[1]]), dtypes=df_chunk.dtypes,
                       index_value=df_chunk.index_value, columns_value=df_chunk.columns_value)
 
             new_op = op.copy().reset_key()

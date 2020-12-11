@@ -441,6 +441,14 @@ class Test(unittest.TestCase):
             result = sess.run(r)
             pd.testing.assert_series_equal(result, raw.loc['2020-1-2'])
 
+            df = md.DataFrame(raw, chunk_size=chunk_size)
+            df2 = df[[0, 2]].dropna().head(4).copy()
+            df3 = df2[df2[0] > 0.5]
+            result = sess.run(df3)
+            expected = raw[[0, 2]].dropna().head(4).copy()
+            expected = expected[expected[0] > 0.5]
+            pd.testing.assert_frame_equal(result, expected)
+
     @unittest.skipIf(pa is not None, 'this test aims to test usage of ArrowDtype '
                                      'when pyarrow not installed')
     def testDataFrameWithArrowDtypeExecution(self):

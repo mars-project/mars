@@ -16,25 +16,30 @@ import operator
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .core import DataFrameBinopUfunc
 
 
-class DataFrameAnd(DataFrameBinOp, DataFrameBinOpMixin):
-    _op_type_ = OperandDef.AND
+class DataFrameXor(DataFrameBinopUfunc):
+    _op_type_ = OperandDef.XOR
 
-    _func_name = '__and__'
-    _rfunc_name = '__rand__'
+    _func_name = '__xor__'
+    _rfunc_name = '__rxor__'
 
     @classproperty
     def _operator(self):
-        return operator.and_
+        return operator.xor
+
+    @classproperty
+    def tensor_op_type(self):
+        from ...tensor.arithmetic import TensorBitxor
+        return TensorBitxor
 
 
-def logical_and(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFrameAnd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+def bitxor(df, other, axis='columns', level=None, fill_value=None):
+    op = DataFrameXor(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
-def logical_rand(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFrameAnd(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
+def rbitxor(df, other, axis='columns', level=None, fill_value=None):
+    op = DataFrameXor(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

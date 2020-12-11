@@ -16,11 +16,11 @@ import operator
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .core import DataFrameBinopUfunc
 from .docstring import bin_arithmetic_doc
 
 
-class DataFrameTrueDiv(DataFrameBinOp, DataFrameBinOpMixin):
+class DataFrameTrueDiv(DataFrameBinopUfunc):
     _op_type_ = OperandDef.DIV
 
     _func_name = 'truediv'
@@ -29,6 +29,11 @@ class DataFrameTrueDiv(DataFrameBinOp, DataFrameBinOpMixin):
     @classproperty
     def _operator(self):
         return operator.truediv
+
+    @classproperty
+    def tensor_op_type(self):
+        from ...tensor.arithmetic import TensorTrueDiv
+        return TensorTrueDiv
 
 
 _truediv_example = """
