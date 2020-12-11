@@ -33,6 +33,7 @@ from .melt import melt
 from .memory_usage import df_memory_usage, series_memory_usage, index_memory_usage
 from .select_dtypes import select_dtypes
 from .map_chunk import map_chunk
+from .cartesian_chunk import cartesian_chunk
 from .rebalance import rebalance
 from .stack import stack
 from .explode import df_explode, series_explode
@@ -65,6 +66,7 @@ def _install():
         setattr(t, 'memory_usage', df_memory_usage)
         setattr(t, 'select_dtypes', select_dtypes)
         setattr(t, 'map_chunk', map_chunk)
+        setattr(t, 'cartesian_chunk', cartesian_chunk)
         setattr(t, 'rebalance', rebalance)
         setattr(t, 'stack', stack)
         setattr(t, 'explode', df_explode)
@@ -87,6 +89,7 @@ def _install():
         setattr(t, 'drop_duplicates', series_drop_duplicates)
         setattr(t, 'memory_usage', series_memory_usage)
         setattr(t, 'map_chunk', map_chunk)
+        setattr(t, 'cartesian_chunk', cartesian_chunk)
         setattr(t, 'rebalance', rebalance)
         setattr(t, 'explode', series_explode)
 

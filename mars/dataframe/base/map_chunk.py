@@ -18,10 +18,11 @@ import pandas as pd
 from ... import opcodes
 from ...custom_log import redirect_custom_log
 from ...serialize import KeyField, FunctionField, TupleField, DictField, StringField
-from ...utils import enter_current_session
+from ...tiles import TilesError
+from ...utils import enter_current_session, check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_df, build_empty_df, build_series, \
-    parse_index, validate_output_types
+    parse_index, validate_output_types, quiet_stdio
 
 
 class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
@@ -72,7 +73,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
 
         # try run to infer meta
         try:
-            with np.errstate(all='ignore'):
+            with np.errstate(all='ignore'), quiet_stdio():
                 obj = self._func(test_obj, *self._args, **self._kwargs)
         except:  # noqa: E722  # nosec
             if df_or_series.ndim == 1 or output_type == OutputType.series:
@@ -122,6 +123,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         if inp.ndim == 2 and inp.chunk_shape[1] > 1:
+            check_chunks_unknown_shape([inp], TilesError)
             # if input is a DataFrame, make sure 1 chunk on axis columns
             inp = inp.rechunk({1: inp.shape[1]})._inplace_tile()
 

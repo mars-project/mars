@@ -1462,6 +1462,85 @@ class Test(TestBase):
         expected = raw2.apply(lambda x: x['a'], axis=1, result_type='expand')
         pd.testing.assert_frame_equal(result, expected)
 
+    def testCartesianChunkExecution(self):
+        rs = np.random.RandomState(0)
+        raw1 = pd.DataFrame({'a': rs.randint(3, size=10),
+                             'b': rs.rand(10)})
+        raw2 = pd.DataFrame({'c': rs.randint(3, size=10),
+                             'd': rs.rand(10),
+                             'e': rs.rand(10)})
+        df1 = from_pandas_df(raw1, chunk_size=(5, 1))
+        df2 = from_pandas_df(raw2, chunk_size=(5, 1))
+
+        def f(c1, c2):
+            c1, c2 = c1.copy(), c2.copy()
+            c1['x'] = 1
+            c2['x'] = 1
+            r = c1.merge(c2, on='x')
+            r = r[(r['b'] > r['d']) & (r['b'] < r['e'])]
+            return r[['a', 'c']]
+
+        rr = df1.cartesian_chunk(df2, f)
+
+        result = self.executor.execute_dataframe(rr, concat=True)[0]
+        expected = f(raw1, raw2)
+        pd.testing.assert_frame_equal(
+            result.sort_values(by=['a', 'c']).reset_index(drop=True),
+            expected.sort_values(by=['a', 'c']).reset_index(drop=True))
+
+        def f2(c1, c2):
+            r = f(c1, c2)
+            return r['a'] + r['c']
+
+        rr = df1.cartesian_chunk(df2, f2)
+
+        result = self.executor.execute_dataframe(rr, concat=True)[0]
+        expected = f2(raw1, raw2)
+        pd.testing.assert_series_equal(
+            result.sort_values().reset_index(drop=True),
+            expected.sort_values().reset_index(drop=True))
+
+        size_res = self.executor.execute_dataframe(rr, mock=True)[0][0]
+        self.assertGreater(size_res, 0)
+
+        def f3(c1, c2):
+            cr = pd.DataFrame()
+            cr['a'] = c1.str.slice(1).astype(np.int64)
+            cr['x'] = 1
+            cr2 = pd.DataFrame()
+            cr2['b'] = c2.str.slice(1).astype(np.int64)
+            cr2['x'] = 1
+            return cr.merge(cr2, on='x')[['a', 'b']]
+
+        s_raw = pd.Series([f's{i}' for i in range(10)])
+        series = from_pandas_series(s_raw, chunk_size=5)
+
+        rr = series.cartesian_chunk(series, f3, output_type='dataframe',
+                                    dtypes=pd.Series([np.dtype(np.int64)] * 2,
+                                                     index=['a', 'b']))
+
+        result = self.executor.execute_dataframe(rr, concat=True)[0]
+        expected = f3(s_raw, s_raw)
+        pd.testing.assert_frame_equal(
+            result.sort_values(by=['a', 'b']).reset_index(drop=True),
+            expected.sort_values(by=['a', 'b']).reset_index(drop=True))
+
+        with self.assertRaises(TypeError):
+            _ = series.cartesian_chunk(series, f3)
+
+        def f4(c1, c2):
+            r = f3(c1, c2)
+            return r['a'] + r['b']
+
+        rr = series.cartesian_chunk(series, f4, output_type='series',
+                                    dtypes=np.dtype(np.int64))
+
+        result = self.executor.execute_dataframe(rr, concat=True)[0]
+        expected = f4(s_raw, s_raw)
+        pd.testing.assert_series_equal(
+            result.sort_values().reset_index(drop=True),
+            expected.sort_values().reset_index(drop=True))
+
     def testRebalanceExecution(self):
         raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
         df = from_pandas_df(raw)
