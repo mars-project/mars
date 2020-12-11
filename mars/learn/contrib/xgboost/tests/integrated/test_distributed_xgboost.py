@@ -61,9 +61,11 @@ class Test(LearnIntegrationTestBase):
             self.assertIsInstance(history, dict)
 
             self.assertEqual(list(history)[0], 'validation_0')
-            self.assertEqual(list(history['validation_0'])[0], 'merror')
+            # default metrics may differ, see https://github.com/dmlc/xgboost/pull/6183
+            eval_metric = list(history['validation_0'])[0]
+            self.assertIn(eval_metric, ('merror', 'mlogloss'))
             self.assertEqual(len(history['validation_0']), 1)
-            self.assertEqual(len(history['validation_0']['merror']), 2)
+            self.assertEqual(len(history['validation_0'][eval_metric]), 2)
 
             X = md.DataFrame(np.random.rand(100, 20), chunk_size=20)
             y = md.DataFrame(np.random.randint(0, 2, (100, 1)), chunk_size=20)
