@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...custom_log import redirect_custom_log
 from ...serialize import KeyField, FunctionField, TupleField, \
-    DictField, StringField, Int32Field
+    DictField, StringField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, enter_current_session
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
@@ -34,7 +34,6 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
     _func = FunctionField('func')
     _args = TupleField('args')
     _kwargs = DictField('kwargs')
-    _memory_scale = Int32Field('memory_scale')
     # for chunk
     _tileable_op_key = StringField('tileable_op_key')
 
@@ -67,7 +66,7 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
 
     @property
     def memory_scale(self):
-        return self._memory_scale
+        return self._memory_scale or 2
 
     @property
     def tileable_op_key(self):
@@ -92,7 +91,7 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
         try:
             with np.errstate(all='ignore'), quiet_stdio():
                 obj = self._func(test_left, test_right, *self._args, **self._kwargs)
-        except:  # noqa: E722  # nosec
+        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             if output_type == OutputType.series:
                 obj = pd.Series([], dtype=np.dtype(object))
             elif output_type == OutputType.dataframe and dtypes is not None:
@@ -186,13 +185,6 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
         left, right = ctx[op.left.key], ctx[op.right.key]
         ctx[op.outputs[0].key] = op.func(
             left, right, *op.args, **(op.kwargs or dict()))
-
-    def estimate_size(cls, ctx, op):
-        memory_scale = op.memory_scale or 2
-        out = op.outputs[0]
-        super().estimate_size(ctx, op)
-        store_size, calc_size = ctx[out.key]
-        ctx[out.key] = store_size, memory_scale * calc_size
 
 
 def cartesian_chunk(left, right, func, args=(), **kwargs):
