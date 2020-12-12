@@ -61,9 +61,11 @@ class Test(unittest.TestCase):
         self.assertIsInstance(history, dict)
 
         self.assertEqual(list(history)[0], 'validation_0')
-        self.assertEqual(list(history['validation_0'])[0], 'merror')
+        # default metrics may differ, see https://github.com/dmlc/xgboost/pull/6183
+        eval_metric = list(history['validation_0'])[0]
+        self.assertIn(eval_metric, ('merror', 'mlogloss'))
         self.assertEqual(len(history['validation_0']), 1)
-        self.assertEqual(len(history['validation_0']['merror']), 2)
+        self.assertEqual(len(history['validation_0'][eval_metric]), 2)
 
         prob = classifier.predict_proba(X)
         self.assertEqual(prob.shape, X.shape)
