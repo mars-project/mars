@@ -85,6 +85,16 @@ class DataFrameReductionOperand(DataFrameOperand):
     def use_inf_as_na(self):
         return self._use_inf_as_na
 
+    def get_reduction_args(self, axis=None):
+        args = dict(skipna=self.skipna)
+        if self.inputs[0].ndim > 1:
+            args['axis'] = axis
+        if self.numeric_only is not None:
+            args['numeric_only'] = self.numeric_only
+        if self.bool_only is not None:
+            args['bool_only'] = self.bool_only
+        return {k: v for k, v in args.items() if v is not None}
+
 
 class DataFrameCumReductionOperand(DataFrameOperand):
     _axis = AnyField('axis')
@@ -181,6 +191,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced_df = pd.Series(np.zeros(df.shape[1 - axis]), index=empty_df.columns if axis == 0 else None)
         elif func_name == 'custom_reduction':
             reduced_df = getattr(self, 'custom_reduction').__call_agg__(empty_df)
+        elif func_name == 'str_concat':
+            reduced_df = empty_df.apply(lambda s: s.str.cat(**getattr(self, 'get_reduction_args')()), axis=axis)
         else:
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, skipna=skipna,
                                                       numeric_only=numeric_only)
@@ -214,6 +226,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced_series = empty_series.size
         elif func_name == 'custom_reduction':
             reduced_series = getattr(self, 'custom_reduction').__call_agg__(empty_series)
+        elif func_name == 'str_concat':
+            reduced_series = pd.Series([empty_series.str.cat(**getattr(self, 'get_reduction_args')())])
         else:
             reduced_series = getattr(empty_series, func_name)(axis=axis, level=level, skipna=skipna,
                                                               numeric_only=numeric_only)
@@ -429,7 +443,8 @@ class CustomReduction:
 
     def __call__(self, value):
         if is_build_mode():
-            return value._custom_reduction(self)
+            from .custom_reduction import build_custom_reduction_result
+            return build_custom_reduction_result(value, self)
         return self.__call_agg__(value)
 
     def __call_agg__(self, value):
@@ -518,6 +533,7 @@ _func_name_to_op = dict(
     not_equal='!=', ne='!=',
     bitwise_and='&', __and__='&',
     bitwise_or='|', __or__='|',
+    bitwise_xor='^', __xor__='^',
     add='+',
     subtract='-', sub='-',
     multiply='*', mul='*',
@@ -609,18 +625,31 @@ class ReductionCompiler:
             fun.__source__ = py_src
         return fun
 
+    @staticmethod
+    def _build_mock_return_object(func, input_dtype, ndim):
+        from ..initializer import DataFrame as MarsDataFrame, Series as MarsSeries
+
+        if ndim == 1:
+            mock_series = build_empty_series(np.dtype(input_dtype))
+            mock_obj = MarsSeries(mock_series)
+        else:
+            mock_df = build_empty_df(pd.Series([np.dtype(input_dtype)] * 2, index=['A', 'B']))
+            mock_obj = MarsDataFrame(mock_df)
+
+        # calc target tileable to generate DAG
+        return func(mock_obj)
+
     @enter_mode(build=True)
     def _compile_function(self, func, func_name=None, ndim=1) -> ReductionSteps:
         from . import DataFrameAll, DataFrameAny, DataFrameSum, DataFrameProd, \
             DataFrameCount, DataFrameMin, DataFrameMax, DataFrameSize, \
-            DataFrameCustomReduction
+            DataFrameStrConcat, DataFrameCustomReduction
         from ...tensor.arithmetic.core import TensorBinOp, TensorUnaryOp
         from ...tensor.base import TensorWhere
         from ..arithmetic.core import DataFrameBinOp, DataFrameUnaryOp
         from ..datasource.dataframe import DataFrameDataSource
         from ..indexing.where import DataFrameWhere
         from ..datasource.series import SeriesDataSource
-        from ..initializer import DataFrame as MarsDataFrame, Series as MarsSeries
 
         func_token = tokenize(func, self._axis, func_name, ndim)
         if func_token in _func_compile_cache:
@@ -629,24 +658,20 @@ class ReductionCompiler:
 
         atomic_agg_op_types = (DataFrameAll, DataFrameAny, DataFrameSum, DataFrameProd,
                                DataFrameCount, DataFrameMin, DataFrameMax, DataFrameSize,
-                               DataFrameCustomReduction)
-
-        if ndim == 1:
-            mock_series = build_empty_series(np.dtype(float))
-            mock_obj = MarsSeries(mock_series)
-        else:
-            mock_df = build_empty_df(pd.Series([np.dtype(float)] * 2, index=['A', 'B']))
-            mock_obj = MarsDataFrame(mock_df)
+                               DataFrameStrConcat, DataFrameCustomReduction)
 
         self._check_function_valid(func)
 
-        # calc target tileable to generate DAG
-        func_ret = func(mock_obj)
+        try:
+            func_ret = self._build_mock_return_object(func, float, ndim=ndim)
+        except (TypeError, AttributeError):
+            # we may encounter lambda x: x.str.cat(...), use an object series to test
+            func_ret = self._build_mock_return_object(func, object, ndim=1)
         output_limit = getattr(func, 'output_limit', None) or 1
 
         if not isinstance(func_ret, (Base, Entity)):
             raise ValueError(f'Custom function should return a Mars object, not {type(func_ret)}')
-        if func_ret.ndim >= mock_obj.ndim:
+        if func_ret.ndim >= ndim:
             raise ValueError('Function not a reduction')
 
         agg_graph = func_ret.build_graph()
@@ -680,19 +705,10 @@ class ReductionCompiler:
             else:
                 map_func_name, agg_func_name = step_func_name, step_func_name
 
-            # collect agg args
-            func_args = dict(skipna=t.op.skipna)
-            if t.inputs[0].ndim > 1:
-                func_args['axis'] = self._axis
-            if t.op.numeric_only is not None:
-                func_args['numeric_only'] = t.op.numeric_only
-            if t.op.bool_only is not None:
-                func_args['bool_only'] = t.op.bool_only
-
             # build agg description
             agg_funcs.append(ReductionAggStep(
                 agg_input_key, map_func_name, agg_func_name, custom_reduction, t.key, output_limit,
-                {k: v for k, v in func_args.items() if v is not None}
+                t.op.get_reduction_args(axis=self._axis)
             ))
             # collect agg input and build function
             if agg_input_key not in visited_inputs:

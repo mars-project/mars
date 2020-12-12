@@ -16,14 +16,12 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...config import options
 from ...core import OutputType
-from ...operands import OperandStage
 from ...serialize import KeyField, StringField, TupleField, DictField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
 from ...tiles import TilesError
-from ...utils import ceildiv, check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape
 from ..align import align_series_series
 from ..core import SERIES_TYPE
 from ..initializer import Series as asseries
@@ -190,8 +188,9 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
         others = method_kwargs.get('others')
 
         if others is None:
-            op.output_types = [OutputType.scalar]
-            return op.new_scalar([inp], dtype=inp.dtype)
+            from ..reduction import build_str_concat_object
+            return build_str_concat_object(inp, sep=op.method_kwargs.get('sep'),
+                                           na_rep=op.method_kwargs.get('na_rep'))
         elif isinstance(others, (tuple, list, np.ndarray, TENSOR_TYPE)):
             others = astensor(others, dtype=object)
             if others.ndim != 1:
@@ -221,52 +220,14 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
             raise TypeError(cls.CAT_TYPE_ERROR)
 
     @classmethod
-    def _tile_aggregate_cat(cls, op, inp, out):
-        from ..merge.concat import DataFrameConcat
-
-        # scalar
-        combine_size = options.combine_size
-        out_chunks = inp.chunks
-        out_chunk_size = len(out_chunks)
-        while out_chunk_size > 1:
-            out_chunk_size = ceildiv(len(out_chunks), combine_size)
-            is_terminate = out_chunk_size == 1
-            new_out_chunks = []
-            for i in range(out_chunk_size):
-                chunk_inputs = out_chunks[i * combine_size: (i + 1) * combine_size]
-                index_value = parse_index(chunk_inputs[0].index_value.to_pandas(), chunk_inputs)
-                # concat inputs
-                concat_chunk = DataFrameConcat(output_types=[OutputType.series]).new_chunk(
-                    chunk_inputs, index=(i,), dtype=chunk_inputs[0].dtype,
-                    index_value=index_value, name=chunk_inputs[0].name)
-                chunk_op = op.copy().reset_key()
-                if not is_terminate:
-                    chunk_op.output_types = [OutputType.series]
-                    chunk_op._stage = OperandStage.map if not is_terminate else OperandStage.agg
-                    index_value = parse_index(index_value.to_pandas()[:0], concat_chunk)
-                    out_chunk = chunk_op.new_chunk([concat_chunk], dtype=concat_chunk.dtype,
-                                                   index=(i,), index_value=index_value,
-                                                   name=concat_chunk.name)
-                else:
-                    out_chunk = chunk_op.new_chunk([concat_chunk], dtype=concat_chunk.dtype,
-                                                   shape=out.shape)
-                new_out_chunks.append(out_chunk)
-            out_chunks = new_out_chunks
-
-        new_op = op.copy()
-        params = out.params
-        params['nsplits'] = ()
-        params['chunks'] = out_chunks
-        return new_op.new_tileables(op.inputs, kws=[params])
-
-    @classmethod
     def tile(cls, op):
         inp = op.input
         out = op.outputs[0]
 
-        if out.ndim == 0:
-            return cls._tile_aggregate_cat(op, inp, out)
-        elif isinstance(op.inputs[1], TENSOR_TYPE):
+        # aggregation concat resulting in scalars is redirected
+        assert out.ndim != 0
+
+        if isinstance(op.inputs[1], TENSOR_TYPE):
             check_chunks_unknown_shape(op.inputs, TilesError)
             # rechunk others as input
             others = op.inputs[1].rechunk(op.input.nsplits)._inplace_tile()
@@ -307,15 +268,12 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
     def execute(cls, ctx, op):
         inputs = [ctx[inp.key] for inp in op.inputs]
         method_kwargs = op.method_kwargs
-        if len(inputs) == 1:
-            cat = inputs[0].str.cat(**method_kwargs)
-            if op.stage == OperandStage.map:
-                # keep series
-                cat = type(inputs[0])([cat])
-            ctx[op.outputs[0].key] = cat
-        else:
-            method_kwargs['others'] = inputs[1]
-            ctx[op.outputs[0].key] = inputs[0].str.cat(**method_kwargs)
+
+        # aggregation concat is redirected and `others` is always defined
+        assert len(inputs) > 1
+
+        method_kwargs['others'] = inputs[1]
+        ctx[op.outputs[0].key] = inputs[0].str.cat(**method_kwargs)
 
 
 class SeriesStringExtractHandler(SeriesStringMethodBaseHandler):
