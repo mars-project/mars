@@ -18,7 +18,7 @@ from ...utils import classproperty
 _tensor_op_to_df_op = dict()
 
 
-def register_tensor_unary_ufunc(op):
+def register_tensor_ufunc(op):
     _tensor_op_to_df_op[op.tensor_op_type] = op
 
 

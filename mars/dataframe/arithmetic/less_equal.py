@@ -14,11 +14,11 @@
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .core import DataFrameBinopUfunc
 from .docstring import bin_compare_doc
 
 
-class DataFrameLessEqual(DataFrameBinOp, DataFrameBinOpMixin):
+class DataFrameLessEqual(DataFrameBinopUfunc):
     _op_type_ = OperandDef.LE
 
     _func_name = 'le'
@@ -27,6 +27,11 @@ class DataFrameLessEqual(DataFrameBinOp, DataFrameBinOpMixin):
     @classproperty
     def _operator(self):
         return lambda lhs, rhs: lhs.le(rhs)
+
+    @classproperty
+    def tensor_op_type(self):
+        from ...tensor.arithmetic import TensorLessEqual
+        return TensorLessEqual
 
 
 _le_example = """

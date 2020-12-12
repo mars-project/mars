@@ -15,11 +15,11 @@
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from .core import DataFrameBinOpMixin, DataFrameBinOp
+from .core import DataFrameBinopUfunc
 from .docstring import bin_compare_doc
 
 
-class DataFrameLess(DataFrameBinOp, DataFrameBinOpMixin):
+class DataFrameLess(DataFrameBinopUfunc):
     _op_type_ = OperandDef.LT
 
     _func_name = 'lt'
@@ -28,6 +28,11 @@ class DataFrameLess(DataFrameBinOp, DataFrameBinOpMixin):
     @classproperty
     def _operator(self):
         return lambda lhs, rhs: lhs.lt(rhs)
+
+    @classproperty
+    def tensor_op_type(self):
+        from ...tensor.arithmetic import TensorLessThan
+        return TensorLessThan
 
 
 _lt_example = """

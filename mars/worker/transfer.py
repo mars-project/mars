@@ -819,6 +819,7 @@ class ResultSenderActor(WorkerActor):
         return results
 
     def fetch_data(self, session_id, chunk_key, index_obj=None, compression_type=None):
+        logger.debug('Sending data %s from %s', chunk_key, self.uid)
         if compression_type is None:
             compression_type = dataserializer.CompressType(options.worker.transfer_compression)
         if index_obj is None:

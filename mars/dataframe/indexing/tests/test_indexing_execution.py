@@ -437,6 +437,11 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         pd.testing.assert_frame_equal(result, data[data > 0.5])
 
+        # getitem by tensor mask
+        r = df[(df['c1'] > 0.5).to_tensor()]
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(result, data[data['c1'] > 0.5])
+
     def testDataFrameGetitemUsingAttr(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'key', 'dtypes', 'size'])
         df = md.DataFrame(data, chunk_size=2)

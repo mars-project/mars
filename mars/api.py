@@ -232,6 +232,7 @@ class MarsAPI(object):
 
     def fetch_data(self, session_id, tileable_key, index_obj=None, serial=True,
                    serial_type=None, compressions=None, pickle_protocol=None):
+        logger.debug('Fetching tileable data %s', tileable_key)
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
         graph_ref = self.actor_client.actor_ref(
@@ -245,8 +246,11 @@ class MarsAPI(object):
         endpoints = self.chunk_meta_client.get_workers(session_id, chunk_key)
         if endpoints is None:
             raise KeyError(f'Chunk key {chunk_key} not exist in cluster')
+
+        source_endpoint = random.choice(endpoints)
+        logger.debug('Fetching chunk %s from worker %s', chunk_key, source_endpoint)
         sender_ref = self.actor_client.actor_ref(ResultSenderActor.default_uid(),
-                                                 address=random.choice(endpoints))
+                                                 address=source_endpoint)
         return sender_ref.fetch_data(session_id, chunk_key, index_obj, _wait=False)
 
     def get_chunk_metas(self, session_id, chunk_keys):

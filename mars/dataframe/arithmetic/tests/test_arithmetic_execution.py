@@ -735,6 +735,19 @@ class TestUnary(TestBase):
                    (df_raw['c'] < pd.to_datetime('2021-01-01'))
         pd.testing.assert_series_equal(result, expected)
 
+    def testSeriesAndTensor(self):
+        rs = np.random.RandomState(0)
+        s_raw = pd.Series(rs.rand(10)) < 0.5
+        a_raw = rs.rand(10) < 0.5
+
+        series = from_pandas_series(s_raw, chunk_size=5)
+        t = mt.tensor(a_raw, chunk_size=5)
+
+        r = t | series
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = a_raw | s_raw
+        pd.testing.assert_series_equal(result, expected)
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()
