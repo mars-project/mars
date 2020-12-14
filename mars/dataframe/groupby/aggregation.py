@@ -539,8 +539,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return concat_result
 
     @staticmethod
-    def _do_standard_agg(input_obj, agg_func, **_kwds):
+    def _do_predefined_agg(input_obj, agg_func, **kwds):
         ndim = getattr(input_obj, 'ndim', None) or input_obj.obj.ndim
+        if agg_func == 'str_concat':
+            agg_func = lambda x: x.str.cat(**kwds)
+
         if ndim == 2:
             result = input_obj.agg([agg_func])
             result.columns = result.columns.droplevel(-1)
@@ -606,7 +609,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             if map_func_name == 'custom_reduction':
                 agg_dfs.extend(cls._do_custom_agg(op, custom_reduction, input_obj))
             else:
-                agg_dfs.append(cls._do_standard_agg(input_obj, map_func_name, **kwds))
+                agg_dfs.append(cls._do_predefined_agg(input_obj, map_func_name, **kwds))
         ctx[op.outputs[0].key] = tuple(agg_dfs)
 
     @classmethod
@@ -629,7 +632,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             if agg_func_name == 'custom_reduction':
                 combines.extend(cls._do_custom_agg(op, custom_reduction, *input_obj))
             else:
-                combines.append(cls._do_standard_agg(input_obj, agg_func_name, **kwds))
+                combines.append(cls._do_predefined_agg(input_obj, agg_func_name, **kwds))
             ctx[op.outputs[0].key] = tuple(combines)
 
     @classmethod
@@ -654,7 +657,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 in_data_dict[output_key] = cls._do_custom_agg(op, custom_reduction, *input_obj)[0]
             else:
                 input_obj = cls._get_grouped(op, in_data_dict[output_key], ctx)
-                in_data_dict[output_key] = cls._do_standard_agg(input_obj, agg_func_name, **kwds)
+                in_data_dict[output_key] = cls._do_predefined_agg(input_obj, agg_func_name, **kwds)
 
         aggs = []
         for input_keys, _output_key, func_name, cols, func in op.post_funcs:

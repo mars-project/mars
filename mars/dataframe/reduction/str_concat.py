@@ -13,32 +13,43 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from ...config import options
 from ...core import OutputType
-from ...serialize import AnyField
+from ...serialize import StringField
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 
-class DataFrameCustomReduction(DataFrameReductionOperand, DataFrameReductionMixin):
-    _op_type_ = OperandDef.CUSTOM_REDUCTION
-    _func_name = 'custom_reduction'
+class DataFrameStrConcat(DataFrameReductionOperand, DataFrameReductionMixin):
+    _op_type_ = OperandDef.STR_CONCAT
+    _func_name = 'str_concat'
 
-    _custom_reduction = AnyField('custom_reduction')
+    _sep = StringField('sep')
+    _na_rep = StringField('na_rep')
 
-    def __init__(self, custom_reduction=None, **kw):
-        super().__init__(_custom_reduction=custom_reduction, **kw)
+    def __init__(self, sep=None, na_rep=None, **kw):
+        super().__init__(_sep=sep, _na_rep=na_rep, **kw)
 
     @property
-    def custom_reduction(self):
-        return self._custom_reduction
+    def sep(self):
+        return self._sep
+
+    @property
+    def na_rep(self):
+        return self._na_rep
 
     def get_reduction_args(self, axis=None):
-        return dict()
+        return dict(sep=self._sep, na_rep=self._na_rep)
+
+    @classmethod
+    def _make_agg_object(cls, op):
+        sep, na_rep = op.sep, op.na_rep
+
+        def str_concat(obj):
+            return build_str_concat_object(obj, sep=sep, na_rep=na_rep)
+
+        return str_concat
 
 
-def build_custom_reduction_result(df, custom_reduction_obj):
-    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+def build_str_concat_object(df, sep=None, na_rep=None):
     output_type = OutputType.series if df.ndim == 2 else OutputType.scalar
-    op = DataFrameCustomReduction(custom_reduction=custom_reduction_obj, output_types=[output_type],
-                                  use_inf_as_na=use_inf_as_na)
+    op = DataFrameStrConcat(sep=sep, na_rep=na_rep, output_types=[output_type])
     return op(df)
