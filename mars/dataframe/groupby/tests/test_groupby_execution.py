@@ -344,6 +344,27 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       series1.groupby(lambda x: x % 2).agg(col_var='var', col_skew='skew'))
 
+    def testGroupByAggStrCat(self):
+        agg_fun = lambda x: x.str.cat(sep='_', na_rep='NA')
+
+        rs = np.random.RandomState(0)
+        raw_df = pd.DataFrame({'a': rs.choice(['A', 'B', 'C'], size=(100,)),
+                               'b': rs.choice([None, 'alfa', 'bravo', 'charlie'], size=(100,))})
+
+        mdf = md.DataFrame(raw_df, chunk_size=13)
+
+        r = mdf.groupby('a').agg(agg_fun)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.groupby('a').agg(agg_fun))
+
+        raw_series = pd.Series(rs.choice([None, 'alfa', 'bravo', 'charlie'], size=(100,)))
+
+        ms = md.Series(raw_series, chunk_size=13)
+
+        r = ms.groupby(lambda x: x % 2).agg(agg_fun)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw_series.groupby(lambda x: x % 2).agg(agg_fun))
+
     @require_cudf
     def testGPUGroupByAgg(self):
         rs = np.random.RandomState(0)

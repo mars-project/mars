@@ -210,11 +210,15 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 build_df(df, size=2, fill_value=1),
                 build_df(df, size=2, fill_value=2),
             ])
+            obj_dtypes = df.dtypes[df.dtypes == np.dtype('O')]
+            test_obj[obj_dtypes.index] = test_obj[obj_dtypes.index].radd('O')
         else:
             test_obj = pd.concat([
                 build_series(df, size=2, fill_value=1, name=df.name),
                 build_series(df, size=2, fill_value=2, name=df.name),
             ])
+            if df.dtype == np.dtype('O'):
+                test_obj = test_obj.radd('O')
 
         result_df = test_obj.agg(self.raw_func, axis=self.axis, **self.raw_func_kw)
 
@@ -592,9 +596,23 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         return out_dict
 
     @classmethod
+    def _do_predefined_agg(cls, op: "DataFrameAggregate", input_obj, func_name, kwds):
+        if func_name == 'size':
+            return input_obj.agg(lambda x: x.size, axis=op.axis)
+        elif func_name == 'str_concat':
+            ret = input_obj.agg(lambda x: x.str.cat(**kwds), axis=op.axis)
+            if isinstance(ret, str):
+                ret = pd.Series([ret])
+            return ret
+        else:
+            if op.gpu:
+                if kwds.pop('numeric_only', None):
+                    raise NotImplementedError('numeric_only not implemented under cudf')
+            return getattr(input_obj, func_name)(**kwds)
+
+    @classmethod
     def _execute_map(cls, ctx, op: "DataFrameAggregate"):
         in_data = ctx[op.inputs[0].key]
-        axis = op.axis
         axis_index = op.outputs[0].index[op.axis]
 
         if in_data.ndim == 2:
@@ -634,11 +652,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                         agg_result = (agg_result,)
 
                 agg_dfs.extend([cls._wrap_df(op, r, index=[axis_index]) for r in agg_result])
-            elif map_func_name == 'size':
-                agg_dfs.append(cls._wrap_df(op, input_obj.agg(lambda x: x.size, axis=axis),
-                                            index=[axis_index]))
             else:
-                agg_dfs.append(cls._wrap_df(op, getattr(input_obj, map_func_name)(**kwds),
+                agg_dfs.append(cls._wrap_df(op, cls._do_predefined_agg(op, input_obj, map_func_name, kwds),
                                             index=[axis_index]))
         ctx[op.outputs[0].key] = tuple(agg_dfs)
 
@@ -660,11 +675,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 combines.extend([cls._wrap_df(op, r, index=[axis_index])
                                  for r in agg_result])
             else:
-                if op.gpu:
-                    if kwds.pop('numeric_only', None):
-                        raise NotImplementedError('numeric_only not implemented under cudf')
-                result = cls._wrap_df(op, getattr(input_obj, agg_func_name)(**kwds), index=[axis_index])
-                combines.append(result)
+                combines.append(cls._wrap_df(op, cls._do_predefined_agg(op, input_obj, agg_func_name, kwds),
+                                             index=[axis_index]))
         ctx[op.outputs[0].key] = tuple(combines)
 
     @classmethod
@@ -687,10 +699,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     agg_result = (agg_result,)
                 in_data_dict[output_key] = custom_reduction.post(*agg_result)
             else:
-                if op.gpu:
-                    if kwds.pop('numeric_only', None):
-                        raise NotImplementedError('numeric_only not implemented under cudf')
-                in_data_dict[output_key] = getattr(input_obj, agg_func_name)(**kwds)
+                in_data_dict[output_key] = cls._do_predefined_agg(op, input_obj, agg_func_name, kwds)
 
         aggs = []
         # perform post op
@@ -723,7 +732,12 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
             concat_df = concat_df.astype(op.outputs[0].dtype, copy=False)
         elif op.output_types[0] == OutputType.scalar:
-            concat_df = concat_df.iloc[0].astype(op.outputs[0].dtype)
+            concat_df = concat_df.iloc[0]
+            try:
+                concat_df = concat_df.astype(op.outputs[0].dtype)
+            except AttributeError:
+                # concat_df may be a string and has no `astype` method
+                pass
         elif op.output_types[0] == OutputType.tensor:
             concat_df = xp.array(concat_df).astype(dtype=out.dtype)
         else:
