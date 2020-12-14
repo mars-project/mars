@@ -75,9 +75,24 @@ class TestHDFS(TestBase):
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                                 'b': [f's{i}' for i in range(10)],
                                 'c': np.random.rand(10), })
+        test_df2 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                                 'b': [f's{i}' for i in range(10)],
+                                 'c': np.random.rand(10), })
+
         with self.hdfs.open(f"{TEST_DIR}/test.parquet", "wb", replication=1) as f:
             test_df.to_parquet(f, row_group_size=3)
 
         df = md.read_parquet(f'hdfs://localhost:8020{TEST_DIR}/test.parquet')
         res = df.to_pandas()
         pd.testing.assert_frame_equal(res, test_df)
+
+        self.hdfs.mkdir(f"{TEST_DIR}/test_partitioned")
+
+        with self.hdfs.open(f"{TEST_DIR}/test_partitioned/file1.parquet", "wb", replication=1) as f:
+            test_df.to_parquet(f, row_group_size=3)
+        with self.hdfs.open(f"{TEST_DIR}/test_partitioned/file2.parquet", "wb", replication=1) as f:
+            test_df2.to_parquet(f, row_group_size=3)
+
+        df = md.read_parquet(f'hdfs://localhost:8020{TEST_DIR}/test_partitioned')
+        res = df.to_pandas()
+        pd.testing.assert_frame_equal(res, pd.concat([test_df, test_df2]))

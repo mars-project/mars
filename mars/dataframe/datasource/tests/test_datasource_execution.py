@@ -765,11 +765,11 @@ class Test(TestBase):
         expected = pd.date_range(start='1/1/2018', periods=5, freq='M')
         pd.testing.assert_index_equal(result, expected)
 
-    @unittest.skipIf(pa is None or fastparquet is None, 'pyarrow or fastparquet not installed')
-    def testReadParquet(self):
+    @unittest.skipIf(pa is None, 'pyarrow not installed')
+    def testReadParquetArrow(self):
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                                 'b': [f's{i}' for i in range(10)],
-                                'c': np.random.rand(10),})
+                                'c': np.random.rand(10), })
 
         with tempfile.TemporaryDirectory() as tempdir:
             file_path = os.path.join(tempdir, 'test.csv')
@@ -799,15 +799,6 @@ class Test(TestBase):
             self.assertIsInstance(result.dtypes.iloc[1], md.ArrowStringDtype)
             pd.testing.assert_frame_equal(arrow_array_to_objects(result), test_df)
 
-        # test fastparquet engine
-        with tempfile.TemporaryDirectory() as tempdir:
-            file_path = os.path.join(tempdir, 'test.csv')
-            test_df.to_parquet(file_path, compression=None)
-
-            df = md.read_parquet(file_path, engine='fastparquet')
-            result = self.executor.execute_dataframe(df, concat=True)[0]
-            pd.testing.assert_frame_equal(result, test_df)
-
         # test wildcards in path
         with tempfile.TemporaryDirectory() as tempdir:
             df = pd.DataFrame({'a': np.arange(300).astype(np.int64, copy=False),
@@ -826,3 +817,18 @@ class Test(TestBase):
             mdf = md.read_parquet(f'{tempdir}/*.parquet', groups_as_chunks=True)
             r = self.executor.execute_dataframe(mdf, concat=True)[0]
             pd.testing.assert_frame_equal(df, r.sort_values('a').reset_index(drop=True))
+
+    @unittest.skipIf(fastparquet is None, 'fastparquet not installed')
+    def testReadParquetFastParquet(self):
+        test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                                'b': [f's{i}' for i in range(10)],
+                                'c': np.random.rand(10), })
+
+        # test fastparquet engine
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+            test_df.to_parquet(file_path, compression=None)
+
+            df = md.read_parquet(file_path, engine='fastparquet')
+            result = self.executor.execute_dataframe(df, concat=True)[0]
+            pd.testing.assert_frame_equal(result, test_df)
