@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import pickle
 from urllib.parse import urlparse
 
@@ -219,7 +220,7 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
         dataset = pq.ParquetDataset(op.path)
 
         parsed_path = urlparse(op.path)
-        if parsed_path.scheme is not None:
+        if not os.path.exists(op.path) and parsed_path.scheme:
             path_prefix = f'{parsed_path.scheme}://{parsed_path.netloc}'
         else:
             path_prefix = ''

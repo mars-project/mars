@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
-from io import BytesIO
+import random
+import unittest
+from io import BytesIO, StringIO
 
 import pandas as pd
 import numpy as np
@@ -24,20 +25,6 @@ from mars.tests.core import TestBase
 
 
 TEST_DIR = '/tmp/test'
-
-csv_content = b"""
-A,B,C,D,E
-1.0,2020-01-01,1.0,3,foo
-1.0,2020-01-01,1.0,3,foo
-1.0,2020-01-01,1.0,3,foo
-1.0,2020-01-01,1.0,3,foo
-1.0,2020-01-01,1.0,3,foo
-1.0,2020-01-01,1.0,3,foo
-1.0,2020-01-01,1.0,3,foo
-1.0,2020-01-01,1.0,3,foo
-1.0,2020-01-01,1.0,3,foo
-1.0,2020-01-01,1.0,3,foo
-""".strip()
 
 
 @unittest.skipIf(not os.environ.get('WITH_HADOOP'), 'Only run when hdfs is installed')
@@ -63,11 +50,39 @@ class TestHDFS(TestBase):
         res = df.to_pandas()
         pd.testing.assert_frame_equal(expected, res)
 
+        test_df = pd.DataFrame({
+            'A': np.random.rand(20),
+            'B': [pd.Timestamp('2020-01-01') + pd.Timedelta(days=random.randint(0, 31))
+                  for _ in range(20)],
+            'C': np.random.rand(20),
+            'D': np.random.randint(0, 100, size=(20,)),
+            'E': ['foo' + str(random.randint(0, 999999)) for _ in range(20)],
+        })
+        buf = StringIO()
+        test_df[:10].to_csv(buf)
+        csv_content = buf.getvalue().encode()
+
+        buf = StringIO()
+        test_df[10:].to_csv(buf)
+        csv_content2 = buf.getvalue().encode()
+
         with self.hdfs.open(f"{TEST_DIR}/chunk_test.csv", "wb", replication=1) as f:
             f.write(csv_content)
 
         df = md.read_csv(f'hdfs://localhost:8020{TEST_DIR}/chunk_test.csv', chunk_bytes=50)
         expected = pd.read_csv(BytesIO(csv_content))
+        res = df.to_pandas()
+        pd.testing.assert_frame_equal(expected.reset_index(drop=True), res.reset_index(drop=True))
+
+        test_read_dir = f'{TEST_DIR}/test_read_csv_directory'
+        self.hdfs.mkdir(test_read_dir)
+        with self.hdfs.open(f"{test_read_dir}/part.csv", "wb", replication=1) as f:
+            f.write(csv_content)
+        with self.hdfs.open(f"{test_read_dir}/part2.csv", "wb", replication=1) as f:
+            f.write(csv_content2)
+
+        df = md.read_csv(f'hdfs://localhost:8020{test_read_dir}', chunk_bytes=50)
+        expected = pd.concat([pd.read_csv(BytesIO(csv_content)), pd.read_csv(BytesIO(csv_content2))])
         res = df.to_pandas()
         pd.testing.assert_frame_equal(expected.reset_index(drop=True), res.reset_index(drop=True))
 
