@@ -535,10 +535,18 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
         out_df = op.outputs[0]
 
         out_chunks = []
+        index_dtypes_cache = dict()
         for in_chunk in in_df.chunks:
             out_op = op.copy().reset_key()
             if out_df.ndim == 2:
+                try:
+                    dtypes = index_dtypes_cache[in_chunk.index[1]]
+                except KeyError:
+                    dtypes = out_df.dtypes[in_chunk.columns_value.to_pandas()]
+                    index_dtypes_cache[in_chunk.index[1]] = dtypes
+
                 out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape,
+                                             dtypes=dtypes,
                                              index=in_chunk.index,
                                              index_value=in_chunk.index_value,
                                              columns_value=in_chunk.columns_value)

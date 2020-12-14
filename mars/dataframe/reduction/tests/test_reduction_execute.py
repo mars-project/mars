@@ -101,6 +101,40 @@ class TestReduction(TestBase):
             self.assertTrue(
                 np.isnan(self.executor.execute_dataframe(reduction_df5, concat=True)[0]))
 
+    def testSeriesLevelReduction(self):
+        idx = pd.MultiIndex.from_arrays([
+            [str(i) for i in range(100)], np.random.choice(['A', 'B'], size=(100,))
+        ], names=['a', 'b'])
+        data = pd.Series(np.random.randint(0, 8, size=(100,)), index=idx)
+
+        r = self.compute(md.Series(data, chunk_size=13), level=1)
+        pd.testing.assert_series_equal(
+            self.compute(data, level=1).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        # test null
+        data = pd.Series(np.random.rand(100), name='a', index=idx)
+        idx_df = idx.to_frame()
+        data[data > 0.5] = np.nan
+        data[int(idx_df[idx_df.b == 'A'].iloc[0, 0])] = 0.1
+        data[int(idx_df[idx_df.b == 'B'].iloc[0, 0])] = 0.1
+
+        r = self.compute(md.Series(data, chunk_size=13), level=1)
+        pd.testing.assert_series_equal(
+            self.compute(data, level=1).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        r = self.compute(md.Series(data, chunk_size=13), level=1, skipna=False)
+        pd.testing.assert_series_equal(
+            self.compute(data, level=1, skipna=False).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        if self.has_min_count:
+            r = self.compute(md.Series(data, chunk_size=13), min_count=1, level=1)
+            pd.testing.assert_series_equal(
+                self.compute(data, min_count=1, level=1).sort_index(),
+                self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
     def testDataFrameReduction(self):
         data = pd.DataFrame(np.random.rand(20, 10))
         r = self.compute(md.DataFrame(data))
@@ -193,6 +227,54 @@ class TestReduction(TestBase):
             self.compute(data1 + data2).sort_index(),
             self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
+    def testDataFrameLevelReduction(self):
+        idx = pd.MultiIndex.from_arrays([
+            [str(i) for i in range(100)], np.random.choice(['A', 'B'], size=(100,))
+        ], names=['a', 'b'])
+        data = pd.DataFrame(np.random.rand(100, 10), index=idx)
+
+        r = self.compute(md.DataFrame(data, chunk_size=13), level=1)
+        pd.testing.assert_frame_equal(
+            self.compute(data, level=1).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        r = self.compute(md.DataFrame(data, chunk_size=13), level=1, numeric_only=True)
+        pd.testing.assert_frame_equal(
+            self.compute(data, numeric_only=True, level=1).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        # test null
+        data = pd.DataFrame(np.random.rand(100, 10), index=idx)
+        data[data > 0.6] = np.nan
+
+        r = self.compute(md.DataFrame(data, chunk_size=13), level=1)
+        pd.testing.assert_frame_equal(
+            self.compute(data, level=1).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        r = self.compute(md.DataFrame(data, chunk_size=13), level=1, skipna=False)
+        pd.testing.assert_frame_equal(
+            self.compute(data, level=1, skipna=False).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        if self.has_min_count:
+            r = self.compute(md.DataFrame(data, chunk_size=13), level=1, min_count=10)
+            pd.testing.assert_frame_equal(
+                self.compute(data, level=1, min_count=10).sort_index(),
+                self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        # behavior of 'skew', 'kurt' differs for cases with and without level
+        if self.func_name not in ('skew', 'kurt'):
+            data_dict = dict((str(i), np.random.rand(100)) for i in range(10))
+            data_dict['string'] = [str(i) for i in range(100)]
+            data_dict['bool'] = np.random.choice([True, False], (100,))
+            data = pd.DataFrame(data_dict, index=idx)
+
+            r = self.compute(md.DataFrame(data, chunk_size=13), level=1, numeric_only=True)
+            pd.testing.assert_frame_equal(
+                self.compute(data, level=1, numeric_only=True).sort_index(),
+                self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
 
 @require_cudf
 @require_cupy
@@ -269,6 +351,7 @@ class TestBoolReduction(TestBase):
         self.assertAlmostEqual(
             self.compute(data, axis='index'), self.executor.execute_dataframe(r, concat=True)[0])
 
+        # test null
         data = pd.Series(np.random.rand(20), name='a')
         data[0] = 0.1  # make sure not all elements are NAN
         data[data > 0.5] = np.nan
@@ -279,6 +362,34 @@ class TestBoolReduction(TestBase):
         r = self.compute(md.Series(data, chunk_size=3), skipna=False)
         self.assertTrue(
             self.executor.execute_dataframe(r, concat=True)[0])
+
+    def testSeriesLevelReduction(self):
+        idx = pd.MultiIndex.from_arrays([
+            [str(i) for i in range(100)], np.random.choice(['A', 'B'], size=(100,))
+        ], names=['a', 'b'])
+        data = pd.Series(np.random.randint(0, 8, size=(100,)), index=idx)
+
+        r = self.compute(md.Series(data, chunk_size=13), level=1)
+        pd.testing.assert_series_equal(
+            self.compute(data, level=1).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        # test null
+        data = pd.Series(np.random.rand(100), name='a', index=idx)
+        idx_df = idx.to_frame()
+        data[data > 0.5] = np.nan
+        data[int(idx_df[idx_df.b == 'A'].iloc[0, 0])] = 0.1
+        data[int(idx_df[idx_df.b == 'B'].iloc[0, 0])] = 0.1
+
+        r = self.compute(md.Series(data, chunk_size=13), level=1)
+        pd.testing.assert_series_equal(
+            self.compute(data, level=1).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        r = self.compute(md.Series(data, chunk_size=13), level=1, skipna=False)
+        pd.testing.assert_series_equal(
+            self.compute(data, level=1, skipna=False).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
     def testDataFrameReduction(self):
         data = pd.DataFrame(np.random.rand(20, 10))
@@ -345,6 +456,35 @@ class TestBoolReduction(TestBase):
         pd.testing.assert_series_equal(
             self.compute(data, axis='index', bool_only=True),
             self.executor.execute_dataframe(r, concat=True)[0])
+
+    def testDataFrameLevelReduction(self):
+        idx = pd.MultiIndex.from_arrays([
+            [str(i) for i in range(100)], np.random.choice(['A', 'B'], size=(100,))
+        ], names=['a', 'b'])
+        data = pd.DataFrame(np.random.rand(100, 10), index=idx)
+        data.iloc[:, :5] = data.iloc[:, :5] > 0.5
+
+        r = self.compute(md.DataFrame(data, chunk_size=13), level=1)
+        pd.testing.assert_frame_equal(
+            self.compute(data, level=1).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        # test null
+        data = pd.DataFrame(np.random.rand(100, 10), index=idx)
+        data[data > 0.6] = np.nan
+
+        r = self.compute(md.DataFrame(data, chunk_size=13), level=1)
+        pd.testing.assert_frame_equal(
+            self.compute(data, level=1).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        r = self.compute(md.DataFrame(data, chunk_size=13), level=1, skipna=False)
+        pd.testing.assert_frame_equal(
+            self.compute(data, level=1, skipna=False).sort_index(),
+            self.executor.execute_dataframe(r, concat=True)[0].sort_index())
+
+        # test bool_only
+        # bool_only not supported when level specified
 
 
 class TestCount(TestBase):

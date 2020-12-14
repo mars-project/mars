@@ -226,6 +226,9 @@ class TestReduction(TestBase):
         self.assertIsInstance(reduction_df.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(reduction_df.chunks[0].inputs[0].inputs), 2)
 
+        with self.assertRaises(NotImplementedError):
+            getattr(from_pandas_df(data, chunk_size=3), self.func_name)(level=0, axis=1)
+
 
 cum_reduction_functions = dict(
     cummin=dict(func_name='cummin', op=DataFrameCummin, has_skipna=True),
