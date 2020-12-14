@@ -28,6 +28,7 @@ from .skew import DataFrameSkew
 from .kurtosis import DataFrameKurtosis
 from .sem import DataFrameSem
 from .reduction_size import DataFrameSize
+from .str_concat import DataFrameStrConcat, build_str_concat_object
 from .custom_reduction import DataFrameCustomReduction
 
 from .cummax import DataFrameCummax
@@ -61,7 +62,6 @@ def _install():
     from .skew import skew_dataframe, skew_series
     from .kurtosis import kurt_dataframe, kurt_series
     from .reduction_size import size_dataframe, size_series
-    from .custom_reduction import custom_reduction_dataframe, custom_reduction_series
 
     funcs = [
         ('sum', sum_series, sum_dataframe),
@@ -88,7 +88,6 @@ def _install():
         ('kurtosis', kurt_series, kurt_dataframe),
         ('unique', unique, None),
         ('_reduction_size', size_dataframe, size_series),
-        ('_custom_reduction', custom_reduction_dataframe, custom_reduction_series),
     ]
     for func_name, series_func, df_func in funcs:
         if df_func is not None:  # pragma: no branch
