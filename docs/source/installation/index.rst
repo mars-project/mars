@@ -24,3 +24,4 @@ For now, distributed version is only available for Linux and Mac OS.
    install
    deploy
    kubernetes
+   yarn

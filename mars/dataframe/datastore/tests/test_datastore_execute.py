@@ -172,8 +172,8 @@ class Test(TestBase):
             with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
                 testWithGivenSession(web_session)
 
-    @unittest.skipIf(pa is None or fastparquet is None, 'pyarrow or fastparquet not installed')
-    def testToParquetExecution(self):
+    @unittest.skipIf(pa is None, 'pyarrow not installed')
+    def testToParquetArrowExecution(self):
         raw = pd.DataFrame({
             'col1': np.random.rand(100),
             'col2': np.arange(100),
@@ -192,11 +192,6 @@ class Test(TestBase):
             result = result.sort_index()
             pd.testing.assert_frame_equal(result, raw)
 
-            # test fastparquet
-            path = os.path.join(base_path, 'out-fastparquet-*.parquet')
-            r = df.to_parquet(path, engine='fastparquet', compression='gzip')
-            self.executor.execute_dataframe(r)
-
             read_df = md.read_parquet(path)
             result = self.executor.execute_dataframe(read_df, concat=True)[0]
             result = result.sort_index()
@@ -212,3 +207,18 @@ class Test(TestBase):
             result['col3'] = result['col3'].astype('object')
             pd.testing.assert_frame_equal(result.sort_values('col1').reset_index(drop=True),
                                           raw.sort_values('col1').reset_index(drop=True))
+
+    @unittest.skipIf(fastparquet is None, 'fastparquet not installed')
+    def testToParquetFastParquetExecution(self):
+        raw = pd.DataFrame({
+            'col1': np.random.rand(100),
+            'col2': np.arange(100),
+            'col3': np.random.choice(['a', 'b', 'c'], (100,)),
+        })
+        df = DataFrame(raw, chunk_size=33)
+
+        with tempfile.TemporaryDirectory() as base_path:
+            # test fastparquet
+            path = os.path.join(base_path, 'out-fastparquet-*.parquet')
+            r = df.to_parquet(path, engine='fastparquet', compression='gzip')
+            self.executor.execute_dataframe(r)
