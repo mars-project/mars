@@ -145,7 +145,6 @@ class Session(object):
 
     def _check_response_finished(self, graph_url, timeout=None):
         import requests
-        resp = self._req_session.get(graph_url, params={'wait_timeout': timeout})
         try:
             resp = self._req_session.get(graph_url, params={'wait_timeout': timeout})
         except requests.ConnectionError as ex:
