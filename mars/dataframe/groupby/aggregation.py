@@ -543,6 +543,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         ndim = getattr(input_obj, 'ndim', None) or input_obj.obj.ndim
         if agg_func == 'str_concat':
             agg_func = lambda x: x.str.cat(**kwds)
+        elif isinstance(agg_func, str) and not kwds.get('skipna', True):
+            func_name = agg_func
+            agg_func = lambda x: getattr(x, func_name)(skipna=False)
+            agg_func.__name__ = func_name
 
         if ndim == 2:
             result = input_obj.agg([agg_func])

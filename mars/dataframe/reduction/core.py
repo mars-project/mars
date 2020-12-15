@@ -168,6 +168,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         ))
         return [out_df]
 
+    def _call_groupby_level(self, df, level):
+        return df.groupby(level=level).agg(self._make_agg_object(self))
+
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None) or 0
         level = getattr(self, 'level', None)
@@ -175,12 +178,12 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         numeric_only = getattr(self, 'numeric_only', None)
         bool_only = getattr(self, 'bool_only', None)
         self._axis = axis = validate_axis(axis, df)
-        # TODO: enable specify level if we support groupby
-        if level is not None:
-            raise NotImplementedError('Not support specify level now')
+        func_name = getattr(self, '_func_name')
+
+        if level is not None and axis == 1:
+            raise NotImplementedError('Not support specify level for axis==1')
 
         empty_df = build_df(df)
-        func_name = getattr(self, '_func_name')
         if func_name == 'count':
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, numeric_only=numeric_only)
         elif func_name == 'nunique':
@@ -197,6 +200,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, skipna=skipna,
                                                       numeric_only=numeric_only)
 
+        if level is not None:
+            return self._call_groupby_level(df[list(reduced_df.columns)], level)
+
         reduced_shape = (df.shape[0],) if axis == 1 else reduced_df.shape
         return self.new_series([df], shape=reduced_shape, dtype=reduced_df.dtype,
                                index_value=parse_index(reduced_df.index, store_data=axis == 0))
@@ -207,15 +213,13 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         skipna = getattr(self, 'skipna', None)
         numeric_only = getattr(self, 'numeric_only', None)
         bool_only = getattr(self, 'bool_only', None)
-        if axis == 'index':
-            axis = 0
-        self._axis = axis
-        # TODO: enable specify level if we support groupby
+        self._axis = axis = validate_axis(axis or 0, series)
+        func_name = getattr(self, '_func_name')
+
         if level is not None:
-            raise NotImplementedError('Not support specified level now')
+            return self._call_groupby_level(series, level)
 
         empty_series = build_series(series)
-        func_name = getattr(self, '_func_name')
         if func_name == 'count':
             reduced_series = empty_series.count(level=level)
         elif func_name == 'nunique':
