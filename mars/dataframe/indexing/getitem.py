@@ -345,9 +345,9 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             dtype = in_df.dtypes[col_names]
             for i in range(in_df.chunk_shape[0]):
                 c = in_df.cix[(i, column_index)]
-                op = DataFrameIndex(col_names=col_names)
-                out_chunks.append(op.new_chunk([c], shape=(c.shape[0],), index=(i,), dtype=dtype,
-                                               index_value=c.index_value, name=col_names))
+                chunk_op = DataFrameIndex(col_names=col_names)
+                out_chunks.append(chunk_op.new_chunk([c], shape=(c.shape[0],), index=(i,), dtype=dtype,
+                                                     index_value=c.index_value, name=col_names))
             new_op = op.copy()
             return new_op.new_seriess(op.inputs, shape=out_df.shape, dtype=out_df.dtype,
                                       index_value=out_df.index_value, name=out_df.name,
