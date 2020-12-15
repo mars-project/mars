@@ -539,6 +539,8 @@ class Test(TestBase):
         self.assertEqual(series.index_value, df.index_value)
 
         series = series.tiles()
+        self.assertIsInstance(series, Series)
+        self.assertTrue(all(not i.is_coarse() for i in series.inputs))
         self.assertEqual(series.nsplits, ((2, 2, 2, 2, 2),))
         self.assertEqual(len(series.chunks), 5)
         for i, c in enumerate(series.chunks):

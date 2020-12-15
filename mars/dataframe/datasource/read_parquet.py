@@ -72,7 +72,7 @@ def get_engine(engine):
         raise RuntimeError('Unsupported engine {}'.format(engine))
 
 
-class ParqueEngine:
+class ParquetEngine:
     def read_dtypes(self, f, **kwargs):
         raise NotImplementedError
 
@@ -85,7 +85,7 @@ class ParqueEngine:
         raise NotImplementedError
 
 
-class ArrowEngine(ParqueEngine):
+class ArrowEngine(ParquetEngine):
     def read_dtypes(self, f, **kwargs):
         file = pq.ParquetFile(f)
         return file.schema_arrow.empty_table().to_pandas().dtypes
@@ -112,7 +112,7 @@ class ArrowEngine(ParqueEngine):
         return self._table_to_pandas(t, use_arrow_dtype=use_arrow_dtype)
 
 
-class FastpaquetEngine(ParqueEngine):
+class FastpaquetEngine(ParquetEngine):
     def read_dtypes(self, f, **kwargs):
         file = fastparquet.ParquetFile(f)
         dtypes_dict = file._dtypes()

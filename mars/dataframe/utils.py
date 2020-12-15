@@ -191,6 +191,10 @@ def decide_series_chunk_size(shape, chunk_size, memory_usage):
     if len(chunk_size) == len(shape):
         return normalize_chunk_sizes(shape, chunk_size[0])
 
+    if all(s == 0 for s in shape):
+        # skip when shape is 0
+        return tuple((s,) for s in shape)
+
     max_chunk_size = options.chunk_store_limit
     series_chunk_size = max_chunk_size / average_memory_usage
     return normalize_chunk_sizes(shape, int(series_chunk_size))
