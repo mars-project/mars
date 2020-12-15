@@ -102,10 +102,11 @@ class TestReduction(TestBase):
                 np.isnan(self.executor.execute_dataframe(reduction_df5, concat=True)[0]))
 
     def testSeriesLevelReduction(self):
+        rs = np.random.RandomState(0)
         idx = pd.MultiIndex.from_arrays([
-            [str(i) for i in range(100)], np.random.choice(['A', 'B'], size=(100,))
+            [str(i) for i in range(100)], rs.choice(['A', 'B'], size=(100,))
         ], names=['a', 'b'])
-        data = pd.Series(np.random.randint(0, 8, size=(100,)), index=idx)
+        data = pd.Series(rs.randint(0, 8, size=(100,)), index=idx)
 
         r = self.compute(md.Series(data, chunk_size=13), level=1)
         pd.testing.assert_series_equal(
@@ -113,7 +114,7 @@ class TestReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
         # test null
-        data = pd.Series(np.random.rand(100), name='a', index=idx)
+        data = pd.Series(rs.rand(100), name='a', index=idx)
         idx_df = idx.to_frame()
         data[data > 0.5] = np.nan
         data[int(idx_df[idx_df.b == 'A'].iloc[0, 0])] = 0.1
