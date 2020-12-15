@@ -145,13 +145,14 @@ class Session(object):
 
     def _check_response_finished(self, graph_url, timeout=None):
         import requests
-        try:
-            resp = self._req_session.get(graph_url, params={'wait_timeout': timeout})
-        except requests.ConnectionError as ex:
-            err_msg = str(ex)
-            if 'ConnectionResetError' in err_msg or 'Connection refused' in err_msg:
-                return False
-            raise
+        resp = self._req_session.get(graph_url, params={'wait_timeout': timeout})
+        # try:
+        #     resp = self._req_session.get(graph_url, params={'wait_timeout': timeout})
+        # except requests.ConnectionError as ex:
+        #     err_msg = str(ex)
+        #     if 'ConnectionResetError' in err_msg or 'Connection refused' in err_msg:
+        #         return False
+        #     raise
 
         if resp.status_code == 504:
             logging.debug('Gateway Time-out, try again')
