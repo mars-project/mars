@@ -79,8 +79,8 @@ Customizing cluster
 -------------------
 ``new_cluster`` function provides several keyword arguments for users to define
 the cluster. You may use the argument ``image`` to specify the image for all
-Mars pods, and the argument ``timeout`` to specify timeout of cluster creation.
-Arguments for scaling up and out of the cluster are also available.
+Mars pods, or use the argument ``timeout`` to specify timeout of cluster
+creation.  Arguments for scaling up and out of the cluster are also available.
 
 Arguments for schedulers:
 

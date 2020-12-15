@@ -16,6 +16,7 @@
 
 import os
 import pickle
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -33,7 +34,7 @@ except ImportError:
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...filesystem import open_file, glob
+from ...filesystem import get_fs, open_file, glob
 from ...serialize import AnyField, BoolField, DictField, ListField,\
     StringField, Int32Field, BytesField
 from ..arrays import ArrowStringDtype
@@ -218,11 +219,17 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
         dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
         dataset = pq.ParquetDataset(op.path)
 
+        parsed_path = urlparse(op.path)
+        if not os.path.exists(op.path) and parsed_path.scheme:
+            path_prefix = f'{parsed_path.scheme}://{parsed_path.netloc}'
+        else:
+            path_prefix = ''
+
         chunk_index = 0
         out_chunks = []
         for piece in dataset.pieces:
             chunk_op = op.copy().reset_key()
-            chunk_op._path = piece.path
+            chunk_op._path = path_prefix + piece.path
             chunk_op._partitions = pickle.dumps(dataset.partitions)
             chunk_op._partition_keys = piece.partition_keys
             new_chunk = chunk_op.new_chunk(
@@ -288,7 +295,7 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if os.path.isdir(op.path):
+        if get_fs(op.path, op.storage_options).isdir(op.path):
             return cls._tile_partitioned(op)
         else:
             return cls._tile_no_partitioned(op)
@@ -376,7 +383,7 @@ def read_parquet(path, engine: str = "auto", columns=None,
     engine_type = check_engine(engine)
     engine = get_engine(engine_type)
 
-    if os.path.isdir(path):
+    if get_fs(path, storage_options).isdir(path):
         # If path is a directory, we will read as a partitioned datasets.
         if engine_type != 'pyarrow':
             raise TypeError('Only support pyarrow engine when reading from'

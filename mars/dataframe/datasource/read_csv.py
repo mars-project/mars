@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from io import BytesIO
+from urllib.parse import urlparse
 
 import pandas as pd
 import numpy as np
@@ -24,7 +25,7 @@ from ...config import options
 from ...core import OutputType
 from ...utils import parse_readable_size, lazy_import, FixedSizeFileObject
 from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, BoolField, AnyField
-from ...filesystem import open_file, file_size, glob
+from ...filesystem import get_fs, open_file, file_size, glob
 from ..arrays import ArrowStringDtype
 from ..core import IndexValue
 from ..utils import parse_index, build_empty_df, standardize_range_index, \
@@ -200,11 +201,23 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
             # check if use_arrow_dtype set on the server side
             dtypes = to_arrow_dtypes(df.dtypes)
 
-        paths = op.path if isinstance(op.path, (tuple, list)) else glob(op.path, storage_options=op.storage_options)
+        path_prefix = ''
+        if isinstance(op.path, (tuple, list)):
+            paths = op.path
+        elif get_fs(op.path, op.storage_options).isdir(op.path):
+            parsed_path = urlparse(op.path)
+            if parsed_path.scheme.lower() == 'hdfs':
+                path_prefix = f'{parsed_path.scheme}://{parsed_path.netloc}'
+                paths = get_fs(op.path, op.storage_options).ls(op.path)
+            else:
+                paths = glob(op.path.rstrip('/') + '/*', storage_options=op.storage_options)
+        else:
+            paths = glob(op.path, storage_options=op.storage_options)
 
         out_chunks = []
         index_num = 0
         for path in paths:
+            path = path_prefix + path
             total_bytes = file_size(path)
             offset = 0
             for _ in range(int(np.ceil(total_bytes * 1.0 / chunk_bytes))):
@@ -616,8 +629,16 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     # infer dtypes and columns
     if isinstance(path, (list, tuple)):
         file_path = path[0]
+    elif get_fs(path, storage_options).isdir(path):
+        parsed_path = urlparse(path)
+        if parsed_path.scheme.lower() == 'hdfs':
+            path_prefix = f'{parsed_path.scheme}://{parsed_path.netloc}'
+            file_path = path_prefix + get_fs(path, storage_options).ls(path)[0]
+        else:
+            file_path = glob(path.rstrip('/') + '/*', storage_options)[0]
     else:
-        file_path = glob(path)[0]
+        file_path = glob(path, storage_options)[0]
+
     with open_file(file_path, compression=compression, storage_options=storage_options) as f:
         if head_lines is not None:
             b = b''.join([f.readline() for _ in range(head_lines)])
