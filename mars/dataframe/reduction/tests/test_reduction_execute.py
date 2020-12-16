@@ -55,7 +55,8 @@ class TestReduction(TestBase):
         return getattr(data, self.func_name)(**kwargs)
 
     def testSeriesReduction(self):
-        data = pd.Series(np.random.randint(0, 8, (10,)), index=[str(i) for i in range(10)], name='a')
+        rs = np.random.RandomState(0)
+        data = pd.Series(rs.randint(0, 8, (10,)), index=[str(i) for i in range(10)], name='a')
         r = self.compute(md.Series(data))
         self.assertAlmostEqual(
             self.compute(data), self.executor.execute_dataframe(r, concat=True)[0])
@@ -76,7 +77,7 @@ class TestReduction(TestBase):
         self.assertAlmostEqual(
             self.compute(data, axis='index'), self.executor.execute_dataframe(r, concat=True)[0])
 
-        data = pd.Series(np.random.rand(20), name='a')
+        data = pd.Series(rs.rand(20), name='a')
         data[0] = 0.1  # make sure not all elements are NAN
         data[data > 0.5] = np.nan
         r = self.compute(md.Series(data, chunk_size=3))
@@ -102,10 +103,11 @@ class TestReduction(TestBase):
                 np.isnan(self.executor.execute_dataframe(reduction_df5, concat=True)[0]))
 
     def testSeriesLevelReduction(self):
+        rs = np.random.RandomState(0)
         idx = pd.MultiIndex.from_arrays([
-            [str(i) for i in range(100)], np.random.choice(['A', 'B'], size=(100,))
+            [str(i) for i in range(100)], rs.choice(['A', 'B'], size=(100,))
         ], names=['a', 'b'])
-        data = pd.Series(np.random.randint(0, 8, size=(100,)), index=idx)
+        data = pd.Series(rs.randint(0, 8, size=(100,)), index=idx)
 
         r = self.compute(md.Series(data, chunk_size=13), level=1)
         pd.testing.assert_series_equal(
@@ -113,7 +115,7 @@ class TestReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
         # test null
-        data = pd.Series(np.random.rand(100), name='a', index=idx)
+        data = pd.Series(rs.rand(100), name='a', index=idx)
         idx_df = idx.to_frame()
         data[data > 0.5] = np.nan
         data[int(idx_df[idx_df.b == 'A'].iloc[0, 0])] = 0.1
@@ -136,7 +138,8 @@ class TestReduction(TestBase):
                 self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
     def testDataFrameReduction(self):
-        data = pd.DataFrame(np.random.rand(20, 10))
+        rs = np.random.RandomState(0)
+        data = pd.DataFrame(rs.rand(20, 10))
         r = self.compute(md.DataFrame(data))
         pd.testing.assert_series_equal(
             self.compute(data), self.executor.execute_dataframe(r, concat=True)[0])
@@ -156,7 +159,7 @@ class TestReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0])
 
         # test null
-        np_data = np.random.rand(20, 10)
+        np_data = rs.rand(20, 10)
         np_data[np_data > 0.6] = np.nan
         data = pd.DataFrame(np_data)
 
@@ -194,8 +197,8 @@ class TestReduction(TestBase):
                 self.executor.execute_dataframe(r, concat=True)[0])
 
         # test numeric_only
-        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
-                            columns=[np.random.bytes(10) for _ in range(10)])
+        data = pd.DataFrame(rs.rand(10, 10), index=rs.randint(-100, 100, size=(10,)),
+                            columns=[rs.bytes(10) for _ in range(10)])
         r = self.compute(md.DataFrame(data, chunk_size=2))
         pd.testing.assert_series_equal(
             self.compute(data), self.executor.execute_dataframe(r, concat=True)[0])
@@ -210,17 +213,17 @@ class TestReduction(TestBase):
             self.compute(data, axis='columns'),
             self.executor.execute_dataframe(r, concat=True)[0])
 
-        data_dict = dict((str(i), np.random.rand(10)) for i in range(10))
+        data_dict = dict((str(i), rs.rand(10)) for i in range(10))
         data_dict['string'] = [str(i) for i in range(10)]
-        data_dict['bool'] = np.random.choice([True, False], (10,))
+        data_dict['bool'] = rs.choice([True, False], (10,))
         data = pd.DataFrame(data_dict)
         r = self.compute(md.DataFrame(data, chunk_size=3), axis='index', numeric_only=True)
         pd.testing.assert_series_equal(
             self.compute(data, axis='index', numeric_only=True),
             self.executor.execute_dataframe(r, concat=True)[0])
 
-        data1 = pd.DataFrame(np.random.rand(10, 10), columns=[str(i) for i in range(10)])
-        data2 = pd.DataFrame(np.random.rand(10, 10), columns=[str(i) for i in range(10)])
+        data1 = pd.DataFrame(rs.rand(10, 10), columns=[str(i) for i in range(10)])
+        data2 = pd.DataFrame(rs.rand(10, 10), columns=[str(i) for i in range(10)])
         df = md.DataFrame(data1, chunk_size=5) + md.DataFrame(data2, chunk_size=6)
         r = self.compute(df)
         pd.testing.assert_series_equal(
@@ -228,10 +231,11 @@ class TestReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
     def testDataFrameLevelReduction(self):
+        rs = np.random.RandomState(0)
         idx = pd.MultiIndex.from_arrays([
-            [str(i) for i in range(100)], np.random.choice(['A', 'B'], size=(100,))
+            [str(i) for i in range(100)], rs.choice(['A', 'B'], size=(100,))
         ], names=['a', 'b'])
-        data = pd.DataFrame(np.random.rand(100, 10), index=idx)
+        data = pd.DataFrame(rs.rand(100, 10), index=idx)
 
         r = self.compute(md.DataFrame(data, chunk_size=13), level=1)
         pd.testing.assert_frame_equal(
@@ -244,7 +248,7 @@ class TestReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
         # test null
-        data = pd.DataFrame(np.random.rand(100, 10), index=idx)
+        data = pd.DataFrame(rs.rand(100, 10), index=idx)
         data[data > 0.6] = np.nan
 
         r = self.compute(md.DataFrame(data, chunk_size=13), level=1)
@@ -265,9 +269,9 @@ class TestReduction(TestBase):
 
         # behavior of 'skew', 'kurt' differs for cases with and without level
         if self.func_name not in ('skew', 'kurt'):
-            data_dict = dict((str(i), np.random.rand(100)) for i in range(10))
+            data_dict = dict((str(i), rs.rand(100)) for i in range(10))
             data_dict['string'] = [str(i) for i in range(100)]
-            data_dict['bool'] = np.random.choice([True, False], (100,))
+            data_dict['bool'] = rs.choice([True, False], (100,))
             data = pd.DataFrame(data_dict, index=idx)
 
             r = self.compute(md.DataFrame(data, chunk_size=13), level=1, numeric_only=True)
@@ -334,7 +338,8 @@ class TestBoolReduction(TestBase):
         return getattr(data, self.func_name)(**kwargs)
 
     def testSeriesReduction(self):
-        data = pd.Series(np.random.rand(10) > 0.5, index=[str(i) for i in range(10)], name='a')
+        rs = np.random.RandomState(0)
+        data = pd.Series(rs.rand(10) > 0.5, index=[str(i) for i in range(10)], name='a')
         r = self.compute(md.Series(data))
         self.assertEqual(
             self.compute(data), self.executor.execute_dataframe(r, concat=True)[0])
@@ -352,7 +357,7 @@ class TestBoolReduction(TestBase):
             self.compute(data, axis='index'), self.executor.execute_dataframe(r, concat=True)[0])
 
         # test null
-        data = pd.Series(np.random.rand(20), name='a')
+        data = pd.Series(rs.rand(20), name='a')
         data[0] = 0.1  # make sure not all elements are NAN
         data[data > 0.5] = np.nan
         r = self.compute(md.Series(data, chunk_size=3))
@@ -364,10 +369,11 @@ class TestBoolReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0])
 
     def testSeriesLevelReduction(self):
+        rs = np.random.RandomState(0)
         idx = pd.MultiIndex.from_arrays([
-            [str(i) for i in range(100)], np.random.choice(['A', 'B'], size=(100,))
+            [str(i) for i in range(100)], rs.choice(['A', 'B'], size=(100,))
         ], names=['a', 'b'])
-        data = pd.Series(np.random.randint(0, 8, size=(100,)), index=idx)
+        data = pd.Series(rs.randint(0, 8, size=(100,)), index=idx)
 
         r = self.compute(md.Series(data, chunk_size=13), level=1)
         pd.testing.assert_series_equal(
@@ -375,7 +381,7 @@ class TestBoolReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
         # test null
-        data = pd.Series(np.random.rand(100), name='a', index=idx)
+        data = pd.Series(rs.rand(100), name='a', index=idx)
         idx_df = idx.to_frame()
         data[data > 0.5] = np.nan
         data[int(idx_df[idx_df.b == 'A'].iloc[0, 0])] = 0.1
@@ -392,7 +398,8 @@ class TestBoolReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
     def testDataFrameReduction(self):
-        data = pd.DataFrame(np.random.rand(20, 10))
+        rs = np.random.RandomState(0)
+        data = pd.DataFrame(rs.rand(20, 10))
         data.iloc[:, :5] = data.iloc[:, :5] > 0.5
         r = self.compute(md.DataFrame(data))
         pd.testing.assert_series_equal(
@@ -413,7 +420,7 @@ class TestBoolReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0])
 
         # test null
-        np_data = np.random.rand(20, 10)
+        np_data = rs.rand(20, 10)
         np_data[np_data > 0.6] = np.nan
         data = pd.DataFrame(np_data)
 
@@ -430,8 +437,8 @@ class TestBoolReduction(TestBase):
             self.compute(data, skipna=False), self.executor.execute_dataframe(r, concat=True)[0])
 
         # test bool_only
-        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
-                            columns=[np.random.bytes(10) for _ in range(10)])
+        data = pd.DataFrame(rs.rand(10, 10), index=rs.randint(-100, 100, size=(10,)),
+                            columns=[rs.bytes(10) for _ in range(10)])
         data.iloc[:, :5] = data.iloc[:, :5] > 0.5
         data.iloc[:5, 5:] = data.iloc[:5, 5:] > 0.5
         r = self.compute(md.DataFrame(data, chunk_size=2))
@@ -448,9 +455,9 @@ class TestBoolReduction(TestBase):
             self.compute(data, axis='columns'),
             self.executor.execute_dataframe(r, concat=True)[0])
 
-        data_dict = dict((str(i), np.random.rand(10)) for i in range(10))
+        data_dict = dict((str(i), rs.rand(10)) for i in range(10))
         data_dict['string'] = [str(i) for i in range(10)]
-        data_dict['bool'] = np.random.choice([True, False], (10,))
+        data_dict['bool'] = rs.choice([True, False], (10,))
         data = pd.DataFrame(data_dict)
         r = self.compute(md.DataFrame(data, chunk_size=3), axis='index', bool_only=True)
         pd.testing.assert_series_equal(
@@ -458,10 +465,11 @@ class TestBoolReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0])
 
     def testDataFrameLevelReduction(self):
+        rs = np.random.RandomState(0)
         idx = pd.MultiIndex.from_arrays([
-            [str(i) for i in range(100)], np.random.choice(['A', 'B'], size=(100,))
+            [str(i) for i in range(100)], rs.choice(['A', 'B'], size=(100,))
         ], names=['a', 'b'])
-        data = pd.DataFrame(np.random.rand(100, 10), index=idx)
+        data = pd.DataFrame(rs.rand(100, 10), index=idx)
         data.iloc[:, :5] = data.iloc[:, :5] > 0.5
 
         r = self.compute(md.DataFrame(data, chunk_size=13), level=1)
@@ -470,7 +478,7 @@ class TestBoolReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
         # test null
-        data = pd.DataFrame(np.random.rand(100, 10), index=idx)
+        data = pd.DataFrame(rs.rand(100, 10), index=idx)
         data[data > 0.6] = np.nan
 
         r = self.compute(md.DataFrame(data, chunk_size=13), level=1)

@@ -77,6 +77,11 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(series, concat=True)[0]
         pd.testing.assert_series_equal(ps, result)
 
+        series = from_pandas_series(ps)
+
+        result = self.executor.execute_dataframe(series, concat=True)[0]
+        pd.testing.assert_series_equal(ps, result)
+
         ps = pd.Series(np.random.rand(20), index=[np.arange(20), np.arange(20, 0, -1)], name='a')
         series = from_pandas_series(ps, chunk_size=13)
 
