@@ -143,6 +143,7 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
     @classmethod
     def execute(cls, ctx, op: "LGBMPredict"):
         in_data = ctx[op.data.key]
+        in_data = in_data.spmatrix if hasattr(in_data, 'spmatrix') else in_data
         out = op.outputs[0]
 
         if op.data.shape[0] == 0:

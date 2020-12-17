@@ -261,6 +261,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         from xgboost import DMatrix
 
         data, label, weight, missing, feature_names, feature_types = tup
+        data = data.spmatrix if hasattr(data, 'spmatrix') else data
         return DMatrix(data, label=label, missing=missing, weight=weight,
                        feature_names=feature_names, feature_types=feature_types,
                        nthread=-1)

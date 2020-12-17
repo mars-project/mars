@@ -14,8 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import Iterable
+from functools import reduce
+from operator import and_
+
+import numpy as np
+import pandas as pd
+
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
+from ...serialize import KeyField, AnyField
 from ...lib.sparse import SparseNDArray
 from ...lib.sparse.core import naked, cps, sps
 from .core import TensorHasInput
@@ -25,22 +32,49 @@ from .array import tensor
 class DenseToSparse(TensorHasInput):
     _op_type_ = OperandDef.DENSE_TO_SPARSE
 
-    _input = KeyField('_input')
+    _input = KeyField('input')
+    _missing = AnyField('missing')
 
-    def __init__(self, dtype=None, gpu=None, **kw):
-        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=True, **kw)
+    def __init__(self, dtype=None, gpu=None, missing=None, **kw):
+        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=True,
+                         _missing=missing, **kw)
+
+    @property
+    def missing(self):
+        return self._missing
+
+    @staticmethod
+    def _get_mask(data, missing):
+        if isinstance(missing, Iterable):
+            return reduce(and_, (DenseToSparse._get_mask(data, m) for m in missing))
+        elif pd.isna(missing):
+            return ~pd.isna(data)
+        else:
+            return data != missing
 
     @classmethod
     def execute(cls, ctx, op):
+        out = op.outputs[0]
         in_data = naked(ctx[op.inputs[0].key])
+        missing = op.missing
+        shape = in_data.shape \
+            if any(np.isnan(s) for s in out.shape) else out.shape
+
         xps = cps if op.gpu else sps
-        ctx[op.outputs[0].key] = SparseNDArray(xps.csr_matrix(in_data), shape=op.outputs[0].shape)
+        if missing is None:
+            ctx[out.key] = \
+                SparseNDArray(xps.csr_matrix(in_data), shape=shape)
+        else:
+            mask = cls._get_mask(in_data, missing)
+            spmatrix = xps.csr_matrix((in_data[mask], mask.nonzero()),
+                                      shape=shape)
+            ctx[out.key] = SparseNDArray(spmatrix)
 
 
-def fromdense(a):
+def fromdense(a, missing=None):
     a = tensor(a)
     if a.issparse():
         return a
 
-    op = DenseToSparse(dtype=a.dtype, gpu=a.op.gpu)
+    op = DenseToSparse(dtype=a.dtype, gpu=a.op.gpu, missing=missing)
     return op(a)
