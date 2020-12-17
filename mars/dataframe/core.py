@@ -891,11 +891,10 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
         1    b
         2    c
         """
-        from ..tensor import tensor as astensor
         from . import dataframe_from_tensor
 
         name = name or self.name or 0
-        return dataframe_from_tensor(astensor(self), columns=[name])
+        return dataframe_from_tensor(self, columns=[name])
 
 
 class BaseDataFrameChunkData(ChunkData):

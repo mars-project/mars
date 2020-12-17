@@ -20,7 +20,8 @@ from ...core import Base, Entity, OutputType
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
 from ...tiles import TilesError
 from ...utils import lazy_import, check_chunks_unknown_shape
-from ..utils import parse_index, build_empty_df, standardize_range_index, validate_axis
+from ..utils import parse_index, build_empty_df, build_empty_series, \
+    standardize_range_index, validate_axis
 from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
 
 cudf = lazy_import('cudf', globals=globals())
@@ -342,6 +343,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 columns_value = parse_index(pd.RangeIndex(col_length))
             else:
                 columns_value = parse_index(pd.Index(columns), store_data=True)
+
             shape = (objs[0].shape[0], col_length)
             return self.new_dataframe(objs, shape=shape, dtypes=pd.Series(dtypes),
                                       index_value=objs[0].index_value,
@@ -358,7 +360,10 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     index = self._concat_index(index, df.index_value.to_pandas())
                 row_length += df.shape[0]
-                empty_dfs.append(build_empty_df(df.dtypes))
+                if df.ndim == 2:
+                    empty_dfs.append(build_empty_df(df.dtypes))
+                else:
+                    empty_dfs.append(build_empty_series(df.dtype, name=df.name))
 
             emtpy_result = pd.concat(empty_dfs, join=self.join, sort=True)
             shape = (row_length, emtpy_result.shape[1])
@@ -371,22 +376,50 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(pd.RangeIndex(row_length))
             else:
                 index_value = parse_index(index, objs)
-            return self.new_dataframe(objs, shape=shape, dtypes=emtpy_result.dtypes,
+
+            new_objs = []
+            for obj in objs:
+                if obj.ndim != 2:
+                    # series
+                    new_obj = obj.to_frame().reindex(columns=emtpy_result.dtypes.index)
+                else:
+                    # dataframe
+                    if list(obj.dtypes.index) != list(emtpy_result.dtypes.index):
+                        new_obj = obj.reindex(columns=emtpy_result.dtypes.index)
+                    else:
+                        new_obj = obj
+                new_objs.append(new_obj)
+
+            return self.new_dataframe(new_objs, shape=shape, dtypes=emtpy_result.dtypes,
                                       index_value=index_value, columns_value=columns_value)
         else:
             col_length = 0
             empty_dfs = []
             for df in objs:
-                col_length += df.shape[1]
-                empty_dfs.append(build_empty_df(df.dtypes))
+                if df.ndim == 2:
+                    # DataFrame
+                    col_length += df.shape[1]
+                    empty_dfs.append(build_empty_df(df.dtypes))
+                else:
+                    # Series
+                    col_length += 1
+                    empty_dfs.append(build_empty_series(df.dtype, name=df.name))
 
             emtpy_result = pd.concat(empty_dfs, join=self.join, axis=1, sort=True)
             if self.ignore_index:
                 columns_value = parse_index(pd.RangeIndex(col_length))
             else:
                 columns_value = parse_index(pd.Index(emtpy_result.columns), store_data=True)
+
+            if self.ignore_index or len({o.index_value.key for o in objs}) == 1:
+                new_objs = [obj if obj.ndim == 2 else obj.to_frame()
+                            for obj in objs]
+            else:  # pragma: no cover
+                raise NotImplementedError('Does not support concat dataframes '
+                                          'which has different index')
+
             shape = (objs[0].shape[0], col_length)
-            return self.new_dataframe(objs, shape=shape, dtypes=emtpy_result.dtypes,
+            return self.new_dataframe(new_objs, shape=shape, dtypes=emtpy_result.dtypes,
                                       index_value=objs[0].index_value,
                                       columns_value=columns_value)
 

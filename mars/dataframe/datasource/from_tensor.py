@@ -26,7 +26,7 @@ from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
-from ..core import INDEX_TYPE
+from ..core import INDEX_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
@@ -150,6 +150,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 raise ValueError(
                     f'index {index} should have the same shape with tensor: {input_tensor.shape[0]}')
             index_value = self._process_index(index, inputs)
+        elif isinstance(input_tensor, SERIES_TYPE):
+            index_value = input_tensor.index_value
         else:
             index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
 
@@ -278,6 +280,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 index_chunk = index_tensor.chunks[i]
                 index_value = index_chunk.index_value
                 chunk_inputs.append(index_chunk)
+            elif isinstance(in_chunk, SERIES_CHUNK_TYPE):
+                index_value = in_chunk.index_value
             elif out_df.index_value.has_value():
                 pd_index = out_df.index_value.to_pandas()
                 chunk_pd_index = pd_index[index_stop - in_chunk.shape[0]:index_stop]
@@ -326,13 +330,16 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                                           columns=chunk.columns_value.to_pandas())
         else:
             tensor_data = ctx[op.inputs[0].key]
-            if op.index is not None:
-                # index is a tensor
-                index_data = ctx[op.inputs[1].key]
+            if isinstance(tensor_data, pd.Series):
+                ctx[chunk.key] = tensor_data.to_frame(name=chunk.dtypes.index[0])
             else:
-                index_data = chunk.index_value.to_pandas()
-            ctx[chunk.key] = pd.DataFrame(tensor_data, index=index_data,
-                                          columns=chunk.columns_value.to_pandas())
+                if op.index is not None:
+                    # index is a tensor
+                    index_data = ctx[op.inputs[1].key]
+                else:
+                    index_data = chunk.index_value.to_pandas()
+                ctx[chunk.key] = pd.DataFrame(tensor_data, index=index_data,
+                                              columns=chunk.columns_value.to_pandas())
 
 
 def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):
