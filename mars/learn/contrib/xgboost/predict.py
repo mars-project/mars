@@ -60,9 +60,9 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         if num_class is not None:
             num_class = int(num_class)
         if num_class is not None:
-            shape = (len(self._data), num_class)
+            shape = (self._data.shape[0], num_class)
         else:
-            shape = (len(self._data),)
+            shape = (self._data.shape[0],)
         if self.output_types[0] == OutputType.tensor:
             # tensor
             return self.new_tileable([self._data], shape=shape, dtype=np.dtype(np.float32),
@@ -89,10 +89,10 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_index = (in_chunk.index[0],)
             if op.model.attr('num_class'):
-                chunk_shape = (len(in_chunk), int(op.model.attr('num_class')))
+                chunk_shape = (in_chunk.shape[0], int(op.model.attr('num_class')))
                 chunk_index += (0,)
             else:
-                chunk_shape = (len(in_chunk),)
+                chunk_shape = (in_chunk.shape[0],)
             if op.output_types[0] == OutputType.tensor:
                 out_chunk = chunk_op.new_chunk([in_chunk], shape=chunk_shape,
                                                dtype=out.dtype,
