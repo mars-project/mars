@@ -20,6 +20,8 @@ from ... import opcodes as OperandDef
 from ...filesystem import open_file
 from ...serialize import KeyField, AnyField, StringField, ListField, \
     BoolField, DictField
+from ...tiles import TilesError
+from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 from ..datasource.read_parquet import check_engine
@@ -101,6 +103,7 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
 
         # make sure only 1 chunk on the column axis
+        check_chunks_unknown_shape([in_df], TilesError)
         in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
 
         out_chunks = []

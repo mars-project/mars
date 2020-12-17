@@ -23,7 +23,9 @@
       ~DataFrame.append
       ~DataFrame.apply
       ~DataFrame.astype
+      ~DataFrame.backfill
       ~DataFrame.bfill
+      ~DataFrame.cartesian_chunk
       ~DataFrame.copy
       ~DataFrame.copy_from
       ~DataFrame.copy_to
@@ -45,6 +47,7 @@
       ~DataFrame.ewm
       ~DataFrame.execute
       ~DataFrame.expanding
+      ~DataFrame.explode
       ~DataFrame.ffill
       ~DataFrame.fillna
       ~DataFrame.floordiv
@@ -80,6 +83,7 @@
       ~DataFrame.notna
       ~DataFrame.notnull
       ~DataFrame.nunique
+      ~DataFrame.pad
       ~DataFrame.pop
       ~DataFrame.pow
       ~DataFrame.prod
@@ -91,6 +95,7 @@
       ~DataFrame.rechunk
       ~DataFrame.reindex
       ~DataFrame.rename
+      ~DataFrame.replace
       ~DataFrame.reset_index
       ~DataFrame.rfloordiv
       ~DataFrame.rmod

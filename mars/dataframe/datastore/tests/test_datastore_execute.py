@@ -197,6 +197,11 @@ class Test(TestBase):
             result = result.sort_index()
             pd.testing.assert_frame_equal(result, raw)
 
+            # test read_parquet then to_parquet
+            read_df = md.read_parquet(path)
+            r = read_df.to_parquet(path)
+            self.executor.execute_dataframes([r])
+
             # test partition_cols
             path = os.path.join(base_path, 'out-partitioned')
             r = df.to_parquet(path, partition_cols=['col3'])
