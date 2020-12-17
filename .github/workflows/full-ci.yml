@@ -1,4 +1,4 @@
-name: Mars CI
+name: Full Mars CI
 
 on: [push, pull_request]
 
@@ -9,24 +9,16 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hadoop, 3.8-cython]
+        python-version: [3.6, 3.7, 3.8, 3.8-cython]
         include:
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
           - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38" }
-          - { os: ubuntu-16.04, python-version: 3.8-kubernetes, no-common-tests: 1,
-              no-deploy: 1, with-kubernetes: "with Kubernetes" }
-          - { os: ubuntu-16.04, python-version: 3.8-hadoop, no-common-tests: 1,
-              no-deploy: 1, with-hadoop: "with hadoop" }
           - { os: ubuntu-16.04, python-version: 3.8-cython, no-common-tests: 1,
               no-deploy: 1, with-cython: "with Cython" }
           - { os: windows-latest, python-version: 3.8, build-static: 1 }
         exclude:
-          - { os: macOS-latest, python-version: 3.8-kubernetes }
-          - { os: macOS-latest, python-version: 3.8-hadoop }
           - { os: macOS-latest, python-version: 3.8-cython }
-          - { os: windows-latest, python-version: 3.8-kubernetes }
-          - { os: windows-latest, python-version: 3.8-hadoop }
           - { os: windows-latest, python-version: 3.8-cython }
 
     steps:
@@ -88,16 +80,6 @@ jobs:
             fi
           fi
           retry ./.github/workflows/download-etcd.sh
-          if [ -n "$WITH_KUBERNETES" ]; then
-            ./.github/workflows/install-minikube.sh
-            pip install kubernetes
-          fi
-          if [ -n "$WITH_HADOOP" ]; then
-            ./.github/workflows/install-hadoop.sh
-            echo "import coverage; coverage.process_startup()" > \
-              $(python -c "import site; print(site.getsitepackages()[-1])")/coverage.pth
-            conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
-          fi
         fi
         conda list -n test
 
@@ -146,10 +128,7 @@ jobs:
       run: |
         source ./.github/workflows/reload-env.sh
         source ./.github/workflows/run-tests.sh
-
-        mkdir covdata
-        cp .coverage covdata/.coverage.$RUNNER_TRACKING_ID
-        echo $(pwd) > covdata/.pwd.$RUNNER_TRACKING_ID
+        coverage xml
 
     - name: Deploy packages
       if: startsWith(github.ref, 'refs/tags/') && matrix.no-deploy != '1'
@@ -163,45 +142,12 @@ jobs:
         source ./.github/workflows/reload-env.sh
         source ./.github/workflows/upload-packages.sh
 
-    - name: Persist coverage data
-      uses: actions/upload-artifact@v1
-      if: startsWith(matrix.os, 'windows') != true
+    - name: Prepare coverage token
+      if: success() && github.repository == 'mars-project/mars'
+      run: cp .github/codecov-upstream.yml .codecov.yml
+
+    - name: Report coverage data
+      uses: codecov/codecov-action@v1
       with:
-        name: covdata
-        path: covdata
-
-  finish-build:
-    needs: build
-    runs-on: ubuntu-16.04
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
-
-      - name: Load coverage data
-        uses: actions/download-artifact@v1
-        with:
-          name: covdata
-
-      - name: Collect coverage data
-        run: |
-          pip install numpy scipy cython gevent coverage
-          pip install codecov
-          CYTHON_TRACE=1 python setup.py sdist
-          export DEFAULT_VENV=$VIRTUAL_ENV
-          coverage combine covdata/
-          coverage xml
-
-      - name: Prepare coverage token
-        if: success() && github.repository == 'mars-project/mars'
-        run: cp .github/codecov-upstream.yml .codecov.yml
-
-      - name: Report coverage data
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml

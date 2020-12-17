@@ -1,6 +1,7 @@
 #!/bin/bash
 
 export UNAME="$(uname | awk '{print tolower($0)}')"
+export PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning"
 
 if [[ "$GITHUB_REF" =~ ^"refs/tags/" ]]; then
   export GITHUB_TAG_REF="$GITHUB_REF"
