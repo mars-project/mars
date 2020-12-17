@@ -1,4 +1,4 @@
-.. _yarn:
+.. _mars_yarn:
 
 Run on Yarn
 ===========

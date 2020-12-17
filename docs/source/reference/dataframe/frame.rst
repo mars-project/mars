@@ -1,4 +1,4 @@
-.. _api.dataframe:
+.. _generated.dataframe:
 
 =========
 DataFrame
@@ -8,7 +8,7 @@ DataFrame
 Constructor
 ~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame
 
@@ -17,13 +17,13 @@ Attributes and underlying data
 **Axes**
 
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.index
    DataFrame.columns
 
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.dtypes
    DataFrame.select_dtypes
@@ -34,7 +34,7 @@ Attributes and underlying data
 Conversion
 ~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.astype
    DataFrame.copy
@@ -44,7 +44,7 @@ Conversion
 Indexing, iteration
 ~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.head
    DataFrame.at
@@ -62,7 +62,7 @@ Indexing, iteration
 Binary operator functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.add
    DataFrame.sub
@@ -91,7 +91,7 @@ Binary operator functions
 Function application, GroupBy & window
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.apply
    DataFrame.agg
@@ -102,12 +102,12 @@ Function application, GroupBy & window
    DataFrame.expanding
    DataFrame.ewm
 
-.. _api.dataframe.stats:
+.. _generated.dataframe.stats:
 
 Computations / descriptive stats
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.abs
    DataFrame.all
@@ -139,7 +139,7 @@ Computations / descriptive stats
 Reindexing / selection / label manipulation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.drop
    DataFrame.drop_duplicates
@@ -150,12 +150,12 @@ Reindexing / selection / label manipulation
    DataFrame.set_index
    DataFrame.tail
 
-.. _api.dataframe.missing:
+.. _generated.dataframe.missing:
 
 Missing data handling
 ~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.backfill
    DataFrame.bfill
@@ -169,10 +169,10 @@ Missing data handling
    DataFrame.pad
    DataFrame.replace
 
-Reshaping, sorting, transposing
+Reshgeneratedng, sorting, transposing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.explode
    DataFrame.melt
@@ -183,7 +183,7 @@ Reshaping, sorting, transposing
 Combining / joining / merging
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.append
    DataFrame.join
@@ -192,13 +192,13 @@ Combining / joining / merging
 Time series-related
 ~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.diff
    DataFrame.shift
    DataFrame.tshift
 
-.. _api.dataframe.plotting:
+.. _generated.dataframe.plotting:
 
 Plotting
 ~~~~~~~~
@@ -206,12 +206,14 @@ Plotting
 specific plotting methods of the form ``DataFrame.plot.<kind>``.
 
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
+   :template: accessor_callable.rst
 
    DataFrame.plot
 
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
+   :template: accessor_method.rst
 
    DataFrame.plot.area
    DataFrame.plot.bar
@@ -226,17 +228,17 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.plot.scatter
 
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.boxplot
    DataFrame.hist
 
-.. _api.dataframe.io:
+.. _generated.dataframe.io:
 
 Serialization / IO / conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrame.to_csv
    DataFrame.to_parquet
@@ -246,7 +248,7 @@ Misc
 ~~~~
 
 .. autosummary::
-  :toctree: api/
+  :toctree: generated/
 
    DataFrame.map_chunk
    DataFrame.rebalance

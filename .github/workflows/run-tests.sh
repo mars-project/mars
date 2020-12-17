@@ -17,7 +17,7 @@ if [ -z "$NO_COMMON_TESTS" ]; then
     pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --ignore mars/tensor --ignore mars/dataframe \
       --ignore mars/learn --ignore mars/remote mars
     mv .coverage build/.coverage.main.file
-    coverage combine build/ && coverage report --fail-under=85
+    coverage combine build/ && coverage report
 
     export DEFAULT_VENV=$VIRTUAL_ENV
     source testenv/bin/activate
