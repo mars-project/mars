@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
@@ -37,6 +39,9 @@ class Test(unittest.TestCase):
         self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
         self.X_df = md.DataFrame(self.X)
+        x_sparse = np.random.rand(n_rows, n_columns)
+        x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
+        self.X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)
 
         self.session = new_session().as_default()
         self._old_executor = self.session._sess._executor
@@ -52,6 +57,17 @@ class Test(unittest.TestCase):
         classifier = LGBMClassifier(n_estimators=2)
         classifier.fit(X, y, eval_set=[(X, y)], verbose=True)
         prediction = classifier.predict(X)
+
+        self.assertEqual(prediction.ndim, 1)
+        self.assertEqual(prediction.shape[0], len(self.X))
+
+        self.assertIsInstance(prediction, mt.Tensor)
+
+        # test sparse tensor
+        X_sparse = self.X_sparse
+        classifier = LGBMClassifier(n_estimators=2)
+        classifier.fit(X_sparse, y, eval_set=[(X_sparse, y)], verbose=True)
+        prediction = classifier.predict(X_sparse)
 
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))

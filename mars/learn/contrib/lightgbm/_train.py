@@ -257,6 +257,8 @@ class LGBMTrain(MergeDictOperand):
         from lightgbm.basic import _safe_call, _LIB
 
         data_val = ctx[op.data.key]
+        data_val = data_val.spmatrix if hasattr(data_val, 'spmatrix') else data_val
+
         label_val = ctx[op.label.key]
         sample_weight_val = ctx[op.sample_weight.key] if op.sample_weight is not None else None
         init_score_val = ctx[op.init_score.key] if op.init_score is not None else None
@@ -266,7 +268,9 @@ class LGBMTrain(MergeDictOperand):
         else:
             eval_set, eval_sample_weight, eval_init_score = [], [], []
             for data, label in zip(op.eval_datas, op.eval_labels):
-                eval_set.append((ctx[data.key], ctx[label.key]))
+                data_eval = ctx[data.key]
+                data_eval = data_eval.spmatrix if hasattr(data_eval, 'spmatrix') else data_eval
+                eval_set.append((data_eval, ctx[label.key]))
             for weight in op.eval_sample_weights:
                 eval_sample_weight.append(ctx[weight.key] if weight is not None else None)
             for score in op.eval_init_scores:

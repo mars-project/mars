@@ -41,6 +41,9 @@ class Test(unittest.TestCase):
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
         self.X_df = md.DataFrame(self.X)
         self.y_series = md.Series(self.y)
+        x_sparse = np.random.rand(n_rows, n_columns)
+        x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
+        self.X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)
 
         self.session = new_session().as_default()
         self._old_executor = self.session._sess._executor
@@ -56,6 +59,9 @@ class Test(unittest.TestCase):
         self.assertIsInstance(booster, Booster)
 
         prediction = predict(booster, self.X)
+        self.assertIsInstance(prediction.to_numpy(), np.ndarray)
+
+        prediction = predict(booster, self.X_sparse)
         self.assertIsInstance(prediction.to_numpy(), np.ndarray)
 
         prediction = predict(booster, dtrain)

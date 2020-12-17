@@ -129,6 +129,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         if isinstance(data, tuple):
             data = ToDMatrix.get_xgb_dmatrix(data)
         else:
+            data = data.spmatrix if hasattr(data, 'spmatrix') else data
             data = DMatrix(data)
         result = op.model.predict(data)
 
