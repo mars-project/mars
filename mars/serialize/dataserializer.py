@@ -327,11 +327,15 @@ def serialize(data):
     except (ArrowNotImplementedError, SerializationCallbackError):
         if isinstance(data, (complex, np.complexfloating)):
             return pyarrow.serialize(_ComplexWrapper(data), mars_serialize_context())
-        raise SerializationFailed(obj=data)
     except pyarrow.lib.ArrowInvalid:
         if isinstance(data, np.ndarray) and any(s < 0 for s in data.strides):
             # pyarrow does not support negative strides for now
             return pyarrow.serialize(data.copy(), mars_serialize_context())
+
+    try:
+        return pyarrow.serialize(_PickleWrapper(data), mars_serialize_context())
+    except (ArrowNotImplementedError, SerializationCallbackError,
+            pyarrow.lib.ArrowInvalid, pickle.PickleError):
         raise SerializationFailed(obj=data)
 
 
@@ -360,6 +364,18 @@ class _ComplexWrapper:
             return complex(*serialized[1:])
         else:
             return np.dtype(serialized[0]).type(np.complex(*serialized[1:]))
+
+
+class _PickleWrapper:
+    def __init__(self, obj):
+        self._obj = obj
+
+    def serialize(self):
+        return pickle.dumps(self._obj)
+
+    @classmethod
+    def deserialize(cls, serialized):
+        return pickle.loads(serialized)
 
 
 def _serialize_groupby_wrapper(obj: GroupByWrapper):
@@ -542,6 +558,9 @@ def mars_serialize_context():
     global _serialize_context
     if _serialize_context is None:
         ctx = pyarrow.default_serialization_context()
+        ctx.register_type(_PickleWrapper, 'mars.PickleWrapper',
+                          custom_serializer=_PickleWrapper.serialize,
+                          custom_deserializer=_PickleWrapper.deserialize)
         ctx.register_type(_ComplexWrapper, 'mars.ComplexWrapper',
                           custom_serializer=_ComplexWrapper.serialize,
                           custom_deserializer=_ComplexWrapper.deserialize)

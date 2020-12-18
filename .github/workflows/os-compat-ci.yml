@@ -8,11 +8,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-16.04]
-        python-version: [3.6, 3.7, 3.8, 3.8-cython]
-        include:
-          - { os: ubuntu-16.04, python-version: 3.8-cython, no-common-tests: 1,
-              no-deploy: 1, with-cython: 1, with-flake8: 1 }
+        os: [macOS-latest, windows-latest]
+        python-version: [3.6, 3.8]
 
     steps:
     - name: Check out code
@@ -41,25 +38,8 @@ jobs:
         if [[ $UNAME == "windows" ]]; then
           pip install virtualenv flake8
         else
-          pip install virtualenv flaky flake8 etcd-gevent ray
+          pip install virtualenv flaky flake8 etcd-gevent
           if [ -z "$NO_COMMON_TESTS" ]; then
-            pip install fastparquet h5py zarr matplotlib
-
-            conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
-              "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
-            conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
-
-            if [[ ! "$PYTHON" =~ "3.8" ]]; then
-              conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
-                libxgboost py-xgboost xgboost lightgbm tensorflow statsmodels
-            fi
-            if [[ "$PYTHON" =~ "3.6" ]]; then
-              pip install torch==1.4.0 torchvision==0.5.0 faiss-cpu
-            fi
-            if [[ ! "$PYTHON" =~ "3.8" ]]; then
-              pip install torch torchvision
-              pip install tsfresh
-            fi
             virtualenv testenv && source testenv/bin/activate
             pip install -r requirements.txt && pip install pytest pytest-timeout
             if [ -z "$DEFAULT_VENV" ]; then
@@ -68,19 +48,8 @@ jobs:
               source $DEFAULT_VENV/bin/activate
             fi
           fi
-          retry ./.github/workflows/download-etcd.sh
         fi
         conda list -n test
-
-    - name: Lint with flake8
-      shell: bash
-      if: success() && matrix.with-flake8 == 1
-      run: |
-        source ./.github/workflows/reload-env.sh
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 mars --count --select=E9,E111,E225,E302,E303,E901,E999,F7,F63,F82,F401,F821,F822,F823,F841,W291,W292,W391,W605 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 mars --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Build cython extensions
       env:
@@ -88,21 +57,12 @@ jobs:
       shell: bash
       run: |
         source ./.github/workflows/reload-env.sh
-        if [ -z "$WITH_CYTHON" ]; then
-          for cf in `ls .coveragerc*`; do
-            sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
-            sed -i.bak -e '/*\.pxd/ a\
-            \ \ \ \ *.pyx \
-            ' $cf
-          done
-        else
-          export CYTHON_TRACE=1
-          for cf in `ls .coveragerc*`; do
-            sed -i.bak -e '/*\.pxd/ a\
-            \ \ \ \ *.py \
-            ' $cf
-          done
-        fi
+        export CYTHON_TRACE=1
+        for cf in `ls .coveragerc*`; do
+          sed -i.bak -e '/*\.pxd/ a\
+          \ \ \ \ *.py \
+          ' $cf
+        done
         retry python setup.py build_ext -i -j 2
         pip install -e ".[dev]"
 
@@ -117,7 +77,11 @@ jobs:
       shell: bash
       run: |
         source ./.github/workflows/reload-env.sh
-        source ./.github/workflows/run-tests.sh
+
+        export NO_SERIALIZE_IN_TEST_EXECUTOR=1
+        python -m pytest $PYTEST_CONFIG --ignore=mars/scheduler --ignore=mars/worker \
+          --ignore=mars/actors --ignore=mars/deploy --timeout=1500
+        coverage report
         coverage xml
 
     - name: Prepare coverage token

@@ -1,0 +1,237 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.7.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-12-18 10:51+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../source/installation/yarn.rst:4
+msgid "Run on Yarn"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:6
+msgid ""
+"Mars can be deployed on `YARN <https://hadoop.apache.org/docs/current"
+"/hadoop-yarn/hadoop-yarn-site/YARN.html>`_ clusters. You can use "
+"``mars.deploy.yarn`` to start Mars clusters in Hadoop environments."
+msgstr ""
+
+#: ../../source/installation/yarn.rst:12
+msgid "Basic steps"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:14
+msgid ""
+"Mars uses `Skein <https://jcrist.github.io/skein/>`_ to deploy itself "
+"into YARN clusters.  This library bridges Java interfaces of YARN "
+"applications and Python interfaces."
+msgstr ""
+
+#: ../../source/installation/yarn.rst:18
+msgid ""
+"Before starting Mars in YARN, you need to check your environments first. "
+"As Skein supports Linux only, you need to work on a Linux client, "
+"otherwise you need to fix and compile a number of packages yourself. "
+"Skein library is also needed on client side. You may install Skein with "
+"conda"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:27
+msgid "or install with pip"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:33
+msgid ""
+"Then you need to check Python environment inside your cluster. If you "
+"have a Python environment installed within your YARN nodes with every "
+"required packages installed, it will save a lot of time for you to start "
+"your cluster. Otherwise you need to pack your local environment and "
+"specify it to Mars."
+msgstr ""
+
+#: ../../source/installation/yarn.rst:38
+msgid ""
+"You may use `conda-pack <https://conda.github.io/conda-pack/>`_ to pack "
+"your environment when you are using Conda:"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:47
+msgid ""
+"or use `venv-pack <https://jcrist.github.io/venv-pack/>`_ to pack your "
+"environment when you are using virtual environments:"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:56
+msgid ""
+"Both commands will create a ``tar.gz`` archive, and you can use it when "
+"deploying your Mars cluster."
+msgstr ""
+
+#: ../../source/installation/yarn.rst:59
+msgid ""
+"Then it is time to start your Mars cluster. Select different lines when "
+"you are starting from existing a conda environment, virtual environment, "
+"Python executable or pre-packed environment archive:"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:97
+msgid "Customizing cluster"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:98
+msgid ""
+"``new_cluster`` function provides several keyword arguments for users to "
+"define the cluster. You may use the argument ``app_name`` to customize "
+"the name of the Yarn application, or use the argument ``timeout`` to "
+"specify timeout of cluster creation.  Arguments for scaling up and out of"
+" the cluster are also available."
+msgstr ""
+
+#: ../../source/installation/yarn.rst:103
+msgid "Arguments for schedulers:"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:106
+#: ../../source/installation/yarn.rst:119
+#: ../../source/installation/yarn.rst:141
+msgid "Argument"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:106
+#: ../../source/installation/yarn.rst:119
+#: ../../source/installation/yarn.rst:141
+msgid "Description"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:108
+msgid "scheduler_num"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:108
+msgid "Number of schedulers in the cluster, 1 by default"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:110
+msgid "scheduler_cpu"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:110
+msgid "Number of CPUs for every scheduler"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:112
+msgid "scheduler_mem"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:112
+msgid ""
+"Memory size for schedulers in the cluster, in bytes or size units like "
+"``1g``"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:116
+msgid "Arguments for workers:"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:121
+msgid "worker_num"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:121
+msgid "Number of workers in the cluster, 1 by default"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:123
+msgid "worker_cpu"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:123
+msgid "Number of CPUs for every worker"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:125
+msgid "worker_mem"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:125
+msgid "Memory size for workers in the cluster, in bytes or size units like ``1g``"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:128
+msgid "worker_spill_paths"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:128
+msgid "List of spill paths for worker pods on hosts"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:130
+msgid "worker_cache_mem"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:130
+msgid ""
+"Size or ratio of shared memory for every worker. Details about memory "
+"management of Mars workers can be found in :ref:`memory tuning "
+"<worker_memory_tuning>` section."
+msgstr ""
+
+#: ../../source/installation/yarn.rst:134
+msgid "min_worker_num"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:134
+msgid ""
+"Minimal number of ready workers for ``new_cluster`` to return, "
+"``worker_num`` by default"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:138
+msgid "Arguments for web services:"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:143
+msgid "web_num"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:143
+msgid "Number of web services in the cluster, 1 by default"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:145
+msgid "web_cpu"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:145
+msgid "Number of CPUs for every web service"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:147
+msgid "web_mem"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:147
+msgid ""
+"Memory size for web services in the cluster, in bytes or size units like "
+"``1g``"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:151
+msgid ""
+"For instance, if you want to create a Mars cluster with 1 scheduler, 1 "
+"web service and 100 workers, each worker has 4 cores and 16GB memory, and"
+" stop waiting when 95 workers are ready, we can use the code below:"
+msgstr ""
+
