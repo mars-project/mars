@@ -477,3 +477,27 @@ class Test(TestBase):
         expected = pd.concat([series1, series2], axis=1)
         result = self.executor.execute_dataframe(r, concat=True)[0]
         pd.testing.assert_frame_equal(result, expected)
+
+        # test merge dataframe and series
+        r = concat([mdf1, mseries2], ignore_index=True)
+        expected = pd.concat([df1, series2], ignore_index=True)
+        result = executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test merge series and dataframe
+        r = concat([mseries1, mdf2], ignore_index=True)
+        expected = pd.concat([series1, df2], ignore_index=True)
+        result = executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test merge dataframe and series, axis=1
+        r = concat([mdf1, mseries2], axis=1)
+        expected = pd.concat([df1, series2], axis=1)
+        result = executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test merge series and dataframe, axis=1
+        r = concat([mseries1, mdf2], axis=1)
+        expected = pd.concat([series1, df2], axis=1)
+        result = executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(result, expected)

@@ -42,6 +42,11 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         pd.testing.assert_frame_equal(raw.to_frame(name='new_name'), result)
 
+        series = series[series > 0.1]
+        r = series.to_frame(name='new_name')
+        result = self.executor.execute_dataframes([r])[0]
+        pd.testing.assert_frame_equal(raw[raw > 0.1].to_frame(name='new_name'), result)
+
         raw = pd.Index(np.random.rand(10), name='col')
         index = Index(raw)
 
