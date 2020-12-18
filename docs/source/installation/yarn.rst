@@ -102,16 +102,18 @@ creation.  Arguments for scaling up and out of the cluster are also available.
 
 Arguments for schedulers:
 
-+------------------+----------------------------------------------------------------+
-| Argument         | Description                                                    |
-+==================+================================================================+
-| scheduler_num    | Number of schedulers in the cluster, 1 by default              |
-+------------------+----------------------------------------------------------------+
-| scheduler_cpu    | Number of CPUs for every scheduler                             |
-+------------------+----------------------------------------------------------------+
-| scheduler_mem    | Memory size for schedulers in the cluster, in bytes or size    |
-|                  | units like ``1g``                                              |
-+------------------+----------------------------------------------------------------+
++----------------------+------------------------------------------------------------+
+| Argument             | Description                                                |
++======================+============================================================+
+| scheduler_num        | Number of schedulers in the cluster, 1 by default          |
++----------------------+------------------------------------------------------------+
+| scheduler_cpu        | Number of CPUs for every scheduler                         |
++----------------------+------------------------------------------------------------+
+| scheduler_mem        | Memory size for schedulers in the cluster, in bytes or size|
+|                      | units like ``1g``                                          |
++----------------------+------------------------------------------------------------+
+| scheduler_extra_env  | A mapping of environment variables to set in the scheduler |
++----------------------+------------------------------------------------------------+
 
 Arguments for workers:
 
@@ -134,6 +136,8 @@ Arguments for workers:
 | min_worker_num     | Minimal number of ready workers for ``new_cluster`` to return, |
 |                    | ``worker_num`` by default                                      |
 +--------------------+----------------------------------------------------------------+
+| worker_extra_env   | A mapping of environment variables to set in the worker.       |
++--------------------+----------------------------------------------------------------+
 
 Arguments for web services:
 
@@ -146,6 +150,8 @@ Arguments for web services:
 +------------------+----------------------------------------------------------------+
 | web_mem          | Memory size for web services in the cluster, in bytes or size  |
 |                  | units like ``1g``                                              |
++------------------+----------------------------------------------------------------+
+| web_extra_env    | A mapping of environment variables to set in the web.          |
 +------------------+----------------------------------------------------------------+
 
 For instance, if you want to create a Mars cluster with 1 scheduler, 1 web
