@@ -82,6 +82,31 @@ class Test(TestBase):
         np.testing.assert_array_equal(res[0].toarray(), mat[..., :2].toarray())
         np.testing.assert_array_equal(res[1].toarray(), mat[..., 2:].toarray())
 
+        # test missing argument
+        t4 = tensor(np.array([[0, 0, 2], [2, 0, 0]]), chunk_size=2).tosparse(missing=2)
+        t4 = t4 + 1
+        expected = mat.toarray()
+        raw = expected.copy()
+        expected[raw == 0] += 1
+        expected[raw != 0] = 0
+
+        res = self.executor.execute_tensor(t4, concat=True)[0]
+        self.assertIsInstance(res, SparseNDArray)
+        self.assertEqual(res.dtype, np.int_)
+        np.testing.assert_array_equal(res.toarray(), expected)
+
+        # test missing argument that is np.nan
+        t5 = tensor(np.array([[np.nan, np.nan, 2], [2, np.nan, -999]]),
+                    chunk_size=2).tosparse(missing=[np.nan, -999])
+        t5 = (t5 + 1).todense(fill_value=np.nan)
+        expected = mat.toarray().astype(float)
+        expected[expected != 0] += 1
+        expected[expected == 0] = np.nan
+
+        res = self.executor.execute_tensor(t5, concat=True)[0]
+        self.assertEqual(res.dtype, np.float64)
+        np.testing.assert_array_equal(res, expected)
+
     def testZerosExecution(self):
         t = zeros((20, 30), dtype='i8', chunk_size=5)
 

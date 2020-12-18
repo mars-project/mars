@@ -226,19 +226,19 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
 
     isscalar = is_scalar
 
-    def tosparse(self):
+    def tosparse(self, missing=None):
         if self.issparse():
             return self
 
         from .datasource import fromdense
-        return fromdense(self)
+        return fromdense(self, missing=missing)
 
-    def todense(self):
+    def todense(self, fill_value=None):
         if not self.issparse():
             return self
 
         from .datasource import fromsparse
-        return fromsparse(self)
+        return fromsparse(self, fill_value=fill_value)
 
     def transpose(self, *axes):
         from .base import transpose
