@@ -272,6 +272,7 @@ class KubernetesCluster:
             ]
         wait_services_ready(selectors, limits,
                             lambda sel: self._get_ready_pod_count(sel),
+                            platform='kubernetes',
                             timeout=self._timeout)
         logger.info('All service pods ready.')
 

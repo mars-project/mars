@@ -132,7 +132,7 @@ def new_cluster(environment=None, scheduler_num=1, scheduler_cpu=None, scheduler
                 break
             except skein.ApplicationNotRunningError:  # pragma: no cover
                 time.sleep(0.5)
-                if time.time() - check_start_time > timeout:
+                if timeout and time.time() - check_start_time > timeout:
                     raise
 
         logger.debug('Application client for %s at %s retrieved', app_id, app_client.address)
@@ -145,7 +145,8 @@ def new_cluster(environment=None, scheduler_num=1, scheduler_cpu=None, scheduler
 
         wait_services_ready(services, limits,
                             lambda svc: _get_ready_container_count(app_client, svc),
-                            timeout=timeout - (time.time() - check_start_time))
+                            platform='yarn',
+                            timeout=None if not timeout else timeout - (time.time() - check_start_time))
         web_endpoint_kv = app_client.kv.get_prefix(YarnWebApplication.service_name)
         web_endpoint = random.choice([to_str(v).split('@', 1)[0] for v in web_endpoint_kv.values()])
         return YarnClusterClient(skein_client, app_client.id, 'http://' + web_endpoint,
