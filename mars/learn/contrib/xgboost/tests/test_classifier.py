@@ -105,6 +105,12 @@ class Test(unittest.TestCase):
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))
 
+        # test predict data with unknown shape
+        X2 = X[X[:, 0] > 0.1].astype(mt.int32)
+        prediction = classifier.predict(X2)
+
+        self.assertEqual(prediction.ndim, 1)
+
         classifier = XGBClassifier(verbosity=1, n_estimators=2)
         with self.assertRaises(TypeError):
             classifier.fit(X, y, wrong_param=1)

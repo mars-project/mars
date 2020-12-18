@@ -24,7 +24,9 @@
       ~Series.apply
       ~Series.astype
       ~Series.autocorr
+      ~Series.backfill
       ~Series.bfill
+      ~Series.cartesian_chunk
       ~Series.copy
       ~Series.copy_from
       ~Series.copy_to
@@ -45,6 +47,7 @@
       ~Series.ewm
       ~Series.execute
       ~Series.expanding
+      ~Series.explode
       ~Series.ffill
       ~Series.fillna
       ~Series.floordiv
@@ -74,6 +77,7 @@
       ~Series.notna
       ~Series.notnull
       ~Series.nunique
+      ~Series.pad
       ~Series.pow
       ~Series.prod
       ~Series.product
@@ -84,6 +88,7 @@
       ~Series.rechunk
       ~Series.reindex
       ~Series.rename
+      ~Series.replace
       ~Series.reset_index
       ~Series.rfloordiv
       ~Series.rmod
