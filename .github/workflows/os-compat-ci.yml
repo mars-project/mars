@@ -79,9 +79,16 @@ jobs:
         source ./.github/workflows/reload-env.sh
 
         export NO_SERIALIZE_IN_TEST_EXECUTOR=1
-        python -m pytest $PYTEST_CONFIG --ignore=mars/scheduler --ignore=mars/worker \
-          --ignore=mars/actors --timeout=1500
-        coverage report
+        mkdir -p build
+        python -m pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded --timeout=1500 \
+          mars/dataframe mars/learn mars/remote mars/serialize mars/tensor
+        mv .coverage build/.coverage.tensor.file
+        if [[ $UNAME == "darwin" ]]; then
+          python -m pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --timeout=1500 \
+            mars/deploy/local mars/web mars/tests
+          mv .coverage build/.coverage.dist.file
+        fi
+        coverage combine build/ && coverage report
         coverage xml
 
     - name: Prepare coverage token
