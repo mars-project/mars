@@ -1,4 +1,4 @@
-name: Mars CI Core
+name: Mars CI for OS compatibility
 
 on: [push, pull_request]
 
@@ -80,7 +80,7 @@ jobs:
 
         export NO_SERIALIZE_IN_TEST_EXECUTOR=1
         python -m pytest $PYTEST_CONFIG --ignore=mars/scheduler --ignore=mars/worker \
-          --ignore=mars/actors --ignore=mars/deploy --timeout=1500
+          --ignore=mars/actors --timeout=1500
         coverage report
         coverage xml
 

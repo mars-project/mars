@@ -1,0 +1,69 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.7.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-12-18 14:32+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../source/user_guide/learn/joblib.rst:5
+msgid "Integrate with joblib"
+msgstr "和 joblib 集成"
+
+#: ../../source/user_guide/learn/joblib.rst:7
+msgid ""
+"`Joblib <https://joblib.readthedocs.io/>`_ is a library integrated with "
+"`scikit-learn <https://scikit-learn.org>`_ to make machine learning jobs "
+"parallel.  We create a backend for joblib with :doc:`Mars remote "
+"<remote>` and users can make their scikit-learn tasks parallel with Mars."
+msgstr ""
+"`Joblib <https://joblib.readthedocs.io/>`_ 是一个集成在 `scikit-learn <"
+"https://scikit-learn.org>`_ 中用于将机器学习任务并行化的包。在 Mars 中，"
+"我们使用 :doc:`Mars remote <remote>` 为 joblib 实现了一个后端，用户可以将"
+"已有的 scikit-learn 任务使用 Mars 并行化。"
+
+#: ../../source/user_guide/learn/joblib.rst:12
+msgid "To enable the backend, you need to register it with the code below."
+msgstr "你可以使用下面的代码注册和使用 Mars 中的 joblib 后端。"
+
+#: ../../source/user_guide/learn/joblib.rst:19
+msgid ""
+"After that, it is possible to create a Mars parallel backend with Mars "
+"service endpoint or existing Mars session.  When nothing specified, "
+"default or local session will be used."
+msgstr ""
+"完成注册后，你可以使用 Mars 服务地址或者已经创建的 Mars Session 来创建 "
+"joblib Mars 后端。如果不指定任何参数，默认或者本地 Mars Session 将会被"
+"使用。"
+
+#: ../../source/user_guide/learn/joblib.rst:34
+msgid ""
+"A simple example is shown below, where we fit a SVM classifier with "
+"randomized search. All you need is to replace the service endpoint in "
+"``joblib.parallel_backend`` with your own service endpoint."
+msgstr ""
+"一个简单的例子如下。在该例子中，我们使用随机搜索来训练和优化一个 SVM "
+"分类器。你只需要将代码中的 ``joblib.parallel_backend`` 替换成你自己的 "
+"Mars 服务地址即可执行该代码。"
+
+#: ../../source/user_guide/learn/joblib.rst:62
+msgid ""
+"Note that joblib can only be used with data small enough to be held "
+"inside a single machine. For huge datasets, please use learning "
+"algorithms implemented with Mars objects."
+msgstr ""
+"需要注意的是，joblib 只应当在小规模数据集上使用，这些数据应当能够存储在"
+"单机内存中。对于大规模数据，建议使用 Mars learn 中针对 Mars 数据对象包装"
+"的算法。"
+

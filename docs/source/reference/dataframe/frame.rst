@@ -169,7 +169,7 @@ Missing data handling
    DataFrame.pad
    DataFrame.replace
 
-Reshgeneratedng, sorting, transposing
+Reshaping, sorting, transposing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: generated/

@@ -6,8 +6,8 @@ Integrate with LightGBM
 
 .. currentmodule:: mars.learn.contrib.lightgbm
 
-This is an introduction about how to use LightGBM for training and prediction
-in Mars.
+This is an introduction about how to use `LightGBM
+<https://lightgbm.readthedocs.io>`_ for training and prediction in Mars.
 
 Installation
 ------------

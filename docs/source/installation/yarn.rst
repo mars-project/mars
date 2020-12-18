@@ -1,6 +1,6 @@
 .. _mars_yarn:
 
-Run on Yarn
+Run on YARN
 ===========
 
 Mars can be deployed on `YARN
@@ -68,6 +68,7 @@ executable or pre-packed environment archive:
     # specify location of Hadoop and JDK on client side
     os.environ['JAVA_HOME'] = '/usr/lib/jvm/java-1.8.0-openjdk'
     os.environ['HADOOP_HOME'] = '/usr/local/hadoop'
+    os.environ['PATH'] = '/usr/local/hadoop:' + os.environ['PATH']
 
     # use a conda environment at /path/to/remote/conda/env
     cluster = new_cluster(enviromnent='conda:///path/to/remote/conda/env')
@@ -112,7 +113,7 @@ Arguments for schedulers:
 | scheduler_mem        | Memory size for schedulers in the cluster, in bytes or size|
 |                      | units like ``1g``                                          |
 +----------------------+------------------------------------------------------------+
-| scheduler_extra_env  | A mapping of environment variables to set in the scheduler |
+| scheduler_extra_env  | A dict of environment variables to set in schedulers       |
 +----------------------+------------------------------------------------------------+
 
 Arguments for workers:
@@ -136,7 +137,7 @@ Arguments for workers:
 | min_worker_num     | Minimal number of ready workers for ``new_cluster`` to return, |
 |                    | ``worker_num`` by default                                      |
 +--------------------+----------------------------------------------------------------+
-| worker_extra_env   | A mapping of environment variables to set in the worker.       |
+| worker_extra_env   | A dict of environment variables to set in workers.             |
 +--------------------+----------------------------------------------------------------+
 
 Arguments for web services:
@@ -151,12 +152,12 @@ Arguments for web services:
 | web_mem          | Memory size for web services in the cluster, in bytes or size  |
 |                  | units like ``1g``                                              |
 +------------------+----------------------------------------------------------------+
-| web_extra_env    | A mapping of environment variables to set in the web.          |
+| web_extra_env    | A dict of environment variables to set in web services.        |
 +------------------+----------------------------------------------------------------+
 
 For instance, if you want to create a Mars cluster with 1 scheduler, 1 web
 service and 100 workers, each worker has 4 cores and 16GB memory, and stop
-waiting when 95 workers are ready, we can use the code below:
+waiting when 95 workers are ready, you can use the code below:
 
 .. code-block:: python
 

@@ -153,7 +153,7 @@ Missing data handling
    Series.dropna
    Series.fillna
 
-Reshgeneratedng, sorting
+Reshaping, sorting
 ------------------
 .. autosummary::
    :toctree: generated/
