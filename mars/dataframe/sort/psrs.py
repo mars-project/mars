@@ -482,7 +482,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         distinct_col = _PSRS_DISTINCT_COL if a.columns.nlevels == 1 \
             else (_PSRS_DISTINCT_COL,) + ('',) * (a.columns.nlevels - 1)
         if distinct_col in a.columns:
-            by += [distinct_col]
+            by = list(by) + [distinct_col]
 
         records = a[by].to_records(index=False)
         p_records = pivots.to_records(index=False)

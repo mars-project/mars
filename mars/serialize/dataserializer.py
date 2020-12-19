@@ -375,7 +375,7 @@ class _PickleWrapper:
 
     @classmethod
     def deserialize(cls, serialized):
-        return pickle.loads(serialized)
+        return pickle.loads(serialized)  # nosec
 
 
 def _serialize_groupby_wrapper(obj: GroupByWrapper):
