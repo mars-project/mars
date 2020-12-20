@@ -42,6 +42,7 @@ release = version
 extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'sphinx.ext.autosummary',
@@ -175,8 +176,16 @@ autosummary_generate = True
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/', None),
-    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    "dateutil": ("https://dateutil.readthedocs.io/en/latest/", None),
+    "matplotlib": ("https://matplotlib.org/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "pandas-gbq": ("https://pandas-gbq.readthedocs.io/en/latest/", None),
+    "py": ("https://pylib.readthedocs.io/en/latest/", None),
+    "python": ("https://docs.python.org/3/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "statsmodels": ("https://www.statsmodels.org/devel/", None),
+    "pyarrow": ("https://arrow.apache.org/docs/", None),
 }
 
 
@@ -184,3 +193,114 @@ intersphinx_mapping = {
 
 locale_dirs = ['locale/']   # path is example but recommended.
 gettext_compact = False     # optional.
+
+
+import sphinx
+from sphinx.util import rpartition
+from sphinx.ext.autodoc import MethodDocumenter, Documenter, AttributeDocumenter
+
+
+class AccessorDocumenter(MethodDocumenter):
+    """
+    Specialized Documenter subclass for accessors.
+    """
+
+    objtype = "accessor"
+    directivetype = "method"
+
+    # lower than MethodDocumenter so this is not chosen for normal methods
+    priority = 0.6
+
+    def format_signature(self):
+        # this method gives an error/warning for the accessors, therefore
+        # overriding it (accessor has no arguments)
+        return ""
+
+
+class AccessorLevelDocumenter(Documenter):
+    """
+    Specialized Documenter subclass for objects on accessor level (methods,
+    attributes).
+    """
+
+    # This is the simple straightforward version
+    # modname is None, base the last elements (eg 'hour')
+    # and path the part before (eg 'Series.dt')
+    # def resolve_name(self, modname, parents, path, base):
+    #     modname = 'pandas'
+    #     mod_cls = path.rstrip('.')
+    #     mod_cls = mod_cls.split('.')
+    #
+    #     return modname, mod_cls + [base]
+    def resolve_name(self, modname, parents, path, base):
+        if modname is None:
+            if path:
+                mod_cls = path.rstrip(".")
+            else:
+                mod_cls = None
+                # if documenting a class-level object without path,
+                # there must be a current class, either from a parent
+                # auto directive ...
+                mod_cls = self.env.temp_data.get("autodoc:class")
+                # ... or from a class directive
+                if mod_cls is None:
+                    mod_cls = self.env.temp_data.get("py:class")
+                # ... if still None, there's no way to know
+                if mod_cls is None:
+                    return None, []
+            # HACK: this is added in comparison to ClassLevelDocumenter
+            # mod_cls still exists of class.accessor, so an extra
+            # rpartition is needed
+            modname, accessor = rpartition(mod_cls, ".")
+            modname, cls = rpartition(modname, ".")
+            parents = [cls, accessor]
+            # if the module name is still missing, get it like above
+            if not modname:
+                modname = self.env.temp_data.get("autodoc:module")
+            if not modname:
+                if sphinx.__version__ > "1.3":
+                    modname = self.env.ref_context.get("py:module")
+                else:
+                    modname = self.env.temp_data.get("py:module")
+            # ... else, it stays None, which means invalid
+        return modname, parents + [base]
+
+
+class AccessorAttributeDocumenter(AccessorLevelDocumenter, AttributeDocumenter):
+    objtype = "accessorattribute"
+    directivetype = "attribute"
+
+    # lower than AttributeDocumenter so this is not chosen for normal
+    # attributes
+    priority = 0.6
+
+
+class AccessorMethodDocumenter(AccessorLevelDocumenter, MethodDocumenter):
+    objtype = "accessormethod"
+    directivetype = "method"
+
+    # lower than MethodDocumenter so this is not chosen for normal methods
+    priority = 0.6
+
+
+class AccessorCallableDocumenter(AccessorLevelDocumenter, MethodDocumenter):
+    """
+    This documenter lets us removes .__call__ from the method signature for
+    callable accessors like Series.plot
+    """
+
+    objtype = "accessorcallable"
+    directivetype = "method"
+
+    # lower than MethodDocumenter; otherwise the doc build prints warnings
+    priority = 0.5
+
+    def format_name(self):
+        return MethodDocumenter.format_name(self).rstrip(".__call__")
+
+
+def setup(app):
+    app.add_autodocumenter(AccessorDocumenter)
+    app.add_autodocumenter(AccessorAttributeDocumenter)
+    app.add_autodocumenter(AccessorMethodDocumenter)
+    app.add_autodocumenter(AccessorCallableDocumenter)

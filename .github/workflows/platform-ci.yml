@@ -1,0 +1,107 @@
+name: Mars CI on Platforms
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-16.04]
+        python-version: [3.8-kubernetes, 3.8-hadoop]
+        include:
+          - { os: ubuntu-16.04, python-version: 3.8-kubernetes, no-common-tests: 1,
+              no-deploy: 1, with-kubernetes: "with Kubernetes" }
+          - { os: ubuntu-16.04, python-version: 3.8-hadoop, no-common-tests: 1,
+              no-deploy: 1, with-hadoop: "with hadoop" }
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up conda ${{ matrix.python-version }}
+        env:
+          PYTHON: ${{ matrix.python-version }}
+        shell: bash
+        run: |
+          source ./.github/workflows/install-conda.sh
+          python -m pip install --upgrade pip setuptools wheel coverage;
+
+      - name: Install dependencies
+        env:
+          WITH_HADOOP: ${{ matrix.with-hadoop }}
+          WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+          NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+        shell: bash
+        run: |
+          source ./.github/workflows/reload-env.sh
+          export DEFAULT_VENV=$VIRTUAL_ENV
+
+          pip install -r requirements-dev.txt
+          pip install -r requirements-extra.txt
+          if [[ $UNAME == "windows" ]]; then
+            pip install virtualenv flake8
+          else
+            pip install virtualenv flaky flake8 etcd-gevent ray
+            if [ -n "$WITH_KUBERNETES" ]; then
+              ./.github/workflows/install-minikube.sh
+              pip install kubernetes
+            fi
+            if [ -n "$WITH_HADOOP" ]; then
+              ./.github/workflows/install-hadoop.sh
+              echo "import coverage; coverage.process_startup()" > \
+                $(python -c "import site; print(site.getsitepackages()[-1])")/coverage.pth
+              conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
+            fi
+          fi
+          conda list -n test
+
+      - name: Build cython extensions
+        env:
+          WITH_CYTHON: ${{ matrix.with-cython }}
+        shell: bash
+        run: |
+          source ./.github/workflows/reload-env.sh
+          for cf in `ls .coveragerc*`; do
+            sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
+            sed -i.bak -e '/*\.pxd/ a\
+            \ \ \ \ *.pyx \
+            ' $cf
+          done
+          retry python setup.py build_ext -i -j 2
+          pip install -e ".[dev]"
+
+      - name: Test with pytest
+        env:
+          WITH_HADOOP: ${{ matrix.with-hadoop }}
+          WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+          WITH_CYTHON: ${{ matrix.with-cython }}
+          NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+          NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
+          CHANGE_MINIKUBE_NONE_USER: true
+        shell: bash
+        run: |
+          source ./.github/workflows/reload-env.sh
+
+          if [ -n "$WITH_HADOOP" ]; then
+            source $CONDA/bin/activate test
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datasource/tests/test_hdfs.py \
+            mars/deploy/yarn
+            coverage report
+          fi
+          if [ -n "$WITH_KUBERNETES" ]; then
+            pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/deploy/kubernetes
+            coverage report
+          fi
+          coverage xml
+
+      - name: Prepare coverage token
+        if: success() && github.repository == 'mars-project/mars'
+        run: cp .github/codecov-upstream.yml .codecov.yml
+
+      - name: Report coverage data
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml

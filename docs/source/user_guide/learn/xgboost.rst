@@ -6,13 +6,14 @@ Integrate with XGBoost
 
 .. currentmodule:: mars.learn.contrib.xgboost
 
-This is an introduction about how to use XGBoost for training and prediction in Mars.
+This is an introduction about how to use `XGBoost
+<https://xgboost.readthedocs.io>`_ for training and prediction in Mars.
 
 Installation
 ------------
 
-If you are trying to use Mars on a single machine e.g. on your laptop,
-make sure XGBoost is installed.
+If you are trying to use Mars on a single machine e.g. on your laptop, make
+sure XGBoost is installed.
 
 You can install XGBoost via pip:
 
@@ -20,11 +21,11 @@ You can install XGBoost via pip:
 
     pip install xgboost
 
-Visit `installation guide for XGBoost <https://xgboost.readthedocs.io/en/latest/build.html>`_
-for more information.
+Visit `installation guide for XGBoost
+<https://xgboost.readthedocs.io/en/latest/build.html>`_ for more information.
 
-On the other hand, if you are using Mars on a cluster, make sure
-XGBoost is installed on each worker.
+On the other hand, if you are using Mars on a cluster, make sure XGBoost is
+installed on each worker.
 
 Prepare data
 ------------
@@ -58,7 +59,8 @@ Explore the top 5 rows data of the DataFrame.
 
    [5 rows x 13 columns]
 
-:meth:`mars.dataframe.DataFrame.describe` gives summary statistics of the columns.
+:meth:`mars.dataframe.DataFrame.describe` gives summary statistics of the
+columns.
 
 .. code-block:: ipython
 
@@ -76,7 +78,8 @@ Explore the top 5 rows data of the DataFrame.
 
    [8 rows x 13 columns]
 
-We can shuffle the sequence of the data, and separate the data into train and test parts.
+We can shuffle the sequence of the data, and separate the data into train and
+test parts.
 
 .. code-block:: ipython
 
@@ -85,7 +88,8 @@ We can shuffle the sequence of the data, and separate the data into train and te
       ...:     train_test_split(data, boston.target, train_size=0.7, random_state=0)
 
 Now we can create a :class:`MarsDMatrix` which is very similar to
-`xgboost.DMatrix <https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.DMatrix>`_.
+`xgboost.DMatrix
+<https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.DMatrix>`_.
 
 .. code-block:: ipython
 
@@ -100,7 +104,8 @@ Training
 We can train data in two ways:
 
 1. Call :meth:`train` which accepts a :class:`MarsDMatrix`.
-2. Use scikit-learn API including :class:`XGBClassifier` and :class:`XGBRegressor`.
+2. Use scikit-learn API including :class:`XGBClassifier` and
+   :class:`XGBRegressor`.
 
 For :meth:`train`, you can run the snippet.
 
@@ -134,8 +139,8 @@ Prediction
 For prediction, there are still two ways
 
 1. Call :meth:`predict` which accepts a :class:`MarsDMatrix` as well.
-2. Call :meth:`XGBClassifier.predict` or :meth:`XGBRegressor.predict`
-   which has been fitted.
+2. Call :meth:`XGBClassifier.predict` or :meth:`XGBRegressor.predict` which has
+   been fitted.
 
 For :meth:`predict`, we call it with trained model.
 
@@ -178,11 +183,12 @@ For :meth:`XGBRegressor.predict`, you can run the snippet.
 Distributed training and prediction
 -----------------------------------
 
-Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for running Mars on Kubernetes.
+Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for
+running Mars on Kubernetes.
 
-Once a cluster exists, you can either set the session as default,
-the training and prediction shown above will be submitted to the cluster,
-or you can specify ``session=***`` explicitly as well.
+Once a cluster exists, you can either set the session as default, the training
+and prediction shown above will be submitted to the cluster, or you can specify
+``session=***`` explicitly as well.
 
 Take :meth:`XGBRegressor.fit` as an example.
 

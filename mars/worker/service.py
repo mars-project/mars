@@ -122,6 +122,8 @@ class WorkerService(object):
             self._clear_custom_log_dir = False
 
         self._total_mem = kwargs.pop('total_mem', None)
+        if self._total_mem:
+            os.environ['MARS_MEMORY_TOTAL'] = str(self._total_mem)
         self._cache_mem_size = kwargs.pop('cache_mem_size', None)
         self._cache_mem_scale = float(kwargs.pop('cache_mem_scale', None) or 1)
         self._soft_mem_limit = kwargs.pop('soft_mem_limit', None) or '80%'

@@ -1,0 +1,58 @@
+name: Mars CD
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-16.04, macOS-latest, windows-latest]
+        python-version: [3.6, 3.7, 3.8]
+        include:
+          - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
+          - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
+          - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38" }
+          - { os: windows-latest, python-version: 3.8, build-static: 1 }
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up conda ${{ matrix.python-version }}
+        env:
+          PYTHON: ${{ matrix.python-version }}
+        shell: bash
+        run: |
+          source ./.github/workflows/install-conda.sh
+          python -m pip install --upgrade pip setuptools wheel coverage;
+
+      - name: Install dependencies
+        env:
+          WITH_HADOOP: ${{ matrix.with-hadoop }}
+          WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+          NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+        shell: bash
+        run: |
+          source ./.github/workflows/reload-env.sh
+          export DEFAULT_VENV=$VIRTUAL_ENV
+
+          pip install -r requirements-dev.txt
+          pip install -r requirements-extra.txt
+          conda list -n test
+
+      - name: Deploy packages
+        if: startsWith(github.ref, 'refs/tags/') && matrix.no-deploy != '1'
+        shell: bash
+        env:
+          DOCKER_IMAGE: "quay.io/pypa/manylinux1_x86_64"
+          PYABI: ${{ matrix.python-abis }}
+          BUILD_STATIC: ${{ matrix.build-static }}
+          PYPI_PWD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          source ./.github/workflows/reload-env.sh
+          source ./.github/workflows/upload-packages.sh

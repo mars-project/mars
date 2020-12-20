@@ -28,5 +28,5 @@ def wait_services_ready(selectors, min_counts, count_fun, timeout=None):
         if all_satisfy:
             break
         if timeout and timeout + start_time < time.time():
-            raise TimeoutError('Wait kubernetes cluster start timeout')
+            raise TimeoutError('Wait cluster start timeout')
         time.sleep(1)
