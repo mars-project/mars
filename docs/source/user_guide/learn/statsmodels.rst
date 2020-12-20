@@ -6,8 +6,8 @@ Integrate with StatsModels
 
 .. currentmodule:: mars.learn.contrib.statsmodels
 
-This is an introduction about how to use StatsModels for model fitting and
-prediction in Mars.
+This is an introduction about how to use `StatsModels
+<https://www.statsmodels.org>`_ for model fitting and prediction in Mars.
 
 Installation
 ------------

@@ -15,7 +15,7 @@
 import time
 
 
-def wait_services_ready(selectors, min_counts, count_fun, platform, timeout=None):
+def wait_services_ready(selectors, min_counts, count_fun, timeout=None):
     readies = [0] * len(selectors)
     start_time = time.time()
     while True:
@@ -28,5 +28,5 @@ def wait_services_ready(selectors, min_counts, count_fun, platform, timeout=None
         if all_satisfy:
             break
         if timeout and timeout + start_time < time.time():
-            raise TimeoutError('Wait %s cluster start timeout' % platform)
+            raise TimeoutError('Wait cluster start timeout')
         time.sleep(1)

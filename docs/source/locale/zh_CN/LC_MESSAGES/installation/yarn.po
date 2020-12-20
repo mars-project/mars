@@ -1,0 +1,289 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.7.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-12-18 14:07+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../source/installation/yarn.rst:4
+msgid "Run on YARN"
+msgstr "在 YARN 中部署"
+
+#: ../../source/installation/yarn.rst:6
+msgid ""
+"Mars can be deployed on `YARN <https://hadoop.apache.org/docs/current"
+"/hadoop-yarn/hadoop-yarn-site/YARN.html>`_ clusters. You can use "
+"``mars.deploy.yarn`` to start Mars clusters in Hadoop environments."
+msgstr ""
+"Mars 可在 `YARN <https://hadoop.apache.org/docs/current/hadoop-yarn/"
+"hadoop-yarn-site/YARN.html>`_ 集群中部署。你可以使用 ``mars.deploy.yarn``"
+" 在 Hadoop 环境中部署 Mars 集群。"
+
+#: ../../source/installation/yarn.rst:12
+msgid "Basic steps"
+msgstr "基本步骤"
+
+#: ../../source/installation/yarn.rst:14
+msgid ""
+"Mars uses `Skein <https://jcrist.github.io/skein/>`_ to deploy itself "
+"into YARN clusters.  This library bridges Java interfaces of YARN "
+"applications and Python interfaces."
+msgstr ""
+"Mars 使用 `Skein <https://jcrist.github.io/skein/>`_ 完成在 YARN 集群中的"
+"部署。这个包解决了 Python 代码使用 YARN 应用的 Java 接口的问题。"
+
+#: ../../source/installation/yarn.rst:18
+msgid ""
+"Before starting Mars in YARN, you need to check your environments first. "
+"As Skein supports Linux only, you need to work on a Linux client, "
+"otherwise you need to fix and compile a number of packages yourself. "
+"Skein library is also needed on client side. You may install Skein with "
+"conda"
+msgstr ""
+"在 YARN 中启动 Mars 之前，你首先需要确认你的环境。由于 Skein 仅支持 Linux"
+"，你需要在一个 Linux 客户端中进行下面的操作，否则可能需要自行手动修复和"
+"编译一系列依赖包。你也需要在客户端安装 Skein 包。使用 Conda 的安装步骤为"
+
+#: ../../source/installation/yarn.rst:27
+msgid "or install with pip"
+msgstr "使用 pip 的安装步骤为"
+
+#: ../../source/installation/yarn.rst:33
+msgid ""
+"Then you need to check Python environment inside your cluster. If you "
+"have a Python environment installed within your YARN nodes with every "
+"required packages installed, it will save a lot of time for you to start "
+"your cluster. Otherwise you need to pack your local environment and "
+"specify it to Mars."
+msgstr ""
+"此后你需要确认你的 YARN 集群中安装的 Python 环境。如果集群中的 Python "
+"已经安装了所有的依赖包，这将帮助你节约大量启动 Mars 集群的时间。否则你"
+"需要在本地打包 Python 环境并提供给 Mars。"
+
+#: ../../source/installation/yarn.rst:38
+msgid ""
+"You may use `conda-pack <https://conda.github.io/conda-pack/>`_ to pack "
+"your environment when you are using Conda:"
+msgstr ""
+"如果你使用的是 Conda，你可以使用 `conda-pack <https://conda.github.io/"
+"conda-pack/>`_ 打包你的环境："
+
+#: ../../source/installation/yarn.rst:47
+msgid ""
+"or use `venv-pack <https://jcrist.github.io/venv-pack/>`_ to pack your "
+"environment when you are using virtual environments:"
+msgstr ""
+"如果你使用的是 Python 虚拟环境，你可以使用 `venv-pack <https://jcrist."
+"github.io/venv-pack/>`_ 打包你的 Python 虚拟环境："
+
+#: ../../source/installation/yarn.rst:56
+msgid ""
+"Both commands will create a ``tar.gz`` archive, and you can use it when "
+"deploying your Mars cluster."
+msgstr "这两个工具都会输出一个 ``tar.gz`` 压缩包，你可以用它来部署你的 Mars 集群。"
+
+#: ../../source/installation/yarn.rst:59
+msgid ""
+"Then it is time to start your Mars cluster. Select different lines when "
+"you are starting from existing a conda environment, virtual environment, "
+"Python executable or pre-packed environment archive:"
+msgstr ""
+"此后，你可以使用下面的代码启动 Mars 集群。当你使用集群 Conda 环境、Python"
+" 虚拟环境、Python 执行文件路径或者依照上面的方法制作的 Python 环境包，"
+"可以根据代码中的注释选择相应的行："
+
+#: ../../source/installation/yarn.rst:98
+msgid "Customizing cluster"
+msgstr "定制集群"
+
+#: ../../source/installation/yarn.rst:99
+msgid ""
+"``new_cluster`` function provides several keyword arguments for users to "
+"define the cluster. You may use the argument ``app_name`` to customize "
+"the name of the Yarn application, or use the argument ``timeout`` to "
+"specify timeout of cluster creation.  Arguments for scaling up and out of"
+" the cluster are also available."
+msgstr ""
+"``new_cluster`` 函数提供若干可用于定制集群的参数。你可以使用 ``app_name``"
+" 参数定义 YARN 应用的名称，``timeout`` 参数定义创建集群的超时时间。同时，"
+"该函数还提供调整集群规模的功能。"
+
+#: ../../source/installation/yarn.rst:104
+msgid "Arguments for schedulers:"
+msgstr "Scheduler 相关参数："
+
+#: ../../source/installation/yarn.rst:107
+#: ../../source/installation/yarn.rst:122
+#: ../../source/installation/yarn.rst:146
+msgid "Argument"
+msgstr "参数"
+
+#: ../../source/installation/yarn.rst:107
+#: ../../source/installation/yarn.rst:122
+#: ../../source/installation/yarn.rst:146
+msgid "Description"
+msgstr "描述"
+
+#: ../../source/installation/yarn.rst:109
+msgid "scheduler_num"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:109
+msgid "Number of schedulers in the cluster, 1 by default"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:111
+msgid "scheduler_cpu"
+msgstr "每个 Scheduler 的 CPU 数目"
+
+#: ../../source/installation/yarn.rst:111
+msgid "Number of CPUs for every scheduler"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:113
+msgid "scheduler_mem"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:113
+msgid ""
+"Memory size for schedulers in the cluster, in bytes or size units like "
+"``1g``"
+msgstr "每个 Scheduler 的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
+
+#: ../../source/installation/yarn.rst:116
+msgid "scheduler_extra_env"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:116
+msgid "A dict of environment variables to set in schedulers"
+msgstr "在 Scheduler 中额外增加的环境变量，以 dict 表示"
+
+#: ../../source/installation/yarn.rst:119
+msgid "Arguments for workers:"
+msgstr "Worker 相关参数："
+
+#: ../../source/installation/yarn.rst:124
+msgid "worker_num"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:124
+msgid "Number of workers in the cluster, 1 by default"
+msgstr "集群中 Worker 的数目，默认为 1"
+
+#: ../../source/installation/yarn.rst:126
+msgid "worker_cpu"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:126
+msgid "Number of CPUs for every worker"
+msgstr "每个 Worker 的 CPU 数目"
+
+#: ../../source/installation/yarn.rst:128
+msgid "worker_mem"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:128
+msgid "Memory size for workers in the cluster, in bytes or size units like ``1g``"
+msgstr "每个 Worker 的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
+
+#: ../../source/installation/yarn.rst:131
+msgid "worker_spill_paths"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:131
+msgid "List of spill paths for worker pods on hosts"
+msgstr "在宿主机上用于 Worker spill 的路径列表"
+
+#: ../../source/installation/yarn.rst:133
+msgid "worker_cache_mem"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:133
+msgid ""
+"Size or ratio of shared memory for every worker. Details about memory "
+"management of Mars workers can be found in :ref:`memory tuning "
+"<worker_memory_tuning>` section."
+msgstr ""
+"Worker 中共享内存的大小或者占比。关于 Mars Worker 中的内存管理细节可以"
+"参考 :ref:`内存调优 <worker_memory_tuning>` 章节。"
+
+#: ../../source/installation/yarn.rst:137
+msgid "min_worker_num"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:137
+msgid ""
+"Minimal number of ready workers for ``new_cluster`` to return, "
+"``worker_num`` by default"
+msgstr ""
+"``new_cluster`` 结束执行时所需的最小可用 Worker 个数，默认为 ``worker_num"
+"``。"
+
+#: ../../source/installation/yarn.rst:140
+msgid "worker_extra_env"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:140
+msgid "A dict of environment variables to set in workers."
+msgstr "在 Worker 中额外增加的环境变量，以 dict 表示"
+
+#: ../../source/installation/yarn.rst:143
+msgid "Arguments for web services:"
+msgstr "Web 服务相关参数："
+
+#: ../../source/installation/yarn.rst:148
+msgid "web_num"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:148
+msgid "Number of web services in the cluster, 1 by default"
+msgstr "每个 Web 服务的 CPU 数目，默认为1"
+
+#: ../../source/installation/yarn.rst:150
+msgid "web_cpu"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:150
+msgid "Number of CPUs for every web service"
+msgstr "每个 Web 服务的 CPU 数目"
+
+#: ../../source/installation/yarn.rst:152
+msgid "web_mem"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:152
+msgid ""
+"Memory size for web services in the cluster, in bytes or size units like "
+"``1g``"
+msgstr "每个 Web 服务的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
+
+#: ../../source/installation/yarn.rst:155
+msgid "web_extra_env"
+msgstr ""
+
+#: ../../source/installation/yarn.rst:155
+msgid "A dict of environment variables to set in web services."
+msgstr "在 Web 服务中额外增加的环境变量，以 dict 表示"
+
+#: ../../source/installation/yarn.rst:158
+msgid ""
+"For instance, if you want to create a Mars cluster with 1 scheduler, 1 "
+"web service and 100 workers, each worker has 4 cores and 16GB memory, and"
+" stop waiting when 95 workers are ready, you can use the code below:"
+msgstr ""
+"例如，如果你需要创建一个包含单个 Scheduler、单个 Web 服务以及 100 个 "
+"Worker 的 Mars 集群，每个 Worker 拥有 4 核 16GB 内存，当 95 个 Worker "
+"可用时认为整个集群可用，你可以使用下面的代码："
+

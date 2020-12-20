@@ -1,4 +1,4 @@
-.. _api.io:
+.. _generated.io:
 
 ============
 Input/output
@@ -8,21 +8,21 @@ Input/output
 Flat file
 ~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    read_csv
 
 Parquet
 ~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    read_parquet
 
 SQL
 ~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    read_sql
    read_sql_table

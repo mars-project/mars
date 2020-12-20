@@ -1,4 +1,4 @@
-.. _api.general_functions:
+.. _generated.general_functions:
 
 =================
 General functions
@@ -8,7 +8,7 @@ General functions
 Data manipulations
 ~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    cut
    qcut
@@ -19,7 +19,7 @@ Data manipulations
 Top-level missing data
 ~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    isna
    isnull
@@ -29,7 +29,7 @@ Top-level missing data
 Top-level dealing with datetimelike
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    to_datetime
    date_range
@@ -37,7 +37,7 @@ Top-level dealing with datetimelike
 Misc
 ~~~~
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    CustomReduction
    ExecutableTuple

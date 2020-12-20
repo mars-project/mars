@@ -4,7 +4,8 @@
 Integrate with joblib
 *********************
 
-Joblib is a library integrated with scikit-learn to make machine learning jobs
+`Joblib <https://joblib.readthedocs.io/>`_ is a library integrated with
+`scikit-learn <https://scikit-learn.org>`_ to make machine learning jobs
 parallel.  We create a backend for joblib with :doc:`Mars remote <remote>` and
 users can make their scikit-learn tasks parallel with Mars.
 

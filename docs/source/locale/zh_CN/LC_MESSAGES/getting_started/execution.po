@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-09-17 17:19+0800\n"
+"POT-Creation-Date: 2020-12-18 10:51+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.0\n"
 
 #: ../../source/getting_started/execution.rst:4
 msgid "Lazy Evaluation"
@@ -66,12 +66,16 @@ msgid "Asynchronous Execution"
 msgstr "异步执行"
 
 #: ../../source/getting_started/execution.rst:49
+msgid "New in version 0.5.2"
+msgstr "0.5.2 中新增"
+
+#: ../../source/getting_started/execution.rst:51
 msgid ""
 "Specifying ``wait=False`` can make the execution asynchronous, it will "
 "return a `Future object "
 "<https://docs.python.org/3/library/concurrent.futures.html#future-"
 "objects>`_."
 msgstr ""
-"指定 ``wait=False`` 可以异步执行，它返回一个 `Future 对象 "
-"<https://docs.python.org/3/library/concurrent.futures.html#future-"
-"objects>`_。"
+"指定 ``wait=False`` 可以异步执行，它返回一个 `Future 对象 <https://docs."
+"python.org/3/library/concurrent.futures.html#future-objects>`_。"
+

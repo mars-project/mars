@@ -8,23 +8,24 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 19:05+0800\n"
+"POT-Creation-Date: 2020-12-18 14:49+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.0\n"
 
 #: ../../source/user_guide/learn/lightgbm.rst:5
 msgid "Integrate with LightGBM"
 msgstr "和 LightGBM 集成"
 
 #: ../../source/user_guide/learn/lightgbm.rst:9
+#, fuzzy
 msgid ""
-"This is an introduction about how to use LightGBM for training and "
-"prediction in Mars."
+"This is an introduction about how to use `LightGBM "
+"<https://lightgbm.readthedocs.io>`_ for training and prediction in Mars."
 msgstr "这个指引会介绍如何在 Mars 里使用 LightGBM 进行训练和预测。"
 
 #: ../../source/user_guide/learn/lightgbm.rst:13
@@ -84,35 +85,35 @@ msgid ""
 " and test parts."
 msgstr "我们可以把数据打乱，然后把他们分成训练和测试集。"
 
-#: ../../source/user_guide/learn/lightgbm.rst:93
+#: ../../source/user_guide/learn/lightgbm.rst:91
 msgid "Training"
 msgstr "训练"
 
-#: ../../source/user_guide/learn/lightgbm.rst:95
+#: ../../source/user_guide/learn/lightgbm.rst:93
 msgid ""
 "We can train data with scikit-learn API similar to the API implemented in"
 " LightGBM."
-msgstr "我们可以使用与原始 LightGBM 类似的 scikie-learn 接口对数据进行训练。"
+msgstr "我们可以使用与原始 LightGBM 类似的 scikit-learn 接口对数据进行训练。"
 
-#: ../../source/user_guide/learn/lightgbm.rst:115
+#: ../../source/user_guide/learn/lightgbm.rst:113
 msgid "Prediction"
 msgstr "预测"
 
-#: ../../source/user_guide/learn/lightgbm.rst:117
+#: ../../source/user_guide/learn/lightgbm.rst:115
 msgid "For prediction, scikit-learn API can also be used."
 msgstr "预测中也可以使用 scikit-learn 样式的接口。"
 
-#: ../../source/user_guide/learn/lightgbm.rst:137
+#: ../../source/user_guide/learn/lightgbm.rst:135
 msgid "Distributed training and prediction"
 msgstr "分布式训练和预测"
 
-#: ../../source/user_guide/learn/lightgbm.rst:139
+#: ../../source/user_guide/learn/lightgbm.rst:137
 msgid ""
 "Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for "
 "running Mars on Kubernetes."
 msgstr "部署参考 :ref:`deploy` 部分，在 Kubernetes 上运行参考 :ref:`k8s` 部分。"
 
-#: ../../source/user_guide/learn/lightgbm.rst:142
+#: ../../source/user_guide/learn/lightgbm.rst:140
 msgid ""
 "Once a cluster exists, you can either set the session as default, the "
 "training and prediction shown above will be submitted to the cluster, or "
@@ -121,7 +122,7 @@ msgstr ""
 "一旦一个集群存在，你可以要么设置默认 session，训练和预测就会自动提交到"
 "集群，要么你可以通过 ``session=***`` 显示指定运行的 session。"
 
-#: ../../source/user_guide/learn/lightgbm.rst:146
+#: ../../source/user_guide/learn/lightgbm.rst:144
 msgid "Take :meth:`LGBMRegressor.fit` as an example."
 msgstr "以 :meth:`LGBMRegressor.fit` 为例。"
 

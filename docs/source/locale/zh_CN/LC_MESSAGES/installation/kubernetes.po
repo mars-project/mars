@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-09-14 15:13+0800\n"
+"POT-Creation-Date: 2020-12-18 14:07+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.8.0\n"
+"Generated-By: Babel 2.9.0\n"
 
 #: ../../source/installation/kubernetes.rst:4
 msgid "Run on Kubernetes"
@@ -96,9 +96,9 @@ msgstr "定制集群"
 msgid ""
 "``new_cluster`` function provides several keyword arguments for users to "
 "define the cluster. You may use the argument ``image`` to specify the "
-"image for all Mars pods, and the argument ``timeout`` to specify timeout "
-"of cluster creation. Arguments for scaling up and out of the cluster are "
-"also available."
+"image for all Mars pods, or use the argument ``timeout`` to specify "
+"timeout of cluster creation.  Arguments for scaling up and out of the "
+"cluster are also available."
 msgstr ""
 "``new_cluster`` 函数提供若干可用于定制集群的参数。你可以使用 ``image`` "
 "参数定义所有 Pod 使用的镜像，``timeout`` 参数定义创建集群的超时时间。同时"
@@ -109,14 +109,14 @@ msgid "Arguments for schedulers:"
 msgstr "Scheduler 相关参数："
 
 #: ../../source/installation/kubernetes.rst:88
-#: ../../source/installation/kubernetes.rst:101
-#: ../../source/installation/kubernetes.rst:123
+#: ../../source/installation/kubernetes.rst:103
+#: ../../source/installation/kubernetes.rst:127
 msgid "Argument"
 msgstr "参数"
 
 #: ../../source/installation/kubernetes.rst:88
-#: ../../source/installation/kubernetes.rst:101
-#: ../../source/installation/kubernetes.rst:123
+#: ../../source/installation/kubernetes.rst:103
+#: ../../source/installation/kubernetes.rst:127
 msgid "Description"
 msgstr "描述"
 
@@ -146,47 +146,55 @@ msgid ""
 "``1g``"
 msgstr "每个 Scheduler 的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
 
-#: ../../source/installation/kubernetes.rst:98
+#: ../../source/installation/kubernetes.rst:97
+msgid "scheduler_extra_env"
+msgstr ""
+
+#: ../../source/installation/kubernetes.rst:97
+msgid "A mapping of environment variables to set in schedulers"
+msgstr "在 Scheduler 中额外增加的环境变量，以 dict 表示"
+
+#: ../../source/installation/kubernetes.rst:100
 msgid "Arguments for workers:"
 msgstr "Worker 相关参数："
 
-#: ../../source/installation/kubernetes.rst:103
+#: ../../source/installation/kubernetes.rst:105
 msgid "worker_num"
 msgstr ""
 
-#: ../../source/installation/kubernetes.rst:103
+#: ../../source/installation/kubernetes.rst:105
 msgid "Number of workers in the cluster, 1 by default"
 msgstr "集群中 Worker 的数目，默认为 1"
 
-#: ../../source/installation/kubernetes.rst:105
+#: ../../source/installation/kubernetes.rst:107
 msgid "worker_cpu"
 msgstr ""
 
-#: ../../source/installation/kubernetes.rst:105
+#: ../../source/installation/kubernetes.rst:107
 msgid "Number of CPUs for every worker"
 msgstr "每个 Worker 的 CPU 数目"
 
-#: ../../source/installation/kubernetes.rst:107
+#: ../../source/installation/kubernetes.rst:109
 msgid "worker_mem"
 msgstr ""
 
-#: ../../source/installation/kubernetes.rst:107
+#: ../../source/installation/kubernetes.rst:109
 msgid "Memory size for workers in the cluster, in bytes or size units like ``1g``"
 msgstr "每个 Worker 的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
 
-#: ../../source/installation/kubernetes.rst:110
+#: ../../source/installation/kubernetes.rst:112
 msgid "worker_spill_paths"
 msgstr ""
 
-#: ../../source/installation/kubernetes.rst:110
+#: ../../source/installation/kubernetes.rst:112
 msgid "List of spill paths for worker pods on hosts"
 msgstr "在宿主机上用于 Worker spill 的路径列表"
 
-#: ../../source/installation/kubernetes.rst:112
+#: ../../source/installation/kubernetes.rst:114
 msgid "worker_cache_mem"
 msgstr ""
 
-#: ../../source/installation/kubernetes.rst:112
+#: ../../source/installation/kubernetes.rst:114
 msgid ""
 "Size or ratio of shared memory for every worker. Details about memory "
 "management of Mars workers can be found in :ref:`memory tuning "
@@ -195,11 +203,11 @@ msgstr ""
 "Worker 中共享内存的大小或者占比。关于 Mars Worker 中的内存管理细节可以"
 "参考 :ref:`内存调优 <worker_memory_tuning>` 章节。"
 
-#: ../../source/installation/kubernetes.rst:116
+#: ../../source/installation/kubernetes.rst:118
 msgid "min_worker_num"
 msgstr ""
 
-#: ../../source/installation/kubernetes.rst:116
+#: ../../source/installation/kubernetes.rst:118
 msgid ""
 "Minimal number of ready workers for ``new_cluster`` to return, "
 "``worker_num`` by default"
@@ -207,51 +215,67 @@ msgstr ""
 "``new_cluster`` 结束执行时所需的最小可用 Worker 个数，默认为 ``worker_num"
 "``。"
 
-#: ../../source/installation/kubernetes.rst:120
+#: ../../source/installation/kubernetes.rst:121
+msgid "worker_extra_env"
+msgstr ""
+
+#: ../../source/installation/kubernetes.rst:121
+msgid "A dict of environment variables to set in workers."
+msgstr "在 Worker 中额外增加的环境变量，以 dict 表示"
+
+#: ../../source/installation/kubernetes.rst:124
 msgid "Arguments for web services:"
 msgstr "Web 服务相关参数："
 
-#: ../../source/installation/kubernetes.rst:125
+#: ../../source/installation/kubernetes.rst:129
 msgid "web_num"
 msgstr ""
 
-#: ../../source/installation/kubernetes.rst:125
+#: ../../source/installation/kubernetes.rst:129
 msgid "Number of web services in the cluster, 1 by default"
 msgstr "每个 Web 服务的 CPU 数目，默认为1"
 
-#: ../../source/installation/kubernetes.rst:127
+#: ../../source/installation/kubernetes.rst:131
 msgid "web_cpu"
 msgstr ""
 
-#: ../../source/installation/kubernetes.rst:127
+#: ../../source/installation/kubernetes.rst:131
 msgid "Number of CPUs for every web service"
 msgstr "每个 Web 服务的 CPU 数目"
 
-#: ../../source/installation/kubernetes.rst:129
+#: ../../source/installation/kubernetes.rst:133
 msgid "web_mem"
 msgstr ""
 
-#: ../../source/installation/kubernetes.rst:129
+#: ../../source/installation/kubernetes.rst:133
 msgid ""
 "Memory size for web services in the cluster, in bytes or size units like "
 "``1g``"
 msgstr "每个 Web 服务的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
 
-#: ../../source/installation/kubernetes.rst:133
+#: ../../source/installation/kubernetes.rst:136
+msgid "web_extra_env"
+msgstr ""
+
+#: ../../source/installation/kubernetes.rst:136
+msgid "A dict of environment variables to set in web services."
+msgstr "在 Web 服务中额外增加的环境变量，以 dict 表示"
+
+#: ../../source/installation/kubernetes.rst:139
 msgid ""
 "For instance, if you want to create a Mars cluster with 1 scheduler, 1 "
 "web service and 100 workers, each worker has 4 cores and 16GB memory, and"
-" stop waiting when 95 workers are ready, we can use the code below:"
+" stop waiting when 95 workers are ready, you can use the code below:"
 msgstr ""
 "例如，如果你需要创建一个包含单个 Scheduler、单个 Web 服务以及 100 个 "
 "Worker 的 Mars 集群，每个 Worker 拥有 4 核 16GB 内存，当 95 个 Worker "
-"可用时认为整个集群可用，我们可以使用下面的代码："
+"可用时认为整个集群可用，你可以使用下面的代码："
 
-#: ../../source/installation/kubernetes.rst:148
+#: ../../source/installation/kubernetes.rst:154
 msgid "Rescaling workers"
 msgstr "调整 Worker 数量"
 
-#: ../../source/installation/kubernetes.rst:152
+#: ../../source/installation/kubernetes.rst:158
 msgid ""
 "Currently it is not ensured that data are still kept when rescaling "
 "workers in a Mars cluster created in Kubernetes. Please make sure that "
@@ -260,7 +284,7 @@ msgstr ""
 "目前在调整 Kubernetes 中 Mars 集群的 Worker 数量时，不保证集群中现有的"
 "数据不会丢失。因而在调整 Worker 数量时，请保存之前的计算结果。"
 
-#: ../../source/installation/kubernetes.rst:156
+#: ../../source/installation/kubernetes.rst:162
 msgid ""
 "Mars supports scaling up or down the number of workers in a created "
 "Kubernetes cluster. After creating a cluster in Kubernetes, you can "
@@ -269,11 +293,11 @@ msgstr ""
 "Mars 支持调整 Kubernetes 中创建的 Mars 集群的 Worker 数量。在创建一个集群"
 "后，你可以使用下面的代码调整 Worker 数量："
 
-#: ../../source/installation/kubernetes.rst:166
+#: ../../source/installation/kubernetes.rst:172
 msgid "Implementation details"
 msgstr "实现细节"
 
-#: ../../source/installation/kubernetes.rst:167
+#: ../../source/installation/kubernetes.rst:173
 msgid ""
 "When ``new_cluster`` is called, it will create an independent `namespace "
 "<https://kubernetes.io/docs/concepts/overview/working-with-"
@@ -286,7 +310,7 @@ msgstr ""
 "/overview/working-with-objects/namespaces/>`_ 。当用户停止服务时，整个 "
 "Namespace 都会被删除。"
 
-#: ../../source/installation/kubernetes.rst:172
+#: ../../source/installation/kubernetes.rst:178
 msgid ""
 "Schedulers, workers and web services are created with `replication "
 "controllers "
@@ -307,7 +331,7 @@ msgstr ""
 "。与此同时，客户端通过读取所有 Pod 的可用度并确认所有 Scheduler、Web 服务"
 "以及至少 ``min_worker_num`` 个 Worker 可用。"
 
-#: ../../source/installation/kubernetes.rst:182
+#: ../../source/installation/kubernetes.rst:188
 msgid ""
 "The readiness of Mars services are decided by `readiness probes "
 "<https://kubernetes.io/docs/tasks/configure-pod-container/configure-"
@@ -322,7 +346,7 @@ msgstr ""
 "，一个 ``ReadinessActor`` 将会在服务中被创建，检测器将检测该 Actor 是否"
 "存在。对于 Web 服务，检测器将直接检测 Web 端口是否被创建。"
 
-#: ../../source/installation/kubernetes.rst:188
+#: ../../source/installation/kubernetes.rst:194
 msgid ""
 "As the default service account does not have privilege to read pods in "
 "Kubernetes API, we create `roles <https://kubernetes.io/docs/reference"
@@ -337,7 +361,7 @@ msgstr ""
 "authn-authz/rbac/>`_ ，此后将其绑定到默认账户中。这使得 Mars 容器可以检测"
 "其他容器的状态。"
 
-#: ../../source/installation/kubernetes.rst:195
+#: ../../source/installation/kubernetes.rst:201
 msgid ""
 "Mars uses `Kubernetes services <https://kubernetes.io/docs/concepts"
 "/services-networking/service/>`_ to expose its service. Currently only "

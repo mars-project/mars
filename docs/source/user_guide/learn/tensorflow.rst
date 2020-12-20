@@ -6,15 +6,16 @@ Integrate with TensorFlow
 
 .. currentmodule:: mars.learn.contrib.tensorflow
 
-This introduction will give a brief tour about how to integrate TensorFlow in Mars.
+This introduction will give a brief tour about how to integrate `TensorFlow
+<https://www.tensorflow.org>`_ in Mars.
 
 This tutorial is based on TensorFlow 2.0.
 
 Installation
 ------------
 
-If you are trying to use Mars on a single machine, e.g. on your laptop,
-make sure TensorFlow is installed.
+If you are trying to use Mars on a single machine, e.g. on your laptop, make
+sure TensorFlow is installed.
 
 You can install TensorFlow via pip:
 
@@ -25,19 +26,21 @@ You can install TensorFlow via pip:
 Visit `installation guide for TensorFlow <https://www.tensorflow.org/install>`_
 for more information.
 
-On the other hand, if you are about to use Mars on a cluster,
-maker sure TensorFlow is installed on each worker.
+On the other hand, if you are about to use Mars on a cluster, maker sure
+TensorFlow is installed on each worker.
 
 Prepare data
 ------------
 
-The dataset here we used is `ionosphere dataset <http://archive.ics.uci.edu/ml/machine-learning-databases/ionosphere/>`_,
-click link to download data.
+The dataset here we used is `ionosphere dataset
+<http://archive.ics.uci.edu/ml/machine-learning-databases/ionosphere/>`_, click
+link to download data.
 
 Prepare TensorFlow script
 -------------------------
 
-Now we create a Python file called ``tf_demo.py`` which contains the logic of TensorFlow.
+Now we create a Python file called ``tf_demo.py`` which contains the logic of
+TensorFlow.
 
 .. code-block:: python
 
@@ -106,8 +109,8 @@ Now we create a Python file called ``tf_demo.py`` which contains the logic of Te
         else:
             train()
 
-Mars libraries including DataFrame and so forth could be used directly
-to process massive data and accelerate preprocess.
+Mars libraries including DataFrame and so forth could be used directly to
+process massive data and accelerate preprocess.
 
 Run TensorFlow script via Mars
 ------------------------------
@@ -139,17 +142,18 @@ The TensorFlow script can be submitted via :meth:`run_tensorflow_script` now.
 Distributed training or inference
 ---------------------------------
 
-Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for running Mars on Kubernetes.
+Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for
+running Mars on Kubernetes.
 
-As you can tell from ``tf_demo.py``, Mars will set environment variable ``TF_CONFIG`` automatically.
-``TF_CONFIG`` contains cluster and task information.
-Thus you don't need to worry about the distributed setting,
-what you need do is to
-choose a proper `distributed strategy <https://www.tensorflow.org/guide/distributed_training#types_of_strategies>`_.
+As you can tell from ``tf_demo.py``, Mars will set environment variable
+``TF_CONFIG`` automatically.  ``TF_CONFIG`` contains cluster and task
+information.  Thus you don't need to worry about the distributed setting, what
+you need do is to choose a proper `distributed strategy
+<https://www.tensorflow.org/guide/distributed_training#types_of_strategies>`_.
 
-Once a cluster exists, you can either set the session as default,
-the training and prediction shown above will be submitted to the cluster,
-or you can specify ``session=***`` explicitly as well.
+Once a cluster exists, you can either set the session as default, the training
+and prediction shown above will be submitted to the cluster, or you can specify
+``session=***`` explicitly as well.
 
 .. code-block:: python
 
