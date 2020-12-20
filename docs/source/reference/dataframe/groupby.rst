@@ -1,4 +1,4 @@
-.. _api.groupby:
+.. _generated.groupby:
 
 =======
 GroupBy
@@ -11,12 +11,12 @@ calls: :func:`mars.dataframe.DataFrame.groupby`, :func:`mars.dataframe.Series.gr
 Indexing, iteration
 -------------------
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
 .. currentmodule:: mars.dataframe.groupby
 
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
    :template: autosummary/class_without_autosummary.rst
 
 .. currentmodule:: mars.dataframe.groupby
@@ -24,7 +24,7 @@ Indexing, iteration
 Function application
 --------------------
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    GroupBy.apply
    GroupBy.agg
@@ -34,7 +34,7 @@ Function application
 Computations / descriptive stats
 --------------------------------
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    GroupBy.all
    GroupBy.any
@@ -63,7 +63,7 @@ axis argument, and often an argument indicating whether to restrict
 application to columns of a specific data type.
 
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
    DataFrameGroupBy.count
    DataFrameGroupBy.cummax
@@ -74,10 +74,10 @@ application to columns of a specific data type.
 The following methods are available only for ``SeriesGroupBy`` objects.
 
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/
 
 
 The following methods are available only for ``DataFrameGroupBy`` objects.
 
 .. autosummary::
-   :toctree: api/
+   :toctree: generated/

@@ -843,6 +843,12 @@ class Test(unittest.TestCase):
         self.assertIs(type(s), type(dest_s))
         self.assertEqual(s, dest_s)
 
+        # test pickle
+        d = ClassToPickle(dict(a=1, b='uvw'))
+        dest_d = dataserializer.loads((dataserializer.dumps(d)))
+        self.assertIs(type(d), type(dest_d))
+        self.assertEqual(d.a, dest_d.a)
+
         # test ndarray with negative strides
         arr = np.zeros((5, 6, 3))
         arr2 = arr[:, :, ::-1]

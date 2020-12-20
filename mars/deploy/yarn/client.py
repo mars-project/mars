@@ -145,7 +145,6 @@ def new_cluster(environment=None, scheduler_num=1, scheduler_cpu=None, scheduler
 
         wait_services_ready(services, limits,
                             lambda svc: _get_ready_container_count(app_client, svc),
-                            platform='yarn',
                             timeout=None if not timeout else timeout - (time.time() - check_start_time))
         web_endpoint_kv = app_client.kv.get_prefix(YarnWebApplication.service_name)
         web_endpoint = random.choice([to_str(v).split('@', 1)[0] for v in web_endpoint_kv.values()])

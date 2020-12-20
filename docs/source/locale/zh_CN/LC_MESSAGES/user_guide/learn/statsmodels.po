@@ -1,0 +1,138 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.7.0a2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-12-18 14:32+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../source/user_guide/learn/statsmodels.rst:5
+msgid "Integrate with StatsModels"
+msgstr "和 StatsModels 集成"
+
+#: ../../source/user_guide/learn/statsmodels.rst:9
+msgid ""
+"This is an introduction about how to use `StatsModels "
+"<https://www.statsmodels.org>`_ for model fitting and prediction in Mars."
+msgstr ""
+"这个指引介绍如何在 Mars 中使用 `StatsModels "
+"<https://www.statsmodels.org>`_ 进行模型训练和预测。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:13
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/user_guide/learn/statsmodels.rst:15
+msgid ""
+"If you are trying to use Mars on a single machine e.g. on your laptop, "
+"make sure StatsModels is installed."
+msgstr "如果你试图在单机比如你的笔记本上使用 Mars，确保 StatsModels 已经安装。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:18
+msgid "You can install StatsModels via pip:"
+msgstr "你可以通过 pip 安装 StatsModels："
+
+#: ../../source/user_guide/learn/statsmodels.rst:24
+msgid ""
+"Visit `installation guide for StatsModels "
+"<https://www.statsmodels.org/stable/install.html>`_ for more information."
+msgstr ""
+"访问 `StatsModels 安装指引 <https://www.statsmodels.org/stable/install.html>`_ 获取更多信息。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:27
+msgid ""
+"On the other hand, if you are using Mars on a cluster, make sure "
+"StatsModels is installed on each worker."
+msgstr "另一方面，如果你在集群上使用 Mars，确保 StatsModels 在每个 Worker 上安装。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:31
+msgid "Prepare data"
+msgstr "准备数据"
+
+#: ../../source/user_guide/learn/statsmodels.rst:33
+msgid "First, we use scikit-learn to load the Boston Housing dataset."
+msgstr "首先，我们使用 scikit-learn 来加载波士顿房屋数据集。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:40
+msgid "Then create Mars DataFrame from the dataset."
+msgstr "接着从数据创建 Mars DataFrame。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:47
+msgid "Explore the top 5 rows data of the DataFrame."
+msgstr "查看 DataFrame 前五条数据。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:62
+msgid ""
+":meth:`mars.dataframe.DataFrame.describe` gives summary statistics of the"
+" columns."
+msgstr ":meth:`mars.dataframe.DataFrame.describe` 给出了所有列的统计信息。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:80
+msgid ""
+"We can shuffle the sequence of the data, and separate the data into train"
+" and test parts."
+msgstr "我们可以把数据打乱，然后把他们分成训练和测试集。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:90
+msgid "Training"
+msgstr "训练"
+
+#: ../../source/user_guide/learn/statsmodels.rst:92
+msgid ""
+"We can fit a model with API similar to the `distributed estimation API "
+"<https://www.statsmodels.org/stable/examples/notebooks/generated/distributed_estimation.html>`_"
+" implemented in StatsModels."
+msgstr "我们可以使用与 StatsModels 提供的 `分布式估计 API "
+"<https://www.statsmodels.org/stable/examples/notebooks/generated/distributed_estimation.html>`_ 类似的 API 对数据进行训练。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:104
+msgid ""
+"Arguments for ``DistributedModel`` like ``model_class``, "
+"``estimation_method`` and ``join_method`` can be added to the constructor"
+" of ``MarsDistributedModel``."
+msgstr ""
+"``DistributedModel`` 上使用的参数，例如 ``model_class``, "
+"``estimation_method`` 和 ``join_method`` 可在创建 ``MarsDistributedModel`` 时使用。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:109
+msgid "Prediction"
+msgstr "预测"
+
+#: ../../source/user_guide/learn/statsmodels.rst:111
+msgid "For prediction,"
+msgstr "上面的步骤生成的模型可用于预测："
+
+#: ../../source/user_guide/learn/statsmodels.rst:131
+msgid "Distributed fitting and prediction"
+msgstr "分布式训练和预测"
+
+#: ../../source/user_guide/learn/statsmodels.rst:133
+msgid ""
+"Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for "
+"running Mars on Kubernetes."
+msgstr "部署参考 :ref:`deploy` 部分，在 Kubernetes 上运行参考 :ref:`k8s` 部分。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:136
+msgid ""
+"Once a cluster exists, you can either set the session as default, the "
+"fitting and prediction shown above will be submitted to the cluster, or "
+"you can specify ``session=***`` explicitly as well."
+msgstr ""
+"一旦一个集群存在，你可以要么设置默认 session，训练和预测就会自动提交到"
+"集群，要么你可以通过 ``session=***`` 显示指定运行的 session。"
+
+#: ../../source/user_guide/learn/statsmodels.rst:140
+msgid "Take :meth:`MarsDistributedModel.fit` as an example."
+msgstr "以 :meth:`MarsDistributedModel.fit` 为例。"
+

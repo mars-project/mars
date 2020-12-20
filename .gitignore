@@ -66,8 +66,9 @@ test*.ipynb
 *.log
 *.swp
 
-# docs mo
+# docs
 *.mo
+docs/**/generated
 
 # test files
 bin/etcd*
