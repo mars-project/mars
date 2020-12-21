@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
+import json
 import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...context import get_context, RunningMode
-from ...serialize import TupleField, ListField, KeyField, StringField
+from ...serialize import TupleField, KeyField, StringField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..datasource import tensor as astensor
@@ -34,7 +33,7 @@ except ImportError:
 #
 #   step 1: store local chunks
 #   step 2: run iterative tiling, to gather, and build local blob of chunks id, with `expect_worker`
-#   step 3: build chunk_map
+#   step 3: build global tensor object.
 
 class TensorVineyardDataStoreChunk(TensorDataStore):
     _op_type_ = OperandDef.TENSOR_STORE_VINEYARD_CHUNK
@@ -54,9 +53,18 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
     @classmethod
     def _get_out_chunk(cls, op, in_chunk):
         chunk_op = op.copy().reset_key()
-        out_chunk_shape = (np.nan,) * in_chunk.ndim
+        out_chunk_shape = (1,)
         return chunk_op.new_chunk([in_chunk], shape=out_chunk_shape,
                                   index=in_chunk.index)
+
+    @classmethod
+    def _process_out_chunks(cls, op, out_chunks):
+        merge_op = TensorVineyardDataStoreGlobalMeta(
+                vineyard_socket=op.vineyard_socket,
+                chunk_shape=op.inputs[0].chunk_shape, shape=op.inputs[0].shape,
+                sparse=op.sparse, dtype=op.inputs[0].dtype)
+        return merge_op.new_chunks(out_chunks, shape=(1,),
+                                   index=(0,) * out_chunks[0].ndim)
 
     @classmethod
     def tile(cls, op):
@@ -66,95 +74,25 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         out = super().tile(op)[0]
         new_op = op.copy().reset_key()
         return new_op.new_tensors(out.inputs, shape=op.input.shape, dtype=out.dtype,
-                                  chunks=out.chunks, nsplits=((np.nan,),))
+                                  chunks=out.chunks, nsplits=((np.prod(op.input.chunk_shape),),))
 
     @classmethod
     def execute(cls, ctx, op):
         if vineyard is None:
             raise RuntimeError('vineyard is not available')
         client = vineyard.connect(op.vineyard_socket)
+
+        # setup builder context
+        from vineyard.data.tensor import numpy_ndarray_builder
 
         np_value = ctx[op.input.key]
         if not np_value.flags['C_CONTIGUOUS']:
             np_value = np.ascontiguousarray(np_value)
-        tensor = vineyard.TensorBuilder.from_numpy(client, np_value)
-        tensor.shape = op.input.shape
-        tensor.chunk_index = op.input.index
-        tensor = tensor.build(client)
-        tensor.persist(client)
+        tensor_id = client.put(np_value, numpy_ndarray_builder, partition_index=op.input.index)
+        client.persist(tensor_id)
 
         # store the result object id to execution context
-        ctx[op.outputs[0].key] = np.array([(client.instance_id, tensor.id)])
-
-
-class TensorVineyardDataStoreChunkMap(TensorDataStore):
-    _op_type_ = OperandDef.TENSOR_STORE_VINEYARD_CHUNK_MAP
-
-    _input = KeyField('input')
-    _local_chunks = ListField("local_chunks")
-
-    # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
-
-    def __init__(self, vineyard_socket=None, dtype=None, sparse=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _dtype=dtype, _sparse=sparse, **kw)
-
-    @property
-    def local_chunks(self):
-        return self._local_chunks
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
-
-    @classmethod
-    def _process_out_chunks(cls, op, out_chunks):
-        merge_op = TensorVineyardDataStoreGlobalMeta(
-                vineyard_socket=op.vineyard_socket,
-                chunk_shape=op.inputs[0].chunk_shape, shape=op.inputs[0].shape,
-                sparse=op.sparse, dtype=op.inputs[0].dtype)
-        return merge_op.new_chunks(out_chunks, shape=out_chunks[0].shape,
-                                   index=(0,) * out_chunks[0].ndim)
-
-    @classmethod
-    def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
-
-        if vineyard is None:
-            raise RuntimeError('vineyard is not available')
-        client = vineyard.connect(op.vineyard_socket)
-
-        ctx = get_context()
-        if ctx.running_mode == RunningMode.distributed:
-            metas = ctx.get_worker_metas()
-            workers = {meta['vineyard']['instance_id']: addr for addr, meta in metas.items()}
-        else:
-            workers = {client.instance_id: '127.0.0.1'}
-
-        all_chunk_ids = np.concatenate(ctx.get_chunk_results([c.key for c in op.input.chunks]))
-        chunk_map = defaultdict(list)
-        for instance_id, chunk_id in all_chunk_ids:
-            chunk_map[instance_id].append(chunk_id)
-
-        out_chunks = []
-        for idx, (instance_id, local_chunks) in enumerate(chunk_map.items()):
-            chunk_op = op.copy().reset_key()
-            chunk_op._local_chunks = local_chunks
-            chunk_op._expect_worker = workers[instance_id]
-            out_chunks.append(chunk_op.new_chunk(op.input.chunks, shape=(1,), index=(idx,)))
-        out_chunks = cls._process_out_chunks(op, out_chunks)
-
-        new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=(len(out_chunks),), chunks=out_chunks,
-                                  nsplits=((1,) * len(out_chunks),))
-
-    @classmethod
-    def execute(cls, ctx, op):
-        if vineyard is None:
-            raise RuntimeError('vineyard is not available')
-        client = vineyard.connect(op.vineyard_socket)
-        chunk_blob = vineyard.UInt64VectorBuilder(client, op.local_chunks).build(client)
-        ctx[op.outputs[0].key] = (client.instance_id, chunk_blob.id)
+        ctx[op.outputs[0].key] = (client.instance_id, repr(tensor_id))
 
 
 class TensorVineyardDataStoreGlobalMeta(TensorDataStore):
@@ -201,17 +139,29 @@ class TensorVineyardDataStoreGlobalMeta(TensorDataStore):
             raise RuntimeError('vineyard is not available')
         client = vineyard.connect(op.vineyard_socket)
 
-        tensor = vineyard.GlobalTensorBuilder(client)
-        for in_chunk in op.inputs:
-            instance_id, chunk_blob_id = ctx[in_chunk.key]
-            tensor.add_chunks(instance_id, chunk_blob_id)
-        tensor.shape = op.shape
-        tensor.chunk_shape = op.chunk_shape
-        tensor = tensor.build(client)
-        tensor.persist(client)
+        meta = vineyard.ObjectMeta()
+        instances = set()
+        chunks = set()
+        for idx, in_chunk in enumerate(op.inputs):
+            instance_id, chunk_id = ctx[in_chunk.key]
+            instances.add(instance_id)
+            chunks.add(chunk_id)
+            meta.add_member('object_%d' % idx, vineyard.ObjectID(chunk_id))
+        meta['typename'] = 'vineyard::ObjectSet'
+        meta['num_of_instances'] = len(instances)
+        meta['num_of_objects'] = len(chunks)
+        object_set_id = client.create_metadata(meta)
 
-        # store the result object id to execution context
-        ctx[op.outputs[0].key] = vineyard.ObjectID.stringify(tensor.id)
+        meta = vineyard.ObjectMeta()
+        meta['typename'] = 'vineyard::GlobalTensor<%s>' % op.dtype.name
+        meta['shape_'] = json.dumps(op.shape)
+        meta['chunk_shape_'] = json.dumps(op.chunk_shape)
+        meta.add_member('chunks_', object_set_id)
+        global_tensor_id = client.create_metadata(meta)
+        client.persist(global_tensor_id)
+
+        # # store the result object id to execution context
+        ctx[op.outputs[0].key] = repr(global_tensor_id)
 
 
 def tovineyard(x, vineyard_socket=None):
@@ -219,8 +169,6 @@ def tovineyard(x, vineyard_socket=None):
         vineyard_socket = options.vineyard.socket
 
     x = astensor(x)
-    chunk_op = TensorVineyardDataStoreChunk(vineyard_socket=vineyard_socket,
-                                            dtype=x.dtype, sparse=x.issparse())
-    chunk_map_op = TensorVineyardDataStoreChunkMap(vineyard_socket=vineyard_socket,
-                                                   dtype=x.dtype, sparse=x.issparse())
-    return chunk_map_op(chunk_op(x))
+    op = TensorVineyardDataStoreChunk(vineyard_socket=vineyard_socket,
+                                      dtype=x.dtype, sparse=x.issparse())
+    return op(x)
