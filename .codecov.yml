@@ -37,10 +37,6 @@ ignore:
   - "**/*.pxd"
   - "**/tests"
   # vineyard related things
-  - "mars/dataframe/datasource/from_vineyard.py"
-  - "mars/dataframe/datastore/to_vineyard.py"
-  - "mars/tensor/datasource/from_vineyard.py"
-  - "mars/tensor/datastore/to_vineyard.py"
   - "mars/worker/storage/vineyardhandler.py"
   # kubedl related things
   - "mars/deploy/kubedl"

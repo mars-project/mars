@@ -226,13 +226,13 @@ class Test(TestBase):
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testToVineyard(self):
         def testWithGivenSession(session):
-            with option_context({'vineyard.socket': '/tmp/vineyard.sock'}):
+            with option_context({'vineyard.socket': '/tmp/vineyard/vineyard.sock'}):
                 tensor1 = tensor(np.arange(12).reshape(3, 4), chunk_size=2)
-                object_id = tovineyard(tensor1).execute(session=session)
+                object_id = tovineyard(tensor1).execute(session=session).fetch()
                 tensor2 = from_vineyard(object_id)
 
-                tensor1_value = tensor1.execute(session=session)
-                tensor2_value = tensor2.execute(session=session)
+                tensor1_value = tensor1.execute(session=session).fetch()
+                tensor2_value = tensor2.execute(session=session).fetch()
                 np.testing.assert_array_equal(tensor1_value, tensor2_value)
 
         with new_session().as_default() as session:

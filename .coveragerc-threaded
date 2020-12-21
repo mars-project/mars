@@ -30,10 +30,6 @@ omit =
     *.html
     *.pxd
     */tests/*
-    mars/dataframe/datasource/from_vineyard.py
-    mars/dataframe/datastore/to_vineyard.py
-    mars/tensor/datasource/from_vineyard.py
-    mars/tensor/datastore/to_vineyard.py
     mars/worker/storage/vineyardhandler.py
     mars/deploy/kubedl/*
     mars/learn/proxima/*

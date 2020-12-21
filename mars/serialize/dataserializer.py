@@ -592,7 +592,5 @@ def mars_serialize_context():
                           custom_serializer=_serialize_sparse_dtype,
                           custom_deserializer=_deserialize_sparse_dtype)
         _apply_pyarrow_serialization_patch(ctx)
-        if vineyard is not None:  # pragma: no cover
-            vineyard.register_vineyard_serialize_context(ctx)
         _serialize_context = ctx
     return _serialize_context
