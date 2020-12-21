@@ -319,9 +319,11 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                                 break
 
         logger.warning(f'ReadingFromVolume({op.key}), index path: {index_path}, '
+                       f'local_path {local_path}'
                        f'size {os.path.getsize(local_path)}, '
-                       f'already exist: {exist_state}, '
-                       f'costs {timer.duration} seconds')
+                       f'already exist {exist_state}, '
+                       f'costs {timer.duration} seconds '
+                       f'speed {round(os.path.getsize(local_path) / (1024 ** 2) / timer.duration, 2)} MB/s')
         ctx[op.outputs[0].key] = local_path
 
     @classmethod
@@ -359,10 +361,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             flow.load(index_path)
             vecs = np.ascontiguousarray(inp)
 
-        logger.warning(f'LoadIndex({op.key}) costs {timer.duration} seconds')
-
-        logger.warning(f"threads count:{op.threads}")
-        logger.warning(f"vecs count:{len(vecs)}")
+        logger.warning(f'LoadIndex({op.key})  index path: {index_path}  costs {timer.duration} seconds')
+        logger.warning(f"threads count:{op.threads}  vecs count:{len(vecs)}")
 
         with Timer() as timer:
             batch = 10000

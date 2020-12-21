@@ -19,7 +19,7 @@ import mars.remote as mr
 from mars.learn.proxima.simple_index.knn import sample_data, linear_build_and_search
 
 
-def recall_one(linear_score, ann_score, topk_ids):
+def recall_one(linear_score, ann_score, topk_ids, epsilon=1e-6):
     topk_matchs = {}
     for ids in topk_ids:
         topk_matchs[ids] = 0
@@ -29,7 +29,7 @@ def recall_one(linear_score, ann_score, topk_ids):
     while idx < length:
         cur_topk = idx + 1
         if ann_item < len(ann_score):
-            if math.fabs(linear_score[idx] - ann_score[ann_item]) < 1e-6:
+            if math.fabs(linear_score[idx] - ann_score[ann_item]) < epsilon:
                 ann_item += 1
                 idx += 1
                 match += 1
@@ -49,15 +49,16 @@ def recall_one(linear_score, ann_score, topk_ids):
 
 def recall_one_byid(linear_key, ann_key, ann_score, topk_ids):
     idx, length = 0, len(linear_key)
+    topk_matchs, result_topk_matchs = {}, {}
 
-    topk_matchs = {}
     for ids in topk_ids:
         topk_matchs[ids] = 0
+        result_topk_matchs[ids] = 0
 
     while idx < length:
         for k in topk_ids:
             dynamic_size = k
-            while dynamic_size < length:
+            while dynamic_size + 1 < length:
                 if math.isclose(ann_score[dynamic_size - 1], ann_score[dynamic_size]):
                     dynamic_size += 1
                 else:
@@ -73,12 +74,12 @@ def recall_one_byid(linear_key, ann_key, ann_score, topk_ids):
 
         idx += 1
         if idx in topk_ids:
-            topk_matchs[idx] = topk_matchs[idx] / idx
+            result_topk_matchs[idx] = topk_matchs[idx] / idx
 
-    return topk_matchs
+    return result_topk_matchs
 
 
-def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID"):
+def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID", epsilon=1e-6):
     pk_l, distance_l, pk_p, distance_p = np.array(pk_l), np.array(distance_l), np.array(pk_p), np.array(distance_p)
     topk_matchs = {}
     for ids in topk_ids:
@@ -87,7 +88,7 @@ def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID"):
         if method == "BYID":
             res_t = recall_one_byid(linear_res_k, knn_res_k, knn_res_s, topk_ids)
         else:
-            res_t = recall_one(linear_res_s, knn_res_s, topk_ids)
+            res_t = recall_one(linear_res_s, knn_res_s, topk_ids, epsilon)
         for k, v in res_t.items():
             topk_matchs[k] += v
 
@@ -99,7 +100,7 @@ def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID"):
 
 def recall(doc, query, topk, sample_count, pk_p, distance_p,
            row_number=None, column_number=None,
-           topk_ids=None, method=None, session=None, run_kwargs=None):
+           topk_ids=None, method=None, epsilon=1e-6, session=None, run_kwargs=None):
     if topk_ids is None:
         topk_ids = [topk]
     if method is None:
@@ -111,5 +112,5 @@ def recall(doc, query, topk, sample_count, pk_p, distance_p,
                                                row_number=row_number, column_number=column_number)
 
     r = mr.spawn(compute_recall, args=(pk_l, distance_l, pk_p_sample,
-                                       distance_p_sample, topk_ids, method))
+                                       distance_p_sample, topk_ids, method, epsilon))
     return r.execute(session=session, **(run_kwargs or dict())).fetch()
