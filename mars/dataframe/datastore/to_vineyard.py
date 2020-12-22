@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
 import numpy as np
-import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...context import get_context, RunningMode
-from ...serialize import TupleField, ListField, StringField
+from ...serialize import TupleField, StringField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -56,6 +53,16 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
                                   index=in_chunk.index)
 
     @classmethod
+    def _process_out_chunks(cls, op, out_chunks):
+        merge_op = DataFrameToVinyardStoreGlobalMeta(
+                vineyard_socket=op.vineyard_socket,
+                chunk_shape=op.inputs[0].chunk_shape,
+                shape=op.inputs[0].shape,
+                dtypes=op.inputs[0].dtypes)
+        return merge_op.new_chunks(out_chunks, shape=(1,),
+                                   index=(0,) * out_chunks[0].ndim)
+
+    @classmethod
     def tile(cls, op):
         # Not truely necessary, but putting a barrier here will make things simple
         check_chunks_unknown_shape(op.inputs, TilesError)
@@ -66,17 +73,19 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         for chunk in in_df.chunks:
             chunk_op = op.copy().reset_key()
             chunk = chunk_op.new_chunk([chunk], shape=chunk.shape, dtypes=chunk.dtypes,
-                                      index_value=chunk.index_value,
-                                      columns_value=chunk.columns_value,
-                                      index=chunk.index)
+                                       index_value=chunk.index_value,
+                                       columns_value=chunk.columns_value,
+                                       index=chunk.index)
             out_chunks.append(chunk)
+
+        out_chunks = cls._process_out_chunks(op, out_chunks)
 
         new_op = op.copy().reset_key()
         return new_op.new_dataframes(op.inputs, shape=op.inputs[0].shape,
                                      dtypes=in_df.dtypes,
                                      index_value=in_df.index_value,
                                      columns_value=in_df.columns_value,
-                                     chunks=out_chunks, nsplits=((np.nan,),))
+                                     chunks=out_chunks, nsplits=((np.prod(op.inputs[0].chunk_shape),),))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -84,97 +93,20 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
             raise RuntimeError('vineyard is not available')
         client = vineyard.connect(op.vineyard_socket)
 
-        df = vineyard.DataFrameBuilder(client)
-        for name, value in ctx[op.inputs[0].key].iteritems():
-            np_value = value.to_numpy(copy=False)
-            if not np_value.flags['C_CONTIGUOUS']:
-                np_value = np.ascontiguousarray(np_value)
-            df.add(str(name), vineyard.TensorBuilder.from_numpy(client, np_value))
-        df.chunk_index = op.inputs[0].index
-        df = df.build(client)
-        df.persist(client)
+        # setup builder context
+        from vineyard.core import default_builder_context, default_resolver_context
+        from vineyard.data.dataframe import register_dataframe_types
+        from vineyard.data.tensor import register_tensor_types
+        register_dataframe_types(builder_ctx=default_builder_context,
+                                 resolver_ctx=default_resolver_context)
+        register_tensor_types(builder_ctx=default_builder_context,
+                              resolver_ctx=default_resolver_context)
+
+        df_id = client.put(ctx[op.inputs[0].key], partition_index=op.inputs[0].index)
+        client.persist(df_id)
 
         # store the result object id to execution context
-        ctx[op.outputs[0].key] = pd.DataFrame([(client.instance_id, df.id)])
-
-
-class DataFrameToVineyardChunkMap(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = OperandDef.DATAFRAME_STORE_VINEYARD_CHUNK_MAP
-
-    _local_chunks = ListField("local_chunks")
-
-    # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
-
-    def __init__(self, vineyard_socket=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _output_types=[OutputType.dataframe], **kw)
-
-    @property
-    def local_chunks(self):
-        return self._local_chunks
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
-
-    def __call__(self, df):
-        return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
-                                  index_value=df.index_value, columns_value=df.columns_value)
-
-    @classmethod
-    def _process_out_chunks(cls, op, out_chunks):
-        merge_op = DataFrameToVinyardStoreGlobalMeta(
-                vineyard_socket=op.vineyard_socket,
-                chunk_shape=op.inputs[0].chunk_shape,
-                shape=op.inputs[0].shape,
-                dtypes=op.inputs[0].dtypes)
-        return merge_op.new_chunks(out_chunks, shape=out_chunks[0].shape,
-                                   index=(0,) * out_chunks[0].ndim)
-
-    @classmethod
-    def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
-
-        if vineyard is None:
-            raise RuntimeError('vineyard is not available')
-        client = vineyard.connect(op.vineyard_socket)
-
-        ctx = get_context()
-        if ctx.running_mode == RunningMode.distributed:
-            metas = ctx.get_worker_metas()
-            workers = {meta['vineyard']['instance_id']: addr for addr, meta in metas.items()}
-        else:
-            workers = {client.instance_id: '127.0.0.1'}
-
-        all_chunk_ids = ctx.get_chunk_results([c.key for c in op.inputs[0].chunks])
-        all_chunk_ids = pd.concat(all_chunk_ids, axis='index')
-        chunk_map = defaultdict(list)
-        for instance_id, chunk_id in all_chunk_ids.itertuples(index=False):
-            chunk_map[instance_id].append(chunk_id)
-
-        out_chunks = []
-        for idx, (instance_id, local_chunks) in enumerate(chunk_map.items()):
-            chunk_op = op.copy().reset_key()
-            chunk_op._local_chunks = local_chunks
-            chunk_op._expect_worker = workers[instance_id]
-            out_chunks.append(chunk_op.new_chunk(op.inputs[0].chunks, shape=(1,), index=(idx,)))
-        out_chunks = cls._process_out_chunks(op, out_chunks)
-
-        new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, shape=(len(out_chunks),),
-                                     dtypes=op.inputs[0].dtypes,
-                                     index_value=op.inputs[0].index_value,
-                                     columns_value=op.inputs[0].columns_value,
-                                     chunks=out_chunks,
-                                     nsplits=((1,) * len(out_chunks),))
-
-    @classmethod
-    def execute(cls, ctx, op):
-        if vineyard is None:
-            raise RuntimeError('vineyard is not available')
-        client = vineyard.connect(op.vineyard_socket)
-        chunk_blob = vineyard.UInt64VectorBuilder(client, op.local_chunks).build(client)
-        ctx[op.outputs[0].key] = (client.instance_id, chunk_blob.id)
+        ctx[op.outputs[0].key] = (client.instance_id, repr(df_id))
 
 
 class DataFrameToVinyardStoreGlobalMeta(DataFrameOperand, DataFrameOperandMixin):
@@ -220,22 +152,34 @@ class DataFrameToVinyardStoreGlobalMeta(DataFrameOperand, DataFrameOperandMixin)
             raise RuntimeError('vineyard is not available')
         client = vineyard.connect(op.vineyard_socket)
 
-        df = vineyard.GlobalDataFrameBuilder(client)
-        for in_chunk in op.inputs:
-            instance_id, chunk_blob_id = ctx[in_chunk.key]
-            df.add_chunks(instance_id, chunk_blob_id)
-        df.chunk_shape = op.chunk_shape
-        df = df.build(client)
-        df.persist(client)
+        meta = vineyard.ObjectMeta()
+        instances = set()
+        chunks = set()
+        for idx, in_chunk in enumerate(op.inputs):
+            instance_id, chunk_id = ctx[in_chunk.key]
+            instances.add(instance_id)
+            chunks.add(chunk_id)
+            meta.add_member('object_%d' % idx, vineyard.ObjectID(chunk_id))
+        meta['typename'] = 'vineyard::ObjectSet'
+        meta['num_of_instances'] = len(instances)
+        meta['num_of_objects'] = len(chunks)
+        object_set_id = client.create_metadata(meta)
 
-        # store the result object id to execution context
-        ctx[op.outputs[0].key] = vineyard.ObjectID.stringify(df.id)
+        meta = vineyard.ObjectMeta()
+        meta['typename'] = 'vineyard::GlobalDataFrame'
+        meta['partition_shape_row_'] = op.shape[0]
+        meta['partition_shape_column_'] = op.shape[1]
+        meta.add_member('objects_', object_set_id)
+        global_dataframe_id = client.create_metadata(meta)
+        client.persist(global_dataframe_id)
+
+        # # store the result object id to execution context
+        ctx[op.outputs[0].key] = repr(global_dataframe_id)
 
 
 def to_vineyard(df, vineyard_socket=None):
     if vineyard_socket is None:
         vineyard_socket = options.vineyard.socket
 
-    chunk_op = DataFrameToVineyardChunk(vineyard_socket=vineyard_socket)
-    chunk_map_op = DataFrameToVineyardChunkMap(vineyard_socket=vineyard_socket)
-    return chunk_map_op(chunk_op(df))
+    op = DataFrameToVineyardChunk(vineyard_socket=vineyard_socket)
+    return op(df)

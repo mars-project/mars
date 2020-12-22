@@ -151,14 +151,14 @@ class Test(TestBase):
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testToVineyard(self):
         def testWithGivenSession(session):
-            with option_context({'vineyard.socket': '/tmp/vineyard.sock'}):
+            with option_context({'vineyard.socket': '/tmp/vineyard/vineyard.sock'}):
                 df1 = DataFrame(pd.DataFrame(np.arange(12).reshape(3, 4), columns=['a', 'b', 'c', 'd']),
                                 chunk_size=2)
-                object_id = df1.to_vineyard().execute(session=session)
+                object_id = df1.to_vineyard().execute(session=session).fetch()
                 df2 = md.from_vineyard(object_id)
 
-                df1_value = df1.execute(session=session)
-                df2_value = df2.execute(session=session)
+                df1_value = df1.execute(session=session).fetch()
+                df2_value = df2.execute(session=session).fetch()
                 pd.testing.assert_frame_equal(df1_value.reset_index(drop=True), df2_value.reset_index(drop=True))
 
         with new_session().as_default() as session:
