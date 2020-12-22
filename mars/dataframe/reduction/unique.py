@@ -50,7 +50,7 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._method
 
     @classmethod
-    def _make_agg_object(cls, op):
+    def get_reduction_callable(cls, op):
         return UniqueReduction(name=cls._func_name, is_gpu=op.is_gpu())
 
     @classmethod

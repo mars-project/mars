@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
+import numpy as np
 
 from ... import opcodes
 from ...config import options
@@ -40,11 +40,27 @@ class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._fisher
 
     @classmethod
-    def _make_agg_object(cls, op):
-        from .aggregation import kurt_function
-        pf = functools.partial(kurt_function, bias=op.bias, skipna=op.skipna, fisher=op.fisher)
-        pf.__name__ = cls._func_name
-        return pf
+    def get_reduction_callable(cls, op):
+        from .aggregation import where_function
+        skipna, bias, fisher = op.skipna, op.bias, op.fisher
+
+        def kurt(x):
+            cnt = x.count()
+            mean = x.mean(skipna=skipna)
+            divided = (x ** 4).mean(skipna=skipna) \
+                - 4 * (x ** 3).mean(skipna=skipna) * mean \
+                + 6 * (x ** 2).mean(skipna=skipna) * mean ** 2 \
+                - 3 * mean ** 4
+            var = x.var(skipna=skipna, ddof=0)
+            val = where_function(var > 0, divided / var ** 2, np.nan)
+            if not bias:
+                val = where_function((var > 0) & (cnt > 3),
+                                     (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3), np.nan)
+            if not fisher:
+                val += 3
+            return val
+
+        return kurt
 
 
 def kurt_series(df, axis=None, skipna=None, level=None, combine_size=None, bias=False, fisher=True):

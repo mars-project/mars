@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
@@ -25,11 +23,12 @@ class DataFrameMean(DataFrameReductionOperand, DataFrameReductionMixin):
     _func_name = 'mean'
 
     @classmethod
-    def _make_agg_object(cls, op):
-        from .aggregation import mean_function
-        pf = functools.partial(mean_function, skipna=op.skipna)
-        pf.__name__ = cls._func_name
-        return pf
+    def get_reduction_callable(cls, op):
+        skipna = op.skipna
+
+        def mean(x):
+            return x.sum(skipna=skipna) / x.count()
+        return mean
 
 
 def mean_series(df, axis=None, skipna=None, level=None, combine_size=None):

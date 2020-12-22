@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
+import numpy as np
 
 from ... import opcodes
 from ...config import options
@@ -35,11 +35,23 @@ class DataFrameSkew(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._bias
 
     @classmethod
-    def _make_agg_object(cls, op):
-        from .aggregation import skew_function
-        pf = functools.partial(skew_function, bias=op.bias, skipna=op.skipna)
-        pf.__name__ = cls._func_name
-        return pf
+    def get_reduction_callable(cls, op):
+        from .aggregation import where_function
+        skipna, bias = op.skipna, op.bias
+
+        def skew(x):
+            cnt = x.count()
+            mean = x.mean(skipna=skipna)
+            divided = (x ** 3).mean(skipna=skipna) \
+                - 3 * (x ** 2).mean(skipna=skipna) * mean \
+                + 2 * mean ** 3
+            var = x.var(skipna=skipna, ddof=0)
+            val = where_function(var > 0, divided / var ** 1.5, np.nan)
+            if not bias:
+                val = where_function((var > 0) & (cnt > 2), val * ((cnt * (cnt - 1)) ** 0.5 / (cnt - 2)), np.nan)
+            return val
+
+        return skew
 
 
 def skew_series(df, axis=None, skipna=None, level=None, combine_size=None, bias=False):
