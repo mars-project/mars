@@ -34,13 +34,18 @@ except ImportError:
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...filesystem import get_fs, open_file, glob
+from ...filesystem import file_size, get_fs, glob, open_file
 from ...serialize import AnyField, BoolField, DictField, ListField,\
-    StringField, Int32Field, BytesField
+    StringField, Int32Field, Int64Field, BytesField
+from ...utils import is_object_dtype
 from ..arrays import ArrowStringDtype
 from ..operands import DataFrameOperandMixin, DataFrameOperand, OutputType
 from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype, \
     standardize_range_index
+
+
+PARQUET_MEMORY_SCALE = 15
+STRING_FIELD_OVERHEAD = 50
 
 
 def check_engine(engine):
@@ -73,6 +78,9 @@ def get_engine(engine):
 
 
 class ParquetEngine:
+    def get_row_num(self, f):
+        raise NotImplementedError
+
     def read_dtypes(self, f, **kwargs):
         raise NotImplementedError
 
@@ -86,6 +94,10 @@ class ParquetEngine:
 
 
 class ArrowEngine(ParquetEngine):
+    def get_row_num(self, f):
+        file = pq.ParquetFile(f)
+        return file.metadata.num_rows
+
     def read_dtypes(self, f, **kwargs):
         file = pq.ParquetFile(f)
         return file.schema_arrow.empty_table().to_pandas().dtypes
@@ -113,6 +125,10 @@ class ArrowEngine(ParquetEngine):
 
 
 class FastpaquetEngine(ParquetEngine):
+    def get_row_num(self, f):
+        file = fastparquet.ParquetFile(f)
+        return file.count
+
     def read_dtypes(self, f, **kwargs):
         file = fastparquet.ParquetFile(f)
         dtypes_dict = file._dtypes()
@@ -140,15 +156,19 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
     _read_kwargs = DictField('read_kwargs')
     _incremental_index = BoolField('incremental_index')
     _storage_options = DictField('storage_options')
-
     # for chunk
     _partitions = BytesField('partitions')
     _partition_keys = ListField('partition_keys')
+    # row numbers
+    _row_num = Int64Field('row_num')
+    # raw bytes of parquet files
+    _raw_bytes = Int64Field('raw_bytes')
 
     def __init__(self, path=None, engine=None, columns=None, use_arrow_dtype=None,
                  groups_as_chunks=None, group_index=None, incremental_index=None,
                  read_kwargs=None, partitions=None, partition_keys=None,
-                 storage_options=None, **kw):
+                 storage_options=None, row_num=None, raw_bytes=None,
+                 memory_scale=None, **kw):
         super().__init__(_path=path, _engine=engine, _columns=columns,
                          _use_arrow_dtype=use_arrow_dtype,
                          _groups_as_chunks=groups_as_chunks,
@@ -158,6 +178,8 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
                          _partitions=partitions,
                          _partition_keys=partition_keys,
                          _storage_options=storage_options,
+                         _memory_scale=memory_scale,
+                         _row_num=row_num, _raw_bytes=raw_bytes,
                          _output_types=[OutputType.dataframe], **kw)
 
     @property
@@ -204,6 +226,14 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
     def storage_options(self):
         return self._storage_options
 
+    @property
+    def row_num(self):
+        return self._row_num
+
+    @property
+    def raw_bytes(self):
+        return self._raw_bytes
+
     @classmethod
     def _to_arrow_dtypes(cls, dtypes, op):
         if op.use_arrow_dtype is None and not op.gpu and \
@@ -229,9 +259,11 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for piece in dataset.pieces:
             chunk_op = op.copy().reset_key()
-            chunk_op._path = path_prefix + piece.path
+            chunk_op._path = chunk_path = path_prefix + piece.path
             chunk_op._partitions = pickle.dumps(dataset.partitions)
             chunk_op._partition_keys = piece.partition_keys
+            chunk_op._row_num = piece.get_metadata().num_rows
+            chunk_op._raw_bytes = file_size(chunk_path, op.storage_options)
             new_chunk = chunk_op.new_chunk(
                 None, shape=shape, index=(chunk_index, 0),
                 index_value=out_df.index_value,
@@ -248,7 +280,7 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
                                      chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
-    def _tile_no_partitioned(cls, op):
+    def _tile_no_partitioned(cls, op: "DataFrameReadParquet"):
         chunk_index = 0
         out_chunks = []
         out_df = op.outputs[0]
@@ -260,11 +292,20 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
             glob(op.path, storage_options=op.storage_options)
 
         for pth in paths:
+            row_num = get_engine(op.engine).get_row_num(pth)
+            raw_bytes = file_size(pth, op.storage_options)
             if op.groups_as_chunks:
-                for group_idx in range(pq.ParquetFile(pth).num_row_groups):
+                num_row_groups = pq.ParquetFile(pth).num_row_groups
+                for group_idx in range(num_row_groups):
                     chunk_op = op.copy().reset_key()
                     chunk_op._path = pth
                     chunk_op._group_index = group_idx
+                    # we don't know exact row number and bytes of each group
+                    # just treat them as equal
+                    chunk_op._row_num = \
+                        np.ceil(np.divide(row_num, num_row_groups)).astype(int).item()
+                    chunk_op._raw_bytes = \
+                        np.ceil(np.divide(raw_bytes, num_row_groups)).astype(int).item()
                     new_chunk = chunk_op.new_chunk(
                         None, shape=shape, index=(chunk_index, 0),
                         index_value=out_df.index_value,
@@ -275,6 +316,8 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
             else:
                 chunk_op = op.copy().reset_key()
                 chunk_op._path = pth
+                chunk_op._row_num = row_num
+                chunk_op._raw_bytes = raw_bytes
                 new_chunk = chunk_op.new_chunk(
                     None, shape=shape, index=(chunk_index, 0),
                     index_value=out_df.index_value,
@@ -331,6 +374,13 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
 
             ctx[out.key] = df
 
+    @classmethod
+    def estimate_size(cls, ctx, op: "DataFrameReadParquet"):
+        phy_size = op.raw_bytes * (op.memory_scale or PARQUET_MEMORY_SCALE)
+        n_strings = len([dt for dt in op.outputs[0].dtypes if is_object_dtype(dt)])
+        pd_size = phy_size + n_strings * op.row_num * STRING_FIELD_OVERHEAD
+        ctx[op.outputs[0].key] = (pd_size, pd_size + phy_size)
+
     def __call__(self, index_value=None, columns_value=None, dtypes=None):
         shape = (np.nan, len(dtypes))
         return self.new_dataframe(None, shape, dtypes=dtypes, index_value=index_value,
@@ -340,7 +390,7 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
 def read_parquet(path, engine: str = "auto", columns=None,
                  groups_as_chunks=False, use_arrow_dtype=None,
                  incremental_index=False, storage_options=None,
-                 **kwargs):
+                 memory_scale=None, **kwargs):
     """
     Load a parquet object from the file path, returning a DataFrame.
 
@@ -372,6 +422,8 @@ def read_parquet(path, engine: str = "auto", columns=None,
         If True, use arrow dtype to store columns.
     storage_options: dict, optional
         Options for storage connection.
+    memory_scale: int, optional
+        Scale that real memory occupation divided with raw file size.
     **kwargs
         Any additional kwargs are passed to the engine.
 
@@ -416,6 +468,7 @@ def read_parquet(path, engine: str = "auto", columns=None,
                               use_arrow_dtype=use_arrow_dtype,
                               read_kwargs=kwargs,
                               incremental_index=incremental_index,
-                              storage_options=storage_options)
+                              storage_options=storage_options,
+                              memory_scale=memory_scale)
     return op(index_value=index_value, columns_value=columns_value,
               dtypes=dtypes)
