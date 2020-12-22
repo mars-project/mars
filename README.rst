@@ -307,7 +307,7 @@ Getting involved
 Thank you in advance for your contributions!
 
 
-.. |Build| image:: https://github.com/mars-project/mars/workflows/Core%20Mars%20CI/badge.svg
+.. |Build| image:: https://github.com/mars-project/mars/workflows/Mars%20CI%20Core/badge.svg
    :target: https://github.com/mars-project/mars/actions
 .. |Coverage| image:: https://codecov.io/gh/mars-project/mars/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/mars-project/mars
