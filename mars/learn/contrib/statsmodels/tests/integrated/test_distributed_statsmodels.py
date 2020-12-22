@@ -15,7 +15,7 @@
 import os
 import unittest
 
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 import mars.tensor as mt
 from mars.session import new_session
 
@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
 
 
 @unittest.skipIf(statsmodels is None, 'statsmodels not installed')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def setUp(self):
         n_rows = 1000
         n_columns = 10

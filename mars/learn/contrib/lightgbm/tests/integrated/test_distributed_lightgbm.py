@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 import mars.dataframe as md
 import mars.tensor as mt
 from mars.session import new_session
@@ -30,7 +30,7 @@ except ImportError:
 
 
 @unittest.skipIf(lightgbm is None, 'LightGBM not installed')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def setUp(self):
         n_rows = 1000
         n_columns = 10

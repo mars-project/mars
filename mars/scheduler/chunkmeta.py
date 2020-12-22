@@ -18,6 +18,7 @@ import os
 from collections import defaultdict, OrderedDict
 
 from .kvstore import KVStoreActor
+from .resource import ResourceActor
 from .utils import SchedulerActor, CombinedFutureWaiter
 from ..config import options
 from ..utils import BlacklistSet
@@ -168,7 +169,12 @@ class ChunkMetaActor(SchedulerActor):
         self._meta_cache = ChunkMetaCache()
         self._chunk_info_uid = chunk_info_uid
 
+        if options.vineyard.enabled:
+            self._vineyard_to_workers = defaultdict(set)
+            self._worker_to_vineyard = dict()
+
         self._kv_store_ref = None
+        self._resource_ref = None
         self._worker_blacklist = BlacklistSet(options.scheduler.worker_blacklist_time)
 
     def post_create(self):
@@ -178,6 +184,29 @@ class ChunkMetaActor(SchedulerActor):
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
+
+        self._resource_ref = self.ctx.actor_ref(ResourceActor.default_uid())
+        if not self.ctx.has_actor(self._resource_ref):
+            self._resource_ref = None
+
+    def sync_vineyard_workers_mapping(self):
+        if self._resource_ref is None:
+            self._resource_ref = self.ctx.actor_ref(ResourceActor.default_uid())
+        workers_meta = self._resource_ref.get_workers_meta()
+        self._worker_to_vineyard.clear()
+        self._vineyard_to_workers.clear()
+        for w, meta in workers_meta.items():
+            instance_id = meta['vineyard']['instance_id']
+            self._worker_to_vineyard[w] = instance_id
+            self._vineyard_to_workers[instance_id].add(w)
+
+    def get_all_related_workers(self, workers):
+        all_related_workers = set()
+        for worker in workers:
+            instance_id = self._worker_to_vineyard[worker]
+            for rw in self._vineyard_to_workers[instance_id]:
+                all_related_workers.add(rw)
+        return tuple(all_related_workers)
 
     def set_chunk_broadcasts(self, session_id, chunk_key, broadcast_dests):
         """
@@ -221,6 +250,7 @@ class ChunkMetaActor(SchedulerActor):
         :param workers: workers holding the chunk
         :param broadcast: broadcast meta into registered destinations
         """
+
         query_key = (session_id, chunk_key)
 
         workers = workers or ()
@@ -266,7 +296,14 @@ class ChunkMetaActor(SchedulerActor):
         """
         query_dict = defaultdict(lambda: (list(), list()))
 
+        if options.vineyard.enabled:
+            # sync the latest vineyard_workers mapping
+            self.sync_vineyard_workers_mapping()
+
         for key, meta in zip(keys, metas):
+            if options.vineyard.enabled and meta.workers:
+                # get all related workers in the same vineyard instance.
+                meta.workers = self.get_all_related_workers(meta.workers)
             self.set_chunk_meta(session_id, key, size=meta.chunk_size, shape=meta.chunk_shape,
                                 workers=meta.workers, broadcast=False)
             try:

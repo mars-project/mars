@@ -21,12 +21,12 @@ import numpy as np
 import pandas as pd
 
 from mars import dataframe as md
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 from mars.session import new_session
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     @property
     def _extra_worker_options(self):
         # overwrite iloc that ensuring no iloc is executed

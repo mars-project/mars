@@ -44,11 +44,6 @@ jobs:
           source ./.github/workflows/reload-env.sh
           export DEFAULT_VENV=$VIRTUAL_ENV
 
-          if [ -n "$WITH_VINEYARD" ]; then
-            # workaround until vineyard release new version
-            pip install pandas==1.1.5
-          fi
-
           pip install -r requirements-dev.txt
           pip install -r requirements-extra.txt
           if [[ $UNAME == "windows" ]]; then
@@ -96,8 +91,17 @@ jobs:
         run: |
           source ./.github/workflows/reload-env.sh
 
+          # pull vineyard image
+          echo "${{ github.token }}" | docker login https://docker.pkg.github.com -u ${GITHUB_ACTOR} --password-stdin
+          sudo docker pull docker.pkg.github.com/alibaba/libvineyard/vineyardd:nightly
+
           # launch vineyardd
-          sudo docker run --rm -d --name vineyard -v /tmp/vineyard:/var/run libvineyard/vineyardd:latest
+          sudo docker run --rm -d --name vineyard --shm-size=3072m -v /tmp/vineyard:/var/run \
+              docker.pkg.github.com/alibaba/libvineyard/vineyardd:nightly
+
+          # install latest vineyard
+          pip install https://github.com/alibaba/libvineyard/releases/download/latest/vineyard-0.1.5-cp38-cp38-manylinux2010_x86_64.whl
+
           until [ -S /tmp/vineyard/vineyard.sock ]
           do
               sleep 1;
@@ -132,6 +136,7 @@ jobs:
           if [ -n "$WITH_VINEYARD" ]; then
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datastore/tests/test_datastore_execute.py \
                                                                     mars/tensor/datastore/tests/test_datastore_execute.py -k "vineyard"
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/deploy/local/tests/test_cluster.py -k "VineyardEnabledTest"
             coverage report
           fi
           if [ -n "$WITH_RAY" ]; then

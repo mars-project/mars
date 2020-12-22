@@ -15,7 +15,7 @@
 import unittest
 import os
 
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 from mars.learn.contrib.pytorch import run_pytorch_script
 from mars.session import new_session
 from mars.utils import lazy_import
@@ -24,7 +24,7 @@ torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
 @unittest.skipIf(not torch_installed, 'pytorch not installed')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def testDistributedRunPyTorchScript(self):
         service_ep = 'http://127.0.0.1:' + self.web_port
         timeout = 120 if 'CI' in os.environ else -1

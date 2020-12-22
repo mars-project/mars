@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 from mars.learn.contrib.joblib import register_mars_backend
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 import mars.tensor as mt
 
 try:
@@ -33,7 +33,7 @@ except ImportError:
 
 @unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
 @unittest.skipIf(joblib is None, 'joblib not installed')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def setUp(self):
         register_mars_backend()
 

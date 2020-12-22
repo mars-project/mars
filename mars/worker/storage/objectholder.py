@@ -291,7 +291,7 @@ class SimpleObjectHolderActor(ObjectHolderActor):
 
 
 class SharedHolderActor(ObjectHolderActor):
-    if options.vineyard.socket:
+    if options.vineyard.enabled:
         _storage_device = DataStorageDevice.VINEYARD  # pragma: no cover
     else:
         _storage_device = DataStorageDevice.SHARED_MEMORY
@@ -336,7 +336,7 @@ class InProcHolderActor(SimpleObjectHolderActor):
 
 class CudaHolderActor(SimpleObjectHolderActor):
     _storage_device = DataStorageDevice.CUDA
-    if options.vineyard.socket:
+    if options.vineyard.enabled:
         shared_memory_device = DataStorageDevice.VINEYARD  # pragma: no cover
     else:
         shared_memory_device = DataStorageDevice.SHARED_MEMORY

@@ -24,12 +24,12 @@ from mars import tensor as mt
 from mars.learn.proxima.core import proxima
 from mars.learn.proxima.simple_index import build_index, search_index
 from mars.learn.proxima.simple_index.tests.test_simple_index import gen_data, proxima_build_and_query
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 from mars.session import new_session
 
 
 @unittest.skipIf(proxima is None, 'proxima not installed')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def setUp(self):
         self.old_cwd = os.getcwd()
         os.chdir(os.path.dirname(os.path.dirname(mars.__file__)))
