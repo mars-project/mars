@@ -292,8 +292,10 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
             glob(op.path, storage_options=op.storage_options)
 
         for pth in paths:
-            row_num = get_engine(op.engine).get_row_num(pth)
             raw_bytes = file_size(pth, op.storage_options)
+            with open_file(pth, storage_options=op.storage_options) as f:
+                row_num = get_engine(op.engine).get_row_num(f)
+
             if op.groups_as_chunks:
                 num_row_groups = pq.ParquetFile(pth).num_row_groups
                 for group_idx in range(num_row_groups):
