@@ -91,8 +91,6 @@ class K8SPodsIPWatcher(object):
             if pod_ep is not None and not self._extract_pod_ready(el):
                 pod_ep = None
             result[name] = pod_ep
-        if not result:
-            logger.warning(repr(query))
         return result
 
     def _get_endpoints_by_service_type(self, service_type, update=False):
