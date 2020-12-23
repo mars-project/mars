@@ -33,13 +33,13 @@ class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
         from .aggregation import where_function
         skipna, min_count = op.skipna, op.min_count
 
-        def sum(value):
+        def sum_(value):
             if min_count == 0:
                 return value.sum(skipna=skipna)
             else:
                 return where_function(value.count() >= min_count, value.sum(skipna=skipna), np.nan)
 
-        return sum
+        return sum_
 
 
 def sum_series(df, axis=None, skipna=None, level=None, min_count=0, combine_size=None):
