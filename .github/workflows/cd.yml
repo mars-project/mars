@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.6, 3.7, 3.8]
         include:
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
