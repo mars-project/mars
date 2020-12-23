@@ -69,19 +69,14 @@ class K8SPodsIPWatcher(object):
         return self._full_label_selector
 
     def _extract_pod_name_ep(self, pod_data):
-        pod_ip = pod_data["status"]["pod_ip"]
-        svc_port = pod_data['spec']['containers'][0]['ports'][0]['container_port']
+        pod_ip = pod_data["status"].get("podIP") or pod_data["status"].get("pod_ip")
+        ports_def = pod_data['spec']['containers'][0]['ports'][0]
+        svc_port = ports_def.get('containerPort') or ports_def.get('container_port')
         return pod_data['metadata']['name'], f'{pod_ip}:{svc_port}'
 
     @staticmethod
     def _extract_pod_ready(obj_data):
-        if obj_data['status']['phase'] != 'Running':
-            return False
-        # if conditions not supported, always return True
-        if 'status' not in obj_data or 'conditions' not in obj_data['status']:
-            return True
-        return any(cond['type'] == 'Ready' and cond['status'] == 'True'
-                   for cond in obj_data['status']['conditions'])
+        return obj_data['status']['phase'] == 'Running'
 
     def _get_pod_to_ep(self, service_type):
         query = self._pool.spawn(
@@ -96,8 +91,6 @@ class K8SPodsIPWatcher(object):
             if pod_ep is not None and not self._extract_pod_ready(el):
                 pod_ep = None
             result[name] = pod_ep
-        if not result:
-            logger.warning(repr(query))
         return result
 
     def _get_endpoints_by_service_type(self, service_type, update=False):
