@@ -319,8 +319,11 @@ class Test(TestBase):
             df.to_csv(file_path)
 
             pdf = pd.read_csv(file_path, index_col=0)
-            mdf = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0), concat=True)[0]
+            r = md.read_csv(file_path, index_col=0)
+            mdf = self.executor.execute_dataframe(r, concat=True)[0]
             pd.testing.assert_frame_equal(pdf, mdf)
+            size_res = self.executor.execute_dataframe(r, mock=True)
+            self.assertEqual(sum(s[0] for s in size_res), os.stat(file_path).st_size)
 
             mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0, chunk_bytes=10),
                                                    concat=True)[0]
@@ -805,6 +808,8 @@ class Test(TestBase):
             df = md.read_parquet(file_path)
             result = self.executor.execute_dataframe(df, concat=True)[0]
             pd.testing.assert_frame_equal(result, test_df)
+            size_res = self.executor.execute_dataframe(df, mock=True)
+            self.assertGreater(sum(s[0] for s in size_res), test_df.memory_usage(deep=True).sum())
 
         with tempfile.TemporaryDirectory() as tempdir:
             file_path = os.path.join(tempdir, 'test.csv')
@@ -859,3 +864,5 @@ class Test(TestBase):
             df = md.read_parquet(file_path, engine='fastparquet')
             result = self.executor.execute_dataframe(df, concat=True)[0]
             pd.testing.assert_frame_equal(result, test_df)
+            size_res = self.executor.execute_dataframe(df, mock=True)
+            self.assertGreater(sum(s[0] for s in size_res), test_df.memory_usage(deep=True).sum())
