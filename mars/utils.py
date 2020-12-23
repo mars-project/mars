@@ -1064,16 +1064,17 @@ class FixedSizeFileObject:
         return getattr(self._file_obj, item)
 
 
+def is_object_dtype(dtype):
+    try:
+        return np.issubdtype(dtype, np.object_) \
+               or np.issubdtype(dtype, np.unicode_) \
+               or np.issubdtype(dtype, np.bytes_)
+    except TypeError:  # pragma: no cover
+        return False
+
+
 def calc_object_overhead(chunk, shape):
     from .dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
-
-    def is_object_dtype(dtype):
-        try:
-            return np.issubdtype(dtype, np.object_) \
-                   or np.issubdtype(dtype, np.unicode_) \
-                   or np.issubdtype(dtype, np.bytes_)
-        except TypeError:  # pragma: no cover
-            return False
 
     if not shape or np.isnan(shape[0]) or getattr(chunk, 'dtypes', None) is None:
         return 0

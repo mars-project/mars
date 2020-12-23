@@ -103,7 +103,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     def __init__(self, path=None, names=None, sep=None, header=None, index_col=None,
                  compression=None, usecols=None, offset=None, size=None, nrows=None,
                  gpu=None, keep_usecols_order=None, incremental_index=None,
-                 use_arrow_dtype=None, storage_options=None, **kw):
+                 use_arrow_dtype=None, storage_options=None,
+                 memory_scale=None, **kw):
         super().__init__(_path=path, _names=names, _sep=sep, _header=header,
                          _index_col=index_col, _compression=compression,
                          _usecols=usecols, _offset=offset, _size=size, _nrows=nrows,
@@ -111,7 +112,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                          _keep_usecols_order=keep_usecols_order,
                          _use_arrow_dtype=use_arrow_dtype,
                          _storage_options=storage_options,
-                         _output_types=[OutputType.dataframe], **kw)
+                         _output_types=[OutputType.dataframe],
+                         _memory_scale=memory_scale, **kw)
 
     @property
     def path(self):
@@ -334,6 +336,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
 
         ctx[out_df.key] = df
 
+    def estimate_size(cls, ctx, op):
+        phy_size = op.size * (op.memory_scale or 1)
+        ctx[op.outputs[0].key] = (phy_size, phy_size * 2)
+
     def __call__(self, index_value=None, columns_value=None, dtypes=None, chunk_bytes=None):
         shape = (np.nan, len(dtypes))
         return self.new_dataframe(None, shape, dtypes=dtypes, index_value=index_value,
@@ -343,7 +349,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
 def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer',
              dtype=None, usecols=None, nrows=None, chunk_bytes='64M', gpu=None, head_bytes='100k',
              head_lines=None, incremental_index=False, use_arrow_dtype=None,
-             storage_options=None, **kwargs):
+             storage_options=None, memory_scale=None, **kwargs):
     r"""
     Read a comma-separated values (csv) file into DataFrame.
     Also supports optionally iterating or breaking of the file
@@ -669,7 +675,7 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col,
                           usecols=usecols, compression=compression, gpu=gpu,
                           incremental_index=incremental_index, use_arrow_dtype=use_arrow_dtype,
-                          storage_options=storage_options,
+                          storage_options=storage_options, memory_scale=memory_scale,
                           **kwargs)
     chunk_bytes = chunk_bytes or options.chunk_store_limit
     dtypes = mini_df.dtypes
