@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04]
-        python-version: [3.6, 3.7, 3.8, 3.8-cython]
+        python-version: [3.6, 3.7, 3.8, 3.9, 3.8-cython]
         include:
           - { os: ubuntu-16.04, python-version: 3.8-cython, no-common-tests: 1,
               no-deploy: 1, with-cython: 1, with-flake8: 1 }
