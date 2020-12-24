@@ -127,8 +127,16 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op):
         df = ctx[op.input.key]
         out = op.outputs[0]
-        path = cls._get_path(op.path, op.outputs[0].index[0])
+        i = op.outputs[0].index[0]
+        path = op.path
+        has_wildcard = False
+        if '*' in path:
+            path = path.replace('*', str(i))
+            has_wildcard = True
+
         if op.partition_cols is None:
+            if not has_wildcard:
+                path += '{path}/{i}.parquet'
             if op.engine == 'fastparquet':
                 df.to_parquet(path, engine=op.engine, compression=op.compression,
                               index=op.index, open_with=open_file, **op.additional_kwargs)

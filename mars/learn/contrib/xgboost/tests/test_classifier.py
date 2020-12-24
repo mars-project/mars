@@ -21,6 +21,7 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.operands import Fuse
 from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
 from mars.tests.core import ExecutorForTest
@@ -137,26 +138,31 @@ class Test(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as d:
             m_name = os.path.join(d, 'c.model')
-            f_name = os.path.join(d, 'data.parquet')
-            r_name = os.path.join(d, 'result.parquet')
+            result_dir = os.path.join(d, 'result')
+            os.mkdir(result_dir)
+            data_dir = os.path.join(d, 'data')
+            os.mkdir(data_dir)
 
             booster.save_model(m_name)
 
-            df.to_parquet(f_name)
+            df.iloc[:500].to_parquet(os.path.join(d, 'data', 'data1.parquet'))
+            df.iloc[500:].to_parquet(os.path.join(d, 'data', 'data2.parquet'))
 
-            df = md.read_parquet(f_name).set_index('id')
+            df = md.read_parquet(data_dir).set_index('id')
             model = XGBClassifier()
             model.load_model(m_name)
             result = model.predict(df, run=False)
-            r = md.DataFrame(result).to_parquet(r_name)
+            r = md.DataFrame(result).to_parquet(result_dir)
 
             # tiles to ensure no iterative tiling exists
-            r.tiles()
+            g = r.build_graph(tiled=True)
+            self.assertTrue(all(isinstance(n.op, Fuse) for n in g))
+            self.assertEqual(len(g), 2)
             r.execute()
 
-            ret = pd.read_parquet(r_name).iloc[: 0].to_numpy()
+            ret = md.read_parquet(result_dir).to_pandas().iloc[:, 0].to_numpy()
             model2 = xgboost.XGBClassifier()
             model2.load_model(m_name)
             expected = model2.predict(X)
-            expected = np.stack([expected, 1 - expected]).argmax()
+            expected = np.stack([1 - expected, expected]).argmax(axis=0)
             np.testing.assert_array_equal(ret, expected)

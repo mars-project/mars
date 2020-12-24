@@ -21,6 +21,7 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.operands import Fuse
 from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 
@@ -144,29 +145,34 @@ class Test(unittest.TestCase):
         rs = np.random.RandomState(0)
         X = rs.rand(n_rows, n_columns)
         y = (rs.rand(n_rows) > 0.5).astype(np.int32)
+        df = pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)])
 
         # test with existing model
         classifier = lightgbm.LGBMClassifier(n_estimators=2)
         classifier.fit(X, y, verbose=True)
 
         with tempfile.TemporaryDirectory() as d:
-            f_name = os.path.join(d, 'data.parquet')
-            r_name = os.path.join(d, 'result.parquet')
+            result_dir = os.path.join(d, 'result')
+            os.mkdir(result_dir)
+            data_dir = os.path.join(d, 'data')
+            os.mkdir(data_dir)
 
-            pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)]) \
-                .to_parquet(f_name)
+            df.iloc[:500].to_parquet(os.path.join(d, 'data', 'data1.parquet'))
+            df.iloc[500:].to_parquet(os.path.join(d, 'data', 'data2.parquet'))
 
-            df = md.read_parquet(f_name)
+            df = md.read_parquet(data_dir)
             model = LGBMClassifier()
             model.load_model(classifier)
             result = model.predict(df, run=False)
-            r = md.DataFrame(result).to_parquet(r_name)
+            r = md.DataFrame(result).to_parquet(result_dir)
 
             # tiles to ensure no iterative tiling exists
-            r.tiles()
+            g = r.build_graph(tiled=True)
+            self.assertTrue(all(isinstance(n.op, Fuse) for n in g))
+            self.assertEqual(len(g), 2)
             r.execute()
 
-            ret = pd.read_parquet(r_name).iloc[: 0].to_numpy()
+            ret = md.read_parquet(result_dir).to_pandas().iloc[:, 0].to_numpy()
             expected = classifier.predict(X)
-            expected = np.stack([expected, 1 - expected]).argmax()
+            expected = np.stack([1 - expected, expected]).argmax(axis=0)
             np.testing.assert_array_equal(ret, expected)
