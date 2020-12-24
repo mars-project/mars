@@ -17,7 +17,7 @@
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...filesystem import open_file
+from ...filesystem import open_file, get_fs
 from ...serialize import KeyField, AnyField, StringField, ListField, \
     BoolField, DictField
 from ...tiles import TilesError
@@ -136,7 +136,8 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
 
         if op.partition_cols is None:
             if not has_wildcard:
-                path += '{path}/{i}.parquet'
+                fs = get_fs(path, op.storage_options)
+                path = fs.pathsep.join([path.rstrip(fs.pathsep), f'{i}.parquet'])
             if op.engine == 'fastparquet':
                 df.to_parquet(path, engine=op.engine, compression=op.compression,
                               index=op.index, open_with=open_file, **op.additional_kwargs)

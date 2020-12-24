@@ -111,3 +111,24 @@ class TestHDFS(TestBase):
         df = md.read_parquet(f'hdfs://localhost:8020{TEST_DIR}/test_partitioned')
         res = df.to_pandas()
         pd.testing.assert_frame_equal(res, pd.concat([test_df, test_df2]))
+
+    def testToParquetExecution(self):
+        test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                                'b': [f's{i}' for i in range(10)],
+                                'c': np.random.rand(10), })
+        df = md.DataFrame(test_df, chunk_size=5)
+
+        dir_name = f'hdfs://localhost:8020{TEST_DIR}/test_to_parquet/'
+        self.hdfs.mkdir(dir_name)
+        df.to_parquet(dir_name).execute()
+
+        result = md.read_parquet(dir_name).to_pandas()
+        pd.testing.assert_frame_equal(result.reset_index(drop=True), test_df)
+
+        # test wildcard
+        dir_name = f'hdfs://localhost:8020{TEST_DIR}/test_to_parquet2/*.parquet'
+        self.hdfs.mkdir(dir_name)
+        df.to_parquet(dir_name).execute()
+
+        result = md.read_parquet(dir_name).to_pandas()
+        pd.testing.assert_frame_equal(result.reset_index(drop=True), test_df)
