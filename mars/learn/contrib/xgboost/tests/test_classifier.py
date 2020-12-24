@@ -129,6 +129,8 @@ class Test(unittest.TestCase):
         rs = np.random.RandomState(0)
         X = rs.rand(n_rows, n_columns)
         y = rs.rand(n_rows)
+        df = pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)])
+        df['id'] = [f'i{i}' for i in range(n_rows)]
 
         booster = xgboost.train({}, xgboost.DMatrix(X, y),
                                 num_boost_round=2)
@@ -140,10 +142,9 @@ class Test(unittest.TestCase):
 
             booster.save_model(m_name)
 
-            pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)])\
-                .to_parquet(f_name)
+            df.to_parquet(f_name)
 
-            df = md.read_parquet(f_name)
+            df = md.read_parquet(f_name).set_index('id')
             model = XGBClassifier()
             model.load_model(m_name)
             result = model.predict(df, run=False)
