@@ -21,7 +21,7 @@ import pandas as pd
 
 from ...core import OutputType, Entity, Base
 from ...operands import OperandStage
-from ...utils import tokenize, is_build_mode, enter_mode, recursive_tile
+from ...utils import tokenize, is_build_mode, is_kernel_mode, enter_mode, recursive_tile
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
 from ..core import SERIES_TYPE
 from ..utils import parse_index, build_df, build_empty_df, build_series, \
@@ -85,6 +85,10 @@ class DataFrameReductionOperand(DataFrameOperand):
     def use_inf_as_na(self):
         return self._use_inf_as_na
 
+    @property
+    def is_atomic(self):
+        return False
+
     def get_reduction_args(self, axis=None):
         args = dict(skipna=self.skipna)
         if self.inputs[0].ndim > 1:
@@ -136,7 +140,7 @@ def _default_agg_fun(value, func_name=None, **kw):
 
 class DataFrameReductionMixin(DataFrameOperandMixin):
     @classmethod
-    def _make_agg_object(cls, op):
+    def get_reduction_callable(cls, op):
         func_name = getattr(op, '_func_name')
         kw = dict(skipna=op.skipna, numeric_only=op.numeric_only,
                   bool_only=op.bool_only)
@@ -162,14 +166,14 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             dtypes, index = out_df.dtype, None
 
         out_df = recursive_tile(in_df.agg(
-            cls._make_agg_object(op), axis=op.axis or 0, _numeric_only=op.numeric_only,
+            cls.get_reduction_callable(op), axis=op.axis or 0, _numeric_only=op.numeric_only,
             _bool_only=op.bool_only, _combine_size=op.combine_size, _output_type=output_type,
             _dtypes=dtypes, _index=index
         ))
         return [out_df]
 
     def _call_groupby_level(self, df, level):
-        return df.groupby(level=level).agg(self._make_agg_object(self))
+        return df.groupby(level=level).agg(self.get_reduction_callable(self))
 
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None) or 0
@@ -239,6 +243,9 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         return self.new_scalar([series], dtype=np.array(reduced_series).dtype)
 
     def __call__(self, a):
+        if is_kernel_mode() and not getattr(self, 'is_atomic', False):
+            return self.get_reduction_callable(self)(a)
+
         if isinstance(a, DATAFRAME_TYPE):
             return self._call_dataframe(a)
         else:
@@ -641,13 +648,11 @@ class ReductionCompiler:
             mock_obj = MarsDataFrame(mock_df)
 
         # calc target tileable to generate DAG
-        return func(mock_obj)
+        with enter_mode(kernel=True):
+            return func(mock_obj)
 
     @enter_mode(build=True)
     def _compile_function(self, func, func_name=None, ndim=1) -> ReductionSteps:
-        from . import DataFrameAll, DataFrameAny, DataFrameSum, DataFrameProd, \
-            DataFrameCount, DataFrameMin, DataFrameMax, DataFrameSize, \
-            DataFrameStrConcat, DataFrameCustomReduction
         from ...tensor.arithmetic.core import TensorBinOp, TensorUnaryOp
         from ...tensor.base import TensorWhere
         from ..arithmetic.core import DataFrameBinOp, DataFrameUnaryOp
@@ -659,10 +664,6 @@ class ReductionCompiler:
         if func_token in _func_compile_cache:
             return _func_compile_cache[func_token]
         custom_reduction = func if isinstance(func, CustomReduction) else None
-
-        atomic_agg_op_types = (DataFrameAll, DataFrameAny, DataFrameSum, DataFrameProd,
-                               DataFrameCount, DataFrameMin, DataFrameMax, DataFrameSize,
-                               DataFrameStrConcat, DataFrameCustomReduction)
 
         self._check_function_valid(func)
 
@@ -679,7 +680,7 @@ class ReductionCompiler:
             raise ValueError('Function not a reduction')
 
         agg_graph = func_ret.build_graph()
-        agg_tileables = set(t for t in agg_graph if isinstance(t.op, atomic_agg_op_types))
+        agg_tileables = set(t for t in agg_graph if getattr(t.op, 'is_atomic', False))
         # check operands before aggregation
         for t in agg_graph.dfs(list(agg_tileables), visit_predicate='all', reverse=True):
             if t not in agg_tileables and \

@@ -21,6 +21,10 @@ class DataFrameSize(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.REDUCTION_SIZE
     _func_name = 'size'
 
+    @property
+    def is_atomic(self):
+        return True
+
 
 def size_series(df):
     op = DataFrameSize(output_types=[OutputType.scalar])

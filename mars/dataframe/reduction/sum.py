@@ -12,33 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-
 import numpy as np
 
 from ... import opcodes
 from ...config import options
 from ...core import OutputType
-from .aggregation import where_function
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
-
-
-def _sum_with_count(value, skipna=True, min_count=0):
-    if min_count == 0:
-        return value.sum(skipna=skipna)
-    else:
-        return where_function(value.count() >= min_count, value.sum(skipna=skipna), np.nan)
 
 
 class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = opcodes.SUM
     _func_name = 'sum'
 
+    @property
+    def is_atomic(self):
+        return self.min_count == 0
+
     @classmethod
-    def _make_agg_object(cls, op):
-        fn = functools.partial(_sum_with_count, skipna=op.skipna, min_count=op.min_count)
-        fn.__name__ = cls._func_name
-        return fn
+    def get_reduction_callable(cls, op):
+        from .aggregation import where_function
+        skipna, min_count = op.skipna, op.min_count
+
+        def sum_(value):
+            if min_count == 0:
+                return value.sum(skipna=skipna)
+            else:
+                return where_function(value.count() >= min_count, value.sum(skipna=skipna), np.nan)
+
+        return sum_
 
 
 def sum_series(df, axis=None, skipna=None, level=None, min_count=0, combine_size=None):
