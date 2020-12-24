@@ -182,9 +182,6 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        # make sure all tensor have known chunk shapes
-        check_chunks_unknown_shape(op.inputs, TilesError)
-
         if isinstance(op.input, dict):
             return cls._tile_input_1d_tileables(op)
         else:
@@ -192,6 +189,9 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_input_1d_tileables(cls, op):
+        # make sure all tensor have known chunk shapes
+        check_chunks_unknown_shape(op.inputs, TilesError)
+
         out_df = op.outputs[0]
         in_tensors = op.inputs
         in_tensors = unify_chunks(*in_tensors)
@@ -249,6 +249,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
         if op.index is not None:
             # rechunk index if it's a tensor
+            check_chunks_unknown_shape(op.inputs, TilesError)
             index_tensor = op.index.rechunk([nsplits[0]])._inplace_tile()
         else:
             index_tensor = None

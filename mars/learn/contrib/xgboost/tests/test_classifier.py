@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
+
+import numpy as np
+import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.operands import Fuse
 from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
 from mars.tests.core import ExecutorForTest
@@ -117,3 +123,46 @@ class Test(unittest.TestCase):
         classifier.fit(X, y)
         with self.assertRaises(TypeError):
             classifier.predict(X, wrong_param=1)
+
+    def testLocalClassifierFromToParquet(self):
+        n_rows = 1000
+        n_columns = 10
+        rs = np.random.RandomState(0)
+        X = rs.rand(n_rows, n_columns)
+        y = rs.rand(n_rows)
+        df = pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)])
+        df['id'] = [f'i{i}' for i in range(n_rows)]
+
+        booster = xgboost.train({}, xgboost.DMatrix(X, y),
+                                num_boost_round=2)
+
+        with tempfile.TemporaryDirectory() as d:
+            m_name = os.path.join(d, 'c.model')
+            result_dir = os.path.join(d, 'result')
+            os.mkdir(result_dir)
+            data_dir = os.path.join(d, 'data')
+            os.mkdir(data_dir)
+
+            booster.save_model(m_name)
+
+            df.iloc[:500].to_parquet(os.path.join(d, 'data', 'data1.parquet'))
+            df.iloc[500:].to_parquet(os.path.join(d, 'data', 'data2.parquet'))
+
+            df = md.read_parquet(data_dir).set_index('id')
+            model = XGBClassifier()
+            model.load_model(m_name)
+            result = model.predict(df, run=False)
+            r = md.DataFrame(result).to_parquet(result_dir)
+
+            # tiles to ensure no iterative tiling exists
+            g = r.build_graph(tiled=True)
+            self.assertTrue(all(isinstance(n.op, Fuse) for n in g))
+            self.assertEqual(len(g), 2)
+            r.execute()
+
+            ret = md.read_parquet(result_dir).to_pandas().iloc[:, 0].to_numpy()
+            model2 = xgboost.XGBClassifier()
+            model2.load_model(m_name)
+            expected = model2.predict(X)
+            expected = np.stack([1 - expected, expected]).argmax(axis=0)
+            np.testing.assert_array_equal(ret, expected)

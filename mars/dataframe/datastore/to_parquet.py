@@ -17,7 +17,7 @@
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...filesystem import open_file
+from ...filesystem import open_file, get_fs
 from ...serialize import KeyField, AnyField, StringField, ListField, \
     BoolField, DictField
 from ...tiles import TilesError
@@ -103,8 +103,9 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
 
         # make sure only 1 chunk on the column axis
-        check_chunks_unknown_shape([in_df], TilesError)
-        in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
+        if in_df.chunk_shape[1] > 1:
+            check_chunks_unknown_shape([in_df], TilesError)
+            in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
 
         out_chunks = []
         for chunk in in_df.chunks:
@@ -126,8 +127,17 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op):
         df = ctx[op.input.key]
         out = op.outputs[0]
-        path = cls._get_path(op.path, op.outputs[0].index[0])
+        i = op.outputs[0].index[0]
+        path = op.path
+        has_wildcard = False
+        if '*' in path:
+            path = path.replace('*', str(i))
+            has_wildcard = True
+
         if op.partition_cols is None:
+            if not has_wildcard:
+                fs = get_fs(path, op.storage_options)
+                path = fs.pathsep.join([path.rstrip(fs.pathsep), f'{i}.parquet'])
             if op.engine == 'fastparquet':
                 df.to_parquet(path, engine=op.engine, compression=op.compression,
                               index=op.index, open_with=open_file, **op.additional_kwargs)
