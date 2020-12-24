@@ -196,7 +196,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
 
     @property
     def memory_scale(self):
-        return getattr(self, '_memory_scale', None) or 1
+        return getattr(self, '_memory_scale', None)
 
     @property
     def stage(self) -> Union[None, "OperandStage"]:
@@ -510,6 +510,7 @@ class TileableOperandMixin(object):
                 pass
 
         exec_size = max(exec_size, total_out_size)
+        memory_scale = op.memory_scale or 1
         for out in outputs:
             if out.key in ctx:
                 continue
@@ -527,7 +528,7 @@ class TileableOperandMixin(object):
                 max_sparse_size = np.nan
             if not np.isnan(max_sparse_size):
                 store_size = min(store_size, max_sparse_size)
-            ctx[out.key] = (store_size, exec_size * op.memory_scale // len(outputs))
+            ctx[out.key] = (store_size, exec_size * memory_scale // len(outputs))
 
     @classmethod
     def concat_tileable_chunks(cls, tileable):
