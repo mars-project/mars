@@ -32,6 +32,9 @@ from mars.session import new_session, Session
 
 
 class Test(unittest.TestCase):
+    def setUp(self):
+        new_session().as_default()
+
     def testSessionExecute(self):
         a = mt.random.rand(10, 20)
         res = a.sum().to_numpy()
