@@ -20,6 +20,7 @@ import numpy as np
 import pytest
 import scipy.sparse as sp
 try:
+    from sklearn.cluster import KMeans as SK_KMeans
     from sklearn.datasets import make_blobs
     from sklearn.metrics.cluster import v_measure_score
     from sklearn.utils._testing import assert_raise_message, assert_warns
@@ -420,3 +421,24 @@ class Test(TestBase):
             nbytes = c.nbytes
             if not np.isnan(nbytes):
                 self.assertLessEqual(nbytes, chunk_bytes_limit)
+
+    def testConsistentResultWithSklearn(self):
+        rnd = np.random.RandomState(0)
+        X, _ = make_blobs(random_state=rnd)
+        raw = X
+        X = mt.tensor(X, chunk_size=50)
+
+        km_elkan = KMeans(algorithm='elkan', n_clusters=5,
+                          random_state=0, n_init=1, tol=1e-4,
+                          init='k-means++')
+        sk_km_elkan = SK_KMeans(algorithm='elkan', n_clusters=5,
+                                random_state=0, n_init=1, tol=1e-4,
+                                init='k-means++')
+
+        km_elkan.fit(X)
+        sk_km_elkan.fit(raw)
+
+        np.testing.assert_allclose(km_elkan.cluster_centers_, sk_km_elkan.cluster_centers_)
+        np.testing.assert_array_equal(km_elkan.labels_, sk_km_elkan.labels_)
+
+        self.assertEqual(km_elkan.n_iter_, sk_km_elkan.n_iter_)
