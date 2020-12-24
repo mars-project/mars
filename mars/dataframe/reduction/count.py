@@ -12,29 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 
-def _count_func(value, skipna=True, numeric_only=False):
-    if value.ndim == 1:
-        return value.count()
-    return value.count(skipna=skipna, numeric_only=numeric_only)
-
-
 class DataFrameCount(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.COUNT
     _func_name = 'count'
 
+    @property
+    def is_atomic(self):
+        return True
+
     @classmethod
-    def _make_agg_object(cls, op):
-        pf = functools.partial(_count_func, skipna=op.skipna, numeric_only=op.numeric_only)
-        pf.__name__ = cls._func_name
-        return pf
+    def get_reduction_callable(cls, op):
+        skipna, numeric_only = op.skipna, op.numeric_only
+
+        def count(value):
+            if value.ndim == 1:
+                return value.count()
+            return value.count(skipna=skipna, numeric_only=numeric_only)
+
+        return count
 
 
 def count_series(series, level=None, combine_size=None, **kw):

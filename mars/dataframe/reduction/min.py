@@ -22,6 +22,10 @@ class DataFrameMin(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.MIN
     _func_name = 'min'
 
+    @property
+    def is_atomic(self):
+        return True
+
 
 def min_series(df, axis=None, skipna=None, level=None, combine_size=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na

@@ -31,8 +31,7 @@ from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 from ..reduction.core import ReductionCompiler, ReductionSteps, ReductionPreStep, \
     ReductionAggStep, ReductionPostStep
-from ..reduction.aggregation import mean_function, var_function, sem_function, \
-    skew_function, kurt_function, is_funcs_aggregate, normalize_reduction_funcs
+from ..reduction.aggregation import is_funcs_aggregate, normalize_reduction_funcs
 from ..utils import parse_index, build_concatenated_rows_frame
 from .core import DataFrameGroupByOperand
 
@@ -50,13 +49,13 @@ _agg_functions = {
     'any': lambda x: x.any(),
     'count': lambda x: x.count(),
     'size': lambda x: x._reduction_size(),
-    'mean': mean_function,
-    'var': var_function,
-    'std': lambda x, ddof=1: var_function(x, ddof=ddof) ** 0.5,
-    'sem': sem_function,
-    'skew': skew_function,
-    'kurt': kurt_function,
-    'kurtosis': kurt_function,
+    'mean': lambda x: x.mean(),
+    'var': lambda x, ddof=1: x.var(ddof=ddof),
+    'std': lambda x, ddof=1: x.std(ddof=ddof),
+    'sem': lambda x, ddof=1: x.sem(ddof=ddof),
+    'skew': lambda x, bias=False: x.skew(bias=bias),
+    'kurt': lambda x, bias=False: x.kurt(bias=bias),
+    'kurtosis': lambda x, bias=False: x.kurtosis(bias=bias),
 }
 _series_col_name = 'col_name'
 
@@ -669,6 +668,12 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 func_inputs = [in_data_dict[k] for k in input_keys]
             else:
                 func_inputs = [in_data_dict[k][cols] for k in input_keys]
+
+            if func_inputs[0].ndim == 2 and len(set(inp.shape[1] for inp in func_inputs)) > 1:
+                common_cols = func_inputs[0].columns
+                for inp in func_inputs[1:]:
+                    common_cols = common_cols.join(inp.columns, how='inner')
+                func_inputs = [inp[common_cols] for inp in func_inputs]
 
             agg_df = func(*func_inputs, gpu=op.is_gpu())
             if isinstance(agg_df, np.ndarray):

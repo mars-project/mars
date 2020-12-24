@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
@@ -35,11 +33,15 @@ class DataFrameSem(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._ddof
 
     @classmethod
-    def _make_agg_object(cls, op):
-        from .aggregation import sem_function
-        pf = functools.partial(sem_function, ddof=op.ddof, skipna=op.skipna)
-        pf.__name__ = cls._func_name
-        return pf
+    def get_reduction_callable(cls, op):
+        skipna, ddof = op.skipna, op.ddof
+
+        def sem(x):
+            var = x.var(skipna=skipna, ddof=ddof)
+            cnt = x.count()
+            return (var / cnt) ** 0.5
+
+        return sem
 
 
 def sem_series(series, axis=None, skipna=None, level=None, ddof=1, combine_size=None):
