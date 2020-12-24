@@ -180,19 +180,12 @@ def k_means(X, n_clusters, sample_weight=None, init='k-means||',
         return est.cluster_centers_, est.labels_, est.inertia_
 
 
-def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
-                         init='k-means++', verbose=False, x_squared_norms=None,
-                         random_state=None, tol=1e-4, oversampling_factor=2,
-                         init_iter=5, X_mean=None, session=None, run_kwargs=None):
-    random_state = check_random_state(random_state)
+def _kmeans_single_elkan(X, sample_weight, centers_init, n_clusters, max_iter=300,
+                         verbose=False, x_squared_norms=None,
+                         tol=1e-4, X_mean=None, session=None, run_kwargs=None):
     sample_weight = _check_normalize_sample_weight(sample_weight, X)
 
-    # init
-    centers = _init_centroids(X, n_clusters, init, random_state=random_state,
-                              x_squared_norms=x_squared_norms,
-                              oversampling_factor=oversampling_factor,
-                              init_iter=init_iter)
-
+    centers = centers_init
     # execute X, centers and tol first
     tol = mt.asarray(tol)
     to_run = [X, sample_weight, centers, x_squared_norms, tol]
@@ -266,19 +259,12 @@ def _kmeans_single_elkan(X, sample_weight, n_clusters, max_iter=300,
     return labels, inertia, centers, i + 1
 
 
-def _kmeans_single_lloyd(X, sample_weight, n_clusters, max_iter=300,
-                         init='k-means++', verbose=False, x_squared_norms=None,
-                         random_state=None, tol=1e-4, oversampling_factor=2,
-                         init_iter=5, X_mean=None, session=None, run_kwargs=None):
-    random_state = check_random_state(random_state)
+def _kmeans_single_lloyd(X, sample_weight, centers_init, n_clusters, max_iter=300,
+                         verbose=False, x_squared_norms=None,
+                         tol=1e-4, X_mean=None, session=None, run_kwargs=None):
     sample_weight = _check_normalize_sample_weight(sample_weight, X)
 
-    # init
-    centers = _init_centroids(X, n_clusters, init, random_state=random_state,
-                              x_squared_norms=x_squared_norms,
-                              oversampling_factor=oversampling_factor,
-                              init_iter=init_iter)
-
+    centers = centers_init
     # execute X, centers and tol first
     tol = mt.asarray(tol)
     to_run = [X, centers, x_squared_norms, tol]
@@ -622,6 +608,60 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         self.oversampling_factor = oversampling_factor
         self.init_iter = init_iter
 
+    def _check_params(self, X):
+        # n_init
+        if self.n_init <= 0:
+            raise ValueError(
+                f"n_init should be > 0, got {self.n_init} instead.")
+        self._n_init = self.n_init
+
+        # max_iter
+        if self.max_iter <= 0:
+            raise ValueError(
+                f"max_iter should be > 0, got {self.max_iter} instead.")
+
+        # n_clusters
+        if X.shape[0] < self.n_clusters:
+            raise ValueError(f"n_samples={X.shape[0]} should be >= "
+                             f"n_clusters={self.n_clusters}.")
+
+        # tol
+        self._tol = _tolerance(X, self.tol)
+
+        # algorithm
+        if self.algorithm not in ("auto", "full", "elkan"):
+            raise ValueError(f"Algorithm must be 'auto', 'full' or 'elkan', "
+                             f"got {self.algorithm} instead.")
+
+        self._algorithm = self.algorithm
+        if self._algorithm == "auto":
+            # note(xuye.qin):
+            # Different from scikit-learn,
+            # for now, full seems more efficient when data is large,
+            # elkan needs to be tuned more
+            # old: algorithm = "full" if self.n_clusters == 1 else "elkan"
+            self._algorithm = "full"
+        if self._algorithm == "elkan" and self.n_clusters == 1:
+            warnings.warn("algorithm='elkan' doesn't make sense for a single "
+                          "cluster. Using 'full' instead.", RuntimeWarning)
+            self._algorithm = "full"
+
+        # init
+        if not (hasattr(self.init, '__array__') or callable(self.init)
+                or (isinstance(self.init, str)
+                    and self.init in ["k-means++", "k-means||", "random"])):
+            raise ValueError(
+                f"init should be either 'k-means++'， 'k-mean||', 'random', "
+                f"a tensor, a ndarray or a "
+                f"callable, got '{self.init}' instead.")
+
+        if hasattr(self.init, '__array__') and self._n_init != 1:
+            warnings.warn(
+                f"Explicit initial center position passed: performing only"
+                f" one init in {self.__class__.__name__} instead of "
+                f"n_init={self._n_init}.", RuntimeWarning, stacklevel=2)
+            self._n_init = 1
+
     def _check_test_data(self, X):
         X = check_array(X, accept_sparse=True, dtype=[np.float64, np.float32],
                         order='C', accept_large_sparse=False)
@@ -716,19 +756,6 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         self
             Fitted estimator.
         """
-        random_state = check_random_state(self.random_state).to_numpy()
-
-        n_init = self.n_init
-        if n_init <= 0:
-            raise ValueError("Invalid number of initializations. "
-                             f"n_init={n_init} must be bigger than zero.")
-
-        if self.max_iter <= 0:  # pragma: no cover
-            raise ValueError(
-                'Number of iterations should be a positive number, '
-                f'got {self.max_iter} instead'
-            )
-
         expect_chunk_size_on_columns = mt.tensor(X).shape[1]
         if not np.isnan(expect_chunk_size_on_columns):
             X = mt.tensor(X, chunk_size={1: expect_chunk_size_on_columns})
@@ -738,12 +765,11 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
                                 order='C', copy=self.copy_x,
                                 accept_large_sparse=False)
         # verify that the number of samples given is larger than k
-        n_samples = _num_samples(X)
-        if np.isnan(n_samples):  # pragma: no cover
+        if np.isnan(_num_samples(X)):  # pragma: no cover
             X.execute(session=session, **(run_kwargs or dict()))
-            n_samples = _num_samples(X)
-        if n_samples < self.n_clusters:
-            raise ValueError(f"n_samples={n_samples} should be >= n_clusters={self.n_clusters}")
+
+        self._check_params(X)
+        random_state = check_random_state(self.random_state).to_numpy()
 
         tol = _tolerance(X, self.tol)
 
@@ -752,13 +778,6 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
         if hasattr(init, '__array__'):
             init = check_array(init, dtype=X.dtype.type, copy=True, order='C')
             _validate_center_shape(X, self.n_clusters, init)
-
-            if n_init != 1:  # pragma: no cover
-                warnings.warn(
-                    'Explicit initial center position passed: '
-                    'performing only one init in k-means instead of n_init=%d'
-                    % n_init, RuntimeWarning, stacklevel=2)
-                n_init = 1
 
         # subtract of mean of x for more accurate distance computations
         X_mean = None
@@ -775,38 +794,24 @@ class KMeans(TransformerMixin, ClusterMixin, BaseEstimator):
 
         best_labels, best_inertia, best_centers = None, None, None
 
-        algorithm = self.algorithm
-        if algorithm == "elkan" and self.n_clusters == 1:  # pragma: no cover
-            warnings.warn("algorithm='elkan' doesn't make sense for a single "
-                          "cluster. Using 'full' instead.", RuntimeWarning)
-            algorithm = "full"
-
-        if algorithm == "auto":
-            # note(xuye.qin):
-            # Different from scikit-learn,
-            # for now, full seems more efficient when data is large,
-            # elkan needs to be tuned more
-            # old: algorithm = "full" if self.n_clusters == 1 else "elkan"
-            algorithm = "full"
-
-        if algorithm == "full":
+        if self._algorithm == "full":
             kmeans_single = _kmeans_single_lloyd
-        elif algorithm == "elkan":
+        else:
             kmeans_single = _kmeans_single_elkan
-        else:  # pragma: no cover
-            raise ValueError(f"Algorithm must be 'auto', 'full' or 'elkan', got {algorithm}")
 
-        # seeds for the initializations of the kmeans runs.
-        seeds = random_state.randint(np.iinfo(np.int32).max, size=n_init)
+        for i in range(self._n_init):  # pylint: disable=unused-variable
+            # Initialize centers
+            centers_init = _init_centroids(
+                X, self.n_clusters, init, random_state=random_state,
+                x_squared_norms=x_squared_norms,
+                oversampling_factor=self.oversampling_factor,
+                init_iter=self.init_iter)
 
-        for seed in seeds:
             # run a k-means once
             labels, inertia, centers, n_iter_ = kmeans_single(
-                X, sample_weight, self.n_clusters, max_iter=self.max_iter,
-                init=init, verbose=self.verbose, tol=tol,
-                x_squared_norms=x_squared_norms, random_state=seed,
-                oversampling_factor=self.oversampling_factor,
-                init_iter=self.init_iter, X_mean=X_mean,
+                X, sample_weight, centers_init, self.n_clusters,
+                max_iter=self.max_iter, verbose=self.verbose, tol=tol,
+                x_squared_norms=x_squared_norms, X_mean=X_mean,
                 session=session, run_kwargs=run_kwargs)
             inertia = inertia.fetch(session=session)
             # determine if these results are the best so far
