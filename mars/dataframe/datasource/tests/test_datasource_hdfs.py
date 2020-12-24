@@ -12,23 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
-import unittest
 from io import BytesIO, StringIO
 
 import pandas as pd
 import numpy as np
 
 import mars.dataframe as md
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, require_hadoop
 
 
 TEST_DIR = '/tmp/test'
 
 
-@unittest.skipIf(not os.environ.get('WITH_HADOOP'), 'Only run when hdfs is installed')
-class TestHDFS(TestBase):
+@require_hadoop
+class Test(TestBase):
     def setUp(self):
         super().setUp()
 
@@ -111,24 +109,3 @@ class TestHDFS(TestBase):
         df = md.read_parquet(f'hdfs://localhost:8020{TEST_DIR}/test_partitioned')
         res = df.to_pandas()
         pd.testing.assert_frame_equal(res, pd.concat([test_df, test_df2]))
-
-    def testToParquetExecution(self):
-        test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                                'b': [f's{i}' for i in range(10)],
-                                'c': np.random.rand(10), })
-        df = md.DataFrame(test_df, chunk_size=5)
-
-        dir_name = f'hdfs://localhost:8020{TEST_DIR}/test_to_parquet/'
-        self.hdfs.mkdir(dir_name)
-        df.to_parquet(dir_name).execute()
-
-        result = md.read_parquet(dir_name).to_pandas()
-        pd.testing.assert_frame_equal(result.reset_index(drop=True), test_df)
-
-        # test wildcard
-        dir_name = f'hdfs://localhost:8020{TEST_DIR}/test_to_parquet2/*.parquet'
-        self.hdfs.mkdir(dir_name)
-        df.to_parquet(dir_name).execute()
-
-        result = md.read_parquet(dir_name).to_pandas()
-        pd.testing.assert_frame_equal(result.reset_index(drop=True), test_df)
