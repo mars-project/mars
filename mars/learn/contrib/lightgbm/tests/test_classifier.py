@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 
 import numpy as np
+import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
@@ -134,3 +137,36 @@ class Test(unittest.TestCase):
         proba_result = predict_proba(classifier, X_df)
         self.assertEqual(proba_result.ndim, 2)
         self.assertEqual(proba_result.shape[0], len(self.X))
+
+    def testLocalClassifierFromToParquet(self):
+        n_rows = 1000
+        n_columns = 10
+        rs = np.random.RandomState(0)
+        X = rs.rand(n_rows, n_columns)
+        y = (rs.rand(n_rows) > 0.5).astype(np.int32)
+
+        # test with existing model
+        classifier = lightgbm.LGBMClassifier(n_estimators=2)
+        classifier.fit(X, y, verbose=True)
+
+        with tempfile.TemporaryDirectory() as d:
+            f_name = os.path.join(d, 'data.parquet')
+            r_name = os.path.join(d, 'result.parquet')
+
+            pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)]) \
+                .to_parquet(f_name)
+
+            df = md.read_parquet(f_name)
+            model = LGBMClassifier()
+            model.load_model(classifier)
+            result = model.predict(df, run=False)
+            r = md.DataFrame(result).to_parquet(r_name)
+
+            # tiles to ensure no iterative tiling exists
+            r.tiles()
+            r.execute()
+
+            ret = pd.read_parquet(r_name).iloc[: 0].to_numpy()
+            expected = classifier.predict(X)
+            expected = np.stack([expected, 1 - expected]).argmax()
+            np.testing.assert_array_equal(ret, expected)
