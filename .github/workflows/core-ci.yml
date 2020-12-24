@@ -36,6 +36,9 @@ jobs:
         source ./.github/workflows/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
 
+        # workaround
+        pip install scikit-learn\<0.24.0
+
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
         if [[ $UNAME == "windows" ]]; then
