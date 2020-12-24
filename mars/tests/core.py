@@ -352,6 +352,13 @@ def require_cudf(func):
     return func
 
 
+def require_hadoop(func):
+    if pytest:
+        func = pytest.mark.hadoop(func)
+    func = unittest.skipIf(not os.environ.get('WITH_HADOOP'), 'Only run when hadoop is installed')(func)
+    return func
+
+
 def create_actor_pool(*args, **kwargs):
     import gevent.socket
     from mars.actors import create_actor_pool as new_actor_pool

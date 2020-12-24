@@ -12,23 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
-import unittest
 from io import BytesIO, StringIO
 
 import pandas as pd
 import numpy as np
 
 import mars.dataframe as md
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, require_hadoop
 
 
 TEST_DIR = '/tmp/test'
 
 
-@unittest.skipIf(not os.environ.get('WITH_HADOOP'), 'Only run when hdfs is installed')
-class TestHDFS(TestBase):
+@require_hadoop
+class Test(TestBase):
     def setUp(self):
         super().setUp()
 

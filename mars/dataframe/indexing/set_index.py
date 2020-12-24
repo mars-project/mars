@@ -59,20 +59,15 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
                                   columns_value=parse_index(new_df.columns, store_data=True))
 
     @classmethod
-    def tile(cls, op):
-        in_df = op.inputs[0]
-        out_df = op.outputs[0]
-
-        if not isinstance(op.keys, str):
+    def _tile_column_axis_n_chunk(cls, op, in_df, out_df, out_chunks):
+        if not isinstance(op.keys, str):  # pragma: no cover
             raise NotImplementedError('DataFrame.set_index only support label')
-        if op.verify_integrity:
+        if op.verify_integrity:  # pragma: no cover
             raise NotImplementedError('DataFrame.set_index not support verify_integrity yet')
-
-        out_chunks = []
 
         try:
             column_index = in_df.columns_value.to_pandas().get_loc(op.keys)
-        except KeyError:
+        except KeyError:  # pragma: no cover
             raise NotImplementedError('The new index label must be a column of the original dataframe')
 
         chunk_index = np.searchsorted(np.cumsum(in_df.nsplits[1]), column_index + 1)
@@ -94,6 +89,30 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
                                              columns_value=columns)
                 out_chunks.append(out_chunk)
 
+    @classmethod
+    def _tile_column_axis_1_chunk(cls, op, in_df, out_df, out_chunks):
+        out_pd_index = out_df.index_value.to_pandas()
+        for c in in_df.chunks:
+            chunk_op = op.copy().reset_key()
+            chunk_shape = (c.shape[0], out_df.shape[1])
+            index_value = parse_index(out_pd_index, c)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
+                                           dtypes=out_df.dtypes, index=c.index,
+                                           index_value=index_value,
+                                           columns_value=out_df.columns_value)
+            out_chunks.append(out_chunk)
+
+    @classmethod
+    def tile(cls, op):
+        in_df = op.inputs[0]
+        out_df = op.outputs[0]
+
+        out_chunks = []
+        if in_df.chunk_shape[1] > 1:
+            cls._tile_column_axis_n_chunk(op, in_df, out_df, out_chunks)
+        else:
+            cls._tile_column_axis_1_chunk(op, in_df, out_df, out_chunks)
+
         new_op = op.copy()
         columns_nsplits = list(in_df.nsplits[1])
         if op.drop:
@@ -107,14 +126,25 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        index_chunk, input_chunk = op.inputs
-        # Optimization: we don't need to get value of the column that is set as new index.
-        if input_chunk.key == index_chunk.key:
-            new_index = op.keys
+
+        if len(op.inputs) == 2:
+            # axis 1 has more than 1 chunk
+            index_chunk, input_chunk = op.inputs
+            # Optimization: we don't need to get value of the column
+            # that is set as new index.
+            if input_chunk.key == index_chunk.key:
+                new_index = op.keys
+            else:
+                new_index = ctx[index_chunk.key][op.keys]
+            ctx[chunk.key] = ctx[input_chunk.key].set_index(
+                new_index, drop=op.drop, append=op.append,
+                verify_integrity=op.verify_integrity)
         else:
-            new_index = ctx[index_chunk.key][op.keys]
-        ctx[chunk.key] = ctx[input_chunk.key].set_index(new_index, drop=op.drop, append=op.append,
-                                                        verify_integrity=op.verify_integrity)
+            # axis 1 has 1 chunk
+            inp = ctx[op.inputs[0].key]
+            ctx[chunk.key] = inp.set_index(
+                op.keys, drop=op.drop, append=op.append,
+                verify_integrity=op.verify_integrity)
 
 
 def set_index(df, keys, drop=True, append=False, inplace=False, verify_integrity=False):
