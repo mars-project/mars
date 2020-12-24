@@ -48,6 +48,7 @@ class DataFrame(_Frame, metaclass=InitializerMeta):
             need_repart = num_partitions is not None
         elif isinstance(data, SERIES_TYPE):
             df = data.to_frame()
+            need_repart = num_partitions is not None
         elif isinstance(data, DATAFRAME_TYPE):
             if not hasattr(data, 'data'):
                 # DataFrameData

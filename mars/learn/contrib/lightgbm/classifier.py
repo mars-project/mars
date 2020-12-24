@@ -45,8 +45,3 @@ if lightgbm:
             model = lightgbm.LGBMClassifier(**self.get_params())
             self._copy_extra_params(self, model)
             return model
-
-        def load_model(self, model):
-            self.set_params(**self.get_params())
-            self._copy_extra_params(model, self)
-            return self

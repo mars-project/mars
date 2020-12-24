@@ -96,3 +96,8 @@ class LGBMScikitLearnBase:
 
     def predict_proba(self, X, **kwargs):
         raise NotImplementedError
+
+    def load_model(self, model):
+        self.set_params(**self.get_params())
+        self._copy_extra_params(model, self)
+        return self
