@@ -49,53 +49,6 @@ def where_function(cond, var1, var2):
             return np.where(cond, var1, var2).item()
 
 
-def mean_function(x, skipna=None):
-    return x.sum(skipna=skipna) / x.count()
-
-
-def var_function(x, skipna=None, ddof=1):
-    cnt = x.count()
-    if ddof == 0:
-        return (x ** 2).sum(skipna=skipna) / cnt - (x.sum(skipna=skipna) / cnt) ** 2
-    return ((x ** 2).sum(skipna=skipna) - x.sum(skipna=skipna) ** 2 / cnt) / (cnt - ddof)
-
-
-def sem_function(x, skipna=None, ddof=1):
-    var = var_function(x, skipna=skipna, ddof=ddof)
-    cnt = x.count()
-    return (var / cnt) ** 0.5
-
-
-def skew_function(x, skipna=None, bias=False):
-    cnt = x.count()
-    mean = x.sum(skipna=skipna) / cnt
-    divided = (x ** 3).sum(skipna=skipna) / cnt \
-        - 3 * (x ** 2).sum(skipna=skipna) / cnt * mean \
-        + 2 * mean ** 3
-    var = var_function(x, skipna=skipna, ddof=0)
-    val = where_function(var > 0, divided / var ** 1.5, np.nan)
-    if not bias:
-        val = where_function((var > 0) & (cnt > 2), val * ((cnt * (cnt - 1)) ** 0.5 / (cnt - 2)), np.nan)
-    return val
-
-
-def kurt_function(x, skipna=None, bias=False, fisher=True):
-    cnt = x.count()
-    mean = x.sum(skipna=skipna) / cnt
-    divided = (x ** 4).sum(skipna=skipna) / cnt \
-        - 4 * (x ** 3).sum(skipna=skipna) / cnt * mean \
-        + 6 * (x ** 2).sum(skipna=skipna) / cnt * mean ** 2 \
-        - 3 * mean ** 4
-    var = var_function(x, skipna=skipna, ddof=0)
-    val = where_function(var > 0, divided / var ** 2, np.nan)
-    if not bias:
-        val = where_function((var > 0) & (cnt > 3),
-                             (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3), np.nan)
-    if not fisher:
-        val += 3
-    return val
-
-
 _agg_functions = {
     'sum': lambda x, skipna=None: x.sum(skipna=skipna),
     'prod': lambda x, skipna=None: x.prod(skipna=skipna),
@@ -106,13 +59,13 @@ _agg_functions = {
     'any': lambda x, skipna=None: x.any(skipna=skipna),
     'count': lambda x: x.count(),
     'size': lambda x: x._reduction_size(),
-    'mean': mean_function,
-    'var': var_function,
-    'std': lambda x, skipna=None, ddof=1: var_function(x, skipna=skipna, ddof=ddof) ** 0.5,
-    'sem': sem_function,
-    'skew': skew_function,
-    'kurt': kurt_function,
-    'kurtosis': kurt_function,
+    'mean': lambda x, skipna=None: x.mean(skipna=skipna),
+    'var': lambda x, skipna=None, ddof=1: x.var(skipna=skipna, ddof=ddof),
+    'std': lambda x, skipna=None, ddof=1: x.std(skipna=skipna, ddof=ddof),
+    'sem': lambda x, skipna=None, ddof=1: x.sem(skipna=skipna, ddof=ddof),
+    'skew': lambda x, skipna=None, bias=False: x.skew(skipna=skipna, bias=bias),
+    'kurt': lambda x, skipna=None, bias=False: x.kurt(skipna=skipna, bias=bias),
+    'kurtosis': lambda x, skipna=None, bias=False: x.kurtosis(skipna=skipna, bias=bias),
 }
 
 

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
@@ -35,11 +33,16 @@ class DataFrameVar(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._ddof
 
     @classmethod
-    def _make_agg_object(cls, op):
-        from .aggregation import var_function
-        pf = functools.partial(var_function, ddof=op.ddof, skipna=op.skipna)
-        pf.__name__ = cls._func_name
-        return pf
+    def get_reduction_callable(cls, op):
+        skipna, ddof = op.skipna, op.ddof
+
+        def var(x):
+            cnt = x.count()
+            if ddof == 0:
+                return (x ** 2).mean(skipna=skipna) - (x.mean(skipna=skipna)) ** 2
+            return ((x ** 2).sum(skipna=skipna) - x.sum(skipna=skipna) ** 2 / cnt) / (cnt - ddof)
+
+        return var
 
 
 def var_series(series, axis=None, skipna=None, level=None, ddof=1, combine_size=None):

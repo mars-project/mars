@@ -22,6 +22,10 @@ class DataFrameAny(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.ANY
     _func_name = 'any'
 
+    @property
+    def is_atomic(self):
+        return True
+
 
 def any_series(df, axis=None, bool_only=None, skipna=None, level=None, combine_size=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na

@@ -130,7 +130,7 @@ class DataFrameNunique(DataFrameReductionOperand, DataFrameReductionMixin):
         return self._use_arrow_dtype
 
     @classmethod
-    def _make_agg_object(cls, op):
+    def get_reduction_callable(cls, op):
         return NuniqueReduction(name=cls._func_name, axis=op.axis, dropna=op.dropna,
                                 use_arrow_dtype=op.use_arrow_dtype, is_gpu=op.is_gpu())
 

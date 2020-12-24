@@ -39,8 +39,12 @@ class DataFrameStrConcat(DataFrameReductionOperand, DataFrameReductionMixin):
     def get_reduction_args(self, axis=None):
         return dict(sep=self._sep, na_rep=self._na_rep)
 
+    @property
+    def is_atomic(self):
+        return True
+
     @classmethod
-    def _make_agg_object(cls, op):
+    def get_reduction_callable(cls, op):
         sep, na_rep = op.sep, op.na_rep
 
         def str_concat(obj):

@@ -32,6 +32,10 @@ class DataFrameCustomReduction(DataFrameReductionOperand, DataFrameReductionMixi
     def custom_reduction(self):
         return self._custom_reduction
 
+    @property
+    def is_atomic(self):
+        return True
+
     def get_reduction_args(self, axis=None):
         return dict()
 

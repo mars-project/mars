@@ -22,6 +22,10 @@ class DataFrameMax(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.MAX
     _func_name = 'max'
 
+    @property
+    def is_atomic(self):
+        return True
+
 
 def max_series(df, axis=None, skipna=None, level=None, combine_size=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
