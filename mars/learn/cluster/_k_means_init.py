@@ -200,9 +200,9 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
             [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            ctx[op.outputs[0].key], _ = _kmeans_plusplus(
+            ctx[op.outputs[0].key] = _kmeans_plusplus(
                 x, op.n_clusters, x_squared_norms=x_squared_norms, random_state=op.state,
-                n_local_trials=op.n_local_trials)
+                n_local_trials=op.n_local_trials)[0]
 
 
 ###############################################################################
