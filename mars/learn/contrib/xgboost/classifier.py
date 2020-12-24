@@ -61,6 +61,7 @@ if xgboost:
         def predict(self, data, **kw):
             session = kw.pop('session', None)
             run_kwargs = kw.pop('run_kwargs', dict())
+            run = kw.pop('run', True)
             if kw:
                 raise TypeError("predict got an unexpected "
                                 f"keyword argument '{next(iter(kw))}'")
@@ -69,7 +70,8 @@ if xgboost:
                 prediction = mt.argmax(prob, axis=1)
             else:
                 prediction = (prob > 0.5).astype(mt.int64)
-            prediction.execute(session=session, **run_kwargs)
+            if run:
+                prediction.execute(session=session, **run_kwargs)
             return prediction
 
         def predict_proba(self, data, ntree_limit=None, **kw):

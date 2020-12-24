@@ -103,8 +103,9 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
 
         # make sure only 1 chunk on the column axis
-        check_chunks_unknown_shape([in_df], TilesError)
-        in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
+        if in_df.chunk_shape[1] > 1:
+            check_chunks_unknown_shape([in_df], TilesError)
+            in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
 
         out_chunks = []
         for chunk in in_df.chunks:

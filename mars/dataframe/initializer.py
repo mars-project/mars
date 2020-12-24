@@ -46,6 +46,8 @@ class DataFrame(_Frame, metaclass=InitializerMeta):
                 data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
             need_repart = num_partitions is not None
+        elif isinstance(data, SERIES_TYPE):
+            df = data.to_frame()
         elif isinstance(data, DATAFRAME_TYPE):
             if not hasattr(data, 'data'):
                 # DataFrameData
