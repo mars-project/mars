@@ -186,16 +186,23 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
     @classmethod
     def execute(cls, ctx, op: "KMeansPlusPlusInit"):
         try:
-            from sklearn.cluster._kmeans import _k_init
+            from sklearn.cluster._kmeans import _kmeans_plusplus
         except ImportError:  # pragma: no cover
-            from sklearn.cluster.k_means_ import _k_init
+            try:
+                from sklearn.cluster._kmeans import _k_init
+            except ImportError:
+                from sklearn.cluster.k_means_ import _k_init
+
+            def _kmeans_plusplus(*args, **kwargs):
+                return _k_init(*args, **kwargs), None
 
         (x, x_squared_norms), device_id, _ = as_same_device(
             [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            ctx[op.outputs[0].key] = _k_init(x, op.n_clusters, x_squared_norms,
-                                             op.state, op.n_local_trials)
+            ctx[op.outputs[0].key], _ = _kmeans_plusplus(
+                x, op.n_clusters, x_squared_norms=x_squared_norms, random_state=op.state,
+                n_local_trials=op.n_local_trials)
 
 
 ###############################################################################
