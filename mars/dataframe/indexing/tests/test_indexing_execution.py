@@ -36,22 +36,24 @@ class Test(TestBase):
     def testSetIndex(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
-        df2 = md.DataFrame(df1, chunk_size=2)
 
-        expected = df1.set_index('y', drop=True)
-        df3 = df2.set_index('y', drop=True)
-        pd.testing.assert_frame_equal(
-            expected, self.executor.execute_dataframe(df3, concat=True)[0])
+        for chunk_size in [2, (2, 3)]:
+            df2 = md.DataFrame(df1, chunk_size=chunk_size)
 
-        expected = df1.set_index('y', drop=False)
-        df4 = df2.set_index('y', drop=False)
-        pd.testing.assert_frame_equal(
-            expected, self.executor.execute_dataframe(df4, concat=True)[0])
+            expected = df1.set_index('y', drop=True)
+            df3 = df2.set_index('y', drop=True)
+            pd.testing.assert_frame_equal(
+                expected, self.executor.execute_dataframe(df3, concat=True)[0])
 
-        expected = df1.set_index('y')
-        df2.set_index('y', inplace=True)
-        pd.testing.assert_frame_equal(
-            expected, self.executor.execute_dataframe(df2, concat=True)[0])
+            expected = df1.set_index('y', drop=False)
+            df4 = df2.set_index('y', drop=False)
+            pd.testing.assert_frame_equal(
+                expected, self.executor.execute_dataframe(df4, concat=True)[0])
+
+            expected = df1.set_index('y')
+            df2.set_index('y', inplace=True)
+            pd.testing.assert_frame_equal(
+                expected, self.executor.execute_dataframe(df2, concat=True)[0])
 
     def testILocGetItem(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],

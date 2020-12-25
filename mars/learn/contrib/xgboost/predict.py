@@ -22,7 +22,8 @@ from ....serialize import KeyField, BytesField
 from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
 from ....dataframe.utils import parse_index
 from ....tensor.core import TENSOR_TYPE, TensorOrder
-from ....utils import register_tokenizer
+from ....tiles import TilesError
+from ....utils import register_tokenizer, check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin, OutputType
 from .dmatrix import ToDMatrix, check_data
 
@@ -84,6 +85,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         out_chunks = []
         data = op.data
         if data.chunk_shape[1] > 1:
+            check_chunks_unknown_shape([op.data], TilesError)
             data = data.rechunk({1: op.data.shape[1]})._inplace_tile()
         for in_chunk in data.chunks:
             chunk_op = op.copy().reset_key()

@@ -65,6 +65,14 @@ class Test(TestBase):
         self.assertEqual(len(results), 10)
         pd.testing.assert_frame_equal(pd.concat(results), raw)
 
+        # from mars series
+        raw_s = np.random.rand(100)
+        s = md.Series(raw_s, chunk_size=20)
+        r = md.DataFrame(s, num_partitions=10)
+        results = self.executor.execute_dataframe(r)
+        self.assertEqual(len(results), 10)
+        pd.testing.assert_frame_equal(pd.concat(results), pd.DataFrame(raw_s))
+
         # test check instance
         r = r * 2
         self.assertIsInstance(r, md.DataFrame)
