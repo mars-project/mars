@@ -33,10 +33,13 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
     _name = StringField('name')
     _col_level = AnyField('col_level')
     _col_fill = AnyField('col_fill')
+    _incremental_index = BoolField('incremental_index')
 
-    def __init__(self, level=None, drop=None, name=None, col_level=None, col_fill=None, output_types=None, **kwargs):
+    def __init__(self, level=None, drop=None, name=None, col_level=None, col_fill=None,
+                 incremental_index=None, output_types=None, **kwargs):
         super().__init__(_level=level, _drop=drop, _name=name, _col_level=col_level,
-                         _col_fill=col_fill, _output_types=output_types, **kwargs)
+                         _col_fill=col_fill, _incremental_index=incremental_index,
+                         _output_types=output_types, **kwargs)
 
     @property
     def level(self):
@@ -58,8 +61,12 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
     def col_fill(self):
         return self._col_fill
 
+    @property
+    def incremental_index(self):
+        return self._incremental_index
+
     @classmethod
-    def _tile_series(cls, op):
+    def _tile_series(cls, op: "DataFrameResetIndex"):
         out_chunks = []
         out = op.outputs[0]
         is_range_index = out.index_value.has_value()
@@ -78,7 +85,8 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
                 out_chunk = chunk_op.new_chunk([c], shape=shape, index=c.index + (0,), dtypes=out.dtypes,
                                                index_value=index_value, columns_value=out.columns_value)
             out_chunks.append(out_chunk)
-        if not is_range_index and isinstance(out.index_value._index_value, IndexValue.RangeIndex):
+        if not is_range_index and isinstance(out.index_value.value, IndexValue.RangeIndex) and \
+                op.incremental_index:
             out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         if op.drop:
@@ -92,7 +100,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
                                          dtypes=out.dtypes)
 
     @classmethod
-    def _tile_dataframe(cls, op):
+    def _tile_dataframe(cls, op: "DataFrameResetIndex"):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
         added_columns_num = len(out_df.dtypes) - len(in_df.dtypes)
@@ -122,7 +130,7 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
                                                index=c.index, columns_value=c.columns_value, dtypes=c.dtypes)
             out_chunks.append(new_chunk)
         if not index_has_value or chunk_has_nan:
-            if isinstance(out_df.index_value._index_value, IndexValue.RangeIndex):
+            if isinstance(out_df.index_value.value, IndexValue.RangeIndex) and op.incremental_index:
                 out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         columns_splits = list(in_df.nsplits[1])
@@ -205,7 +213,8 @@ class DataFrameResetIndex(DataFrameOperand, DataFrameOperandMixin):
             return self._call_series(a)
 
 
-def df_reset_index(df, level=None, drop=False, inplace=False, col_level=0, col_fill=''):
+def df_reset_index(df, level=None, drop=False, inplace=False, col_level=0,
+                   col_fill='', incremental_index=False):
     """
     Reset the index, or a level of it.
 
@@ -230,6 +239,12 @@ def df_reset_index(df, level=None, drop=False, inplace=False, col_level=0, col_f
     col_fill : object, default ''
         If the columns have multiple levels, determines how the other
         levels are named. If None then the index name is repeated.
+    incremental_index: bool, default False
+        Ensure RangeIndex incremental, when output DataFrame has multiple chunks,
+        ensuring index incremental costs more computation,
+        so by default, each chunk will have index which starts from 0,
+        setting incremental_index=True，reset_index will garantee that
+        output DataFrame's index is from 0 to n - 1.
 
     Returns
     -------
@@ -351,7 +366,8 @@ def df_reset_index(df, level=None, drop=False, inplace=False, col_level=0, col_f
     monkey         mammal    NaN    jump
     """
     op = DataFrameResetIndex(level=level, drop=drop, col_level=col_level,
-                             col_fill=col_fill, output_types=[OutputType.dataframe])
+                             col_fill=col_fill, incremental_index=incremental_index,
+                             output_types=[OutputType.dataframe])
     ret = op(df)
     if not inplace:
         return ret
@@ -359,7 +375,8 @@ def df_reset_index(df, level=None, drop=False, inplace=False, col_level=0, col_f
         df.data = ret.data
 
 
-def series_reset_index(series, level=None, drop=False, name=None, inplace=False):
+def series_reset_index(series, level=None, drop=False, name=None,
+                       inplace=False, incremental_index=False):
     """
     Generate a new DataFrame or Series with the index reset.
 
@@ -381,6 +398,12 @@ def series_reset_index(series, level=None, drop=False, name=None, inplace=False)
         when `drop` is True.
     inplace : bool, default False
         Modify the Series in place (do not create a new object).
+    incremental_index: bool, default False
+        Ensure RangeIndex incremental, when output Series has multiple chunks,
+        ensuring index incremental costs more computation,
+        so by default, each chunk will have index which starts from 0,
+        setting incremental_index=True，reset_index will garantee that
+        output Series's index is from 0 to n - 1.
 
     Returns
     -------
@@ -471,7 +494,9 @@ def series_reset_index(series, level=None, drop=False, name=None, inplace=False)
     2  baz  one    2
     3  baz  two    3
     """
-    op = DataFrameResetIndex(level=level, drop=drop, name=name, output_types=[OutputType.series])
+    op = DataFrameResetIndex(level=level, drop=drop, name=name,
+                             incremental_index=incremental_index,
+                             output_types=[OutputType.series])
     ret = op(series)
     if not inplace:
         return ret
