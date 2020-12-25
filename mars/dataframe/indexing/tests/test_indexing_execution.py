@@ -708,7 +708,7 @@ class Test(TestBase):
         df1 = md.DataFrame(data1, chunk_size=5)
         data2 = pd.DataFrame(np.random.rand(10, 3), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
         df2 = md.DataFrame(data2, chunk_size=6)
-        df = (df1 + df2).reset_index()
+        df = (df1 + df2).reset_index(incremental_index=True)
         result = sess.run(df)
         pd.testing.assert_index_equal(result.index, pd.RangeIndex(12))
         # Inconsistent with Pandas when input dataframe's shape is unknown.
@@ -720,7 +720,7 @@ class Test(TestBase):
         series1 = md.Series(data1, chunk_size=3)
         data2 = pd.Series(np.random.rand(10,), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
         series2 = md.Series(data2, chunk_size=3)
-        df = (series1 + series2).reset_index()
+        df = (series1 + series2).reset_index(incremental_index=True)
         result = sess.run(df)
         pd.testing.assert_index_equal(result.index, pd.RangeIndex(12))
         # Inconsistent with Pandas when input dataframe's shape is unknown.
@@ -737,7 +737,7 @@ class Test(TestBase):
         data = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
         df = md.DataFrame(data, chunk_size=3)
 
-        r = df.sort_values('a').reset_index(drop=True)
+        r = df.sort_values('a').reset_index(drop=True, incremental_index=True)
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = data.sort_values('a').reset_index(drop=True)
         pd.testing.assert_frame_equal(result, expected)
