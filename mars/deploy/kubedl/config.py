@@ -28,6 +28,7 @@ class ResourceConfig:
     """
     Configuration builder for Kubernetes computation resources
     """
+
     def __init__(self, cpu, memory):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
@@ -89,7 +90,6 @@ class ReplicaSpecConfig:
     def build_template_spec(self):
         return _remove_nones({
             'serviceAccountName': DEFAULT_SERVICE_ACCOUNT_NAME,
-            'tolerations': [{'operator': 'Exists'}],
             'nodeSelector': self._node_selectors,
             'containers': [self.build_container()],
         })
@@ -111,7 +111,7 @@ class MarsReplicaSpecConfig(ReplicaSpecConfig):
     service_name = None
     service_label = None
 
-    def __init__(self, image, replicas, cpu=None, memory=None, limit_resources=False,
+    def __init__(self, image, replicas, cpu=None, memory=None, limit_resources_ratio=1,
                  modules=None, node_selectors=None):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
@@ -122,9 +122,11 @@ class MarsReplicaSpecConfig(ReplicaSpecConfig):
         else:
             self._modules = modules
 
-        res = ResourceConfig(cpu, memory) if cpu or memory else None
-        super().__init__(self.service_label, image, replicas, resource_request=res,
-                         resource_limit=res if limit_resources else None,
+        res_request = ResourceConfig(cpu, memory) if cpu or memory else None
+        res_limit = ResourceConfig(cpu * limit_resources_ratio,
+                                   memory * limit_resources_ratio) if cpu or memory else None
+        super().__init__(self.service_label, image, replicas, resource_request=res_request,
+                         resource_limit=res_limit,
                          node_selectors=node_selectors)
 
     def build_container_command(self):
@@ -147,7 +149,8 @@ class MarsWorkerSpecConfig(MarsReplicaSpecConfig):
     def __init__(self, *args, **kwargs):
         self._cache_mem = kwargs.pop('cache_mem', None)
         self._spill_dirs = kwargs.pop('spill_dirs', None) or ()
-        kwargs['limit_resources'] = kwargs.get('limit_resources', True)
+        # set limits as 2*requests for worker replica defaulted.
+        kwargs['limit_resources_ratio'] = kwargs.get('limit_resources_ratio', 2)
         super().__init__(*args, **kwargs)
 
     @property
