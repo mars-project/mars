@@ -91,11 +91,16 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
         out_df = op.outputs[0]
         inputs = op.inputs
+        axis = op.axis
 
-        check_chunks_unknown_shape(inputs, TilesError)
+        if not all(inputs[i].nsplits[1 - axis] == inputs[i + 1].nsplits[1 - axis]
+                   for i in range(len(inputs) - 1)):
+            # need rechunk
+            check_chunks_unknown_shape(inputs, TilesError)
+            normalized_nsplits = {1 - axis: inputs[0].nsplits[1 - axis]}
+            inputs = [inp.rechunk(normalized_nsplits)._inplace_tile()
+                      for inp in inputs]
 
-        normalized_nsplits = {1: inputs[0].nsplits[1]} if op.axis == 0 else {0: inputs[0].nsplits[0]}
-        inputs = [item.rechunk(normalized_nsplits)._inplace_tile() for item in inputs]
         out_chunks = []
         nsplits = []
         cum_index = 0
