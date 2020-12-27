@@ -246,7 +246,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             other = op.rhs
             func_name = getattr(cls, '_func_name')
         if df.ndim == 2:
-            kw = dict({'axis': op.axis})
+            kw = dict(axis=op.axis)
         else:
             kw = dict()
         if op.fill_value is not None:
