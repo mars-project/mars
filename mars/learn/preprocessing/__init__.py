@@ -13,4 +13,6 @@
 # limitations under the License.
 
 
+from ._data import MinMaxScaler
+from ._data import minmax_scale
 from .normalize import normalize

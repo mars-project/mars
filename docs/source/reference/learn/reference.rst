@@ -158,6 +158,8 @@ Preprocessing and Normalization
 .. autosummary::
    :toctree: generated/
 
+   preprocessing.MinMaxScaler
+   preprocessing.minmax_scale
    preprocessing.normalize
 
 .. _semi_supervised_ref:
