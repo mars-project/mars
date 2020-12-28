@@ -12,5 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+try:
+    from ._data import MinMaxScaler
+    from ._data import minmax_scale
+except ImportError:  # pragma: no cover
+    # sklearn not installed
+    pass
 from .normalize import normalize

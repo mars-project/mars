@@ -143,7 +143,7 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
 
 
 def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
-           sparse=False):
+           sparse=False) -> Tensor:
     order = order or 'K'
     if isinstance(data, TENSOR_TYPE):
         if isinstance(data, TensorData):

@@ -16,9 +16,6 @@ import unittest
 
 import numpy as np
 import scipy.sparse as sps
-
-from mars.session import new_session
-
 try:
     import sklearn
 
@@ -26,8 +23,9 @@ try:
 except ImportError:
     sklearn = None
 
-from mars.tests.core import ExecutorForTest
 from mars import tensor as mt
+from mars.session import new_session
+from mars.tests.core import ExecutorForTest
 from mars.learn.preprocessing import normalize
 
 
