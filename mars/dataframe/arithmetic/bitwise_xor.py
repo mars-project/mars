@@ -22,9 +22,6 @@ from .core import DataFrameBinopUfunc
 class DataFrameXor(DataFrameBinopUfunc):
     _op_type_ = OperandDef.XOR
 
-    _func_name = '__xor__'
-    _rfunc_name = '__rxor__'
-
     @classproperty
     def _operator(self):
         return operator.xor
