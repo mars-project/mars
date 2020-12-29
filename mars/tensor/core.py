@@ -544,7 +544,7 @@ class Tensor(HasShapeTileableEnity):
 
         See Also
         --------
-        mt.partition : Return a parititioned copy of an tensor.
+        mt.partition : Return a partitioned copy of an tensor.
         argpartition : Indirect partition.
         sort : Full sort.
 
