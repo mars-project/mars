@@ -224,6 +224,8 @@ class Test(unittest.TestCase):
             sess.fetch(df1)
 
         self.assertIs(df1.execute(), df1)
+        self.assertEqual(len(df1[df1['a'] > 1].to_pandas(fetch_kwargs={'batch_size': 2})), 0)
+        self.assertEqual(len(df1[df1['a'] > 1]['a'].to_pandas(fetch_kwargs={'batch_size': 2})), 0)
 
         # modify result
         executor = sess._sess._executor
@@ -233,6 +235,7 @@ class Test(unittest.TestCase):
         expected.iloc[:2, :2] = data1.iloc[:2, :2] * 3
 
         pd.testing.assert_frame_equal(df1.to_pandas(), expected)
+        pd.testing.assert_frame_equal(df1.to_pandas(fetch_kwargs={'batch_size': 2}), expected)
 
     def testClosedSession(self):
         session = new_session()
@@ -618,6 +621,9 @@ class Test(unittest.TestCase):
     def testDataFrameIter(self):
         raw_data = pd.DataFrame(np.random.randint(1000, size=(20, 10)))
         df = md.DataFrame(raw_data, chunk_size=5)
+
+        for i, batch in enumerate(df.iterbatch(batch_size=15)):
+            pd.testing.assert_frame_equal(batch, raw_data.iloc[i * 15: (i + 1) * 15])
 
         i = 0
         for result_row, expect_row in zip(df.iterrows(batch_size=15),

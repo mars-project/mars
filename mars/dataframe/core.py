@@ -378,6 +378,36 @@ class _ToPandasMixin(_ExecuteAndFetchMixin):
         return self._execute_and_fetch(session=session, **kw)
 
 
+class _BatchedFetcher:
+    __slots__ = ()
+
+    def _iter(self, batch_size=1000, session=None):
+        from .indexing.iloc import iloc
+
+        size = self.shape[0]
+        n_batch = ceildiv(size, batch_size)
+
+        if n_batch > 1:
+            for i in range(n_batch):
+                batch_data = iloc(self)[batch_size * i: batch_size * (i + 1)]
+                yield batch_data._fetch(session=session)
+        else:
+            yield self._fetch(session=session)
+
+    def iterbatch(self, batch_size=1000, session=None, **kw):
+        # trigger execution
+        self.execute(session=session, **kw)
+        return self._iter(batch_size=batch_size, session=session)
+
+    def fetch(self, session=None, **kw):
+        batch_size = kw.pop('batch_size', 1000)
+        if len(kw) > 0:  # pragma: no cover
+            raise TypeError(
+                f"'{next(iter(kw))}' is an invalid keyword argument for this function")
+        batches = list(self._iter(batch_size=batch_size, session=session))
+        return pd.concat(batches)
+
+
 class IndexData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = ()
 
@@ -758,7 +788,7 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
         return series_from_tensor(in_tensor, index=index, name=name)
 
 
-class SeriesData(BaseSeriesData):
+class SeriesData(_BatchedFetcher, BaseSeriesData):
     _type_name = 'Series'
 
     @classmethod
@@ -1043,7 +1073,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
         return [self.index, self.columns]
 
 
-class DataFrameData(BaseDataFrameData):
+class DataFrameData(_BatchedFetcher, BaseDataFrameData):
     _type_name = 'DataFrame'
 
     def _to_str(self, representation=False):
@@ -1114,26 +1144,13 @@ class DataFrameData(BaseDataFrameData):
             return DataFrameDef
         return super().cls(provider)
 
-    def _iter_wrap(self, method, batch_size, session, **kw):
-        from .indexing.iloc import iloc
-
-        # trigger execution
-        self.execute(session=session)
-
-        size = self.shape[0]
-        n_batch = ceildiv(size, batch_size)
-
-        for i in range(n_batch):
-            batch_data = iloc(self)[size * i: size * (i + 1)] \
-                .fetch(session=session)
-            yield from getattr(batch_data, method)(**kw)
-
     def iterrows(self, batch_size=1000, session=None):
-        return self._iter_wrap('iterrows', batch_size, session)
+        for batch_data in self.iterbatch(batch_size=batch_size, session=session):
+            yield from getattr(batch_data, 'iterrows')()
 
     def itertuples(self, index=True, name='Pandas', batch_size=1000, session=None):
-        return self._iter_wrap('itertuples', batch_size, session,
-                               index=index, name=name)
+        for batch_data in self.iterbatch(batch_size=batch_size, session=session):
+            yield from getattr(batch_data, 'itertuples')(index=index, name=name)
 
 
 class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
