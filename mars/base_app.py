@@ -214,11 +214,11 @@ class BaseApplication(object):
                             self.handle_process_down(stopped)
                 except KeyboardInterrupt:
                     pass
+                except:
+                    logger.exception('Unexpected error occurred in loop')
+                    raise
                 finally:
                     self.stop()
-        except:
-            logger.exception('Unexpected error occurred in loop')
-            raise
         finally:
             self._running = False
 
