@@ -125,17 +125,23 @@ class KubeDLCluster:
     def _create_service(self):
         scheduler_cfg = MarsSchedulerSpecConfig(
             self._image, self._scheduler_num, cpu=self._scheduler_cpu, memory=self._scheduler_mem,
-            node_selectors=self._node_selectors
+            node_selectors=self._node_selectors, modules=self._scheduler_extra_modules,
         )
+        scheduler_cfg.add_simple_envs(self._scheduler_extra_env)
+
         worker_cfg = MarsWorkerSpecConfig(
             self._image, self._worker_num, cpu=self._worker_cpu, memory=self._worker_mem,
             cache_mem=self._worker_cache_mem, spill_dirs=self._worker_spill_paths,
-            node_selectors=self._node_selectors
+            node_selectors=self._node_selectors, modules=self._worker_extra_modules
         )
+        worker_cfg.add_simple_envs(self._worker_extra_env)
+
         web_cfg = MarsWebSpecConfig(
             self._image, self._web_num, cpu=self._web_cpu, memory=self._web_mem,
-            node_selectors=self._node_selectors
+            node_selectors=self._node_selectors, modules=self._web_extra_modules
         )
+        web_cfg.add_simple_envs(self._web_extra_env)
+
         job_cfg = MarsJobConfig(
             job_name=self._job_name, scheduler_config=scheduler_cfg, worker_config=worker_cfg,
             web_config=web_cfg, web_host=self._slb_endpoint
@@ -220,7 +226,7 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
                 scheduler_mem=4 * 1024 ** 3, worker_num=1, worker_cpu=8, worker_mem=32 * 1024 ** 3,
                 worker_spill_paths=None, worker_cache_mem='45%', min_worker_num=None,
                 web_num=1, web_cpu=1, web_mem=4 * 1024 ** 3, slb_endpoint=None, verify_ssl=True,
-                timeout=None, **kwargs):
+                job_name=None, timeout=None, **kwargs):
     worker_spill_paths = worker_spill_paths or ['/tmp/spill-dir']
     cluster = KubeDLCluster(kube_api_client, image=image, scheduler_num=scheduler_num,
                             scheduler_cpu=scheduler_cpu, scheduler_mem=scheduler_mem,
@@ -228,7 +234,7 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
                             worker_spill_paths=worker_spill_paths, worker_cache_mem=worker_cache_mem,
                             min_worker_num=min_worker_num, web_num=web_num, web_cpu=web_cpu,
                             web_mem=web_mem, slb_endpoint=slb_endpoint, verify_ssl=verify_ssl,
-                            timeout=timeout, **kwargs)
+                            job_name=job_name, timeout=timeout, **kwargs)
     client = KubeDLClusterClient(cluster)
     client.start()
     return client
