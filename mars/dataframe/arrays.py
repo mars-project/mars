@@ -105,6 +105,14 @@ class ArrowStringDtypeAlias(ArrowStringDtype):
     name = 'arrow_string'  # register an alias name for compatibility
 
 
+class ArrowListDtypeType(type):
+    """
+    the type of ArrowListDtype, this metaclass determines subclass ability
+    """
+
+    pass
+
+
 class ArrowListDtype(ArrowDtype):
     _metadata = ("_value_type",)
 
@@ -128,11 +136,11 @@ class ArrowListDtype(ArrowDtype):
 
     @property
     def kind(self):
-        return self._value_type.kind
+        return "O"
 
     @property
     def type(self):
-        return self._value_type.type
+        return ArrowListDtypeType
 
     @property
     def name(self):
@@ -653,6 +661,9 @@ class ArrowStringArray(ArrowArray, StringArrayBase):
 
         return set_function_name(method, f"__{op.__name__}__", cls)
 
+    def shift(self, periods: int = 1, fill_value: object = None) -> "ArrowStringArray":
+        return ExtensionArray.shift(self, periods=periods, fill_value=fill_value)
+
     @classmethod
     def _add_arithmetic_ops(cls):
         cls.__add__ = cls._create_arithmetic_method(operator.add)
@@ -759,7 +770,7 @@ class ArrowListArray(ArrowArray):
                         raise TypeError(msg)
                 else:
                     def f(x):
-                        return pd.Series(x).astype(dtype.type).tolist()
+                        return pd.Series(x).astype(dtype.value_type.type).tolist()
 
                     try:
                         arr = pd.Series(self._ndarray)
