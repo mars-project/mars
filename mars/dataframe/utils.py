@@ -480,27 +480,48 @@ def build_empty_df(dtypes, index=None):
     return df
 
 
-def build_df(df_obj, fill_value=1, size=1):
-    empty_df = build_empty_df(df_obj.dtypes, index=df_obj.index_value.to_pandas()[:0])
-    dtypes = empty_df.dtypes
-    record = [_generate_value(dtype, fill_value) for dtype in dtypes]
-    if len(record) != 0:  # columns is empty in some cases
-        if isinstance(empty_df.index, pd.MultiIndex):
-            index = tuple(_generate_value(level.dtype, fill_value) for level in empty_df.index.levels)
-            empty_df = empty_df.reindex(
-                index=pd.MultiIndex.from_tuples([index], names=empty_df.index.names))
-            empty_df.iloc[0] = record
-        else:
-            index = _generate_value(empty_df.index.dtype, fill_value)
-            empty_df.loc[index] = record
+def build_df(df_obj, fill_value=1, size=1, ensure_string=False):
+    dfs = []
+    if not isinstance(size, (list, tuple)):
+        sizes = [size]
+    else:
+        sizes = size
 
-    empty_df = pd.concat([empty_df] * size)
-    # make sure dtypes correct for MultiIndex
-    for i, dtype in enumerate(dtypes.tolist()):
-        s = empty_df.iloc[:, i]
-        if not pd.api.types.is_dtype_equal(s.dtype, dtype):
-            empty_df.iloc[:, i] = s.astype(dtype)
-    return empty_df
+    if not isinstance(fill_value, (list, tuple)):
+        fill_values = [fill_value]
+    else:
+        fill_values = fill_value
+
+    for size, fill_value in zip(sizes, fill_values):
+        empty_df = build_empty_df(df_obj.dtypes, index=df_obj.index_value.to_pandas()[:0])
+        dtypes = empty_df.dtypes
+        record = [_generate_value(dtype, fill_value) for dtype in dtypes]
+        if len(record) != 0:  # columns is empty in some cases
+            if isinstance(empty_df.index, pd.MultiIndex):
+                index = tuple(_generate_value(level.dtype, fill_value) for level in empty_df.index.levels)
+                empty_df = empty_df.reindex(
+                    index=pd.MultiIndex.from_tuples([index], names=empty_df.index.names))
+                empty_df.iloc[0] = record
+            else:
+                index = _generate_value(empty_df.index.dtype, fill_value)
+                empty_df.loc[index] = record
+
+        empty_df = pd.concat([empty_df] * size)
+        # make sure dtypes correct for MultiIndex
+        for i, dtype in enumerate(dtypes.tolist()):
+            s = empty_df.iloc[:, i]
+            if not pd.api.types.is_dtype_equal(s.dtype, dtype):
+                empty_df.iloc[:, i] = s.astype(dtype)
+        dfs.append(empty_df)
+    if len(dfs) == 1:
+        ret_df = dfs[0]
+    else:
+        ret_df = pd.concat(dfs)
+
+    if ensure_string:
+        obj_dtypes = df_obj.dtypes[df_obj.dtypes == np.dtype('O')]
+        ret_df[obj_dtypes.index] = ret_df[obj_dtypes.index].radd('O')
+    return ret_df
 
 
 def build_empty_series(dtype, index=None, name=None):
@@ -509,26 +530,47 @@ def build_empty_series(dtype, index=None, name=None):
                      dtype=dtype, index=index, name=name)
 
 
-def build_series(series_obj, fill_value=1, size=1, name=None):
-    empty_series = build_empty_series(series_obj.dtype, name=name,
-                                      index=series_obj.index_value.to_pandas()[:0])
-    record = _generate_value(series_obj.dtype, fill_value)
-    if isinstance(empty_series.index, pd.MultiIndex):
-        index = tuple(_generate_value(level.dtype, fill_value) for level in empty_series.index.levels)
-        empty_series = empty_series.reindex(
-            index=pd.MultiIndex.from_tuples([index], names=empty_series.index.names))
-        empty_series.iloc[0] = record
+def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=False):
+    seriess = []
+    if not isinstance(size, (list, tuple)):
+        sizes = [size]
     else:
-        if isinstance(empty_series.index.dtype, pd.CategoricalDtype):
-            index = None
-        else:
-            index = _generate_value(empty_series.index.dtype, fill_value)
-        empty_series.loc[index] = record
+        sizes = size
 
-    empty_series = pd.concat([empty_series] * size)
-    # make sure dtype correct for MultiIndex
-    empty_series = empty_series.astype(series_obj.dtype, copy=False)
-    return empty_series
+    if not isinstance(fill_value, (list, tuple)):
+        fill_values = [fill_value]
+    else:
+        fill_values = fill_value
+
+    for size, fill_value in zip(sizes, fill_values):
+        empty_series = build_empty_series(series_obj.dtype, name=name,
+                                          index=series_obj.index_value.to_pandas()[:0])
+        record = _generate_value(series_obj.dtype, fill_value)
+        if isinstance(empty_series.index, pd.MultiIndex):
+            index = tuple(_generate_value(level.dtype, fill_value) for level in empty_series.index.levels)
+            empty_series = empty_series.reindex(
+                index=pd.MultiIndex.from_tuples([index], names=empty_series.index.names))
+            empty_series.iloc[0] = record
+        else:
+            if isinstance(empty_series.index.dtype, pd.CategoricalDtype):
+                index = None
+            else:
+                index = _generate_value(empty_series.index.dtype, fill_value)
+            empty_series.loc[index] = record
+
+        empty_series = pd.concat([empty_series] * size)
+        # make sure dtype correct for MultiIndex
+        empty_series = empty_series.astype(series_obj.dtype, copy=False)
+        seriess.append(empty_series)
+
+    if len(seriess) == 1:
+        ret_series = seriess[0]
+    else:
+        ret_series = pd.concat(seriess)
+
+    if ensure_string and series_obj.dtype == np.dtype('O'):
+        ret_series = ret_series.radd('O')
+    return ret_series
 
 
 def concat_index_value(index_values, store_data=False):

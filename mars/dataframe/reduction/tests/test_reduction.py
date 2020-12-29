@@ -202,7 +202,8 @@ class TestReduction(TestBase):
         reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)()
 
         self.assertIsInstance(reduction_df, Series)
-        self.assertIsInstance(reduction_df.index_value._index_value, IndexValue.RangeIndex)
+        self.assertIsInstance(reduction_df.index_value._index_value,
+                              (IndexValue.RangeIndex, IndexValue.Int64Index))
         self.assertEqual(reduction_df.shape, (10,))
 
         reduction_df = reduction_df.tiles()

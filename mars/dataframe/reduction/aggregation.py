@@ -159,19 +159,9 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 df = df.select_dtypes([np.bool_])
 
         if self.output_types[0] == OutputType.dataframe:
-            test_obj = pd.concat([
-                build_df(df, size=2, fill_value=1),
-                build_df(df, size=2, fill_value=2),
-            ])
-            obj_dtypes = df.dtypes[df.dtypes == np.dtype('O')]
-            test_obj[obj_dtypes.index] = test_obj[obj_dtypes.index].radd('O')
+            test_obj = build_df(df, size=[2, 2], fill_value=[1, 2], ensure_string=True)
         else:
-            test_obj = pd.concat([
-                build_series(df, size=2, fill_value=1, name=df.name),
-                build_series(df, size=2, fill_value=2, name=df.name),
-            ])
-            if df.dtype == np.dtype('O'):
-                test_obj = test_obj.radd('O')
+            test_obj = build_series(df, size=[2, 2], fill_value=[1, 2], name=df.name, ensure_string=True)
 
         result_df = test_obj.agg(self.raw_func, axis=self.axis, **self.raw_func_kw)
 
