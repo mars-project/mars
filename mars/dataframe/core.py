@@ -405,7 +405,7 @@ class _BatchedFetcher:
             raise TypeError(
                 f"'{next(iter(kw))}' is an invalid keyword argument for this function")
         batches = list(self._iter(batch_size=batch_size, session=session))
-        return pd.concat(batches)
+        return pd.concat(batches) if len(batches) > 1 else batches[0]
 
 
 class IndexData(HasShapeTileableData, _ToPandasMixin):
