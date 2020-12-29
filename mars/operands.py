@@ -584,8 +584,10 @@ class MapReduceOperand(Operand):
             inputs = self.inputs or ()
             deps = []
             for inp in inputs:
-                if isinstance(inp.op, (ShuffleProxy, FetchShuffle)):
+                if isinstance(inp.op, ShuffleProxy):
                     deps.extend([(chunk.key, self._shuffle_key) for chunk in inp.inputs or ()])
+                elif isinstance(inp.op, FetchShuffle):
+                    deps.extend([(k, self._shuffle_key) for k in inp.op.to_fetch_keys])
                 else:
                     deps.append(inp.key)
             return deps

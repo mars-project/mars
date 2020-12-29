@@ -76,5 +76,9 @@ class LearnShuffleProxy(ShuffleProxy, LearnOperandMixin):
         if not self.output_types:
             self.output_types = [OutputType.object]
 
+    @classmethod
+    def execute(cls, ctx, op):
+        pass
+
 
 LearnMapReduceOperand = MapReduceOperand
