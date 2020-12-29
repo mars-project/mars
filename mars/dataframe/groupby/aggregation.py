@@ -264,37 +264,37 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _gen_map_chunks(cls, op: "DataFrameGroupByAgg", in_df, out_df, func_infos: ReductionSteps):
-        agg_chunks = []
+        map_chunks = []
         for chunk in in_df.chunks:
             chunk_inputs = [chunk]
-            agg_op = op.copy().reset_key()
+            map_op = op.copy().reset_key()
             # force as_index=True for map phase
-            agg_op.output_types = [OutputType.dataframe]
-            agg_op._groupby_params = agg_op.groupby_params.copy()
-            agg_op._groupby_params['as_index'] = True
-            if isinstance(agg_op._groupby_params['by'], list):
+            map_op.output_types = [OutputType.dataframe]
+            map_op._groupby_params = map_op.groupby_params.copy()
+            map_op._groupby_params['as_index'] = True
+            if isinstance(map_op._groupby_params['by'], list):
                 by = []
-                for v in agg_op._groupby_params['by']:
+                for v in map_op._groupby_params['by']:
                     if isinstance(v, (Base, Entity)):
                         by_chunk = v.cix[chunk.index[0], ]
                         chunk_inputs.append(by_chunk)
                         by.append(by_chunk)
                     else:
                         by.append(v)
-                agg_op._groupby_params['by'] = by
-            agg_op._stage = OperandStage.map
-            agg_op._pre_funcs = func_infos.pre_funcs
-            agg_op._agg_funcs = func_infos.agg_funcs
+                map_op._groupby_params['by'] = by
+            map_op._stage = OperandStage.map
+            map_op._pre_funcs = func_infos.pre_funcs
+            map_op._agg_funcs = func_infos.agg_funcs
             new_index = chunk.index if len(chunk.index) == 2 else (chunk.index[0], 0)
             if op.output_types[0] == OutputType.dataframe:
-                agg_chunk = agg_op.new_chunk(chunk_inputs, shape=out_df.shape, index=new_index,
+                map_chunk = map_op.new_chunk(chunk_inputs, shape=out_df.shape, index=new_index,
                                              index_value=out_df.index_value,
                                              columns_value=out_df.columns_value)
             else:
-                agg_chunk = agg_op.new_chunk(chunk_inputs, shape=(out_df.shape[0], 1), index=new_index,
+                map_chunk = map_op.new_chunk(chunk_inputs, shape=(out_df.shape[0], 1), index=new_index,
                                              index_value=out_df.index_value)
-            agg_chunks.append(agg_chunk)
-        return agg_chunks
+            map_chunks.append(map_chunk)
+        return map_chunks
 
     @classmethod
     def _compile_funcs(cls, op: "DataFrameGroupByAgg", in_df) -> ReductionSteps:

@@ -149,16 +149,14 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             if isinstance(self.by, list):
                 index, types = [], []
                 for k in self.by:
-                    if isinstance(k, str):
-                        if k not in df.dtypes:
-                            raise KeyError(k)
-                        else:
-                            index.append(k)
-                            types.append(df.dtypes[k])
-                    else:
-                        assert isinstance(k, SERIES_TYPE)
+                    if isinstance(k, SERIES_TYPE):
                         index.append(k.name)
                         types.append(k.dtype)
+                    elif k in df.dtypes:
+                        index.append(k)
+                        types.append(df.dtypes[k])
+                    else:
+                        raise KeyError(k)
                 params['key_dtypes'] = pd.Series(types, index=index)
 
         inputs = [df]
@@ -420,9 +418,11 @@ def groupby(df, by=None, level=None, as_index=True, sort=True, group_keys=True):
         raise TypeError('as_index=False only valid with DataFrame')
 
     output_types = [OutputType.dataframe_groupby] if df.ndim == 2 else [OutputType.series_groupby]
-    if isinstance(by, (str, SERIES_TYPE, pd.Series)):
+    if isinstance(by, (SERIES_TYPE, pd.Series)):
         if isinstance(by, pd.Series):
             by = asseries(by)
+        by = [by]
+    elif df.ndim > 1 and by is not None and not isinstance(by, list):
         by = [by]
     op = DataFrameGroupByOperand(by=by, level=level, as_index=as_index, sort=sort,
                                  group_keys=group_keys, output_types=output_types)

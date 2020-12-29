@@ -351,7 +351,7 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
             by = list(by) + [distinct_col]
 
         n = op.n_partition
-        if a.shape[op.axis] < n:
+        if op.sort_type == 'sort_values' and a.shape[op.axis] < n:
             num = n // a.shape[op.axis] + 1
             res = execute_sort_values(xdf.concat([res] * num), op, by=by)
 

@@ -21,9 +21,10 @@ def _install():
     from .core import groupby
     from .aggregation import agg
     from .apply import groupby_apply
-    from .transform import groupby_transform
     from .cum import cumcount, cummin, cummax, cumprod, cumsum
     from .getitem import df_groupby_getitem
+    from .head import head
+    from .transform import groupby_transform
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'groupby', groupby)
@@ -59,6 +60,8 @@ def _install():
         setattr(cls, 'cummax', cummax)
         setattr(cls, 'cumprod', cumprod)
         setattr(cls, 'cumsum', cumsum)
+
+        setattr(cls, 'head', head)
 
     for cls in DATAFRAME_GROUPBY_TYPE:
         setattr(cls, '__getitem__', df_groupby_getitem)

@@ -91,6 +91,15 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              df3.groupby(level=0))
 
+        # test groupby with integer columns
+        df4 = pd.DataFrame([[3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            list('aabaaddce')]).T
+        mdf = md.DataFrame(df4, chunk_size=3)
+        grouped = mdf.groupby(0)
+        assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
+                             df4.groupby(0))
+
         series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
         ms1 = md.Series(series1, chunk_size=3)
         grouped = ms1.groupby(lambda x: x % 3)
@@ -547,6 +556,68 @@ class Test(TestBase):
             r1 = getattr(ms1.groupby(lambda x: x % 2), fun)()
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0].sort_index(),
                                            getattr(series1.groupby(lambda x: x % 2), fun)().sort_index())
+
+    def testGroupByHead(self):
+        df1 = pd.DataFrame({'a': [3, 5, 2, 7, 1, 2, 4, 6, 2, 4],
+                            'b': [8, 3, 4, 1, 8, 2, 2, 2, 2, 3],
+                            'c': [1, 8, 8, 5, 3, 5, 0, 0, 5, 4],
+                            'd': [9, 7, 6, 3, 6, 3, 2, 1, 5, 8]})
+        # test single chunk
+        mdf = md.DataFrame(df1)
+
+        r = mdf.groupby('b').head(1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b').head(1))
+        r = mdf.groupby('b').head(-1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b').head(-1))
+        r = mdf.groupby('b')['a', 'c'].head(1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b')['a', 'c'].head(1))
+
+        # test multiple chunks
+        mdf = md.DataFrame(df1, chunk_size=3)
+
+        r = mdf.groupby('b').head(1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b').head(1))
+
+        # test head with selection
+        r = mdf.groupby('b')['a', 'd'].head(1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b')['a', 'd'].head(1))
+        r = mdf.groupby('b')['c', 'a', 'd'].head(1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                      df1.groupby('b')['c', 'a', 'd'].head(1))
+        r = mdf.groupby('b')['c'].head(1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       df1.groupby('b')['c'].head(1))
+
+        # test single chunk
+        series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3])
+        ms = md.Series(series1)
+
+        r = ms.groupby(lambda x: x % 2).head(1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       series1.groupby(lambda x: x % 2).head(1))
+        r = ms.groupby(lambda x: x % 2).head(-1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       series1.groupby(lambda x: x % 2).head(-1))
+
+        # test multiple chunk
+        ms = md.Series(series1, chunk_size=3)
+
+        r = ms.groupby(lambda x: x % 2).head(1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       series1.groupby(lambda x: x % 2).head(1))
+
+        # test with special index
+        series1 = pd.Series([3, 4, 5, 3, 5, 4, 1, 2, 3], index=[4, 1, 2, 3, 5, 8, 6, 7, 9])
+        ms = md.Series(series1, chunk_size=3)
+
+        r = ms.groupby(lambda x: x % 2).head(1)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
+                                       series1.groupby(lambda x: x % 2).head(1).sort_index())
 
     @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testGroupbyAggWithArrowDtype(self):

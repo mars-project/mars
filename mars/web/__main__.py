@@ -53,6 +53,9 @@ class WebApplication(BaseApplication):
                 time.sleep(0.1)
         except KeyboardInterrupt:
             pass
+        except:  # pragma: no cover
+            logger.exception('Unexpected error occurred when starting Web service')
+            raise
         finally:
             self.stop()
 
