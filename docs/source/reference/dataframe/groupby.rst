@@ -44,6 +44,7 @@ Computations / descriptive stats
    GroupBy.cummin
    GroupBy.cumprod
    GroupBy.cumsum
+   GroupBy.head
    GroupBy.kurt
    GroupBy.kurtosis
    GroupBy.max
