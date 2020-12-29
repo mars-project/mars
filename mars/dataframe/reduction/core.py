@@ -801,6 +801,10 @@ class ReductionCompiler:
                 func_name = func_name_raw = getattr(t.op, '_func_name', None)
                 rfunc_name = getattr(t.op, '_rfunc_name', func_name)
 
+                if func_name is None:
+                    func_name = func_name_raw = getattr(t.op, '_bit_func_name', None)
+                    rfunc_name = getattr(t.op, '_bit_rfunc_name', func_name)
+
                 # handle function name differences between numpy and pandas arithmetic ops
                 if func_name in _func_name_converts:
                     func_name = _func_name_converts[func_name]
