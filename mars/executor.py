@@ -27,7 +27,7 @@ from numbers import Integral
 
 import numpy as np
 
-from .operands import Fetch, ShuffleProxy
+from .operands import Fetch, FetchShuffle
 from .graph import DAG
 from .config import options
 from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
@@ -486,7 +486,12 @@ class GraphExecution:
                         if dep_key in ref_counts:
                             ref_counts[dep_key] -= 1
                             if ref_counts[dep_key] == 0:
-                                del results[dep_key]
+                                try:
+                                    del results[dep_key]
+                                except KeyError:
+                                    if not isinstance(output.inputs[0].op, FetchShuffle):
+                                        # For FetchShuffle, for distributed, data may not exist
+                                        raise
                                 del ref_counts[dep_key]
 
                 # add successors' operands to queue
@@ -1014,7 +1019,6 @@ def ignore(*_):
 
 
 Executor._op_runners[Fetch] = ignore
-Executor._op_runners[ShuffleProxy] = ignore
 
 
 def register(op_cls, handler=None, size_estimator=None):

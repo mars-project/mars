@@ -84,7 +84,7 @@ class Test(unittest.TestCase):
 
     def testRayClusterMode(self):
         with new_session(backend='ray', _load_code_from_local=True).as_default():
-            t = mt.random.rand(100, 4, chunk_size=30)
+            t = mt.random.RandomState(0).rand(100, 4, chunk_size=30)
             df = md.DataFrame(t, columns=list('abcd'))
             r = df.describe().execute()
             self.assertEqual(r.shape, (8, 4))
