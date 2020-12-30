@@ -112,7 +112,7 @@ class RemoteMetaStore:
         return list(self._store.keys())
 
     def delete_keys(self, keys):
-        if not isinstance(keys, (list, tuple)):
+        if not isinstance(keys, list):
             keys = [keys]
         for k in keys:
             del self._store[k]
@@ -186,6 +186,7 @@ class RayExecutor(Executor):
 
         try:
             ray.wait([execute_on_ray.remote(runner, results, op)])
+            return
         except NotImplementedError:
             for op_cls in mapper.keys():
                 if isinstance(op, op_cls):
@@ -194,6 +195,7 @@ class RayExecutor(Executor):
 
                     ray.wait(
                         [execute_on_ray.remote(runner, results, op)])
+                    return
             raise KeyError(f'No handler found for op: {op}')
 
     @classmethod

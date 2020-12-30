@@ -91,6 +91,10 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
     def dtype(self):
         return getattr(self, '_dtype', None)
 
+    @classmethod
+    def execute(cls, ctx, op):
+        pass
+
 
 class TensorMapReduceOperand(MapReduceOperand):
     _output_type_ = OutputType.tensor
