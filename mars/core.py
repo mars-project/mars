@@ -402,10 +402,13 @@ class _ExecutableMixin:
             raise ValueError(
                 f'Tileable object {key} must be executed first before {action}')
 
-    def fetch(self, session=None, **kw):
+    def _fetch(self, session=None, **kw):
         session = self._get_session(session)
         self._check_session(session, 'fetch')
         return session.fetch(self, **kw)
+
+    def fetch(self, session=None, **kw):
+        return self._fetch(session=session, **kw)
 
     def fetch_log(self, session=None, offsets=None, sizes=None):
         session = self._get_session(session)
@@ -423,21 +426,21 @@ class _ExecuteAndFetchMixin:
     def _execute_and_fetch(self, session=None, **kw):
         if session is None and len(self._executed_sessions) > 0:
             session = self._executed_sessions[-1]
-        try:
-            # fetch first, to reduce the potential cost of submitting a graph
-            return self.fetch(session=session)
-        except ValueError:
-            # not execute before
-            wait = kw.pop('wait', True)
 
-            def run():
-                return self.execute(session=session, **kw).fetch(session=session)
+        wait = kw.pop('wait', True)
 
-            if wait:
-                return run()
-            else:
-                thread_executor = ThreadPoolExecutor(1)
-                return thread_executor.submit(run)
+        def run():
+            fetch_kwargs = kw.pop('fetch_kwargs', dict())
+            if len(self._executed_sessions) == 0:
+                # not executed before
+                self.execute(session=session, **kw)
+            return self.fetch(session=session, **fetch_kwargs)
+
+        if wait:
+            return run()
+        else:
+            thread_executor = ThreadPoolExecutor(1)
+            return thread_executor.submit(run)
 
 
 class _ToObjectMixin(_ExecuteAndFetchMixin):
