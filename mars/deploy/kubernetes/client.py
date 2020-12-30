@@ -71,11 +71,12 @@ class KubernetesCluster:
 
     def __init__(self, kube_api_client=None, image=None, namespace=None,
                  scheduler_num=1, scheduler_cpu=None, scheduler_mem=None,
+                 scheduler_mem_limit_ratio=None,
                  worker_num=1, worker_cpu=None, worker_mem=None,
                  worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
-                 worker_min_cache_mem=None,
-                 web_num=1, web_cpu=None, web_mem=None, service_type=None,
-                 timeout=None, **kwargs):
+                 worker_min_cache_mem=None, worker_mem_limit_ratio=None,
+                 web_num=1, web_cpu=None, web_mem=None, web_mem_limit_ratio=None,
+                 service_type=None, timeout=None, **kwargs):
         from kubernetes import client as kube_client
 
         self._api_client = kube_api_client
@@ -116,6 +117,7 @@ class KubernetesCluster:
         self._scheduler_num = scheduler_num
         self._scheduler_cpu = scheduler_cpu
         self._scheduler_mem = scheduler_mem
+        self._scheduler_mem_limit_ratio = scheduler_mem_limit_ratio
         self._scheduler_extra_modules = _override_modules(kwargs.pop('scheduler_extra_modules', []))
         self._scheduler_extra_env = _override_envs(kwargs.pop('scheduler_extra_env', None))
         self._scheduler_extra_labels = _override_labels(kwargs.pop('scheduler_extra_labels', None))
@@ -124,6 +126,7 @@ class KubernetesCluster:
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
         self._worker_mem = worker_mem
+        self._worker_mem_limit_ratio = worker_mem_limit_ratio
         self._worker_spill_paths = worker_spill_paths
         self._worker_cache_mem = worker_cache_mem
         self._worker_min_cache_men = worker_min_cache_mem
@@ -136,6 +139,7 @@ class KubernetesCluster:
         self._web_num = web_num
         self._web_cpu = web_cpu
         self._web_mem = web_mem
+        self._web_mem_limit_ratio = web_mem_limit_ratio
         self._web_extra_modules = _override_modules(kwargs.pop('web_extra_modules', []))
         self._web_extra_env = _override_envs(kwargs.pop('web_extra_env', None))
         self._web_extra_labels = _override_labels(kwargs.pop('web_extra_labels', None))
@@ -222,8 +226,9 @@ class KubernetesCluster:
     def _create_schedulers(self):
         schedulers_config = self._scheduler_config_cls(
             self._scheduler_num, image=self._image, cpu=self._scheduler_cpu,
-            memory=self._scheduler_mem, modules=self._scheduler_extra_modules,
-            volumes=self._extra_volumes, service_port=self._scheduler_service_port,
+            memory=self._scheduler_mem, memory_limit_ratio=self._scheduler_mem_limit_ratio,
+            modules=self._scheduler_extra_modules, volumes=self._extra_volumes,
+            service_port=self._scheduler_service_port,
             pre_stop_command=self._pre_stop_command,
         )
         schedulers_config.add_simple_envs(self._scheduler_extra_env)
@@ -234,7 +239,8 @@ class KubernetesCluster:
     def _create_workers(self):
         workers_config = self._worker_config_cls(
             self._worker_num, image=self._image, cpu=self._worker_cpu,
-            memory=self._worker_mem, spill_volumes=self._worker_spill_paths,
+            memory=self._worker_mem, memory_limit_ratio=self._worker_mem_limit_ratio,
+            spill_volumes=self._worker_spill_paths,
             modules=self._worker_extra_modules, volumes=self._extra_volumes,
             worker_cache_mem=self._worker_cache_mem,
             min_cache_mem=self._worker_min_cache_men,
@@ -249,8 +255,9 @@ class KubernetesCluster:
     def _create_webs(self):
         webs_config = self._web_config_cls(
             self._web_num, image=self._image, cpu=self._web_cpu, memory=self._web_mem,
-            modules=self._web_extra_modules, volumes=self._extra_volumes,
-            service_port=self._web_service_port, pre_stop_command=self._pre_stop_command,
+            memory_limit_ratio=self._web_mem_limit_ratio, modules=self._web_extra_modules,
+            volumes=self._extra_volumes, service_port=self._web_service_port,
+            pre_stop_command=self._pre_stop_command,
         )
         webs_config.add_simple_envs(self._web_extra_env)
         webs_config.add_labels(self._web_extra_labels)
