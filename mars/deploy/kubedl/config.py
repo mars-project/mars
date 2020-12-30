@@ -18,6 +18,7 @@ from ...utils import parse_readable_size
 from ..kubernetes.config import ContainerEnvConfig
 
 DEFAULT_SERVICE_ACCOUNT_NAME = 'kubedl-sa'
+DEFAULT_CACHE_PERCENTAGE = 45
 
 
 def _remove_nones(cfg):
@@ -149,22 +150,44 @@ class MarsWorkerSpecConfig(MarsReplicaSpecConfig):
     service_label = 'marsworker'
 
     def __init__(self, *args, **kwargs):
-        self._cache_mem = kwargs.pop('cache_mem', None)
+        self._cache_mem_arg = kwargs.pop('cache_mem', None)
         self._spill_dirs = kwargs.pop('spill_dirs', None) or ()
         # set limits as 2*requests for worker replica defaulted.
         kwargs['limit_resources_ratio'] = kwargs.get('limit_resources_ratio', 2)
+        self._cache_percentage = None
+        self._cache_quantity = None
         super().__init__(*args, **kwargs)
+        self._parse_cache()
 
     @property
     def spill_dirs(self):
         return self._spill_dirs
 
+    @property
+    def cache_percentage(self):
+        return self._cache_percentage
+
+    @property
+    def cache_quantity(self):
+        return self._cache_quantity
+
     def add_default_envs(self):
         super().add_default_envs()
-        self.add_env('MARS_CACHE_MEM_SIZE', self._cache_mem)
-        self.add_env('MARS_K8S_REMOUNT_SHM', '1')
-        if self._spill_dirs:
-            self.add_env('MARS_SPILL_DIRS', ':'.join(self._spill_dirs))
+
+    def _parse_cache(self):
+        # the arg(cache_mem) passed in from new_cluster(...) api support 3 kinds of
+        # cache size formats:
+        # - float: percentage indicated by [0.0, 1.0];
+        # - str-percentage: percentage indicated by xx%, suffixed with '%';
+        # - str-quantity: absolute quantity indicated by xxGi, xxMi, xxKi;
+        if isinstance(self._cache_mem_arg, float):
+            self._cache_percentage = 100 * self._cache_mem_arg \
+                if 0.0 < self._cache_mem_arg < 1.0 else DEFAULT_CACHE_PERCENTAGE
+        elif isinstance(self._cache_mem_arg, str):
+            if self._cache_mem_arg.endswith("%"):
+                self._cache_percentage = float(self._cache_mem_arg.strip("%"))
+            else:
+                self._cache_quantity = self._cache_mem_arg
 
 
 class MarsWebSpecConfig(MarsReplicaSpecConfig):
@@ -196,7 +219,9 @@ class MarsJobConfig:
             'metadata': metadata,
             'spec': _remove_nones({
                 'workerMemoryTuningPolicy': _remove_nones({
-                    'spillDirs': self._worker_config.spill_dirs or None
+                    'spillDirs': self._worker_config.spill_dirs or None,
+                    'workerCachePercentage': self._worker_config.cache_percentage or None,
+                    'workerCacheSize': self._worker_config.cache_quantity or None,
                 }),
                 'cleanPodPolicy': 'None',
                 'webHost': web_host,
