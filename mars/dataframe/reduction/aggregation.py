@@ -228,6 +228,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             agg_chunks_shape = (len(func_infos), in_df.chunk_shape[1])
 
         agg_chunks = np.empty(agg_chunks_shape, dtype=np.object)
+        dtypes_cache = dict()
         for chunk in in_df.chunks:
             input_index = chunk.index[1 - axis] if len(chunk.index) > 1 else 0
             if input_index not in input_index_to_output:
@@ -255,12 +256,22 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     else:
                         columns_value = out_df.index_value
                         index_value = parse_index(pd.Index([0]), out_df.key)
+
+                    try:
+                        dtypes = dtypes_cache[chunk.index[1]]
+                    except KeyError:
+                        dtypes = chunk.dtypes.reindex(columns_value.to_pandas()).dropna()
+                        dtypes_cache[chunk.index[1]] = dtypes
+
+                    agg_chunk = map_op.new_chunk([chunk], shape=shape, index=new_index, dtypes=dtypes,
+                                                 columns_value=columns_value, index_value=index_value)
                 else:
                     shape = (out_df.shape[0], 1)
                     columns_value = parse_index(pd.Index([0]), out_df.key, store_data=True)
                     index_value = out_df.index_value
-                agg_chunk = map_op.new_chunk([chunk], shape=shape, index=new_index,
-                                             columns_value=columns_value, index_value=index_value)
+
+                    agg_chunk = map_op.new_chunk([chunk], shape=shape, index=new_index,
+                                                 columns_value=columns_value, index_value=index_value)
             else:
                 agg_chunk = map_op.new_chunk([chunk], shape=(1,), index=new_index)
             agg_chunks[agg_chunk.index] = agg_chunk
@@ -510,14 +521,20 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         ndim = op.inputs[0].ndim
 
         if ndim == 2:
+            dtype = None
             if isinstance(value, (np.generic, int, float, complex)):
                 value = xdf.DataFrame([value], columns=index)
             elif not isinstance(value, xdf.DataFrame):
                 new_index = None if not op.gpu else getattr(value, 'index', None)
+                dtype = getattr(value, 'dtype', None)
                 value = xdf.DataFrame(value, columns=index, index=new_index)
             else:
                 return value
-            return value.T if axis == 0 else value
+
+            value = value.T if axis == 0 else value
+            if dtype == np.dtype('O') and getattr(op.outputs[0], 'dtypes', None) is not None:
+                value = value.astype(op.outputs[0].dtypes)
+            return value
         else:
             if isinstance(value, (np.generic, int, float, complex)):
                 value = xdf.Series([value], index=index)
