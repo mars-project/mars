@@ -1087,6 +1087,15 @@ class Test(TestBase):
         expected = s.astype('arrow_string')
         pd.testing.assert_series_equal(result, expected)
 
+        # test index
+        raw = pd.Index(rs.randint(5, size=20))
+        mix = from_pandas_index(raw)
+        r = mix.astype('int32')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype('int32')
+        pd.testing.assert_index_equal(result, expected)
+
         # multiply chunks
         series = from_pandas_series(s, chunk_size=6)
         r = series.astype('str')

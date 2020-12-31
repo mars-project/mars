@@ -19,11 +19,11 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
-from ...core import Base, Entity, OutputType
+from ...core import Base, Entity, OutputType, get_output_types
 from ...operands import OperandStage
 from ...serialize import StringField, AnyField, BoolField, Int64Field
 from ..align import align_dataframe_dataframe, align_dataframe_series, align_series_series
-from ..core import DATAFRAME_TYPE
+from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import validate_axis
 
@@ -153,8 +153,13 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
                 value = getattr(op, 'value', None)
                 if isinstance(op.value, (Base, Entity)):
                     value = ctx[op.value.key]
-                ctx[op.outputs[0].key] = input_data.fillna(
-                    value=value, method=op.method, axis=op.axis, limit=op.limit, downcast=op.downcast)
+                if not isinstance(input_data, pd.Index):
+                    ctx[op.outputs[0].key] = input_data.fillna(
+                        value=value, method=op.method, axis=op.axis,
+                        limit=op.limit, downcast=op.downcast)
+                else:
+                    ctx[op.outputs[0].key] = input_data.fillna(
+                        value=value, downcast=op.downcast)
         finally:
             pd.reset_option('mode.use_inf_as_na')
 
@@ -276,10 +281,10 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, df.shape,
-                                     nsplits=tuple(tuple(ns) for ns in nsplits),
-                                     chunks=out_chunks, dtypes=df.dtypes,
-                                     index_value=df.index_value, columns_value=df.columns_value)
+        return new_op.new_tileables(op.inputs, df.shape,
+                                    nsplits=tuple(tuple(ns) for ns in nsplits),
+                                    chunks=out_chunks, dtypes=df.dtypes,
+                                    index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def _tile_dataframe_series(cls, op):
@@ -298,10 +303,10 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy().reset_key()
-        return new_op.new_dataframes(op.inputs, df.shape,
-                                     nsplits=tuple(tuple(ns) for ns in nsplits),
-                                     chunks=out_chunks, dtypes=df.dtypes,
-                                     index_value=df.index_value, columns_value=df.columns_value)
+        return new_op.new_tileables(op.inputs, df.shape,
+                                    nsplits=tuple(tuple(ns) for ns in nsplits),
+                                    chunks=out_chunks, dtypes=df.dtypes,
+                                    index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def _tile_both_series(cls, op):
@@ -317,10 +322,10 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_seriess(op.inputs, df.shape,
-                                  nsplits=tuple(tuple(ns) for ns in nsplits),
-                                  chunks=out_chunks, dtype=df.dtype,
-                                  index_value=df.index_value, name=df.name)
+        return new_op.new_tileables(op.inputs, df.shape,
+                                    nsplits=tuple(tuple(ns) for ns in nsplits),
+                                    chunks=out_chunks, dtype=df.dtype,
+                                    index_value=df.index_value, name=df.name)
 
     @classmethod
     def tile(cls, op):
@@ -358,8 +363,12 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(a, DATAFRAME_TYPE):
             return self.new_dataframe(inputs, shape=a.shape, dtypes=a.dtypes, index_value=a.index_value,
                                       columns_value=a.columns_value)
+        elif isinstance(a, SERIES_TYPE):
+            return self.new_series(inputs, shape=a.shape, dtype=a.dtype, index_value=a.index_value,
+                                   name=a.name)
         else:
-            return self.new_series(inputs, shape=a.shape, dtype=a.dtype, index_value=a.index_value)
+            return self.new_index(inputs, shape=a.shape, dtype=a.dtype, index_value=a.index_value,
+                                  name=a.name, names=a.names)
 
 
 def fillna(df, value=None, method=None, axis=None, inplace=False, limit=None, downcast=None):
@@ -457,7 +466,7 @@ def fillna(df, value=None, method=None, axis=None, inplace=False, limit=None, do
     elif value is not None and method is not None:
         raise ValueError("Cannot specify both 'value' and 'method'.")
 
-    if df.op.output_types[0] == OutputType.series and isinstance(value, (DATAFRAME_TYPE, pd.DataFrame)):
+    if isinstance(df, SERIES_TYPE) and isinstance(value, (DATAFRAME_TYPE, pd.DataFrame)):
         raise ValueError('"value" parameter must be a scalar, dict or Series, but you passed a "%s"'
                          % type(value).__name__)
 
@@ -473,7 +482,7 @@ def fillna(df, value=None, method=None, axis=None, inplace=False, limit=None, do
 
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = FillNA(value=value, method=method, axis=axis, limit=limit, downcast=downcast,
-                use_inf_as_na=use_inf_as_na, output_types=df.op.output_types)
+                use_inf_as_na=use_inf_as_na, output_types=get_output_types(df))
     out_df = op(df, value_df=value_df)
     if inplace:
         df.data = out_df.data
@@ -503,3 +512,35 @@ def bfill(df, axis=None, inplace=False, limit=None, downcast=None):
         Object with missing values filled or None if ``inplace=True``.
     """
     return fillna(df, method='bfill', axis=axis, inplace=inplace, limit=limit, downcast=downcast)
+
+
+def index_fillna(index, value=None, downcast=None):
+    """
+    Fill NA/NaN values with the specified value.
+
+    Parameters
+    ----------
+    value : scalar
+        Scalar value to use to fill holes (e.g. 0).
+        This value cannot be a list-likes.
+    downcast : dict, default is None
+        A dict of item->dtype of what to downcast if possible,
+        or the string 'infer' which will try to downcast to an appropriate
+        equal type (e.g. float64 to int64 if possible).
+
+    Returns
+    -------
+    Index
+
+    See Also
+    --------
+    DataFrame.fillna : Fill NaN values of a DataFrame.
+    Series.fillna : Fill NaN Values of a Series.
+    """
+    if isinstance(value, (list, pd.Series, SERIES_TYPE)):
+        raise ValueError("'value' must be a scalar, passed: %s" % type(value))
+
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+    op = FillNA(value=value, downcast=downcast, use_inf_as_na=use_inf_as_na,
+                output_types=get_output_types(index))
+    return op(index)

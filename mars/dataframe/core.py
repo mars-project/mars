@@ -414,6 +414,7 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
     # optional field
     _dtype = DataTypeField('dtype')
     _name = AnyField('name')
+    _names = AnyField('names')
     _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
     _chunks = ListField('chunks', ValueType.reference(IndexChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
@@ -465,6 +466,10 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
     @property
     def name(self):
         return self._name
+
+    @property
+    def names(self):
+        return getattr(self, '_names', None) or [self.name]
 
     @property
     def index_value(self) -> IndexValue:
