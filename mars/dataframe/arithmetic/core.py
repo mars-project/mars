@@ -591,17 +591,23 @@ class DataFrameUnaryOp(DataFrameOperand, DataFrameUnaryOpMixin):
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
 
+    def _get_output_dtype(self, df):
+        if df.ndim == 2:
+            return df.dtypes
+        else:
+            return df.dtype
+
     def __call__(self, df):
         self.output_types = df.op.output_types
         if df.ndim == 2:
-            return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
+            return self.new_dataframe([df], shape=df.shape, dtypes=self._get_output_dtype(df),
                                       columns_value=df.columns_value,
                                       index_value=df.index_value)
         else:
             series = df
             return self.new_series([series], shape=series.shape, name=series.name,
                                    index_value=series.index_value,
-                                   dtype=series.dtype)
+                                   dtype=self._get_output_dtype(series))
 
 
 class DataFrameUnaryUfunc(DataFrameUnaryOp, TensorUfuncMixin):
