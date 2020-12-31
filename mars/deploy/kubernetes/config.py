@@ -134,6 +134,14 @@ class ResourceConfig:
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
 
+    @property
+    def cpu(self):
+        return self._cpu
+
+    @property
+    def memory(self):
+        return self._memory
+
     def build(self):
         return {
             'cpu': f'{int(self._cpu * 1000)}m',
@@ -382,7 +390,8 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
     rc_name = None
 
     def __init__(self, replicas, cpu=None, memory=None, limit_resources=False,
-                 image=None, modules=None, volumes=None, service_port=None, **kwargs):
+                 memory_limit_ratio=None, image=None, modules=None, volumes=None,
+                 service_port=None, **kwargs):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
@@ -392,13 +401,15 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
         else:
             self._modules = modules
 
-        res = ResourceConfig(cpu, memory) if cpu or memory else None
+        req_res = ResourceConfig(cpu, memory) if cpu or memory else None
+        limit_res = ResourceConfig(
+            req_res.cpu, req_res.memory * (memory_limit_ratio or 1)) if req_res and memory else None
 
         self._service_port = service_port
 
         super().__init__(
             self.rc_name, image or DEFAULT_IMAGE, replicas,
-            resource_request=res, resource_limit=res if limit_resources else None,
+            resource_request=req_res, resource_limit=limit_res if limit_resources else None,
             readiness_probe=self.config_readiness_probe(), **kwargs
         )
         if service_port:

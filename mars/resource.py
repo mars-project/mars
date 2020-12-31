@@ -44,12 +44,12 @@ if 'MARS_USE_CGROUP_STAT' in os.environ:
     _cpu_use_cgroup_stat = _mem_use_cgroup_stat = \
         bool(int(os.environ['MARS_USE_CGROUP_STAT'].strip('"')))
 
-if _cpu_use_process_stat and 'MARS_CPU_TOTAL' in os.environ:
+if 'MARS_CPU_TOTAL' in os.environ:
     _cpu_total = int(os.environ['MARS_CPU_TOTAL'].strip('"'))
 else:
     _cpu_total = psutil.cpu_count(logical=True)
 
-if _mem_use_process_stat and 'MARS_MEMORY_TOTAL' in os.environ:
+if 'MARS_MEMORY_TOTAL' in os.environ:
     _mem_total = int(os.environ['MARS_MEMORY_TOTAL'].strip('"'))
 else:
     _mem_total = None
@@ -86,6 +86,7 @@ def virtual_memory():
         # see section 5.5 in https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt
         cgroup_mem_info = _read_cgroup_stat_file()
         total = cgroup_mem_info['hierarchical_memory_limit']
+        total = min(_mem_total or total, total)
         used = cgroup_mem_info['rss'] + cgroup_mem_info.get('swap', 0)
         if _shm_path:
             shm_stats = psutil.disk_usage(_shm_path)
@@ -94,7 +95,7 @@ def virtual_memory():
         percent = 100.0 * (total - available) / total
         return _virt_memory_stat(total, available, percent, used, free)
     elif not _mem_use_process_stat:
-        total = sys_mem.total
+        total = min(_mem_total or sys_mem.total, sys_mem.total)
         used = sys_mem.used + getattr(sys_mem, 'shared', 0)
         available = sys_mem.available
         free = sys_mem.free
