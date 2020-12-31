@@ -112,7 +112,7 @@ class MarsReplicaSpecConfig(ReplicaSpecConfig):
     service_label = None
 
     def __init__(self, image, replicas, cpu=None, memory=None, limit_resources_ratio=1,
-                 modules=None, node_selectors=None):
+                 memory_limit_ratio=None, modules=None, node_selectors=None):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
@@ -123,8 +123,10 @@ class MarsReplicaSpecConfig(ReplicaSpecConfig):
             self._modules = modules
 
         res_request = ResourceConfig(cpu, memory) if cpu or memory else None
+        memory_limit_ratio = memory_limit_ratio if memory_limit_ratio is not None \
+            else limit_resources_ratio
         res_limit = ResourceConfig(cpu * limit_resources_ratio,
-                                   memory * limit_resources_ratio) if cpu or memory else None
+                                   memory * memory_limit_ratio) if cpu or memory else None
         super().__init__(self.service_label, image, replicas, resource_request=res_request,
                          resource_limit=res_limit,
                          node_selectors=node_selectors)

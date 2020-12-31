@@ -60,7 +60,8 @@ class Test(unittest.TestCase):
 
     def testWorkerObject(self):
         worker_config_dict = MarsWorkersConfig(
-            4, cpu=2, memory=10 * 1024 ** 3, limit_resources=False,
+            4, cpu=2, memory=10 * 1024 ** 3, limit_resources=True,
+            memory_limit_ratio=2,
             spill_volumes=['/tmp/spill_vol', EmptyDirVolumeConfig('empty-dir', '/tmp/empty')],
             worker_cache_mem='20%', min_cache_mem='10%', modules='mars.test_mod',
             mount_shm=True).build()
@@ -69,6 +70,7 @@ class Test(unittest.TestCase):
 
         container_dict = worker_config_dict['spec']['template']['spec']['containers'][0]
         self.assertEqual(int(container_dict['resources']['requests']['memory']), 10 * 1024 ** 3)
+        self.assertEqual(int(container_dict['resources']['limits']['memory']), 20 * 1024 ** 3)
 
         container_envs = dict((p['name'], p) for p in container_dict['env'])
         self.assertEqual(container_envs['MKL_NUM_THREADS']['value'], '2')
