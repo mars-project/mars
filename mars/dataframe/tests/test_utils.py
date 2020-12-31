@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from mars.config import option_context
-from mars.dataframe.initializer import DataFrame
+from mars.dataframe.initializer import DataFrame, Index
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
     split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
@@ -360,6 +360,10 @@ class Test(unittest.TestCase):
         self.assertIsInstance(oival.value, IndexValue.Index)
         self.assertNotEqual(oival.key, ival1.key)
         self.assertNotEqual(oival.key, ival2.key)
+
+    def testIndexInferredType(self):
+        self.assertEqual(Index(pd.Index([1, 2, 3, 4])).inferred_type, 'integer')
+        self.assertEqual(Index(pd.Index([1.2, 2.3, 4.5])).inferred_type, 'floating')
 
     def testValidateAxis(self):
         df = DataFrame(pd.DataFrame(np.random.rand(4, 3)))

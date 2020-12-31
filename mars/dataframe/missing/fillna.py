@@ -281,10 +281,10 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tileables(op.inputs, df.shape,
-                                    nsplits=tuple(tuple(ns) for ns in nsplits),
-                                    chunks=out_chunks, dtypes=df.dtypes,
-                                    index_value=df.index_value, columns_value=df.columns_value)
+        return new_op.new_dataframes(op.inputs, df.shape,
+                                     nsplits=tuple(tuple(ns) for ns in nsplits),
+                                     chunks=out_chunks, dtypes=df.dtypes,
+                                     index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def _tile_dataframe_series(cls, op):
@@ -303,10 +303,10 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy().reset_key()
-        return new_op.new_tileables(op.inputs, df.shape,
-                                    nsplits=tuple(tuple(ns) for ns in nsplits),
-                                    chunks=out_chunks, dtypes=df.dtypes,
-                                    index_value=df.index_value, columns_value=df.columns_value)
+        return new_op.new_dataframes(op.inputs, df.shape,
+                                     nsplits=tuple(tuple(ns) for ns in nsplits),
+                                     chunks=out_chunks, dtypes=df.dtypes,
+                                     index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def _tile_both_series(cls, op):
@@ -322,10 +322,10 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tileables(op.inputs, df.shape,
-                                    nsplits=tuple(tuple(ns) for ns in nsplits),
-                                    chunks=out_chunks, dtype=df.dtype,
-                                    index_value=df.index_value, name=df.name)
+        return new_op.new_seriess(op.inputs, df.shape,
+                                  nsplits=tuple(tuple(ns) for ns in nsplits),
+                                  chunks=out_chunks, dtype=df.dtype,
+                                  index_value=df.index_value, name=df.name)
 
     @classmethod
     def tile(cls, op):

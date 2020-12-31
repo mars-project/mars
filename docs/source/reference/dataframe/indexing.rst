@@ -16,6 +16,7 @@ Properties
    :toctree: generated/
 
    Index.dtype
+   Index.inferred_type
    Index.name
    Index.names
    Index.ndim
