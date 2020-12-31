@@ -567,6 +567,7 @@ class TestBinary(TestBase):
         expected = self.func(4, s1)
         pd.testing.assert_series_equal(expected, result)
 
+    @unittest.skipIf(pd.__version__ < '1.2.0', 'skip due to the incompatibilities.')
     def testWithPlainValue(self):
         if self.func_name in ['__and__', '__or__', '__xor__']:
             # skip tests for bitwise logical operators on plain value.
