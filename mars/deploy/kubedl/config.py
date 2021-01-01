@@ -14,7 +14,7 @@
 
 from urllib.parse import urlparse
 
-from ...utils import parse_readable_size
+from ...utils import parse_readable_size, calc_size_by_str
 from ..kubernetes.config import ContainerEnvConfig
 
 DEFAULT_SERVICE_ACCOUNT_NAME = 'kubedl-sa'
@@ -111,8 +111,8 @@ class MarsReplicaSpecConfig(ReplicaSpecConfig):
     service_name = None
     service_label = None
 
-    def __init__(self, image, replicas, cpu=None, memory=None, limit_resources_ratio=1,
-                 modules=None, node_selectors=None):
+    def __init__(self, image, replicas, cpu=None, memory=None, limit_resources_ratio=2,
+                 memory_limit_ratio=None, modules=None, node_selectors=None):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
@@ -123,16 +123,27 @@ class MarsReplicaSpecConfig(ReplicaSpecConfig):
             self._modules = modules
 
         res_request = ResourceConfig(cpu, memory) if cpu or memory else None
+        memory_limit_ratio = memory_limit_ratio if memory_limit_ratio is not None \
+            else limit_resources_ratio
         res_limit = ResourceConfig(cpu * limit_resources_ratio,
-                                   memory * limit_resources_ratio) if cpu or memory else None
+                                   memory * memory_limit_ratio) if cpu or memory else None
         super().__init__(self.service_label, image, replicas, resource_request=res_request,
                          resource_limit=res_limit,
                          node_selectors=node_selectors)
 
     def build_container_command(self):
-        return ['/bin/sh', '-c', f'python -m mars.deploy.kubernetes.{self.service_name}']
+        cmd = [
+            '/srv/entrypoint.sh', f'mars.deploy.kubernetes.{self.service_name}',
+        ]
+        return cmd
 
     def add_default_envs(self):
+        if self._cpu:
+            self.add_env('MARS_CPU_TOTAL', str(self._cpu))
+
+        if self._memory:
+            self.add_env('MARS_MEMORY_TOTAL', str(int(self._memory)))
+
         if self._modules:
             self.add_env('MARS_LOAD_MODULES', ','.join(self._modules))
 
@@ -147,15 +158,21 @@ class MarsWorkerSpecConfig(MarsReplicaSpecConfig):
     service_label = 'marsworker'
 
     def __init__(self, *args, **kwargs):
-        self._cache_mem = kwargs.pop('cache_mem', None)
+        cache_mem = kwargs.pop('cache_mem', None)
         self._spill_dirs = kwargs.pop('spill_dirs', None) or ()
         # set limits as 2*requests for worker replica defaulted.
         kwargs['limit_resources_ratio'] = kwargs.get('limit_resources_ratio', 2)
         super().__init__(*args, **kwargs)
+        self._cache_mem = calc_size_by_str(cache_mem, self._memory)
+        self.add_env('MARS_CACHE_MEM_SIZE', self._cache_mem)
 
     @property
     def spill_dirs(self):
         return self._spill_dirs
+
+    @property
+    def cache_mem(self):
+        return self._cache_mem
 
     def add_default_envs(self):
         super().add_default_envs()
@@ -193,7 +210,8 @@ class MarsJobConfig:
             'metadata': metadata,
             'spec': _remove_nones({
                 'workerMemoryTuningPolicy': _remove_nones({
-                    'spillDirs': self._worker_config.spill_dirs or None
+                    'spillDirs': self._worker_config.spill_dirs,
+                    'workerCacheSize': self._worker_config.cache_mem,
                 }),
                 'cleanPodPolicy': 'None',
                 'webHost': web_host,
