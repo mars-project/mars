@@ -896,7 +896,7 @@ def fetch_corner_data(df_or_series, session=None) -> pd.DataFrame:
         index_size = min_rows // 2 + 1
 
     if index_size is None:
-        return df_or_series.fetch(session=session)
+        return df_or_series._fetch(session=session)
     else:
         head = iloc(df_or_series)[:index_size]
         tail = iloc(df_or_series)[-index_size:]
