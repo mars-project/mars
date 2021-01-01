@@ -230,7 +230,7 @@ def parse_index(index_value, *args, store_data=False, key=None):
     def _get_index_min(index):
         try:
             return index.min()
-        except ValueError:
+        except (ValueError, AttributeError):
             if isinstance(index, pd.IntervalIndex):
                 return None
             raise
@@ -240,7 +240,7 @@ def parse_index(index_value, *args, store_data=False, key=None):
     def _get_index_max(index):
         try:
             return index.max()
-        except ValueError:
+        except (ValueError, AttributeError):
             if isinstance(index, pd.IntervalIndex):
                 return None
             raise
