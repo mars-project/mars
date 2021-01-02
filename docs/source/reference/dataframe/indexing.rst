@@ -48,6 +48,7 @@ Conversion
    :toctree: generated/
 
    Index.astype
+   Index.map
    Index.rename
    Index.to_frame
    Index.to_series

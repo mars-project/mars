@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .map import map_
+from .map import series_map, index_map
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 from .rechunk import rechunk
@@ -75,7 +75,7 @@ def _install():
         setattr(t, 'to_gpu', to_gpu)
         setattr(t, 'to_cpu', to_cpu)
         setattr(t, 'rechunk', rechunk)
-        setattr(t, 'map', map_)
+        setattr(t, 'map', series_map)
         setattr(t, 'describe', describe)
         setattr(t, 'apply', series_apply)
         setattr(t, 'transform', series_transform)
@@ -94,6 +94,7 @@ def _install():
         setattr(t, 'explode', series_explode)
 
     for t in INDEX_TYPE:
+        setattr(t, 'map', index_map)
         setattr(t, 'rechunk', rechunk)
         setattr(t, 'rebalance', rebalance)
         setattr(t, 'drop', index_drop)
