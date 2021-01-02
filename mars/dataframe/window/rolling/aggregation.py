@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from distutils.version import LooseVersion
+
 import numpy as np
 import pandas as pd
 
@@ -406,6 +408,14 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
             data = xdf.concat(preds + [inp] + succs, axis=axis)
         else:
             data = inp
+
+            # fix for pandas 1.2.0
+            # see: https://github.com/pandas-dev/pandas/issues/38908
+            # df.rolling().agggregate('skew') modifed original data
+            # so we copy it first for skew only
+            if LooseVersion(pd.__version__) == '1.2.0' and \
+                    op.func in ['skew', 'kurt'] and op.outputs[0].index[0] == 0:
+                data = data.copy()
 
         r = data.rolling(window=window, min_periods=op.min_periods,
                          center=op.center, win_type=win_type,

@@ -41,6 +41,11 @@ jobs:
           source ./.github/workflows/reload-env.sh
           export DEFAULT_VENV=$VIRTUAL_ENV
 
+          if [ -n "$WITH_VINEYARD" ]; then
+            # workaround until vineyard release new version
+            pip install pandas==1.1.5
+          fi
+
           pip install -r requirements-dev.txt
           pip install -r requirements-extra.txt
           if [[ $UNAME == "windows" ]]; then

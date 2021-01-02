@@ -269,7 +269,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 rhs = ctx[next(inputs_iter).key]
             else:
                 rhs = op.rhs
-            ctx[op.outputs[0].key] = cls._operator(lhs, rhs)
+            ctx[op.outputs[0].key] = cls._operator(lhs, rhs)  # pylint: disable=too-many-function-args
 
     @classproperty
     def _operator(self):
