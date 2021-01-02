@@ -1028,6 +1028,9 @@ class FixedSizeFileObject:
         self._cur = self._file_obj.tell()
         return result
 
+    def read1(self, size=None):
+        return self.read(size)
+
     def readline(self, size=None):
         result = self._file_obj.readline(self._get_size(size))
         self._cur = self._file_obj.tell()

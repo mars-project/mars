@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from distutils.version import LooseVersion
+
 import numpy as np
 import pandas as pd
 
@@ -197,8 +199,11 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                     if self.call_agg:
                         infer_df = test_df.agg(self._func, args=self.args, **self.kwds)
                     else:
-                        infer_df = test_df.transform(self._func, convert_dtype=self.convert_dtype,
-                                                     args=self.args, **self.kwds)
+                        if LooseVersion(pd.__version__) >= '1.2.0':
+                            infer_df = test_df.transform(self._func, *self.args, **self.kwds)
+                        else:  # pragma: no cover
+                            infer_df = test_df.transform(self._func, convert_dtype=self.convert_dtype,
+                                                         args=self.args, **self.kwds)
             except:  # noqa: E722
                 infer_df = None
 

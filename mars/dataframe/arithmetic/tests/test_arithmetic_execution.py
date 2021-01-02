@@ -285,9 +285,10 @@ class TestBinary(TestBase):
         series = from_pandas_series(data.iloc[:, 0], chunk_size=3)
         df4 = getattr(df, self.func_name)(series, axis=0)
 
-        expected = getattr(data, self.func_name)(data.iloc[:, 0], axis=0)
-        result = self.executor.execute_dataframe(df4, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        if self.func_name not in ['__and__', '__or__', '__xor__']:
+            expected = getattr(data, self.func_name)(data.iloc[:, 0], axis=0)
+            result = self.executor.execute_dataframe(df4, concat=True)[0]
+            pd.testing.assert_frame_equal(expected, result)
 
     def testChained(self):
         data1 = pd.DataFrame(np.random.rand(10, 10))
@@ -566,6 +567,7 @@ class TestBinary(TestBase):
         expected = self.func(4, s1)
         pd.testing.assert_series_equal(expected, result)
 
+    @unittest.skipIf(pd.__version__ < '1.2.0', 'skip due to the incompatibilities.')
     def testWithPlainValue(self):
         if self.func_name in ['__and__', '__or__', '__xor__']:
             # skip tests for bitwise logical operators on plain value.
