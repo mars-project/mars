@@ -187,7 +187,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None and axis == 1:
             raise NotImplementedError('Not support specify level for axis==1')
 
-        empty_df = build_df(df)
+        empty_df = build_df(df, ensure_string=True)
         if func_name == 'count':
             reduced_df = getattr(empty_df, func_name)(axis=axis, level=level, numeric_only=numeric_only)
         elif func_name == 'nunique':
@@ -223,7 +223,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         if level is not None:
             return self._call_groupby_level(series, level)
 
-        empty_series = build_series(series)
+        empty_series = build_series(series, ensure_string=True)
         if func_name == 'count':
             reduced_series = empty_series.count(level=level)
         elif func_name == 'nunique':
@@ -800,6 +800,10 @@ class ReductionCompiler:
 
                 func_name = func_name_raw = getattr(t.op, '_func_name', None)
                 rfunc_name = getattr(t.op, '_rfunc_name', func_name)
+
+                if func_name is None:
+                    func_name = func_name_raw = getattr(t.op, '_bit_func_name', None)
+                    rfunc_name = getattr(t.op, '_bit_rfunc_name', func_name)
 
                 # handle function name differences between numpy and pandas arithmetic ops
                 if func_name in _func_name_converts:

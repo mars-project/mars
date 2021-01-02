@@ -206,7 +206,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         new_op = op.copy()
         if isinstance(other, SERIES_TYPE):
             return new_op.new_seriess(op.inputs, other.shape, nsplits=other.nsplits, dtype=out.dtype,
-                                      index_value=other.index_value, chunks=out_chunks)
+                                      name=other.name, index_value=other.index_value, chunks=out_chunks)
         else:
             return new_op.new_dataframes(op.inputs, other.shape, nsplits=other.nsplits, dtypes=out.dtypes,
                                          index_value=other.index_value, columns_value=other.columns_value,
@@ -229,35 +229,47 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        if len(op.inputs) == 2:
-            df, other = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
-            if isinstance(op.inputs[0], SERIES_CHUNK_TYPE) and \
-                    isinstance(op.inputs[1], DATAFRAME_CHUNK_TYPE):
-                df, other = other, df
+        if getattr(cls, '_func_name', None) is not None:
+            if len(op.inputs) == 2:
+                df, other = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
+                if isinstance(op.inputs[0], SERIES_CHUNK_TYPE) and \
+                        isinstance(op.inputs[1], DATAFRAME_CHUNK_TYPE):
+                    df, other = other, df
+                    func_name = getattr(cls, '_rfunc_name')
+                else:
+                    func_name = getattr(cls, '_func_name')
+            elif pd.api.types.is_scalar(op.lhs) or isinstance(op.lhs, np.ndarray):
+                df = ctx[op.rhs.key]
+                other = op.lhs
                 func_name = getattr(cls, '_rfunc_name')
             else:
+                df = ctx[op.lhs.key]
+                other = op.rhs
                 func_name = getattr(cls, '_func_name')
-        elif pd.api.types.is_scalar(op.lhs) or isinstance(op.lhs, np.ndarray):
-            df = ctx[op.rhs.key]
-            other = op.lhs
-            func_name = getattr(cls, '_rfunc_name')
+            if df.ndim == 2:
+                kw = dict(axis=op.axis)
+            else:
+                kw = dict()
+            if op.fill_value is not None:
+                # comparison function like eq does not have `fill_value`
+                kw['fill_value'] = op.fill_value
+            if op.level is not None:
+                # logical function like and may don't have `level` (for Series type)
+                kw['level'] = op.level
+            if hasattr(other, 'ndim') and other.ndim == 0:
+                other = other.item()
+            ctx[op.outputs[0].key] = getattr(df, func_name)(other, **kw)
         else:
-            df = ctx[op.lhs.key]
-            other = op.rhs
-            func_name = getattr(cls, '_func_name')
-        if df.ndim == 2:
-            kw = dict(axis=op.axis)
-        else:
-            kw = dict()
-        if op.fill_value is not None:
-            # comparison function like eq does not have `fill_value`
-            kw['fill_value'] = op.fill_value
-        if op.level is not None:
-            # logical function like and may don't have `level` (for Series type)
-            kw['level'] = op.level
-        if hasattr(other, 'ndim') and other.ndim == 0:
-            other = other.item()
-        ctx[op.outputs[0].key] = getattr(df, func_name)(other, **kw)
+            inputs_iter = iter(op.inputs)
+            if not pd.api.types.is_scalar(op.lhs):
+                lhs = ctx[next(inputs_iter).key]
+            else:
+                lhs = op.lhs
+            if not pd.api.types.is_scalar(op.rhs):
+                rhs = ctx[next(inputs_iter).key]
+            else:
+                rhs = op.rhs
+            ctx[op.outputs[0].key] = cls._operator(lhs, rhs)  # pylint: disable=too-many-function-args
 
     @classproperty
     def _operator(self):
@@ -285,7 +297,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             x2_dtype = x2.dtype if hasattr(x2, 'dtype') else type(x2)
             dtype = infer_dtype(x1.dtype, np.dtype(x2_dtype), cls._operator)
             ret = {'shape': x1.shape, 'dtype': dtype, 'index_value': x1.index_value}
-            if pd.api.types.is_scalar(x2) or (hasattr(x2, 'ndim') and x2.ndim == 0):
+            if pd.api.types.is_scalar(x2) or (hasattr(x2, 'ndim') and (x2.ndim == 0 or
+                                                                       x2.ndim == 1)):
                 ret['name'] = x1.name
             return ret
 

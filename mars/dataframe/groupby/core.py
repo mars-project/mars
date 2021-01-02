@@ -97,19 +97,9 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def build_mock_groupby(self, **kwargs):
         in_df = self.inputs[0]
         if self.is_dataframe_obj:
-            mock_obj = pd.concat([
-                build_df(in_df, size=2, fill_value=1),
-                build_df(in_df, size=2, fill_value=2),
-            ])
-            obj_dtypes = in_df.dtypes[in_df.dtypes == np.dtype('O')]
-            mock_obj[obj_dtypes.index] = mock_obj[obj_dtypes.index].radd('O')
+            mock_obj = build_df(in_df, size=[2, 2], fill_value=[1, 2], ensure_string=True)
         else:
-            mock_obj = pd.concat([
-                build_series(in_df, size=2, fill_value=1, name=in_df.name),
-                build_series(in_df, size=2, fill_value=2, name=in_df.name),
-            ])
-            if in_df.dtype == np.dtype('O'):
-                mock_obj = mock_obj.radd('O')
+            mock_obj = build_series(in_df, size=[2, 2], fill_value=[1, 2], name=in_df.name, ensure_string=True)
 
         new_kw = self.groupby_params
         new_kw.update(kwargs)

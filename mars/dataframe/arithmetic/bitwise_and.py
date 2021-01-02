@@ -22,8 +22,8 @@ from .core import DataFrameBinopUfunc
 class DataFrameAnd(DataFrameBinopUfunc):
     _op_type_ = OperandDef.AND
 
-    _func_name = '__and__'
-    _rfunc_name = '__rand__'
+    _bit_func_name = '__and__'
+    _bit_rfunc_name = '__rand__'
 
     @classproperty
     def _operator(self):

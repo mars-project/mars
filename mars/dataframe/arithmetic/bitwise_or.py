@@ -22,8 +22,8 @@ from .core import DataFrameBinopUfunc
 class DataFrameOr(DataFrameBinopUfunc):
     _op_type_ = OperandDef.OR
 
-    _func_name = '__or__'
-    _rfunc_name = '__ror__'
+    _bit_func_name = '__or__'
+    _bit_rfunc_name = '__ror__'
 
     @classproperty
     def _operator(self):
