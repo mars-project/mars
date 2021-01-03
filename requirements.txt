@@ -1,4 +1,5 @@
 numpy>=1.14.0
-pandas>=1.0.0,<1.2.0
+pandas>=1.0.0,<1.2.0; python_version<'3.7'
+pandas>=1.0.0; python_version>='3.7'
 requests>=2.4.0
 cloudpickle>=1.0.0

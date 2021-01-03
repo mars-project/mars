@@ -51,7 +51,7 @@ class Test(unittest.TestCase):
         self.assertFalse(ArrowListDtype.is_dtype(ArrowStringDtype()))
 
         self.assertNotEqual(ArrowListDtype(np.int8), ArrowStringDtype())
-        self.assertEqual(ArrowListDtype(np.int8).kind, np.dtype(np.int8).kind)
+        self.assertEqual(ArrowListDtype(np.int8).kind, np.dtype(object).kind)
 
         self.assertEqual(ArrowListDtype(np.int8).arrow_type,
                          pa.list_(pa.int8()))

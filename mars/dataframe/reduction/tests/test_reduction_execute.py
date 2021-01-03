@@ -214,7 +214,7 @@ class TestReduction(TestBase):
             self.executor.execute_dataframe(r, concat=True)[0])
 
         data_dict = dict((str(i), rs.rand(10)) for i in range(10))
-        data_dict['string'] = [str(i) for i in range(10)]
+        data_dict['string'] = pd.Series([str(i) for i in range(10)]).radd('O')
         data_dict['bool'] = rs.choice([True, False], (10,))
         data = pd.DataFrame(data_dict)
         r = self.compute(md.DataFrame(data, chunk_size=3), axis='index', numeric_only=True)
@@ -268,7 +268,12 @@ class TestReduction(TestBase):
                 self.executor.execute_dataframe(r, concat=True)[0].sort_index())
 
         # behavior of 'skew', 'kurt' differs for cases with and without level
-        if self.func_name not in ('skew', 'kurt'):
+        skip_funcs = ('skew', 'kurt')
+        if pd.__version__ == '1.2.0':
+            # fails under pandas 1.2. see pandas-dev/pandas#38774 for more details
+            skip_funcs += ('sem',)
+
+        if self.func_name not in skip_funcs:
             data_dict = dict((str(i), rs.rand(100)) for i in range(10))
             data_dict['string'] = [str(i) for i in range(100)]
             data_dict['bool'] = rs.choice([True, False], (100,))
