@@ -368,9 +368,9 @@ def series_transform(series, func, convert_dtype=True, axis=0, *args, dtype=None
         Specify dtypes of returned DataFrames. See `Notes` for more details.
 
     *args
-    Positional arguments to pass to `func`.
+        Positional arguments to pass to `func`.
     **kwargs
-    Keyword arguments to pass to `func`.
+        Keyword arguments to pass to `func`.
 
     Returns
     -------

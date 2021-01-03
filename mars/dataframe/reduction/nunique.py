@@ -182,7 +182,7 @@ def nunique_dataframe(df, axis=0, dropna=True, combine_size=None):
     return op(df)
 
 
-def nunique_series(df, dropna=True, combine_size=None):
+def nunique_series(series, dropna=True, combine_size=None):
     """
     Return number of unique elements in the object.
 
@@ -222,4 +222,4 @@ def nunique_series(df, dropna=True, combine_size=None):
     op = DataFrameNunique(dropna=dropna, combine_size=combine_size,
                           output_types=[OutputType.scalar],
                           use_arrow_dtype=options.dataframe.use_arrow_dtype)
-    return op(df)
+    return op(series)

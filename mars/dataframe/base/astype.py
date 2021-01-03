@@ -21,7 +21,7 @@ from ...serialize import AnyField, StringField, ListField
 from ...utils import recursive_tile
 from ...tensor.base import sort
 from ..utils import build_empty_df, build_empty_series
-from ..core import SERIES_TYPE
+from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
@@ -61,7 +61,7 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
                                     chunks=out_chunks, **op.outputs[0].params.copy())
 
     @classmethod
-    def _tile_series(cls, op):
+    def _tile_series_index(cls, op):
         in_series = op.inputs[0]
         out = op.outputs[0]
 
@@ -82,8 +82,8 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
             chunks.append(new_chunk)
 
         new_op = op.copy()
-        return new_op.new_seriess(op.inputs, nsplits=in_series.nsplits,
-                                  chunks=chunks, **out.params.copy())
+        return new_op.new_tileables(op.inputs, nsplits=in_series.nsplits,
+                                    chunks=chunks, **out.params.copy())
 
     @classmethod
     def _tile_dataframe(cls, op):
@@ -142,10 +142,10 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op):
         if len(op.inputs[0].chunks) == 1:
             return cls._tile_one_chunk(op)
-        elif isinstance(op.inputs[0], SERIES_TYPE):
-            return cls._tile_series(op)
-        else:
+        elif isinstance(op.inputs[0], DATAFRAME_TYPE):
             return cls._tile_dataframe(op)
+        else:
+            return cls._tile_series_index(op)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -157,6 +157,8 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
                              col, unique_values in zip(op.category_cols, uniques))
                 ctx[op.outputs[0].key] = in_data.astype(dtype, errors=op.errors)
 
+            elif isinstance(in_data, pd.Index):
+                ctx[op.outputs[0].key] = in_data.astype(op.dtype_values)
             else:
                 ctx[op.outputs[0].key] = in_data.astype(op.dtype_values, errors=op.errors)
         else:
@@ -169,17 +171,7 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = in_data.astype(selected_dtype, errors=op.errors)
 
     def __call__(self, df):
-        if isinstance(df, SERIES_TYPE):
-            empty_series = build_empty_series(df.dtype)
-            new_series = empty_series.astype(self.dtype_values, errors=self.errors)
-            if new_series.dtype != df.dtype:
-                dtype = CategoricalDtype() if isinstance(
-                    new_series.dtype, CategoricalDtype) else new_series.dtype
-            else:  # pragma: no cover
-                dtype = df.dtype
-            return self.new_series([df], shape=df.shape, dtype=dtype,
-                                   name=df.name, index_value=df.index_value)
-        else:
+        if isinstance(df, DATAFRAME_TYPE):
             empty_df = build_empty_df(df.dtypes)
             new_df = empty_df.astype(self.dtype_values, errors=self.errors)
             dtypes = []
@@ -192,6 +184,21 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
             return self.new_dataframe([df], shape=df.shape, dtypes=dtypes,
                                       index_value=df.index_value,
                                       columns_value=df.columns_value)
+        else:
+            empty_series = build_empty_series(df.dtype)
+            new_series = empty_series.astype(self.dtype_values, errors=self.errors)
+            if new_series.dtype != df.dtype:
+                dtype = CategoricalDtype() if isinstance(
+                    new_series.dtype, CategoricalDtype) else new_series.dtype
+            else:  # pragma: no cover
+                dtype = df.dtype
+
+            if isinstance(df, SERIES_TYPE):
+                return self.new_series([df], shape=df.shape, dtype=dtype,
+                                       name=df.name, index_value=df.index_value)
+            else:
+                return self.new_index([df], shape=df.shape, dtype=dtype,
+                                      name=df.name, index_value=df.index_value)
 
 
 def astype(df, dtype, copy=True, errors='raise'):
@@ -310,3 +317,30 @@ def astype(df, dtype, copy=True, errors='raise'):
         return df
     else:
         return r
+
+
+def index_astype(ix, dtype, copy=True):
+    """
+    Create an Index with values cast to dtypes.
+
+    The class of a new Index is determined by dtype. When conversion is
+    impossible, a ValueError exception is raised.
+
+    Parameters
+    ----------
+    dtype : numpy dtype or pandas type
+        Note that any signed integer `dtype` is treated as ``'int64'``,
+        and any unsigned integer `dtype` is treated as ``'uint64'``,
+        regardless of the size.
+    copy : bool, default True
+        By default, astype always returns a newly allocated object.
+        If copy is set to False and internal requirements on dtype are
+        satisfied, the original data is used to create a new Index
+        or the original Index is returned.
+
+    Returns
+    -------
+    Index
+        Index with values cast to specified dtype.
+    """
+    return astype(ix, dtype, copy=copy)

@@ -19,7 +19,8 @@ from ... import opcodes
 from ...config import options
 from ...core import OutputType
 from ...serialize import BoolField
-from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE
+from ..operands import DataFrameOperand, DataFrameOperandMixin, \
+    DATAFRAME_TYPE, SERIES_TYPE
 
 
 class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
@@ -43,8 +44,10 @@ class DataFrameCheckNA(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, df):
         if isinstance(df, DATAFRAME_TYPE):
             self.output_types = [OutputType.dataframe]
-        else:
+        elif isinstance(df, SERIES_TYPE):
             self.output_types = [OutputType.series]
+        else:
+            self.output_types = [OutputType.tensor]
 
         params = df.params.copy()
         if self.output_types[0] == OutputType.dataframe:

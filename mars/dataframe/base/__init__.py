@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .map import map_
+from .map import series_map, index_map
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 from .rechunk import rechunk
@@ -25,7 +25,7 @@ from .qcut import qcut
 from .shift import shift, tshift
 from .diff import df_diff, series_diff
 from .value_counts import value_counts
-from .astype import astype
+from .astype import astype, index_astype
 from .drop import df_drop, df_pop, series_drop, index_drop
 from .drop_duplicates import df_drop_duplicates, \
     series_drop_duplicates, index_drop_duplicates
@@ -75,7 +75,7 @@ def _install():
         setattr(t, 'to_gpu', to_gpu)
         setattr(t, 'to_cpu', to_cpu)
         setattr(t, 'rechunk', rechunk)
-        setattr(t, 'map', map_)
+        setattr(t, 'map', series_map)
         setattr(t, 'describe', describe)
         setattr(t, 'apply', series_apply)
         setattr(t, 'transform', series_transform)
@@ -94,11 +94,14 @@ def _install():
         setattr(t, 'explode', series_explode)
 
     for t in INDEX_TYPE:
+        setattr(t, 'map', index_map)
         setattr(t, 'rechunk', rechunk)
         setattr(t, 'rebalance', rebalance)
         setattr(t, 'drop', index_drop)
         setattr(t, 'drop_duplicates', index_drop_duplicates)
         setattr(t, 'memory_usage', index_memory_usage)
+        setattr(t, 'astype', index_astype)
+        setattr(t, 'value_counts', value_counts)
 
     for method in _string_method_to_handlers:
         if not hasattr(StringAccessor, method):

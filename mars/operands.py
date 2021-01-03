@@ -26,7 +26,8 @@ from .core import Entity, Chunk, Tileable, AttributeAsDictKey, ExecutableTuple, 
     FuseChunkData, FuseChunk, OutputType, get_chunk_types, get_tileable_types, \
     register_fetch_class, get_fetch_class, get_output_types
 from .serialize import SerializableMetaclass, ValueType, ProviderType, IdentityField, \
-    ListField, DictField, Int32Field, BoolField, StringField, ReferenceField
+    ListField, DictField, Int32Field, Float32Field, BoolField, StringField, \
+    ReferenceField
 from .tiles import NotSupportTile
 from .utils import AttributeDict, to_str, calc_data_size, calc_object_overhead, \
     enter_mode, is_eager_mode
@@ -96,7 +97,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
                               on_serialize=OutputType.serialize_list,
                               on_deserialize=OutputType.deserialize_list)
 
-    _memory_scale = Int32Field('memory_scale')
+    _memory_scale = Float32Field('memory_scale')
 
     _stage = Int32Field('stage', on_serialize=lambda s: s.value if s is not None else s,
                         on_deserialize=lambda n: OperandStage(n) if n is not None else n)
@@ -510,7 +511,7 @@ class TileableOperandMixin(object):
                 pass
 
         exec_size = max(exec_size, total_out_size)
-        memory_scale = op.memory_scale or 1
+        memory_scale = op.memory_scale or 1.0
         for out in outputs:
             if out.key in ctx:
                 continue
