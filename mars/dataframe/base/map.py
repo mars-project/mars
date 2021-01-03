@@ -39,10 +39,10 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
     _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, arg=None, na_action=None, output_types=None,
-                 tileable_op_key=None, **kw):
-        super().__init__(_arg=arg, _na_action=na_action,
-                         _output_types=output_types,
-                         _tileable_op_key=tileable_op_key, **kw)
+                 tileable_op_key=None, memory_scale=None, **kw):
+        super().__init__(
+            _arg=arg, _na_action=na_action, _output_types=output_types,
+            _tileable_op_key=tileable_op_key, _memory_scale=memory_scale, **kw)
         if not self.output_types:
             self.output_types = [OutputType.series]
 
@@ -110,8 +110,13 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         inputs = [series]
         if isinstance(self._arg, SERIES_TYPE):
             inputs.append(self._arg)
-        return self.new_series(inputs, shape=series.shape, dtype=dtype,
-                               index_value=series.index_value, name=series.name)
+
+        if isinstance(series, SERIES_TYPE):
+            return self.new_series(inputs, shape=series.shape, dtype=dtype,
+                                   index_value=series.index_value, name=series.name)
+        else:
+            return self.new_index(inputs, shape=series.shape, dtype=dtype,
+                                  index_value=series.index_value, name=series.name)
 
     @classmethod
     def tile(cls, op):
@@ -142,7 +147,7 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         params = out_series.params
         params['chunks'] = out_chunks
         params['nsplits'] = in_series.nsplits
-        return new_op.new_seriess(op.inputs, kws=[params])
+        return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
     @redirect_custom_log
@@ -161,6 +166,117 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         ctx[out.key] = ret
 
 
-def map_(series, arg, na_action=None, dtype=None):
-    op = DataFrameMap(arg=arg, na_action=na_action)
+def series_map(series, arg, na_action=None, dtype=None, memory_scale=None):
+    """
+    Map values of Series according to input correspondence.
+
+    Used for substituting each value in a Series with another value,
+    that may be derived from a function, a ``dict`` or
+    a :class:`Series`.
+
+    Parameters
+    ----------
+    arg : function, collections.abc.Mapping subclass or Series
+        Mapping correspondence.
+    na_action : {None, 'ignore'}, default None
+        If 'ignore', propagate NaN values, without passing them to the
+        mapping correspondence.
+    dtype : np.dtype, default None
+        Specify return type of the function. Must be specified when
+        we cannot decide the return type of the function.
+    memory_scale : float
+        Specify the scale of memory uses in the function versus
+        input size.
+
+    Returns
+    -------
+    Series
+        Same index as caller.
+
+    See Also
+    --------
+    Series.apply : For applying more complex functions on a Series.
+    DataFrame.apply : Apply a function row-/column-wise.
+    DataFrame.applymap : Apply a function elementwise on a whole DataFrame.
+
+    Notes
+    -----
+    When ``arg`` is a dictionary, values in Series that are not in the
+    dictionary (as keys) are converted to ``NaN``. However, if the
+    dictionary is a ``dict`` subclass that defines ``__missing__`` (i.e.
+    provides a method for default values), then this default is used
+    rather than ``NaN``.
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> import mars.dataframe as md
+    >>> s = md.Series(['cat', 'dog', mt.nan, 'rabbit'])
+    >>> s.execute()
+    0      cat
+    1      dog
+    2      NaN
+    3   rabbit
+    dtype: object
+
+    ``map`` accepts a ``dict`` or a ``Series``. Values that are not found
+    in the ``dict`` are converted to ``NaN``, unless the dict has a default
+    value (e.g. ``defaultdict``):
+
+    >>> s.map({'cat': 'kitten', 'dog': 'puppy'}).execute()
+    0   kitten
+    1    puppy
+    2      NaN
+    3      NaN
+    dtype: object
+
+    It also accepts a function:
+
+    >>> s.map('I am a {}'.format).execute()
+    0       I am a cat
+    1       I am a dog
+    2       I am a nan
+    3    I am a rabbit
+    dtype: object
+
+    To avoid applying the function to missing values (and keep them as
+    ``NaN``) ``na_action='ignore'`` can be used:
+
+    >>> s.map('I am a {}'.format, na_action='ignore').execute()
+    0     I am a cat
+    1     I am a dog
+    2            NaN
+    3  I am a rabbit
+    dtype: object
+    """
+    op = DataFrameMap(arg=arg, na_action=na_action, memory_scale=memory_scale)
     return op(series, dtype=dtype)
+
+
+def index_map(idx, mapper, na_action=None, dtype=None, memory_scale=None):
+    """
+    Map values using input correspondence (a dict, Series, or function).
+
+    Parameters
+    ----------
+    mapper : function, dict, or Series
+        Mapping correspondence.
+    na_action : {None, 'ignore'}
+        If 'ignore', propagate NA values, without passing them to the
+        mapping correspondence.
+    dtype : np.dtype, default None
+        Specify return type of the function. Must be specified when
+        we cannot decide the return type of the function.
+    memory_scale : float
+        Specify the scale of memory uses in the function versus
+        input size.
+
+    Returns
+    -------
+    applied : Union[Index, MultiIndex], inferred
+        The output of the mapping function applied to the index.
+        If the function returns a tuple with more than one element
+        a MultiIndex will be returned.
+    """
+    op = DataFrameMap(arg=mapper, na_action=na_action, memory_scale=memory_scale)
+    return op(idx, dtype=dtype)

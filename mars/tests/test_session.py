@@ -622,6 +622,9 @@ class Test(unittest.TestCase):
         raw_data = pd.DataFrame(np.random.randint(1000, size=(20, 10)))
         df = md.DataFrame(raw_data, chunk_size=5)
 
+        for col, series in df.iteritems():
+            pd.testing.assert_series_equal(series.execute().fetch(), raw_data[col])
+
         for i, batch in enumerate(df.iterbatch(batch_size=15)):
             pd.testing.assert_frame_equal(batch, raw_data.iloc[i * 15: (i + 1) * 15])
 

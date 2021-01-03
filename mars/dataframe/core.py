@@ -88,6 +88,10 @@ class IndexValue(Serializable):
         def key(self):
             return self._key
 
+        @property
+        def inferred_type(self):
+            return None
+
         def to_pandas(self):
             kw = {field.tag_name(None): getattr(self, attr, None)
                   for attr, field in self._FIELDS.items()
@@ -126,10 +130,18 @@ class IndexValue(Serializable):
         _categories = ListField('categories')
         _ordered = BoolField('ordered')
 
+        @property
+        def inferred_type(self):
+            return 'categorical'
+
     class IntervalIndex(IndexBase):
         _name = AnyField('name')
         _data = IntervalArrayField('data')
         _closed = StringField('closed')
+
+        @property
+        def inferred_type(self):
+            return 'interval'
 
     class DatetimeIndex(IndexBase):
         _name = AnyField('name')
@@ -145,6 +157,10 @@ class IndexValue(Serializable):
         _yearfirst = BoolField('yearfirst')
 
         @property
+        def inferred_type(self):
+            return 'datetime64'
+
+        @property
         def freq(self):
             return getattr(self, '_freq', None)
 
@@ -157,6 +173,10 @@ class IndexValue(Serializable):
         _periods = AnyField('periods')
         _end = AnyField('end')
         _closed = AnyField('closed')
+
+        @property
+        def inferred_type(self):
+            return 'timedelta64'
 
     class PeriodIndex(IndexBase):
         _name = AnyField('name')
@@ -175,26 +195,46 @@ class IndexValue(Serializable):
         _tz = AnyField('tz')
         _dtype = DataTypeField('dtype')
 
+        @property
+        def inferred_type(self):
+            return 'period'
+
     class Int64Index(IndexBase):
         _name = AnyField('name')
         _data = NDArrayField('data')
         _dtype = DataTypeField('dtype')
+
+        @property
+        def inferred_type(self):
+            return 'integer'
 
     class UInt64Index(IndexBase):
         _name = AnyField('name')
         _data = NDArrayField('data')
         _dtype = DataTypeField('dtype')
 
+        @property
+        def inferred_type(self):
+            return 'integer'
+
     class Float64Index(IndexBase):
         _name = AnyField('name')
         _data = NDArrayField('data')
         _dtype = DataTypeField('dtype')
+
+        @property
+        def inferred_type(self):
+            return 'floating'
 
     class MultiIndex(IndexBase):
         _names = ListField('names', on_serialize=list)
         _dtypes = ListField('dtypes', on_serialize=list)
         _data = NDArrayField('data')
         _sortorder = Int32Field('sortorder')
+
+        @property
+        def inferred_type(self):
+            return 'mixed'
 
         @property
         def names(self) -> list:
@@ -279,6 +319,10 @@ class IndexValue(Serializable):
     @property
     def name(self):
         return getattr(self._index_value, '_name', None)
+
+    @property
+    def inferred_type(self):
+        return self._index_value.inferred_type
 
     def has_value(self):
         if isinstance(self._index_value, self.RangeIndex):
@@ -414,6 +458,7 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
     # optional field
     _dtype = DataTypeField('dtype')
     _name = AnyField('name')
+    _names = AnyField('names')
     _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
     _chunks = ListField('chunks', ValueType.reference(IndexChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
@@ -467,8 +512,16 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
         return self._name
 
     @property
+    def names(self):
+        return getattr(self, '_names', None) or [self.name]
+
+    @property
     def index_value(self) -> IndexValue:
         return self._index_value
+
+    @property
+    def inferred_type(self):
+        return self._index_value.inferred_type
 
     def to_tensor(self, dtype=None, extract_multi_index=False):
         from ..tensor.datasource.from_dataframe import from_index
@@ -1143,6 +1196,12 @@ class DataFrameData(_BatchedFetcher, BaseDataFrameData):
             from ..serialize.protos.dataframe_pb2 import DataFrameDef
             return DataFrameDef
         return super().cls(provider)
+
+    def items(self):
+        for col_name in self.dtypes.index:
+            yield col_name, self[col_name]
+
+    iteritems = items
 
     def iterrows(self, batch_size=1000, session=None):
         for batch_data in self.iterbatch(batch_size=batch_size, session=session):

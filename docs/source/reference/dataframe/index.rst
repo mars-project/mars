@@ -14,4 +14,5 @@ methods. All classes and functions exposed in ``mars.dataframe.*`` namespace are
    general_functions
    series
    frame
+   indexing
    groupby

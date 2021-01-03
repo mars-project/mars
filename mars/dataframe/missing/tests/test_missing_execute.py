@@ -55,6 +55,18 @@ class Test(TestBase):
         pd.testing.assert_series_equal(self.executor.execute_dataframe(series.notna(), concat=True)[0],
                                        series_raw.notna())
 
+        idx_data = np.array([np.nan] * 20)
+        for _ in range(3):
+            idx_data[random.randint(0, 19)] = random.randint(0, 99)
+        idx_raw = pd.Index(idx_data)
+
+        idx = md.Index(idx_raw, chunk_size=4)
+
+        np.testing.assert_array_equal(self.executor.execute_dataframe(idx.isna(), concat=True)[0],
+                                      idx_raw.isna())
+        np.testing.assert_array_equal(self.executor.execute_dataframe(idx.notna(), concat=True)[0],
+                                      idx_raw.notna())
+
     def testDataFrameFillNAExecution(self):
         df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
         for _ in range(20):
@@ -167,6 +179,26 @@ class Test(TestBase):
         pd.testing.assert_series_equal(self.executor.execute_dataframe(series, concat=True)[0],
                                        series_raw.fillna(1))
 
+    def testIndexFillNAExecution(self):
+        idx_data = np.array([np.nan] * 20)
+        for _ in range(10):
+            idx_data[random.randint(0, 19)] = random.randint(0, 99)
+        idx_raw = pd.Index(idx_data)
+
+        # test single chunk
+        idx = md.Index(idx_raw)
+
+        r = idx.fillna(1)
+        pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      idx_raw.fillna(1))
+
+        idx = md.Index(idx_raw, chunk_size=3)
+
+        # test chunked with numeric fill
+        r = idx.fillna(1)
+        pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      idx_raw.fillna(1))
+
     def testDropNAExecution(self):
         # dataframe cases
         df_raw = pd.DataFrame(np.nan, index=range(0, 20), columns=list('ABCDEFGHIJ'))
@@ -217,6 +249,16 @@ class Test(TestBase):
         r.dropna(inplace=True)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                        series_raw.dropna())
+
+        # index cases
+        idx_data = np.array([np.nan] * 20)
+        for _ in range(10):
+            idx_data[random.randint(0, 19)] = random.randint(0, 99)
+        idx_raw = pd.Index(idx_data)
+
+        r = md.Index(idx_raw, chunk_size=4).dropna()
+        pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      idx_raw.dropna())
 
     def testReplaceExecution(self):
         # dataframe cases
