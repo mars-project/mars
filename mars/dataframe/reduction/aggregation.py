@@ -29,6 +29,7 @@ from ...custom_log import redirect_custom_log
 from ...operands import OperandStage
 from ...serialize import BoolField, AnyField, Int32Field, ListField, DictField
 from ...utils import ceildiv, lazy_import, enter_mode, enter_current_session
+from ..core import INDEX_CHUNK_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_df, build_empty_df, build_series, parse_index, validate_axis
@@ -727,7 +728,12 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                     .reshape(op.outputs[0].shape)
             else:
                 xp = cp if op.gpu else np
-                result = ctx[op.inputs[0].key].agg(op.raw_func, axis=op.axis)
+                in_obj = op.inputs[0]
+                if isinstance(in_obj, INDEX_CHUNK_TYPE):
+                    result = op.func[0](ctx[in_obj.key])
+                else:
+                    result = ctx[in_obj.key].agg(op.raw_func, axis=op.axis)
+
                 if op.output_types[0] == OutputType.tensor:
                     result = xp.array(result)
                 ctx[op.outputs[0].key] = result

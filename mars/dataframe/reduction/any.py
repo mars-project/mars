@@ -27,12 +27,12 @@ class DataFrameAny(DataFrameReductionOperand, DataFrameReductionMixin):
         return True
 
 
-def any_series(df, axis=None, bool_only=None, skipna=None, level=None, combine_size=None):
+def any_series(series, axis=None, bool_only=None, skipna=None, level=None, combine_size=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameAny(axis=axis, skipna=skipna, level=level, bool_only=bool_only,
                       combine_size=combine_size, output_types=[OutputType.scalar],
                       use_inf_as_na=use_inf_as_na)
-    return op(df)
+    return op(series)
 
 
 def any_dataframe(df, axis=None, bool_only=None, skipna=None, level=None, combine_size=None):
@@ -41,3 +41,9 @@ def any_dataframe(df, axis=None, bool_only=None, skipna=None, level=None, combin
                       combine_size=combine_size, output_types=[OutputType.series],
                       use_inf_as_na=use_inf_as_na)
     return op(df)
+
+
+def any_index(index):
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+    op = DataFrameAny(output_types=[OutputType.scalar], use_inf_as_na=use_inf_as_na)
+    return op(index)

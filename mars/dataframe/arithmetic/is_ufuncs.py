@@ -21,7 +21,8 @@ from .core import DataFrameUnaryUfunc
 
 
 class DataFrameIsUFuncMixin:
-    def _get_output_dtype(self, df):
+    @classmethod
+    def _get_output_dtype(cls, df):
         if df.ndim == 2:
             return pd.Series(np.dtype(bool), index=df.dtypes.index)
         else:

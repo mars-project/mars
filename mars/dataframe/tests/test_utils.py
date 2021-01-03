@@ -363,7 +363,16 @@ class Test(unittest.TestCase):
 
     def testIndexInferredType(self):
         self.assertEqual(Index(pd.Index([1, 2, 3, 4])).inferred_type, 'integer')
+        self.assertEqual(Index(pd.Index([1, 2, 3, 4]).astype('uint32')).inferred_type, 'integer')
         self.assertEqual(Index(pd.Index([1.2, 2.3, 4.5])).inferred_type, 'floating')
+        self.assertEqual(
+            Index(pd.IntervalIndex.from_tuples([(0, 1), (2, 3), (4, 5)])).inferred_type,
+            'interval'
+        )
+        self.assertEqual(
+            Index(pd.MultiIndex.from_tuples([('a', 1), ('b', 2)])).inferred_type,
+            'mixed'
+        )
 
     def testValidateAxis(self):
         df = DataFrame(pd.DataFrame(np.random.rand(4, 3)))

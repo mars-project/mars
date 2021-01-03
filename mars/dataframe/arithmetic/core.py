@@ -591,7 +591,8 @@ class DataFrameUnaryOp(DataFrameOperand, DataFrameUnaryOpMixin):
     def __init__(self, output_types=None, **kw):
         super().__init__(_output_types=output_types, **kw)
 
-    def _get_output_dtype(self, df):
+    @classmethod
+    def _get_output_dtype(cls, df):
         if df.ndim == 2:
             return df.dtypes
         else:

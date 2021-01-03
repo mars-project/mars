@@ -28,8 +28,13 @@ Modifying and computations
 .. autosummary::
    :toctree: generated/
 
+   Index.all
+   Index.any
    Index.drop
    Index.drop_duplicates
+   Index.max
+   Index.min
+   Index.rename
 
 Missing values
 --------------
@@ -49,6 +54,5 @@ Conversion
 
    Index.astype
    Index.map
-   Index.rename
    Index.to_frame
    Index.to_series

@@ -40,3 +40,10 @@ def min_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, com
                       combine_size=combine_size, output_types=[OutputType.series],
                       use_inf_as_na=use_inf_as_na)
     return op(df)
+
+
+def min_index(df, axis=None, skipna=True):
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+    op = DataFrameMin(axis=axis, skipna=skipna, output_types=[OutputType.scalar],
+                      use_inf_as_na=use_inf_as_na)
+    return op(df)
