@@ -152,11 +152,13 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
 
             in_data = ctx[op.inputs[0].key]
             if op.drop_directly:
-                if in_data.ndim == 2:
+                if isinstance(in_data, pd.DataFrame):
                     result = in_data.dropna(axis=op.axis, how=op.how, thresh=op.thresh,
                                             subset=op.subset)
-                else:
+                elif isinstance(in_data, pd.Series):
                     result = in_data.dropna(axis=op.axis, how=op.how)
+                else:
+                    result = in_data.dropna(how=op.how)
                 ctx[op.outputs[0].key] = result
                 return
 
@@ -363,3 +365,23 @@ def series_dropna(series, axis=0, inplace=False, how=None):
         series.data = out_series.data
     else:
         return out_series
+
+
+def index_dropna(index, how='any'):
+    """
+    Return Index without NA/NaN values.
+
+    Parameters
+    ----------
+    how : {'any', 'all'}, default 'any'
+        If the Index is a MultiIndex, drop the value when any or all levels
+        are NaN.
+
+    Returns
+    -------
+    Index
+    """
+    use_inf_as_na = options.dataframe.mode.use_inf_as_na
+    op = DataFrameDropNA(axis=0, how=how, output_types=[OutputType.index],
+                         use_inf_as_na=use_inf_as_na)
+    return op(index)

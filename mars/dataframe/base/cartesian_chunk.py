@@ -66,7 +66,7 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
 
     @property
     def memory_scale(self):
-        return self._memory_scale or 2
+        return self._memory_scale or 2.0
 
     @property
     def tileable_op_key(self):

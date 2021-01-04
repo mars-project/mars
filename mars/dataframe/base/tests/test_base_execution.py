@@ -196,6 +196,14 @@ class Test(TestBase):
         expected = raw.map({'c': 'e'})
         pd.testing.assert_series_equal(result, expected)
 
+        # test map index
+        raw = pd.Index(np.random.rand(7))
+        idx = from_pandas_index(pd.Index(raw), chunk_size=2)
+        r = idx.map(f)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.map(lambda x: x + 1.)
+        pd.testing.assert_index_equal(result, expected)
+
     def testDescribeExecution(self):
         s_raw = pd.Series(np.random.rand(10))
 
@@ -1086,6 +1094,15 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = s.astype('arrow_string')
         pd.testing.assert_series_equal(result, expected)
+
+        # test index
+        raw = pd.Index(rs.randint(5, size=20))
+        mix = from_pandas_index(raw)
+        r = mix.astype('int32')
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.astype('int32')
+        pd.testing.assert_index_equal(result, expected)
 
         # multiply chunks
         series = from_pandas_series(s, chunk_size=6)

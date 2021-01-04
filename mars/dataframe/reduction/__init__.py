@@ -41,18 +41,18 @@ from .unique import DataFrameUnique, unique
 
 
 def _install():
-    from ..core import DATAFRAME_TYPE, SERIES_TYPE
+    from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
     from .aggregation import aggregate
     from .sum import sum_series, sum_dataframe
     from .prod import prod_series, prod_dataframe
-    from .max import max_series, max_dataframe
-    from .min import min_series, min_dataframe
+    from .max import max_series, max_dataframe, max_index
+    from .min import min_series, min_dataframe, min_index
     from .count import count_series, count_dataframe
     from .mean import mean_series, mean_dataframe
     from .var import var_series, var_dataframe
     from .std import std_series, std_dataframe
-    from .all import all_series, all_dataframe
-    from .any import any_series, any_dataframe
+    from .all import all_series, all_dataframe, all_index
+    from .any import any_series, any_dataframe, any_index
     from .cummax import cummax
     from .cummin import cummin
     from .cumprod import cumprod
@@ -96,6 +96,14 @@ def _install():
         if series_func is not None:  # pragma: no branch
             for t in SERIES_TYPE:
                 setattr(t, func_name, series_func)
+
+    for t in INDEX_TYPE:
+        setattr(t, 'agg', aggregate)
+        setattr(t, 'aggregate', aggregate)
+        setattr(t, 'all', all_index)
+        setattr(t, 'any', any_index)
+        setattr(t, 'min', min_index)
+        setattr(t, 'max', max_index)
 
 
 _install()

@@ -678,6 +678,33 @@ class TestCount(TestBase):
         np.testing.assert_array_equal(result, expected)
 
 
+class TestIndexReduction(TestBase):
+    def setUp(self):
+        self.executor = ExecutorForTest()
+
+    def testIndexReduction(self):
+        rs = np.random.RandomState(0)
+        data = pd.Index(rs.randint(0, 5, (100,)))
+        data2 = pd.Index(rs.randint(1, 6, (100,)))
+
+        for method in ['min', 'max', 'all', 'any']:
+            idx = md.Index(data)
+            result = self.executor.execute_dataframe(getattr(idx, method)(), concat=True)[0]
+            self.assertEqual(result, getattr(data, method)())
+
+            idx = md.Index(data, chunk_size=10)
+            result = self.executor.execute_dataframe(getattr(idx, method)(), concat=True)[0]
+            self.assertEqual(result, getattr(data, method)())
+
+            idx = md.Index(data2)
+            result = self.executor.execute_dataframe(getattr(idx, method)(), concat=True)[0]
+            self.assertEqual(result, getattr(data2, method)())
+
+            idx = md.Index(data2, chunk_size=10)
+            result = self.executor.execute_dataframe(getattr(idx, method)(), concat=True)[0]
+            self.assertEqual(result, getattr(data2, method)())
+
+
 cum_reduction_functions = dict(
     cummax=dict(func_name='cummax'),
     cummin=dict(func_name='cummin'),
