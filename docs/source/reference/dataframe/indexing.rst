@@ -36,6 +36,14 @@ Modifying and computations
    Index.min
    Index.rename
 
+Compatibility with MultiIndex
+-----------------------------
+.. autosummary::
+   :toctree: generated/
+
+   Index.set_names
+
+
 Missing values
 --------------
 .. autosummary::

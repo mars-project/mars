@@ -813,6 +813,10 @@ class Test(TestBase):
         pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.rename(['C', 'D']))
 
+        r = idx.set_names('C', level=0)
+        pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.set_names('C', level=0))
+
     def testRenameAxis(self):
         rs = np.random.RandomState(0)
 
@@ -835,6 +839,19 @@ class Test(TestBase):
         df.columns.name = 'df_cols'
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
                                       raw.rename_axis('df_cols', axis=1))
+
+        # test dataframe cases with MultiIndex
+        raw = pd.DataFrame(
+            rs.rand(10, 4), columns=pd.MultiIndex.from_tuples([('A', 1), ('B', 2), ('C', 3), ('D', 4)]))
+        df = md.DataFrame(raw, chunk_size=3)
+
+        df.columns.names = ['c1', 'c2']
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      raw.rename_axis(['c1', 'c2'], axis=1))
+
+        df.columns.set_names('c2_1', level=1, inplace=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      raw.rename_axis(['c1', 'c2_1'], axis=1))
 
         # test series cases
         raw = pd.Series(rs.rand(10))

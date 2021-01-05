@@ -16,7 +16,7 @@ import warnings
 
 from ... import opcodes
 from ...core import get_output_types, OutputType
-from ...serialize import AnyField, Int64Field, StringField
+from ...serialize import AnyField, StringField
 from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_df, build_series, validate_axis, parse_index
@@ -28,7 +28,7 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
     _columns_mapper = AnyField('columns_mapper')
     _index_mapper = AnyField('index_mapper')
     _new_name = AnyField('new_name')
-    _level = Int64Field('level')
+    _level = AnyField('level')
     _errors = StringField('errors')
 
     def __init__(self, columns_mapper=None, index_mapper=None, new_name=None, level=None,
@@ -79,7 +79,8 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
             new_df = self._calc_renamed_series(df, errors=self.errors)
             new_index = new_df.index
         else:
-            new_df = new_index = raw_index.rename(self._index_mapper or self._new_name)
+            new_df = new_index = raw_index.set_names(self._index_mapper or self._new_name,
+                                                     level=self._level)
 
         if self._columns_mapper is not None:
             params['columns_value'] = parse_index(new_df.columns, store_data=True)
@@ -134,7 +135,8 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
         elif op.output_types[0] == OutputType.series:
             ctx[op.outputs[0].key] = input_.rename(index=op.index_mapper or op.new_name, level=op.level)
         else:
-            ctx[op.outputs[0].key] = input_.rename(op.index_mapper or op.new_name)
+            ctx[op.outputs[0].key] = input_.set_names(op.index_mapper or op.new_name,
+                                                      level=op.level)
 
 
 def _rename(df_obj, index_mapper=None, columns_mapper=None, copy=True, inplace=False,
@@ -400,5 +402,78 @@ def index_rename(index, name, inplace=False):
     ret = op(index)
     if inplace:
         index.data = ret.data
+    else:
+        return ret
+
+
+def index_set_names(index, names, level=None, inplace=False):
+    """
+    Set Index or MultiIndex name.
+
+    Able to set new names partially and by level.
+
+    Parameters
+    ----------
+    names : label or list of label
+        Name(s) to set.
+    level : int, label or list of int or label, optional
+        If the index is a MultiIndex, level(s) to set (None for all
+        levels). Otherwise level must be None.
+    inplace : bool, default False
+        Modifies the object directly, instead of creating a new Index or
+        MultiIndex.
+
+    Returns
+    -------
+    Index
+        The same type as the caller or None if inplace is True.
+
+    See Also
+    --------
+    Index.rename : Able to set new names without level.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> idx = md.Index([1, 2, 3, 4])
+    >>> idx.execute()
+    Int64Index([1, 2, 3, 4], dtype='int64')
+    >>> idx.set_names('quarter').execute()
+    Int64Index([1, 2, 3, 4], dtype='int64', name='quarter')
+
+    >>> idx = md.MultiIndex.from_product([['python', 'cobra'],
+    ...                                   [2018, 2019]])
+    >>> idx.execute()
+    MultiIndex([('python', 2018),
+                ('python', 2019),
+                ( 'cobra', 2018),
+                ( 'cobra', 2019)],
+               )
+    >>> idx.set_names(['kind', 'year'], inplace=True)
+    >>> idx.execute()
+    MultiIndex([('python', 2018),
+                ('python', 2019),
+                ( 'cobra', 2018),
+                ( 'cobra', 2019)],
+               names=['kind', 'year'])
+    >>> idx.set_names('species', level=0).execute()
+    MultiIndex([('python', 2018),
+                ('python', 2019),
+                ( 'cobra', 2018),
+                ( 'cobra', 2019)],
+               names=['species', 'year'])
+    """
+    op = DataFrameRename(index_mapper=names, level=level,
+                         output_types=get_output_types(index))
+    ret = op(index)
+
+    if inplace:
+        index.data = ret.data
+
+        df_or_series = getattr(index, '_get_df_or_series', lambda: None)()
+        if df_or_series is not None:
+            from .rename_axis import rename_axis_with_level
+            rename_axis_with_level(df_or_series, names, axis=index._axis,
+                                   level=level, inplace=True)
     else:
         return ret

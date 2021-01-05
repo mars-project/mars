@@ -22,7 +22,7 @@ def _install():
     from .iloc import iloc, head, tail
     from .insert import df_insert
     from .loc import loc
-    from .rename import df_rename, series_rename, index_rename
+    from .rename import df_rename, series_rename, index_rename, index_set_names
     from .rename_axis import rename_axis
     from .reset_index import df_reset_index, series_reset_index
     from .set_index import set_index
@@ -57,6 +57,7 @@ def _install():
 
     for cls in INDEX_TYPE:
         setattr(cls, 'rename', index_rename)
+        setattr(cls, 'set_names', index_set_names)
 
     # make sure operand is registered
     from .set_label import DataFrameSetLabel
