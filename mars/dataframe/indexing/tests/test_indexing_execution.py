@@ -813,6 +813,41 @@ class Test(TestBase):
         pd.testing.assert_index_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                       raw.rename(['C', 'D']))
 
+    def testRenameAxis(self):
+        rs = np.random.RandomState(0)
+
+        # test dataframe cases
+        raw = pd.DataFrame(rs.rand(10, 4), columns=['A', 'B', 'C', 'D'])
+        df = md.DataFrame(raw, chunk_size=3)
+
+        r = df.rename_axis('idx')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.rename_axis('idx'))
+
+        r = df.rename_axis('cols', axis=1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.rename_axis('cols', axis=1))
+
+        df.rename_axis('c', axis=1, inplace=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      raw.rename_axis('c', axis=1))
+
+        df.columns.name = 'df_cols'
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      raw.rename_axis('df_cols', axis=1))
+
+        # test series cases
+        raw = pd.Series(rs.rand(10))
+        s = md.Series(raw, chunk_size=3)
+
+        r = s.rename_axis('idx')
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.rename_axis('idx'))
+
+        s.index.name = 'series_idx'
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(s, concat=True)[0],
+                                       raw.rename_axis('series_idx'))
+
     def testInsert(self):
         rs = np.random.RandomState(0)
         raw = pd.DataFrame(rs.rand(10, 4), columns=['A', 'B', 'C', 'D'])
