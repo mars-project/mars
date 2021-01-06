@@ -468,12 +468,13 @@ def index_set_names(index, names, level=None, inplace=False):
     ret = op(index)
 
     if inplace:
-        index.data = ret.data
-
         df_or_series = getattr(index, '_get_df_or_series', lambda: None)()
         if df_or_series is not None:
             from .rename_axis import rename_axis_with_level
             rename_axis_with_level(df_or_series, names, axis=index._axis,
                                    level=level, inplace=True)
+            index.data = df_or_series.axes[index._axis].data
+        else:
+            index.data = ret.data
     else:
         return ret

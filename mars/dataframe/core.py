@@ -559,17 +559,22 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
             return obj()
         return None
 
+    def _set_df_or_series(self, df_or_series, axis):
+        self._df_or_series = weakref.ref(df_or_series)
+        self._axis = axis
+
     @property
     def name(self):
         return self._data.name
 
     @name.setter
     def name(self, value):
-        self.rename(value, inplace=True)
-
         df_or_series = self._get_df_or_series()
         if df_or_series is not None:
             df_or_series.rename_axis(value, axis=self._axis, inplace=True)
+            self.data = df_or_series.axes[self._axis].data
+        else:
+            self.rename(value, inplace=True)
 
     @property
     def names(self):
@@ -577,11 +582,12 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
 
     @names.setter
     def names(self, value):
-        self.rename(value, inplace=True)
-
         df_or_series = self._get_df_or_series()
         if df_or_series is not None:
             df_or_series.rename_axis(value, axis=self._axis, inplace=True)
+            self.data = df_or_series.axes[self._axis].data
+        else:
+            self.rename(value, inplace=True)
 
     def to_frame(self, index: bool = True, name=None):
         """
@@ -929,8 +935,7 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
         The index (axis labels) of the Series.
         """
         idx = self._data.index
-        setattr(idx, '_df_or_series', weakref.ref(self))
-        setattr(idx, '_axis', 0)
+        idx._set_df_or_series(self, 0)
         return idx
 
     @property
@@ -1343,15 +1348,13 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
     @property
     def index(self):
         idx = self._data.index
-        setattr(idx, '_df_or_series', weakref.ref(self))
-        setattr(idx, '_axis', 0)
+        idx._set_df_or_series(self, 0)
         return idx
 
     @property
     def columns(self):
         col = self._data.columns
-        setattr(col, '_df_or_series', weakref.ref(self))
-        setattr(col, '_axis', 1)
+        col._set_df_or_series(self, 1)
         return col
 
     @columns.setter
