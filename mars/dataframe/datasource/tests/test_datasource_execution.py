@@ -212,10 +212,10 @@ class Test(TestBase):
             # test from tensor with unknown shape
             tensor2 = tensor[tensor[:, 0] < 0.9]
             df = dataframe_from_tensor(tensor2)
+            df_result = self.executor.execute_dataframes([df])[0]
             tensor_res = self.executor.execute_tensors([tensor2])[0]
             pdf_expected = pd.DataFrame(tensor_res)
-            df_result = self.executor.execute_dataframes([df])[0]
-            pd.testing.assert_frame_equal(df_result, pdf_expected)
+            pd.testing.assert_frame_equal(df_result.reset_index(drop=True), pdf_expected)
 
         # test converted with specified index_value and columns
         tensor2 = mt.random.rand(2, 2, chunk_size=1)

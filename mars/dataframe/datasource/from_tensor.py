@@ -249,9 +249,9 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         nsplits = in_tensor.nsplits
 
-        check_chunks_unknown_shape(op.inputs, TilesError)
         if op.index is not None:
             # rechunk index if it's a tensor
+            check_chunks_unknown_shape(op.inputs, TilesError)
             index_tensor = op.index.rechunk([nsplits[0]])._inplace_tile()
         else:
             index_tensor = None
@@ -291,8 +291,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 index_value = parse_index(chunk_pd_index, store_data=True)
             elif op.index is None:
                 # input tensor has unknown shape
-                index_value = parse_index(pd.RangeIndex(index_stop - in_chunk.shape[0], index_stop),
-                                          store_data=True)
+                index_value = parse_index(pd.RangeIndex(-1), in_chunk)
             else:
                 index_chunk = index_tensor.cix[in_chunk.index[0], ]
                 chunk_inputs.append(index_chunk)
@@ -344,6 +343,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                     index_data = ctx[op.inputs[1].key]
                 else:
                     index_data = chunk.index_value.to_pandas()
+                    if isinstance(index_data, pd.RangeIndex) and len(index_data) == 0:
+                        index_data = None
                 ctx[chunk.key] = pd.DataFrame(tensor_data, index=index_data,
                                               columns=chunk.columns_value.to_pandas())
 
