@@ -155,6 +155,7 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
                                                    shape=shape,
                                                    index_value=index_value,
                                                    columns_value=out.columns_value,
+                                                   dtypes=out.dtypes,
                                                    index=(i, 0))
                     out_chunks.append(out_chunk)
                     nsplits[0].append(out_chunk.shape[0])
@@ -166,6 +167,7 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
                     out_chunk = chunk_op.new_chunk([left_chunk, right_chunk],
                                                    shape=shape,
                                                    index_value=index_value,
+                                                   dtype=out.dtype,
                                                    name=out.name,
                                                    index=(i,))
                     out_chunks.append(out_chunk)
