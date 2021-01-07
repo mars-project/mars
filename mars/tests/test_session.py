@@ -500,6 +500,13 @@ class Test(unittest.TestCase):
         r4 = sess.fetch(df1.iloc[0, 2])
         self.assertEqual(r4, r1.iloc[0, 2])
 
+        arr2 = mt.random.rand(10, 3, chunk_size=3)
+        df2 = md.DataFrame(arr2)
+        r5 = sess.run(df2)
+
+        r6 = df2.iloc[:4].fetch(batch_size=3, session=sess)
+        pd.testing.assert_frame_equal(r5.iloc[:4], r6)
+
     def testMultiOutputsOp(self):
         sess = new_session()
 
