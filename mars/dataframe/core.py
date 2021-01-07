@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import weakref
 from collections.abc import Iterable
 from io import StringIO
 from typing import Union
@@ -529,7 +530,7 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
 
 
 class Index(HasShapeTileableEnity, _ToPandasMixin):
-    __slots__ = ()
+    __slots__ = '_df_or_series', '_axis'
     _allow_data_type_ = (IndexData,)
 
     def __new__(cls, data: Union[pd.Index, IndexData], **_):
@@ -551,6 +552,42 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
 
     def __mars_tensor__(self, dtype=None, order='K'):
         return self._to_mars_tensor(dtype=dtype, order=order)
+
+    def _get_df_or_series(self):
+        obj = getattr(self, '_df_or_series', None)
+        if obj is not None:
+            return obj()
+        return None
+
+    def _set_df_or_series(self, df_or_series, axis):
+        self._df_or_series = weakref.ref(df_or_series)
+        self._axis = axis
+
+    @property
+    def name(self):
+        return self._data.name
+
+    @name.setter
+    def name(self, value):
+        df_or_series = self._get_df_or_series()
+        if df_or_series is not None:
+            df_or_series.rename_axis(value, axis=self._axis, inplace=True)
+            self.data = df_or_series.axes[self._axis].data
+        else:
+            self.rename(value, inplace=True)
+
+    @property
+    def names(self):
+        return self._data.names
+
+    @names.setter
+    def names(self, value):
+        df_or_series = self._get_df_or_series()
+        if df_or_series is not None:
+            df_or_series.rename_axis(value, axis=self._axis, inplace=True)
+            self.data = df_or_series.axes[self._axis].data
+        else:
+            self.rename(value, inplace=True)
 
     def to_frame(self, index: bool = True, name=None):
         """
@@ -851,6 +888,12 @@ class SeriesData(_BatchedFetcher, BaseSeriesData):
             return SeriesDef
         return super().cls(provider)
 
+    def iteritems(self, batch_size=10000, session=None):
+        for batch_data in self.iterbatch(batch_size=batch_size, session=session):
+            yield from getattr(batch_data, 'iteritems')()
+
+    items = iteritems
+
 
 class Series(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = '_cache',
@@ -891,7 +934,9 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
         """
         The index (axis labels) of the Series.
         """
-        return self._data.index
+        idx = self._data.index
+        idx._set_df_or_series(self, 0)
+        return idx
 
     @property
     def name(self):
@@ -948,6 +993,38 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
         tensor = self._data.to_tensor()
         dtype = dtype if dtype is not None else tensor.dtype
         return tensor.astype(dtype=dtype, order=order, copy=False)
+
+    def iteritems(self, batch_size=10000, session=None):
+        """
+        Lazily iterate over (index, value) tuples.
+
+        This method returns an iterable tuple (index, value). This is
+        convenient if you want to create a lazy iterator.
+
+        Returns
+        -------
+        iterable
+            Iterable of tuples containing the (index, value) pairs from a
+            Series.
+
+        See Also
+        --------
+        DataFrame.items : Iterate over (column name, Series) pairs.
+        DataFrame.iterrows : Iterate over DataFrame rows as (index, Series) pairs.
+
+        Examples
+        --------
+        >>> import mars.dataframe as md
+        >>> s = md.Series(['A', 'B', 'C'])
+        >>> for index, value in s.items():
+        ...     print(f"Index : {index}, Value : {value}")
+        Index : 0, Value : A
+        Index : 1, Value : B
+        Index : 2, Value : C
+        """
+        return self._data.iteritems(batch_size=batch_size, session=session)
+
+    items = iteritems
 
     def to_frame(self, name=None):
         """
@@ -1270,11 +1347,15 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
 
     @property
     def index(self):
-        return self._data.index
+        idx = self._data.index
+        idx._set_df_or_series(self, 0)
+        return idx
 
     @property
     def columns(self):
-        return self._data.columns
+        col = self._data.columns
+        col._set_df_or_series(self, 1)
+        return col
 
     @columns.setter
     def columns(self, new_columns):

@@ -374,6 +374,7 @@ message OperandDef {
         CARTESIAN_CHUNK = 734;
         EXPLODE = 735;
         REPLACE = 736;
+        RENAME_AXIS = 737;
 
         FUSE = 801;
 
