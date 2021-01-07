@@ -1,22 +1,23 @@
 # Each line is a component followed by one or more owners.
 
-*                        @qinxuye
-README.rst               @qinxuye
+*                        @qinxuye @wjsi @hekaisheng
 /.github                 @wjsi
 /bin                     @wjsi
 /docs                    @qinxuye @hekaisheng @wjsi
-/mars/                   @qinxuye
-/mars/actors             @qinxuye
-/mars/dataframe          @hekaisheng
-/mars/deploy             @wjsi
-/mars/learn              @qinxuye
-/mars/lib                @wjsi
-/mars/optimizes          @hekaisheng
-/mars/ray                @hekaisheng
-/mars/remote             @qinxuye
+/mars/                   @qinxuye @hekaisheng @wjsi
+/mars/tests              @qinxuye @hekaisheng @wjsi
+/mars/actors             @qinxuye @hekaisheng @wjsi
+/mars/dataframe          @hekaisheng @qinxuye @wjsi
+/mars/deploy             @wjsi @hekaisheng
+/mars/learn              @qinxuye @hekaisheng
+/mars/lib                @wjsi @qinxuye
+/mars/optimizes          @hekaisheng @qinxuye
+/mars/ray                @hekaisheng @qinxuye
+/mars/remote             @qinxuye @wjsi @hekaisheng
 /mars/scheduler          @wjsi
 /mars/serialize          @qinxuye @wjsi
-/mars/tensor             @hekaisheng
-/mars/tests              @wjsi @qinxuye
+/mars/serialize/protos   @qinxuye @wjsi @hekaisheng
+/mars/tensor             @hekaisheng @qinxuye @wjsi
+/mars/tests              @wjsi @qinxuye @qinxuye
 /mars/web                @wjsi @hekaisheng
 /mars/worker             @wjsi
