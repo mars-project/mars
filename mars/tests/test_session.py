@@ -660,6 +660,9 @@ class Test(unittest.TestCase):
 
         self.assertEqual(i, len(raw_data))
 
+        # test to_dict
+        self.assertEqual(s.to_dict(), raw_data.to_dict())
+
     def testNamed(self):
         rs = np.random.RandomState(0)
         raw = rs.rand(10, 10)

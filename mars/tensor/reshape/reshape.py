@@ -86,8 +86,8 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         op = self.copy().reset_key()
         return op(new_input)
 
-    def __call__(self, a, order):
-        return self.new_tensor([a], self._newshape, order=order)
+    def __call__(self, a, order, out_shape):
+        return self.new_tensor([a], out_shape, order=order)
 
     @staticmethod
     def _gen_reshape_rechunk_nsplits(old_shape, new_shape, nsplits):
@@ -240,7 +240,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             # -1 exists in newshape and input tensor has unknown shape
             # recalculate new shape
             shape = tuple(-1 if np.isnan(s) else s for s in tensor.shape)
-            newshape = calc_shape(in_tensor.size, shape)
+            op._newshape = newshape = calc_shape(in_tensor.size, shape)
             tensor._shape = newshape
 
         if op.order == 'F':
@@ -515,9 +515,9 @@ def reshape(a, newshape, order='C'):
         new_shape = [newshape] if isinstance(newshape, int) else list(newshape)
         # if -1 exists in newshape, just treat it as unknown shape
         new_shape = [s if s != -1 else np.nan for s in new_shape]
-        newshape = tuple(new_shape)
+        out_shape = tuple(new_shape)
     else:
-        newshape = calc_shape(a.size, newshape)
+        out_shape = newshape = calc_shape(a.size, newshape)
         if a.size != np.prod(newshape):
             raise ValueError(f'cannot reshape array of size {a.size} into shape {newshape}')
 
@@ -526,12 +526,15 @@ def reshape(a, newshape, order='C'):
     if a.shape == newshape and tensor_order == a.order:
         # does not need to reshape
         return a
-    return _reshape(a, newshape, order=order, tensor_order=tensor_order)
+    return _reshape(a, newshape, order=order,
+                    tensor_order=tensor_order, out_shape=out_shape)
 
 
-def _reshape(a, newshape, order='C', tensor_order=None):
+def _reshape(a, newshape, order='C', tensor_order=None, out_shape=None):
     if tensor_order is None:
         tensor_order = get_order(order, a.order, available_options='CFA')
     op = TensorReshape(newshape, order, dtype=a.dtype,
                        create_view=tensor_order == a.order)
-    return op(a, tensor_order)
+    if out_shape is None:
+        out_shape = newshape
+    return op(a, tensor_order, out_shape)
