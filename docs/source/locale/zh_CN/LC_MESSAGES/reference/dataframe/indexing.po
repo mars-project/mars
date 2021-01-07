@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.7.0a3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-12-31 15:22+0800\n"
+"POT-Creation-Date: 2021-01-06 00:44+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -33,127 +33,175 @@ msgstr ""
 msgid "Properties"
 msgstr "属性"
 
-#: ../../source/reference/dataframe/indexing.rst:24:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:25:<autosummary>:1
+msgid ":obj:`Index.name <mars.dataframe.Index.name>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:25:<autosummary>:1
+msgid ":obj:`Index.names <mars.dataframe.Index.names>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:25:<autosummary>:1
 msgid ":obj:`Index.ndim <mars.dataframe.Index.ndim>`\\"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:24:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:25:<autosummary>:1
 msgid ":obj:`Index.size <mars.dataframe.Index.size>`\\"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:24:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:25:<autosummary>:1
 msgid ""
 ":obj:`Index.memory_usage <mars.dataframe.Index.memory_usage>`\\ "
 "\\(\\[deep\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:24:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:25:<autosummary>:1
 msgid "Memory usage of the values."
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:26
+#: ../../source/reference/dataframe/indexing.rst:27
 msgid "Modifying and computations"
 msgstr "修改和计算"
 
-#: ../../source/reference/dataframe/indexing.rst:32:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
+msgid ":obj:`Index.all <mars.dataframe.Index.all>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
+msgid ":obj:`Index.any <mars.dataframe.Index.any>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
 msgid ""
 ":obj:`Index.drop <mars.dataframe.Index.drop>`\\ \\(labels\\[\\, "
 "errors\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:32:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
 msgid "Make new Index with passed list of labels deleted."
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:32:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
 msgid ""
 ":obj:`Index.drop_duplicates <mars.dataframe.Index.drop_duplicates>`\\ "
 "\\(\\[keep\\, method\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:32:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
 msgid "Return Index with duplicate values removed."
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:34
-msgid "Missing values"
-msgstr "缺失值填充"
-
-#: ../../source/reference/dataframe/indexing.rst:43:<autosummary>:1
-msgid ""
-":obj:`Index.fillna <mars.dataframe.Index.fillna>`\\ \\(\\[value\\, "
-"downcast\\]\\)"
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
+msgid ":obj:`Index.max <mars.dataframe.Index.max>`\\ \\(\\[axis\\, skipna\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:43:<autosummary>:1
-msgid "Fill NA/NaN values with the specified value."
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
+msgid ":obj:`Index.min <mars.dataframe.Index.min>`\\ \\(\\[axis\\, skipna\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:43:<autosummary>:1
-msgid ":obj:`Index.dropna <mars.dataframe.Index.dropna>`\\ \\(\\[how\\]\\)"
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:43:<autosummary>:1
-msgid "Return Index without NA/NaN values."
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:43:<autosummary>:1
-msgid ":obj:`Index.isna <mars.dataframe.Index.isna>`\\ \\(\\)"
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:43:<autosummary>:1
-msgid "Detect missing values."
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:43:<autosummary>:1
-msgid ":obj:`Index.notna <mars.dataframe.Index.notna>`\\ \\(\\)"
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:43:<autosummary>:1
-msgid "Detect existing (non-missing) values."
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:45
-msgid "Conversion"
-msgstr "转换"
-
-#: ../../source/reference/dataframe/indexing.rst:52:<autosummary>:1
-msgid ""
-":obj:`Index.astype <mars.dataframe.Index.astype>`\\ \\(dtype\\[\\, "
-"copy\\]\\)"
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:52:<autosummary>:1
-msgid "Create an Index with values cast to dtypes."
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:52:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
 msgid ""
 ":obj:`Index.rename <mars.dataframe.Index.rename>`\\ \\(name\\[\\, "
 "inplace\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:52:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:38:<autosummary>:1
 msgid "Alter Index or MultiIndex name."
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:52:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:40
+msgid "Compatibility with MultiIndex"
+msgstr "MultiIndex 兼容方法"
+
+#: ../../source/reference/dataframe/indexing.rst:46:<autosummary>:1
+msgid ""
+":obj:`Index.set_names <mars.dataframe.Index.set_names>`\\ \\(names\\[\\, "
+"level\\, inplace\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:46:<autosummary>:1
+msgid "Set Index or MultiIndex name."
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:48
+msgid "Missing values"
+msgstr "缺失值填充"
+
+#: ../../source/reference/dataframe/indexing.rst:57:<autosummary>:1
+msgid ""
+":obj:`Index.fillna <mars.dataframe.Index.fillna>`\\ \\(\\[value\\, "
+"downcast\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:57:<autosummary>:1
+msgid "Fill NA/NaN values with the specified value."
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:57:<autosummary>:1
+msgid ":obj:`Index.dropna <mars.dataframe.Index.dropna>`\\ \\(\\[how\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:57:<autosummary>:1
+msgid "Return Index without NA/NaN values."
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:57:<autosummary>:1
+msgid ":obj:`Index.isna <mars.dataframe.Index.isna>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:57:<autosummary>:1
+msgid "Detect missing values."
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:57:<autosummary>:1
+msgid ":obj:`Index.notna <mars.dataframe.Index.notna>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:57:<autosummary>:1
+msgid "Detect existing (non-missing) values."
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:59
+msgid "Conversion"
+msgstr "转换"
+
+#: ../../source/reference/dataframe/indexing.rst:66:<autosummary>:1
+msgid ""
+":obj:`Index.astype <mars.dataframe.Index.astype>`\\ \\(dtype\\[\\, "
+"copy\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:66:<autosummary>:1
+msgid "Create an Index with values cast to dtypes."
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:66:<autosummary>:1
+msgid ""
+":obj:`Index.map <mars.dataframe.Index.map>`\\ \\(mapper\\[\\, "
+"na\\_action\\, dtype\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:66:<autosummary>:1
+msgid "Map values using input correspondence (a dict, Series, or function)."
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:66:<autosummary>:1
 msgid ""
 ":obj:`Index.to_frame <mars.dataframe.Index.to_frame>`\\ \\(\\[index\\, "
 "name\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:52:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:66:<autosummary>:1
 msgid "Create a DataFrame with a column containing the Index."
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:52:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:66:<autosummary>:1
 msgid ""
 ":obj:`Index.to_series <mars.dataframe.Index.to_series>`\\ \\(\\[index\\, "
 "name\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/indexing.rst:52:<autosummary>:1
+#: ../../source/reference/dataframe/indexing.rst:66:<autosummary>:1
 msgid "Create a Series with both index and values equal to the index keys."
 msgstr ""
 

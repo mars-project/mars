@@ -618,7 +618,7 @@ class Test(unittest.TestCase):
         self.assertIn('Categorical', str(c))
         self.assertEqual(repr(c.execute()), repr(pd.qcut(range(5), 3)))
 
-    def testDataFrameIter(self):
+    def testIter(self):
         raw_data = pd.DataFrame(np.random.randint(1000, size=(20, 10)))
         df = md.DataFrame(raw_data, chunk_size=5)
 
@@ -641,6 +641,21 @@ class Test(unittest.TestCase):
         for result_tup, expect_tup in zip(df.itertuples(batch_size=10),
                                           raw_data.itertuples()):
             self.assertEqual(result_tup, expect_tup)
+            i += 1
+
+        self.assertEqual(i, len(raw_data))
+
+        raw_data = pd.Series(np.random.randint(1000, size=(20,)))
+        s = md.Series(raw_data, chunk_size=5)
+
+        for i, batch in enumerate(s.iterbatch(batch_size=15)):
+            pd.testing.assert_series_equal(batch, raw_data.iloc[i * 15: (i + 1) * 15])
+
+        i = 0
+        for result_item, expect_item in zip(s.iteritems(batch_size=15),
+                                            raw_data.iteritems()):
+            self.assertEqual(result_item[0], expect_item[0])
+            self.assertEqual(result_item[1], expect_item[1])
             i += 1
 
         self.assertEqual(i, len(raw_data))

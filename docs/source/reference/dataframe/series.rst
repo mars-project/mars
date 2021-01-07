@@ -47,8 +47,10 @@ Indexing, iteration
    Series.iat
    Series.loc
    Series.iloc
-   Series.where
+   Series.items
+   Series.iteritems
    Series.mask
+   Series.where
 
 Binary operator functions
 -------------------------
@@ -140,6 +142,7 @@ Reindexing / selection / label manipulation
    Series.isin
    Series.reindex
    Series.rename
+   Series.rename_axis
    Series.reset_index
    Series.tail
 
