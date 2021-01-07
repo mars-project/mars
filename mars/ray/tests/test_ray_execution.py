@@ -24,6 +24,7 @@ import pandas as pd
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
+from mars.tests.core import flaky
 from mars.utils import lazy_import
 
 ray_installed = lazy_import('ray', globals=globals()) is not None
@@ -82,6 +83,7 @@ class Test(unittest.TestCase):
         for c1, c2 in zip(op.outputs, new_op.outputs):
             self.assertEqual(c1.key, c2.key)
 
+    @flaky(max_runs=3)
     def testRayClusterMode(self):
         with new_session(backend='ray', _load_code_from_local=True).as_default():
             t = mt.random.RandomState(0).rand(100, 4, chunk_size=30)
