@@ -503,7 +503,7 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             inputs.append(bins)
         if weights is not None:
             inputs.append(weights)
-        if a.size > 0 and \
+        if (a.size > 0 or np.isnan(a.size)) and \
                 (isinstance(bins, str) or mt.ndim(bins) == 0) and not range:
             # for bins that is str or integer,
             # requires min max calculated first

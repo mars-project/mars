@@ -153,7 +153,9 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         elif isinstance(input_tensor, SERIES_TYPE):
             index_value = input_tensor.index_value
         else:
-            index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
+            stop = input_tensor.shape[0]
+            stop = -1 if np.isnan(stop) else stop
+            index_value = parse_index(pd.RangeIndex(start=0, stop=stop))
 
         if columns is not None:
             if not (input_tensor.ndim == 1 and len(columns) == 1 or
@@ -287,8 +289,10 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 pd_index = out_df.index_value.to_pandas()
                 chunk_pd_index = pd_index[index_stop - in_chunk.shape[0]:index_stop]
                 index_value = parse_index(chunk_pd_index, store_data=True)
+            elif op.index is None:
+                # input tensor has unknown shape
+                index_value = parse_index(pd.RangeIndex(-1), in_chunk)
             else:
-                assert op.index is not None
                 index_chunk = index_tensor.cix[in_chunk.index[0], ]
                 chunk_inputs.append(index_chunk)
                 index_value = parse_index(pd.Index([], dtype=index_tensor.dtype),
@@ -339,6 +343,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                     index_data = ctx[op.inputs[1].key]
                 else:
                     index_data = chunk.index_value.to_pandas()
+                    if isinstance(index_data, pd.RangeIndex) and len(index_data) == 0:
+                        index_data = None
                 ctx[chunk.key] = pd.DataFrame(tensor_data, index=index_data,
                                               columns=chunk.columns_value.to_pandas())
 

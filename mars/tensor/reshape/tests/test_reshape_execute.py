@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import numpy as np
 
 from mars.tensor.datasource import ones, tensor
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import TestBase
 
 
-class Test(unittest.TestCase):
+class Test(TestBase):
     def setUp(self):
-        self.executor = ExecutorForTest('numpy')
+        self.ctx, self.executor = self._create_test_context()
 
     def testReshapeExecution(self):
         x = ones((1, 2, 3), chunk_size=[4, 3, 5])
@@ -56,6 +55,16 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(res, expected)
         self.assertTrue(res.flags['F_CONTIGUOUS'])
         self.assertFalse(res.flags['C_CONTIGUOUS'])
+
+        with self.ctx:
+            data = np.random.RandomState(0).rand(3, 4, 5)
+            x = tensor(data, chunk_size=3)
+            x = x[x[:, 0, 0] < 0.7]
+            y = x.reshape(-1, 20)
+            self.assertTrue(np.isnan(y.shape[0]))
+            res = self.executor.execute_tensors([y])[0]
+            expected = data[data[:, 0, 0] < 0.7].reshape(-1, 20)
+            np.testing.assert_array_equal(res, expected)
 
     def testShuffleReshapeExecution(self):
         a = ones((31, 27), chunk_size=10)
