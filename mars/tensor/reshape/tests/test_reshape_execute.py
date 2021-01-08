@@ -57,14 +57,16 @@ class Test(TestBase):
         self.assertFalse(res.flags['C_CONTIGUOUS'])
 
         with self.ctx:
-            data = np.random.RandomState(0).rand(3, 4, 5)
-            x = tensor(data, chunk_size=3)
-            x = x[x[:, 0, 0] < 0.7]
-            y = x.reshape(-1, 20)
-            self.assertTrue(np.isnan(y.shape[0]))
-            res = self.executor.execute_tensors([y])[0]
-            expected = data[data[:, 0, 0] < 0.7].reshape(-1, 20)
-            np.testing.assert_array_equal(res, expected)
+            for chunk_size in [None, 3]:
+                rs = np.random.RandomState(0)
+                data = rs.rand(3, 4, 5)
+                x = tensor(data, chunk_size=chunk_size)
+                x = x[x[:, 0, 0] < 0.7]
+                y = x.reshape(-1, 20)
+                self.assertTrue(np.isnan(y.shape[0]))
+                res = self.executor.execute_tensors([y])[0]
+                expected = data[data[:, 0, 0] < 0.7].reshape(-1, 20)
+                np.testing.assert_array_equal(res, expected)
 
     def testShuffleReshapeExecution(self):
         a = ones((31, 27), chunk_size=10)
