@@ -1,0 +1,23 @@
+# Each line is a component followed by one or more owners.
+
+*                        @qinxuye @wjsi @hekaisheng
+/.github                 @wjsi
+/bin                     @wjsi
+/docs                    @qinxuye @hekaisheng @wjsi
+/mars/                   @qinxuye @hekaisheng @wjsi
+/mars/tests              @qinxuye @hekaisheng @wjsi
+/mars/actors             @qinxuye @hekaisheng @wjsi
+/mars/dataframe          @hekaisheng @qinxuye @wjsi
+/mars/deploy             @wjsi @hekaisheng
+/mars/learn              @qinxuye @hekaisheng
+/mars/lib                @wjsi @qinxuye
+/mars/optimizes          @hekaisheng @qinxuye
+/mars/ray                @hekaisheng @qinxuye
+/mars/remote             @qinxuye @wjsi @hekaisheng
+/mars/scheduler          @wjsi
+/mars/serialize          @qinxuye @wjsi
+/mars/serialize/protos   @qinxuye @wjsi @hekaisheng
+/mars/tensor             @hekaisheng @qinxuye @wjsi
+/mars/tests              @wjsi @qinxuye @qinxuye
+/mars/web                @wjsi @hekaisheng
+/mars/worker             @wjsi

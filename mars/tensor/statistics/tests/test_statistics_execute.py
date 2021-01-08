@@ -251,6 +251,15 @@ class Test(TestBase):
                         expected = np.histogram(r, bins=[0, 4, 8], density=density)[0]
                         np.testing.assert_array_equal(result, expected)
 
+            # test unknown shape
+            raw4 = rs.rand(10)
+            d = tensor(raw4, chunk_size=3)
+            d = d[d < 0.9]
+            hist = histogram(d)
+            result = executor.execute_tensors(hist)[0]
+            expected = np.histogram(raw4[raw4 < 0.9])[0]
+            np.testing.assert_array_equal(result, expected)
+
     def testQuantileExecution(self):
         # test 1 chunk, 1-d
         raw = np.random.rand(20)

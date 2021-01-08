@@ -16,6 +16,8 @@
 
 import unittest
 
+import numpy as np
+
 from mars.operands import OperandStage
 from mars.tensor.datasource import ones
 from mars.tensor.reshape.reshape import TensorReshape
@@ -43,6 +45,15 @@ class Test(unittest.TestCase):
         a = a.tiles()
 
         self.assertEqual(tuple(sum(s) for s in a.nsplits), (10, 30, 20))
+
+        # test reshape unknown shape
+        c = a[a > 0]
+        d = c.reshape(10, 600)
+        self.assertEqual(d.shape, (10, 600))
+        d = c.reshape(-1, 10)
+        self.assertEqual(len(d.shape), 2)
+        self.assertTrue(np.isnan(d.shape[0]))
+        self.assertTrue(d.shape[1], 10)
 
         with self.assertRaises(TypeError):
             a.reshape((10, 30, 20), other_argument=True)

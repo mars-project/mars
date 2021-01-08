@@ -233,6 +233,16 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         in_tensor = op.input
         tensor = op.outputs[0]
 
+        # check unknown shape
+        check_chunks_unknown_shape(op.inputs, TilesError)
+
+        if any(np.isnan(s) for s in tensor.shape):
+            # -1 exists in newshape and input tensor has unknown shape
+            # recalculate new shape
+            shape = tuple(-1 if np.isnan(s) else s for s in tensor.shape)
+            newshape = calc_shape(in_tensor.size, shape)
+            tensor._shape = newshape
+
         if op.order == 'F':
             # do transpose first, then do regular reshape, then transpose back
             result = in_tensor.transpose().reshape(op.newshape[::-1])
@@ -241,7 +251,6 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             result = result.transpose()
             return [recursive_tile(result)]
 
-        check_chunks_unknown_shape(op.inputs, TilesError)
         if len(in_tensor.chunks) == 1:
             # 1 chunk
             chunk_op = op.copy().reset_key()
@@ -500,12 +509,17 @@ def reshape(a, newshape, order='C'):
            [5, 6]])
     """
     a = astensor(a)
-    if np.isnan(sum(a.shape)):
-        raise ValueError(f'tensor shape is unknown, {a.shape}')
 
-    newshape = calc_shape(a.size, newshape)
-    if a.size != np.prod(newshape):
-        raise ValueError(f'cannot reshape array of size {a.size} into shape {newshape}')
+    if np.isnan(sum(a.shape)):
+        # some shape is nan
+        new_shape = [newshape] if isinstance(newshape, int) else list(newshape)
+        # if -1 exists in newshape, just treat it as unknown shape
+        new_shape = [s if s != -1 else np.nan for s in new_shape]
+        newshape = tuple(new_shape)
+    else:
+        newshape = calc_shape(a.size, newshape)
+        if a.size != np.prod(newshape):
+            raise ValueError(f'cannot reshape array of size {a.size} into shape {newshape}')
 
     tensor_order = get_order(order, a.order, available_options='CFA')
 
