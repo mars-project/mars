@@ -60,4 +60,4 @@ def flatten(a, order='C'):
     new_shape = calc_shape(a.size, -1)
     tensor_order = get_order(order, a.order)
     op = TensorReshape(new_shape, dtype=a.dtype, create_view=False)
-    return op(a, order=tensor_order)
+    return op(a, order=tensor_order, out_shape=new_shape)
