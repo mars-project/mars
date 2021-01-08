@@ -19,23 +19,22 @@ from urllib.parse import urlparse
 
 import pandas as pd
 import numpy as np
-
-from ... import opcodes as OperandDef
-from ...config import options
-from ...core import OutputType
-from ...utils import parse_readable_size, lazy_import, FixedSizeFileObject
-from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, BoolField, AnyField
-from ...filesystem import get_fs, open_file, file_size, glob
-from ..arrays import ArrowStringDtype
-from ..core import IndexValue
-from ..utils import parse_index, build_empty_df, standardize_range_index, \
-    to_arrow_dtypes, contain_arrow_dtype
-from ..operands import DataFrameOperand, DataFrameOperandMixin
-
 try:
     from pyarrow import HdfsFile
 except ImportError:  # pragma: no cover
     HdfsFile = None
+
+from ... import opcodes as OperandDef
+from ...config import options
+from ...core import OutputType
+from ...filesystem import get_fs, open_file, file_size, glob
+from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, BoolField, AnyField
+from ...utils import parse_readable_size, lazy_import, FixedSizeFileObject
+from ..arrays import ArrowStringDtype
+from ..core import IndexValue
+from ..utils import parse_index, build_empty_df, standardize_range_index, \
+    to_arrow_dtypes, contain_arrow_dtype
+from .core import HeadOptimizedDataSource
 
 
 cudf = lazy_import('cudf', globals=globals())
@@ -82,7 +81,7 @@ def _find_chunk_start_end(f, offset, size):
     return start, end
 
 
-class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
+class DataFrameReadCSV(HeadOptimizedDataSource):
     _op_type_ = OperandDef.READ_CSV
 
     _path = AnyField('path')
@@ -189,7 +188,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                                      chunks=[new_chunk], nsplits=nsplits)
 
     @classmethod
-    def tile(cls, op):
+    def _tile(cls, op):
         if op.compression:
             return cls._tile_compressed(op)
 

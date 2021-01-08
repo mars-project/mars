@@ -16,3 +16,4 @@
 
 from .column_pruning import GroupbyPruneReadCSV
 from .core import OptimizeIntegratedTileableGraphBuilder, tileable_optimized
+from .head import HeadOptimizedDataSource
