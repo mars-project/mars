@@ -278,9 +278,15 @@ def lazy_import(name, package=None, globals=None, locals=None, rename=None):
         return None
 
 
-def serialize_graph(graph, compress=False, data_serial_type=None, pickle_protocol=None):
-    ser_graph = graph.to_pb(data_serial_type=data_serial_type,
-                            pickle_protocol=pickle_protocol).SerializeToString()
+def serialize_graph(graph, compress=False, data_serial_type=None, pickle_protocol=None,
+                    serialize_method=None):
+    serialize_method = serialize_method or options.serialize_method
+    if serialize_method == 'json':
+        ser_graph = json.dumps(graph.to_json(data_serial_type=data_serial_type,
+                                             pickle_protocol=pickle_protocol))
+    else:
+        ser_graph = graph.to_pb(data_serial_type=data_serial_type,
+                                pickle_protocol=pickle_protocol).SerializeToString()
     if compress:
         ser_graph = zlib.compress(ser_graph)
     return ser_graph

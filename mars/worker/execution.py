@@ -354,8 +354,7 @@ class ExecutionActor(WorkerActor):
                     return
 
                 raise exc[1].with_traceback(exc[2])
-            except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
-                    WorkerDead, promise.PromiseTimeout):
+            except (BrokenPipeError, ConnectionRefusedError, WorkerDead):
                 self._resource_ref.detach_dead_workers([remote_addr], _tell=True, _wait=False)
                 raise DependencyMissing((session_id, chunk_key))
 
