@@ -104,7 +104,7 @@ class ArrowEngine(ParquetEngine):
         return file.schema_arrow.empty_table().to_pandas().dtypes
 
     @classmethod
-    def _table_to_pandas(cls, t: pa.Table, nrows=None, use_arrow_dtype=None):
+    def _table_to_pandas(cls, t, nrows=None, use_arrow_dtype=None):
         if nrows is not None:
             t = t.slice(0, nrows)
         if use_arrow_dtype:

@@ -53,6 +53,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
         else:
             ctx = get_context()
             chunk_shape = ctx.get_chunk_metas([op.first_chunk.key])[0].chunk_shape
+            first_chunk_key = op._first_chunk.key
             op._first_chunk = None
             for c in chunks:
                 c.op._first_chunk = None
@@ -60,6 +61,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
                 # the first chunk has enough data
                 tiled[0]._nsplits = tuple((s,) for s in chunk_shape)
                 chunks[0]._shape = chunk_shape
+                chunks[0]._key = first_chunk_key
                 tiled[0]._chunks = chunks[:1]
                 tiled[0]._shape = chunk_shape
             else:
