@@ -39,9 +39,10 @@ from ...serialize import AnyField, BoolField, DictField, ListField,\
     StringField, Int32Field, Int64Field, BytesField
 from ...utils import is_object_dtype
 from ..arrays import ArrowStringDtype
-from ..operands import DataFrameOperandMixin, DataFrameOperand, OutputType
+from ..operands import OutputType
 from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype, \
     standardize_range_index
+from .core import HeadOptimizedDataSource
 
 
 PARQUET_MEMORY_SCALE = 15
@@ -84,12 +85,12 @@ class ParquetEngine:
     def read_dtypes(self, f, **kwargs):
         raise NotImplementedError
 
-    def read_to_pandas(self, f, columns=None,
+    def read_to_pandas(self, f, columns=None, nrows=None,
                        use_arrow_dtype=None, **kwargs):
         raise NotImplementedError
 
     def read_group_to_pandas(self, f, group_index, columns=None,
-                             use_arrow_dtype=None, **kwargs):
+                             nrows=None, use_arrow_dtype=None, **kwargs):
         raise NotImplementedError
 
 
@@ -103,7 +104,9 @@ class ArrowEngine(ParquetEngine):
         return file.schema_arrow.empty_table().to_pandas().dtypes
 
     @classmethod
-    def _table_to_pandas(cls, t, use_arrow_dtype=None):
+    def _table_to_pandas(cls, t: pa.Table, nrows=None, use_arrow_dtype=None):
+        if nrows is not None:
+            t = t.slice(0, nrows)
         if use_arrow_dtype:
             df = t.to_pandas(
                 types_mapper={pa.string(): ArrowStringDtype()}.get)
@@ -111,17 +114,19 @@ class ArrowEngine(ParquetEngine):
             df = t.to_pandas()
         return df
 
-    def read_to_pandas(self, f, columns=None,
+    def read_to_pandas(self, f, columns=None, nrows=None,
                        use_arrow_dtype=None, **kwargs):
         file = pq.ParquetFile(f)
         t = file.read(columns=columns, **kwargs)
-        return self._table_to_pandas(t, use_arrow_dtype=use_arrow_dtype)
+        return self._table_to_pandas(t, nrows=nrows,
+                                     use_arrow_dtype=use_arrow_dtype)
 
     def read_group_to_pandas(self, f, group_index, columns=None,
-                             use_arrow_dtype=None, **kwargs):
+                             nrows=None, use_arrow_dtype=None, **kwargs):
         file = pq.ParquetFile(f)
         t = file.read_row_group(group_index, columns=columns, **kwargs)
-        return self._table_to_pandas(t, use_arrow_dtype=use_arrow_dtype)
+        return self._table_to_pandas(t, nrows=nrows,
+                                     use_arrow_dtype=use_arrow_dtype)
 
 
 class FastpaquetEngine(ParquetEngine):
@@ -134,17 +139,19 @@ class FastpaquetEngine(ParquetEngine):
         dtypes_dict = file._dtypes()
         return pd.Series(dict((c, dtypes_dict[c]) for c in file.columns))
 
-    def read_to_pandas(self, f, columns=None,
+    def read_to_pandas(self, f, columns=None, nrows=None,
                        use_arrow_dtype=None, **kwargs):
         file = fastparquet.ParquetFile(f)
         df = file.to_pandas(**kwargs)
+        if nrows is not None:
+            df = df.head(nrows)
         if use_arrow_dtype:
             df = df.astype(to_arrow_dtypes(df.dtypes).to_dict())
 
         return df
 
 
-class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
+class DataFrameReadParquet(HeadOptimizedDataSource):
     _op_type_ = OperandDef.READ_PARQUET
 
     _path = AnyField('path')
@@ -155,23 +162,23 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
     _group_index = Int32Field('group_index')
     _read_kwargs = DictField('read_kwargs')
     _incremental_index = BoolField('incremental_index')
+    _nrows = Int64Field('nrows')
     _storage_options = DictField('storage_options')
     # for chunk
     _partitions = BytesField('partitions')
     _partition_keys = ListField('partition_keys')
+    _num_group_rows = Int64Field('num_group_rows')
     # as read meta may be too time-consuming when number of files is large,
     # thus we only read first file to get row number and raw file size
     _first_chunk_row_num = Int64Field('first_chunk_row_num')
     _first_chunk_raw_bytes = Int64Field('first_chunk_raw_bytes')
-    # raw bytes of parquet files
-    _raw_bytes = Int64Field('raw_bytes')
 
     def __init__(self, path=None, engine=None, columns=None, use_arrow_dtype=None,
                  groups_as_chunks=None, group_index=None, incremental_index=None,
                  read_kwargs=None, partitions=None, partition_keys=None,
+                 num_group_rows=None, nrows=None,
                  storage_options=None, first_chunk_row_num=None,
-                 first_chunk_raw_bytes=None, raw_bytes=None,
-                 memory_scale=None, **kw):
+                 first_chunk_raw_bytes=None, memory_scale=None, **kw):
         super().__init__(_path=path, _engine=engine, _columns=columns,
                          _use_arrow_dtype=use_arrow_dtype,
                          _groups_as_chunks=groups_as_chunks,
@@ -180,11 +187,12 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
                          _incremental_index=incremental_index,
                          _partitions=partitions,
                          _partition_keys=partition_keys,
+                         _num_group_rows=num_group_rows, _nrows=nrows,
                          _storage_options=storage_options,
                          _memory_scale=memory_scale,
                          _first_chunk_row_num=first_chunk_row_num,
                          _first_chunk_raw_bytes=first_chunk_raw_bytes,
-                         _raw_bytes=raw_bytes, _output_types=[OutputType.dataframe], **kw)
+                         _output_types=[OutputType.dataframe], **kw)
 
     @property
     def path(self):
@@ -227,6 +235,14 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
         return self._partition_keys
 
     @property
+    def num_group_rows(self):
+        return self._num_group_rows
+
+    @property
+    def nrows(self):
+        return self._nrows
+
+    @property
     def storage_options(self):
         return self._storage_options
 
@@ -237,10 +253,6 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
     @property
     def first_chunk_raw_bytes(self):
         return self._first_chunk_raw_bytes
-
-    @property
-    def raw_bytes(self):
-        return self._raw_bytes
 
     @classmethod
     def _to_arrow_dtypes(cls, dtypes, op):
@@ -271,9 +283,8 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
             chunk_op._path = chunk_path = path_prefix + piece.path
             chunk_op._partitions = pickle.dumps(dataset.partitions)
             chunk_op._partition_keys = piece.partition_keys
-            chunk_op._raw_bytes = file_size(chunk_path, op.storage_options)
             if i == 0:
-                first_chunk_raw_bytes = chunk_op.raw_bytes
+                first_chunk_raw_bytes = file_size(chunk_path, op.storage_options)
                 first_chunk_row_num = piece.get_metadata().num_rows
             chunk_op._first_chunk_row_num = first_chunk_row_num
             chunk_op._first_chunk_raw_bytes = first_chunk_raw_bytes
@@ -306,11 +317,10 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
 
         first_chunk_row_num, first_chunk_raw_bytes = None, None
         for i, pth in enumerate(paths):
-            raw_bytes = file_size(pth, op.storage_options)
             if i == 0:
                 with open_file(pth, storage_options=op.storage_options) as f:
                     first_chunk_row_num = get_engine(op.engine).get_row_num(f)
-                first_chunk_raw_bytes = raw_bytes
+                first_chunk_raw_bytes = file_size(pth, storage_options=op.storage_options)
 
             if op.groups_as_chunks:
                 num_row_groups = pq.ParquetFile(pth).num_row_groups
@@ -320,10 +330,7 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
                     chunk_op._group_index = group_idx
                     chunk_op._first_chunk_row_num = first_chunk_row_num
                     chunk_op._first_chunk_raw_bytes = first_chunk_raw_bytes
-                    # we don't know exact bytes of each group
-                    # just treat them as equal
-                    chunk_op._raw_bytes = \
-                        np.ceil(np.divide(raw_bytes, num_row_groups)).astype(np.int64).item()
+                    chunk_op._num_group_rows = num_row_groups
                     new_chunk = chunk_op.new_chunk(
                         None, shape=shape, index=(chunk_index, 0),
                         index_value=out_df.index_value,
@@ -336,7 +343,6 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._path = pth
                 chunk_op._first_chunk_row_num = first_chunk_row_num
                 chunk_op._first_chunk_raw_bytes = first_chunk_raw_bytes
-                chunk_op._raw_bytes = raw_bytes
                 new_chunk = chunk_op.new_chunk(
                     None, shape=shape, index=(chunk_index, 0),
                     index_value=out_df.index_value,
@@ -356,23 +362,25 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
                                      chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
-    def tile(cls, op):
+    def _tile(cls, op):
         if get_fs(op.path, op.storage_options).isdir(op.path):
             return cls._tile_partitioned(op)
         else:
             return cls._tile_no_partitioned(op)
 
     @classmethod
-    def _execute_partitioned(cls, ctx, op):
+    def _execute_partitioned(cls, ctx, op: "DataFrameReadParquet"):
         out = op.outputs[0]
         partitions = pickle.loads(op.partitions)
         piece = pq.ParquetDatasetPiece(op.path, partition_keys=op.partition_keys,
                                        open_file_func=open_file)
-        df = piece.read(partitions=partitions).to_pandas()
-        ctx[out.key] = df
+        table = piece.read(partitions=partitions)
+        if op.nrows is not None:
+            table = table.slice(0, op.nrows)
+        ctx[out.key] = table.to_pandas()
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameReadParquet"):
         out = op.outputs[0]
         path = op.path
 
@@ -384,10 +392,12 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
             use_arrow_dtype = contain_arrow_dtype(out.dtypes)
             if op.groups_as_chunks:
                 df = engine.read_group_to_pandas(f, op.group_index, columns=op.columns,
+                                                 nrows=op.nrows,
                                                  use_arrow_dtype=use_arrow_dtype,
                                                  **op.read_kwargs or dict())
             else:
                 df = engine.read_to_pandas(f, columns=op.columns,
+                                           nrows=op.nrows,
                                            use_arrow_dtype=use_arrow_dtype,
                                            **op.read_kwargs or dict())
 
@@ -397,11 +407,15 @@ class DataFrameReadParquet(DataFrameOperand, DataFrameOperandMixin):
     def estimate_size(cls, ctx, op: "DataFrameReadParquet"):
         first_chunk_row_num = op.first_chunk_row_num
         first_chunk_raw_bytes = op.first_chunk_raw_bytes
-        estimated_row_num = np.ceil(
-            first_chunk_row_num * (op.raw_bytes / first_chunk_raw_bytes))\
-            .astype(np.int64).item()
+        raw_bytes = file_size(op.path, storage_options=op.storage_options)
+        if op.num_group_rows:
+            raw_bytes = np.ceil(np.divide(raw_bytes, op.num_row_groups)) \
+                .astype(np.int64).item()
 
-        phy_size = op.raw_bytes * (op.memory_scale or PARQUET_MEMORY_SCALE)
+        estimated_row_num = np.ceil(
+            first_chunk_row_num * (raw_bytes / first_chunk_raw_bytes))\
+            .astype(np.int64).item()
+        phy_size = raw_bytes * (op.memory_scale or PARQUET_MEMORY_SCALE)
         n_strings = len([dt for dt in op.outputs[0].dtypes if is_object_dtype(dt)])
         pd_size = phy_size + n_strings * estimated_row_num * STRING_FIELD_OVERHEAD
         ctx[op.outputs[0].key] = (pd_size, pd_size + phy_size)

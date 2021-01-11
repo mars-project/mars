@@ -129,12 +129,14 @@ class DataSourceHeadRule(DataFrameRuntimeOptimizeRule):
     def match(chunk, graph, keys):
         from ...dataframe.datasource.read_csv import DataFrameReadCSV
         from ...dataframe.datasource.read_sql import DataFrameReadSQL
+        from ...dataframe.datasource.read_parquet import DataFrameReadParquet
         from ...dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 
         op = chunk.op
         inputs = graph.predecessors(chunk)
+        datasource_types = (DataFrameReadCSV, DataFrameReadSQL, DataFrameReadParquet)
         if len(inputs) == 1 and isinstance(op, (DataFrameIlocGetItem, SeriesIlocGetItem)) and \
-                op.can_be_optimized() and isinstance(inputs[0].op, (DataFrameReadCSV, DataFrameReadSQL)) and \
+                op.can_be_optimized() and isinstance(inputs[0].op, datasource_types) and \
                 inputs[0].key not in keys:
             return True
         return False
