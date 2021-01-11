@@ -14,13 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import weakref
-import sys
+import itertools
 import pickle
 import random
 import struct
-import itertools
-from collections import OrderedDict
+import sys
+import threading
+import weakref
+from collections import OrderedDict, deque
+from distutils.version import LooseVersion
 
 import gevent
 import gevent.queue
@@ -55,6 +57,8 @@ cdef int REMOTE_FROM_INDEX = -2
 cdef int UNKNOWN_TO_INDEX = -1
 cpdef int REMOTE_DEFAULT_PARALLEL = 50  # parallel connection at most
 cpdef int REMOTE_MAX_CONNECTION = 200  # most connections
+
+cdef bint _use_thread_async_result = LooseVersion(gevent.__version__) >= '20.12.0'
 
 _inaction_encoder = _inaction_decoder = None
 
@@ -103,12 +107,82 @@ cdef class ActorExecutionContext:
         self.inbox.put(message_ctx)
 
 
+_thread_ar_local = threading.local()
+_thread_ar_pool = weakref.WeakValueDictionary()
+
+
+if _use_thread_async_result:
+    class ThreadAsyncResult(gevent.event.AsyncResult):
+        def __init__(self):
+            super().__init__()
+            if getattr(_thread_ar_local, 'sem', None) is not None:
+                _thread_ar_pool[id(self)] = self
+                self._sem = _thread_ar_local.sem
+                self._queue = _thread_ar_local.queue
+            else:
+                self._sem = self._queue = None
+
+        def set(self, value=None):
+            super().set(value)
+            self._notify_pipe()
+
+        set_result = set
+
+        def set_exception(self, exception, exc_info=None):
+            super().set_exception(exception, exc_info=exc_info)
+            self._notify_pipe()
+
+        def _notify_pipe(self):
+            if self._sem is not None:
+                self._queue.append(id(self))
+                self._sem.release()
+                self._sem = None
+
+        def notify_current_thread(self):
+            if self.successful():
+                super().set(self.value)
+            else:
+                super().set_exception(self.exception)
+else:
+    ThreadAsyncResult = gevent.event.AsyncResult
+
+
 class GeventThreadPool:
     def __init__(self, num_threads):
         self._pool = gevent.threadpool.ThreadPool(num_threads)
 
     @staticmethod
-    def _wrap_watch(fn):
+    def _wrap_watch_sem(fn):
+        # when gevent>=20.12.0, we can use semaphores across threads
+        def check():
+            while True:
+                sem.acquire()
+                obj_id = queue.popleft()
+                if obj_id is None:
+                    break
+                _thread_ar_pool.pop(obj_id).notify_current_thread()
+
+        def inner(*args, **kwargs):
+            nonlocal fn
+            _thread_ar_local.sem = sem
+            _thread_ar_local.queue = queue
+            greenlet = gevent.spawn(check)
+
+            result = fn(*args, **kwargs)
+            fn = None
+
+            queue.append(None)
+            sem.release()
+            greenlet.join()
+            return result
+
+        sem = gevent.lock.Semaphore()
+        sem.acquire(False)
+        queue = deque()
+        return inner
+
+    @staticmethod
+    def _wrap_watch(fn):  # pragma: no cover
         # Each time a function is submitted, a gevent greenlet may be created,
         # this is common especially for Mars actor,
         # but there would be no other greenlet to switch to,
@@ -132,7 +206,11 @@ class GeventThreadPool:
         return inner
 
     def submit(self, fn, *args, **kwargs):
-        wrapped_fn = self._wrap_watch(fn)
+        if _use_thread_async_result:
+            wrapped_fn = self._wrap_watch_sem(fn)
+        else:  # pragma: no cover
+            wrapped_fn = self._wrap_watch(fn)
+
         return self._pool.spawn(wrapped_fn, *args, **kwargs)
 
 
@@ -302,7 +380,7 @@ cdef class AsyncHandler:
     cpdef object submit(self, bytes unique_id):
         cdef object ar
 
-        ar = self.async_results[unique_id] = gevent.event.AsyncResult()
+        ar = self.async_results[unique_id] = ThreadAsyncResult()
 
         # wait for result
         ar.wait()
@@ -313,7 +391,7 @@ cdef class AsyncHandler:
     cpdef object future(self, bytes unique_id, object future, object callback=None):
         cdef object ar
 
-        ar = self.async_results[unique_id] = gevent.event.AsyncResult()
+        ar = self.async_results[unique_id] = ThreadAsyncResult()
 
         # wait for result
         ar.wait()
@@ -327,7 +405,7 @@ cdef class AsyncHandler:
     cpdef object wait(self, bytes unique_id):
         cdef object ar
 
-        ar = self.async_results[unique_id] = gevent.event.AsyncResult()
+        ar = self.async_results[unique_id] = ThreadAsyncResult()
 
         # wait for result
         ar.wait()
@@ -701,7 +779,7 @@ cdef class Communicator(AsyncHandler):
             else:
                 return
 
-        future = gevent.event.AsyncResult()
+        future = ThreadAsyncResult()
 
         if wait_response:
             # send, not wait
