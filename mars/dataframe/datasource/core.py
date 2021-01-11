@@ -19,6 +19,7 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
 class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
+    __slots__ = '_tiled',
     # Data source op that optimized for head,
     # First, it will try to trigger first_chunk.head() and raise TilesError,
     # When iterative tiling is triggered,
@@ -41,22 +42,29 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_head(cls, op: "HeadOptimizedDataSource"):
-        tiled = cls._tile(op)
-        chunks = tiled[0].chunks
-
         if op.first_chunk is None:
+            op._tiled = tiled = cls._tile(op)
+            chunks = tiled[0].chunks
+
             err = TilesError('HeadOrTailOptimizeDataSource requires '
                              'some dependencies executed first')
             op._first_chunk = chunk = chunks[0]
             err.partial_tiled_chunks = [chunk.data]
             raise err
         else:
+            tiled = op._tiled
+            chunks = tiled[0].chunks
+            del op._tiled
+
             ctx = get_context()
             chunk_shape = ctx.get_chunk_metas([op.first_chunk.key])[0].chunk_shape
             first_chunk_key = op._first_chunk.key
+
+            # set _frist_
             op._first_chunk = None
             for c in chunks:
                 c.op._first_chunk = None
+
             if chunk_shape[0] == op.nrows:
                 # the first chunk has enough data
                 tiled[0]._nsplits = tuple((s,) for s in chunk_shape)

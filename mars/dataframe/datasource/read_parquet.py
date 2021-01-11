@@ -239,10 +239,6 @@ class DataFrameReadParquet(HeadOptimizedDataSource):
         return self._num_group_rows
 
     @property
-    def nrows(self):
-        return self._nrows
-
-    @property
     def storage_options(self):
         return self._storage_options
 

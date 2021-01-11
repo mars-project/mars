@@ -143,10 +143,6 @@ class DataFrameReadCSV(HeadOptimizedDataSource):
         return self._usecols
 
     @property
-    def nrows(self):
-        return self._nrows
-
-    @property
     def offset(self):
         return self._offset
 
