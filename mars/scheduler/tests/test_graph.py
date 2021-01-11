@@ -221,7 +221,7 @@ class Test(unittest.TestCase):
             graph_key = str(uuid.uuid4())
             expr = mt.random.random((8, 2), chunk_size=2) + 1
             graph = expr.build_graph(compose=False)
-            serialized_graph = serialize_graph(graph)
+            serialized_graph = serialize_graph(graph, serialize_method='pb')
 
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_uid(session_id, graph_key))
