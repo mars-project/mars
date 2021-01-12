@@ -18,6 +18,14 @@ import tempfile
 
 import numpy as np
 import pandas as pd
+try:
+    import pyarrow as pa
+except ImportError:  # pragma: no cover
+    pa = None
+try:
+    import fastparquet as fp
+except ImportError:  # pragma: no cover
+    fp = None
 
 import mars.dataframe as md
 import mars.tensor as mt
@@ -1057,9 +1065,29 @@ class Test(TestBase):
 
             # test head on read_parquet
             filename = os.path.join(tempdir, 'test_parquet.db')
-            pd_df.to_parquet(filename, index=False)
+            pd_df.to_parquet(filename, index=False, compression='gzip')
 
-            df = md.read_parquet(filename)
+            engines = []
+            if pa is not None:
+                engines.append('pyarrow')
+            if fp is not None:
+                engines.append('fastparquet')
+
+            for engine in engines:
+                df = md.read_parquet(filename, engine=engine)
+                r = df.head(3)
+
+                with self._inject_execute_data_source(3, DataFrameReadParquet):
+                    result = executor.execute_tileables([r])[0]
+                    expected = pd_df.head(3)
+                    pd.testing.assert_frame_equal(result, expected)
+
+            dirname = os.path.join(tempdir, 'test_parquet2')
+            os.makedirs(dirname)
+            pd_df[:1000].to_parquet(os.path.join(dirname, 'q1.parquet'))
+            pd_df[1000:].to_parquet(os.path.join(dirname, 'q2.parquet'))
+
+            df = md.read_parquet(dirname)
             r = df.head(3)
 
             with self._inject_execute_data_source(3, DataFrameReadParquet):
