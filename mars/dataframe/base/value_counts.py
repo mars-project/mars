@@ -148,7 +148,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
             if op.nrows:
                 # set to sort_values
                 inp.op._nrows = op.nrows
-        else:
+        elif op.nrows:
             inp = inp.iloc[:op.nrows]
 
         ret = recursive_tile(inp)
