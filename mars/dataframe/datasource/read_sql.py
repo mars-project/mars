@@ -28,12 +28,13 @@ from ...serialize import StringField, AnyField, BoolField, ListField, \
 from ...tensor.utils import normalize_chunk_sizes
 from ..arrays import ArrowStringDtype
 from ..core import IndexValue
-from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
+from ..operands import DataFrameOperand, OutputType
 from ..utils import parse_index, create_sa_connection, \
     standardize_range_index, to_arrow_dtypes
+from .core import ColumnPruneDataSourceMixin
 
 
-class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
+class DataFrameReadSQL(DataFrameOperand, ColumnPruneDataSourceMixin):
     _op_type_ = OperandDef.READ_SQL
 
     _table_or_sql = StringField('table_or_sql')
@@ -163,6 +164,12 @@ class DataFrameReadSQL(DataFrameOperand, DataFrameOperandMixin):
     @property
     def nrows(self):
         return self._nrows
+
+    def get_columns(self):
+        return self._columns
+
+    def set_pruned_columns(self, columns):
+        self._columns = columns
 
     def _get_selectable(self, engine_or_conn, columns=None):
         import sqlalchemy as sa

@@ -17,25 +17,26 @@
 from ...utils import copy_tileables
 from ...dataframe.utils import parse_index
 from ...dataframe.groupby.aggregation import DataFrameGroupByAgg
-from ...dataframe.datasource.read_csv import DataFrameReadCSV
+from ...dataframe.datasource.core import ColumnPruneDataSourceMixin
 from .core import TileableOptimizeRule, register
 
 
-class GroupbyPruneReadCSV(TileableOptimizeRule):
+class GroupbyPruneDatasource(TileableOptimizeRule):
     """
     An experimental implementation for tileable optimization rule.
     This rule works only when groupby aggregation operation follows the read CSV files,
     we can prune the columns that not used by the following operations when read the files.
     """
     def match(self, node):
-        if isinstance(node.inputs[0].op, DataFrameReadCSV) and \
+        if isinstance(node.inputs[0].op, ColumnPruneDataSourceMixin) and \
                 node.inputs[0] not in self._optimizer_context.result_tileables:
             by_data = node.op.groupby_params.get('by')
             by_columns = by_data if isinstance(by_data, (list, tuple)) else [by_data]
             if isinstance(node.op.func, (str, list)):
                 # Passing func name(s) means perform on all columns.
                 return False
-            elif len(set(by_columns + list(node.op.func))) == len(node.inputs[0].op.usecols or node.inputs[0].dtypes):
+            elif len(set(by_columns + list(node.op.func))) == \
+                    len(node.inputs[0].op.get_columns() or node.inputs[0].dtypes):
                 # If performs on all columns, no need to prune.
                 return False
             return True
@@ -50,14 +51,15 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
         if input_node in self._optimizer_context:
             new_input = self._optimizer_context[input_node]
             selected_columns = [
-                c for c in list(input_node.dtypes.index) if c in selected_columns + new_input.op._usecols]
+                c for c in list(input_node.dtypes.index)
+                if c in selected_columns + new_input.op.get_columns()]
         else:
             new_input = copy_tileables([input_node])[0].data
 
         new_input._shape = (input_node.shape[0], len(selected_columns))
         new_input._dtypes = input_node.dtypes[selected_columns]
         new_input._columns_value = parse_index(new_input._dtypes.index, store_data=True)
-        new_input.op._usecols = selected_columns
+        new_input.op.set_pruned_columns(selected_columns)
         new_node = copy_tileables([node], inputs=[new_input])[0].data
 
         self._optimizer_context[node] = new_node
@@ -65,4 +67,4 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
         return node
 
 
-register(DataFrameGroupByAgg, GroupbyPruneReadCSV)
+register(DataFrameGroupByAgg, GroupbyPruneDatasource)

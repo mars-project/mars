@@ -34,7 +34,7 @@ from ..arrays import ArrowStringDtype
 from ..core import IndexValue
 from ..utils import parse_index, build_empty_df, standardize_range_index, \
     to_arrow_dtypes, contain_arrow_dtype
-from .core import HeadOptimizedDataSource
+from .core import HeadOptimizedDataSource, ColumnPruneDataSourceMixin
 
 
 cudf = lazy_import('cudf', globals=globals())
@@ -81,7 +81,7 @@ def _find_chunk_start_end(f, offset, size):
     return start, end
 
 
-class DataFrameReadCSV(HeadOptimizedDataSource):
+class DataFrameReadCSV(HeadOptimizedDataSource, ColumnPruneDataSourceMixin):
     _op_type_ = OperandDef.READ_CSV
 
     _path = AnyField('path')
@@ -165,6 +165,12 @@ class DataFrameReadCSV(HeadOptimizedDataSource):
     @property
     def storage_options(self):
         return self._storage_options
+
+    def get_columns(self):
+        return self._usecols
+
+    def set_pruned_columns(self, columns):
+        self._usecols = columns
 
     @classmethod
     def _tile_compressed(cls, op):
