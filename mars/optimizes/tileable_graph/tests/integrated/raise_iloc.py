@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import OptimizeIntegratedTileableGraphBuilder, tileable_optimized
+from mars.dataframe.indexing.iloc import DataFrameIlocGetItem
+from mars.executor import register
 
-# rules
-from .column_pruning import GroupbyPruneReadCSV
-# noinspection PyUnresolvedReferences
-from .head import HeadOptimizedDataSource
+
+def _execute_iloc(*_):  # pragma: no cover
+    raise ValueError('cannot run iloc')
+
+
+register(DataFrameIlocGetItem, _execute_iloc)

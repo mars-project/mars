@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04]
-        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-vineyard]
+        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-vineyard, 3.8-ray]
         include:
           - { os: ubuntu-16.04, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
@@ -17,6 +17,8 @@ jobs:
               no-deploy: 1, with-hadoop: "with hadoop" }
           - { os: ubuntu-16.04, python-version: 3.8-vineyard, no-common-tests: 1,
               no-deploy: 1, with-vineyard: "with vineyard" }
+          - { os: ubuntu-16.04, python-version: 3.8-ray, no-common-tests: 1,
+              no-deploy: 1, with-ray: "with ray" }
 
     steps:
       - name: Check out code
@@ -35,6 +37,7 @@ jobs:
           WITH_HADOOP: ${{ matrix.with-hadoop }}
           WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
           WITH_VINEYARD: ${{ matrix.with-vineyard }}
+          WITH_RAY: ${{ matrix.with-ray }}
           NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
         shell: bash
         run: |
@@ -65,6 +68,9 @@ jobs:
             if [ -n "$WITH_VINEYARD" ]; then
               pip install vineyard
               sudo docker pull libvineyard/vineyardd:latest
+            fi
+            if [ -n "$WITH_RAY" ]; then
+              pip install ray
             fi
           fi
           conda list -n test
@@ -106,6 +112,7 @@ jobs:
           WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
           WITH_CYTHON: ${{ matrix.with-cython }}
           WITH_VINEYARD: ${{ matrix.with-vineyard }}
+          WITH_RAY: ${{ matrix.with-ray }}
           NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
           NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
           CHANGE_MINIKUBE_NONE_USER: true
@@ -125,6 +132,10 @@ jobs:
           if [ -n "$WITH_VINEYARD" ]; then
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datastore/tests/test_datastore_execute.py \
                                                                     mars/tensor/datastore/tests/test_datastore_execute.py -k "vineyard"
+            coverage report
+          fi
+          if [ -n "$WITH_RAY" ]; then
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/ray
             coverage report
           fi
           coverage xml
