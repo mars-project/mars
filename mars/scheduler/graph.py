@@ -37,6 +37,7 @@ from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists, WorkerDead
 from ..graph import DAG
 from ..operands import Fetch, ShuffleProxy, VirtualOperand, SuccessorsExclusive
+from ..optimizes.tileable_graph import OptimizeIntegratedTileableGraphBuilder
 from ..serialize import dataserializer
 from ..tiles import handler, IterativeChunkGraphBuilder, \
     TileableGraphBuilder, get_tiled
@@ -592,6 +593,13 @@ class GraphActor(SchedulerActor):
 
         logger.debug(f'Terminal chunk keys: {self._terminal_chunk_keys}')
 
+    @staticmethod
+    def _get_tileable_graph_builder(**kwargs):
+        if options.optimize_tileable_graph:
+            return OptimizeIntegratedTileableGraphBuilder(**kwargs)
+        else:
+            return TileableGraphBuilder(**kwargs)
+
     @log_unhandled
     @enter_mode(build=True)
     def prepare_graph(self, compose=True):
@@ -606,6 +614,16 @@ class GraphActor(SchedulerActor):
         if self._chunk_graph_builder is None:
             # gen target tileable keys if not provided
             self._scan_tileable_graph()
+
+            if options.optimize_tileable_graph:
+                target_tileables = [n for n in tileable_graph
+                                    if n.key in self._target_tileable_keys]
+                optimized_graph_builder = OptimizeIntegratedTileableGraphBuilder()
+                self._tileable_graph_cache = tileable_graph = \
+                    optimized_graph_builder.build(target_tileables)
+                # rescan
+                self._target_tileable_datas = list()
+                self._scan_tileable_graph()
 
             def on_tile(raw_tileables, tileds):
                 first = tileds[0]
@@ -651,7 +669,7 @@ class GraphActor(SchedulerActor):
             # build tileable graph from failed ops and their inputs
             failed_tileable_set = set(itertools.chain(
                 *(op.outputs for op in chunk_graph_builder.interrupted_ops)))
-            tileable_graph_builder = TileableGraphBuilder(
+            tileable_graph_builder = self._get_tileable_graph_builder(
                 inputs_selector=lambda inps: [inp for inp in inps if inp in failed_tileable_set])
             to_run_tileable_graph = tileable_graph_builder.build(failed_tileable_set)
             to_fetch_tileables = []

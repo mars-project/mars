@@ -53,6 +53,14 @@ class LearnIntegrationTestBase(unittest.TestCase):
                 time.sleep(5)
                 logger.error('Failed to start service, retrying')
 
+    @property
+    def _extra_scheduler_options(self):
+        return []
+
+    @property
+    def _extra_worker_options(self):
+        return []
+
     def _start_distributed_env(self, n_workers=2):
         scheduler_port = self.scheduler_port = str(get_next_port())
         self.proc_workers = []
@@ -66,7 +74,7 @@ class LearnIntegrationTestBase(unittest.TestCase):
                                             '--schedulers', '127.0.0.1:' + scheduler_port,
                                             '--log-level', 'debug',
                                             '--log-format', f'WOR{idx} %(asctime)-15s %(message)s',
-                                            '--ignore-avail-mem'])
+                                            '--ignore-avail-mem'] + self._extra_worker_options)
 
             self.proc_workers.append(proc_worker)
 
@@ -77,7 +85,8 @@ class LearnIntegrationTestBase(unittest.TestCase):
                                            '-Dscheduler.default_cpu_usage=0',
                                            '-Dscheduler.retry_delay=5',
                                            '--log-level', 'debug',
-                                           '--log-format', 'SCH %(asctime)-15s %(message)s'])
+                                           '--log-format', 'SCH %(asctime)-15s %(message)s'] +
+                                          self._extra_scheduler_options)
         self.proc_scheduler = proc_scheduler
 
         self.wait_scheduler_worker_start()
