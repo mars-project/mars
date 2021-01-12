@@ -37,14 +37,16 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
     _dropna = BoolField('dropna')
     _method = StringField('method')
     _convert_index_to_interval = BoolField('convert_index_to_interval')
+    _nrows = Int64Field('nrows')
 
     def __init__(self, normalize=None, sort=None, ascending=None,
                  bins=None, dropna=None, method=None,
-                 convert_index_to_interval=None, stage=None, **kw):
+                 convert_index_to_interval=None, nrows=None,
+                 stage=None, **kw):
         super().__init__(_normalize=normalize, _sort=sort, _ascending=ascending,
                          _bins=bins, _dropna=dropna, _method=method,
                          _convert_index_to_interval=convert_index_to_interval,
-                         _stage=stage, **kw)
+                         _nrows=nrows, _stage=stage, **kw)
         self.output_types = [OutputType.series]
 
     @property
@@ -79,6 +81,10 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
     def convert_index_to_interval(self):
         return self._convert_index_to_interval
 
+    @property
+    def nrows(self):
+        return self._nrows
+
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
@@ -106,7 +112,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
                                    name=inp.name, dtype=test_series.dtype)
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameValueCounts"):
         inp = op.input
         out = op.outputs[0]
 
@@ -138,6 +144,12 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
 
         if op.sort:
             inp = inp.sort_values(ascending=op.ascending)
+
+            if op.nrows:
+                # set to sort_values
+                inp.op._nrows = op.nrows
+        else:
+            inp = inp.iloc[:op.nrows]
 
         ret = recursive_tile(inp)
 
@@ -187,11 +199,13 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
             # convert CategoricalDtype which generated in `cut`
             # to IntervalDtype
             result.index = result.index.astype('interval')
+        if op.nrows:
+            result = result.head(op.nrows)
         ctx[op.outputs[0].key] = result
 
 
 def value_counts(series, normalize=False, sort=True, ascending=False,
-                 bins=None, dropna=True, method='tree'):
+                 bins=None, dropna=True, method='auto'):
     """
     Return a Series containing counts of unique values.
 
@@ -213,10 +227,12 @@ def value_counts(series, normalize=False, sort=True, ascending=False,
         a convenience for ``pd.cut``, only works with numeric data.
     dropna : bool, default True
         Don't include counts of NaN.
-    method : str, default 'tree'
-        'shuffle' or 'tree',
-        'tree' method provide a better performance,
-        while 'shuffle' is recommended if aggregated result is very large.
+    method : str, default 'auto'
+        'auto', 'shuffle', or 'tree', 'tree' method provide
+        a better performance, while 'shuffle' is recommended
+        if aggregated result is very large, 'auto' will use
+        'shuffle' method in distributed mode and use 'tree'
+        in local mode.
 
     Returns
     -------

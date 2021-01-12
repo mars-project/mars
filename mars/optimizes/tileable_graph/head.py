@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from ...utils import copy_tileables
+from ...dataframe.base.value_counts import DataFrameValueCounts
 from ...dataframe.datasource.core import HeadOptimizedDataSource
 from ...dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
+from ...dataframe.sort.core import DataFrameSortOperand
 from ...dataframe.utils import parse_index
 from .core import TileableOptimizeRule, register
 
 
-class HeadOnDataSource(TileableOptimizeRule):
+class HeadPushDown(TileableOptimizeRule):
     def match(self, node):
         op = node.op
         inputs = op.inputs
+        accept_types = (HeadOptimizedDataSource, DataFrameSortOperand, DataFrameValueCounts)
         if len(inputs) == 1 and isinstance(op, (DataFrameIlocGetItem, SeriesIlocGetItem)) and \
-                op.can_be_optimized() and isinstance(inputs[0].op, HeadOptimizedDataSource) and \
+                op.can_be_optimized() and isinstance(inputs[0].op, accept_types) and \
                 inputs[0] not in self._optimizer_context.result_tileables:
             return True
         return False
@@ -44,13 +46,12 @@ class HeadOnDataSource(TileableOptimizeRule):
         new_inp.op._nrows = max(nrows, head)
         new_inp._key = node.key
         new_inp._shape = (nrows,) + inp.shape[1:]
-        if inp.index_value.has_value():
-            pd_index = inp.index_value.to_pandas()[:nrows]
-            new_inp._index_value = parse_index(pd_index)
+        pd_index = node.index_value.to_pandas()[:nrows]
+        new_inp._index_value = parse_index(pd_index, node)
 
         self._optimizer_context[node] = new_inp
         return new_inp
 
 
-register(DataFrameIlocGetItem, HeadOnDataSource)
-register(SeriesIlocGetItem, HeadOnDataSource)
+register(DataFrameIlocGetItem, HeadPushDown)
+register(SeriesIlocGetItem, HeadPushDown)
