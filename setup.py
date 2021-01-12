@@ -110,25 +110,22 @@ else:
     extra_compile_args = ['-O3']
     cy_extension_kw['extra_compile_args'] = extra_compile_args
 
+
+def _discover_pyx():
+    exts = dict()
+    for root, dirs, files in os.walk(os.path.join(repo_root, 'mars')):
+        for fn in files:
+            if not fn.endswith('.pyx'):
+                continue
+            full_fn = os.path.relpath(os.path.join(root, fn), repo_root)
+            mod_name = full_fn.replace('.pyx', '').replace(os.path.sep, '.')
+            exts[mod_name] = Extension(mod_name, [full_fn], **cy_extension_kw)
+    return exts
+
+
 cy_extension_kw['include_dirs'] = [np.get_include()]
-cy_extensions = [
-    Extension('mars.graph', ['mars/graph.pyx'], **cy_extension_kw),
-    Extension('mars._utils', ['mars/_utils.pyx'], **cy_extension_kw),
-    Extension('mars.lib.gipc', ['mars/lib/gipc.pyx'], **cy_extension_kw),
-    Extension('mars.actors.core', ['mars/actors/core.pyx'], **cy_extension_kw),
-    Extension('mars.actors.distributor', ['mars/actors/distributor.pyx'], **cy_extension_kw),
-    Extension('mars.actors.cluster', ['mars/actors/cluster.pyx'], **cy_extension_kw),
-    Extension('mars.actors.pool.messages', ['mars/actors/pool/messages.pyx'], **cy_extension_kw),
-    Extension('mars.actors.pool.utils', ['mars/actors/pool/utils.pyx'], **cy_extension_kw),
-    Extension('mars.actors.pool.gevent_pool', ['mars/actors/pool/gevent_pool.pyx'], **cy_extension_kw),
-    Extension('mars.serialize.core', ['mars/serialize/core.pyx'], **cy_extension_kw),
-    Extension('mars.serialize.pbserializer', ['mars/serialize/pbserializer.pyx'], **cy_extension_kw),
-    Extension('mars.serialize.jsonserializer', ['mars/serialize/jsonserializer.pyx'], **cy_extension_kw),
-    Extension('mars.learn.cluster._k_means_fast', ['mars/learn/cluster/_k_means_fast.pyx'], **cy_extension_kw),
-    Extension('mars.learn.cluster._k_means_elkan', ['mars/learn/cluster/_k_means_elkan.pyx'], **cy_extension_kw),
-    Extension('mars.learn.cluster._k_means_lloyd', ['mars/learn/cluster/_k_means_lloyd.pyx'], **cy_extension_kw),
-    Extension('mars.learn.utils._cython_blas', ['mars/learn/utils/_cython_blas.pyx'], **cy_extension_kw),
-]
+extensions_dict = _discover_pyx()
+cy_extensions = list(extensions_dict.values())
 
 extensions = cythonize(cy_extensions, **cythonize_kw) + \
     [Extension('mars.lib.mmh3', ['mars/lib/mmh3_src/mmh3module.cpp', 'mars/lib/mmh3_src/MurmurHash3.cpp'])]
