@@ -29,7 +29,7 @@ from ....core import Base, Entity
 from ....lib.filesystem import get_fs, FileSystem
 from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, Int64Field, \
-    DictField, AnyField, BytesField, BoolField
+    DictField, AnyField, BytesField, BoolField, DataTypeField, TupleField
 from ....tensor.core import TensorOrder
 from ....tensor.merge.concatenate import TensorConcatenate
 from ....tiles import TilesError
@@ -179,6 +179,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         outs = op.outputs
         row_number = op.row_number
 
+        ctx = get_context()
+
         # make sure all inputs have known chunk sizes
         check_chunks_unknown_shape(op.inputs, TilesError)
 
@@ -206,7 +208,6 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                 built_indexes.append([next(it) for it in iters])
 
         if hasattr(index, 'op'):
-            ctx = get_context()
             index_chunks_workers = [m.workers[0] if m.workers else None for m in
                                     ctx.get_chunk_metas([c.key for c in index.chunks])]
         else:
@@ -334,7 +335,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
         inp = ctx[op.tensor.key]
         check_expect_worker = True
-        index_path = ctx[op.inputs[1].key]
+        index_path = ctx[op.inputs[-1].key]
 
         if hasattr(ctx, 'running_mode') and \
                 ctx.running_mode == RunningMode.distributed and check_expect_worker:
@@ -348,13 +349,9 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                     f'to the worker({expect_worker}) where built index'
 
         with Timer() as timer:
-            container = proxima.IndexContainer(name='MMapFileContainer')
-            measure_name = op.distance_metric
-            if container.load(index_path).meta().reformer_name() == "MipsReformer":
-                measure_name = ""
             flow = proxima.IndexFlow(container_name='MMapFileContainer', container_params={},
                                      searcher_name=op.index_searcher, searcher_params=op.index_searcher_params,
-                                     measure_name=measure_name, measure_params={},
+                                     measure_name="", measure_params={},
                                      reformer_name=op.index_reformer, reformer_params=op.index_reformer_params
                                      )
 
@@ -385,7 +382,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                     s_idx = e_idx
                     e_idx = min(s_idx + batch, len(vecs))
                 logger.warning(
-                    f'Search({op.key}) count {s_idx}/{len(vecs)}:{round(s_idx * 100 / len(vecs), 2)}% costs {round(timer_s.duration, 2)} seconds')
+                    f'Search({op.key}) count {s_idx}/{len(vecs)}:{round(s_idx * 100 / len(vecs), 2)}%'
+                    f' costs {round(timer_s.duration, 2)} seconds')
         logger.warning(f'Search({op.key}) costs {timer.duration} seconds')
 
         ctx[op.outputs[0].key] = np.asarray(result_pks)

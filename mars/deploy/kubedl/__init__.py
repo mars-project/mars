@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .client import new_cluster, KubeDLClusterClient
+from .client import new_cluster, stop_cluster, KubeDLClusterClient
