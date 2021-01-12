@@ -869,7 +869,7 @@ class Executor(object):
                 if not chunk_graph_builder.done:
                     # add temporary chunks keys into result keys
                     for interrupted_op in chunk_graph_builder.interrupted_ops:
-                        for inp in interrupted_op.inputs:
+                        for inp in (interrupted_op.inputs or []):
                             if inp.op not in chunk_graph_builder.interrupted_ops:
                                 for n in get_tiled(inp).chunks:
                                     temp_result_keys.add(n.key)
@@ -906,7 +906,7 @@ class Executor(object):
                         *(op.outputs for op in chunk_graph_builder.interrupted_ops)))
                     to_run_tileables_set = set(to_run_tileables)
                     for op in chunk_graph_builder.interrupted_ops:
-                        for inp in op.inputs:
+                        for inp in (op.inputs or []):
                             if inp not in to_run_tileables_set:
                                 to_run_tileables_set.add(inp)
                     tileable_graph_builder = _get_tileable_graph_builder(
