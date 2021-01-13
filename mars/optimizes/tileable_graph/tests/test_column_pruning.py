@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import os
-import shutil
 import tempfile
 
 import pandas as pd
@@ -34,9 +33,9 @@ class Test(TestBase):
         self.executor = ExecutorForTest()
 
     def testGroupByPruneReadCSV(self):
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test.csv')
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+
             df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                                'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
                                'c': list('aabaaddce'),
@@ -106,13 +105,53 @@ class Test(TestBase):
                 tileable_graph = mdf.build_graph()
                 self.assertIsNone(list(tileable_graph.topological_iter())[0].op.usecols)
 
-        finally:
-            shutil.rmtree(tempdir)
+    def testGroupbyPruneReadParquet(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.parquet')
+
+            df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                               'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                               'c': list('aabaaddce'),
+                               'd': list('abaaaddce')})
+            df.to_parquet(file_path, index=False)
+
+            # Use test executor
+            mdf = md.read_parquet(file_path).groupby('c').agg({'a': 'sum'})
+            result = self.executor.execute_dataframes([mdf])[0]
+            mdf._shape = result.shape
+            expected = df.groupby('c').agg({'a': 'sum'})
+            pd.testing.assert_frame_equal(result, expected)
+
+            optimized_df = tileable_optimized[mdf.data]
+            self.assertEqual(optimized_df.inputs[0].op.columns, ['a', 'c'])
+
+            mdf = md.read_parquet(file_path).groupby('c', as_index=False).c.agg({'cnt': 'count'})
+            result = self.executor.execute_dataframes([mdf])[0]
+            mdf._shape = result.shape
+            expected = df.groupby('c', as_index=False).c.agg({'cnt': 'count'})
+            pd.testing.assert_frame_equal(result, expected)
+
+            optimized_df = tileable_optimized[mdf.data]
+            self.assertEqual(optimized_df.inputs[0].op.columns, ['c'])
+
+            # test getitem
+            mdf = md.read_parquet(file_path)
+            df1 = mdf.c.value_counts()
+            df2 = mdf.groupby('b')['b'].count()
+            results = self.executor.execute_dataframes([df1, df2])
+            df1._shape = results[0].shape
+            df2._shape = results[1].shape
+            expected = df.c.value_counts(), df.groupby('b')['b'].count()
+            pd.testing.assert_series_equal(results[0], expected[0])
+            pd.testing.assert_series_equal(results[1], expected[1])
+
+            optimized_df = tileable_optimized[df1.data]
+            self.assertEqual(optimized_df.inputs[0].inputs[0].op.columns, ['b', 'c'])
 
     def testExecutedPruning(self):
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test.csv')
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+
             pd_df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                                   'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
                                   'c': list('aabaaddce'),
@@ -139,9 +178,6 @@ class Test(TestBase):
             expected2 = pd_df[pd_df.d.isin(expected1.index)]
 
             pd.testing.assert_frame_equal(df2.to_pandas(), expected2)
-
-        finally:
-            shutil.rmtree(tempdir)
 
     def testFetch(self):
         with tempfile.TemporaryDirectory() as tempdir:

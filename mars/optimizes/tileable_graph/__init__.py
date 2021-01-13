@@ -17,5 +17,5 @@
 from .core import OptimizeIntegratedTileableGraphBuilder, tileable_optimized
 
 # rules
-from .column_pruning import GroupbyPruneReadCSV
+from .column_pruning import GroupbyPruneDatasource
 from .head import HeadPushDown
