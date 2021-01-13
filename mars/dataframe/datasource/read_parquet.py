@@ -42,7 +42,7 @@ from ..arrays import ArrowStringDtype
 from ..operands import OutputType
 from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype, \
     standardize_range_index
-from .core import HeadOptimizedDataSource, ColumnPruneDataSourceMixin
+from .core import HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMixin
 
 
 PARQUET_MEMORY_SCALE = 15
@@ -151,7 +151,7 @@ class FastpaquetEngine(ParquetEngine):
         return df
 
 
-class DataFrameReadParquet(HeadOptimizedDataSource, ColumnPruneDataSourceMixin):
+class DataFrameReadParquet(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMixin):
     _op_type_ = OperandDef.READ_PARQUET
 
     _path = AnyField('path')

@@ -16,7 +16,7 @@
 
 from ...utils import copy_tileables
 from ...dataframe.utils import parse_index
-from ...dataframe.datasource.core import ColumnPruneDataSourceMixin
+from ...dataframe.datasource.core import ColumnPruneSupportedDataSourceMixin
 from ...dataframe.groupby.aggregation import DataFrameGroupByAgg
 from ...dataframe.indexing.getitem import DataFrameIndex
 from .core import TileableOptimizeRule, register
@@ -55,7 +55,7 @@ class GroupbyPruneDatasource(_PruneDataSource):
     we can prune the columns that not used by the following operations when read the files.
     """
     def match(self, node):
-        if isinstance(node.inputs[0].op, ColumnPruneDataSourceMixin) and \
+        if isinstance(node.inputs[0].op, ColumnPruneSupportedDataSourceMixin) and \
                 node.inputs[0] not in self._optimizer_context.result_tileables:
             selected_columns = self._get_selected_columns(node.op)
             if not selected_columns:
@@ -102,7 +102,7 @@ class GroupbyPruneDatasource(_PruneDataSource):
 
 class GetItemPruneDataSource(_PruneDataSource):
     def match(self, node):
-        if isinstance(node.inputs[0].op, ColumnPruneDataSourceMixin) and \
+        if isinstance(node.inputs[0].op, ColumnPruneSupportedDataSourceMixin) and \
                 node.inputs[0] not in self._optimizer_context.result_tileables and \
                 isinstance(node.op, DataFrameIndex) and node.op.col_names is not None:
             return True

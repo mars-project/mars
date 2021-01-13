@@ -31,10 +31,10 @@ from ..core import IndexValue
 from ..operands import DataFrameOperand, OutputType
 from ..utils import parse_index, create_sa_connection, \
     standardize_range_index, to_arrow_dtypes
-from .core import ColumnPruneDataSourceMixin
+from .core import ColumnPruneSupportedDataSourceMixin
 
 
-class DataFrameReadSQL(DataFrameOperand, ColumnPruneDataSourceMixin):
+class DataFrameReadSQL(DataFrameOperand, ColumnPruneSupportedDataSourceMixin):
     _op_type_ = OperandDef.READ_SQL
 
     _table_or_sql = StringField('table_or_sql')

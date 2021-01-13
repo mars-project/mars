@@ -34,7 +34,7 @@ from ..arrays import ArrowStringDtype
 from ..core import IndexValue
 from ..utils import parse_index, build_empty_df, standardize_range_index, \
     to_arrow_dtypes, contain_arrow_dtype
-from .core import HeadOptimizedDataSource, ColumnPruneDataSourceMixin
+from .core import HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMixin
 
 
 cudf = lazy_import('cudf', globals=globals())
@@ -81,7 +81,7 @@ def _find_chunk_start_end(f, offset, size):
     return start, end
 
 
-class DataFrameReadCSV(HeadOptimizedDataSource, ColumnPruneDataSourceMixin):
+class DataFrameReadCSV(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMixin):
     _op_type_ = OperandDef.READ_CSV
 
     _path = AnyField('path')

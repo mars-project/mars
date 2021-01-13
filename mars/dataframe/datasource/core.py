@@ -85,7 +85,7 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
             return cls._tile(op)
 
 
-class ColumnPruneDataSourceMixin(DataFrameOperandMixin):
+class ColumnPruneSupportedDataSourceMixin(DataFrameOperandMixin):
     __slots__ = ()
 
     def get_columns(self):  # pragma: no cover
