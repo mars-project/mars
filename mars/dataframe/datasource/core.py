@@ -83,3 +83,13 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
             return cls._tile_head(op)
         else:
             return cls._tile(op)
+
+
+class ColumnPruneSupportedDataSourceMixin(DataFrameOperandMixin):
+    __slots__ = ()
+
+    def get_columns(self):  # pragma: no cover
+        raise NotImplementedError
+
+    def set_pruned_columns(self, columns):  # pragma: no cover
+        raise NotImplementedError
