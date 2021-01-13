@@ -18,5 +18,4 @@ from .core import OptimizeIntegratedTileableGraphBuilder, tileable_optimized
 
 # rules
 from .column_pruning import GroupbyPruneReadCSV
-# noinspection PyUnresolvedReferences
-from .head import HeadOptimizedDataSource
+from .head import HeadPushDown

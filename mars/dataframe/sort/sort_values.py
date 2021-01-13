@@ -79,16 +79,19 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
             return cls._tile_psrs(op, series)
 
     @classmethod
-    def tile(cls, op):
+    def _tile(cls, op):
         if op.inputs[0].ndim == 2:
             return cls._tile_dataframe(op)
         else:
             return cls._tile_series(op)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameSortValues"):
         in_data = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = execute_sort_values(in_data, op)
+        result = execute_sort_values(in_data, op)
+        if op.nrows is not None:
+            result = result.head(op.nrows)
+        ctx[op.outputs[0].key] = result
 
     def __call__(self, a):
         assert self.axis == 0
