@@ -134,6 +134,20 @@ class Test(TestBase):
             optimized_df = tileable_optimized[mdf.data]
             self.assertEqual(optimized_df.inputs[0].op.columns, ['c'])
 
+            # test getitem
+            mdf = md.read_parquet(file_path)
+            df1 = mdf.c.value_counts()
+            df2 = mdf.groupby('b')['b'].count()
+            results = self.executor.execute_dataframes([df1, df2])
+            df1._shape = results[0].shape
+            df2._shape = results[1].shape
+            expected = df.c.value_counts(), df.groupby('b')['b'].count()
+            pd.testing.assert_series_equal(results[0], expected[0])
+            pd.testing.assert_series_equal(results[1], expected[1])
+
+            optimized_df = tileable_optimized[df1.data]
+            self.assertEqual(optimized_df.inputs[0].inputs[0].op.columns, ['b', 'c'])
+
     def testExecutedPruning(self):
         with tempfile.TemporaryDirectory() as tempdir:
             file_path = os.path.join(tempdir, 'test.csv')
