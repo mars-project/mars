@@ -42,7 +42,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
         return self._sort_remaining
 
     @classmethod
-    def tile(cls, op):
+    def _tile(cls, op):
         df = op.inputs[0]
 
         if op.axis == 0:
@@ -94,9 +94,12 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
             return r
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameSortIndex"):
         in_data = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = execute_sort_index(in_data, op)
+        result = execute_sort_index(in_data, op)
+        if op.nrows is not None:
+            result = result.head(op.nrows)
+        ctx[op.outputs[0].key] = result
 
     def _call_dataframe(self, df):
         if self.ignore_index:
