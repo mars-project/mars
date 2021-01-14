@@ -134,6 +134,24 @@ class Test(unittest.TestCase):
 
             pd.testing.assert_frame_equal(result, expected)
 
+            # test None (issue #1885)
+            df = pd.DataFrame(np.random.rand(1000, 10))
+
+            df[0][df[0] < 0.5] = 'A'
+            df[0][df[0] != 'A'] = None
+
+            mdf = DataFrame(df)
+            result = self.executor.execute_dataframe(mdf.sort_values([0, 1]), concat=True)[0]
+            expected = df.sort_values([0, 1])
+
+            pd.testing.assert_frame_equal(result, expected)
+
+            mdf = DataFrame(df, chunk_size=100)
+            result = self.executor.execute_dataframe(mdf.sort_values([0, 1]), concat=True)[0]
+            expected = df.sort_values([0, 1])
+
+            pd.testing.assert_frame_equal(result, expected)
+
             # test ignore_index
             executor = ExecutorForTest(storage=new_session().context)
 
@@ -166,6 +184,26 @@ class Test(unittest.TestCase):
             result = self.executor.execute_dataframe(filtered.sort_values(by='b'), concat=True)[0]
 
             pd.testing.assert_frame_equal(result, df[df['a'] > 2].sort_values(by='b'))
+
+            # test empty dataframe
+            df = pd.DataFrame({'a': list(range(10)),
+                               'b': np.random.random(10)})
+            mdf = DataFrame(df, chunk_size=4)
+            filtered = mdf[mdf['b'] > 100]
+            result = self.executor.execute_dataframe(filtered.sort_values(by='b'), concat=True)[0]
+
+            pd.testing.assert_frame_equal(result, df[df['b'] > 100].sort_values(by='b'))
+
+            # test chunks with zero length
+            df = pd.DataFrame({'a': list(range(10)),
+                               'b': np.random.random(10)})
+            df.iloc[4:8, 1] = 0
+
+            mdf = DataFrame(df, chunk_size=4)
+            filtered = mdf[mdf['b'] != 0]
+            result = self.executor.execute_dataframe(filtered.sort_values(by='b'), concat=True)[0]
+
+            pd.testing.assert_frame_equal(result, df[df['b'] != 0].sort_values(by='b'))
 
             # test Series.sort_values
             raw = pd.Series(np.random.rand(10))

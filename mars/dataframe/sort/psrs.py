@@ -33,6 +33,21 @@ cudf = lazy_import('cudf', globals=globals())
 _PSRS_DISTINCT_COL = '__PSRS_TMP_DISTINCT_COL'
 
 
+class _Largest:
+    """
+    This util class resolve TypeError when
+    comparing strings with None values
+    """
+    def __lt__(self, other):
+        return False
+
+    def __gt__(self, other):
+        return self is not other
+
+
+_largest = _Largest()
+
+
 class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
     @classmethod
     def _collect_op_properties(cls, op):
@@ -333,6 +348,11 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
         a = ctx[op.inputs[0].key]
         xdf = pd if isinstance(a, (pd.DataFrame, pd.Series)) else cudf
 
+        if len(a) == 0:
+            # when chunk is empty, return the empty chunk itself
+            ctx[op.outputs[0].key] = ctx[op.outputs[-1].key] = a
+            return
+
         if op.sort_type == 'sort_values':
             ctx[op.outputs[0].key] = res = execute_sort_values(a, op)
         else:
@@ -380,15 +400,20 @@ class DataFramePSRSConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin)
 
     @classmethod
     def execute(cls, ctx, op):
-        inputs = [ctx[c.key] for c in op.inputs]
+        inputs = [ctx[c.key] for c in op.inputs if len(ctx[c.key]) > 0]
+        if len(inputs) == 0:
+            # corner case: nothing sampled, we need to do nothing
+            ctx[op.outputs[-1].key] = ctx[op.inputs[0].key]
+            return
+
         xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series)) else cudf
 
         a = xdf.concat(inputs, axis=op.axis)
         p = len(inputs)
-        assert a.shape[op.axis] == p ** 2
+        assert a.shape[op.axis] == p * len(op.inputs)
 
         slc = np.linspace(p - 1, a.shape[op.axis] - 1,
-                          num=p - 1, endpoint=False).astype(int)
+                          num=len(op.inputs) - 1, endpoint=False).astype(int)
         if op.axis == 1:
             slc = (slice(None), slc)
         if op.sort_type == 'sort_values':
@@ -471,10 +496,27 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
     def output_limit(self):
         return 1
 
+    @staticmethod
+    def _calc_poses(src_cols, pivots, ascending=True):
+        records = src_cols.to_records(index=False)
+        p_records = pivots.to_records(index=False)
+        if ascending:
+            poses = records.searchsorted(p_records, side='right')
+        else:
+            poses = len(records) - records[::-1].searchsorted(p_records, side='right')
+        del records, p_records
+        return poses
+
     @classmethod
     def _execute_dataframe_map(cls, ctx, op):
         a, pivots = [ctx[c.key] for c in op.inputs]
         out = op.outputs[0]
+
+        if len(a) == 0:
+            # when the chunk is empty, no slices can be produced
+            for i in range(op.n_partition):
+                ctx[(out.key, str(i))] = a
+            return
 
         # use numpy.searchsorted to find split positions.
         by = op.by
@@ -484,13 +526,11 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         if distinct_col in a.columns:
             by = list(by) + [distinct_col]
 
-        records = a[by].to_records(index=False)
-        p_records = pivots.to_records(index=False)
-        if op.ascending:
-            poses = records.searchsorted(p_records, side='right')
-        else:
-            poses = len(records) - records[::-1].searchsorted(p_records, side='right')
-        del records, p_records
+        try:
+            poses = cls._calc_poses(a[by], pivots, op.ascending)
+        except TypeError:
+            poses = cls._calc_poses(
+                a[by].fillna(_largest), pivots.fillna(_largest), op.ascending)
 
         poses = (None,) + tuple(poses) + (None,)
         for i in range(op.n_partition):
@@ -541,6 +581,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     @classmethod
     def _execute_reduce(cls, ctx, op):
+        out_chunk = op.outputs[0]
         input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
         if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
             raw_inputs = [ctx.pop((input_key, op.shuffle_key)) for input_key in input_keys]
@@ -556,6 +597,10 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
         if isinstance(concat_values, xdf.DataFrame):
             concat_values.drop(_PSRS_DISTINCT_COL, axis=1, inplace=True, errors='ignore')
+
+            col_index_dtype = out_chunk.columns_value.to_pandas().dtype
+            if concat_values.columns.dtype != col_index_dtype:
+                concat_values.columns = concat_values.columns.astype(col_index_dtype)
 
         if op.sort_type == 'sort_values':
             ctx[op.outputs[0].key] = execute_sort_values(concat_values, op)

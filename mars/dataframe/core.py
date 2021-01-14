@@ -474,9 +474,9 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
                         on_deserialize=lambda x: [IndexChunk(it) for it in x] if x is not None else x)
 
     def __init__(self, op=None, shape=None, nsplits=None, dtype=None,
-                 name=None, index_value=None, chunks=None, **kw):
+                 name=None, names=None, index_value=None, chunks=None, **kw):
         super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtype=dtype, _name=name,
-                         _index_value=index_value, _chunks=chunks, **kw)
+                         _names=names, _index_value=index_value, _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):
