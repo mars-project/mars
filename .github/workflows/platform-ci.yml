@@ -61,7 +61,7 @@ jobs:
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
             fi
             if [ -n "$WITH_VINEYARD" ]; then
-              pip install vineyard
+              pip install https://github.com/alibaba/libvineyard/releases/download/latest/vineyard-0.1.5-cp38-cp38-manylinux2010_x86_64.whl
               sudo docker pull libvineyard/vineyardd:latest
             fi
             if [ -n "$WITH_RAY" ]; then
@@ -98,9 +98,6 @@ jobs:
           # launch vineyardd
           sudo docker run --rm -d --name vineyard --shm-size=3072m -v /tmp/vineyard:/var/run \
               docker.pkg.github.com/alibaba/libvineyard/vineyardd:nightly
-
-          # install latest vineyard
-          pip install https://github.com/alibaba/libvineyard/releases/download/latest/vineyard-0.1.5-cp38-cp38-manylinux2010_x86_64.whl
 
           until [ -S /tmp/vineyard/vineyard.sock ]
           do
