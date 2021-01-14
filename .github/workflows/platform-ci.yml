@@ -131,6 +131,7 @@ jobs:
             coverage report
           fi
           if [ -n "$WITH_VINEYARD" ]; then
+            export VINEYARD_IPC_SOCKET=/tmp/vineyard/vineyard.sock
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datastore/tests/test_datastore_execute.py \
                                                                     mars/tensor/datastore/tests/test_datastore_execute.py -k "vineyard"
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/deploy/local/tests/test_cluster.py -k "VineyardEnabledTest"
