@@ -64,9 +64,10 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
         if inp is None:
             # create from pandas Index
             name = name if name is not None else self._data.name
+            names = names if names is not None else self._data.names
             return self.new_index(None, shape=shape, dtype=self._dtype,
                                   index_value=parse_index(self._data),
-                                  name=name, raw_chunk_size=chunk_size)
+                                  name=name, names=names, raw_chunk_size=chunk_size)
         elif hasattr(inp, 'index_value'):
             # get index from Mars DataFrame, Series or Index
             name = name if name is not None else inp.index_value.name
@@ -92,7 +93,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
                 self._dtype = pd_index.dtype
             return self.new_index([inp], shape=inp.shape, dtype=self._dtype,
                                   index_value=parse_index(pd_index, inp),
-                                  name=name)
+                                  name=name, names=names)
 
     @classmethod
     def _tile_from_pandas(cls, op):
@@ -210,7 +211,7 @@ def from_pandas(data, chunk_size=None, gpu=False, sparse=False):
     return op(shape=data.shape, chunk_size=chunk_size)
 
 
-def from_tileable(tileable, dtype=None, name=None):
+def from_tileable(tileable, dtype=None, name=None, names=None):
     op = IndexDataSource(gpu=tileable.op.gpu, sparse=tileable.issparse(),
                          dtype=dtype)
-    return op(inp=tileable, name=name)
+    return op(inp=tileable, name=name, names=names)

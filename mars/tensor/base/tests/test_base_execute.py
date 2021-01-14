@@ -1184,6 +1184,7 @@ class Test(TestBase):
         res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(raw, axis=0, order=['size', 'id']))
 
+        # test inplace sort
         raw = np.random.rand(10, 12)
         a = tensor(raw, chunk_size=(5, 4))
         a.sort(axis=1)
