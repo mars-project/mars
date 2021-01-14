@@ -135,20 +135,20 @@ class Test(unittest.TestCase):
             pd.testing.assert_frame_equal(result, expected)
 
             # test None (issue #1885)
-            df = pd.DataFrame({
-                'col1': ['C', 'C', None, 'B', 'D', 'A'],
-                'col2': [2, 1, 9, np.nan, 7, 4],
-                'col3': [0, 1, 9, 4, 2, 3],
-            })
+            df = pd.DataFrame(np.random.rand(1000, 10))
+
+            df[0][df[0] < 0.5] = 'A'
+            df[0][df[0] != 'A'] = None
+
             mdf = DataFrame(df)
-            result = self.executor.execute_dataframe(mdf.sort_values(['col1']), concat=True)[0]
-            expected = df.sort_values(['col1'])
+            result = self.executor.execute_dataframe(mdf.sort_values([0, 1]), concat=True)[0]
+            expected = df.sort_values([0, 1])
 
             pd.testing.assert_frame_equal(result, expected)
 
-            mdf = DataFrame(df, chunk_size=3)
-            result = self.executor.execute_dataframe(mdf.sort_values(['col1']), concat=True)[0]
-            expected = df.sort_values(['col1'])
+            mdf = DataFrame(df, chunk_size=100)
+            result = self.executor.execute_dataframe(mdf.sort_values([0, 1]), concat=True)[0]
+            expected = df.sort_values([0, 1])
 
             pd.testing.assert_frame_equal(result, expected)
 

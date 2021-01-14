@@ -137,7 +137,7 @@ class Index(_Index, metaclass=InitializerMeta):
         else:
             if isinstance(data, (Base, Entity)):
                 name = name if name is not None else getattr(data, 'name', None)
-                index = from_tileable_index(data, dtype=dtype, name=name)
+                index = from_tileable_index(data, dtype=dtype, name=name, names=names)
                 need_repart = num_partitions is not None
             else:
                 if not isinstance(data, pd.Index):
