@@ -371,7 +371,7 @@ class BaseCalcActor(WorkerActor):
 class CpuCalcActor(BaseCalcActor):
     _slot_name = 'cpu'
     _calc_event_type = ProcedureEventType.CPU_CALC
-    if options.vineyard.socket:
+    if options.vineyard.enabled:
         shared_memory_device = DataStorageDevice.VINEYARD  # pragma: no cover
     else:
         shared_memory_device = DataStorageDevice.SHARED_MEMORY

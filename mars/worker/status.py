@@ -166,7 +166,7 @@ class StatusReporterActor(WorkerActor):
             meta_dict['progress'] = self._status_ref.get_progress()
             meta_dict['details'] = gather_node_info()
 
-            if options.vineyard.socket:  # pragma: no cover
+            if options.vineyard.enabled:  # pragma: no cover
                 import vineyard
                 client = vineyard.connect(options.vineyard.socket)
                 meta_dict['vineyard'] = {'instance_id': client.instance_id}

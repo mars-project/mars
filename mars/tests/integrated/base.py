@@ -33,7 +33,7 @@ class ProcessRequirementUnmetError(RuntimeError):
     pass
 
 
-class LearnIntegrationTestBase(unittest.TestCase):
+class IntegrationTestBase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.n_workers = 2
