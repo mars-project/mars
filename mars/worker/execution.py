@@ -485,7 +485,7 @@ class ExecutionActor(WorkerActor):
 
         calc_device = calc_device or 'cpu'
         if calc_device == 'cpu':  # pragma: no cover
-            if options.vineyard.socket:
+            if options.vineyard.enabled:
                 preferred_data_device = DataStorageDevice.VINEYARD
             else:
                 preferred_data_device = DataStorageDevice.SHARED_MEMORY

@@ -21,7 +21,7 @@ import mars.dataframe as md
 import mars.tensor as mt
 from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 
 try:
     import xgboost
@@ -30,7 +30,7 @@ except ImportError:
 
 
 @unittest.skipIf(xgboost is None, 'xgboost not installed')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def setUp(self):
         n_rows = 1000
         n_columns = 10

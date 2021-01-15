@@ -416,6 +416,7 @@ default_options.register_option('custom_log_dir', None, validator=any_validator(
 
 # vineyard
 default_options.register_option('vineyard.socket', None)
+default_options.register_option('vineyard.enabled', os.environ.get('WITH_VINEYARD', None) is not None)
 
 _options_local = threading.local()
 _options_local.default_options = default_options

@@ -104,7 +104,10 @@ class SenderActor(WorkerActor):
         if any(s is None for s in data_sizes):
             raise DependencyMissing('Dependencies %r not met when sending.'
                                     % [k for k, s in zip(chunk_keys, data_sizes) if s is None])
-        compression = compression or dataserializer.CompressType(options.worker.transfer_compression)
+        if options.vineyard.enabled:
+            compression = None
+        else:
+            compression = compression or dataserializer.CompressType(options.worker.transfer_compression)
 
         wait_refs = []
         addrs_to_chunks = dict()
@@ -175,10 +178,11 @@ class SenderActor(WorkerActor):
             self.tell_promise(callback, *exc, _accept=False)
 
         try:
-            if options.vineyard.socket:
-                source_devices = [DataStorageDevice.VINEYARD, DataStorageDevice.DISK]  # pragma: no cover
+            if options.vineyard.enabled:
+                in_memory_device = DataStorageDevice.VINEYARD
             else:
-                source_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
+                in_memory_device = DataStorageDevice.SHARED_MEMORY
+            source_devices = [in_memory_device, DataStorageDevice.DISK]  # pragma: no cover
             _create_local_readers().then(_create_remote_writers) \
                 .then(lambda *_: self._compress_and_send(
                     session_id, addrs_to_chunks, receiver_refs, keys_to_readers,
@@ -552,7 +556,7 @@ class ReceiverWorkerActor(WorkerActor):
         """
         promises = []
         failed = False
-        if options.vineyard.socket:
+        if options.vineyard.enabled:
             device_order = [DataStorageDevice.VINEYARD]  # pragma: no cover
         else:
             device_order = [DataStorageDevice.SHARED_MEMORY]
@@ -819,14 +823,19 @@ class ResultSenderActor(WorkerActor):
         return results
 
     def fetch_data(self, session_id, chunk_key, index_obj=None, compression_type=None):
-        logger.debug('Sending data %s from %s', chunk_key, self.uid)
-        if compression_type is None:
-            compression_type = dataserializer.CompressType(options.worker.transfer_compression)
+        logger.debug('Sending data %s from %s, using compression: %r', chunk_key, self.uid, compression_type)
+        if options.vineyard.enabled:
+            compression_type = None
+        else:
+            compression_type = compression_type or dataserializer.CompressType(options.worker.transfer_compression)
+
+        if options.vineyard.enabled:
+            in_memory_device = DataStorageDevice.VINEYARD
+        else:
+            in_memory_device = DataStorageDevice.SHARED_MEMORY
+
         if index_obj is None:
-            if options.vineyard.socket:
-                target_devs = [DataStorageDevice.VINEYARD, DataStorageDevice.DISK]  # pragma: no cover
-            else:
-                target_devs = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
+            target_devs = [in_memory_device, DataStorageDevice.DISK]  # pragma: no cover
             ev = self._result_copy_ref.start_copy(session_id, chunk_key, target_devs)
             if ev:
                 ev.wait(options.worker.prepare_data_timeout)
@@ -840,12 +849,8 @@ class ResultSenderActor(WorkerActor):
                 return pool.submit(reader.read).result()
         else:
             try:
-                if options.vineyard.socket:
-                    memory_device = DataStorageDevice.VINEYARD  # pragma: no cover
-                else:
-                    memory_device = DataStorageDevice.SHARED_MEMORY
                 value = self.storage_client.get_object(
-                    session_id, chunk_key, [memory_device], _promise=False)
+                    session_id, chunk_key, [in_memory_device], _promise=False)
             except IOError:
                 reader = self.storage_client.create_reader(
                     session_id, chunk_key, [DataStorageDevice.DISK], packed=False, _promise=False)

@@ -217,11 +217,6 @@ class WorkerService(object):
         from .storage import PlasmaKeyMapActor
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
 
-        # create vineyard key mapper
-        if options.vineyard.socket:  # pragma: no cover
-            from .storage import VineyardKeyMapActor
-            pool.create_actor(VineyardKeyMapActor, uid=VineyardKeyMapActor.default_uid())
-
         # create WorkerClusterInfoActor
         self._cluster_info_ref = pool.create_actor(
             WorkerClusterInfoActor, discoverer, distributed=distributed,

@@ -9,7 +9,7 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 from mars.learn.contrib.pytorch import MarsDataset, MarsDistributedSampler
 from mars.context import DistributedContext
 from mars.session import new_session
@@ -19,7 +19,7 @@ torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
 @unittest.skipIf(not torch_installed, 'pytorch not installed')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def testDistributedDataset(self):
         service_ep = 'http://127.0.0.1:' + self.web_port
         scheduler_ep = '127.0.0.1:' + self.scheduler_port

@@ -39,7 +39,7 @@ class DataStorageDevice(Enum):
 
     @classproperty
     def GLOBAL_DEVICES(cls):
-        if options.vineyard.socket:
+        if options.vineyard.enabled:
             return cls.VINEYARD, cls.DISK  # pragma: no cover
         else:
             return cls.SHARED_MEMORY, cls.DISK
