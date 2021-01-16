@@ -1298,6 +1298,10 @@ class VineyardEnabledTest(IntegrationTestBase, Test):
     def testLocalClusterWithWeb(self, *_):
         pass
 
+    @unittest.skip
+    def testIndexTensorExecute(self, *_):
+        pass
+
     @unittest.skip("FIXME: KeyError: 'Cannot find serializable class for type_id 1376787404'")
     def testGraphFail(self, *_):
         pass
