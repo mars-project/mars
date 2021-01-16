@@ -213,7 +213,8 @@ class ContextBase(object):
 
 
 ChunkMeta = namedtuple('ChunkMeta', ['chunk_size', 'chunk_shape', 'workers'])
-TileableInfos = namedtuple('TileableInfos', ['tileable_key', 'tileable_shape'])
+TileableInfos = namedtuple('TileableInfos', ['tileable_key', 'tileable_shape',
+                                             'tileable_extra_meta'])
 
 
 class LocalContext(ContextBase, dict):
@@ -302,7 +303,11 @@ class LocalContext(ContextBase, dict):
         if name not in self._local_session.executor._tileable_names:
             raise ValueError(f"Name {name} doesn't exist.")
         tileable = self._local_session.executor._tileable_names[name]
-        return TileableInfos(tileable.key, tileable.shape)
+        extra_meta = tileable.params.copy()
+        extra_meta.pop('shape', None)
+        extra_meta = dict((k, v.to_pandas() if hasattr(v, 'to_pandas') else v)
+                          for k, v in extra_meta.items())
+        return TileableInfos(tileable.key, tileable.shape, extra_meta)
 
     def create_lock(self):
         return self._local_session.executor._sync_provider.lock()
@@ -416,9 +421,10 @@ class DistributedContext(ContextBase):
 
     def get_named_tileable_infos(self, name: str):
         tileable_key = self.meta_api.get_tileable_key_by_name(self._session_id, name)
-        nsplits = self.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+        nsplits, extra_meta = self.get_tileable_metas([tileable_key],
+                                                      filter_fields=['nsplits', 'extra_meta'])[0]
         shape = tuple(sum(s) for s in nsplits)
-        return TileableInfos(tileable_key, shape)
+        return TileableInfos(tileable_key, shape, extra_meta)
 
     # Worker API
     def get_chunks_data(self, worker: str, chunk_keys: List[str], indexes: List = None,
@@ -434,7 +440,8 @@ class DistributedContext(ContextBase):
         from .tensor.datasource import empty
         from .tensor.indexing.index_lib import NDArrayIndexesHandler
 
-        nsplits, chunk_keys, chunk_indexes = self.get_tileable_metas([tileable_key])[0]
+        nsplits, chunk_keys, chunk_indexes = self.get_tileable_metas(
+            [tileable_key], filter_fields=['nsplits', 'chunk_keys', 'chunk_indexes'])[0]
         chunk_idx_to_keys = dict(zip(chunk_indexes, chunk_keys))
         chunk_keys_to_idx = dict(zip(chunk_keys, chunk_indexes))
         endpoints = self.get_chunk_metas(chunk_keys, filter_fields=['workers'])

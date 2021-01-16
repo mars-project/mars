@@ -228,6 +228,9 @@ class GraphDataApiHandler(MarsApiRequestHandler):
             if data_type == 'nsplits':
                 nsplits = self.web_api.get_tileable_nsplits(session_id, graph_key, tileable_key)
                 self.write(json.dumps(nsplits))
+            elif data_type == 'meta':
+                meta = self.web_api.get_tileable_meta(session_id, graph_key, tileable_key)
+                self.write(json.dumps(base64.b64encode(pickle.dumps(meta)).decode()))
             else:
                 raise web.HTTPError(403, 'Unknown data type requests')
         else:

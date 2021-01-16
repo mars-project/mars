@@ -197,7 +197,8 @@ def named_tensor(name, session=None):
     tileable_infos = sess.get_named_tileable_infos(name=name)
     fetch_op = TensorFetch()
     return fetch_op.new_tensor([], shape=tileable_infos.tileable_shape,
-                               _key=tileable_infos.tileable_key)
+                               _key=tileable_infos.tileable_key,
+                               kws=[tileable_infos.tileable_extra_meta])
 
 
 def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
