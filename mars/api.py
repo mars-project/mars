@@ -244,7 +244,8 @@ class MarsAPI(object):
         session_ref = self.get_actor_ref(session_uid)
         graph_ref = self.actor_client.actor_ref(
             session_ref.get_graph_ref_by_tileable_key(tileable_key))
-        nsplits, chunk_keys, chunk_indexes = graph_ref.get_tileable_metas([tileable_key])[0]
+        nsplits, chunk_keys, chunk_indexes = graph_ref.get_tileable_metas(
+            [tileable_key], filter_fields=['nsplits', 'chunk_keys', 'chunk_indexes'])[0]
         return self.fetch_chunks_data(session_id, chunk_indexes, chunk_keys, nsplits,
                                       index_obj=index_obj, serial=serial, serial_type=serial_type,
                                       compressions=compressions, pickle_protocol=pickle_protocol)
@@ -281,6 +282,12 @@ class MarsAPI(object):
         graph_ref = self.get_actor_ref(graph_uid)
 
         return graph_ref.get_tileable_metas([tileable_key], filter_fields=['nsplits'])[0][0]
+
+    def get_tileable_meta(self, session_id, graph_key, tileable_key):
+        graph_uid = GraphActor.gen_uid(session_id, graph_key)
+        graph_ref = self.get_actor_ref(graph_uid)
+
+        return graph_ref.get_tileable_metas([tileable_key], filter_fields=['nsplits', 'extra_meta'])[0]
 
     def get_tileable_key_by_name(self, session_id, name):
         session_uid = SessionActor.gen_uid(session_id)

@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.executor import register, Executor
+from mars.tensor.core import TensorOrder
 from mars.tensor.datasource import ArrayDataSource
 from mars.tiles import get_tiled
 from mars.session import new_session, Session
@@ -683,6 +684,7 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(r1, raw)
 
         t2 = mt.named_tensor(name=name, session=sess)
+        self.assertEqual(t2.order, TensorOrder.C_ORDER)
         r2 = (t2 + 1).execute(session=sess).fetch()
         np.testing.assert_array_equal(r2, raw + 1)
 
@@ -694,6 +696,9 @@ class Test(unittest.TestCase):
         pd.testing.assert_series_equal(r1, raw)
 
         s2 = md.named_series(name=name, session=sess)
+        self.assertEqual(s2.dtype, s.dtype)
+        pd.testing.assert_index_equal(s2.index_value.to_pandas(),
+                                      s.index_value.to_pandas())
         r2 = s2.execute(session=sess).fetch()
         pd.testing.assert_series_equal(r2, raw)
 
@@ -705,5 +710,10 @@ class Test(unittest.TestCase):
         pd.testing.assert_frame_equal(r1, raw)
 
         d2 = md.named_dataframe(name=name, session=sess)
+        pd.testing.assert_series_equal(d2.dtypes, d.dtypes)
+        pd.testing.assert_index_equal(d2.index_value.to_pandas(),
+                                      d.index_value.to_pandas())
+        pd.testing.assert_index_equal(d2.columns_value.to_pandas(),
+                                      d.columns_value.to_pandas())
         r2 = d2.execute(session=sess).fetch()
         pd.testing.assert_frame_equal(r2, raw)
