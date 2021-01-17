@@ -55,6 +55,7 @@ from mars.web.session import Session as WebSession
 from mars.context import get_context, RunningMode
 from mars.utils import serialize_function
 from mars.tests.core import mock, require_cudf
+from mars.tests.integrated.base import IntegrationTestBase
 
 logger = logging.getLogger(__name__)
 _exec_timeout = 120 if 'CI' in os.environ else -1
@@ -144,6 +145,9 @@ class Test(unittest.TestCase):
         super().tearDown()
         options.scheduler.default_cpu_usage = self._old_default_cpu_usage
 
+    def new_cluster(self, *args, **kwargs):
+        return new_cluster(*args, **kwargs)
+
     def testLocalCluster(self, *_):
         endpoint = gen_endpoint('0.0.0.0')
         with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3,
@@ -169,8 +173,8 @@ class Test(unittest.TestCase):
 
     def testLocalClusterWithWeb(self, *_):
         import psutil
-        with new_cluster(scheduler_n_process=2, worker_n_process=3,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=3,
+                              shared_memory='20M', web=True) as cluster:
             cluster_proc = psutil.Process(cluster._cluster_process.pid)
             web_proc = psutil.Process(cluster._web_process.pid)
             processes = list(cluster_proc.children(recursive=True)) + \
@@ -197,8 +201,8 @@ class Test(unittest.TestCase):
                 self.assertFalse(any(p.is_running() for p in processes))
 
     def testLocalClusterError(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=3,
-                         shared_memory='20M', web=True, options={'scheduler.retry_num': 1}) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=3,
+                              shared_memory='20M', web=True, options={'scheduler.retry_num': 1}) as cluster:
             # Note that it is nested exception and we want to check the message
             # of the inner exeception, thus assertRaises won't work.
 
@@ -251,9 +255,9 @@ class Test(unittest.TestCase):
         self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
             5, 3, 2, calc_cpu_count=calc_cpu_cnt), (3, 2))
 
-    def testSingleOutputTensorExecute(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
+    def testTensorInLocalCluster(self, *_):
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M') as cluster:
             self.assertIs(cluster.session, Session.default_or_local())
 
             t = mt.random.rand(10)
@@ -271,9 +275,18 @@ class Test(unittest.TestCase):
             expected = (np.linalg.norm(raw) * 4 - 1).sum()
             np.testing.assert_array_almost_equal(res, expected)
 
+            # test named tensor
+            t = np.random.RandomState(0).rand(4, 3)
+            a = mt.tensor(t, chunk_size=2)
+            a.execute(name='my_tensor', session=cluster.session)
+            a2 = mt.named_tensor('my_tensor', session=cluster.session)
+            self.assertEqual(a2.order, a.order)
+            self.assertEqual(a2.dtype, a.dtype)
+            np.testing.assert_array_equal(a2.fetch(), t)
+
     def testMultipleOutputTensorExecute(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M') as cluster:
             session = cluster.session
 
             t = mt.random.rand(20, 5, chunk_size=5)
@@ -322,8 +335,8 @@ class Test(unittest.TestCase):
                 np.testing.assert_allclose(s_result, s_expected)
 
     def testIndexTensorExecute(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M') as cluster:
             session = cluster.session
 
             a = mt.random.rand(10, 5)
@@ -373,8 +386,8 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r, raw[raw.argmin(axis=1), np.arange(10)])
 
     def testBoolIndexingExecute(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             a = mt.random.rand(8, 8, chunk_size=4)
             a[2:6, 2:6] = mt.ones((4, 4)) * 2
             b = a[a > 1]
@@ -409,16 +422,16 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r, np.ones((9,)) * 2)
 
     def testExecutableTuple(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             with new_session('http://' + cluster._web_endpoint).as_default():
                 a = mt.ones((20, 10), chunk_size=10)
                 u, s, v = (mt.linalg.svd(a)).execute().fetch()
                 np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
     def testRerunTensor(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M') as cluster:
             session = cluster.session
 
             a = mt.ones((10, 10)) + 1
@@ -436,8 +449,8 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(b_result, np.ones((10, 10)))
 
     def testRunWithoutFetch(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M') as cluster:
             session = cluster.session
 
             a = mt.ones((10, 20)) + 1
@@ -453,9 +466,9 @@ class Test(unittest.TestCase):
         except:  # noqa: E722
             exc = sys.exc_info()[1]
 
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', modules=[__name__],
-                         options={'scheduler.retry_num': 1}) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', modules=[__name__],
+                              options={'scheduler.retry_num': 1}) as cluster:
             with self.assertRaises(ExecutionFailed):
                 try:
                     cluster.session.run(tensor, timeout=_exec_timeout)
@@ -482,8 +495,8 @@ class Test(unittest.TestCase):
                     raise
 
     def testFetchTensor(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             session = cluster.session
 
             a1 = mt.ones((10, 20), chunk_size=8) + 1
@@ -519,12 +532,12 @@ class Test(unittest.TestCase):
                 r4 = session.run(a4, timeout=_exec_timeout)
                 np.testing.assert_array_equal(r4, r1)
 
-    def testFetchDataFrame(self, *_):
+    def testDataFrameInLocalCluster(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.arithmetic import add
 
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             session = cluster.session
 
             data1 = pd.DataFrame(np.random.rand(10, 10))
@@ -612,9 +625,29 @@ class Test(unittest.TestCase):
             pd.testing.assert_series_equal(r5, expected5)
             pd.testing.assert_series_equal(r6, expected6)
 
+            # test named dataframe
+            df = md.DataFrame(raw.copy(), chunk_size=4)
+            df.execute(name='my_df', session=session)
+            df2 = md.named_dataframe('my_df', session=session)
+            pd.testing.assert_series_equal(df2.dtypes, df.dtypes)
+            pd.testing.assert_index_equal(df2.index_value.to_pandas(),
+                                          df.index_value.to_pandas())
+            pd.testing.assert_index_equal(df2.columns_value.to_pandas(),
+                                          df.columns_value.to_pandas())
+            pd.testing.assert_frame_equal(df2.fetch(), raw)
+            # test named series
+            s = md.Series(raw['c1'].copy(), chunk_size=4)
+            s.execute(name='my_series', session=session)
+            s2 = md.named_series('my_series', session=session)
+            self.assertEqual(s2.dtype, s.dtype)
+            self.assertEqual(s2.name, s.name)
+            pd.testing.assert_index_equal(s2.index_value.to_pandas(),
+                                          s.index_value.to_pandas())
+            pd.testing.assert_series_equal(s2.fetch(), raw['c1'])
+
     def testMultiSessionDecref(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             session = cluster.session
 
             a = mt.ones((10, 20), chunk_size=8)
@@ -647,8 +680,8 @@ class Test(unittest.TestCase):
                 web_session.fetch(b)
 
     def testEagerMode(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
 
             self.assertIsInstance(Session.default_or_local()._sess, ClusterSession)
 
@@ -731,8 +764,8 @@ class Test(unittest.TestCase):
     def testSparse(self, *_):
         import scipy.sparse as sps
 
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=False) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=False) as cluster:
             session = cluster.session
 
             # calculate sparse with no element in matrix
@@ -743,8 +776,8 @@ class Test(unittest.TestCase):
             session.run(t1 * t2, timeout=_exec_timeout)
 
     def testRunWithoutCompose(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=False) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=False) as cluster:
             session = cluster.session
 
             arr1 = (mt.ones((10, 10), chunk_size=3) + 1) * 2
@@ -754,8 +787,8 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(r1, r2)
 
     def testExistingOperand(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M') as cluster:
             session = cluster.session
             a = mt.ones((3, 3), chunk_size=2)
             r1 = session.run(a, compose=False, timeout=_exec_timeout)
@@ -782,8 +815,8 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(r4, np.ones((5, 5)) * 5)
 
     def testTiledTensor(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M') as cluster:
             session = cluster.session
             a = mt.ones((10, 10), chunk_size=3)
             b = a.dot(a)
@@ -799,8 +832,8 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
 
     def testFetchSlices(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             session = cluster.session
             a = mt.random.rand(10, 10, 10, chunk_size=3)
 
@@ -847,8 +880,8 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(r[4], r_slice5)
 
     def testFetchDataFrameSlices(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             session = cluster.session
             a = mt.random.rand(10, 10, chunk_size=3)
             df = md.DataFrame(a)
@@ -904,8 +937,8 @@ class Test(unittest.TestCase):
             pd.testing.assert_frame_equal(r.iloc[6:9], r_slice6)
 
     def testClusterSession(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             sess1 = cluster.session
             sess2 = new_session(cluster.endpoint, session_id=sess1.session_id)
 
@@ -947,8 +980,8 @@ class Test(unittest.TestCase):
             self.assertEqual(cm.exception.args[0], expected_msg)
 
     def testTensorOrder(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             session = cluster.session
 
             data = np.asfortranarray(np.random.rand(10, 7))
@@ -970,8 +1003,8 @@ class Test(unittest.TestCase):
             self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testIterativeDependency(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True):
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True):
             with tempfile.TemporaryDirectory() as d:
                 file_path = os.path.join(d, 'test.csv')
                 df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
@@ -999,8 +1032,8 @@ class Test(unittest.TestCase):
         from mars.dataframe.merge.merge import merge
         from mars.dataframe.utils import sort_dataframe_inplace
 
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             session = cluster.session
 
             data1 = pd.DataFrame(np.arange(20).reshape((4, 5)) + 1, columns=['a', 'b', 'c', 'd', 'e'])
@@ -1038,8 +1071,8 @@ class Test(unittest.TestCase):
     def testCudaCluster(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', cuda_device=0, web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', cuda_device=0, web=True) as cluster:
             session = cluster.session
             pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
             df = from_pandas_df(pdf, chunk_size=(13, 21))
@@ -1049,8 +1082,8 @@ class Test(unittest.TestCase):
 
     def testTileContextInLocalCluster(self):
         from mars.serialize import dataserializer
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', modules=[__name__], web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', modules=[__name__], web=True) as cluster:
             session = cluster.session
 
             raw = np.random.rand(10, 20)
@@ -1066,8 +1099,8 @@ class Test(unittest.TestCase):
 
     @unittest.skipIf(h5py is None, 'h5py not installed')
     def testStoreHDF5ForLocalCluster(self):
-        with new_cluster(worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+        with self.new_cluster(worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
             session = cluster.session
 
             raw = np.random.RandomState(0).rand(10, 20)
@@ -1086,8 +1119,8 @@ class Test(unittest.TestCase):
                     np.testing.assert_array_equal(result, raw)
 
     def testRemoteFunctionInLocalCluster(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=3,
-                         shared_memory='20M', modules=[__name__], web=True) as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=3,
+                              shared_memory='20M', modules=[__name__], web=True) as cluster:
             session = cluster.session
 
             def f(x):
@@ -1143,7 +1176,7 @@ class Test(unittest.TestCase):
 
             r = session.run(s, timeout=_exec_timeout)
             expected = (raw.sum(axis=0) * 3).sum()
-            self.assertAlmostEqual(r, expected)
+            self.assertAlmostEqual(r, expected, places=5)
 
             # test named tileable
             session3 = new_session(cluster.endpoint)
@@ -1189,7 +1222,7 @@ class Test(unittest.TestCase):
             s = mr.spawn(f5, args=(t2, 3))
             result = session5.run(s, timeout=_exec_timeout)
             expected = (raw[raw < 0.5] * 3).sum()
-            self.assertAlmostEqual(result, expected)
+            self.assertAlmostEqual(result, expected, places=5)
 
     @unittest.skipIf(sklearn is None, 'sklearn not installed')
     def testLearnInLocalCluster(self, *_):
@@ -1198,7 +1231,7 @@ class Test(unittest.TestCase):
         from sklearn.cluster import KMeans as SK_KMEANS
         from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
 
-        with new_cluster(scheduler_n_process=2, worker_n_process=3, shared_memory='20M') as cluster:
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=3, shared_memory='20M') as cluster:
             rs = np.random.RandomState(0)
             raw_X = rs.rand(10, 5)
             raw_Y = rs.rand(8, 5)
@@ -1224,3 +1257,55 @@ class Test(unittest.TestCase):
             kmeans = KMeans(n_clusters=2, random_state=0, init='k-means++').fit(X)
             sk_km_elkan = SK_KMEANS(n_clusters=2, random_state=0, init='k-means++').fit(raw)
             np.testing.assert_allclose(kmeans.cluster_centers_, sk_km_elkan.cluster_centers_)
+
+
+class IntegrationTestCluster:
+        ''' Emulates a LocalDistributedCluster, to reuse test cases from test_cluster.py.
+        '''
+        def __init__(self, endpoint, web_endpoint):
+            self.endpoint = endpoint
+            self._web_endpoint = web_endpoint
+            self.session = new_session(self.endpoint).as_default()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            self.session.close()
+
+
+@unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
+@unittest.skipIf(os.environ.get('WITH_VINEYARD', None) is None, 'vineyard not enabled')
+@mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
+class VineyardEnabledTest(IntegrationTestBase, Test):
+    @property
+    def _extra_worker_options(self):
+        return ['-Dvineyard.socket=/tmp/vineyard/vineyard.sock']
+
+    @property
+    def _extra_scheduler_options(self):
+        return ['-Dvineyard.socket=/tmp/vineyard/vineyard.sock']
+
+    def new_cluster(self, *args, **kwargs):
+        return IntegrationTestCluster('127.0.0.1:%s' % self.scheduler_port,
+                                      '127.0.0.1:%s' % self.web_port)
+
+    @unittest.skip("We don't have a truely LocalDistributedCluster in integration test.")
+    def testLocalCluster(self, *_):
+        pass
+
+    @unittest.skip("We don't have a truely LocalDistributedCluster in integration test.")
+    def testLocalClusterWithWeb(self, *_):
+        pass
+
+    @unittest.skip
+    def testIndexTensorExecute(self, *_):
+        pass
+
+    @unittest.skip("FIXME: KeyError: 'Cannot find serializable class for type_id 1376787404'")
+    def testGraphFail(self, *_):
+        pass
+
+    @unittest.skip("FIXME: KeyError: 'Cannot find serializable class for type_id 1376787404'")
+    def testTileContextInLocalCluster(self, *_):
+        pass

@@ -234,7 +234,8 @@ class Test(SchedulerIntegratedTest):
         graph_key = sess._get_tileable_graph_key(r.key)
         graph_ref = actor_client.actor_ref(session_ref.get_graph_refs()[graph_key])
         with self.assertRaises(KeyError):
-            _, keys, _ = graph_ref.get_tileable_metas([a.key])[0]
+            _, keys, _ = graph_ref.get_tileable_metas(
+                [a.key], filter_fields=['nsplits', 'chunk_keys', 'chunk_indexes'])[0]
             sess._api.fetch_chunk_data(sess.session_id, keys[0])
 
         raw1 = rs.rand(20)

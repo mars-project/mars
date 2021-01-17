@@ -1215,12 +1215,12 @@ class GraphActor(SchedulerActor):
         :param filter_fields: filter the fields('nsplits', 'chunk_keys', 'chunk_indexes') in meta.
         :return: metas list.
         """
-        meta_names = ['nsplits', 'chunk_keys', 'chunk_indexes']
+        meta_names = ['nsplits', 'chunk_keys', 'chunk_indexes', 'extra_meta']
         filter_fields = filter_fields or meta_names
         for field in filter_fields:
-            if field not in ['nsplits', 'chunk_keys', 'chunk_indexes']:
+            if field not in ['nsplits', 'chunk_keys', 'chunk_indexes', 'extra_meta']:
                 raise ValueError(f'Field {field} is invalid')
-        ret_nsplits = 'nsplits' in filter_fields
+
         metas = []
         for tileable_key in tileable_keys:
             meta = dict()
@@ -1228,15 +1228,19 @@ class GraphActor(SchedulerActor):
             chunk_keys, chunk_indexes = tuple(zip(*[(c.key, c.index) for c in tileable.chunks]))
             meta['chunk_keys'] = chunk_keys
             meta['chunk_indexes'] = chunk_indexes
-            if ret_nsplits:
-                if hasattr(tileable, 'shape') and np.nan in tileable.shape:
-                    chunk_shapes = self.chunk_meta.batch_get_chunk_shape(self._session_id,  chunk_keys)
-                    nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes, chunk_shapes)))
-                else:
-                    nsplits = tileable.nsplits
-                meta['nsplits'] = nsplits
-                if filter_fields is not None:
-                    metas.append([meta[k] for k in filter_fields])
+
+            if hasattr(tileable, 'shape') and np.nan in tileable.shape:
+                chunk_shapes = self.chunk_meta.batch_get_chunk_shape(self._session_id,  chunk_keys)
+                nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes, chunk_shapes)))
+            else:
+                nsplits = tileable.nsplits
+            meta['nsplits'] = nsplits
+            extra_meta = tileable.params
+            extra_meta.pop('shape', None)
+            extra_meta = dict((k, v.to_pandas() if hasattr(v, 'to_pandas') else v)
+                              for k, v in extra_meta.items())
+            meta['extra_meta'] = extra_meta
+            metas.append([meta[k] for k in filter_fields])
         return metas
 
     def get_tileable_chunk_metas(self, tileable_keys, filter_fields=None):

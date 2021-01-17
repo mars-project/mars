@@ -15,7 +15,7 @@
 import unittest
 
 from mars.learn.contrib.tsfresh import MarsDistributor
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 from mars.session import new_session
 
 try:
@@ -29,7 +29,7 @@ except ImportError:
 
 
 @unittest.skipIf(tsfresh is None, 'tsfresh not installed')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def testDistributedTSFresh(self):
         robot_execution_failures.download_robot_execution_failures()
         df, y = robot_execution_failures.load_robot_execution_failures()

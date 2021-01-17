@@ -26,13 +26,13 @@ except ImportError:
 
 from mars import dataframe as md
 from mars.learn.metrics import roc_curve, auc
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 from mars.session import new_session
 
 
 @unittest.skipIf(sklearn is None, 'sklearn not installed')
 @unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def testRocCurveAuc(self):
         service_ep = 'http://127.0.0.1:' + self.web_port
         timeout = 120 if 'CI' in os.environ else -1

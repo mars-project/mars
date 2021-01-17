@@ -15,7 +15,7 @@
 import unittest
 import os
 
-from mars.learn.tests.integrated.base import LearnIntegrationTestBase
+from mars.tests.integrated.base import IntegrationTestBase
 from mars.learn.contrib.tensorflow import run_tensorflow_script
 from mars.session import new_session
 
@@ -26,7 +26,7 @@ except ImportError:
 
 
 @unittest.skipIf(tensorflow is None, 'tensorflow not installed')
-class Test(LearnIntegrationTestBase):
+class Test(IntegrationTestBase):
     def testDistributedRunTensorFlowScript(self):
         service_ep = 'http://127.0.0.1:' + self.web_port
         timeout = 120 if 'CI' in os.environ else -1

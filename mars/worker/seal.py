@@ -14,6 +14,7 @@
 
 import numpy as np
 
+from ..config import options
 from ..utils import log_unhandled
 from .storage import DataStorageDevice
 from .utils import WorkerActor
@@ -38,6 +39,8 @@ class SealActor(WorkerActor):
 
     @log_unhandled
     def seal_chunk(self, session_id, graph_key, chunk_key, keys, shape, record_type, dtype, fill_value):
+        from ..scheduler.chunkmeta import WorkerMeta
+
         chunk_bytes_size = np.prod(shape) * dtype.itemsize
         self._mem_quota_ref.request_batch_quota({chunk_key: chunk_bytes_size})
         if fill_value is None:
@@ -46,13 +49,19 @@ class SealActor(WorkerActor):
             ndarr = np.full(shape, fill_value, dtype=dtype)
         ndarr_ts = np.zeros(shape, dtype=np.dtype('datetime64[ns]'))
 
+        if options.vineyard.enabled:
+            in_memory_device = DataStorageDevice.VINEYARD
+        else:
+            in_memory_device = DataStorageDevice.SHARED_MEMORY
+        use_devices = [in_memory_device, DataStorageDevice.DISK]  # pragma: no cover
+
         # consolidate
         for key in keys:
             buffer = None
             try:
                 # todo potential memory quota issue must be dealt with
                 obj = self.storage_client.get_object(
-                    session_id, key, [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK], _promise=False)
+                    session_id, key, use_devices, _promise=False)
                 record_view = obj.view(dtype=record_type, type=np.recarray)
 
                 for record in record_view:
@@ -69,6 +78,6 @@ class SealActor(WorkerActor):
         self._mem_quota_ref.release_quotas(keys)
 
         self.storage_client.put_objects(
-            session_id, [chunk_key], [ndarr], [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK])
-        self.get_meta_client().set_chunk_meta(session_id, chunk_key, size=chunk_bytes_size,
-                                              shape=shape, workers=(self.address,))
+            session_id, [chunk_key], [ndarr], use_devices)
+        worker_meta = WorkerMeta(chunk_bytes_size, shape, (self.address,))
+        self.get_meta_client().batch_set_chunk_meta(session_id, [chunk_key], [worker_meta], _wait=False)

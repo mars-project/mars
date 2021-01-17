@@ -159,19 +159,31 @@ class Index(_Index, metaclass=InitializerMeta):
 
 def named_dataframe(name, session=None):
     from ..session import Session
+    from .utils import parse_index
 
     sess = session or Session.default_or_local()
     tileable_infos = sess.get_named_tileable_infos(name=name)
     fetch_op = DataFrameFetch(output_types=[OutputType.dataframe])
+    extra_meta = tileable_infos.tileable_extra_meta
+    for param, store in zip(['index_value', 'columns_value'], ['False', 'True']):
+        if param in extra_meta:
+            extra_meta[param] = parse_index(extra_meta[param],
+                                            store_data=store)
     return fetch_op.new_dataframe([], shape=tileable_infos.tileable_shape,
-                                  _key=tileable_infos.tileable_key)
+                                  _key=tileable_infos.tileable_key,
+                                  kws=[extra_meta])
 
 
 def named_series(name, session=None):
     from ..session import Session
+    from .utils import parse_index
 
     sess = session or Session.default_or_local()
     tileable_infos = sess.get_named_tileable_infos(name=name)
     fetch_op = DataFrameFetch(output_types=[OutputType.series])
+    extra_meta = tileable_infos.tileable_extra_meta
+    if 'index_value' in extra_meta:
+        extra_meta['index_value'] = parse_index(extra_meta['index_value'])
     return fetch_op.new_series([], shape=tileable_infos.tileable_shape,
-                               _key=tileable_infos.tileable_key)
+                               _key=tileable_infos.tileable_key,
+                               kws=[extra_meta])
