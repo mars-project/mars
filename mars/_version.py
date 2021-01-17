@@ -15,7 +15,7 @@
 import subprocess
 import os
 
-version_info = (0, 6, 2)
+version_info = (0, 6, 3)
 _num_index = max(idx if isinstance(v, int) else 0
                  for idx, v in enumerate(version_info))
 __version__ = '.'.join(map(str, version_info[:_num_index + 1])) + \

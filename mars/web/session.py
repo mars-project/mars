@@ -313,9 +313,9 @@ class Session(object):
             raise ValueError(f'Failed to get tileable key from server. Code: {resp.status_code}, '
                              f'Reason: {resp.reason}, Content:\n{resp.text}')
         tileable_key = self._handle_json_response(resp)['tileable_key']
-        nsplits = self._get_tileable_nsplits(tileable_key)
+        nsplits, extra_meta = self._get_tileable_meta(tileable_key)
         shape = tuple(sum(s) for s in nsplits)
-        return TileableInfos(tileable_key, shape)
+        return TileableInfos(tileable_key, shape, extra_meta)
 
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *_, **__):
         from ..tensor.utils import create_mutable_tensor
@@ -395,6 +395,14 @@ class Session(object):
         resp = self._req_session.get(url)
         new_nsplits = self._handle_json_response(resp)
         return new_nsplits
+
+    def _get_tileable_meta(self, tileable_key):
+        session_url = f'{self._endpoint}/api/session/{self._session_id}'
+        graph_key = self._get_tileable_graph_key(tileable_key)
+        url = f'{session_url}/graph/{graph_key}/data/{tileable_key}?type=meta'
+        resp = self._req_session.get(url)
+        meta = self._handle_json_response(resp)
+        return pickle.loads(base64.b64decode(meta))  # nosec
 
     def _update_tileable_shape(self, tileable):
         tileable_key = tileable.key

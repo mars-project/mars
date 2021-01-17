@@ -255,7 +255,7 @@ class Test(unittest.TestCase):
         self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
             5, 3, 2, calc_cpu_count=calc_cpu_cnt), (3, 2))
 
-    def testSingleOutputTensorExecute(self, *_):
+    def testTensorInLocalCluster(self, *_):
         with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
                               shared_memory='20M') as cluster:
             self.assertIs(cluster.session, Session.default_or_local())
@@ -274,6 +274,15 @@ class Test(unittest.TestCase):
             res = r.to_numpy()
             expected = (np.linalg.norm(raw) * 4 - 1).sum()
             np.testing.assert_array_almost_equal(res, expected)
+
+            # test named tensor
+            t = np.random.RandomState(0).rand(4, 3)
+            a = mt.tensor(t, chunk_size=2)
+            a.execute(name='my_tensor', session=cluster.session)
+            a2 = mt.named_tensor('my_tensor', session=cluster.session)
+            self.assertEqual(a2.order, a.order)
+            self.assertEqual(a2.dtype, a.dtype)
+            np.testing.assert_array_equal(a2.fetch(), t)
 
     def testMultipleOutputTensorExecute(self, *_):
         with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
@@ -523,7 +532,7 @@ class Test(unittest.TestCase):
                 r4 = session.run(a4, timeout=_exec_timeout)
                 np.testing.assert_array_equal(r4, r1)
 
-    def testFetchDataFrame(self, *_):
+    def testDataFrameInLocalCluster(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.arithmetic import add
 
@@ -615,6 +624,26 @@ class Test(unittest.TestCase):
             expected6 = raw.groupby('c2').count().min()
             pd.testing.assert_series_equal(r5, expected5)
             pd.testing.assert_series_equal(r6, expected6)
+
+            # test named dataframe
+            df = md.DataFrame(raw.copy(), chunk_size=4)
+            df.execute(name='my_df', session=session)
+            df2 = md.named_dataframe('my_df', session=session)
+            pd.testing.assert_series_equal(df2.dtypes, df.dtypes)
+            pd.testing.assert_index_equal(df2.index_value.to_pandas(),
+                                          df.index_value.to_pandas())
+            pd.testing.assert_index_equal(df2.columns_value.to_pandas(),
+                                          df.columns_value.to_pandas())
+            pd.testing.assert_frame_equal(df2.fetch(), raw)
+            # test named series
+            s = md.Series(raw['c1'].copy(), chunk_size=4)
+            s.execute(name='my_series', session=session)
+            s2 = md.named_series('my_series', session=session)
+            self.assertEqual(s2.dtype, s.dtype)
+            self.assertEqual(s2.name, s.name)
+            pd.testing.assert_index_equal(s2.index_value.to_pandas(),
+                                          s.index_value.to_pandas())
+            pd.testing.assert_series_equal(s2.fetch(), raw['c1'])
 
     def testMultiSessionDecref(self, *_):
         with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
@@ -1267,6 +1296,10 @@ class VineyardEnabledTest(IntegrationTestBase, Test):
 
     @unittest.skip("We don't have a truely LocalDistributedCluster in integration test.")
     def testLocalClusterWithWeb(self, *_):
+        pass
+
+    @unittest.skip
+    def testIndexTensorExecute(self, *_):
         pass
 
     @unittest.skip("FIXME: KeyError: 'Cannot find serializable class for type_id 1376787404'")
