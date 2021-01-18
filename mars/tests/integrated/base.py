@@ -37,6 +37,8 @@ class IntegrationTestBase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.n_workers = 2
+        self.proc_web = self.proc_scheduler = None
+        self.proc_workers = []
         self.start_distributed_env(n_workers=self.n_workers)
 
     def start_distributed_env(self, *args, **kwargs):
@@ -156,6 +158,7 @@ class IntegrationTestBase(unittest.TestCase):
 
     def terminate_processes(self):
         procs = [self.proc_web, self.proc_scheduler] + self.proc_workers
+        procs = [proc for proc in procs if proc is not None]
         for p in procs:
             p.send_signal(signal.SIGINT)
 
