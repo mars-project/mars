@@ -16,6 +16,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...context import RunningMode
 from ...core import OutputType
 from ...serialize import TupleField, StringField
 from ...tiles import TilesError
@@ -102,7 +103,11 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         register_tensor_types(builder_ctx=default_builder_context,
                               resolver_ctx=default_resolver_context)
 
-        df_id = client.put(ctx[op.inputs[0].key], partition_index=op.inputs[0].index)
+        if options.vineyard.enabled and ctx.running_mode != RunningMode.local:
+            # the chunk already exists in vineyard
+            df_id = ctx._keymapper_ref.get(ctx._session_id, op.inputs[0].key)
+        else:
+            df_id = client.put(ctx[op.inputs[0].key], partition_index=op.inputs[0].index)
         client.persist(df_id)
 
         # store the result object id to execution context

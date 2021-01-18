@@ -17,6 +17,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...context import RunningMode
 from ...serialize import TupleField, KeyField, StringField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
@@ -85,10 +86,12 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         # setup builder context
         from vineyard.data.tensor import numpy_ndarray_builder
 
-        np_value = ctx[op.input.key]
-        if not np_value.flags['C_CONTIGUOUS']:
-            np_value = np.ascontiguousarray(np_value)
-        tensor_id = client.put(np_value, numpy_ndarray_builder, partition_index=op.input.index)
+        if options.vineyard.enabled and ctx.running_mode != RunningMode.local:
+            # the chunk already exists in vineyard
+            tensor_id = ctx._keymapper_ref.get(ctx._session_id, op.inputs[0].key)
+        else:
+            tensor_id = client.put(ctx[op.inputs[0].key], numpy_ndarray_builder, partition_index=op.input.index)
+
         client.persist(tensor_id)
 
         # store the result object id to execution context

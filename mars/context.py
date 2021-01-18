@@ -316,7 +316,9 @@ class LocalContext(ContextBase, dict):
 class DistributedContext(ContextBase):
     def __init__(self, scheduler_address, session_id, actor_ctx=None,
                  is_distributed=None, resource_ref=None, **kw):
+        from .config import options
         from .worker.api import WorkerAPI
+        from .worker.storage.vineyardhandler import VineyardKeyMapActor
         from .scheduler.custom_log import CustomLogMetaActor
         from .scheduler.resource import ResourceActor
         from .scheduler.utils import SchedulerClusterInfoActor
@@ -350,6 +352,12 @@ class DistributedContext(ContextBase):
 
         self._address = kw.pop('address', None)
         self._extra_info = kw
+
+        if options.vineyard.enabled:
+            self._keymapper_ref = self._actor_ctx.actor_ref(
+                    VineyardKeyMapActor.default_uid(), address=self._address)
+        else:
+            self._keymapper_ref = None
 
     @property
     def meta_api(self):
