@@ -37,6 +37,7 @@ from .cartesian_chunk import cartesian_chunk
 from .rebalance import rebalance
 from .stack import stack
 from .explode import df_explode, series_explode
+from .eval import df_eval, df_query
 
 
 def _install():
@@ -70,6 +71,8 @@ def _install():
         setattr(t, 'rebalance', rebalance)
         setattr(t, 'stack', stack)
         setattr(t, 'explode', df_explode)
+        setattr(t, 'eval', df_eval)
+        setattr(t, 'query', df_query)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)

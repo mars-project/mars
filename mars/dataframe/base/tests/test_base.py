@@ -18,12 +18,13 @@ import pandas as pd
 from mars import opcodes
 from mars.config import options, option_context
 from mars.core import OutputType
+from mars.dataframe import eval as mars_eval, cut
+from mars.dataframe.base import to_gpu, to_cpu, astype
 from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
     INDEX_TYPE, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
-from mars.dataframe.base import to_gpu, to_cpu, cut, astype
 from mars.operands import OperandStage
 from mars.tensor.core import TENSOR_TYPE
 from mars.tests.core import TestBase
@@ -842,3 +843,36 @@ class Test(TestBase):
         df2 = df2.tiles()
 
         self.assertIsInstance(df2.op, type(df.op))
+
+    def testEvalQuery(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame({'a': rs.rand(100),
+                            'b': rs.rand(100),
+                            'c c': rs.rand(100)})
+        df = from_pandas_df(raw, chunk_size=(10, 2))
+
+        with self.assertRaises(NotImplementedError):
+            mars_eval('df.a * 2', engine='numexpr')
+        with self.assertRaises(NotImplementedError):
+            mars_eval('df.a * 2', parser='pandas')
+        with self.assertRaises(TypeError):
+            df.eval(df)
+        with self.assertRaises(SyntaxError):
+            df.query("""
+            a + b
+            a + `c c`
+            """)
+        with self.assertRaises(SyntaxError):
+            df.eval("""
+            def a():
+                return v
+            a()
+            """)
+        with self.assertRaises(SyntaxError):
+            df.eval("a + `c")
+        with self.assertRaises(KeyError):
+            df.eval("a + c")
+        with self.assertRaises(ValueError):
+            df.eval("p, q = a + c")
+        with self.assertRaises(ValueError):
+            df.query("p = a + c")
