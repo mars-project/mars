@@ -127,34 +127,55 @@ class ProximaArrayMmap(LearnOperand, LearnOperandMixin):
 
 
 def rechunk_tensor(tensor, chunk_size):
-    chunk_groups = []
-    cur_row_number = 0
     cur_chunks = []
-    for c in tensor.chunks:
-        chunk_nrow = c.shape[0]
-        if cur_row_number + chunk_nrow <= chunk_size:
-            cur_chunks.append(c)
-            cur_row_number += chunk_nrow
+
+    out_nchunks = tensor.shape[0] // chunk_size
+    row_nsplits = [chunk_size] * out_nchunks
+    rest = tensor.shape[0] % chunk_size
+    if rest >= out_nchunks:
+        row_nsplits.append(rest)
+    else:
+        for i in range(tensor.shape[0] % chunk_size):
+            row_nsplits[-i-1] += 1
+
+    tensor_cumnrows = np.cumsum([0] + list(tensor.nsplits[0]))
+    offset = 0
+    out_groups = []
+    for split in row_nsplits:
+        start_chunk_index = tensor_cumnrows.searchsorted(offset)
+        start_chunk_index = start_chunk_index -1 if start_chunk_index != 0 else 0
+        end_chunk_index = tensor_cumnrows.searchsorted(offset + split) - 1
+        if start_chunk_index == end_chunk_index:
+            t = tensor.chunks[start_chunk_index]
+            slice_op = TensorSlice((slice(offset - tensor_cumnrows[start_chunk_index],
+                                          split + offset - tensor_cumnrows[end_chunk_index]),
+                                    slice(None)), dtype=t.dtype)
+            out_groups.append([slice_op.new_chunk([t], shape=(split, t.shape[1]),
+                                                  index=(len(cur_chunks), 0),
+                                                  order=t.order)])
         else:
-            pos = chunk_size - cur_row_number
-            slice_op = TensorSlice((slice(None, pos), slice(None)), dtype=c.dtype)
-            cur_chunks.append(slice_op.new_chunk([c], shape=(pos, c.shape[1]),
-                                                 index=(len(cur_chunks), 0),
-                                                 order=c.order))
-            chunk_groups.append(cur_chunks)
-            cur_chunks = []
-            cur_row_number = 0
+            chunks = []
+            start_chunk = tensor.chunks[start_chunk_index]
+            start_slice = offset - tensor_cumnrows[start_chunk_index]
+            slice_op = TensorSlice((slice(start_slice, None),
+                                    slice(None)), dtype=start_chunk.dtype)
+            chunks.append(slice_op.new_chunk([start_chunk], shape=(start_chunk.shape[0] - start_slice,
+                                                                   start_chunk.shape[1]),
+                                             index=(0, 0),
+                                             order=start_chunk.order))
+            chunks.extend(tensor.chunks[start_chunk_index + 1: end_chunk_index])
+            end_chunk = tensor.chunks[end_chunk_index]
+            end_slice = split + offset - tensor_cumnrows[end_chunk_index]
+            slice_op_end = TensorSlice((slice(None, end_slice),
+                                        slice(None)), dtype=start_chunk.dtype)
+            chunks.append(slice_op_end.new_chunk([end_chunk], shape=(end_slice, end_chunk.shape[1]),
+                                                 index=(end_chunk_index - start_chunk_index, 0),
+                                                 order=end_chunk.order))
+            out_groups.append(chunks)
 
-            slice_op_rest = TensorSlice((slice(pos, None), slice(None)), dtype=c.dtype)
-            rest_chunk = slice_op_rest.new_chunk([c], shape=(chunk_nrow - pos, c.shape[1]),
-                                                 index=(len(cur_chunks), 0),
-                                                 order=c.order)
-            cur_chunks.append(rest_chunk)
-            cur_row_number += chunk_nrow - pos
+        offset += split
 
-    if len(cur_chunks) > 0:
-        chunk_groups.append(cur_chunks)
-    return chunk_groups
+    return out_groups
 
 
 def build_mmap_chunks(chunks, worker, file_prefix, offset=0,
