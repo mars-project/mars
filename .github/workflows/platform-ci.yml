@@ -61,8 +61,8 @@ jobs:
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
             fi
             if [ -n "$WITH_VINEYARD" ]; then
-              pip install https://github.com/alibaba/libvineyard/releases/download/latest/vineyard-0.1.5-cp38-cp38-manylinux2010_x86_64.whl
-              sudo docker pull libvineyard/vineyardd:latest
+              pip install vineyard==0.1.6
+              sudo docker pull libvineyard/vineyardd:v0.1.6
             fi
             if [ -n "$WITH_RAY" ]; then
               pip install ray
