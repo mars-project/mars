@@ -201,6 +201,18 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
+    # ----------------------------------
+    # Vineyard backend: query key mapper
+    # ----------------------------------
+    def get_vineyard_object_id(self, chunk_key):
+        """
+        Get the vineyard object ID for given chunk.
+
+        :param chunk_key: chunk keys to query
+        :return: vineyard object ID for the queried chunk.
+        """
+        raise NotImplementedError
+
     # ------
     # Others
     # ------
@@ -316,9 +328,7 @@ class LocalContext(ContextBase, dict):
 class DistributedContext(ContextBase):
     def __init__(self, scheduler_address, session_id, actor_ctx=None,
                  is_distributed=None, resource_ref=None, **kw):
-        from .config import options
         from .worker.api import WorkerAPI
-        from .worker.storage.vineyardhandler import VineyardKeyMapActor
         from .scheduler.custom_log import CustomLogMetaActor
         from .scheduler.resource import ResourceActor
         from .scheduler.utils import SchedulerClusterInfoActor
@@ -352,12 +362,6 @@ class DistributedContext(ContextBase):
 
         self._address = kw.pop('address', None)
         self._extra_info = kw
-
-        if options.vineyard.enabled:
-            self._keymapper_ref = self._actor_ctx.actor_ref(
-                    VineyardKeyMapActor.default_uid(), address=self._address)
-        else:
-            self._keymapper_ref = None
 
     @property
     def meta_api(self):
@@ -582,6 +586,20 @@ class DistributedContext(ContextBase):
                 result[chunk_op_key] = log_result
 
         return result
+
+    def get_vineyard_object_id(self, chunk_key):
+        from .config import options
+        from .worker.storage.vineyardhandler import VineyardKeyMapActor
+
+        if options.vineyard.enabled:
+            print('key mapper start: ', chunk_key)
+            addr = self._cluster_info.get_scheduler((self._session_id, chunk_key))
+            obj_id = self._actor_ctx.actor_ref(VineyardKeyMapActor.default_uid(), address=addr) \
+                .get(self._session_id, chunk_key)
+            print('key mapper returns: ', obj_id)
+            return obj_id
+        else:
+            return None
 
     def create_lock(self):
         return self._actor_ctx.lock()
