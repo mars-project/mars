@@ -91,13 +91,8 @@ jobs:
         run: |
           source ./.github/workflows/reload-env.sh
 
-          # pull vineyard image
-          echo "${{ github.token }}" | docker login https://docker.pkg.github.com -u ${GITHUB_ACTOR} --password-stdin
-          sudo docker pull docker.pkg.github.com/alibaba/libvineyard/vineyardd:nightly
-
           # launch vineyardd
-          sudo docker run --rm -d --name vineyard --shm-size=3072m -v /tmp/vineyard:/var/run \
-              docker.pkg.github.com/alibaba/libvineyard/vineyardd:nightly
+          sudo docker run --rm -d --name vineyard --shm-size=3072m -v /tmp/vineyard:/var/run libvineyard/vineyardd:v0.1.6
 
           until [ -S /tmp/vineyard/vineyard.sock ]
           do
