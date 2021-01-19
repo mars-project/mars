@@ -85,10 +85,17 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         for chunk in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
             if options.vineyard.enabled and ctx.running_mode != RunningMode.local:
-                chunk_op._vineyard_object_id = repr(ctx.get_vineyard_object_id(chunk.key))
+                object_id = ctx.get_vineyard_object_id(chunk.key)
+                if object_id is not None:
+                    chunk_op._vineyard_object_id = repr(object_id)
+                else:
+                    chunk_op._vineyard_object_id = ''
+            else:
+                chunk_op._vineyard_object_id = ''
             out_chunk = chunk_op.new_chunk([chunk], dtype=chunk.dtype, shape=chunk.shape,
                                            index=chunk.index)
             out_chunks.append(out_chunk)
+        out_chunks = cls._process_out_chunks(op, out_chunks)
 
         new_op = op.copy().reset_key()
         return new_op.new_tensors(op.inputs, shape=op.input.shape, dtype=op.input.dtype,
@@ -103,7 +110,7 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         # setup builder context
         from vineyard.data.tensor import numpy_ndarray_builder
 
-        if options.vineyard.enabled and ctx.running_mode != RunningMode.local:
+        if options.vineyard.enabled and op.vineyard_object_id:
             # the chunk already exists in vineyard
             tensor_id = vineyard.ObjectID(op.vineyard_object_id)
         else:
@@ -112,7 +119,7 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         client.persist(tensor_id)
 
         # store the result object id to execution context
-        ctx[op.outputs[0].key] = np.array([client.instance_id, repr(tensor_id)], dtype=object)
+        ctx[op.outputs[0].key] = (client.instance_id, repr(tensor_id))
 
 
 class TensorVineyardDataStoreGlobalMeta(TensorDataStore):

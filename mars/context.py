@@ -591,12 +591,10 @@ class DistributedContext(ContextBase):
         from .config import options
         from .worker.storage.vineyardhandler import VineyardKeyMapActor
 
-        if options.vineyard.enabled:
-            print('key mapper start: ', chunk_key)
+        if options.vineyard.enabled and self.running_mode != RunningMode.local:
             addr = self._cluster_info.get_scheduler((self._session_id, chunk_key))
             obj_id = self._actor_ctx.actor_ref(VineyardKeyMapActor.default_uid(), address=addr) \
                 .get(self._session_id, chunk_key)
-            print('key mapper returns: ', obj_id)
             return obj_id
         else:
             return None

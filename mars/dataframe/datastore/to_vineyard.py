@@ -84,7 +84,13 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         for chunk in in_df.chunks:
             chunk_op = op.copy().reset_key()
             if options.vineyard.enabled and ctx.running_mode != RunningMode.local:
-                chunk_op._vineyard_object_id = repr(ctx.get_vineyard_object_id(chunk.key))
+                object_id = ctx.get_vineyard_object_id(chunk.key)
+                if object_id is not None:
+                    chunk_op._vineyard_object_id = repr(object_id)
+                else:
+                    chunk_op._vineyard_object_id = ''
+            else:
+                chunk_op._vineyard_object_id = ''
             chunk = chunk_op.new_chunk([chunk], shape=chunk.shape, dtypes=chunk.dtypes,
                                        index_value=chunk.index_value,
                                        columns_value=chunk.columns_value,
@@ -115,7 +121,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         register_tensor_types(builder_ctx=default_builder_context,
                               resolver_ctx=default_resolver_context)
 
-        if options.vineyard.enabled and ctx.running_mode != RunningMode.local:
+        if options.vineyard.enabled and op.vineyard_object_id:
             # the chunk already exists in vineyard
             df_id = vineyard.ObjectID(op.vineyard_object_id)
         else:
