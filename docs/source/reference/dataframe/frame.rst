@@ -54,10 +54,11 @@ Indexing, iteration
    DataFrame.insert
    DataFrame.iterrows
    DataFrame.itertuples
+   DataFrame.mask
    DataFrame.pop
+   DataFrame.query
    DataFrame.tail
    DataFrame.where
-   DataFrame.mask
 
 Binary operator functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -120,6 +121,7 @@ Computations / descriptive stats
    DataFrame.cumprod
    DataFrame.cumsum
    DataFrame.describe
+   DataFrame.eval
    DataFrame.kurt
    DataFrame.kurtosis
    DataFrame.max

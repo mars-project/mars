@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"POT-Creation-Date: 2021-01-18 15:28+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -25,97 +25,127 @@ msgstr "通用函数"
 msgid "Data manipulations"
 msgstr "数据操作"
 
-#: ../../source/reference/dataframe/general_functions.rst:17:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:18:<autosummary>:1
 msgid ""
 ":obj:`cut <mars.dataframe.cut>`\\ \\(x\\, bins\\[\\, right\\, labels\\, "
 "retbins\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:17:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:18:<autosummary>:1
 msgid "Bin values into discrete intervals."
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:17:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:18:<autosummary>:1
+msgid ""
+":obj:`qcut <mars.dataframe.qcut>`\\ \\(x\\, q\\[\\, labels\\, retbins\\, "
+"precision\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/general_functions.rst:18:<autosummary>:1
+msgid "Quantile-based discretization function."
+msgstr ""
+
+#: ../../source/reference/dataframe/general_functions.rst:18:<autosummary>:1
 msgid ""
 ":obj:`concat <mars.dataframe.concat>`\\ \\(objs\\[\\, axis\\, join\\, "
 "ignore\\_index\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:17:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:18:<autosummary>:1
 msgid ""
 ":obj:`melt <mars.dataframe.melt>`\\ \\(frame\\[\\, id\\_vars\\, "
 "value\\_vars\\, var\\_name\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:17:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:18:<autosummary>:1
 msgid ""
 "Unpivot a DataFrame from wide to long format, optionally leaving "
 "identifiers set."
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:17:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:18:<autosummary>:1
 msgid ""
 ":obj:`merge <mars.dataframe.merge>`\\ \\(df\\, right\\[\\, how\\, on\\, "
 "left\\_on\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:19
+#: ../../source/reference/dataframe/general_functions.rst:20
 msgid "Top-level missing data"
 msgstr "顶层缺失值处理函数"
 
-#: ../../source/reference/dataframe/general_functions.rst:27:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:28:<autosummary>:1
 msgid ":obj:`isna <mars.dataframe.isna>`\\ \\(df\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:27:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:28:<autosummary>:1
 msgid "Detect missing values."
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:27:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:28:<autosummary>:1
 msgid ":obj:`isnull <mars.dataframe.isnull>`\\ \\(df\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:27:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:28:<autosummary>:1
 msgid ":obj:`notna <mars.dataframe.notna>`\\ \\(df\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:27:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:28:<autosummary>:1
 msgid "Detect existing (non-missing) values."
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:27:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:28:<autosummary>:1
 msgid ":obj:`notnull <mars.dataframe.notnull>`\\ \\(df\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:29
+#: ../../source/reference/dataframe/general_functions.rst:30
 msgid "Top-level dealing with datetimelike"
 msgstr "顶层日期时间处理函数"
 
-#: ../../source/reference/dataframe/general_functions.rst:35:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:36:<autosummary>:1
 msgid ""
 ":obj:`to_datetime <mars.dataframe.to_datetime>`\\ \\(arg\\[\\, errors\\, "
 "dayfirst\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:35:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:36:<autosummary>:1
 msgid "Convert argument to datetime."
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:35:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:36:<autosummary>:1
 msgid ""
 ":obj:`date_range <mars.dataframe.date_range>`\\ \\(\\[start\\, end\\, "
 "periods\\, freq\\, tz\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:35:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:36:<autosummary>:1
 msgid "Return a fixed frequency DatetimeIndex."
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:37
+#: ../../source/reference/dataframe/general_functions.rst:38
+msgid "Top-level evaluation"
+msgstr "顶层计算函数"
+
+#: ../../source/reference/dataframe/general_functions.rst:43:<autosummary>:1
+msgid ""
+":obj:`eval <mars.dataframe.eval>`\\ \\(expr\\[\\, parser\\, engine\\, "
+"local\\_dict\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/general_functions.rst:43:<autosummary>:1
+msgid "Evaluate a Python expression as a string using various backends."
+msgstr ""
+
+#: ../../source/reference/dataframe/general_functions.rst:45
 msgid "Misc"
 msgstr ""
 
-#: ../../source/reference/dataframe/general_functions.rst:41:<autosummary>:1
+#: ../../source/reference/dataframe/general_functions.rst:50:<autosummary>:1
+msgid ""
+":obj:`CustomReduction <mars.dataframe.CustomReduction>`\\ \\(\\[name\\, "
+"is\\_gpu\\]\\)"
+msgstr ""
+
+#: ../../source/reference/dataframe/general_functions.rst:50:<autosummary>:1
 msgid ":obj:`ExecutableTuple <mars.dataframe.ExecutableTuple>`\\ \\(\\*\\_\\)"
 msgstr ""
 
