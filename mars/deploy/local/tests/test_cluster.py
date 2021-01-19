@@ -1278,6 +1278,14 @@ class IntegrationTestCluster:
 @unittest.skipIf(os.environ.get('WITH_VINEYARD', None) is None, 'vineyard not enabled')
 @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
 class VineyardEnabledTest(IntegrationTestBase, Test):
+    def setUp(self):
+        Test.setUp(self)
+        IntegrationTestBase.setUp(self)
+
+    def tearDown(self):
+        IntegrationTestBase.tearDown(self)
+        Test.tearDown(self)
+
     @property
     def _extra_worker_options(self):
         return ['-Dvineyard.socket=/tmp/vineyard/vineyard.sock']

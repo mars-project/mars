@@ -34,6 +34,13 @@ Top-level dealing with datetimelike
    to_datetime
    date_range
 
+Top-level evaluation
+~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: generated/
+
+   eval
+
 Misc
 ~~~~
 .. autosummary::

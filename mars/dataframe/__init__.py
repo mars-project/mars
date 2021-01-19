@@ -17,6 +17,7 @@
 from .initializer import DataFrame, Series, Index, named_dataframe, named_series
 # do imports to register operands
 from .base.cut import cut
+from .base.eval import mars_eval as eval  # pylint: disable=redefined-builtin
 from .base.melt import melt
 from .base.qcut import qcut
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor
