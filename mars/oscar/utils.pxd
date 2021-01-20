@@ -13,3 +13,4 @@
 # limitations under the License.
 
 cpdef bytes new_actor_id()
+cdef bint is_async_generator(obj)

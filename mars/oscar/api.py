@@ -12,6 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .context import get_context
 
-cdef class BaseActorContext:
-    pass
+
+async def create_actor(actor_cls, *args, uid=None, address=None, **kwargs):
+    ctx = get_context()
+    return await ctx.create_actor(actor_cls, *args, uid=uid, address=address, **kwargs)
+
+
+async def has_actor(actor_ref):
+    ctx = get_context()
+    return await ctx.has_actor(actor_ref)
+
+
+async def destroy_actor(actor_ref):
+    ctx = get_context()
+    return await ctx.destroy_actor(actor_ref)
+
+
+def actor_ref(*args, **kwargs):
+    ctx = get_context()
+    return ctx.actor_ref(*args, **kwargs)

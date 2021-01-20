@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,5 +15,13 @@
 # limitations under the License.
 
 
-cdef class BaseActorContext:
+class ActorPoolNotStarted(Exception):
+    pass
+
+
+class ActorNotExist(Exception):
+    pass
+
+
+class ActorAlreadyExist(Exception):
     pass
