@@ -20,7 +20,7 @@ import pyarrow as pa
 from pyarrow import plasma
 
 from ..serialize import dataserializer
-from .core import StorageBackend, StorageLevel, ObjectInfo
+from .core import StorageBackend, StorageLevel, ObjectInfo, FileObject
 
 
 PAGE_SIZE = 64 * 1024
@@ -37,29 +37,23 @@ class PlasmaObjectInfo(ObjectInfo):
 
 
 class PlasmaFileObject:
-    def __init__(self, plasma_client, mode='w'):
-        self._shared_buf = None
-        get_buffer = plasma_client
+    def __init__(self, plasma_client, object_id, mode='w', size=None):
+        self._plasma_client = plasma_client
+        self._object_id = object_id
         self._offset = 0
+        self._size = size
         self._is_readable = 'r' in mode
         self._is_writable = 'w' in mode
+        self._closed = False
 
         if self._is_writable:
-            self._shared_buf = shared_store.create(session_id, data_key, nbytes)
-            if packed:
-                self._buf = ArrowBufferIO(self._shared_buf, 'w', block_size=block_size)
-            else:
-                import pyarrow
-                self._buf = pyarrow.FixedSizeBufferWriter(self._shared_buf)
-                self._buf.set_memcopy_threads(6)
+            buf = self._plasma_client.create(object_id, size)
+            self._buf = pa.FixedSizeBufferWriter(buf)
+            self._buf.set_memcopy_threads(6)
         elif self._is_readable:
-            self._shared_buf = get_buffer.get_buffer(session_id, data_key)
-            if packed:
-                self._buf = ArrowBufferIO(
-                    self._shared_buf, 'r', compress_out=compress, block_size=block_size)
-            else:
-                self._mv = memoryview(self._shared_buf)
-                self._nbytes = len(self._shared_buf)
+            [self._buf] = self._plasma_client.get_buffers([object_id])
+            self._mv = memoryview(self._shared_buf)
+            self._size = len(self._shared_buf)
         else:
             raise NotImplementedError
 
@@ -68,44 +62,39 @@ class PlasmaFileObject:
         self._buf = self._shared_buf = None
 
     @property
-    def nbytes(self):
-        return self._nbytes
+    def size(self):
+        return self._size
 
-    def get_shared_buffer(self):
-        return self._shared_buf
+    @property
+    def closed(self):
+        return self._closed
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def read(self, size=-1):
-        if self._packed:
-            return self._buf.read(size)
-        else:
-            if size < 0:
-                size = self._nbytes
-            right_pos = min(self._nbytes, self._offset + size)
-            ret = self._mv[self._offset:right_pos]
-            self._offset = right_pos
-            return ret
+        if size < 0:
+            size = self._size
+        right_pos = min(self._size, self._offset + size)
+        ret = self._mv[self._offset:right_pos]
+        self._offset = right_pos
+        return ret
 
     def write(self, d):
         return self._buf.write(d)
 
-    def close(self, finished=True):
+    def close(self):
         if self._closed:
             return
 
-        if self.is_writable and self._shared_buf is not None:
-            self._shared_store.seal(self._session_id, self._data_key)
-            if finished:
-                if self._auto_register:
-                    self._holder_ref.put_objects_by_keys(
-                        self._session_id, [self._data_key], pin_token=self._pin_token)
-            else:
-                self._shared_store.delete(self._session_id, self._data_key)
+        if self._is_writable:
+            self._plasma_client.seal(self._object_id)
 
         self._mv = None
-        self._buf = self._shared_buf = None
-        super().close(finished=finished)
-
-
+        self._buf = None
 
 
 def get_actual_capacity(plasma_client):
@@ -155,15 +144,17 @@ class PlasmaStore(StorageBackend):
         if used_size + size > self._actual_capacity:
             raise plasma.PlasmaStoreFull
 
+    def _generate_object_id(self):
+        while True:
+            new_id = plasma.ObjectID.from_random()
+            if not self._client.contains(new_id):
+                return new_id
+
     def get(self, object_id, **kwarg):
         return self._client.get(object_id)
 
     def put(self, obj, importance=0):
-        while True:
-            new_id = plasma.ObjectID.from_random()
-            if not self._client.contains(new_id):
-                break
-
+        new_id = self._generate_object_id()
         serialized = dataserializer.serialize(obj)
         self._check_plasma_limit(serialized.total_bytes)
         buffer = self._client.create(new_id, serialized.total_bytes)
@@ -178,13 +169,14 @@ class PlasmaStore(StorageBackend):
         self._client.delete(object_id)
 
     def info(self, object_id):
-        size = self._fs.stat['size']
-        return ObjectInfo(size=size, device='disk')
+        [buf] = self._client.get_buffers([object_id])
+        return PlasmaObjectInfo(size=buf.size, device='memory', object_id=object_id)
 
-    def create_writer(self):
-        path = self._generate_path()
-        return FileObject(self._fs.open(path, 'wb'))
+    def create_writer(self, size=None):
+        new_id = self._generate_object_id()
+        plasma_writer = PlasmaFileObject(self._client, new_id, size=size, mode='w')
+        return FileObject(plasma_writer, object_id=new_id)
 
     def open_reader(self, object_id):
-        return FileObject(self._fs.open(object_id, 'rb'))
-
+        plasma_reader = PlasmaFileObject(self._client, object_id, mode='r')
+        return FileObject(plasma_reader, object_id=object_id)

@@ -120,9 +120,10 @@ class StorageBackend(ABC):
         pass
 
     @abstractmethod
-    def create_writer(self) -> FileObject:
+    def create_writer(self, size=None) -> FileObject:
         """
         Return a file-like object for writing.
+        :param size: maximum size in bytes
         :return: file-like object
         """
         pass

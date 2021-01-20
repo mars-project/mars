@@ -56,7 +56,7 @@ class FileSystemStorage(StorageBackend):
         size = self._fs.stat['size']
         return ObjectInfo(size=size, device='disk')
 
-    def create_writer(self):
+    def create_writer(self, size=None):
         path = self._generate_path()
         return FileObject(self._fs.open(path, 'wb'))
 
