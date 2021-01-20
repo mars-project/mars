@@ -17,3 +17,6 @@ from .core import Actor, ActorRef
 from .context import get_context
 from .errors import ActorNotExist, ActorAlreadyExist
 from .utils import create_actor_ref
+
+from .backends import mars
+del mars
