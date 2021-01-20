@@ -14,26 +14,21 @@
 
 
 cdef class ActorRef:
+    cdef object __weakref__
     cdef public str address
     cdef public object uid
-    cdef public object _ctx
     cdef dict _methods
-
-    cpdef object send(self, object message, bint wait=*, object callback=*)
-    cpdef object tell(self, object message, object delay=*, bint wait=*,
-                      object callback=*)
-    cpdef object destroy(self, bint wait=*, object callback=*)
+    cdef __send__(self, object message)
+    cdef __tell__(self, object message, object delay=*)
 
 
-cdef class Actor:
+cdef class _Actor:
+    cdef object __weakref__
     cdef str _address
+    cdef object _lock
     cdef object _uid
-    cdef object _ctx
 
     cpdef ActorRef ref(self)
-    cpdef __post_create__(self)
-    cpdef __on_receive__(self, tuple action)
-    cpdef __pre_destroy__(self)
 
 
 cdef class ActorEnvironment:
