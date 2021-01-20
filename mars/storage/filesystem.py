@@ -23,10 +23,9 @@ from .core import StorageBackend, FileObject, ObjectInfo, StorageLevel
 
 
 class FileSystemStorage(StorageBackend):
-    def __init__(self, fs, root_dirs, level=None):
+    def __init__(self, fs, root_dirs):
         self._fs = fs
         self._root_dirs = root_dirs
-        super().__init__(level=level)
 
     @property
     def level(self):
@@ -34,7 +33,8 @@ class FileSystemStorage(StorageBackend):
 
     def _generate_path(self):
         file_name = str(uuid.uuid4())
-        selected_dir = mod_hash(file_name, self._root_dirs)
+        selected_index = mod_hash(file_name, len(self._root_dirs))
+        selected_dir = self._root_dirs[selected_index]
         return os.path.join(selected_dir, file_name)
 
     def get(self, object_id, **kwarg):
@@ -47,14 +47,14 @@ class FileSystemStorage(StorageBackend):
         with self._fs.open(path, 'wb') as f:
             f.write(bytes_object)
             size = f.tell()
-        return ObjectInfo(size=size, device='disk')
+        return ObjectInfo(size=size, device='disk', object_id=path)
 
     def delete(self, object_id):
         os.remove(object_id)
 
     def info(self, object_id):
-        size = self._fs.stat['size']
-        return ObjectInfo(size=size, device='disk')
+        size = self._fs.stat(object_id)['size']
+        return ObjectInfo(size=size, device='disk', object_id=object_id)
 
     def create_writer(self, size=None):
         path = self._generate_path()

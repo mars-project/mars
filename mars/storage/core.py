@@ -31,9 +31,10 @@ class StorageLevel(Enum):
 
 
 class ObjectInfo:
-    def __init__(self, size=None, device=None):
+    def __init__(self, size=None, device=None, object_id=None):
         self._size = size
         self._device = device
+        self._object_id = object_id
 
     @property
     def size(self):
@@ -43,6 +44,10 @@ class ObjectInfo:
     def device(self):
         return self._device
 
+    @property
+    def object_id(self):
+        return self._object_id
+
 
 class FileObject:
     def __init__(self, file_obj, object_id=None):
@@ -51,18 +56,33 @@ class FileObject:
 
     @property
     def object_id(self):
-        return self._object or self._file_obj.name
+        return self._object_id or self._file_obj.name
 
     def __getattr__(self, item):
         return getattr(self._file_obj, item)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._file_obj.__exit__(exc_type, exc_val, exc_tb)
+
 
 class StorageBackend(ABC):
     @classmethod
-    def init(cls, **kwargs) -> Union[Dict, None]:
+    def setup(cls, **kwargs) -> Union[Dict, None]:
         """
-        Setup environments.
+        Setup environments, for example, start plasma store for plasma backend.
         :return: parameters for initialization.
+        """
+        pass
+
+    @classmethod
+    def teardown(cls, **kwargs) -> None:
+        """
+        Clean up the environments.
+        :param kwargs: parameters for clean up.
+        :return: None
         """
         pass
 
@@ -99,7 +119,6 @@ class StorageBackend(ABC):
         """
         pass
 
-    @abstractmethod
     def migrate(self, object_id, destination, device=None):
         """
         Migrating object from local to other worker.
@@ -137,7 +156,6 @@ class StorageBackend(ABC):
         """
         pass
 
-    @abstractmethod
     def pin(self, object_id):
         """
         Pin the data.
@@ -146,7 +164,6 @@ class StorageBackend(ABC):
         """
         pass
 
-    @abstractmethod
     def unpin(self, object_id):
         """
         Unpin the data.

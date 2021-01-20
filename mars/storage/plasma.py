@@ -26,16 +26,6 @@ from .core import StorageBackend, StorageLevel, ObjectInfo, FileObject
 PAGE_SIZE = 64 * 1024
 
 
-class PlasmaObjectInfo(ObjectInfo):
-    def __init__(self, size=None, device=None, object_id=None):
-        self._object_id = object_id
-        super().__init__(size=size, device=device)
-
-    @property
-    def object_id(self):
-        return self._object_id
-
-
 class PlasmaFileObject:
     def __init__(self, plasma_client, object_id, mode='w', size=None):
         self._plasma_client = plasma_client
@@ -52,14 +42,14 @@ class PlasmaFileObject:
             self._buf.set_memcopy_threads(6)
         elif self._is_readable:
             [self._buf] = self._plasma_client.get_buffers([object_id])
-            self._mv = memoryview(self._shared_buf)
-            self._size = len(self._shared_buf)
-        else:
+            self._mv = memoryview(self._buf)
+            self._size = len(self._buf)
+        else:  # pragma: no cover
             raise NotImplementedError
 
     def __del__(self):
         self._mv = None
-        self._buf = self._shared_buf = None
+        self._buf = None
 
     @property
     def size(self):
@@ -114,26 +104,31 @@ def get_actual_capacity(plasma_client):
             plasma_client.seal(obj_id)
             del buf[:]
             break
-        except plasma.PlasmaStoreFull:
+        except plasma.PlasmaStoreFull:  # pragma: no cover
             alloc_fraction *= 0.99
         finally:
             plasma_client.evict(allocate_size)
     return allocate_size
 
 
-class PlasmaStore(StorageBackend):
+class PlasmaStorage(StorageBackend):
     def __init__(self, plasma_socket, plasma_directory):
         self._client = plasma.connect(plasma_socket)
         self._plasma_directory = plasma_directory
         self._actual_capacity = get_actual_capacity(self._client)
 
     @classmethod
-    def init(cls, store_memory=None, plasma_directory=None):
+    def setup(cls, store_memory=None, plasma_directory=None):
 
         plasma_store = plasma.start_plasma_store(store_memory,
                                                  plasma_directory=plasma_directory)
         return dict(plasma_socket=plasma_store.__enter__()[0],
-                    plasma_directory=plasma_directory)
+                    plasma_directory=plasma_directory,
+                    plasma_store=plasma_store)
+
+    @classmethod
+    def teardown(cls, plasma_store=None):
+        plasma_store.__exit__(None, None, None)
 
     @property
     def level(self):
@@ -141,7 +136,8 @@ class PlasmaStore(StorageBackend):
 
     def _check_plasma_limit(self, size):
         used_size = psutil.disk_usage(self._plasma_directory).used
-        if used_size + size > self._actual_capacity:
+        totol = psutil.disk_usage(self._plasma_directory).total
+        if used_size + size > totol * 0.95:  # pragma: no cover
             raise plasma.PlasmaStoreFull
 
     def _generate_object_id(self):
@@ -162,15 +158,15 @@ class PlasmaStore(StorageBackend):
         stream.set_memcopy_threads(6)
         serialized.write_to(stream)
         self._client.seal(new_id)
-        return PlasmaObjectInfo(size=serialized.total_bytes,
-                                device='memory', object_id=new_id)
+        return ObjectInfo(size=serialized.total_bytes,
+                          device='memory', object_id=new_id)
 
     def delete(self, object_id):
-        self._client.delete(object_id)
+        self._client.delete([object_id])
 
     def info(self, object_id):
         [buf] = self._client.get_buffers([object_id])
-        return PlasmaObjectInfo(size=buf.size, device='memory', object_id=object_id)
+        return ObjectInfo(size=buf.size, device='memory', object_id=object_id)
 
     def create_writer(self, size=None):
         new_id = self._generate_object_id()
