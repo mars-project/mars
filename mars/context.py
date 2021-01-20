@@ -201,6 +201,18 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
+    # ----------------------------------
+    # Vineyard backend: query key mapper
+    # ----------------------------------
+    def get_vineyard_object_id(self, chunk_key):
+        """
+        Get the vineyard object ID for given chunk.
+
+        :param chunk_key: chunk keys to query
+        :return: vineyard object ID for the queried chunk.
+        """
+        raise NotImplementedError
+
     # ------
     # Others
     # ------
@@ -574,6 +586,18 @@ class DistributedContext(ContextBase):
                 result[chunk_op_key] = log_result
 
         return result
+
+    def get_vineyard_object_id(self, chunk_key):
+        from .config import options
+        from .worker.storage.vineyardhandler import VineyardKeyMapActor
+
+        if options.vineyard.enabled and self.running_mode != RunningMode.local:
+            addr = self._cluster_info.get_scheduler((self._session_id, chunk_key))
+            obj_id = self._actor_ctx.actor_ref(VineyardKeyMapActor.default_uid(), address=addr) \
+                .get(self._session_id, chunk_key)
+            return obj_id
+        else:
+            return None
 
     def create_lock(self):
         return self._actor_ctx.lock()

@@ -1317,3 +1317,30 @@ class VineyardEnabledTest(IntegrationTestBase, Test):
     @unittest.skip("FIXME: KeyError: 'Cannot find serializable class for type_id 1376787404'")
     def testTileContextInLocalCluster(self, *_):
         pass
+
+    def testTensorToVineyard(self, *_):
+        from mars.tensor.datastore.to_vineyard import tovineyard
+
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+
+            a1 = mt.ones((10, 20), chunk_size=8) + 1
+            session.run(a1, timeout=_exec_timeout)
+
+            # test if `to_vineyard` works with vineyard as backend
+            session.run(tovineyard(a1))
+
+    def testDataFrameToVineyard(self, *_):
+        from mars.dataframe.datastore.to_vineyard import to_vineyard
+
+        with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
+                              shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+            a = mt.random.rand(10, 10, chunk_size=3)
+            df = md.DataFrame(a)
+
+            session.run(df)
+
+            # test if `to_vineyard` works with vineyard as backend
+            session.run(to_vineyard(df))
