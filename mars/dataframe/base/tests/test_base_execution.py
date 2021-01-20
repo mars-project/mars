@@ -25,7 +25,8 @@ except ImportError:  # pragma: no cover
     pa = None
 
 from mars.config import options, option_context
-from mars.dataframe.base import to_gpu, to_cpu, cut, qcut
+from mars.dataframe import eval as mars_eval, cut, qcut
+from mars.dataframe.base import to_gpu, to_cpu
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
@@ -1625,3 +1626,53 @@ class Test(TestBase):
             r = series.explode(ignore_index=ignore_index)
             pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                            raw.b.explode(ignore_index=ignore_index))
+
+    def testEvalQueryExecution(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame({'a': rs.rand(100),
+                            'b': rs.rand(100),
+                            'c c': rs.rand(100)})
+        df = from_pandas_df(raw, chunk_size=(10, 2))
+
+        r = mars_eval('c = df.a * 2 + df["c c"]', target=df)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      pd.eval('c = raw.a * 2 + raw["c c"]', engine='python', target=raw))
+
+        r = df.eval('a + b')
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.eval('a + b'))
+
+        _val = 5.0  # noqa: F841
+        _val_array = [1, 2, 3]  # noqa: F841
+        expr = """
+        e = -a + b + 1
+        f = b + `c c` + @_val + @_val_array[-1]
+        """
+        r = df.eval(expr)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.eval(expr))
+
+        copied_df = df.copy()
+        copied_df.eval('c = a + b', inplace=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(copied_df, concat=True)[0],
+                                      raw.eval('c = a + b'))
+
+        expr = 'a > b | a < `c c`'
+        r = df.query(expr)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.query(expr))
+
+        expr = 'a > b & ~(a < `c c`)'
+        r = df.query(expr)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.query(expr))
+
+        expr = 'a < b < `c c`'
+        r = df.query(expr)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.query(expr))
+
+        copied_df = df.copy()
+        copied_df.query('a < b', inplace=True)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(copied_df, concat=True)[0],
+                                      raw.query('a < b'))
