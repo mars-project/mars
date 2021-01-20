@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import itertools
 import os
@@ -350,6 +351,47 @@ def require_cudf(func):
         func = pytest.mark.cuda(func)
     func = unittest.skipIf(cudf is None, reason='cudf not installed')(func)
     return func
+_aio_pid = os.getpid()
+
+
+def aio_case(obj):
+    if isinstance(obj, type):
+        for name, val in obj.__dict__.items():
+            if callable(val) and (name.startswith('test') or name == 'setUp'):
+                setattr(obj, name, aio_case(val))
+        return obj
+    elif callable(obj):
+        try:
+            patchings = obj.patchings
+            obj.patchings = []
+        except AttributeError:
+            patchings = []
+
+        @functools.wraps(obj)
+        def func_wrapper(*args, **kwargs):
+            global _aio_pid
+            try:
+                if _aio_pid != os.getpid():
+                    _aio_pid = os.getpid()
+                    raise RuntimeError('no current event loop')
+                else:
+                    loop = asyncio.get_event_loop()
+            except RuntimeError as ex:
+                if 'no current event loop' in str(ex):
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                else:
+                    raise
+
+            ret = obj(*args, **kwargs)
+            if asyncio.iscoroutine(ret):
+                loop.run_until_complete(ret)
+
+        if patchings:
+            for patching in patchings:
+                func_wrapper = patching.decorate_callable(func_wrapper)
+
+        return func_wrapper
 
 
 def require_hadoop(func):
