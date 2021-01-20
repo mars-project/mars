@@ -17,6 +17,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...context import RunningMode, get_context
 from ...serialize import TupleField, KeyField, StringField
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
@@ -43,12 +44,19 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
     # vineyard ipc socket
     _vineyard_socket = StringField('vineyard_socket')
 
+    # vineyard object id
+    _vineyard_object_id = StringField('vineyard_object_id')
+
     def __init__(self, vineyard_socket=None, dtype=None, sparse=None, **kw):
         super().__init__(_vineyard_socket=vineyard_socket, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def vineyard_socket(self):
         return self._vineyard_socket
+
+    @property
+    def vineyard_object_id(self):
+        return self._vineyard_object_id
 
     @classmethod
     def _get_out_chunk(cls, op, in_chunk):
@@ -71,10 +79,27 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         # Not truely necessary, but putting a barrier here will make things simple
         check_chunks_unknown_shape(op.inputs, TilesError)
 
-        out = super().tile(op)[0]
+        ctx = get_context()
+
+        out_chunks = []
+        for chunk in op.inputs[0].chunks:
+            chunk_op = op.copy().reset_key()
+            if options.vineyard.enabled and ctx.running_mode != RunningMode.local:
+                object_id = ctx.get_vineyard_object_id(chunk.key)
+                if object_id is not None:
+                    chunk_op._vineyard_object_id = repr(object_id)
+                else:
+                    chunk_op._vineyard_object_id = ''
+            else:
+                chunk_op._vineyard_object_id = ''
+            out_chunk = chunk_op.new_chunk([chunk], dtype=chunk.dtype, shape=chunk.shape,
+                                           index=chunk.index)
+            out_chunks.append(out_chunk)
+        out_chunks = cls._process_out_chunks(op, out_chunks)
+
         new_op = op.copy().reset_key()
-        return new_op.new_tensors(out.inputs, shape=op.input.shape, dtype=out.dtype,
-                                  chunks=out.chunks, nsplits=((np.prod(op.input.chunk_shape),),))
+        return new_op.new_tensors(op.inputs, shape=op.input.shape, dtype=op.input.dtype,
+                                  chunks=out_chunks, nsplits=((np.prod(op.input.chunk_shape),),))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -85,10 +110,12 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         # setup builder context
         from vineyard.data.tensor import numpy_ndarray_builder
 
-        np_value = ctx[op.input.key]
-        if not np_value.flags['C_CONTIGUOUS']:
-            np_value = np.ascontiguousarray(np_value)
-        tensor_id = client.put(np_value, numpy_ndarray_builder, partition_index=op.input.index)
+        if options.vineyard.enabled and op.vineyard_object_id:
+            # the chunk already exists in vineyard
+            tensor_id = vineyard.ObjectID(op.vineyard_object_id)
+        else:
+            tensor_id = client.put(ctx[op.inputs[0].key], numpy_ndarray_builder, partition_index=op.input.index)
+
         client.persist(tensor_id)
 
         # store the result object id to execution context
