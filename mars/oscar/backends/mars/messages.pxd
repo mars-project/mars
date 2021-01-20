@@ -17,6 +17,61 @@ from libc.stdint cimport int32_t
 from ...core cimport ActorRef
 
 
+cpdef enum MessageType:
+    create_actor = 0
+    destroy_actor = 1
+    has_actor = 2
+    result = 3
+    error = 4
+    send_all = 5
+    tell_all = 6
+    send_chunk_start = 7
+    send_chunk = 8
+    send_chunk_end = 9
+    tell_chunk_start = 10
+    tell_chunk = 11
+    tell_chunk_end = 12
+
+
+cdef class BASE_ACTOR_MESSAGE:
+    cdef public int32_t message_type
+    cdef public bytes message_id
+    cdef public int32_t from_index
+    cdef public int32_t to_index
+
+
+cdef class BASE_REQUEST_MESSAGE(BASE_ACTOR_MESSAGE):
+    cdef public ActorRef actor_ref
+
+
+cdef class CREATE_ACTOR_MESSAGE(BASE_REQUEST_MESSAGE):
+    cdef public object actor_cls
+    cdef public tuple args
+    cdef public dict kwargs
+
+
+cdef class DESTROY_ACTOR_MESSAGE(BASE_REQUEST_MESSAGE):
+    pass
+
+
+cdef class HAS_ACTOR_MESSAGE(BASE_REQUEST_MESSAGE):
+    pass
+
+
+cdef class SEND_MESSAGE(BASE_REQUEST_MESSAGE):
+    cdef public object message
+
+
+cdef class RESULT_MESSAGE(BASE_ACTOR_MESSAGE):
+    cdef public object result
+
+
+cdef class ERROR_MESSAGE(BASE_ACTOR_MESSAGE):
+    cdef public object error_type
+    cdef public object error
+    cdef public object traceback
+
+
 cpdef int32_t unpack_message_type_value(bytes binary)
 cpdef object unpack_message_type(bytes binary)
 cpdef bytes unpack_message_id(bytes binary)

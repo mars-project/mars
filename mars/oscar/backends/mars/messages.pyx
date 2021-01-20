@@ -15,16 +15,15 @@
 from pickle import dumps, loads
 
 import numpy as np
-
 cimport cython
 from libc.stdint cimport uint8_t, int16_t, int32_t, int64_t
 from libc.string cimport memcpy
 from cpython.bytearray cimport PyByteArray_AS_STRING, PyByteArray_GET_SIZE, PyByteArray_Resize
 
-from ...core import ActorRef
-from ...messages cimport MessageType, CREATE_ACTOR_MESSAGE, DESTROY_ACTOR_MESSAGE, \
-    HAS_ACTOR_MESSAGE, RESULT_MESSAGE, ERROR_MESSAGE, SEND_MESSAGE
+from ...core cimport ActorRef
 
+from mars.lib.tblib import pickling_support
+pickling_support.install()
 
 # Internal message types includes:
 # 1) create actor
@@ -54,7 +53,77 @@ cdef uint8_t NONE = MessageSerialType.null
 cdef uint8_t RAW_BYTES = MessageSerialType.raw_bytes
 cdef uint8_t PICKLE = MessageSerialType.pickle
 
+
 cdef int32_t DEFAULT_PROTOCOL = 0
+
+
+cdef class CREATE_ACTOR_MESSAGE(BASE_REQUEST_MESSAGE):
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, ActorRef actor_ref=None,
+                 object actor_cls=None, tuple args=None, dict kwargs=None):
+        self.message_type = message_type
+        self.message_id = message_id
+        self.from_index = from_index
+        self.to_index = to_index
+        self.actor_ref = actor_ref
+        self.actor_cls = actor_cls
+        self.args = args
+        self.kwargs = kwargs
+
+
+cdef class DESTROY_ACTOR_MESSAGE(BASE_REQUEST_MESSAGE):
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, object actor_ref=None):
+        self.message_type = message_type
+        self.message_id = message_id
+        self.from_index = from_index
+        self.to_index = to_index
+        self.actor_ref = actor_ref
+
+
+cdef class HAS_ACTOR_MESSAGE(BASE_REQUEST_MESSAGE):
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, ActorRef actor_ref=None):
+        self.message_type = message_type
+        self.message_id = message_id
+        self.from_index = from_index
+        self.to_index = to_index
+        self.actor_ref = actor_ref
+
+
+cdef class RESULT_MESSAGE(BASE_ACTOR_MESSAGE):
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, object result=None):
+        self.message_type = message_type
+        self.message_id = message_id
+        self.from_index = from_index
+        self.to_index = to_index
+        self.result = result
+
+
+cdef class ERROR_MESSAGE(BASE_ACTOR_MESSAGE):
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, object error_type=None,
+                 object error=None, object traceback=None):
+        self.message_type = message_type
+        self.message_id = message_id
+        self.from_index = from_index
+        self.to_index = to_index
+        self.error_type = error_type
+        self.error = error
+        self.traceback = traceback
+
+
+cdef class SEND_MESSAGE(BASE_REQUEST_MESSAGE):
+    def __init__(self, object message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, ActorRef actor_ref=None,
+                 object message=None):
+        self.message_type = message_type
+        self.message_id = message_id
+        self.from_index = from_index
+        self.to_index = to_index
+        self.actor_ref = actor_ref
+        self.message = message
 
 
 @cython.boundscheck(False)

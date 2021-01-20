@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core cimport ActorRef
-
 
 cdef class BaseActorContext:
-    cpdef int has_actor(self, ActorRef actor_ref, bint wait=*, object callback=*) except -1
-    cpdef destroy_actor(self, ActorRef actor_ref, bint wait=*, object callback=*)
-    cpdef BaseActorContext copy(self)
+    pass

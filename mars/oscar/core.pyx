@@ -12,27 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+
+from .utils cimport is_async_generator
+
 
 cdef class ActorRef:
+    """
+    Reference of an Actor at user side
+    """
     def __init__(self, str address, object uid):
         self.uid = uid
         self.address = address
         self._methods = dict()
 
-    def _set_ctx(self, ctx):
-        self._ctx = ctx
+    cdef __send__(self, object message):
+        from .context import get_context
+        ctx = get_context()
+        return ctx.send(self, message)
 
-    ctx = property(lambda self: self._ctx, _set_ctx)
+    cdef __tell__(self, object message, object delay=None):
+        from .context import get_context
+        ctx = get_context()
+        return ctx.send(self, message, wait_response=False)
 
-    cpdef object send(self, object message, bint wait=True, object callback=None):
-        return self._ctx.send(self, message, wait=wait, callback=callback)
-
-    cpdef object tell(self, object message, object delay=None, bint wait=True,
-                      object callback=None):
-        return self._ctx.tell(self, message, delay=delay, wait=wait, callback=callback)
-
-    cpdef object destroy(self, bint wait=True, object callback=None):
-        return self._ctx.destroy_actor(self, wait=wait, callback=callback)
+    def destroy(self, object callback=None):
+        from .context import get_context
+        ctx = get_context()
+        return ctx.destroy_actor(self)
 
     def __getstate__(self):
         return self.address, self.uid
@@ -50,11 +57,14 @@ cdef class ActorRef:
         try:
             return self._methods[item]
         except KeyError:
-            method = self._methods[item] = ActorRefMethod(item)
+            method = self._methods[item] = ActorRefMethod(self, item)
             return method
 
 
 cdef class ActorRefMethod:
+    """
+    Wrapper for an Actor method at client
+    """
     cdef ActorRef ref
     cdef object method_name
 
@@ -62,23 +72,30 @@ cdef class ActorRefMethod:
         self.ref = ref
         self.method_name = method_name
 
+    def __call__(self, *args, **kwargs):
+        return self.send(*args, **kwargs)
+
     def send(self, *args, **kwargs):
-        return self.ref.send((self.method_name,) + args + (kwargs,))
+        return self.ref.__send__((self.method_name,) + args + (kwargs,))
 
     def tell(self, *args, **kwargs):
-        return self.ref.tell((self.method_name,) + args + (kwargs,))
+        return self.ref.__tell__((self.method_name,) + args + (kwargs,))
 
-    def async_send(self, *args, **kwargs):
-        return self.ref.send((self.method_name,) + args + (kwargs,), wait=False)
+    def tell_delay(self, *args, delay=None, **kwargs):
+        async def delay_fun():
+            await asyncio.sleep(delay)
+            await self.ref.__tell__((self.method_name,) + args + (kwargs,))
 
-    def async_tell(self, *args, **kwargs):
-        return self.ref.tell((self.method_name,) + args + (kwargs,), wait=False)
-
-    def delay_tell(self, *args, delay=None, **kwargs):
-        return self.ref.tell((self.method_name,) + args + (kwargs,), delay=delay, wait=False)
+        asyncio.create_task(delay_fun())
 
 
-cdef class Actor:
+cdef class _Actor:
+    """
+    Base Mars actor class, user methods implemented as methods
+    """
+    def __init__(self):
+        self._lock = asyncio.locks.Lock()
+
     @property
     def uid(self):
         return self._uid
@@ -96,39 +113,100 @@ cdef class Actor:
         self._address = addr
 
     cpdef ActorRef ref(self):
-        return self._ctx.actor_ref(self._address, self._uid)
+        from .context import get_context
+        return get_context().actor_ref(self._address, self._uid)
 
-    @property
-    def ctx(self):
-        return self._ctx
+    async def _handle_actor_result(self, result):
+        cdef tuple res_tuple
+        cdef list results
 
-    @ctx.setter
-    def ctx(self, ctx):
-        self._ctx = ctx
+        if asyncio.iscoroutine(result):
+            result = await result
+        elif is_async_generator(result):
+            result = (result,)
 
-    cpdef __post_create__(self):
+        if isinstance(result, tuple):
+            res_tuple = result
+            results = []
+            for res_item in res_tuple:
+                if is_async_generator(res_item):
+                    results.append(self._run_actor_async_generator(res_item))
+                elif asyncio.iscoroutine(result):
+                    results.append(result)
+                else:
+                    results.append(res_item)
+
+            await asyncio.wait([coro for coro in results if asyncio.iscoroutine(coro)])
+            result = tuple(await res if asyncio.iscoroutine(res) else res
+                           for res in results)
+        return result
+
+    async def _run_actor_async_generator(self, gen):
+        """
+        Run an async generator under Actor lock
+        """
+        cdef tuple res_tuple
+        cdef object res
+
+        try:
+            res = None
+
+            while True:
+                async with self._lock:
+                    res = await gen.asend(res)
+                res = await self._handle_actor_result(res)
+        except StopAsyncIteration:
+            pass
+        return res
+
+    async def __post_create__(self):
+        """
+        Method called after actor creation
+        """
         pass
 
-    cpdef __on_receive__(self, tuple action):
-        raise NotImplementedError
-
-    cpdef __pre_destroy__(self):
+    async def __pre_destroy__(self):
+        """
+        Method called before actor destroy
+        """
         pass
 
+    async def __on_receive__(self, tuple message):
+        """
+        Handle message from other actors and dispatch them to user methods
 
-cdef class ActorEnvironment:
-    pass
+        Parameters
+        ----------
+        message : tuple
+            Message shall be (method_name,) + args + (kwargs,)
+        """
+        method = message[0]
+        args = message[1:-1]
+        kwargs = message[-1]
+        async with self._lock:
+            result = getattr(self, method)(*args, **kwargs)
+            if asyncio.iscoroutine(result):
+                result = await result
+        return await self._handle_actor_result(result)
 
 
-cdef class ActorFuture:
-    def __and__(self, other):
-        if not isinstance(other, list):
-            other = [other]
-        return ActorFutures([self] + other)
+class Actor(_Actor):
+    def __new__(cls, *args, **kwargs):
+        try:
+            return _actor_implementation[id(cls)](*args, **kwargs)
+        except KeyError:
+            return super().__new__(cls, *args, **kwargs)
 
 
-class ActorFutures(list):
-    def __and__(self, other):
-        if not isinstance(other, list):
-            other = [other]
-        return ActorFutures(self + other)
+cdef dict _actor_implementation = dict()
+
+
+def register_actor_implementation(actor_cls, impl_cls):
+    _actor_implementation[id(actor_cls)] = impl_cls
+
+
+def unregister_actor_implementation(actor_cls):
+    try:
+        del _actor_implementation[id(actor_cls)]
+    except KeyError:
+        pass

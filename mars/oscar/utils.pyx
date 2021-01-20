@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import typing
+
 import numpy as np
+
 from .._utils cimport to_str
 
 
@@ -21,7 +24,14 @@ cpdef bytes new_actor_id():
 
 
 def create_actor_ref(*args, **kwargs):
-    from ..core import ActorRef
+    """
+    Create an actor reference.
+
+    Returns
+    -------
+    ActorRef
+    """
+    from .core import ActorRef
 
     cdef str address
     cdef object uid
@@ -47,3 +57,19 @@ def create_actor_ref(*args, **kwargs):
         raise ValueError('Actor uid should be provided')
 
     return ActorRef(address, uid)
+
+
+cdef set _is_async_generator_typecache = set()
+
+
+cdef bint is_async_generator(obj):
+    cdef type tp = type(obj)
+    if tp in _is_async_generator_typecache:
+        return True
+
+    if isinstance(obj, typing.AsyncGenerator):
+        if len(_is_async_generator_typecache) < 100:
+            _is_async_generator_typecache.add(tp)
+        return True
+    else:
+        return False

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import actor_ref, create_actor, has_actor, destroy_actor
-from .core import Actor, ActorRef
-from .context import get_context
-from .errors import ActorNotExist, ActorAlreadyExist
-from .utils import create_actor_ref
+
+class ActorPoolNotStarted(Exception):
+    pass
+
+
+class ActorNotExist(Exception):
+    pass
+
+
+class ActorAlreadyExist(Exception):
+    pass
