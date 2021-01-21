@@ -1322,6 +1322,63 @@ class Test(TestBase):
             expected = s.drop_duplicates()
             pd.testing.assert_series_equal(result, expected)
 
+    def testDuplicated(self):
+        # test dataframe drop
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(20, 5)),
+                           columns=['c' + str(i + 1) for i in range(5)],
+                           index=['i' + str(j) for j in range(20)])
+        duplicate_lines = rs.randint(1000, size=5)
+        for i in [1, 3, 10, 11, 15]:
+            raw.iloc[i] = duplicate_lines
+
+        with option_context({'combine_size': 2}):
+            # test dataframe
+            for chunk_size in [(8, 3), (20, 5)]:
+                df = from_pandas_df(raw, chunk_size=chunk_size)
+                if chunk_size[0] < len(raw):
+                    methods = ['tree', 'subset_tree', 'shuffle']
+                else:
+                    # 1 chunk
+                    methods = [None]
+                for method in methods:
+                    for subset in [None, 'c1', ['c1', 'c2']]:
+                        for keep in ['first', 'last', False]:
+                            try:
+                                r = df.duplicated(method=method, subset=subset, keep=keep)
+                                result = self.executor.execute_dataframe(r, concat=True)[0]
+                                expected = raw.duplicated(subset=subset, keep=keep)
+                                pd.testing.assert_series_equal(result, expected)
+                            except Exception as e:  # pragma: no cover
+                                raise AssertionError(
+                                    f'failed when method={method}, subset={subset}, '
+                                    f'keep={keep}') from e
+
+            # test series
+            s = raw['c3']
+
+            for tp, obj in [('series', s)]:
+                for chunk_size in [8, 20]:
+                    to_m = from_pandas_series if tp == 'series' else from_pandas_index
+                    mobj = to_m(obj, chunk_size=chunk_size)
+                    if chunk_size < len(obj):
+                        methods = ['tree', 'shuffle']
+                    else:
+                        # 1 chunk
+                        methods = [None]
+                    for method in methods:
+                        for keep in ['first', 'last', False]:
+                            try:
+                                r = mobj.duplicated(method=method, keep=keep)
+                                result = self.executor.execute_dataframe(r, concat=True)[0]
+                                expected = obj.duplicated(keep=keep)
+
+                                cmp = pd.testing.assert_series_equal \
+                                    if tp == 'series' else pd.testing.assert_index_equal
+                                cmp(result, expected)
+                            except Exception as e:  # pragma: no cover
+                                raise AssertionError(f'failed when method={method}, keep={keep}') from e
+
     def testMemoryUsageExecution(self):
         dtypes = ['int64', 'float64', 'complex128', 'object', 'bool']
         data = dict([(t, np.ones(shape=500).astype(t))

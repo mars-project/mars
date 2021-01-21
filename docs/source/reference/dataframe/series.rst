@@ -138,6 +138,7 @@ Reindexing / selection / label manipulation
 
    Series.drop
    Series.drop_duplicates
+   Series.duplicated
    Series.head
    Series.isin
    Series.reindex
