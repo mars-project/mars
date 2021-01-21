@@ -41,6 +41,12 @@ class K8SPodsIPWatcher(object):
         else:
             self._k8s_config = config.load_incluster_config()
 
+        verify_ssl = bool(int(os.environ.get('KUBE_VERIFY_SSL', '1').strip('"')))
+        if not verify_ssl:
+            c = client.Configuration()
+            c.verify_ssl = False
+            client.Configuration.set_default(c)
+
         self._k8s_namespace = k8s_namespace or os.environ.get('MARS_K8S_POD_NAMESPACE') or 'default'
         self._full_label_selector = None
         self._client = client.CoreV1Api(client.ApiClient(self._k8s_config))

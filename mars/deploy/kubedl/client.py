@@ -85,6 +85,9 @@ class KubeDLCluster:
             else extra_modules
         extra_envs = kwargs.pop('extra_env', None) or dict()
 
+        if not verify_ssl:
+            extra_envs['KUBE_VERIFY_SSL'] = '0'
+
         def _override_modules(updates):
             modules = set(extra_modules)
             updates = updates.split(',') if isinstance(updates, str) \
