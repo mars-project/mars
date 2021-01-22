@@ -117,6 +117,17 @@ class Test(unittest.TestCase):
 
         self.assertEqual(prediction.ndim, 1)
 
+        # test train with unknown shape
+        cond = X[:, 0] > 0
+        X3 = X[cond]
+        y3 = y[cond]
+        classifier = XGBClassifier(verbosity=1, n_estimators=2)
+        classifier.fit(X3, y3)
+        prediction = classifier.predict(X)
+
+        self.assertEqual(prediction.ndim, 1)
+        self.assertEqual(prediction.shape[0], len(self.X))
+
         classifier = XGBClassifier(verbosity=1, n_estimators=2)
         with self.assertRaises(TypeError):
             classifier.fit(X, y, wrong_param=1)

@@ -176,7 +176,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
         in_df = op.input
         out_df = op.outputs[0]
 
-        if in_df.ndim == 2:
+        if in_df.ndim == 2 and in_df.chunk_shape[1] > 1:
             # make sure only 1 chunk on the column axis
             in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
 

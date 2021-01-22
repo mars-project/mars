@@ -24,7 +24,7 @@ from mars.config import option_context
 from mars.dataframe import DataFrame
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session
-from mars.tests.core import mock, TestBase, ExecutorForTest
+from mars.tests.core import mock, TestBase
 
 try:
     import vineyard
@@ -47,7 +47,7 @@ except ImportError:
 class Test(TestBase):
     def setUp(self):
         super().setUp()
-        self.executor = ExecutorForTest()
+        self.ctx, self.executor = self._create_test_context()
 
     def testToCSVExecution(self):
         index = pd.RangeIndex(100, 0, -1, name='index')
@@ -82,6 +82,18 @@ class Test(TestBase):
             result.set_index('index', inplace=True)
             pd.testing.assert_frame_equal(result, raw)
             pd.testing.assert_frame_equal(dfs[1].set_index('index'), raw.iloc[33: 66])
+
+            with self.ctx:
+                # test df with unknown shape
+                df2 = DataFrame(raw, chunk_size=(50, 2))
+                df2 = df2[df2['col1'] < 1]
+                path2 = os.path.join(base_path, 'out2.csv')
+                r = df2.to_csv(path2)
+                self.executor.execute_dataframes([r])
+
+                result = pd.read_csv(path2, dtype=raw.dtypes.to_dict())
+                result.set_index('index', inplace=True)
+                pd.testing.assert_frame_equal(result, raw)
 
             # SERIES TESTS
             series = md.Series(raw.col1, chunk_size=33)
