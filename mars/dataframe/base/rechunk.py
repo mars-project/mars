@@ -23,6 +23,7 @@ from ...tensor.rechunk.core import get_nsplits, plan_rechunks, compute_rechunk_s
 from ...tensor.utils import calc_sliced_size
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
+from ..initializer import DataFrame as asdataframe, Series as asseries
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE
 from ..utils import indexing_index_value, merge_index_value
 
@@ -40,6 +41,10 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
         super().__init__(_chunk_size=chunk_size, _threshold=threshold,
                          _chunk_size_limit=chunk_size_limit, _output_types=output_types,
                          _reassign_worker=reassign_worker, **kw)
+
+    @property
+    def input(self):
+        return self._input
 
     @property
     def chunk_size(self):
@@ -69,8 +74,15 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         check_chunks_unknown_shape(op.inputs, TilesError)
+
+        a = op.input
+        a = asdataframe(a) if a.ndim == 2 else asseries(a)
+        chunk_size = _get_chunk_size(a, op.chunk_size)
+        if chunk_size == a.nsplits:
+            return [a]
+
         out = op.outputs[0]
-        new_chunk_size = op.chunk_size
+        new_chunk_size = chunk_size
         if isinstance(out, DATAFRAME_TYPE):
             itemsize = max(getattr(dt, 'itemsize', 8) for dt in out.dtypes)
         else:
@@ -88,16 +100,25 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
         return [out]
 
 
-def rechunk(a, chunk_size, threshold=None, chunk_size_limit=None, reassign_worker=False):
+def _get_chunk_size(a, chunk_size):
     if isinstance(a, DATAFRAME_TYPE):
         itemsize = max(getattr(dt, 'itemsize', 8) for dt in a.dtypes)
     else:
         itemsize = a.dtype.itemsize
-    chunk_size = get_nsplits(a, chunk_size, itemsize)
-    if chunk_size == a.nsplits:
-        return a
+    return get_nsplits(a, chunk_size, itemsize)
 
-    op = DataFrameRechunk(chunk_size, threshold, chunk_size_limit, reassign_worker=reassign_worker)
+
+def rechunk(a, chunk_size, threshold=None, chunk_size_limit=None, reassign_worker=False):
+    if not any(pd.isna(s) for s in a.shape):
+        # do client check only when no unknown shape,
+        # real nsplits will be recalculated inside `tile`
+        chunk_size = _get_chunk_size(a, chunk_size)
+        if chunk_size == a.nsplits:
+            return a
+
+    op = DataFrameRechunk(chunk_size=chunk_size, threshold=threshold,
+                          chunk_size_limit=chunk_size_limit,
+                          reassign_worker=reassign_worker)
     return op(a)
 
 
