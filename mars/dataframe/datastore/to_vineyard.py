@@ -16,6 +16,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...context import RunningMode, get_context
 from ...core import OutputType
 from ...serialize import TupleField, StringField
 from ...tiles import TilesError
@@ -34,8 +35,12 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
     # vineyard ipc socket
     _vineyard_socket = StringField('vineyard_socket')
 
+    # vineyard object id
+    _vineyard_object_id = StringField('vineyard_object_id')
+
     def __init__(self, vineyard_socket=None, dtypes=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _dtypes=dtypes, _output_types=[OutputType.dataframe], **kw)
+        super().__init__(_vineyard_socket=vineyard_socket, _dtypes=dtypes,
+                         _output_types=[OutputType.dataframe], **kw)
 
     def __call__(self, df):
         return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes,
@@ -44,6 +49,10 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
     @property
     def vineyard_socket(self):
         return self._vineyard_socket
+
+    @property
+    def vineyard_object_id(self):
+        return self._vineyard_object_id
 
     @classmethod
     def _get_out_chunk(cls, op, in_chunk):
@@ -69,9 +78,19 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
 
         in_df = op.inputs[0]
 
+        ctx = get_context()
+
         out_chunks = []
         for chunk in in_df.chunks:
             chunk_op = op.copy().reset_key()
+            if options.vineyard.enabled and ctx.running_mode != RunningMode.local:
+                object_id = ctx.get_vineyard_object_id(chunk.key)
+                if object_id is not None:
+                    chunk_op._vineyard_object_id = repr(object_id)
+                else:
+                    chunk_op._vineyard_object_id = ''
+            else:
+                chunk_op._vineyard_object_id = ''
             chunk = chunk_op.new_chunk([chunk], shape=chunk.shape, dtypes=chunk.dtypes,
                                        index_value=chunk.index_value,
                                        columns_value=chunk.columns_value,
@@ -102,7 +121,12 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         register_tensor_types(builder_ctx=default_builder_context,
                               resolver_ctx=default_resolver_context)
 
-        df_id = client.put(ctx[op.inputs[0].key], partition_index=op.inputs[0].index)
+        if options.vineyard.enabled and op.vineyard_object_id:
+            # the chunk already exists in vineyard
+            df_id = vineyard.ObjectID(op.vineyard_object_id)
+        else:
+            df_id = client.put(ctx[op.inputs[0].key], partition_index=op.inputs[0].index)
+
         client.persist(df_id)
 
         # store the result object id to execution context

@@ -29,6 +29,7 @@ from .astype import astype, index_astype
 from .drop import df_drop, df_pop, series_drop, index_drop
 from .drop_duplicates import df_drop_duplicates, \
     series_drop_duplicates, index_drop_duplicates
+from .duplicated import df_duplicated, series_duplicated
 from .melt import melt
 from .memory_usage import df_memory_usage, series_memory_usage, index_memory_usage
 from .select_dtypes import select_dtypes
@@ -63,6 +64,7 @@ def _install():
         setattr(t, 'pop', df_pop)
         setattr(t, '__delitem__', lambda df, items: df_drop(df, items, axis=1, inplace=True))
         setattr(t, 'drop_duplicates', df_drop_duplicates)
+        setattr(t, 'duplicated', df_duplicated)
         setattr(t, 'melt', melt)
         setattr(t, 'memory_usage', df_memory_usage)
         setattr(t, 'select_dtypes', select_dtypes)
@@ -90,6 +92,7 @@ def _install():
         setattr(t, 'astype', astype)
         setattr(t, 'drop', series_drop)
         setattr(t, 'drop_duplicates', series_drop_duplicates)
+        setattr(t, 'duplicated', series_duplicated)
         setattr(t, 'memory_usage', series_memory_usage)
         setattr(t, 'map_chunk', map_chunk)
         setattr(t, 'cartesian_chunk', cartesian_chunk)

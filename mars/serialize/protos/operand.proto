@@ -376,6 +376,7 @@ message OperandDef {
         REPLACE = 736;
         RENAME_AXIS = 737;
         DATAFRAME_EVAL = 738;
+        DUPLICATED = 739;
 
         FUSE = 801;
 

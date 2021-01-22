@@ -415,7 +415,7 @@ default_options.register_option('client.serial_type', 'arrow', validator=is_stri
 default_options.register_option('custom_log_dir', None, validator=any_validator(is_null, is_string))
 
 # vineyard
-default_options.register_option('vineyard.socket', None)
+default_options.register_option('vineyard.socket', os.environ.get('VINEYARD_IPC_SOCKET', None))
 default_options.register_option('vineyard.enabled', os.environ.get('WITH_VINEYARD', None) is not None)
 
 _options_local = threading.local()

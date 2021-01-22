@@ -281,6 +281,7 @@ class VineyardHandler(StorageHandler, ObjectStorageMixin):
 
     def delete(self, session_id, data_keys, _tell=False):
         data_ids = self._batch_get_object_id(session_id, data_keys)
+        logger.debug('delete chunks from vineyard: %s', data_ids)
         try:
             self._client.delete(data_ids, deep=True)
         except vineyard._C.ObjectNotExistsException:
