@@ -14,12 +14,15 @@
 
 import itertools
 
+import numpy as np
+
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, BoolField, Int32Field, Int64Field
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..utils import calc_sliced_size
 from ..operands import TensorHasInput, TensorOperandMixin
+from ..datasource import tensor as astensor
 from .core import plan_rechunks, get_nsplits, compute_rechunk_slices
 
 
@@ -38,6 +41,10 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
                          _chunk_size_limit=chunk_size_limit,
                          _reassign_worker=reassign_worker,
                          _dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def input(self):
+        return self._input
 
     @property
     def chunk_size(self):
@@ -61,6 +68,12 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         check_chunks_unknown_shape(op.inputs, TilesError)
+
+        tensor = astensor(op.input)
+        chunk_size = get_nsplits(tensor, op.chunk_size, tensor.dtype.itemsize)
+        if chunk_size == tensor.nsplits:
+            return [tensor]
+
         new_chunk_size = op.chunk_size
         steps = plan_rechunks(op.inputs[0], new_chunk_size, op.inputs[0].dtype.itemsize,
                               threshold=op.threshold,
@@ -78,9 +91,12 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
 
 def rechunk(tensor, chunk_size, threshold=None, chunk_size_limit=None,
             reassign_worker=False):
-    chunk_size = get_nsplits(tensor, chunk_size, tensor.dtype.itemsize)
-    if chunk_size == tensor.nsplits:
-        return tensor
+    if not any(np.isnan(s) for s in tensor.shape):
+        # do client check only when tensor has no unknown shape,
+        # otherwise, recalculate chunk_size in `tile`
+        chunk_size = get_nsplits(tensor, chunk_size, tensor.dtype.itemsize)
+        if chunk_size == tensor.nsplits:
+            return tensor
 
     op = TensorRechunk(chunk_size, threshold, chunk_size_limit, reassign_worker=reassign_worker,
                        dtype=tensor.dtype, sparse=tensor.issparse())
