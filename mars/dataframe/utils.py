@@ -469,15 +469,19 @@ def _generate_value(dtype, fill_value):
 
 def build_empty_df(dtypes, index=None):
     columns = dtypes.index
+    length = len(index) if index is not None else 0
+    record = [[_generate_value(dtype, 1) for dtype in dtypes]] * max(1, length)
+
     # duplicate column may exist,
     # so use RangeIndex first
-    df = pd.DataFrame(columns=pd.RangeIndex(len(columns)), index=index)
-    length = len(index) if index is not None else 0
-    for i, d in enumerate(dtypes):
-        df[i] = pd.Series([_generate_value(d, 1) for _ in range(length)],
-                          dtype=d, index=index)
+    df = pd.DataFrame(record, columns=range(len(dtypes)), index=index)
+    for i, dtype in enumerate(dtypes):
+        s = df.iloc[:, i]
+        if not pd.api.types.is_dtype_equal(s.dtype, dtype):
+            df.iloc[:, i] = s.astype(dtype)
+
     df.columns = columns
-    return df
+    return df[:length] if len(df) > length else df
 
 
 def build_df(df_obj, fill_value=1, size=1, ensure_string=False):
@@ -493,26 +497,27 @@ def build_df(df_obj, fill_value=1, size=1, ensure_string=False):
         fill_values = fill_value
 
     for size, fill_value in zip(sizes, fill_values):
-        empty_df = build_empty_df(df_obj.dtypes, index=df_obj.index_value.to_pandas()[:0])
-        dtypes = empty_df.dtypes
-        record = [_generate_value(dtype, fill_value) for dtype in dtypes]
-        if len(record) != 0:  # columns is empty in some cases
-            if isinstance(empty_df.index, pd.MultiIndex):
-                index = tuple(_generate_value(level.dtype, fill_value) for level in empty_df.index.levels)
-                empty_df = empty_df.reindex(
-                    index=pd.MultiIndex.from_tuples([index], names=empty_df.index.names))
-                empty_df.iloc[0] = record
-            else:
-                index = _generate_value(empty_df.index.dtype, fill_value)
-                empty_df.loc[index] = record
+        dtypes = df_obj.dtypes
+        record = [[_generate_value(dtype, fill_value) for dtype in dtypes]] * size
+        df = pd.DataFrame(record)
+        df.columns = dtypes.index
 
-        empty_df = pd.concat([empty_df] * size)
-        # make sure dtypes correct for MultiIndex
-        for i, dtype in enumerate(dtypes.tolist()):
-            s = empty_df.iloc[:, i]
+        if len(record) != 0:  # columns is empty in some cases
+            target_index = df_obj.index_value.to_pandas()
+            if isinstance(target_index, pd.MultiIndex):
+                index_val = tuple(_generate_value(level.dtype, fill_value)
+                                  for level in target_index.levels)
+                df.index = pd.MultiIndex.from_tuples([index_val] * size, names=target_index.names)
+            else:
+                index_val = _generate_value(target_index.dtype, fill_value)
+                df.index = pd.Index([index_val] * size, name=target_index.name)
+
+        # make sure dtypes correct
+        for i, dtype in enumerate(dtypes):
+            s = df.iloc[:, i]
             if not pd.api.types.is_dtype_equal(s.dtype, dtype):
-                empty_df.iloc[:, i] = s.astype(dtype)
-        dfs.append(empty_df)
+                df.iloc[:, i] = s.astype(dtype)
+        dfs.append(df)
     if len(dfs) == 1:
         ret_df = dfs[0]
     else:
