@@ -208,8 +208,10 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             return self._call_groupby_level(df[list(reduced_df.columns)], level)
 
         reduced_shape = (df.shape[0],) if axis == 1 else reduced_df.shape
+        index_value = parse_index(reduced_df.index, store_data=True) \
+            if axis == 0 else parse_index(pd.RangeIndex(-1))
         return self.new_series([df], shape=reduced_shape, dtype=reduced_df.dtype,
-                               index_value=parse_index(reduced_df.index, store_data=axis == 0))
+                               index_value=index_value)
 
     def _call_series(self, series):
         level = getattr(self, 'level', None)
