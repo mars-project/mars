@@ -38,6 +38,8 @@ def actor_ref(*args, **kwargs):
     return ctx.actor_ref(*args, **kwargs)
 
 
+# Cython has a bug about inspecting async function: https://github.com/cython/cython/issues/2273
+# The bug is fixed in cython == 3.0.0 alpha 7
 class Actor(_Actor):
     def __new__(cls, *args, **kwargs):
         try:

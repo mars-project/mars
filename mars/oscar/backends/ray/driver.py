@@ -12,25 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from numbers import Number
+from typing import Dict
 
-cdef class ActorRef:
-    cdef object __weakref__
-    cdef public str address
-    cdef public object uid
-    cdef dict _methods
-    cdef __send__(self, object message)
-    cdef __tell__(self, object message, object delay=*)
+from ...driver import BaseActorDriver
 
 
-cdef class _Actor:
-    cdef object __weakref__
-    cdef str _address
-    cdef public object _lock
-    cdef object _uid
-
-    cpdef ActorRef ref(self)
-
-
-cdef class ActorEnvironment:
-    cdef public dict actor_locks
-    cdef public object address
+class RayActorDriver(BaseActorDriver):
+    def setup_cluster(self, address_to_resources: Dict[str, Dict[str, Number]]):
+        # nothing need to be done in driver of Ray backend
+        pass

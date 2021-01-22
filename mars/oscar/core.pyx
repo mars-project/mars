@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import cython
 
 from .utils cimport is_async_generator
 
@@ -89,6 +90,9 @@ cdef class ActorRefMethod:
         asyncio.create_task(delay_fun())
 
 
+# The @cython.binding(True) is for ray getting members.
+# The value is True by default after cython >= 3.0.0
+@cython.binding(True)
 cdef class _Actor:
     """
     Base Mars actor class, user methods implemented as methods
@@ -103,6 +107,9 @@ cdef class _Actor:
     @uid.setter
     def uid(self, uid):
         self._uid = uid
+        
+    def _set_uid(self, uid):
+        self._uid = uid
 
     @property
     def address(self):
@@ -110,6 +117,9 @@ cdef class _Actor:
 
     @address.setter
     def address(self, addr):
+        self._address = addr
+
+    def _set_address(self, addr):
         self._address = addr
 
     cpdef ActorRef ref(self):
