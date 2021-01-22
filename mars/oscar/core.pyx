@@ -16,6 +16,7 @@ import asyncio
 import cython
 
 from .utils cimport is_async_generator
+from .utils import create_task
 
 
 cdef class ActorRef:
@@ -87,7 +88,7 @@ cdef class ActorRefMethod:
             await asyncio.sleep(delay)
             await self.ref.__tell__((self.method_name,) + args + (kwargs,))
 
-        asyncio.create_task(delay_fun())
+        create_task(delay_fun())
 
 
 # The @cython.binding(True) is for ray getting members.
