@@ -654,7 +654,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         in_data_dict = cls._pack_inputs(op.agg_funcs, in_data_tuple)
 
         for _input_key, _map_func_name, agg_func_name, custom_reduction, \
-            output_key, _output_limit, kwds in op.agg_funcs:
+                output_key, _output_limit, kwds in op.agg_funcs:
             if agg_func_name == 'custom_reduction':
                 input_obj = tuple(cls._get_grouped(op, o, ctx) for o in in_data_dict[output_key])
                 in_data_dict[output_key] = cls._do_custom_agg(op, custom_reduction, *input_obj)[0]
