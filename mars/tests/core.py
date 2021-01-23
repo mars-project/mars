@@ -384,7 +384,7 @@ def create_actor_pool(*args, **kwargs):
     raise OSError("Failed to create actor pool")
 
 
-def assert_groupby_equal(left, right, sort_keys=False, with_selection=False):
+def assert_groupby_equal(left, right, sort_keys=False, sort_index=True, with_selection=False):
     if hasattr(left, 'groupby_obj'):
         left = left.groupby_obj
     if hasattr(right, 'groupby_obj'):
@@ -400,6 +400,9 @@ def assert_groupby_equal(left, right, sort_keys=False, with_selection=False):
         right = sorted(right, key=lambda p: p[0])
     else:
         left, right = list(left), list(right)
+    if sort_index:
+        left = [(k, v.sort_index()) for k, v in left]
+        right = [(k, v.sort_index()) for k, v in right]
 
     if len(left) != len(right):
         raise AssertionError(f'Count of groupby keys not consistent: {len(left)} != {len(right)}')

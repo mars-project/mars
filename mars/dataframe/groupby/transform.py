@@ -162,13 +162,19 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
 
         if op.call_agg:
             result = in_data.agg(op.func, *op.args, **op.kwds)
-        else:
+        elif in_data.shape[0] > 0:
+            # cannot perform groupby-transform over empty dataframe
             result = in_data.transform(op.func, *op.args, **op.kwds)
+        else:
+            if out_chunk.ndim == 2:
+                result = pd.DataFrame(columns=out_chunk.dtypes.index)
+            else:
+                result = pd.Series([], name=out_chunk.name, dtype=out_chunk.dtype)
 
         if result.ndim == 2:
-            result = result.astype(op.outputs[0].dtypes, copy=False)
+            result = result.astype(out_chunk.dtypes, copy=False)
         else:
-            result = result.astype(op.outputs[0].dtype, copy=False)
+            result = result.astype(out_chunk.dtype, copy=False)
         ctx[op.outputs[0].key] = result
 
 

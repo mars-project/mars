@@ -479,7 +479,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             params['sort'] = False
             grouped = df.groupby(**params)
 
-        if selection:
+        if selection is not None:
             grouped = grouped[selection]
         return grouped
 
@@ -641,8 +641,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _execute_agg(cls, ctx, op: "DataFrameGroupByAgg"):
         xdf = cudf if op.gpu else pd
-        out = op.outputs[0]
-        col_value = out.columns_value.to_pandas() if hasattr(out, 'columns_value') else None
+        out_chunk = op.outputs[0]
+        col_value = out_chunk.columns_value.to_pandas() if hasattr(out_chunk, 'columns_value') else None
 
         in_data_tuple = ctx[op.inputs[0].key]
         in_data_list = []
@@ -680,7 +680,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 agg_df = xdf.DataFrame(agg_df, index=func_inputs[0].index)
 
             new_cols = None
-            if out.ndim == 2 and col_value is not None:
+            if out_chunk.ndim == 2 and col_value is not None:
                 if col_value.nlevels > agg_df.columns.nlevels:
                     new_cols = xdf.MultiIndex.from_product([agg_df.columns, [func_name]])
                 elif agg_df.shape[-1] == 1 and func_name in col_value:
@@ -692,18 +692,22 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 agg_df.columns = new_cols
         aggs = [item[0] for item in aggs]
 
-        if out.ndim == 2:
+        if out_chunk.ndim == 2:
             result = xdf.concat(aggs, axis=1)
             if not op.groupby_params.get('as_index', True) \
                     and col_value.nlevels == result.columns.nlevels:
                 result.reset_index(inplace=True, drop=result.index.name in result.columns)
             result = result.reindex(col_value, axis=1)
+
+            if result.ndim == 2 and len(result) == 0:
+                result = result.astype(out_chunk.dtypes)
         else:
             result = xdf.concat(aggs)
             if result.ndim == 2:
                 result = result.iloc[:, 0]
-            result.name = out.name
-        ctx[op.outputs[0].key] = result
+            result.name = out_chunk.name
+
+        ctx[out_chunk.key] = result
 
     @classmethod
     @redirect_custom_log
