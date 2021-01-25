@@ -645,6 +645,19 @@ class Test(unittest.TestCase):
                                           s.index_value.to_pandas())
             pd.testing.assert_series_equal(s2.fetch(), raw['c1'])
 
+            # test series compare
+            raw_s = raw['c1'].copy()
+            raw_s[raw_s > 0.8] = np.inf
+            raw_s[raw_s < 0.2] = -np.inf
+
+            s2 = md.Series(raw_s) * 2 + 1
+            r = (s2 == np.inf) | (s2 == -np.inf)
+            raw_s = raw_s * 2 + 1
+            expected = (raw_s == np.inf) | (raw_s == -np.inf)
+            pd.testing.assert_series_equal(
+                r.execute(session=session).fetch(session=session),
+                expected)
+
     def testMultiSessionDecref(self, *_):
         with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
                               shared_memory='20M', web=True) as cluster:
