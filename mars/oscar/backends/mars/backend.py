@@ -12,11 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import actor_ref, create_actor, has_actor, destroy_actor, Actor
-from .core import ActorRef
-from .context import get_context
-from .errors import ActorNotExist, ActorAlreadyExist
-from .utils import create_actor_ref
+from ...backend import BaseActorBackend, register_backend
+from .driver import MarsActorDriver
+from .pool import MarsActorContext
 
-from .backends import mars
-del mars
+
+__all__ = ['MarsActorBackend']
+
+
+@register_backend
+class MarsActorBackend(BaseActorBackend):
+    @staticmethod
+    def name():
+        # return None because Mars is default scheme
+        return
+
+    @staticmethod
+    def get_context_cls():
+        return MarsActorContext
+
+    @staticmethod
+    def get_driver_cls():
+        return MarsActorDriver
