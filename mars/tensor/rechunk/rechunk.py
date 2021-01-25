@@ -74,7 +74,7 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
         if chunk_size == tensor.nsplits:
             return [tensor]
 
-        new_chunk_size = op.chunk_size
+        new_chunk_size = chunk_size
         steps = plan_rechunks(op.inputs[0], new_chunk_size, op.inputs[0].dtype.itemsize,
                               threshold=op.threshold,
                               chunk_size_limit=op.chunk_size_limit)
@@ -91,7 +91,7 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
 
 def rechunk(tensor, chunk_size, threshold=None, chunk_size_limit=None,
             reassign_worker=False):
-    if not any(np.isnan(s) for s in tensor.shape):
+    if not any(np.isnan(s) for s in tensor.shape) and not tensor.is_coarse():
         # do client check only when tensor has no unknown shape,
         # otherwise, recalculate chunk_size in `tile`
         chunk_size = get_nsplits(tensor, chunk_size, tensor.dtype.itemsize)

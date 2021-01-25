@@ -732,9 +732,14 @@ def merge_index_value(to_merge_index_values, store_data=False):
         else:
             index_value = index_value.append(chunk_index_value.to_pandas())
             if chunk_index_value.min_val is not None:
-                if min_val is None or min_val > chunk_index_value.min_val:
-                    min_val = chunk_index_value.min_val
-                    min_val_close = chunk_index_value.min_val_close
+                try:
+                    if min_val is None or min_val > chunk_index_value.min_val:
+                        min_val = chunk_index_value.min_val
+                        min_val_close = chunk_index_value.min_val_close
+                except TypeError:
+                    # min_value has different types that cannot compare
+                    # just stop compare
+                    continue
             if chunk_index_value.max_val is not None:
                 if max_val is None or max_val < chunk_index_value.max_val:
                     max_val = chunk_index_value.max_val
