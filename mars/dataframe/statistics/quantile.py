@@ -21,7 +21,7 @@ from ... import opcodes as OperandDef
 from ...core import Base, Entity
 from ...serialize import KeyField, AnyField, StringField, DataTypeField, \
     BoolField, Int32Field
-from ...tensor.core import TENSOR_TYPE
+from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...tensor.datasource import empty, tensor as astensor, \
     from_series as tensor_from_series, from_dataframe as tensor_from_dataframe
 from ...tensor.statistics.quantile import quantile as tensor_quantile
@@ -73,7 +73,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
-        if isinstance(self._q, TENSOR_TYPE):
+        if isinstance(self._q, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             self._q = self._inputs[-1]
 
     def _calc_dtype_on_axis_1(self, a, dtypes):
