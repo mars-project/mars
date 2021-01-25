@@ -524,6 +524,8 @@ message OperandDef {
         TYPE_OF_TARGET = 3304;
         // classification
         ACCURACY_SCORE = 3305;
+        // port detection
+        COLLECT_PORTS = 3306;
 
         // Remote Functions and class
         REMOTE_FUNCATION = 5001;

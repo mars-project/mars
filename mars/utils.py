@@ -220,7 +220,7 @@ def _get_ports_from_netstat():
     return occupied
 
 
-def get_next_port(typ=None):
+def get_next_port(typ=None, occupy=True):
     import psutil
     try:
         conns = psutil.net_connections()
@@ -237,7 +237,8 @@ def get_next_port(typ=None):
         if i in occupied:
             continue
         if idx == 0:
-            _local_occupied_ports.add(i)
+            if occupy:
+                _local_occupied_ports.add(i)
             return i
         idx -= 1
     raise SystemError('No ports available.')
