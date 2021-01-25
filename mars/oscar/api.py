@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Dict, Type, Tuple
+
 from .context import get_context
+from .core import _Actor
 
 
 async def create_actor(actor_cls, *args, uid=None, address=None, **kwargs):
@@ -33,3 +36,48 @@ async def destroy_actor(actor_ref):
 def actor_ref(*args, **kwargs):
     ctx = get_context()
     return ctx.actor_ref(*args, **kwargs)
+
+
+class Actor(_Actor):
+    def __new__(cls, *args, **kwargs):
+        try:
+            return _actor_implementation[cls](*args, **kwargs)
+        except KeyError:
+            return super().__new__(cls, *args, **kwargs)
+
+    async def __post_create__(self):
+        """
+        Method called after actor creation
+        """
+        return await super().__post_create__()
+
+    async def __pre_destroy__(self):
+        """
+        Method called before actor destroy
+        """
+        return await super().__pre_destroy__()
+
+    async def __on_receive__(self, message: Tuple[Any]):
+        """
+        Handle message from other actors and dispatch them to user methods
+
+        Parameters
+        ----------
+        message : tuple
+            Message shall be (method_name,) + args + (kwargs,)
+        """
+        return await super().__on_receive__(message)
+
+
+_actor_implementation: Dict[Type[Actor], Type[Actor]] = dict()
+
+
+def register_actor_implementation(actor_cls: Type[Actor], impl_cls: Type[Actor]):
+    _actor_implementation[actor_cls] = impl_cls
+
+
+def unregister_actor_implementation(actor_cls: Type[Actor]):
+    try:
+        del _actor_implementation[actor_cls]
+    except KeyError:
+        pass
