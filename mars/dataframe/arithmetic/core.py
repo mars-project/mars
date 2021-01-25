@@ -18,14 +18,15 @@ import copy
 import numpy as np
 import pandas as pd
 
-from ...tensor.datasource import tensor as astensor
+from ...core import Base, Entity
 from ...serialize import AnyField, Float64Field
 from ...tensor.core import TENSOR_TYPE, ChunkData, Chunk
+from ...tensor.datasource import tensor as astensor
 from ...utils import classproperty
 from ..align import align_series_series, align_dataframe_series, align_dataframe_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
-from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..initializer import Series, DataFrame
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..ufunc.tensor import TensorUfuncMixin
 from ..utils import parse_index, infer_dtypes, infer_dtype, infer_index_value, build_empty_df
 
@@ -533,7 +534,7 @@ class DataFrameBinOp(DataFrameOperand, DataFrameBinOpMixin):
             self._lhs = self._inputs[0]
             self._rhs = self._inputs[1]
         else:
-            if isinstance(self._lhs, (DATAFRAME_TYPE, SERIES_TYPE)):
+            if isinstance(self._lhs, (Base, Entity)):
                 self._lhs = self._inputs[0]
             elif pd.api.types.is_scalar(self._lhs):
                 self._rhs = self._inputs[0]

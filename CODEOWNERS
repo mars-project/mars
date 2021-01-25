@@ -9,7 +9,7 @@
 /mars/actors             @qinxuye @hekaisheng @wjsi
 /mars/dataframe          @hekaisheng @qinxuye @wjsi
 /mars/deploy             @wjsi @hekaisheng
-/mars/learn              @qinxuye @hekaisheng
+/mars/learn              @qinxuye @hekaisheng @wjsi
 /mars/lib                @wjsi @qinxuye
 /mars/optimizes          @hekaisheng @qinxuye
 /mars/ray                @hekaisheng @qinxuye

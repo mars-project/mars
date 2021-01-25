@@ -300,7 +300,6 @@ def deserialize_graph(ser_graph, graph_cls=None):
     ser_graph_bin = to_binary(ser_graph)
     g = GraphDef()
     try:
-        ser_graph = ser_graph
         g.ParseFromString(ser_graph_bin)
         return graph_cls.from_pb(g)
     except DecodeError:
