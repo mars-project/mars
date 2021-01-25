@@ -98,8 +98,16 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
                     replaced_tileables[n] = new_node = self._optimizer_context[n]
                 else:
                     new_node = n
-            elif any(inp in replaced_tileables for inp in n.inputs):
-                new_inputs = [replaced_tileables.get(i, i) for i in n.inputs]
+            elif any(inp in replaced_tileables for inp in n.inputs) or \
+                    any(inp not in new_graph for inp in n.inputs):
+                new_inputs = []
+                for i in n.inputs:
+                    if i in replaced_tileables:
+                        new_inputs.append(replaced_tileables[i])
+                    elif i not in graph:
+                        new_inputs.append(self._optimizer_context[i])
+                    else:
+                        new_inputs.append(i)
                 new_tileables = copy_tileables(n.op.outputs, inputs=new_inputs)
                 for t, new_t in zip(n.op.outputs, new_tileables):
                     replaced_tileables[t] = new_t.data
