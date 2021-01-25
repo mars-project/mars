@@ -289,16 +289,27 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                 fs = get_fs(op.index_path, op.storage_options)
                 filename = f'proxima_{out.index[0]}_index'
                 out_path = f'{op.index_path.rstrip("/")}/{filename}'
-                with fs.open(out_path, 'wb') as out_f:
-                    with open(path, 'rb') as in_f:
-                        # 32M
-                        chunk_bytes = 32 * 1024 ** 2
-                        while True:
-                            data = in_f.read(chunk_bytes)
-                            if data:
-                                out_f.write(data)
-                            else:
-                                break
+
+                def write_index():
+                    with fs.open(out_path, 'wb') as out_f:
+                        with open(path, 'rb') as in_f:
+                            # 32M
+                            chunk_bytes = 128 * 1024 ** 2
+                            while True:
+                                data = in_f.read(chunk_bytes)
+                                if data:
+                                    out_f.write(data)
+                                else:
+                                    break
+
+                # retry 3 times
+                for _ in range(3):
+                    try:
+                        write_index()
+                        break
+                    except:
+                        fs.delete(out_path)
+                        continue
 
             logger.warning(f'WritingToVolume({op.key}), out path: {out_path}, '
                            f'size {os.path.getsize(path)}, '

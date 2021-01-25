@@ -332,7 +332,7 @@ default_options.register_option('learn.assume_finite', assume_finite, validator=
 default_options.register_option('learn.working_memory', working_memory, validator=any_validator(is_null, is_integer))
 
 # the number of combined chunks in tree reduction or tree add
-default_options.register_option('combine_size', 4, validator=is_integer, serialize=True)
+default_options.register_option('combine_size', 2, validator=is_integer, serialize=True)
 
 # the default chunk store size
 default_options.register_option('chunk_store_limit', 128 * 1024 ** 2, validator=is_numeric)
