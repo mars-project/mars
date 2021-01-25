@@ -116,6 +116,13 @@ class Test(TestBase):
         res = self.executor.execute_dataframe(index2, concat=True)[0]
         pd.testing.assert_index_equal(data, res)
 
+        # test rechunk on mixed typed columns
+        data = pd.DataFrame({0: [1, 2], 1: [3, 4], 'a': [5, 6]})
+        df = from_pandas_df(data)
+        df = df.rechunk((2, 2)).rechunk({1: 3})
+        res = self.executor.execute_dataframe(df, concat=True)[0]
+        pd.testing.assert_frame_equal(data, res)
+
     def testSeriesMapExecution(self):
         raw = pd.Series(np.arange(10))
         s = from_pandas_series(raw, chunk_size=7)
