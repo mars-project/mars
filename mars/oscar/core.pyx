@@ -188,25 +188,3 @@ cdef class _Actor:
             if asyncio.iscoroutine(result):
                 result = await result
         return await self._handle_actor_result(result)
-
-
-class Actor(_Actor):
-    def __new__(cls, *args, **kwargs):
-        try:
-            return _actor_implementation[id(cls)](*args, **kwargs)
-        except KeyError:
-            return super().__new__(cls, *args, **kwargs)
-
-
-cdef dict _actor_implementation = dict()
-
-
-def register_actor_implementation(actor_cls, impl_cls):
-    _actor_implementation[id(actor_cls)] = impl_cls
-
-
-def unregister_actor_implementation(actor_cls):
-    try:
-        del _actor_implementation[id(actor_cls)]
-    except KeyError:
-        pass

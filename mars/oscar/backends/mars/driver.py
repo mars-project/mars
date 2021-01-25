@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import actor_ref, create_actor, has_actor, destroy_actor, Actor
-from .core import ActorRef
-from .context import get_context
-from .errors import ActorNotExist, ActorAlreadyExist
-from .utils import create_actor_ref
+from numbers import Number
+from typing import Dict
 
-from .backends import mars
-del mars
+from ...driver import BaseActorDriver
+
+
+class MarsActorDriver(BaseActorDriver):
+    def setup_cluster(self, address_to_resources: Dict[str, Dict[str, Number]]):
+        # nothing need to be done in driver of Mars backend
+        pass
