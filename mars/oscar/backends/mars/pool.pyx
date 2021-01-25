@@ -63,8 +63,3 @@ cdef class MarsActorContext(BaseActorContext):
             raise ActorNotExist(f'Actor {actor_ref.uid} does not exist')
         ret = await actor.__on_receive__(message)
         return ret if wait_response else None
-
-
-def register_backend():
-    from ...context import register_backend_context
-    register_backend_context(None, MarsActorContext)

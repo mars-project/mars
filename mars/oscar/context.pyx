@@ -14,8 +14,7 @@
 
 from urllib.parse import urlparse
 
-from .core cimport _Actor, ActorRef
-from .errors import ActorAlreadyExist, ActorNotExist
+from .core cimport ActorRef
 from .utils cimport new_actor_id
 
 cdef dict _backend_context_cls = dict()

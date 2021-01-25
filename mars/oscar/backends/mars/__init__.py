@@ -12,6 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .pool import register_backend
-register_backend()
-del register_backend
+from .backend import MarsActorBackend
