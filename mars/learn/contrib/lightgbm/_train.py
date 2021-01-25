@@ -16,18 +16,17 @@ import itertools
 import logging
 import operator
 import pickle
-import random
 from collections import defaultdict
 from functools import reduce
 
 import numpy as np
 
 from .... import opcodes
-from ....operands import MergeDictOperand, OutputType
 from ....context import get_context, RunningMode
 from ....core import ExecutableTuple
+from ....operands import MergeDictOperand, OutputType
 from ....serialize import DictField, Int32Field, KeyField, ListField, StringField, ValueType
-from ...utils import concat_chunks
+from ...utils import concat_chunks, collect_ports
 from ._align import align_data_set
 from .core import LGBMModelType, get_model_cls_from_type
 
@@ -51,21 +50,23 @@ class LGBMTrain(MergeDictOperand):
     _eval_sample_weights = ListField('eval_sample_weights', ValueType.key)
     _eval_init_scores = ListField('eval_init_scores', ValueType.key)
 
-    _lgbm_endpoints = ListField('lgbm_endpoints', ValueType.string)
-    _lgbm_port = Int32Field('lgbm_port')
+    _workers = ListField('workers', ValueType.string)
+    _worker_id = Int32Field('worker_id')
+    _worker_ports = KeyField('worker_ports')
+
     _tree_learner = StringField('tree_learner')
     _timeout = Int32Field('timeout')
 
     def __init__(self, model_type=None, data=None, label=None, sample_weight=None, init_score=None,
                  eval_datas=None, eval_labels=None, eval_sample_weights=None, eval_init_scores=None,
-                 params=None, kwds=None, lgbm_endpoints=None, lgbm_port=None, tree_learner=None,
-                 timeout=None, **kw):
+                 params=None, kwds=None, workers=None, worker_id=None, worker_ports=None,
+                 tree_learner=None, timeout=None, **kw):
         super().__init__(_model_type=model_type, _params=params, _data=data, _label=label,
                          _sample_weight=sample_weight, _init_score=init_score, _eval_datas=eval_datas,
                          _eval_labels=eval_labels, _eval_sample_weights=eval_sample_weights,
-                         _eval_init_scores=eval_init_scores, _kwds=kwds, _lgbm_endpoints=lgbm_endpoints,
-                         _lgbm_port=lgbm_port, _tree_learner=tree_learner, _timeout=timeout,
-                         **kw)
+                         _eval_init_scores=eval_init_scores, _kwds=kwds, _workers=workers,
+                         _worker_id=worker_id, _worker_ports=worker_ports, _tree_learner=tree_learner,
+                         _timeout=timeout, **kw)
         if self.output_types is None:
             self.output_types = [OutputType.object]
 
@@ -114,12 +115,16 @@ class LGBMTrain(MergeDictOperand):
         return self._kwds or dict()
 
     @property
-    def lgbm_endpoints(self) -> list:
-        return self._lgbm_endpoints
+    def workers(self) -> list:
+        return self._workers
 
     @property
-    def lgbm_port(self) -> int:
-        return self._lgbm_port
+    def worker_id(self) -> int:
+        return self._worker_id
+
+    @property
+    def worker_ports(self):
+        return self._worker_ports
 
     @property
     def timeout(self) -> int:
@@ -141,6 +146,9 @@ class LGBMTrain(MergeDictOperand):
                 if c is not None:
                     new_list.append(next(it))
             setattr(self, attr, new_list or None)
+
+        if self._worker_ports is not None:
+            self._worker_ports = next(it)
 
     def __call__(self):
         inputs = []
@@ -169,16 +177,6 @@ class LGBMTrain(MergeDictOperand):
             worker_to_concat[worker] = concat_chunks(chunks)
         return worker_to_concat
 
-    @staticmethod
-    def _build_lgbm_endpoints(workers, base_port):
-        worker_to_endpoint = dict()
-        workers = set(workers)
-        base_port = base_port or random.randint(10000, 65535 - len(workers))
-        for idx, worker in enumerate(workers):
-            worker_host = worker.split(':', 1)[0]
-            worker_to_endpoint[worker] = f'{worker_host}:{base_port + idx}'
-        return worker_to_endpoint
-
     @classmethod
     def tile(cls, op: "LGBMTrain"):
         ctx = get_context()
@@ -195,8 +193,6 @@ class LGBMTrain(MergeDictOperand):
             worker_to_args = defaultdict(dict)
 
             workers = cls._get_data_chunks_workers(ctx, data)
-            worker_to_endpoint = cls._build_lgbm_endpoints(workers, op.lgbm_port)
-            worker_endpoints = list(worker_to_endpoint.values())
 
             for arg in ['_data', '_label', '_sample_weight', '_init_score']:
                 if getattr(op, arg) is not None:
@@ -221,12 +217,10 @@ class LGBMTrain(MergeDictOperand):
                                 worker_to_args[worker][arg].append(chunk)
 
             out_chunks = []
-            for worker in workers:
+            workers = list(set(workers))
+            for worker_id, worker in enumerate(workers):
                 chunk_op = op.copy().reset_key()
-
                 chunk_op._expect_worker = worker
-                chunk_op._lgbm_endpoints = worker_endpoints
-                chunk_op._lgbm_port = int(worker_to_endpoint[worker].rsplit(':', 1)[-1])
 
                 input_chunks = []
                 concat_args = worker_to_args.get(worker, {})
@@ -240,6 +234,13 @@ class LGBMTrain(MergeDictOperand):
                             input_chunks.extend(arg_chunk)
                         else:
                             input_chunks.append(arg_chunk)
+
+                worker_ports_chunk = collect_ports(workers, op.data)._inplace_tile().chunks[0]
+                input_chunks.append(worker_ports_chunk)
+
+                chunk_op._workers = workers
+                chunk_op._worker_ports = worker_ports_chunk
+                chunk_op._worker_id = worker_id
 
                 data_chunk = concat_args['_data']
                 out_chunk = chunk_op.new_chunk(input_chunks, shape=(np.nan,), index=data_chunk.index[:1])
@@ -284,10 +285,14 @@ class LGBMTrain(MergeDictOperand):
         # if model is trained, remove unsupported parameters
         params.pop('out_dtype_', None)
         if ctx.running_mode == RunningMode.distributed:
-            params['machines'] = ','.join(op.lgbm_endpoints)
+            worker_ports = ctx[op.worker_ports.key]
+            worker_ips = [worker.split(':', 1)[0] for worker in op.workers]
+            worker_endpoints = [f'{worker}:{port}' for worker, port in zip(worker_ips, worker_ports)]
+
+            params['machines'] = ','.join(worker_endpoints)
             params['time_out'] = op.timeout
-            params['num_machines'] = len(op.lgbm_endpoints)
-            params['local_listen_port'] = op.lgbm_port
+            params['num_machines'] = len(worker_endpoints)
+            params['local_listen_port'] = worker_ports[op.worker_id]
 
             if (op.tree_learner or '').lower() not in {'data', 'feature', 'voting'}:
                 logger.warning('Parameter tree_learner not set or set to incorrect value '
