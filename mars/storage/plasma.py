@@ -47,10 +47,6 @@ class PlasmaFileObject:
         else:  # pragma: no cover
             raise NotImplementedError
 
-    def __del__(self):
-        self._mv = None
-        self._buf = None
-
     @property
     def size(self):
         return self._size

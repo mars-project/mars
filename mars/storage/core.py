@@ -26,7 +26,7 @@ class StorageLevel(Enum):
     DISK = 1 << 2
     REMOTE = 1 << 3
 
-    def __or__(self, other: "StorageLevel"):
+    def __and__(self, other: "StorageLevel"):
         return self.value | other.value
 
 
@@ -47,20 +47,6 @@ class ObjectInfo:
     @property
     def object_id(self):
         return self._object_id
-
-
-class StorageInfo:
-    def __init__(self, total_size=None, used_size=None):
-        self._total_size = total_size
-        self._used_size = used_size
-
-    @property
-    def total_size(self):
-        return self._total_size
-
-    @property
-    def used_size(self):
-        return self._used_size
 
 
 class FileObject:
