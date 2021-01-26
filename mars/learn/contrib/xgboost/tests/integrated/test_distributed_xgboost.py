@@ -19,14 +19,27 @@ import numpy as np
 
 import mars.dataframe as md
 import mars.tensor as mt
+from mars.executor import register
 from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
 from mars.tests.integrated.base import IntegrationTestBase
+from mars.utils import calc_data_size
 
 try:
     import xgboost
+
+    from mars.learn.contrib.xgboost.start_tracker import StartTracker
 except ImportError:
     xgboost = None
+
+
+if xgboost and os.environ.get('TEST_START_TRACKER') == '1':
+    def _patch_start_tracker_estimator(ctx, op: StartTracker):
+        op.estimate_size(ctx, op)
+        estimated_size = ctx[op.outputs[0].key]
+        assert estimated_size[0] == estimated_size[1] == calc_data_size(op.outputs[0])
+
+    register(StartTracker, StartTracker.execute, _patch_start_tracker_estimator)
 
 
 @unittest.skipIf(xgboost is None, 'xgboost not installed')
@@ -39,6 +52,18 @@ class Test(IntegrationTestBase):
         self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
         super().setUp()
+
+    @property
+    def _extra_worker_options(self):
+        return ['--load-modules',
+                'mars.learn.contrib.xgboost.tests.'
+                'integrated.test_distributed_xgboost']
+
+    @property
+    def _worker_env(self):
+        env = os.environ.copy()
+        env['TEST_START_TRACKER'] = '1'
+        return env
 
     def testDistributedXGBClassifier(self):
         service_ep = 'http://127.0.0.1:' + self.web_port

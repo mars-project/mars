@@ -118,7 +118,9 @@ class XGBTrain(MergeDictOperand):
             inp = op.inputs[0]
             in_chunks = inp.chunks
             workers = cls._get_dmatrix_chunks_workers(ctx, inp)
-            tracker_chunk = StartTracker(n_workers=len(in_chunks)).new_chunk(in_chunks, shape=())
+            n_chunk = len(in_chunks)
+            tracker_chunk = StartTracker(n_workers=n_chunk, pure_depends=[True] * n_chunk)\
+                .new_chunk(in_chunks, shape=())
             out_chunks = []
             worker_to_evals = defaultdict(list)
             if op.evals is not None:

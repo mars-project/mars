@@ -63,6 +63,14 @@ class IntegrationTestBase(unittest.TestCase):
     def _extra_worker_options(self):
         return []
 
+    @property
+    def _scheduler_env(self):
+        return
+
+    @property
+    def _worker_env(self):
+        return
+
     def _start_distributed_env(self, n_workers=2):
         scheduler_port = self.scheduler_port = str(get_next_port())
         self.proc_workers = []
@@ -76,7 +84,8 @@ class IntegrationTestBase(unittest.TestCase):
                                             '--schedulers', '127.0.0.1:' + scheduler_port,
                                             '--log-level', 'debug',
                                             '--log-format', f'WOR{idx} %(asctime)-15s %(message)s',
-                                            '--ignore-avail-mem'] + self._extra_worker_options)
+                                            '--ignore-avail-mem'] + self._extra_worker_options,
+                                           env=self._worker_env)
 
             self.proc_workers.append(proc_worker)
 
@@ -88,7 +97,8 @@ class IntegrationTestBase(unittest.TestCase):
                                            '-Dscheduler.retry_delay=5',
                                            '--log-level', 'debug',
                                            '--log-format', 'SCH %(asctime)-15s %(message)s'] +
-                                          self._extra_scheduler_options)
+                                          self._extra_scheduler_options,
+                                          env=self._scheduler_env)
         self.proc_scheduler = proc_scheduler
 
         self.wait_scheduler_worker_start()
