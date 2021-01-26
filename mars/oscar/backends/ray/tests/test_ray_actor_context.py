@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import unittest
 import ray
 
@@ -128,12 +129,10 @@ class Test(unittest.TestCase):
 
     async def testLocalCreateActor(self):
         actor_ref = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-        # Fail on ray backend, the DummyActor.create will create an actor in actor process.
-        # mo.actor_ref can't get the actor in current process.
         # create actor inside on_receive
-        # r = await actor_ref.create(DummyActor, 5, address=RAY_TEST_ADDRESS)
-        # ref = mo.actor_ref(r)
-        # self.assertEqual(await ref.add(10), 15)
+        r = await actor_ref.create(DummyActor, 5, address=RAY_TEST_ADDRESS)
+        ref = mo.actor_ref(r)
+        self.assertEqual(await ref.add(10), 15)
         # create actor inside on_receive and send message
         r = await actor_ref.create_send(DummyActor, 5, method='add', method_args=(1,), address=RAY_TEST_ADDRESS)
         self.assertEqual(r, 6)
@@ -166,22 +165,20 @@ class Test(unittest.TestCase):
         with self.assertRaises(mo.ActorNotExist):
             await mo.actor_ref('fake_uid').add(1)
 
-    # Fail on ray backend, the DummyActor.create will create an actor in actor process.
-    # mo.actor_ref can't get the actor in current process.
-    # async def testLocalTell(self):
-    #     ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    #     ref2 = mo.actor_ref(await ref1.create(DummyActor, 2, address=RAY_TEST_ADDRESS))
-    #     self.assertIsNone(await ref1.tell(ref2, 'add', 3))
-    #     self.assertEqual(await ref2.get_value(), 5)
-    #
-    #     await ref1.tell_delay(ref2, 'add', 4, delay=.5)  # delay 0.5 secs
-    #     self.assertEqual(await ref2.get_value(), 5)
-    #     await asyncio.sleep(0.5)
-    #     self.assertEqual(await ref2.get_value(), 5)
-    #
-    #     # error needed when illegal uids are passed
-    #     with self.assertRaises(TypeError):
-    #         await ref1.tell(mo.actor_ref(set()), 'add', 3)
+    async def testLocalTell(self):
+        ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
+        ref2 = mo.actor_ref(await ref1.create(DummyActor, 2, address=RAY_TEST_ADDRESS))
+        self.assertIsNone(await ref1.tell(ref2, 'add', 3))
+        self.assertEqual(await ref2.get_value(), 5)
+
+        await ref1.tell_delay(ref2, 'add', 4, delay=.5)  # delay 0.5 secs
+        self.assertEqual(await ref2.get_value(), 5)
+        await asyncio.sleep(0.5)
+        self.assertEqual(await ref2.get_value(), 9)
+
+        # error needed when illegal uids are passed
+        with self.assertRaises(TypeError):
+            await ref1.tell(mo.actor_ref(set()), 'add', 3)
 
     async def testLocalDestroyHasActor(self):
         ref1 = await mo.create_actor(DummyActor, 1)
