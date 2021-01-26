@@ -71,6 +71,11 @@ class Test(TestBase):
 
                 self.assertIn('cannot run iloc', str(cm.exception))
 
+            with self._raise_iloc():
+                s = mdf.head(5).sum()
+                expected = df.head(5).sum()
+                pd.testing.assert_series_equal(s.execute().fetch(), expected)
+
             pd.testing.assert_frame_equal(
                 mdf.head(99).execute().fetch().reset_index(drop=True), df.head(99))
 
