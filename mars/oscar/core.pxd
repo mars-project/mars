@@ -25,7 +25,7 @@ cdef class ActorRef:
 cdef class _Actor:
     cdef object __weakref__
     cdef str _address
-    cdef public object _lock
+    cdef object _lock
     cdef object _uid
 
     cpdef ActorRef ref(self)

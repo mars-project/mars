@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import asyncio
-import cython
+cimport cython
 
 from .utils cimport is_async_generator
 from .utils import create_task
@@ -98,7 +98,7 @@ cdef class _Actor:
     """
     Base Mars actor class, user methods implemented as methods
     """
-    def __init__(self):
+    def __cinit__(self, *args, **kwargs):
         self._lock = asyncio.locks.Lock()
 
     @property
