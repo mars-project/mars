@@ -176,7 +176,6 @@ class MarsWorkerSpecConfig(MarsReplicaSpecConfig):
 
     def add_default_envs(self):
         super().add_default_envs()
-        self.add_env('MARS_CACHE_MEM_SIZE', self._cache_mem)
         if self._spill_dirs:
             self.add_env('MARS_SPILL_DIRS', ':'.join(self._spill_dirs))
 
