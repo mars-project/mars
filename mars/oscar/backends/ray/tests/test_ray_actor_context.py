@@ -108,7 +108,7 @@ class Test(unittest.TestCase):
     def tearDown(self) -> None:
         ray.shutdown()
 
-    async def testSimpleLocalActorPool(self):
+    async def testSimpleRayActorPool(self):
         actor_ref = await mo.create_actor(DummyActor, 100, address=RAY_TEST_ADDRESS)
         self.assertEqual(await actor_ref.add(1), 101)
         await actor_ref.add(1)
@@ -123,11 +123,11 @@ class Test(unittest.TestCase):
         self.assertEqual(await mo.actor_ref(
                 uid=actor_ref.uid, address=actor_ref.address).add(2), 104)
 
-    async def testLocalPostCreatePreDestroy(self):
+    async def testRayPostCreatePreDestroy(self):
         actor_ref = await mo.create_actor(EventActor, address=RAY_TEST_ADDRESS)
         await actor_ref.destroy()
 
-    async def testLocalCreateActor(self):
+    async def testRayCreateActor(self):
         actor_ref = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         # create actor inside on_receive
         r = await actor_ref.create(DummyActor, 5, address=RAY_TEST_ADDRESS)
@@ -137,7 +137,7 @@ class Test(unittest.TestCase):
         r = await actor_ref.create_send(DummyActor, 5, method='add', method_args=(1,), address=RAY_TEST_ADDRESS)
         self.assertEqual(r, 6)
 
-    async def testLocalCreateActorError(self):
+    async def testRayCreateActorError(self):
         ref1 = await mo.create_actor(DummyActor, 1, uid='dummy1', address=RAY_TEST_ADDRESS)
         with self.assertRaises(mo.ActorAlreadyExist):
             await mo.create_actor(DummyActor, 1, uid='dummy1', address=RAY_TEST_ADDRESS)
@@ -150,12 +150,12 @@ class Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             await ref1.create(DummyActor, -2)
 
-    async def testLocalSend(self):
+    async def testRaySend(self):
         ref1 = await mo.create_actor(DummyActor, 1)
         ref2 = mo.actor_ref(await ref1.create(DummyActor, 2))
         self.assertEqual(await ref1.send(ref2, 'add', 3), 5)
 
-    async def testLocalSendError(self):
+    async def testRaySendError(self):
         ref1 = await mo.create_actor(DummyActor, 1)
         with self.assertRaises(TypeError):
             await ref1.add(1.0)
@@ -165,7 +165,7 @@ class Test(unittest.TestCase):
         with self.assertRaises(mo.ActorNotExist):
             await mo.actor_ref('fake_uid').add(1)
 
-    async def testLocalTell(self):
+    async def testRayTell(self):
         ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         ref2 = mo.actor_ref(await ref1.create(DummyActor, 2, address=RAY_TEST_ADDRESS))
         self.assertIsNone(await ref1.tell(ref2, 'add', 3))
@@ -180,7 +180,7 @@ class Test(unittest.TestCase):
         with self.assertRaises(TypeError):
             await ref1.tell(mo.actor_ref(set()), 'add', 3)
 
-    async def testLocalDestroyHasActor(self):
+    async def testRayDestroyHasActor(self):
         ref1 = await mo.create_actor(DummyActor, 1)
         self.assertTrue(await mo.has_actor(ref1))
 
