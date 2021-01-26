@@ -253,7 +253,8 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
                     map_chunk = map_chunk_op.new_chunk([in_chunk], **params)
                     map_chunks.append(map_chunk)
 
-                proxy_chunk = LearnShuffleProxy(_tensor_keys=[inp.key]).new_chunk(map_chunks)
+                proxy_chunk = LearnShuffleProxy(
+                    _tensor_keys=[inp.key], output_types=[output_type]).new_chunk(map_chunks)
 
                 reduce_axes = tuple(ax for j, ax in enumerate(inp_axes) if reduce_sizes[j] > 1)
                 reduce_sizes_ = tuple(rs for rs in reduce_sizes if rs > 1)
