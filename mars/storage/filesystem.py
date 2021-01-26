@@ -37,11 +37,11 @@ class FileSystemStorage(StorageBackend):
         selected_dir = self._root_dirs[selected_index]
         return os.path.join(selected_dir, file_name)
 
-    def get(self, object_id, **kwarg):
+    async def get(self, object_id, **kwarg):
         bytes_object = self._fs.open(object_id, 'rb').read()
         return dataserializer.loads(bytes_object)
 
-    def put(self, obj, importance=0):
+    async def put(self, obj, importance=0):
         path = self._generate_path()
         bytes_object = dataserializer.dumps(obj)
         with self._fs.open(path, 'wb') as f:
@@ -49,16 +49,16 @@ class FileSystemStorage(StorageBackend):
             size = f.tell()
         return ObjectInfo(size=size, device='disk', object_id=path)
 
-    def delete(self, object_id):
+    async def delete(self, object_id):
         os.remove(object_id)
 
-    def info(self, object_id):
+    async def object_info(self, object_id):
         size = self._fs.stat(object_id)['size']
         return ObjectInfo(size=size, device='disk', object_id=object_id)
 
-    def create_writer(self, size=None):
+    async def create_writer(self, size=None):
         path = self._generate_path()
         return FileObject(self._fs.open(path, 'wb'))
 
-    def open_reader(self, object_id):
+    async def open_reader(self, object_id):
         return FileObject(self._fs.open(object_id, 'rb'))

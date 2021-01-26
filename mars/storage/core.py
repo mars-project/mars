@@ -49,6 +49,20 @@ class ObjectInfo:
         return self._object_id
 
 
+class StorageInfo:
+    def __init__(self, total_size=None, used_size=None):
+        self._total_size = total_size
+        self._used_size = used_size
+
+    @property
+    def total_size(self):
+        return self._total_size
+
+    @property
+    def used_size(self):
+        return self._used_size
+
+
 class FileObject:
     def __init__(self, file_obj, object_id=None):
         self._file_obj = file_obj
@@ -61,28 +75,45 @@ class FileObject:
     def __getattr__(self, item):
         return getattr(self._file_obj, item)
 
-    def __enter__(self):
+    async def __aenter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         return self._file_obj.__exit__(exc_type, exc_val, exc_tb)
 
 
 class StorageBackend(ABC):
     @classmethod
-    def setup(cls, **kwargs) -> Union[Dict, None]:
+    async def setup(cls, **kwargs) -> Union[Dict, None]:
         """
         Setup environments, for example, start plasma store for plasma backend.
-        :return: parameters for initialization.
+
+        Parameters
+        ----------
+        kwargs : kwargs
+            Kwargs for setup.
+
+        Returns
+        -------
+        Dict
+            Parameters for initialization.
         """
-        pass
+        return dict()
 
     @classmethod
-    def teardown(cls, **kwargs) -> None:
+    async def teardown(cls, **kwargs) -> None:
         """
         Clean up the environments.
-        :param kwargs: parameters for clean up.
-        :return: None
+
+        Parameters
+        ----------
+        kwargs : kwargs
+             Parameters for clean up.
+
+        Returns
+        -------
+        None
+
         """
         pass
 
@@ -91,83 +122,165 @@ class StorageBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get(self, object_id, **kwarg) -> object:
+    async def get(self, object_id, **kwargs) -> object:
         """
-        Get object by key. For some backends,
-        `columns` or `slice` can pass to get part of data.
-        :param object_id: object id
-        :return: Object
+        Get object by key. For some backends, `columns` or `slice` can pass to get part of data.
+
+        Parameters
+        ----------
+        object_id : object id
+            Object id to get.
+
+        kwargs:
+            Additional keyword arguments
+
+        Returns
+        -------
+        Python object
+
         """
         pass
 
     @abstractmethod
-    def put(self, obj, importance=0) -> ObjectInfo:
+    async def put(self, obj, importance=0) -> ObjectInfo:
         """
         Put object into storage with object_id.
-        :param obj: object to put
-        :param importance: the priority to spill when storage is full
-        :return: object information including size, raw_size, device
+
+        Parameters
+        ----------
+        obj : python object
+            Object to put.
+
+        importance: int
+             The priority to spill when storage is full
+
+        Returns
+        -------
+        ObjectInfo
+            object information including size, raw_size, device
+
         """
         pass
 
     @abstractmethod
-    def delete(self, object_id):
+    async def delete(self, object_id):
         """
         Delete object from storage by object_id.
-        :param object_id: object id
-        :return: None
-        """
-        pass
 
-    def migrate(self, object_id, destination, device=None):
-        """
-        Migrating object from local to other worker.
-        :param object_id: object id.
-        :param destination: target worker.
-        :param device: device for store.
-        :return: None
+        Parameters
+        ----------
+        object_id
+            object id
+
+        Returns
+        -------
+        None
+
         """
         pass
 
     @abstractmethod
-    def info(self, object_id) -> ObjectInfo:
+    async def object_info(self, object_id) -> ObjectInfo:
         """
         Get information about stored object.
-        :param object_id: object id
-        :return: object info including size and device
+
+        Parameters
+        ----------
+        object_id
+            object id
+
+        Returns
+        -------
+        ObjectInfo
+            Object info including size, device and etc.
+
         """
         pass
 
     @abstractmethod
-    def create_writer(self, size=None) -> FileObject:
+    async def create_writer(self, size=None) -> FileObject:
         """
         Return a file-like object for writing.
-        :param size: maximum size in bytes
-        :return: file-like object
+
+        Parameters
+        ----------
+        size: int
+            Maximum size in bytes
+
+        Returns
+        -------
+        file-like object
+
         """
         pass
 
     @abstractmethod
-    def open_reader(self, object_id) -> FileObject:
+    async def open_reader(self, object_id) -> FileObject:
         """
         Return a file-like object for reading.
-        :param object_id: object id
-        :return: file-like object
+
+        Parameters
+        ----------
+        object_id
+            Object id
+
+        Returns
+        -------
+            file-like object
+
         """
         pass
 
-    def pin(self, object_id):
+    async def migrate(self, object_id, destination, device=None):
+        """
+        Migrating object from local to other worker.
+
+        Parameters
+        ----------
+        object_id
+            Object id.
+
+        destination : str
+            Target worker.
+
+        device : str
+            Device for store.
+
+        Returns
+        -------
+        None
+
+        """
+        pass
+
+    async def pin(self, object_id):
         """
         Pin the data.
-        :param object_id: object id
-        :return: None
+
+        Parameters
+        ----------
+        object_id
+            object id
+
+        Returns
+        -------
+        None
+
         """
         pass
 
-    def unpin(self, object_id):
+    async def unpin(self, object_id):
         """
         Unpin the data.
-        :param object_id: object id
-        :return: None
+
+        Parameters
+        ----------
+        object_id
+            object id
+
+        Returns
+        -------
+        None
+
         """
         pass

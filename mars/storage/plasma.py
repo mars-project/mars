@@ -118,7 +118,7 @@ class PlasmaStorage(StorageBackend):
         self._actual_capacity = get_actual_capacity(self._client)
 
     @classmethod
-    def setup(cls, store_memory=None, plasma_directory=None):
+    async def setup(cls, store_memory=None, plasma_directory=None):
 
         plasma_store = plasma.start_plasma_store(store_memory,
                                                  plasma_directory=plasma_directory)
@@ -127,14 +127,14 @@ class PlasmaStorage(StorageBackend):
                     plasma_store=plasma_store)
 
     @classmethod
-    def teardown(cls, plasma_store=None):
+    async def teardown(cls, plasma_store=None):
         plasma_store.__exit__(None, None, None)
 
     @property
     def level(self):
         return StorageLevel.MEMORY
 
-    def _check_plasma_limit(self, size):
+    async def _check_plasma_limit(self, size):
         used_size = psutil.disk_usage(self._plasma_directory).used
         totol = psutil.disk_usage(self._plasma_directory).total
         if used_size + size > totol * 0.95:  # pragma: no cover
@@ -146,13 +146,13 @@ class PlasmaStorage(StorageBackend):
             if not self._client.contains(new_id):
                 return new_id
 
-    def get(self, object_id, **kwarg):
+    async def get(self, object_id, **kwarg):
         return self._client.get(object_id)
 
-    def put(self, obj, importance=0):
+    async def put(self, obj, importance=0):
         new_id = self._generate_object_id()
         serialized = dataserializer.serialize(obj)
-        self._check_plasma_limit(serialized.total_bytes)
+        await self._check_plasma_limit(serialized.total_bytes)
         buffer = self._client.create(new_id, serialized.total_bytes)
         stream = pa.FixedSizeBufferWriter(buffer)
         stream.set_memcopy_threads(6)
@@ -161,18 +161,18 @@ class PlasmaStorage(StorageBackend):
         return ObjectInfo(size=serialized.total_bytes,
                           device='memory', object_id=new_id)
 
-    def delete(self, object_id):
+    async def delete(self, object_id):
         self._client.delete([object_id])
 
-    def info(self, object_id):
+    async def object_info(self, object_id):
         [buf] = self._client.get_buffers([object_id])
         return ObjectInfo(size=buf.size, device='memory', object_id=object_id)
 
-    def create_writer(self, size=None):
+    async def create_writer(self, size=None):
         new_id = self._generate_object_id()
         plasma_writer = PlasmaFileObject(self._client, new_id, size=size, mode='w')
         return FileObject(plasma_writer, object_id=new_id)
 
-    def open_reader(self, object_id):
+    async def open_reader(self, object_id):
         plasma_reader = PlasmaFileObject(self._client, object_id, mode='r')
         return FileObject(plasma_reader, object_id=object_id)

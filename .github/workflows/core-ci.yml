@@ -70,7 +70,7 @@ jobs:
             pip install tsfresh
           fi
           virtualenv testenv && source testenv/bin/activate
-          pip install -r requirements.txt && pip install pytest pytest-timeout
+          pip install -r requirements.txt && pip install pytest pytest-timeout pytest-asyncio
           if [ -z "$DEFAULT_VENV" ]; then
             deactivate
           else
