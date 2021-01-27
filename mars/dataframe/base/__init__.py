@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+
 from .map import series_map, index_map
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
@@ -31,7 +33,8 @@ from .drop_duplicates import df_drop_duplicates, \
     series_drop_duplicates, index_drop_duplicates
 from .duplicated import df_duplicated, series_duplicated
 from .melt import melt
-from .memory_usage import df_memory_usage, series_memory_usage, index_memory_usage
+from .memory_usage import df_memory_usage, series_memory_usage, \
+    index_memory_usage
 from .select_dtypes import select_dtypes
 from .map_chunk import map_chunk
 from .cartesian_chunk import cartesian_chunk
@@ -39,6 +42,8 @@ from .rebalance import rebalance
 from .stack import stack
 from .explode import df_explode, series_explode
 from .eval import df_eval, df_query
+from .check_monotonic import check_monotonic, is_monotonic, \
+    is_monotonic_increasing, is_monotonic_decreasing
 
 
 def _install():
@@ -98,6 +103,10 @@ def _install():
         setattr(t, 'cartesian_chunk', cartesian_chunk)
         setattr(t, 'rebalance', rebalance)
         setattr(t, 'explode', series_explode)
+        setattr(t, 'check_monotonic', check_monotonic)
+        setattr(t, 'is_monotonic', property(fget=is_monotonic))
+        setattr(t, 'is_monotonic_increasing', property(fget=is_monotonic_increasing))
+        setattr(t, 'is_monotonic_decreasing', property(fget=is_monotonic_decreasing))
 
     for t in INDEX_TYPE:
         setattr(t, 'map', index_map)
@@ -108,6 +117,10 @@ def _install():
         setattr(t, 'memory_usage', index_memory_usage)
         setattr(t, 'astype', index_astype)
         setattr(t, 'value_counts', value_counts)
+        setattr(t, 'check_monotonic', check_monotonic)
+        setattr(t, 'is_monotonic', property(fget=is_monotonic))
+        setattr(t, 'is_monotonic_increasing', property(fget=is_monotonic_increasing))
+        setattr(t, 'is_monotonic_decreasing', property(fget=is_monotonic_decreasing))
 
     for method in _string_method_to_handlers:
         if not hasattr(StringAccessor, method):

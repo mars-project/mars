@@ -32,6 +32,9 @@ from mars.deploy.kubernetes import new_cluster
 from mars.deploy.kubernetes.config import HostPathVolumeConfig
 from mars.tests.core import mock
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 try:
     from kubernetes import config as k8s_config, client as k8s_client
 except ImportError:
