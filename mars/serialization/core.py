@@ -19,11 +19,11 @@ from ..utils import TypeDispatcher
 
 if sys.version_info[:2] < (3, 8):
     try:
-        import pickle5 as pickle
+        import pickle5 as pickle  # nosec  # pylint: disable=import_pickle
     except ImportError:
-        import pickle
+        import pickle  # nosec  # pylint: disable=import_pickle
 else:
-    import pickle
+    import pickle  # nosec  # pylint: disable=import_pickle
 
 HAS_PICKLE_BUFFER = pickle.HIGHEST_PROTOCOL >= 5
 BUFFER_PICKLE_PROTOCOL = max(pickle.DEFAULT_PROTOCOL, 5)

@@ -19,7 +19,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from mars.lib.groupby_wrapper import GroupByWrapper, wrapped_groupby
+from mars.lib.groupby_wrapper import wrapped_groupby
 from mars.tests.core import assert_groupby_equal
 from mars.utils import calc_data_size
 
