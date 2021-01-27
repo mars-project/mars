@@ -396,6 +396,21 @@ class Test(unittest.TestCase):
 
         self.assertIsNone(should_not_exist_np)
 
+    def testTypeDispatcher(self):
+        dispatcher = utils.TypeDispatcher()
+
+        type1 = type('Type1', (), {})
+        type2 = type('Type2', (type1,), {})
+        type3 = type('Type3', (), {})
+
+        dispatcher.register(object, lambda x: 'Object')
+        dispatcher.register(type1, lambda x: 'Type1')
+        dispatcher.register('pandas.DataFrame', lambda x: 'DataFrame')
+
+        self.assertEqual('Type1', dispatcher(type2()))
+        self.assertEqual('DataFrame', dispatcher(pd.DataFrame()))
+        self.assertEqual('Object', dispatcher(type3()))
+
     def testFixedSizeFileObject(self):
         arr = [str(i).encode() * 20 for i in range(10)]
         bts = os.linesep.encode().join(arr)
