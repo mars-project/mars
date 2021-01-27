@@ -39,8 +39,8 @@ import numpy as np
 import pandas as pd
 import cloudpickle
 
-from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, \
-    register_tokenizer, insert_reversed_tuple, ceildiv
+from ._utils import to_binary, to_str, to_text, TypeDispatcher, \
+    tokenize, tokenize_int, register_tokenizer, insert_reversed_tuple, ceildiv
 from .config import options
 from .lib.tblib import Traceback
 
@@ -50,6 +50,7 @@ random.seed(int(time.time()) * os.getpid())
 OBJECT_FIELD_OVERHEAD = 50
 
 # make flake8 happy by referencing these imports
+TypeDispatcher = TypeDispatcher
 tokenize = tokenize
 register_tokenizer = register_tokenizer
 insert_reversed_tuple = insert_reversed_tuple

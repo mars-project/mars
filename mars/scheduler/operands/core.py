@@ -18,7 +18,7 @@ from enum import Enum
 
 from ...actors import ActorNotExist
 from ...errors import WorkerDead
-from ...utils import classproperty
+from ...utils import classproperty, TypeDispatcher
 
 logger = logging.getLogger(__name__)
 
@@ -72,21 +72,6 @@ def rewrite_worker_errors(ignore_error=False):
         raise WorkerDead
 
 
-_op_cls_to_actor = dict()
-
-
-def get_operand_actor_class(op_cls):
-    try:
-        return _op_cls_to_actor[op_cls]
-    except KeyError:
-        for super_cls in op_cls.__mro__:
-            try:
-                actor_cls = _op_cls_to_actor[op_cls] = _op_cls_to_actor[super_cls]
-                return actor_cls
-            except KeyError:
-                continue
-        raise KeyError(f'Operand type {op_cls} not supported')  # pragma: no cover
-
-
-def register_operand_class(op_cls, actor_cls):
-    _op_cls_to_actor[op_cls] = actor_cls
+op_dispatcher = TypeDispatcher()
+register_operand_class = op_dispatcher.register
+get_operand_actor_class = op_dispatcher.get_handler

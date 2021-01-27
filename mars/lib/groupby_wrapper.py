@@ -87,6 +87,9 @@ class GroupByWrapper:
         return sys.getsizeof(self.obj) \
             + sys.getsizeof(getattr(self.groupby_obj.grouper, '_cache', None))
 
+    def __reduce__(self):
+        return type(self).from_tuple, (self.to_tuple(pickle_function=True, truncate=True),)
+
     @property
     def empty(self):
         return self.obj.empty
