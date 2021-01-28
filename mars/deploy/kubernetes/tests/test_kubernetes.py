@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import glob
+import logging
 import os
 import shutil
 import subprocess
@@ -46,7 +47,12 @@ TEST_ROOT = os.path.dirname(os.path.abspath(__file__))
     or k8s_config is None,
     reason='Cannot run without kubernetes')
 class Test(unittest.TestCase):
+    def setUp(self):
+        logging.basicConfig(level=logging.INFO)
+
     def tearDown(self):
+        logging.basicConfig(level=logging.WARNING)
+
         dist_coverage_path = os.path.join(MARS_ROOT, '.dist-coverage')
         if os.path.exists(dist_coverage_path):
             # change ownership of coverage files

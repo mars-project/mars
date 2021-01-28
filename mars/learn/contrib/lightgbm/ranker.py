@@ -13,12 +13,13 @@
 # limitations under the License.
 
 from ...utils import check_consistent_length
+from ..utils import make_import_error_func
 from .core import lightgbm, LGBMScikitLearnBase, LGBMModelType
 from ._train import train
 from ._predict import predict_base
 
 
-LGBMRanker = None
+LGBMRanker = make_import_error_func('lightgbm')
 if lightgbm:
     class LGBMRanker(LGBMScikitLearnBase, lightgbm.LGBMRanker):
         def fit(self, X, y, sample_weight=None, init_score=None, group=None, eval_set=None,

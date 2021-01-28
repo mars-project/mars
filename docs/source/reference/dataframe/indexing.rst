@@ -17,6 +17,9 @@ Properties
 
    Index.dtype
    Index.inferred_type
+   Index.is_monotonic
+   Index.is_monotonic_decreasing
+   Index.is_monotonic_increasing
    Index.name
    Index.names
    Index.ndim
