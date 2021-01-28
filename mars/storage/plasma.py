@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import psutil
+from typing import Union, Dict, List
 
 import pyarrow as pa
 from pyarrow import plasma
@@ -108,22 +109,30 @@ def get_actual_capacity(plasma_client):
 
 
 class PlasmaStorage(StorageBackend):
-    def __init__(self, plasma_socket, plasma_directory):
+    def __init__(self, plasma_socket=None, plasma_directory=None, capacity=None, plasma_store=None):
         self._client = plasma.connect(plasma_socket)
         self._plasma_directory = plasma_directory
-        self._actual_capacity = get_actual_capacity(self._client)
+        self._capacity = capacity
+        self._plasma_store = plasma_store
 
     @classmethod
-    async def setup(cls, store_memory=None, plasma_directory=None):
+    async def setup(cls, **kwargs) -> Union[Dict, None]:
+        store_memory = kwargs.get('store_memory')
+        plasma_directory = kwargs.get('plasma_directory')
 
         plasma_store = plasma.start_plasma_store(store_memory,
                                                  plasma_directory=plasma_directory)
-        return dict(plasma_socket=plasma_store.__enter__()[0],
-                    plasma_directory=plasma_directory,
-                    plasma_store=plasma_store)
+        params = dict(plasma_socket=plasma_store.__enter__()[0],
+                      plasma_directory=plasma_directory,
+                      plasma_store=plasma_store)
+        client = plasma.connect(params['plasma_socket'])
+        actual_capacity = get_actual_capacity(client)
+        params['capacity'] = actual_capacity
+        return params
 
-    @classmethod
-    async def teardown(cls, plasma_store=None):
+    @staticmethod
+    async def teardown(**kwargs) -> None:
+        plasma_store = kwargs.get('plasma_store')
         plasma_store.__exit__(None, None, None)
 
     @property
@@ -142,10 +151,10 @@ class PlasmaStorage(StorageBackend):
             if not self._client.contains(new_id):
                 return new_id
 
-    async def get(self, object_id, **kwarg):
+    async def get(self, object_id, **kwargs) -> object:
         return self._client.get(object_id)
 
-    async def put(self, obj, importance=0):
+    async def put(self, obj, importance=0) -> ObjectInfo:
         new_id = self._generate_object_id()
         serialized = dataserializer.serialize(obj)
         await self._check_plasma_limit(serialized.total_bytes)
@@ -160,15 +169,18 @@ class PlasmaStorage(StorageBackend):
     async def delete(self, object_id):
         self._client.delete([object_id])
 
-    async def object_info(self, object_id):
+    async def object_info(self, object_id) -> ObjectInfo:
         [buf] = self._client.get_buffers([object_id])
         return ObjectInfo(size=buf.size, device='memory', object_id=object_id)
 
-    async def create_writer(self, size=None):
+    async def create_writer(self, size=None) -> FileObject:
         new_id = self._generate_object_id()
         plasma_writer = PlasmaFileObject(self._client, new_id, size=size, mode='w')
         return FileObject(plasma_writer, object_id=new_id)
 
-    async def open_reader(self, object_id):
+    async def open_reader(self, object_id) -> FileObject:
         plasma_reader = PlasmaFileObject(self._client, object_id, mode='r')
         return FileObject(plasma_reader, object_id=object_id)
+
+    async def list(self) -> List:
+        return list(self._client.list())

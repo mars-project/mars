@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Union, Dict
+from typing import Union, Dict, List
 
 from enum import Enum
 
@@ -86,8 +86,8 @@ class StorageBackend(ABC):
         """
         return dict()
 
-    @classmethod
-    async def teardown(cls, **kwargs) -> None:
+    @staticmethod
+    async def teardown(**kwargs) -> None:
         """
         Clean up the environments.
 
@@ -104,6 +104,7 @@ class StorageBackend(ABC):
         pass
 
     @property
+    @abstractmethod
     def level(self):
         raise NotImplementedError
 
@@ -217,20 +218,26 @@ class StorageBackend(ABC):
         """
         pass
 
-    async def migrate(self, object_id, destination, device=None):
+    @abstractmethod
+    async def list(self) -> List:
         """
-        Migrating object from local to other worker.
+        List all stored objects in storage.
+
+        Returns
+        -------
+        List of objects
+
+        """
+        pass
+
+    async def prefetch(self, object_id):
+        """
+        Fetch object to current worker.
 
         Parameters
         ----------
         object_id
             Object id.
-
-        destination : str
-            Target worker.
-
-        device : str
-            Device for store.
 
         Returns
         -------
@@ -241,7 +248,7 @@ class StorageBackend(ABC):
 
     async def pin(self, object_id):
         """
-        Pin the data.
+        Pin the data to prevent the data being released or spilled.
 
         Parameters
         ----------
@@ -257,7 +264,7 @@ class StorageBackend(ABC):
 
     async def unpin(self, object_id):
         """
-        Unpin the data.
+        Unpin the data, allow storage to release the data.
 
         Parameters
         ----------

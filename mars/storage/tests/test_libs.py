@@ -32,26 +32,27 @@ from mars.storage.plasma import PlasmaStorage
 @pytest.mark.asyncio
 async def storage_context(request):
     if request.param == 'filesystem':
-        with tempfile.TemporaryDirectory() as tempdir:
-            fs = LocalFileSystem()
-            storage = FileSystemStorage(fs, [tempdir])
-            assert storage.level == StorageLevel.DISK
-
-            yield storage
+        tempdir = tempfile.mkdtemp()
+        params = await FileSystemStorage.setup(fs=LocalFileSystem(),
+                                               root_dirs=[tempdir],
+                                               level=StorageLevel.DISK)
+        storage = FileSystemStorage(**params)
+        assert storage.level == StorageLevel.DISK
+        yield storage
+        await storage.teardown(**params)
     elif request.param == 'plasma':
         plasma_storage_size = 10 * 1024 * 1024
         if sys.platform == 'darwin':
             plasma_dir = '/tmp'
         else:
             plasma_dir = '/dev/shm'
-        params = await PlasmaStorage.setup(plasma_storage_size, plasma_dir)
-        init_params = dict(plasma_socket=params['plasma_socket'],
-                           plasma_directory=params['plasma_directory'])
-        storage = PlasmaStorage(**init_params)
+        params = await PlasmaStorage.setup(store_memory=plasma_storage_size,
+                                           plasma_directory=plasma_dir)
+        storage = PlasmaStorage(**params)
         assert storage.level == StorageLevel.MEMORY
 
         yield storage
-        await PlasmaStorage.teardown(params['plasma_store'])
+        await PlasmaStorage.teardown(**params)
 
 
 @pytest.mark.asyncio
@@ -76,6 +77,8 @@ async def test_base_operations(storage_context):
     info2 = await storage.object_info(put_info2.object_id)
     assert info2.size == put_info2.size
 
+    num = len(await storage.list())
+    assert num == 2
     await storage.delete(info2.object_id)
 
     # test writer and reader

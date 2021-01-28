@@ -15,21 +15,40 @@
 # limitations under the License.
 
 import os
+from typing import Union, Dict, List
 import uuid
 
 from ..serialize import dataserializer
 from ..utils import mod_hash
-from .core import StorageBackend, FileObject, ObjectInfo, StorageLevel
+from .core import StorageBackend, FileObject, ObjectInfo
 
 
 class FileSystemStorage(StorageBackend):
-    def __init__(self, fs, root_dirs):
+    def __init__(self, fs=None, root_dirs=None, level=None):
         self._fs = fs
         self._root_dirs = root_dirs
+        self._level = level
+
+    @classmethod
+    async def setup(cls, **kwargs) -> Union[Dict, None]:
+        fs = kwargs.get('fs')
+        root_dirs = kwargs.get('root_dirs')
+        level = kwargs.get('level')
+        for d in root_dirs:
+            if not fs.exists(d):
+                fs.mkdir(d)
+        return dict(fs=fs, root_dirs=root_dirs, level=level)
+
+    @staticmethod
+    async def teardown(**kwargs) -> None:
+        fs = kwargs.get('fs')
+        root_dirs = kwargs.get('root_dirs')
+        for d in root_dirs:
+            fs.delete(d, recursive=True)
 
     @property
     def level(self):
-        return StorageLevel.DISK
+        return self._level
 
     def _generate_path(self):
         file_name = str(uuid.uuid4())
@@ -37,11 +56,11 @@ class FileSystemStorage(StorageBackend):
         selected_dir = self._root_dirs[selected_index]
         return os.path.join(selected_dir, file_name)
 
-    async def get(self, object_id, **kwarg):
+    async def get(self, object_id, **kwargs) -> object:
         bytes_object = self._fs.open(object_id, 'rb').read()
         return dataserializer.loads(bytes_object)
 
-    async def put(self, obj, importance=0):
+    async def put(self, obj, importance=0) -> ObjectInfo:
         path = self._generate_path()
         bytes_object = dataserializer.dumps(obj)
         with self._fs.open(path, 'wb') as f:
@@ -52,13 +71,19 @@ class FileSystemStorage(StorageBackend):
     async def delete(self, object_id):
         os.remove(object_id)
 
-    async def object_info(self, object_id):
+    async def list(self) -> List:
+        file_list = []
+        for d in self._root_dirs:
+            file_list.extend(list(self._fs.ls(d)))
+        return file_list
+
+    async def object_info(self, object_id) -> ObjectInfo:
         size = self._fs.stat(object_id)['size']
         return ObjectInfo(size=size, device='disk', object_id=object_id)
 
-    async def create_writer(self, size=None):
+    async def create_writer(self, size=None) -> FileObject:
         path = self._generate_path()
         return FileObject(self._fs.open(path, 'wb'))
 
-    async def open_reader(self, object_id):
+    async def open_reader(self, object_id) -> FileObject:
         return FileObject(self._fs.open(object_id, 'rb'))
