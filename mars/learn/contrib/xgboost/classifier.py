@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ..utils import make_import_error_func
 from .core import xgboost, XGBScikitLearnBase
 
 
-XGBClassifier = None
+XGBClassifier = make_import_error_func('xgboost')
 if xgboost:
     from xgboost.sklearn import XGBClassifierBase
 

@@ -48,6 +48,7 @@ message OperandDef {
         INDEX_DATA_SOURCE = 33;
         DATE_RANGE = 34;
         TIMEDELTA_RANGE = 35;
+        CHECK_MONOTONIC = 38;
         // misc
         MEMORY_USAGE = 36;
         REBALANCE = 37;
