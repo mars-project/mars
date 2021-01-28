@@ -94,3 +94,28 @@ class Test(TestBase):
         r = index.to_series(name='new_name')
         result = self.executor.execute_dataframe(r, concat=True)[0]
         pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
+
+    def testKeyValue(self):
+        raw = pd.DataFrame(np.random.rand(4, 3), columns=list('ABC'))
+        df = DataFrame(raw)
+
+        result = self.executor.execute_dataframe(df.values, concat=True)[0]
+        np.testing.assert_array_equal(result, raw.values)
+
+        result = self.executor.execute_dataframe(df.keys(), concat=True)[0]
+        pd.testing.assert_index_equal(result, raw.keys())
+
+        raw = pd.Series(np.random.rand(10))
+        s = Series(raw)
+
+        result = self.executor.execute_dataframe(s.values, concat=True)[0]
+        np.testing.assert_array_equal(result, raw.values)
+
+        result = self.executor.execute_dataframe(s.keys(), concat=True)[0]
+        pd.testing.assert_index_equal(result, raw.keys())
+
+        raw = pd.Index(np.random.rand(10))
+        idx = Index(raw)
+
+        result = self.executor.execute_dataframe(idx.values, concat=True)[0]
+        np.testing.assert_array_equal(result, raw.values)

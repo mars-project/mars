@@ -399,7 +399,7 @@ def type_of_target(y):
     """
     valid_types = (Sequence, spmatrix) if spmatrix is not None else (Sequence,)
     valid = ((isinstance(y, valid_types) or
-              hasattr(y, '__array__')) or hasattr(y, '__mars_tensor__')
+              hasattr(y, '__array__') or hasattr(y, '__mars_tensor__'))
              and not isinstance(y, str))
 
     if not valid:

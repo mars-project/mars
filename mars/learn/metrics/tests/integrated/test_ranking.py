@@ -69,7 +69,7 @@ class Test(IntegrationTestBase):
 
             df = md.DataFrame(raw)
             y = df['a'].to_tensor().astype('int')
-            pred = df['b'].to_tensor().astype('int')
+            pred = df['b'].astype('int')
 
             score = accuracy_score(y, pred, session=sess, run_kwargs=run_kwargs)
             expect = sklearn_accuracy_score(raw['a'].to_numpy().astype('int'),
