@@ -90,7 +90,7 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
         ctx = get_context()
         try:
             type_true = ctx.get_chunk_results([op.type_true.chunks[0].key])[0]
-        except KeyError:
+        except (KeyError, AttributeError):
             raise TilesError('type_true needed to be executed first')
 
         y_true, y_pred = op.y_true, op.y_pred

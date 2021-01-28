@@ -398,7 +398,8 @@ def type_of_target(y):
     'multilabel-indicator'
     """
     valid_types = (Sequence, spmatrix) if spmatrix is not None else (Sequence,)
-    valid = ((isinstance(y, valid_types) or hasattr(y, '__array__'))
+    valid = ((isinstance(y, valid_types) or
+              hasattr(y, '__array__') or hasattr(y, '__mars_tensor__'))
              and not isinstance(y, str))
 
     if not valid:
