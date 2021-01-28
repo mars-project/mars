@@ -59,36 +59,6 @@ def _download_protoc_executable():
         return executable
 
 
-class OperandAnalyzer(ast.NodeVisitor):
-    def __init__(self):
-        self.operand_codes = []
-
-    @staticmethod
-    def _collect_call_kwargs(call_node):
-        return dict((kw.arg, kw.value) for kw in call_node.keywords)
-
-    def visit_Call(self, node):
-        if isinstance(node.func, ast.Attribute) and node.func.attr == 'EnumDescriptor':
-            enum_kw = self._collect_call_kwargs(node)
-            if enum_kw['name'].s == 'OperandType':
-                for op_def in enum_kw['values'].elts:
-                    op_kw = self._collect_call_kwargs(op_def)
-                    self.operand_codes.append((op_kw['name'].s, op_kw['number'].n))
-        self.generic_visit(node)
-
-
-def _generate_operand_file(source_path, rel_path, op_file_path):
-    content = open(source_path, 'rb').read()
-    tree = ast.parse(content)
-    analyzer = OperandAnalyzer()
-    analyzer.visit(tree)
-
-    with open(op_file_path, 'w') as opcode_file:
-        opcode_file.write(f'# Generated automatically from {rel_path}.  DO NOT EDIT!\n')
-        for desc, val in analyzer.operand_codes:
-            opcode_file.write(f'{desc} = {val!r}\n')
-
-
 def main(repo_root):
     for root, _, files in os.walk(repo_root):
         for fn in files:
@@ -103,13 +73,6 @@ def main(repo_root):
                 sys.stdout.write(f'compiling protobuf {rel_path}\n')
                 subprocess.check_call([_get_protoc_executable(), '--python_out=.', rel_path],
                                       cwd=repo_root)
-
-            if fn == 'operand.proto':
-                opcode_fn = os.path.join(repo_root, 'mars', 'opcodes.py')
-                sys.stdout.write(f'constructing opcodes with {rel_path}\n')
-                if not os.path.exists(opcode_fn) or \
-                        os.path.getmtime(src_fn) > os.path.getmtime(opcode_fn):
-                    _generate_operand_file(compiled_fn, rel_path, opcode_fn)
 
     if _temp_protoc_path:
         shutil.rmtree(_temp_protoc_path)
