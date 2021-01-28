@@ -512,6 +512,14 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
     def __repr__(self):
         return self._to_str(representation=True)
 
+    def _to_mars_tensor(self, dtype=None, order='K', extract_multi_index=False):
+        tensor = self.to_tensor(extract_multi_index=extract_multi_index)
+        dtype = dtype if dtype is not None else tensor.dtype
+        return tensor.astype(dtype=dtype, order=order, copy=False)
+
+    def __mars_tensor__(self, dtype=None, order='K'):
+        return self._to_mars_tensor(dtype=dtype, order=order)
+
     @property
     def dtype(self):
         return getattr(self, '_dtype', None) or self.op.dtype
@@ -553,13 +561,8 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
     def __len__(self):
         return len(self._data)
 
-    def _to_mars_tensor(self, dtype=None, order='K', extract_multi_index=False):
-        tensor = self._data.to_tensor(extract_multi_index=extract_multi_index)
-        dtype = dtype if dtype is not None else tensor.dtype
-        return tensor.astype(dtype=dtype, order=order, copy=False)
-
     def __mars_tensor__(self, dtype=None, order='K'):
-        return self._to_mars_tensor(dtype=dtype, order=order)
+        return self._data.__mars_tensor__(dtype=dtype, order=order)
 
     def _get_df_or_series(self):
         obj = getattr(self, '_df_or_series', None)
@@ -596,6 +599,10 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
             self.data = df_or_series.axes[self._axis].data
         else:
             self.rename(value, inplace=True)
+
+    @property
+    def values(self):
+        return self.to_tensor()
 
     def to_frame(self, index: bool = True, name=None):
         """
@@ -663,7 +670,7 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
         else:
             columns = [name or self.name or 0]
         index_ = self if index else None
-        return dataframe_from_tensor(self._to_mars_tensor(self, extract_multi_index=True),
+        return dataframe_from_tensor(self._data._to_mars_tensor(self, extract_multi_index=True),
                                      index=index_, columns=columns)
 
     def to_series(self, index=None, name=None):
@@ -889,6 +896,11 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
 class SeriesData(_BatchedFetcher, BaseSeriesData):
     _type_name = 'Series'
 
+    def __mars_tensor__(self, dtype=None, order='K'):
+        tensor = self.to_tensor()
+        dtype = dtype if dtype is not None else tensor.dtype
+        return tensor.astype(dtype=dtype, order=order, copy=False)
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -1002,9 +1014,22 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
         return len(self._data)
 
     def __mars_tensor__(self, dtype=None, order='K'):
-        tensor = self._data.to_tensor()
-        dtype = dtype if dtype is not None else tensor.dtype
-        return tensor.astype(dtype=dtype, order=order, copy=False)
+        return self._data.__mars_tensor__(dtype=dtype, order=order)
+
+    def keys(self):
+        """
+        Return alias for index.
+
+        Returns
+        -------
+        Index
+            Index of the Series.
+        """
+        return self.index
+
+    @property
+    def values(self):
+        return self.to_tensor()
 
     def iteritems(self, batch_size=10000, session=None):
         """
@@ -1288,6 +1313,9 @@ class DataFrameData(_BatchedFetcher, BaseDataFrameData):
     def __repr__(self):
         return self._to_str(representation=True)
 
+    def __mars_tensor__(self, dtype=None, order='K'):
+        return self.to_tensor().astype(dtype=dtype, order=order, copy=False)
+
     def _repr_html_(self):
         if len(self._executed_sessions) == 0:
             # not executed before, fall back to normal repr
@@ -1350,7 +1378,7 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
         return self._data.from_records(records, **kw)
 
     def __mars_tensor__(self, dtype=None, order='K'):
-        return self._data.to_tensor().astype(dtype=dtype, order=order, copy=False)
+        return self._data.__mars_tensor__(dtype=dtype, order=order)
 
     def __getattr__(self, key):
         try:
@@ -1408,6 +1436,23 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
         op = DataFrameSetLabel(axis=1, value=new_columns)
         new_df = op(self)
         self.data = new_df.data
+
+    def keys(self):
+        """
+        Get the 'info axis' (see Indexing for more).
+
+        This is index for Series, columns for DataFrame.
+
+        Returns
+        -------
+        Index
+            Info axis.
+        """
+        return self.columns
+
+    @property
+    def values(self):
+        return self.to_tensor()
 
     @property
     def dtypes(self):
