@@ -31,7 +31,14 @@ from ...utils import get_next_port, kill_process_tree
 from ...worker.service import WorkerService
 from .distributor import gen_distributor
 
-_mp_spawn_context = multiprocessing.get_context('spawn')
+try:  # pragma: no cover
+    from IPython import get_ipython
+    _in_ipython = get_ipython() is not None
+except ImportError:
+    _in_ipython = False
+
+# forking IPython processes may cause unexpected problem, see issue #1231
+_mp_context = multiprocessing.get_context('fork' if not _in_ipython else 'spawn')
 
 _local_cluster_clients = dict()
 atexit.register(lambda: [v.stop() for v in list(_local_cluster_clients.values())])
@@ -189,12 +196,12 @@ def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
 
 
 def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
-    event = _mp_spawn_context.Event()
+    event = _mp_context.Event()
 
     kw = kw.copy()
     kw['n_process'] = n_process
     kw['shared_memory'] = shared_memory or '20%'
-    process = _mp_spawn_context.Process(
+    process = _mp_context.Process(
         target=_start_cluster, args=(endpoint, event), kwargs=kw)
     process.start()
 
@@ -230,8 +237,8 @@ def _start_web_process(scheduler_endpoint, web_endpoint):
     ui_port = int(web_endpoint.rsplit(':', 1)[1])
     options_dict = options.to_dict()
 
-    web_event = _mp_spawn_context.Event()
-    web_process = _mp_spawn_context.Process(
+    web_event = _mp_context.Event()
+    web_process = _mp_context.Process(
         target=_start_web, args=(scheduler_endpoint, ui_port, web_event, options_dict),
         daemon=True)
     web_process.start()
