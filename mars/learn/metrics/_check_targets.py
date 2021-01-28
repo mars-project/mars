@@ -16,7 +16,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import Base, Entity, ExecutableTuple, get_output_types
+from ...core import Base, Entity, ExecutableTuple
 from ...context import get_context
 from ...serialize import AnyField, KeyField
 from ...tiles import TilesError
@@ -39,9 +39,7 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         super().__init__(_y_true=y_true, _y_pred=y_pred,
                          _type_true=type_true, _type_pred=type_pred, **kw)
         # scalar(y_type), y_true, y_pred
-        self.output_types = \
-            [OutputType.tensor] + get_output_types(*[y_true, y_pred],
-                                                   unknown_as=OutputType.tensor)
+        self.output_types = [OutputType.tensor] * 3
 
     @property
     def output_limit(self):
