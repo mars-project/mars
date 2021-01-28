@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import os
 import pickle
 import types
@@ -80,10 +81,47 @@ cpdef unicode to_text(s, encoding='utf-8'):
         raise TypeError(f"Could not convert from {s} to unicode.")
 
 
+cdef class TypeDispatcher:
+    cdef dict _handlers
+    cdef dict _lazy_handlers
+
+    def __init__(self):
+        self._handlers = dict()
+        self._lazy_handlers = dict()
+
+    cpdef void register(self, object type_, object handler):
+        if isinstance(type_, str):
+            self._lazy_handlers[type_] = handler
+        else:
+            self._handlers[type_] = handler
+
+    cdef _reload_lazy_handlers(self):
+        for k, v in self._lazy_handlers.items():
+            mod_name, obj_name = k.rsplit('.', 1)
+            mod = importlib.import_module(mod_name, __name__)
+            self._handlers[getattr(mod, obj_name)] = v
+        self._lazy_handlers = dict()
+
+    cpdef get_handler(self, object type_):
+        cdef object clz, handler
+        try:
+            return self._handlers[type_]
+        except KeyError:
+            self._reload_lazy_handlers()
+            for clz in type_.__mro__:
+                if clz in self._handlers:
+                    handler = self._handlers[type_] = self._handlers[clz]
+                    return handler
+            raise KeyError(f'Cannot dispatch type {type_}')
+
+    def __call__(self, object obj, *args, **kwargs):
+        return self.get_handler(type(obj))(obj, *args, **kwargs)
+
+
 cdef inline build_canonical_bytes(tuple args, kwargs):
     if kwargs:
         args = args + (kwargs,)
-    return str([tokenize_handler.tokenize(arg) for arg in args]).encode('utf-8')
+    return str([tokenize_handler(arg) for arg in args]).encode('utf-8')
 
 
 def tokenize(*args, **kwargs):
@@ -94,33 +132,21 @@ def tokenize_int(*args, **kwargs):
     return mmh_hash(build_canonical_bytes(args, kwargs))
 
 
-cdef class Tokenizer:
-    cdef dict _handlers
-    def __init__(self):
-        self._handlers = dict()
+cdef class Tokenizer(TypeDispatcher):
+    def __call__(self, object obj, *args, **kwargs):
+        if hasattr(obj, '__mars_tokenize__') and not isinstance(obj, type):
+            return super().__call__(obj.__mars_tokenize__(), *args, **kwargs)
+        if callable(obj):
+            if PDTick is not None and not isinstance(obj, PDTick):
+                return tokenize_function(obj)
 
-    def register(self, cls, handler):
-        self._handlers[cls] = handler
-
-    cdef inline tokenize(self, object obj):
-        object_type = type(obj)
         try:
-            handler = self._handlers[object_type]
-            return handler(obj)
+            return super().__call__(obj, *args, **kwargs)
         except KeyError:
-            if hasattr(obj, '__mars_tokenize__') and not isinstance(obj, type):
-                return self.tokenize(obj.__mars_tokenize__())
-            if callable(obj):
-                if PDTick is not None and not isinstance(obj, PDTick):
-                    return tokenize_function(obj)
-            for clz in object_type.__mro__:
-                if clz in self._handlers:
-                    handler = self._handlers[object_type] = self._handlers[clz]
-                    return handler(obj)
             try:
                 return cloudpickle.dumps(obj)
             except:
-                raise TypeError(f'Cannot generate token for {obj}, type: {object_type}') from None
+                raise TypeError(f'Cannot generate token for {obj}, type: {type(obj)}') from None
 
 
 cdef inline list iterative_tokenize(object ob):
@@ -135,7 +161,7 @@ cdef inline list iterative_tokenize(object ob):
         elif isinstance(x, dict):
             dq.extend(sorted(x.items()))
         else:
-            h_list.append(tokenize_handler.tokenize(x))
+            h_list.append(tokenize_handler(x))
     return h_list
 
 
@@ -338,5 +364,5 @@ cpdef int ceildiv(int x, int y) nogil:
     return x // y + (x % y != 0)
 
 
-__all__ = ['to_str', 'to_binary', 'to_text', 'tokenize', 'tokenize_int', 'register_tokenizer',
-           'insert_reversed_tuple', 'ceildiv']
+__all__ = ['to_str', 'to_binary', 'to_text', 'TypeDispatcher', 'tokenize', 'tokenize_int',
+           'register_tokenizer', 'insert_reversed_tuple', 'ceildiv']
