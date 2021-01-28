@@ -85,9 +85,6 @@ command below on the root of Mars project:
 
     python setup.py build_proto
 
-Note that besides files compiled by ``protoc``, Mars will also generate an
-``opcodes.py`` given ``operand.proto``. You shall not edit the generated file.
-
 Mars will download ``protoc`` for Win32, MacOS x64 and Linux x64 from Github if
 ``protoc`` cannot be found. If you need to specify a customized version of
 ``protoc``, you can use the environment variable ``PROTOC`` to specify its path
