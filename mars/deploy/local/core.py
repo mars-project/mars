@@ -38,7 +38,8 @@ except ImportError:
     _in_ipython = False
 
 # forking IPython processes may cause unexpected problem, see issue #1231
-_mp_context = multiprocessing.get_context('fork' if not _in_ipython else 'spawn')
+_mp_context = multiprocessing.get_context(
+    'fork' if not _in_ipython and not sys.platform.startswith('win') else 'spawn')
 
 _local_cluster_clients = dict()
 atexit.register(lambda: [v.stop() for v in list(_local_cluster_clients.values())])
