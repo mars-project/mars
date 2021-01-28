@@ -114,6 +114,9 @@ Computations / descriptive stats
    Series.cumprod
    Series.cumsum
    Series.describe
+   Series.is_monotonic
+   Series.is_monotonic_decreasing
+   Series.is_monotonic_increasing
    Series.kurt
    Series.kurtosis
    Series.max

@@ -13,10 +13,11 @@
 # limitations under the License.
 
 
+from ..utils import make_import_error_func
 from .core import xgboost, XGBScikitLearnBase
 
 
-XGBRegressor = None
+XGBRegressor = make_import_error_func('xgboost')
 if xgboost:
     from .dmatrix import MarsDMatrix
     from .core import evaluation_matrices

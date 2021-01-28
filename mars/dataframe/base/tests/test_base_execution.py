@@ -1740,3 +1740,32 @@ class Test(TestBase):
         copied_df.query('a < b', inplace=True)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(copied_df, concat=True)[0],
                                       raw.query('a < b'))
+
+    def testCheckMonotonicExecution(self):
+        idx_value = pd.Index(list(range(1000)))
+
+        idx_increase = from_pandas_index(idx_value, chunk_size=100)
+        self.assertTrue(self.executor.execute_dataframe(
+            idx_increase.is_monotonic_increasing, concat=True)[0])
+        self.assertFalse(self.executor.execute_dataframe(
+            idx_increase.is_monotonic_decreasing, concat=True)[0])
+
+        idx_decrease = from_pandas_index(idx_value[::-1], chunk_size=100)
+        self.assertFalse(self.executor.execute_dataframe(
+            idx_decrease.is_monotonic_increasing, concat=True)[0])
+        self.assertTrue(self.executor.execute_dataframe(
+            idx_decrease.is_monotonic_decreasing, concat=True)[0])
+
+        idx_mixed = from_pandas_index(
+            pd.Index(list(range(500)) + list(range(500))), chunk_size=100)
+        self.assertFalse(self.executor.execute_dataframe(
+            idx_mixed.is_monotonic_increasing, concat=True)[0])
+        self.assertFalse(self.executor.execute_dataframe(
+            idx_mixed.is_monotonic_decreasing, concat=True)[0])
+
+        ser_mixed = from_pandas_series(
+            pd.Series(list(range(500)) + list(range(499, 999))), chunk_size=100)
+        self.assertTrue(self.executor.execute_dataframe(
+            ser_mixed.check_monotonic(decreasing=False), concat=True)[0])
+        self.assertFalse(self.executor.execute_dataframe(
+            ser_mixed.check_monotonic(decreasing=False, strict=True), concat=True)[0])
