@@ -87,7 +87,6 @@ mars/learn/cluster/*.c*
 mars/learn/utils/*.c*
 
 # files built from protobuf files
-mars/opcodes.py
 mars/**/*_pb2.py
 
 # docs
