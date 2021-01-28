@@ -111,7 +111,7 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
             type_true, type_pred = ctx.get_chunk_results(
                 [op.type_true.chunks[0].key,
                  op.type_pred.chunks[0].key])
-        except KeyError:
+        except (KeyError, AttributeError):
             raise TilesError('type_true and type_pred '
                              'needs to be executed first')
 
