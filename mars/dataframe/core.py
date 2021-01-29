@@ -1270,7 +1270,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
     def columns(self):
         from .datasource.index import from_pandas as from_pandas_index
 
-        return from_pandas_index(self.dtypes.index)
+        return from_pandas_index(self.dtypes.index, store_data=True)
 
     @property
     def axes(self):

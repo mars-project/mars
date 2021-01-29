@@ -22,7 +22,7 @@ from ...utils import recursive_tile
 from ...tensor.utils import filter_inputs
 from ..core import SERIES_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import build_empty_df, validate_axis
+from ..utils import build_empty_df, validate_axis, parse_index
 
 
 class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
@@ -90,15 +90,17 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
                                           index_value=df_or_series.columns_value,
                                           columns_value=df_or_series.columns_value)
             else:
+                new_index_value = df_or_series.axes[1 - self.axis].index_value
                 if isinstance(self.other, DATAFRAME_TYPE):
-                    align_shape = (np.nan, (build_empty_df(df_or_series.dtypes)
-                                   + build_empty_df(self.other.dtypes)).shape[1])
+                    align_dtypes = pd.concat([self.other.dtypes, df_or_series.dtypes], axis=1)
+                    align_shape = (np.nan, align_dtypes.shape[0])
+                    new_index_value = parse_index(align_dtypes.index)
                 else:
                     align_shape = df_or_series.shape
 
                 shape = (np.nan,) if self.drop else (align_shape[1 - self.axis],)
                 return self.new_series(inputs, shape=shape, dtype=np.dtype(np.float_),
-                                       index_value=df_or_series.axes[1 - self.axis].index_value)
+                                       index_value=new_index_value)
 
     @classmethod
     def _tile_single(cls, op: "DataFrameCorr"):
