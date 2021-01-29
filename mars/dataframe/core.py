@@ -546,7 +546,7 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
 
 
 class Index(HasShapeTileableEnity, _ToPandasMixin):
-    __slots__ = '_df_or_series', '_axis'
+    __slots__ = '_df_or_series', '_parent_key', '_axis'
     _allow_data_type_ = (IndexData,)
 
     def __new__(cls, data: Union[pd.Index, IndexData], **_):
@@ -572,6 +572,7 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
 
     def _set_df_or_series(self, df_or_series, axis):
         self._df_or_series = weakref.ref(df_or_series)
+        self._parent_key = df_or_series.key
         self._axis = axis
 
     @property
@@ -581,7 +582,7 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
     @name.setter
     def name(self, value):
         df_or_series = self._get_df_or_series()
-        if df_or_series is not None:
+        if df_or_series is not None and df_or_series.key == self._parent_key:
             df_or_series.rename_axis(value, axis=self._axis, inplace=True)
             self.data = df_or_series.axes[self._axis].data
         else:
@@ -961,6 +962,10 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
         idx = self._data.index
         idx._set_df_or_series(self, 0)
         return idx
+
+    @index.setter
+    def index(self, new_index):
+        self.set_axis(new_index, axis=0, inplace=True)
 
     @property
     def name(self):
@@ -1423,6 +1428,10 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
         idx._set_df_or_series(self, 0)
         return idx
 
+    @index.setter
+    def index(self, new_index):
+        self.set_axis(new_index, axis=0, inplace=True)
+
     @property
     def columns(self):
         col = self._data.columns
@@ -1431,11 +1440,7 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
 
     @columns.setter
     def columns(self, new_columns):
-        from .indexing.set_label import DataFrameSetLabel
-
-        op = DataFrameSetLabel(axis=1, value=new_columns)
-        new_df = op(self)
-        self.data = new_df.data
+        self.set_axis(new_columns, axis=1, inplace=True)
 
     def keys(self):
         """

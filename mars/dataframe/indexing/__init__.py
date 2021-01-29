@@ -29,6 +29,7 @@ def _install():
     from .setitem import dataframe_setitem
     from .reindex import reindex
     from .where import mask, where
+    from .set_axis import df_set_axis, series_set_axis
 
     for cls in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(cls, 'iloc', cache_readonly(iloc))
@@ -49,19 +50,17 @@ def _install():
         setattr(cls, 'insert', df_insert)
         setattr(cls, 'reset_index', df_reset_index)
         setattr(cls, 'rename', df_rename)
+        setattr(cls, 'set_axis', df_set_axis)
 
     for cls in SERIES_TYPE:
         setattr(cls, '__getitem__', series_getitem)
         setattr(cls, 'reset_index', series_reset_index)
         setattr(cls, 'rename', series_rename)
+        setattr(cls, 'set_axis', series_set_axis)
 
     for cls in INDEX_TYPE:
         setattr(cls, 'rename', index_rename)
         setattr(cls, 'set_names', index_set_names)
-
-    # make sure operand is registered
-    from .set_label import DataFrameSetLabel
-    del DataFrameSetLabel
 
 
 _install()

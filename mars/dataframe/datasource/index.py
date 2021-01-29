@@ -20,7 +20,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...serialize import IndexField, DataTypeField, KeyField
+from ...serialize import IndexField, DataTypeField, KeyField, BoolField
 from ...tensor.utils import get_chunk_slices
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, decide_series_chunk_size
@@ -36,11 +36,12 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _data = IndexField('data')
     _dtype = DataTypeField('dtype')
+    _store_data = BoolField('store_data')
 
     def __init__(self, input=None, data=None, dtype=None, gpu=None,  # pylint: disable=redefined-builtin
-                 sparse=None, **kw):
-        super().__init__(_input=input, _data=data, _dtype=dtype, _gpu=gpu,
-                         _sparse=sparse, _output_types=[OutputType.index], **kw)
+                 store_data=None, sparse=None, **kw):
+        super().__init__(_input=input, _data=data, _dtype=dtype, _gpu=gpu, _sparse=sparse,
+                         _store_data=store_data, _output_types=[OutputType.index], **kw)
 
     @property
     def input(self):
@@ -54,6 +55,10 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
     def dtype(self):
         return self._dtype
 
+    @property
+    def store_data(self):
+        return self._store_data
+
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         if inputs is not None and len(inputs) > 0:
@@ -66,7 +71,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
             name = name if name is not None else self._data.name
             names = names if names is not None else self._data.names
             return self.new_index(None, shape=shape, dtype=self._dtype,
-                                  index_value=parse_index(self._data),
+                                  index_value=parse_index(self._data, store_data=self.store_data),
                                   name=name, names=names, raw_chunk_size=chunk_size)
         elif hasattr(inp, 'index_value'):
             # get index from Mars DataFrame, Series or Index
@@ -75,8 +80,8 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
             if inp.index_value.has_value():
                 self._data = data = inp.index_value.to_pandas()
                 return self.new_index(None, shape=(inp.shape[0],), dtype=data.dtype,
-                                      index_value=parse_index(data), name=name,
-                                      names=names, raw_chunk_size=chunk_size)
+                                      index_value=parse_index(data, store_data=self.store_data),
+                                      name=name, names=names, raw_chunk_size=chunk_size)
             else:
                 if self._dtype is None:
                     self._dtype = inp.index_value.to_pandas().dtype
@@ -92,7 +97,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
             if self._dtype is None:
                 self._dtype = pd_index.dtype
             return self.new_index([inp], shape=inp.shape, dtype=self._dtype,
-                                  index_value=parse_index(pd_index, inp),
+                                  index_value=parse_index(pd_index, inp, store_data=self.store_data),
                                   name=name, names=names)
 
     @classmethod
@@ -111,9 +116,9 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
             chunk_op = op.copy().reset_key()
             slc = get_chunk_slices(chunk_size, chunk_index)
             chunk_op._data = chunk_data = raw_index[slc]
-            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, dtype=index.dtype,
-                                           index=chunk_index, name=index.name,
-                                           index_value=parse_index(chunk_data))
+            out_chunk = chunk_op.new_chunk(
+                None, shape=chunk_shape, dtype=index.dtype, index=chunk_index,
+                name=index.name, index_value=parse_index(chunk_data, store_data=op.store_data))
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
@@ -165,7 +170,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for c in inp.chunks:
             chunk_op = op.copy().reset_key()
-            index_value = parse_index(out.index_value.to_pandas(), c)
+            index_value = parse_index(out.index_value.to_pandas(), c, store_data=op.store_data)
             out_chunk = chunk_op.new_chunk([c], shape=c.shape,
                                            dtype=out.dtype, index=c.index,
                                            index_value=index_value,
@@ -206,8 +211,9 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
                 ctx[out.key] = pd.Index(inp, dtype=dtype, name=out.name)
 
 
-def from_pandas(data, chunk_size=None, gpu=False, sparse=False):
-    op = IndexDataSource(data=data, gpu=gpu, sparse=sparse, dtype=data.dtype)
+def from_pandas(data, chunk_size=None, gpu=False, sparse=False, store_data=False):
+    op = IndexDataSource(data=data, gpu=gpu, sparse=sparse, dtype=data.dtype,
+                         store_data=store_data)
     return op(shape=data.shape, chunk_size=chunk_size)
 
 
