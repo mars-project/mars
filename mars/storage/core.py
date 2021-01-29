@@ -14,8 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import functools
 from abc import ABC, abstractmethod
 from typing import Union, Dict, List
+from types import coroutine
 
 from enum import Enum
 
@@ -50,15 +53,45 @@ class ObjectInfo:
 
 
 class FileObject:
-    def __init__(self, file_obj, object_id=None):
+    def __init__(self, file_obj, object_id=None, loop=None, executor=None):
         self._file_obj = file_obj
         self._object_id = object_id
+        self._loop = loop or asyncio.get_event_loop()
+        self._executor = executor
 
     @property
     def object_id(self):
         return self._object_id or self._file_obj.name
 
     def __getattr__(self, item):
+
+        def async_wrapper(method_name):
+            @coroutine
+            def method(*args, **kwargs):
+                cb = functools.partial(getattr(self._file_obj, method_name), *args, ** kwargs)
+                return (yield from self._loop.run_in_executor(self._executor, cb))
+
+            return method
+
+        f_func = [
+            "flush",
+            "isatty",
+            "read",
+            "read1",
+            "readinto",
+            "readline",
+            "readlines",
+            "seek",
+            "seekable",
+            "tell",
+            "truncate",
+            "writable",
+            "write",
+            "writelines",
+        ]
+        if item in f_func:
+            return async_wrapper(item)
+
         return getattr(self._file_obj, item)
 
     async def __aenter__(self):

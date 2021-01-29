@@ -59,15 +59,15 @@ class FileSystemStorage(StorageBackend):
         return os.path.join(selected_dir, file_name)
 
     async def get(self, object_id, **kwargs) -> object:
-        with self._fs.open(object_id, 'rb') as f:
+        async with FileObject(self._fs.open(object_id, 'rb'), object_id=object_id) as f:
             # read buffer header
-            b = f.read(HEADER_LENGTH)
+            b = await f.read(HEADER_LENGTH)
             # read serialized header length
             header_length, = struct.unpack('<Q', b[2:HEADER_LENGTH])
-            header, buf_lengths = deserialize_header(f.read(header_length))
+            header, buf_lengths = deserialize_header(await f.read(header_length))
             buffers = []
             for length in buf_lengths:
-                buffers.append(f.read(length))
+                buffers.append(await f.read(length))
         return deserialize(header, buffers)
 
     async def put(self, obj, importance=0) -> ObjectInfo:
@@ -75,15 +75,15 @@ class FileSystemStorage(StorageBackend):
         serialized = serialize(obj)
         header_bytes = serialize_header(serialized)
 
-        with self._fs.open(path, 'wb') as f:
+        async with FileObject(self._fs.open(path, 'wb')) as f:
             # reserve one byte for compress information
-            f.write(struct.pack('<H', 0))
+            await f.write(struct.pack('<H', 0))
             # header length
-            f.write(struct.pack('<Q', len(header_bytes)))
-            f.write(header_bytes)
+            await f.write(struct.pack('<Q', len(header_bytes)))
+            await f.write(header_bytes)
             for buf in serialized[1]:
-                f.write(buf)
-            size = f.tell()
+                await f.write(buf)
+            size = await f.tell()
         return ObjectInfo(size=size, device='disk', object_id=path)
 
     async def delete(self, object_id):

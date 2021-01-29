@@ -86,11 +86,11 @@ async def test_base_operations(storage_context):
     b = dataserializer.dumps(t)
     async with await storage.create_writer(size=len(b)) as writer:
         split = len(b) // 2
-        writer.write(b[:split])
-        writer.write(b[split:])
+        await writer.write(b[:split])
+        await writer.write(b[split:])
 
     async with await storage.open_reader(writer.object_id) as reader:
-        content = reader.read()
+        content = await reader.read()
         t2 = dataserializer.loads(content)
 
     np.testing.assert_array_equal(t, t2)
