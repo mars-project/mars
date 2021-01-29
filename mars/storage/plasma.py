@@ -170,7 +170,7 @@ class PlasmaStorage(StorageBackend):
         new_id = self._generate_object_id()
         serialized = serialize(obj)
         header_bytes = serialize_header(serialized)
-        header, buffers = serialized
+        _, buffers = serialized
         buffer_length = sum([getattr(b, 'nbytes', len(b)) for b in buffers])
         # reserve one byte for compress information
         sio.write(struct.pack('<H', 0))

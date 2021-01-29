@@ -231,6 +231,6 @@ def serialize_header(serialized_obj, pickle_protocol=4):
 
 
 def deserialize_header(buf):
-    header = pickle.loads(buf)
+    header = pickle.loads(buf)  # nosec
     buf_lengths = header.pop('buf_lengths')
     return header, buf_lengths
