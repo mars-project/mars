@@ -215,7 +215,7 @@ def deserialize(header: Dict, buffers: List):
     return serializer.deserialize(header, buffers)
 
 
-HEADER_LENGTH = 5
+HEADER_LENGTH = 10
 
 
 def serialize_header(serialized_obj, pickle_protocol=4):

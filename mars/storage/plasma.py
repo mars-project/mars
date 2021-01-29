@@ -156,7 +156,7 @@ class PlasmaStorage(StorageBackend):
 
     async def get(self, object_id, **kwargs) -> object:
         [buf] = self._client.get_buffers([object_id])
-        length, = struct.unpack('<L', buf[1:HEADER_LENGTH])
+        length, = struct.unpack('<Q', buf[2:HEADER_LENGTH])
         header, buf_lengths = deserialize_header(buf[HEADER_LENGTH: HEADER_LENGTH + length])
         buffers = []
         start = HEADER_LENGTH + length
@@ -173,9 +173,9 @@ class PlasmaStorage(StorageBackend):
         header, buffers = serialized
         buffer_length = sum([getattr(b, 'nbytes', len(b)) for b in buffers])
         # reserve one byte for compress information
-        sio.write(struct.pack('B', 0))
+        sio.write(struct.pack('<H', 0))
         # header length
-        sio.write(struct.pack('<L', len(header_bytes)))
+        sio.write(struct.pack('<Q', len(header_bytes)))
         sio.write(header_bytes)
         header_buf = sio.getvalue()
 

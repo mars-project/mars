@@ -63,7 +63,7 @@ class FileSystemStorage(StorageBackend):
             # read buffer header
             b = f.read(HEADER_LENGTH)
             # read serialized header length
-            header_length, = struct.unpack('<L', b[1:HEADER_LENGTH])
+            header_length, = struct.unpack('<Q', b[2:HEADER_LENGTH])
             header, buf_lengths = deserialize_header(f.read(header_length))
             buffers = []
             for length in buf_lengths:
@@ -77,9 +77,9 @@ class FileSystemStorage(StorageBackend):
 
         with self._fs.open(path, 'wb') as f:
             # reserve one byte for compress information
-            f.write(struct.pack('B', 0))
+            f.write(struct.pack('<H', 0))
             # header length
-            f.write(struct.pack('<L', len(header_bytes)))
+            f.write(struct.pack('<Q', len(header_bytes)))
             f.write(header_bytes)
             for buf in serialized[1]:
                 f.write(buf)
