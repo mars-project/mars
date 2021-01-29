@@ -101,7 +101,6 @@ class StorageBackend(ABC):
         None
 
         """
-        pass
 
     @property
     @abstractmethod
@@ -126,7 +125,6 @@ class StorageBackend(ABC):
         Python object
 
         """
-        pass
 
     @abstractmethod
     async def put(self, obj, importance=0) -> ObjectInfo:
@@ -147,7 +145,6 @@ class StorageBackend(ABC):
             object information including size, raw_size, device
 
         """
-        pass
 
     @abstractmethod
     async def delete(self, object_id):
@@ -164,7 +161,6 @@ class StorageBackend(ABC):
         None
 
         """
-        pass
 
     @abstractmethod
     async def object_info(self, object_id) -> ObjectInfo:
@@ -182,7 +178,6 @@ class StorageBackend(ABC):
             Object info including size, device and etc.
 
         """
-        pass
 
     @abstractmethod
     async def create_writer(self, size=None) -> FileObject:
@@ -199,7 +194,6 @@ class StorageBackend(ABC):
         file-like object
 
         """
-        pass
 
     @abstractmethod
     async def open_reader(self, object_id) -> FileObject:
@@ -216,9 +210,7 @@ class StorageBackend(ABC):
             file-like object
 
         """
-        pass
 
-    @abstractmethod
     async def list(self) -> List:
         """
         List all stored objects in storage.
@@ -228,7 +220,6 @@ class StorageBackend(ABC):
         List of objects
 
         """
-        pass
 
     async def prefetch(self, object_id):
         """
@@ -244,7 +235,6 @@ class StorageBackend(ABC):
         None
 
         """
-        pass
 
     async def pin(self, object_id):
         """
@@ -260,7 +250,6 @@ class StorageBackend(ABC):
         None
 
         """
-        pass
 
     async def unpin(self, object_id):
         """
@@ -276,4 +265,3 @@ class StorageBackend(ABC):
         None
 
         """
-        pass
