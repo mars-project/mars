@@ -15,12 +15,15 @@
 # limitations under the License.
 
 import psutil
+import struct
+from io import BytesIO
 from typing import Union, Dict, List
 
 import pyarrow as pa
 from pyarrow import plasma
 
-from ..serialize import dataserializer
+from ..serialization import serialize, deserialize, serialize_header, deserialize_header
+from ..serialization.core import HEADER_LENGTH
 from .core import StorageBackend, StorageLevel, ObjectInfo, FileObject
 
 
@@ -152,18 +155,41 @@ class PlasmaStorage(StorageBackend):
                 return new_id
 
     async def get(self, object_id, **kwargs) -> object:
-        return self._client.get(object_id)
+        [buf] = self._client.get_buffers([object_id])
+        length, = struct.unpack('<L', buf[1:HEADER_LENGTH])
+        header, buf_lengths = deserialize_header(buf[HEADER_LENGTH: HEADER_LENGTH + length])
+        buffers = []
+        start = HEADER_LENGTH + length
+        for l in buf_lengths:
+            buffers.append(buf[start: start + l])
+            start += l
+        return deserialize(header, buffers)
 
     async def put(self, obj, importance=0) -> ObjectInfo:
+        sio = BytesIO()
         new_id = self._generate_object_id()
-        serialized = dataserializer.serialize(obj)
-        await self._check_plasma_limit(serialized.total_bytes)
-        buffer = self._client.create(new_id, serialized.total_bytes)
+        serialized = serialize(obj)
+        header_bytes = serialize_header(serialized)
+        header, buffers = serialized
+        buffer_length = sum([getattr(b, 'nbytes', len(b)) for b in buffers])
+        # reserve one byte for compress information
+        sio.write(struct.pack('B', 0))
+        # header length
+        sio.write(struct.pack('<L', len(header_bytes)))
+        sio.write(header_bytes)
+        header_buf = sio.getvalue()
+
+        total_bytes = buffer_length + len(header_buf)
+        await self._check_plasma_limit(total_bytes)
+
+        buffer = self._client.create(new_id, total_bytes)
         stream = pa.FixedSizeBufferWriter(buffer)
         stream.set_memcopy_threads(6)
-        serialized.write_to(stream)
+        stream.write(header_buf)
+        for buf in buffers:
+            stream.write(buf)
         self._client.seal(new_id)
-        return ObjectInfo(size=serialized.total_bytes,
+        return ObjectInfo(size=total_bytes,
                           device='memory', object_id=new_id)
 
     async def delete(self, object_id):

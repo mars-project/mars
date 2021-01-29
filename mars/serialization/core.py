@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from io import BytesIO
 import sys
 from typing import Dict, List
 
@@ -212,3 +213,24 @@ def serialize(obj):
 def deserialize(header: Dict, buffers: List):
     serializer = _deserializers[header.pop('serializer')]
     return serializer.deserialize(header, buffers)
+
+
+HEADER_LENGTH = 5
+
+
+def serialize_header(serialized_obj, pickle_protocol=4):
+    header, buffers = serialized_obj
+
+    # record all buffer length
+    header['buf_lengths'] = [getattr(b, 'nbytes', len(b)) for b in buffers]
+    serialized_header = pickle.dumps(header, protocol=pickle_protocol)
+
+    sio = BytesIO()
+    sio.write(serialized_header)
+    return sio.getvalue()
+
+
+def deserialize_header(buf):
+    header = pickle.loads(buf)
+    buf_lengths = header.pop('buf_lengths')
+    return header, buf_lengths

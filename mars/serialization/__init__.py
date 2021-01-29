@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import serialize, deserialize
+from .core import serialize, deserialize, serialize_header, deserialize_header
 
 from . import arrow, cuda, numpy, scipy, mars_objects
 del arrow, cuda, numpy, scipy, mars_objects

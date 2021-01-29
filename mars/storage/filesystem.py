@@ -15,10 +15,12 @@
 # limitations under the License.
 
 import os
-from typing import Union, Dict, List
+import struct
 import uuid
+from typing import Union, Dict, List
 
-from ..serialize import dataserializer
+from ..serialization import serialize_header, deserialize_header, serialize, deserialize
+from ..serialization.core import HEADER_LENGTH
 from ..utils import mod_hash
 from .core import StorageBackend, FileObject, ObjectInfo
 
@@ -57,14 +59,30 @@ class FileSystemStorage(StorageBackend):
         return os.path.join(selected_dir, file_name)
 
     async def get(self, object_id, **kwargs) -> object:
-        bytes_object = self._fs.open(object_id, 'rb').read()
-        return dataserializer.loads(bytes_object)
+        with self._fs.open(object_id, 'rb') as f:
+            # read buffer header
+            b = f.read(HEADER_LENGTH)
+            # read serialized header length
+            header_length, = struct.unpack('<L', b[1:HEADER_LENGTH])
+            header, buf_lengths = deserialize_header(f.read(header_length))
+            buffers = []
+            for length in buf_lengths:
+                buffers.append(f.read(length))
+        return deserialize(header, buffers)
 
     async def put(self, obj, importance=0) -> ObjectInfo:
         path = self._generate_path()
-        bytes_object = dataserializer.dumps(obj)
+        serialized = serialize(obj)
+        header_bytes = serialize_header(serialized)
+
         with self._fs.open(path, 'wb') as f:
-            f.write(bytes_object)
+            # reserve one byte for compress information
+            f.write(struct.pack('B', 0))
+            # header length
+            f.write(struct.pack('<L', len(header_bytes)))
+            f.write(header_bytes)
+            for buf in serialized[1]:
+                f.write(buf)
             size = f.tell()
         return ObjectInfo(size=size, device='disk', object_id=path)
 
