@@ -33,26 +33,29 @@ from mars.storage.plasma import PlasmaStorage
 async def storage_context(request):
     if request.param == 'filesystem':
         tempdir = tempfile.mkdtemp()
-        params = await FileSystemStorage.setup(fs=LocalFileSystem(),
-                                               root_dirs=[tempdir],
-                                               level=StorageLevel.DISK)
+        params, teardown_params = await FileSystemStorage.setup(
+            fs=LocalFileSystem(),
+            root_dirs=[tempdir],
+            level=StorageLevel.DISK)
         storage = FileSystemStorage(**params)
         assert storage.level == StorageLevel.DISK
         yield storage
-        await storage.teardown(**params)
+        await storage.teardown(**teardown_params)
     elif request.param == 'plasma':
         plasma_storage_size = 10 * 1024 * 1024
         if sys.platform == 'darwin':
             plasma_dir = '/tmp'
         else:
             plasma_dir = '/dev/shm'
-        params = await PlasmaStorage.setup(store_memory=plasma_storage_size,
-                                           plasma_directory=plasma_dir)
+        params, teardown_params = await PlasmaStorage.setup(
+            store_memory=plasma_storage_size,
+            plasma_directory=plasma_dir,
+            check_dir_size=False)
         storage = PlasmaStorage(**params)
         assert storage.level == StorageLevel.MEMORY
 
         yield storage
-        await PlasmaStorage.teardown(**params)
+        await PlasmaStorage.teardown(**teardown_params)
 
 
 @pytest.mark.asyncio
@@ -84,7 +87,7 @@ async def test_base_operations(storage_context):
     # test writer and reader
     t = np.random.random(10)
     b = dataserializer.dumps(t)
-    async with await storage.create_writer(size=len(b)) as writer:
+    async with await storage.open_writer(size=len(b)) as writer:
         split = len(b) // 2
         await writer.write(b[:split])
         await writer.write(b[split:])

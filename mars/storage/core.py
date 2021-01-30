@@ -15,12 +15,12 @@
 # limitations under the License.
 
 import asyncio
-import functools
 from abc import ABC, abstractmethod
-from typing import Union, Dict, List
-from types import coroutine
-
+from concurrent.futures import Executor
 from enum import Enum
+from typing import Any, Dict, List, Tuple
+
+from ..aio import AioFileObject
 
 
 class StorageLevel(Enum):
@@ -34,76 +34,30 @@ class StorageLevel(Enum):
 
 
 class ObjectInfo:
-    def __init__(self, size=None, device=None, object_id=None):
-        self._size = size
-        self._device = device
-        self._object_id = object_id
+    __slots__ = 'size', 'device', 'object_id'
 
-    @property
-    def size(self):
-        return self._size
-
-    @property
-    def device(self):
-        return self._device
-
-    @property
-    def object_id(self):
-        return self._object_id
+    def __init__(self,
+                 size: int = None,
+                 device: int = None,
+                 object_id: Any = None):
+        self.size = size
+        self.device = device
+        self.object_id = object_id
 
 
-class FileObject:
-    def __init__(self, file_obj, object_id=None, loop=None, executor=None):
-        self._file_obj = file_obj
-        self._object_id = object_id
-        self._loop = loop or asyncio.get_event_loop()
-        self._executor = executor
-
-    @property
-    def object_id(self):
-        return self._object_id or self._file_obj.name
-
-    def __getattr__(self, item):
-
-        def async_wrapper(method_name):
-            @coroutine
-            def method(*args, **kwargs):
-                cb = functools.partial(getattr(self._file_obj, method_name), *args, ** kwargs)
-                return (yield from self._loop.run_in_executor(self._executor, cb))
-
-            return method
-
-        f_func = [
-            "flush",
-            "isatty",
-            "read",
-            "read1",
-            "readinto",
-            "readline",
-            "readlines",
-            "seek",
-            "seekable",
-            "tell",
-            "truncate",
-            "writable",
-            "write",
-            "writelines",
-        ]
-        if item in f_func:
-            return async_wrapper(item)
-
-        return getattr(self._file_obj, item)
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        return self._file_obj.__exit__(exc_type, exc_val, exc_tb)
+class StorageFileObject(AioFileObject):
+    def __init__(self,
+                 file: Any,
+                 object_id: Any,
+                 loop: asyncio.BaseEventLoop = None,
+                 executor: Executor = None):
+        self.object_id = object_id
+        super().__init__(file, loop=loop, executor=executor)
 
 
 class StorageBackend(ABC):
     @classmethod
-    async def setup(cls, **kwargs) -> Union[Dict, None]:
+    async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         """
         Setup environments, for example, start plasma store for plasma backend.
 
@@ -114,13 +68,13 @@ class StorageBackend(ABC):
 
         Returns
         -------
-        Dict
-            Parameters for initialization.
+        Tuple of two dicts
+            Dicts for initialization and teardown.
         """
-        return dict()
+        return dict(), dict()
 
     @staticmethod
-    async def teardown(**kwargs) -> None:
+    async def teardown(**kwargs):
         """
         Clean up the environments.
 
@@ -128,17 +82,31 @@ class StorageBackend(ABC):
         ----------
         kwargs : kwargs
              Parameters for clean up.
+        """
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """
+        Unique name of current storage.
 
         Returns
         -------
-        None
-
+        Name: str
+            Storage name.
         """
 
     @property
     @abstractmethod
     def level(self):
-        raise NotImplementedError
+        """
+        Level of current storage backend.
+
+        Returns
+        -------
+        Level: str
+            storage level.
+        """
 
     @abstractmethod
     async def get(self, object_id, **kwargs) -> object:
@@ -156,7 +124,6 @@ class StorageBackend(ABC):
         Returns
         -------
         Python object
-
         """
 
     @abstractmethod
@@ -176,7 +143,6 @@ class StorageBackend(ABC):
         -------
         ObjectInfo
             object information including size, raw_size, device
-
         """
 
     @abstractmethod
@@ -188,11 +154,6 @@ class StorageBackend(ABC):
         ----------
         object_id
             object id
-
-        Returns
-        -------
-        None
-
         """
 
     @abstractmethod
@@ -209,11 +170,10 @@ class StorageBackend(ABC):
         -------
         ObjectInfo
             Object info including size, device and etc.
-
         """
 
     @abstractmethod
-    async def create_writer(self, size=None) -> FileObject:
+    async def open_writer(self, size=None) -> StorageFileObject:
         """
         Return a file-like object for writing.
 
@@ -224,12 +184,11 @@ class StorageBackend(ABC):
 
         Returns
         -------
-        file-like object
-
+        fileobj: StorageFileObject
         """
 
     @abstractmethod
-    async def open_reader(self, object_id) -> FileObject:
+    async def open_reader(self, object_id) -> StorageFileObject:
         """
         Return a file-like object for reading.
 
@@ -240,8 +199,7 @@ class StorageBackend(ABC):
 
         Returns
         -------
-            file-like object
-
+        fileobj: StorageFileObject
         """
 
     async def list(self) -> List:
@@ -251,7 +209,6 @@ class StorageBackend(ABC):
         Returns
         -------
         List of objects
-
         """
 
     async def prefetch(self, object_id):
@@ -262,11 +219,6 @@ class StorageBackend(ABC):
         ----------
         object_id
             Object id.
-
-        Returns
-        -------
-        None
-
         """
 
     async def pin(self, object_id):
@@ -277,11 +229,6 @@ class StorageBackend(ABC):
         ----------
         object_id
             object id
-
-        Returns
-        -------
-        None
-
         """
 
     async def unpin(self, object_id):
@@ -292,9 +239,4 @@ class StorageBackend(ABC):
         ----------
         object_id
             object id
-
-        Returns
-        -------
-        None
-
         """

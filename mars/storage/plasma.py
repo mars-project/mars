@@ -17,14 +17,14 @@
 import psutil
 import struct
 from io import BytesIO
-from typing import Union, Dict, List
+from typing import Dict, List, Tuple
 
 import pyarrow as pa
 from pyarrow import plasma
 
 from ..serialization import serialize, deserialize, serialize_header, deserialize_header
 from ..serialization.core import HEADER_LENGTH
-from .core import StorageBackend, StorageLevel, ObjectInfo, FileObject
+from .core import StorageBackend, StorageLevel, ObjectInfo, StorageFileObject
 
 
 PAGE_SIZE = 64 * 1024
@@ -112,29 +112,39 @@ def get_actual_capacity(plasma_client):
 
 
 class PlasmaStorage(StorageBackend):
-    def __init__(self, plasma_socket=None, plasma_directory=None, capacity=None, plasma_store=None):
+    def __init__(self, plasma_socket=None, plasma_directory=None,
+                 capacity=None, check_dir_size=True):
         self._client = plasma.connect(plasma_socket)
         self._plasma_directory = plasma_directory
         self._capacity = capacity
-        self._plasma_store = plasma_store
+        self._check_dir_size = check_dir_size
+
+    @property
+    def name(self) -> str:
+        return 'plasma'
 
     @classmethod
-    async def setup(cls, **kwargs) -> Union[Dict, None]:
-        store_memory = kwargs.get('store_memory')
-        plasma_directory = kwargs.get('plasma_directory')
+    async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
+        store_memory = kwargs.pop('store_memory', None)
+        plasma_directory = kwargs.pop('plasma_directory', None)
+        check_dir_size = kwargs.pop('check_dir_size', True)
+
+        if kwargs:
+            raise TypeError(f'PlasmaStorage got unexpected config: {",".join(kwargs)}')
 
         plasma_store = plasma.start_plasma_store(store_memory,
                                                  plasma_directory=plasma_directory)
-        params = dict(plasma_socket=plasma_store.__enter__()[0],
+        plasma_socket = plasma_store.__enter__()[0]
+        params = dict(plasma_socket=plasma_socket,
                       plasma_directory=plasma_directory,
-                      plasma_store=plasma_store)
+                      check_dir_size=check_dir_size)
         client = plasma.connect(params['plasma_socket'])
         actual_capacity = get_actual_capacity(client)
         params['capacity'] = actual_capacity
-        return params
+        return params, dict(plasma_store=plasma_store)
 
     @staticmethod
-    async def teardown(**kwargs) -> None:
+    async def teardown(**kwargs):
         plasma_store = kwargs.get('plasma_store')
         plasma_store.__exit__(None, None, None)
 
@@ -142,7 +152,7 @@ class PlasmaStorage(StorageBackend):
     def level(self):
         return StorageLevel.MEMORY
 
-    async def _check_plasma_limit(self, size):
+    def _check_plasma_limit(self, size):
         used_size = psutil.disk_usage(self._plasma_directory).used
         totol = psutil.disk_usage(self._plasma_directory).total
         if used_size + size > totol * 0.95:  # pragma: no cover
@@ -180,7 +190,8 @@ class PlasmaStorage(StorageBackend):
         header_buf = sio.getvalue()
 
         total_bytes = buffer_length + len(header_buf)
-        await self._check_plasma_limit(total_bytes)
+        if self._check_dir_size:  # pragma: no cover
+            self._check_plasma_limit(total_bytes)
 
         buffer = self._client.create(new_id, total_bytes)
         stream = pa.FixedSizeBufferWriter(buffer)
@@ -189,24 +200,23 @@ class PlasmaStorage(StorageBackend):
         for buf in buffers:
             stream.write(buf)
         self._client.seal(new_id)
-        return ObjectInfo(size=total_bytes,
-                          device='memory', object_id=new_id)
+        return ObjectInfo(size=total_bytes, object_id=new_id)
 
     async def delete(self, object_id):
         self._client.delete([object_id])
 
     async def object_info(self, object_id) -> ObjectInfo:
         [buf] = self._client.get_buffers([object_id])
-        return ObjectInfo(size=buf.size, device='memory', object_id=object_id)
+        return ObjectInfo(size=buf.size, object_id=object_id)
 
-    async def create_writer(self, size=None) -> FileObject:
+    async def open_writer(self, size=None) -> StorageFileObject:
         new_id = self._generate_object_id()
         plasma_writer = PlasmaFileObject(self._client, new_id, size=size, mode='w')
-        return FileObject(plasma_writer, object_id=new_id)
+        return StorageFileObject(plasma_writer, object_id=new_id)
 
-    async def open_reader(self, object_id) -> FileObject:
+    async def open_reader(self, object_id) -> StorageFileObject:
         plasma_reader = PlasmaFileObject(self._client, object_id, mode='r')
-        return FileObject(plasma_reader, object_id=object_id)
+        return StorageFileObject(plasma_reader, object_id=object_id)
 
     async def list(self) -> List:
         return list(self._client.list())
