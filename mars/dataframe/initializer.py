@@ -122,7 +122,8 @@ class Index(_Index, metaclass=InitializerMeta):
         return object.__new__(cls)
 
     def __init__(self, data=None, dtype=None, copy=False, name=None, tupleize_cols=True,
-                 chunk_size=None, gpu=None, sparse=None, names=None, num_partitions=None):
+                 chunk_size=None, gpu=None, sparse=None, names=None, num_partitions=None,
+                 store_data=False):
         # make sure __getattr__ does not result in stack overflow
         self._data = None
 
@@ -149,8 +150,8 @@ class Index(_Index, metaclass=InitializerMeta):
 
                 if num_partitions is not None:
                     chunk_size = ceildiv(len(pd_index), num_partitions)
-                index = from_pandas_index(pd_index, chunk_size=chunk_size,
-                                          gpu=gpu, sparse=sparse)
+                index = from_pandas_index(pd_index, chunk_size=chunk_size, gpu=gpu,
+                                          sparse=sparse, store_data=store_data)
 
         if need_repart:
             index = index.rebalance(num_partitions=num_partitions)

@@ -148,6 +148,7 @@ Reindexing / selection / label manipulation
    Series.rename
    Series.rename_axis
    Series.reset_index
+   Series.set_axis
    Series.tail
 
 Missing data handling
