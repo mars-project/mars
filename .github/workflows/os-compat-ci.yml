@@ -57,10 +57,10 @@ jobs:
       shell: bash
       run: |
         source ./.github/workflows/reload-env.sh
-        export CYTHON_TRACE=1
         for cf in `ls .coveragerc*`; do
+          sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
           sed -i.bak -e '/*\.pxd/ a\
-          \ \ \ \ *.py \
+          \ \ \ \ *.pyx \
           ' $cf
         done
         retry python setup.py build_ext -i -j 2
