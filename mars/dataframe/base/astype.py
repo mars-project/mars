@@ -20,9 +20,9 @@ from ... import opcodes as OperandDef
 from ...serialize import AnyField, StringField, ListField
 from ...utils import recursive_tile
 from ...tensor.base import sort
-from ..utils import build_empty_df, build_empty_series
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
+from ..utils import build_empty_df, build_empty_series, parse_index
 
 
 class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
@@ -197,8 +197,10 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
                 return self.new_series([df], shape=df.shape, dtype=dtype,
                                        name=df.name, index_value=df.index_value)
             else:
+                new_index = df.index_value.to_pandas().astype(self.dtype_values)
+                new_index_value = parse_index(new_index, store_data=df.index_value.has_value())
                 return self.new_index([df], shape=df.shape, dtype=dtype,
-                                      name=df.name, index_value=df.index_value)
+                                      name=df.name, index_value=new_index_value)
 
 
 def astype(df, dtype, copy=True, errors='raise'):

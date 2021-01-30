@@ -751,21 +751,6 @@ class Test(TestBase):
         expected = data.sort_values('a').reset_index(drop=True)
         pd.testing.assert_frame_equal(result, expected)
 
-    def testSetColumns(self):
-        rs = np.random.RandomState(0)
-        raw = pd.DataFrame(rs.rand(10, 4))
-
-        df = md.DataFrame(raw, chunk_size=3)
-        df.columns = ['a', 'b', 'c', 'd']
-
-        result = self.executor.execute_dataframe(df, concat=True)[0]
-        expected = raw.copy()
-        expected.columns = ['a', 'b', 'c', 'd']
-        pd.testing.assert_frame_equal(result, expected)
-
-        with self.assertRaises(ValueError):
-            df.columns = ['1', '2', '3']
-
     def testRename(self):
         rs = np.random.RandomState(0)
         raw = pd.DataFrame(rs.rand(10, 4), columns=['A', 'B', 'C', 'D'])
@@ -1271,3 +1256,65 @@ class Test(TestBase):
         new_df.mask(new_df < 0, inplace=True)
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(new_df, concat=True)[0],
                                       raw_df.mask(raw_df < 0))
+
+    def testSetAxis(self):
+        raw_df = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df = md.DataFrame(raw_df, chunk_size=3)
+
+        # test axis=0
+        idx_data = np.arange(0, 10)
+        np.random.shuffle(idx_data)
+        new_idx = md.Index(idx_data, chunk_size=4)
+
+        r = df.set_axis(new_idx)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.set_axis(idx_data))
+
+        new_idx = pd.Index(range(9, -1, -1))
+        r = df.set_axis(new_idx)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.set_axis(new_idx))
+
+        df1 = df.copy()
+        df1.index = pd.Index(range(9, -1, -1))
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df1, concat=True)[0],
+                                      raw_df.set_axis(new_idx))
+
+        ser = md.Series(idx_data)
+        with self.assertRaises(ValueError):
+            df.set_axis(ser[ser > 5]).execute()
+
+        # test axis=1
+        new_axis = ['a1', 'a2', 'a3', 'a4', 'a5']
+        r = df.set_axis(new_axis, axis=1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.set_axis(new_axis, axis=1))
+
+        r = df.set_axis(md.Index(new_axis, store_data=True), axis=1)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.set_axis(new_axis, axis=1))
+
+        df1 = df.copy()
+        df1.columns = new_axis
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df1, concat=True)[0],
+                                      raw_df.set_axis(new_axis, axis=1))
+
+        with self.assertRaises(ValueError):
+            df.set_axis(['a1', 'a2', 'a3', 'a4'], axis=1)
+
+        # test series
+        raw_series = pd.Series(np.random.rand(10))
+        s = md.Series(raw_series, chunk_size=3)
+
+        idx_data = np.arange(0, 10)
+        np.random.shuffle(idx_data)
+        new_idx = md.Index(idx_data, chunk_size=4)
+
+        r = s.set_axis(new_idx)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw_series.set_axis(idx_data))
+
+        s1 = s.copy()
+        s1.index = new_idx
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(s1, concat=True)[0],
+                                       raw_series.set_axis(idx_data))
