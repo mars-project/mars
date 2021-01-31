@@ -23,7 +23,7 @@ import pandas as pd
 
 from mars.filesystem import LocalFileSystem
 from mars.serialize import dataserializer
-from mars.storage.core import StorageLevel
+from mars.storage.base import StorageLevel
 from mars.storage.filesystem import FileSystemStorage
 from mars.storage.plasma import PlasmaStorage
 

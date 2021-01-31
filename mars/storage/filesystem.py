@@ -15,30 +15,21 @@
 # limitations under the License.
 
 import os
-import struct
 import uuid
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
-from ..serialization import serialize_header, deserialize_header, serialize, deserialize
-from ..serialization.core import HEADER_LENGTH
+from ..aio import AioFilesystem
+from ..serialization import AioSerializer, AioDeserializer
 from ..utils import mod_hash
-from .core import StorageBackend, ObjectInfo, StorageFileObject
+from .base import StorageBackend, ObjectInfo
+from .core import StorageFileObject
 
 
 class FileSystemStorage(StorageBackend):
     def __init__(self, fs=None, root_dirs=None, level=None):
-        self._fs = fs
+        self._fs = AioFilesystem(fs)
         self._root_dirs = root_dirs
         self._level = level
-
-    @property
-    def name(self) -> str:
-        typename = type(self._fs).__name__
-        if self._root_dirs:
-            dirname = ','.join(self._root_dirs)
-            return f"typename: {dirname}"
-        else:
-            return typename
 
     @classmethod
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
@@ -68,53 +59,44 @@ class FileSystemStorage(StorageBackend):
         selected_dir = self._root_dirs[selected_index]
         return os.path.join(selected_dir, file_name)
 
-    async def get(self, object_id, **kwargs) -> Any:
-        async with StorageFileObject(self._fs.open(object_id, 'rb'), object_id=object_id) as f:
-            # read buffer header
-            b = await f.read(HEADER_LENGTH)
-            # read serialized header length
-            header_length, = struct.unpack('<Q', b[2:HEADER_LENGTH])
-            header, buf_lengths = deserialize_header(await f.read(header_length))
-            buffers = []
-            for length in buf_lengths:
-                buffers.append(await f.read(length))
-        return deserialize(header, buffers)
+    async def get(self, object_id, **kwargs) -> object:
+        file = await self._fs.open(object_id, 'rb')
+        async with file as f:
+            deserializer = AioDeserializer(f)
+            return await deserializer.run()
 
     async def put(self, obj, importance=0) -> ObjectInfo:
-        path = self._generate_path()
-        serialized = serialize(obj)
-        header_bytes = serialize_header(serialized)
+        serializer = AioSerializer(obj)
+        buffers = await serializer.run()
+        buffer_size = sum(getattr(buf, 'nbytes', len(buf))
+                          for buf in buffers)
 
-        file = self._fs.open(path, 'wb')
-        async with StorageFileObject(file, file.name) as f:
-            # reserve one byte for compress information
-            await f.write(struct.pack('<H', 0))
-            # header length
-            await f.write(struct.pack('<Q', len(header_bytes)))
-            await f.write(header_bytes)
-            for buf in serialized[1]:
-                await f.write(buf)
-            size = await f.tell()
-        return ObjectInfo(size=size, object_id=path)
+        path = self._generate_path()
+        file = await self._fs.open(path, 'wb')
+        async with file as f:
+            for buffer in buffers:
+                await f.write(buffer)
+
+        return ObjectInfo(size=buffer_size, object_id=path)
 
     async def delete(self, object_id):
-        os.remove(object_id)
+        await self._fs.delete(object_id)
 
     async def list(self) -> List:
         file_list = []
         for d in self._root_dirs:
-            file_list.extend(list(self._fs.ls(d)))
+            file_list.extend(list(await self._fs.ls(d)))
         return file_list
 
     async def object_info(self, object_id) -> ObjectInfo:
-        size = self._fs.stat(object_id)['size']
-        return ObjectInfo(size=size, object_id=object_id)
+        stat = await self._fs.stat(object_id)
+        return ObjectInfo(size=stat['size'], object_id=object_id)
 
     async def open_writer(self, size=None) -> StorageFileObject:
         path = self._generate_path()
-        file = self._fs.open(path, 'wb')
+        file = await self._fs.open(path, 'wb')
         return StorageFileObject(file, file.name)
 
     async def open_reader(self, object_id) -> StorageFileObject:
-        file = self._fs.open(object_id, 'rb')
+        file = await self._fs.open(object_id, 'rb')
         return StorageFileObject(file, file.name)

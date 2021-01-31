@@ -15,76 +15,40 @@
 # limitations under the License.
 
 import psutil
-import struct
-from io import BytesIO
 from typing import Dict, List, Tuple
 
 import pyarrow as pa
 from pyarrow import plasma
 
-from ..serialization import serialize, deserialize, serialize_header, deserialize_header
-from ..serialization.core import HEADER_LENGTH
-from .core import StorageBackend, StorageLevel, ObjectInfo, StorageFileObject
+from ..serialization import AioSerializer, AioDeserializer
+from .base import StorageBackend, StorageLevel, ObjectInfo
+from .core import BufferWrappedFileObject, StorageFileObject
 
 
 PAGE_SIZE = 64 * 1024
 
 
-class PlasmaFileObject:
-    def __init__(self, plasma_client, object_id, mode='w', size=None):
+class PlasmaFileObject(BufferWrappedFileObject):
+    def __init__(self, plasma_client, object_id, mode, size=None):
         self._plasma_client = plasma_client
         self._object_id = object_id
-        self._offset = 0
-        self._size = size
-        self._is_readable = 'r' in mode
-        self._is_writable = 'w' in mode
-        self._closed = False
+        super().__init__(mode, size=size)
 
-        if self._is_writable:
-            buf = self._plasma_client.create(object_id, size)
-            self._buf = pa.FixedSizeBufferWriter(buf)
-            self._buf.set_memcopy_threads(6)
-        elif self._is_readable:
-            [self._buf] = self._plasma_client.get_buffers([object_id])
-            self._mv = memoryview(self._buf)
-            self._size = len(self._buf)
-        else:  # pragma: no cover
-            raise NotImplementedError
+    def _write_init(self):
+        self._buffer = buf = self._plasma_client.create(self._object_id, self._size)
+        file = self._file = pa.FixedSizeBufferWriter(buf)
+        file.set_memcopy_threads(6)
 
-    @property
-    def size(self):
-        return self._size
+    def _read_init(self):
+        self._buffer = buf = self._plasma_client.get_buffers([self._object_id])[0]
+        self._mv = memoryview(buf)
+        self._size = len(buf)
 
-    @property
-    def closed(self):
-        return self._closed
+    def _write_close(self):
+        self._plasma_client.seal(self._object_id)
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def read(self, size=-1):
-        if size < 0:
-            size = self._size
-        right_pos = min(self._size, self._offset + size)
-        ret = self._mv[self._offset:right_pos]
-        self._offset = right_pos
-        return ret
-
-    def write(self, d):
-        return self._buf.write(d)
-
-    def close(self):
-        if self._closed:
-            return
-
-        if self._is_writable:
-            self._plasma_client.seal(self._object_id)
-
-        self._mv = None
-        self._buf = None
+    def _read_close(self):
+        pass
 
 
 def get_actual_capacity(plasma_client):
@@ -118,10 +82,6 @@ class PlasmaStorage(StorageBackend):
         self._plasma_directory = plasma_directory
         self._capacity = capacity
         self._check_dir_size = check_dir_size
-
-    @property
-    def name(self) -> str:
-        return 'plasma'
 
     @classmethod
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
@@ -165,42 +125,27 @@ class PlasmaStorage(StorageBackend):
                 return new_id
 
     async def get(self, object_id, **kwargs) -> object:
-        [buf] = self._client.get_buffers([object_id])
-        length, = struct.unpack('<Q', buf[2:HEADER_LENGTH])
-        header, buf_lengths = deserialize_header(buf[HEADER_LENGTH: HEADER_LENGTH + length])
-        buffers = []
-        start = HEADER_LENGTH + length
-        for l in buf_lengths:
-            buffers.append(buf[start: start + l])
-            start += l
-        return deserialize(header, buffers)
+        plasma_file = PlasmaFileObject(self._client, object_id, mode='r')
+
+        async with StorageFileObject(plasma_file, object_id) as f:
+            deserializer = AioDeserializer(f)
+            return await deserializer.run()
 
     async def put(self, obj, importance=0) -> ObjectInfo:
-        sio = BytesIO()
-        new_id = self._generate_object_id()
-        serialized = serialize(obj)
-        header_bytes = serialize_header(serialized)
-        _, buffers = serialized
-        buffer_length = sum([getattr(b, 'nbytes', len(b)) for b in buffers])
-        # reserve one byte for compress information
-        sio.write(struct.pack('<H', 0))
-        # header length
-        sio.write(struct.pack('<Q', len(header_bytes)))
-        sio.write(header_bytes)
-        header_buf = sio.getvalue()
+        object_id = self._generate_object_id()
 
-        total_bytes = buffer_length + len(header_buf)
-        if self._check_dir_size:  # pragma: no cover
-            self._check_plasma_limit(total_bytes)
+        serializer = AioSerializer(obj)
+        buffers = await serializer.run()
+        buffer_size = sum(getattr(buf, 'nbytes', len(buf))
+                          for buf in buffers)
 
-        buffer = self._client.create(new_id, total_bytes)
-        stream = pa.FixedSizeBufferWriter(buffer)
-        stream.set_memcopy_threads(6)
-        stream.write(header_buf)
-        for buf in buffers:
-            stream.write(buf)
-        self._client.seal(new_id)
-        return ObjectInfo(size=total_bytes, object_id=new_id)
+        plasma_file = PlasmaFileObject(self._client, object_id,
+                                       mode='w', size=buffer_size)
+        async with StorageFileObject(plasma_file, object_id) as f:
+            for buffer in buffers:
+                await f.write(buffer)
+
+        return ObjectInfo(size=buffer_size, object_id=object_id)
 
     async def delete(self, object_id):
         self._client.delete([object_id])
@@ -210,6 +155,9 @@ class PlasmaStorage(StorageBackend):
         return ObjectInfo(size=buf.size, object_id=object_id)
 
     async def open_writer(self, size=None) -> StorageFileObject:
+        if size is None:  # pragma: no cover
+            raise ValueError('size must be provided for plasma backend')
+
         new_id = self._generate_object_id()
         plasma_writer = PlasmaFileObject(self._client, new_id, size=size, mode='w')
         return StorageFileObject(plasma_writer, object_id=new_id)

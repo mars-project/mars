@@ -12,8 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import serialize, deserialize
-from .core import AioSerializer, AioDeserializer
+import os
+import tempfile
 
-from . import arrow, cuda, numpy, scipy, mars_objects
-del arrow, cuda, numpy, scipy, mars_objects
+import pytest
+
+from mars.filesystem import LocalFileSystem
+from mars.aio import AioFilesystem
+
+
+@pytest.mark.asyncio
+async def test_aio_filesystem():
+    local_fs = LocalFileSystem.get_instance()
+    aio_fs = AioFilesystem(local_fs)
+
+    assert aio_fs.pathsep == local_fs.pathsep
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        file_path = os.path.join(tempdir, 'test')
+
+        with open(file_path, 'wb') as f:
+            f.write(b'text for test')
+
+        stat = await aio_fs.stat(tempdir)
+        assert stat['type'] == 'directory'

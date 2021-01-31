@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from io import BytesIO
+import struct
 import sys
-from typing import Dict, List
+from io import BytesIO
+from typing import Any, Dict, List
 
 from ..utils import TypeDispatcher
 
@@ -215,22 +216,67 @@ def deserialize(header: Dict, buffers: List):
     return serializer.deserialize(header, buffers)
 
 
-HEADER_LENGTH = 10
+DEFAULT_SERIALIZATION_VERSION = 0
+BUFFER_SIZES_NAME = 'buf_sizes'
 
 
-def serialize_header(serialized_obj, pickle_protocol=4):
-    header, buffers = serialized_obj
+class AioSerializer:
+    def __init__(self,
+                 obj: Any,
+                 compress=0):
+        self._obj = obj
+        self._compress = compress
 
-    # record all buffer length
-    header['buf_lengths'] = [getattr(b, 'nbytes', len(b)) for b in buffers]
-    serialized_header = pickle.dumps(header, protocol=pickle_protocol)
+    def _get_buffers(self):
+        headers, buffers = serialize(self._obj)
 
-    sio = BytesIO()
-    sio.write(serialized_header)
-    return sio.getvalue()
+        # add buffer lengths into headers
+        headers[BUFFER_SIZES_NAME] = [getattr(buf, 'nbytes', len(buf))
+                                      for buf in buffers]
+        header = pickle.dumps(headers)
+
+        # gen header buffer
+        header_bio = BytesIO()
+        # write version first
+        header_bio.write(struct.pack('B', DEFAULT_SERIALIZATION_VERSION))
+        # write header length
+        header_bio.write(struct.pack('<Q', len(header)))
+        # write compression
+        header_bio.write(struct.pack('<H', self._compress))
+        # write header
+        header_bio.write(header)
+
+        out_buffers = list()
+        out_buffers.append(header_bio.getbuffer())
+        out_buffers.extend(buffers)
+
+        return out_buffers
+
+    async def run(self):
+        return self._get_buffers()
 
 
-def deserialize_header(buf):
-    header = pickle.loads(buf)  # nosec
-    buf_lengths = header.pop('buf_lengths')
-    return header, buf_lengths
+class AioDeserializer:
+    def __init__(self, file):
+        self._file = file
+
+    async def _get_obj(self):
+        header_bytes = bytes(await self._file.read(11))
+        version = struct.unpack('B', header_bytes[:1])[0]
+        # now we only have default version
+        assert version == DEFAULT_SERIALIZATION_VERSION
+        # header length
+        header_length = struct.unpack('<Q', header_bytes[1:9])[0]
+        # compress
+        _ = struct.unpack('<H', header_bytes[9:])[0]
+        # extract header
+        header = pickle.loads(await self._file.read(header_length))
+        # get buffer size
+        buffer_sizes = header.pop(BUFFER_SIZES_NAME)
+        # get buffers
+        buffers = [await self._file.read(size) for size in buffer_sizes]
+
+        return deserialize(header, buffers)
+
+    async def run(self):
+        return await self._get_obj()

@@ -18,7 +18,7 @@ from concurrent.futures import Executor
 from typing import Any, Type
 
 
-def _make_async_method(attr):
+def _make_delegate_method(attr):
     async def method(self, *args, **kwargs):
         func = functools.partial(getattr(self._file, attr), *args, **kwargs)
         return await self._loop.run_in_executor(self._executor, func)
@@ -26,13 +26,58 @@ def _make_async_method(attr):
     return method
 
 
+def _make_proxy_method(attr):
+    def method(self, *args, **kwargs):
+        return getattr(self._file, attr)(*args, **kwargs)
+
+    return method
+
+
+def _make_proxy_property(attr):
+    def proxy_property(self):
+        return getattr(self._file, attr)
+
+    return property(proxy_property)
+
+
 def delegate_to_executor(*attrs):
     def wrap_cls(cls: Type):
         for attr in attrs:
-            setattr(cls, attr, _make_async_method(attr))
+            setattr(cls, attr, _make_delegate_method(attr))
         return cls
 
     return wrap_cls
+
+
+def proxy_method_directly(*attrs):
+    def wrap_cls(cls: Type):
+        for attr in attrs:
+            setattr(cls, attr, _make_proxy_method(attr))
+        return cls
+
+    return wrap_cls
+
+
+def proxy_property_directly(*attrs):
+    def wrap_cls(cls):
+        for attr in attrs:
+            setattr(cls, attr, _make_proxy_property(attr))
+        return cls
+
+    return wrap_cls
+
+
+class AioBase:
+    def __init__(self,
+                 file: Any,
+                 loop: asyncio.BaseEventLoop = None,
+                 executor: Executor = None):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+
+        self._file = file
+        self._loop = loop
+        self._executor = executor
 
 
 @delegate_to_executor(
@@ -52,18 +97,9 @@ def delegate_to_executor(*attrs):
     "write",
     "writelines",
 )
-class AioFileObject:
-    def __init__(self,
-                 file: Any,
-                 loop: asyncio.BaseEventLoop = None,
-                 executor: Executor = None):
-        if loop is None:
-            loop = asyncio.get_event_loop()
-
-        self._file = file
-        self._loop = loop
-        self._executor = executor
-
+@proxy_method_directly("fileno", "readable")
+@proxy_property_directly("closed", "name", "mode")
+class AioFileObject(AioBase):
     def __aiter__(self):
         return self
 
@@ -81,3 +117,30 @@ class AioFileObject:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
         self._file = None
+
+
+@delegate_to_executor(
+    "cat",
+    "ls",
+    "delete",
+    "disk_usage",
+    "stat",
+    "rm",
+    "mv",
+    "rename",
+    "mkdir",
+    "exists",
+    "isdir",
+    "isfile",
+    "read_parquet",
+    "walk",
+)
+@proxy_property_directly("pathsep")
+class AioFilesystem(AioBase):
+    def __getattr__(self, attr):
+        return getattr(self._file, attr)
+
+    async def open(self, *args, **kwargs):
+        func = functools.partial(self._file.open, *args, **kwargs)
+        file = await self._loop.run_in_executor(self._executor, func)
+        return AioFileObject(file)
