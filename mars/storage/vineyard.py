@@ -27,8 +27,7 @@ except ImportError:
     vineyard = None
 
 from ..lib import sparse
-from ..serialize import dataserializer
-from .core import StorageBackend, StorageLevel, ObjectInfo, FileObject
+from .core import StorageBackend, StorageLevel, ObjectInfo, StorageFileObject
 
 
 def mars_sparse_matrix_builder(client, value, builder, **kw):
@@ -64,6 +63,7 @@ class VineyardFileObject:
         if self._is_writable:
             self._blob = self._client.create_blob(size)
             self._buf = pa.FixedSizeBufferWriter(self._blob.buffer)
+            self._buf.set_memcopy_threads(6)
         elif self._is_readable:
             self._buf = self._client.get_object(object_id)
             self._mv = memoryview(self._buf)
@@ -115,20 +115,21 @@ class VineyardFileObject:
 
 
 class VineyardStorage(StorageBackend):
-    def __init__(self, vineyard_socket=None, vineyard_store=None):
+    def __init__(self, vineyard_socket=None):
         self._client = vineyard.connect(vineyard_socket)
-        self._vineyard_store = vineyard_store
+
+    @property
+    def name(self) -> str:
+        return 'vineyard'
 
     @classmethod
-    async def setup(cls,**kwargs) -> Union[Dict, None]:
+    async def setup(cls,**kwargs) -> Tuple[Dict, Dict]:
         etcd_endpoints = kwargs.get('etcd_endpoints', None)
         size = kwargs.get('size', '256M')
         socket = kwargs.get('socket', '/tmp/vineyard.sock')
         vineyardd_path = kwargs.get('vineyardd_path', '/usr/local/bin/vineyardd')
         vineyard_store = start_vineyardd(etcd_endpoints, vineyardd_path, size, socket)
-        params = dict(vineyard_socket=vineyard_store.__enter__()[1],
-                      vineyard_store=vineyard_store)
-        return params
+        return dict(vineyard_socket=vineyard_store.__enter__()[1]), dict(vineyard_store=vineyard_store)
 
     @staticmethod
     async def teardown(**kwargs) -> None:
@@ -152,15 +153,15 @@ class VineyardStorage(StorageBackend):
 
     async def object_info(self, object_id) -> ObjectInfo:
         size = self._client.get_meta(object_id).nbytes
-        return ObjectInfo(size=size, device='memory', object_id=object_id)
+        return ObjectInfo(size=size, object_id=object_id)
 
-    async def create_writer(self, size=None) -> FileObject:
+    async def create_writer(self, size=None) -> StorageFileObject:
         vineyard_writer = VineyardFileObject(self._client, size=size, mode='w')
-        return FileObject(vineyard_writer)
+        return StorageFileObject(vineyard_writer, object_id=None)
 
-    async def open_reader(self, object_id) -> FileObject:
+    async def open_reader(self, object_id) -> StorageFileObject:
         vineyard_reader = VineyardFileObject(self._client, object_id, mode='r')
-        return FileObject(vineyard_reader, object_id=object_id)
+        return StorageFileObject(vineyard_reader, object_id=object_id)
 
     async def list(self) -> List:
         raise NotImplementedError
