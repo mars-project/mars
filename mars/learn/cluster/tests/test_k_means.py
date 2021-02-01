@@ -307,7 +307,7 @@ class Test(TestBase):
                 # using more than one thread, the absolute values of the labels can be
                 # different between the 2 strategies but they should correspond to the same
                 # clustering.
-                self.assertEqual(v_measure_score(labels_1, labels_2), 1)
+                self.assertAlmostEqual(v_measure_score(labels_1, labels_2), 1)
 
     def testTransform(self):
         centers = np.array([
