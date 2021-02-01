@@ -18,7 +18,7 @@ import tempfile
 import pytest
 
 from mars.filesystem import LocalFileSystem
-from mars.aio import AioFilesystem
+from mars.aio import AioFilesystem, AioFileObject
 
 
 @pytest.mark.asyncio
@@ -36,3 +36,20 @@ async def test_aio_filesystem():
 
         stat = await aio_fs.stat(tempdir)
         assert stat['type'] == 'directory'
+
+
+@pytest.mark.asyncio
+async def test_aio_file_object():
+    with tempfile.TemporaryDirectory() as tempdir:
+        file_path = os.path.join(tempdir, 'test')
+
+        f = AioFileObject(open(file_path, 'w'))
+        async with f:
+            assert f.readable() is False
+            assert f.mode == 'w'
+            await f.write('text for test')
+
+        f2 = AioFileObject(open(file_path))
+        async with f2:
+            async for l in f2:
+                assert len(l) > 0

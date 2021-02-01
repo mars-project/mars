@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import psutil
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pyarrow as pa
 from pyarrow import plasma
@@ -49,6 +49,19 @@ class PlasmaFileObject(BufferWrappedFileObject):
 
     def _read_close(self):
         pass
+
+
+class PlasmaObjectInfo(ObjectInfo):
+    __slots__ = "buffer",
+
+    def __init__(self,
+                 size: int = None,
+                 device: int = None,
+                 object_id: Any = None,
+                 buffer: memoryview = None):
+        super().__init__(size=size, device=device,
+                         object_id=object_id)
+        self.buffer = buffer
 
 
 def get_actual_capacity(plasma_client):
@@ -95,13 +108,14 @@ class PlasmaStorage(StorageBackend):
         plasma_store = plasma.start_plasma_store(store_memory,
                                                  plasma_directory=plasma_directory)
         plasma_socket = plasma_store.__enter__()[0]
-        params = dict(plasma_socket=plasma_socket,
-                      plasma_directory=plasma_directory,
-                      check_dir_size=check_dir_size)
-        client = plasma.connect(params['plasma_socket'])
+        init_params = dict(plasma_socket=plasma_socket,
+                           plasma_directory=plasma_directory,
+                           check_dir_size=check_dir_size)
+        client = plasma.connect(plasma_socket)
         actual_capacity = get_actual_capacity(client)
-        params['capacity'] = actual_capacity
-        return params, dict(plasma_store=plasma_store)
+        init_params['capacity'] = actual_capacity
+        teardown_params = dict(plasma_store=plasma_store)
+        return init_params, teardown_params
 
     @staticmethod
     async def teardown(**kwargs):
@@ -145,14 +159,16 @@ class PlasmaStorage(StorageBackend):
             for buffer in buffers:
                 await f.write(buffer)
 
-        return ObjectInfo(size=buffer_size, object_id=object_id)
+        return PlasmaObjectInfo(size=buffer_size, object_id=object_id,
+                                buffer=plasma_file.buffer)
 
     async def delete(self, object_id):
         self._client.delete([object_id])
 
     async def object_info(self, object_id) -> ObjectInfo:
-        [buf] = self._client.get_buffers([object_id])
-        return ObjectInfo(size=buf.size, object_id=object_id)
+        buf = self._client.get_buffers([object_id])[0]
+        return PlasmaObjectInfo(size=buf.size, object_id=object_id,
+                                buffer=buf)
 
     async def open_writer(self, size=None) -> StorageFileObject:
         if size is None:  # pragma: no cover

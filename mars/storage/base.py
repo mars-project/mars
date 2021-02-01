@@ -43,6 +43,7 @@ class ObjectInfo:
 
 class StorageBackend(ABC):
     @classmethod
+    @abstractmethod
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         """
         Setup environments, for example, start plasma store for plasma backend.
@@ -57,7 +58,6 @@ class StorageBackend(ABC):
         Tuple of two dicts
             Dicts for initialization and teardown.
         """
-        return dict(), dict()
 
     @staticmethod
     async def teardown(**kwargs):

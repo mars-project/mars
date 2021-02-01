@@ -74,6 +74,8 @@ class AioBase:
                  executor: Executor = None):
         if loop is None:
             loop = asyncio.get_event_loop()
+        if isinstance(file, AioBase):
+            file = file._file
 
         self._file = file
         self._loop = loop
@@ -137,9 +139,6 @@ class AioFileObject(AioBase):
 )
 @proxy_property_directly("pathsep")
 class AioFilesystem(AioBase):
-    def __getattr__(self, attr):
-        return getattr(self._file, attr)
-
     async def open(self, *args, **kwargs):
         func = functools.partial(self._file.open, *args, **kwargs)
         file = await self._loop.run_in_executor(self._executor, func)

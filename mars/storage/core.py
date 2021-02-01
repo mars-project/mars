@@ -28,8 +28,6 @@ class StorageFileObject(AioFileObject):
                  object_id: Any,
                  loop: asyncio.BaseEventLoop = None,
                  executor: Executor = None):
-        if isinstance(file, AioFileObject):
-            file = file._file
         self.object_id = object_id
         super().__init__(file, loop=loop, executor=executor)
 
@@ -69,12 +67,8 @@ class BufferWrappedFileObject(ABC):
         """
 
     @property
-    def mode(self):
-        return self._mode
-
-    @property
-    def closed(self):
-        return self._closed
+    def buffer(self):
+        return self._buffer
 
     def read(self, size=-1):
         if not self._initialized:
