@@ -170,7 +170,7 @@ def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
     # Get the product of frequencies and weights
     w = None
     if fweights is not None:
-        fweights = astensor(fweights, dtype=np.float)
+        fweights = astensor(fweights, dtype=float)
         if fweights.ndim > 1:
             raise RuntimeError(
                 "cannot handle multidimensional fweights")
@@ -182,7 +182,7 @@ def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
                 "fweights cannot be negative")
         w = fweights
     if aweights is not None:
-        aweights = astensor(aweights, dtype=np.float)
+        aweights = astensor(aweights, dtype=float)
         if aweights.ndim > 1:
             raise RuntimeError(
                 "cannot handle multidimensional aweights")

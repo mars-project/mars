@@ -422,7 +422,7 @@ def date_range(start=None, end=None, periods=None, freq=None, tz=None,
                   dtype='datetime64[ns]', freq='D')
     """
     # validate periods
-    if isinstance(periods, (float, np.float)):
+    if isinstance(periods, (float, np.floating)):
         periods = int(periods)
     if periods is not None and not isinstance(periods, (int, np.integer)):
         raise TypeError(f'periods must be a number, got {periods}')
