@@ -453,7 +453,7 @@ class Test(unittest.TestCase):
                                       np.cumsum(np.array(list('abcdefghi'), dtype=object)))
 
     def testNanCumReduction(self):
-        raw = np.random.randint(5, size=(8, 8, 8))
+        raw = np.random.randint(5, size=(8, 8, 8)).astype(float)
         raw[:2, 2:4, 4:6] = np.nan
 
         arr = tensor(raw, chunk_size=3)

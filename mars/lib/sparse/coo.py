@@ -149,7 +149,7 @@ class COONDArray(SparseNDArray):
                 result[tuple(self.indices[i])] += self.data[i]
             return result
 
-        elif isinstance(other, (int, float, np.int, np.float)):
+        elif isinstance(other, (int, float, np.integer, np.floating)):
             result = np.ones(shape=self.shape) * other
             for i in range(len(self.indices)):
                 result[self.indices[i]] += self.data[i]
@@ -208,7 +208,7 @@ class COONDArray(SparseNDArray):
                 result[tuple(self.indices[i])] -= self.data[i]
             return np.negative(result)
 
-        elif isinstance(other, (int, float, np.int, np.float)):
+        elif isinstance(other, (int, float, np.integer, np.floating)):
             result = np.ones(shape=self.shape) * other
             for i in range(len(self.indices)):
                 result[self.indices[i]] -= self.data[i]
@@ -268,7 +268,7 @@ class COONDArray(SparseNDArray):
                 data[i] *= other[tuple(self.indices[i])]
             return COONDArray(self.indices, data, self.shape)
 
-        elif isinstance(other, (int, float, np.int, np.float)):
+        elif isinstance(other, (int, float, np.integer, np.floating)):
             if other == 0 or other == float(0):
                 return COONDArray(indices=[], data=[], shape=self.shape)
             elif other == 1 or other == float(1):
@@ -303,7 +303,7 @@ class COONDArray(SparseNDArray):
         elif isinstance(other, np.ndarray):
             return self.toarray() / other
 
-        elif isinstance(other, (int, float, np.int, np.float)):
+        elif isinstance(other, (int, float, np.integer, np.floating)):
             if other == 0 or other == 0.0:
                 return NotImplemented
                 # Equivalent to:

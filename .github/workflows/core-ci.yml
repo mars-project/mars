@@ -9,9 +9,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04]
-        python-version: [3.6, 3.7, 3.8, 3.8-cython]
+        python-version: [3.6, 3.7, 3.8, 3.9, 3.9-cython]
         include:
-          - { os: ubuntu-16.04, python-version: 3.8-cython, no-common-tests: 1,
+          - { os: ubuntu-16.04, python-version: 3.9-cython, no-common-tests: 1,
               no-deploy: 1, with-cython: 1, with-flake8: 1 }
 
     steps:
@@ -36,40 +36,48 @@ jobs:
         source ./.github/workflows/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
 
+        if [[ ! "$PYTHON" =~ "3.9" ]]; then
+          conda install -n test --quiet --yes -c conda-forge python=$PYTHON numba
+        fi
+
+        # todo remove this when fastparquet release new version
+        if [[ "$PYTHON" =~ "3.6" ]]; then
+          pip install numpy\<1.20.0
+        fi
+
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
-        if [[ $UNAME == "windows" ]]; then
-          pip install virtualenv flake8
-        else
-          pip install virtualenv flaky flake8 etcd-gevent
-          if [ -z "$NO_COMMON_TESTS" ]; then
-            pip install fastparquet h5py zarr matplotlib
+        pip install virtualenv flaky flake8 etcd-gevent
 
+        if [ -z "$NO_COMMON_TESTS" ]; then
+          if [[ ! "$PYTHON" =~ "3.9" ]]; then
+            pip install h5py zarr matplotlib
             conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
               "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
-            conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
-
-            if [[ ! "$PYTHON" =~ "3.8" ]]; then
-              conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
-                libxgboost py-xgboost xgboost lightgbm tensorflow statsmodels
-            fi
-            if [[ "$PYTHON" =~ "3.6" ]]; then
-              pip install torch==1.4.0 torchvision==0.5.0 faiss-cpu
-            fi
-            if [[ ! "$PYTHON" =~ "3.8" ]]; then
-              pip install torch torchvision
-              pip install tsfresh
-            fi
-            virtualenv testenv && source testenv/bin/activate
-            pip install -r requirements.txt && pip install pytest pytest-timeout
-            if [ -z "$DEFAULT_VENV" ]; then
-              deactivate
-            else
-              source $DEFAULT_VENV/bin/activate
-            fi
           fi
-          retry ./.github/workflows/download-etcd.sh
+
+          conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
+
+          if [[ ! "$PYTHON" =~ "3.9" ]]; then
+            conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
+              libxgboost py-xgboost xgboost lightgbm tensorflow statsmodels
+          fi
+          if [[ "$PYTHON" =~ "3.6" ]]; then
+            pip install torch==1.4.0 torchvision==0.5.0 faiss-cpu fastparquet
+          fi
+          if [[ ! "$PYTHON" =~ "3.9" ]]; then
+            pip install torch torchvision
+            pip install tsfresh
+          fi
+          virtualenv testenv && source testenv/bin/activate
+          pip install -r requirements.txt && pip install pytest pytest-timeout
+          if [ -z "$DEFAULT_VENV" ]; then
+            deactivate
+          else
+            source $DEFAULT_VENV/bin/activate
+          fi
         fi
+        retry ./.github/workflows/download-etcd.sh
         conda list -n test
 
     - name: Lint with flake8
