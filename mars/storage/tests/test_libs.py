@@ -54,9 +54,7 @@ async def storage_context(request):
             level=StorageLevel.DISK)
         storage = FileSystemStorage(**params)
         assert storage.level == StorageLevel.DISK
-
         yield storage
-
         await storage.teardown(**teardown_params)
     elif request.param == 'plasma':
         plasma_storage_size = 10 * 1024 * 1024
