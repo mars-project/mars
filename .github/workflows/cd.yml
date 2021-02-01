@@ -12,12 +12,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
         include:
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
           - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38" }
-          - { os: windows-latest, python-version: 3.8, build-static: 1 }
+          - { os: ubuntu-16.04, python-version: 3.9, python-abis: "cp39-cp39" }
+          - { os: windows-latest, python-version: 3.9, build-static: 1 }
 
     steps:
       - name: Check out code
@@ -40,6 +41,10 @@ jobs:
         run: |
           source ./.github/workflows/reload-env.sh
           export DEFAULT_VENV=$VIRTUAL_ENV
+
+          if [[ "$PYTHON" =~ "3.9" ]]; then
+            conda install -n test --quiet --yes -c conda-forge python=$PYTHON pyarrow
+          fi
 
           pip install -r requirements-dev.txt
           pip install -r requirements-extra.txt
