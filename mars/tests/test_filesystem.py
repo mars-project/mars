@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import shutil
 import tempfile
 import unittest
 
@@ -35,16 +34,14 @@ class Test(unittest.TestCase):
         local_fs2 = LocalFileSystem.get_instance()
         self.assertIs(local_fs1, local_fs2)
 
-        tempdir = tempfile.mkdtemp()
-        file_path = os.path.join(tempdir, 'test')
-        try:
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test')
+
             with open(file_path, 'wb') as f:
                 f.write(b'text for test')
             self.assertEqual(local_fs1.stat(tempdir)['type'], 'directory')
             self.assertEqual(local_fs1.stat(file_path)['type'], 'file')
             self.assertEqual(len(glob(tempdir + '*')), 1)
-        finally:
-            shutil.rmtree(tempdir)
 
     def testFSMap(self):
         fs = LocalFileSystem.get_instance()
