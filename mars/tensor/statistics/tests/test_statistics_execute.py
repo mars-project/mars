@@ -333,7 +333,7 @@ class Test(TestBase):
                     expected = np.quantile(
                         raw, q, interpolation=interpolation, keepdims=keepdims)
 
-                    np.testing.assert_array_equal(result, expected)
+                    np.testing.assert_almost_equal(result, expected)
 
                     r2 = quantile(a2, q, interpolation=interpolation, keepdims=keepdims)
 
@@ -341,7 +341,7 @@ class Test(TestBase):
                     expected = np.quantile(
                         raw2, q, interpolation=interpolation, keepdims=keepdims)
 
-                    np.testing.assert_array_equal(result, expected)
+                    np.testing.assert_almost_equal(result, expected)
 
         # test multi chunk, 2-d
         raw = np.random.rand(20, 10)
@@ -361,7 +361,7 @@ class Test(TestBase):
                         expected = np.quantile(
                             raw, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
 
-                        np.testing.assert_array_equal(result, expected)
+                        np.testing.assert_almost_equal(result, expected)
 
                         r2 = quantile(a2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
 
@@ -369,7 +369,7 @@ class Test(TestBase):
                         expected = np.quantile(
                             raw2, q, axis=axis, interpolation=interpolation, keepdims=keepdims)
 
-                        np.testing.assert_array_equal(result, expected)
+                        np.testing.assert_almost_equal(result, expected)
 
         # test out, 1 chunk
         raw = np.random.rand(20)
@@ -391,7 +391,7 @@ class Test(TestBase):
 
         result = self.executor.execute_tensor(out, concat=True)[0]
         expected = np.quantile(raw, q, out=np.empty((5, 11)))
-        np.testing.assert_array_equal(result, expected)
+        np.testing.assert_almost_equal(result, expected)
 
         # test q which is a tensor
         q_raw = np.random.RandomState(0).rand(5)
@@ -404,7 +404,7 @@ class Test(TestBase):
             result = executor.execute_tensors([r])[0]
             expected = np.quantile(raw, q_raw, axis=None)
 
-            np.testing.assert_array_equal(result, expected)
+            np.testing.assert_almost_equal(result, expected)
 
             with self.assertRaises(ValueError):
                 q[0] = 1.1
@@ -419,7 +419,7 @@ class Test(TestBase):
 
         result = self.executor.execute_tensor(r, concat=True)[0]
         expected = np.percentile(raw, q)
-        np.testing.assert_array_equal(result, expected)
+        np.testing.assert_almost_equal(result, expected)
 
         mq = tensor(q)
 
@@ -428,7 +428,7 @@ class Test(TestBase):
             r = percentile(a, mq)
             result = executor.execute_tensors([r])[0]
 
-            np.testing.assert_array_equal(result, expected)
+            np.testing.assert_almost_equal(result, expected)
 
     def testMedianExecution(self):
         raw = np.random.rand(20, 10)

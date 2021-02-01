@@ -33,9 +33,6 @@ jobs:
         source ./.github/workflows/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
 
-        # todo remove this when fastparquet release new version
-        pip install numpy\<1.20.0
-
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
         if [[ $UNAME == "windows" ]]; then
