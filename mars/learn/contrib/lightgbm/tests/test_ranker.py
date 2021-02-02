@@ -46,9 +46,9 @@ class Test(unittest.TestCase):
     def testLocalRanker(self):
         X, y = self.X, self.y
         y = (y * 10).astype(mt.int32)
-        regressor = LGBMRanker(n_estimators=2)
-        regressor.fit(X, y, group=[X.shape[0]], verbose=True)
-        prediction = regressor.predict(X)
+        ranker = LGBMRanker(n_estimators=2)
+        ranker.fit(X, y, group=[X.shape[0]], verbose=True)
+        prediction = ranker.predict(X)
 
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))
@@ -59,9 +59,9 @@ class Test(unittest.TestCase):
 
         # test weight
         weight = mt.random.rand(X.shape[0])
-        classifier = LGBMRanker(verbosity=1, n_estimators=2)
-        classifier.fit(X, y, group=[X.shape[0]], sample_weight=weight)
-        prediction = classifier.predict(X)
+        ranker = LGBMRanker(verbosity=1, n_estimators=2)
+        ranker.fit(X, y, group=[X.shape[0]], sample_weight=weight)
+        prediction = ranker.predict(X)
 
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))
@@ -69,9 +69,11 @@ class Test(unittest.TestCase):
         self.assertEqual(prediction.dtype, result.dtype)
 
         # test local model
-        classifier = lightgbm.LGBMRanker(verbosity=1, n_estimators=2)
-        classifier.fit(X, y, group=[X.shape[0]])
-        prediction = predict(classifier, X)
+        X_np = X.execute(session=self.session).fetch(session=self.session)
+        y_np = y.execute(session=self.session).fetch(session=self.session)
+        raw_ranker = lightgbm.LGBMRanker(verbosity=1, n_estimators=2)
+        raw_ranker.fit(X_np, y_np, group=[X.shape[0]])
+        prediction = LGBMRanker(raw_ranker).predict(X)
 
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))

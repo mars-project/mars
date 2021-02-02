@@ -128,14 +128,17 @@ class Test(unittest.TestCase):
         self.assertEqual(prediction.shape[0], len(self.X))
 
         # test with existing model
-        classifier = lightgbm.LGBMClassifier(n_estimators=2)
-        classifier.fit(X, new_y, verbose=True)
+        X_np = X.execute(session=self.session).fetch(session=self.session)
+        new_y_np = new_y.execute(session=self.session).fetch(session=self.session)
+        raw_classifier = lightgbm.LGBMClassifier(n_estimators=2)
+        raw_classifier.fit(X_np, new_y_np, verbose=True)
 
-        label_result = predict(classifier, X_df)
+        classifier = LGBMClassifier(raw_classifier)
+        label_result = classifier.predict(X_df)
         self.assertEqual(label_result.ndim, 1)
         self.assertEqual(label_result.shape[0], len(self.X))
 
-        proba_result = predict_proba(classifier, X_df)
+        proba_result = classifier.predict_proba(X_df)
         self.assertEqual(proba_result.ndim, 2)
         self.assertEqual(proba_result.shape[0], len(self.X))
 

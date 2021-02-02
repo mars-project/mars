@@ -60,9 +60,9 @@ class Test(unittest.TestCase):
 
         # test weight
         weight = mt.random.rand(X.shape[0])
-        classifier = LGBMRegressor(verbosity=1, n_estimators=2)
-        classifier.fit(X, y, sample_weight=weight)
-        prediction = classifier.predict(X)
+        regressor = LGBMRegressor(verbosity=1, n_estimators=2)
+        regressor.fit(X, y, sample_weight=weight)
+        prediction = regressor.predict(X)
 
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))
@@ -92,9 +92,11 @@ class Test(unittest.TestCase):
             pass
 
         # test existing model
-        classifier = lightgbm.LGBMRegressor(verbosity=1, n_estimators=2)
-        classifier.fit(X, y)
-        prediction = predict(classifier, X)
+        X_np = X.execute(session=self.session).fetch(session=self.session)
+        y_np = y.execute(session=self.session).fetch(session=self.session)
+        raw_regressor = lightgbm.LGBMRegressor(verbosity=1, n_estimators=2)
+        raw_regressor.fit(X_np, y_np)
+        prediction = LGBMRegressor(raw_regressor).predict(X)
 
         self.assertEqual(prediction.ndim, 1)
         self.assertEqual(prediction.shape[0], len(self.X))

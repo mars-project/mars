@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-12-18 14:49+0800\n"
+"POT-Creation-Date: 2021-02-02 15:49+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -125,4 +125,13 @@ msgstr ""
 #: ../../source/user_guide/learn/lightgbm.rst:144
 msgid "Take :meth:`LGBMRegressor.fit` as an example."
 msgstr "以 :meth:`LGBMRegressor.fit` 为例。"
+
+#: ../../source/user_guide/learn/lightgbm.rst:162
+msgid ""
+"When you have an existing LightGBM model, it is also possible to predict "
+"on a Mars object with it by wrapping your model with Mars LightGBM "
+"classes:"
+msgstr ""
+"如果你已有一个训练好的 LightGBM 模型，你也可以使用 Mars 提供的 LightGBM "
+"类将其包装，此后用于 Mars 对象上的预测："
 
