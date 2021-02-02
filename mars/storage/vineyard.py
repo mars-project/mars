@@ -17,14 +17,11 @@
 from typing import Any, Dict, List, Tuple
 
 import pyarrow as pa
-try:
-    import vineyard
-    from vineyard._C import ObjectMeta
-    from vineyard.core import default_builder_context, default_resolver_context
-    from vineyard.data.utils import from_json, to_json
-    from vineyard.deploy.local import start_vineyardd
-except ImportError:
-    vineyard = None
+import vineyard
+from vineyard._C import ObjectMeta
+from vineyard.core import default_builder_context, default_resolver_context
+from vineyard.data.utils import from_json, to_json
+from vineyard.deploy.local import start_vineyardd
 
 from ..lib import sparse
 from .base import StorageBackend, StorageLevel, ObjectInfo
@@ -74,29 +71,12 @@ class VineyardFileObject(BufferWrappedFileObject):
         pass
 
 
-class VineyardObjectInfo(ObjectInfo):
-    __slots__ = "buffer",
-
-    def __init__(self,
-                 size: int = None,
-                 device: int = None,
-                 object_id: Any = None,
-                 buffer: memoryview = None):
-        super().__init__(size=size, device=device,
-                         object_id=object_id)
-        self.buffer = buffer
-
-
 class VineyardStorage(StorageBackend):
     def __init__(self, vineyard_socket=None):
         self._client = vineyard.connect(vineyard_socket)
 
-    @property
-    def name(self) -> str:
-        return 'vineyard'
-
     @classmethod
-    async def setup(cls,**kwargs) -> Tuple[Dict, Dict]:
+    async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         etcd_endpoints = kwargs.pop('etcd_endpoints', None)
         vineyard_size = kwargs.pop('vineyard_size', '256M')
         vineyard_socket = kwargs.pop('vineyard_socket', '/tmp/vineyard.sock')
