@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import pyarrow as pa
 try:
@@ -27,7 +27,8 @@ except ImportError:
     vineyard = None
 
 from ..lib import sparse
-from .core import StorageBackend, StorageLevel, ObjectInfo, StorageFileObject
+from .base import StorageBackend, StorageLevel, ObjectInfo
+from .core import BufferWrappedFileObject, StorageFileObject
 
 
 def mars_sparse_matrix_builder(client, value, builder, **kw):
@@ -50,68 +51,40 @@ if vineyard is not None:
     default_resolver_context.register('vineyard::SparseMatrix', mars_sparse_matrix_resolver)
 
 
-class VineyardFileObject:
-    def __init__(self, vineyard_client, object_id=None, mode='w', size=None):
+class VineyardFileObject(BufferWrappedFileObject):
+    def __init__(self, vineyard_client, object_id, mode, size=None):
         self._client = vineyard_client
         self._object_id = object_id
-        self._offset = 0
-        self._size = size
-        self._is_readable = 'r' in mode
-        self._is_writable = 'w' in mode
-        self._closed = False
+        super().__init__(mode, size=size)
 
-        if self._is_writable:
-            self._blob = self._client.create_blob(size)
-            self._buf = pa.FixedSizeBufferWriter(self._blob.buffer)
-            self._buf.set_memcopy_threads(6)
-        elif self._is_readable:
-            self._buf = self._client.get_object(object_id)
-            self._mv = memoryview(self._buf)
-            self._size = len(self._buf)
-        else:  # pragma: no cover
-            raise NotImplementedError
+    def _write_init(self):
+        self._buffer = buf = self._client.create_blob(self._size)
+        file = self._file = pa.FixedSizeBufferWriter(buf.buffer)
+        file.set_memcopy_threads(6)
 
-    @property
-    def size(self):
-        return self._size
+    def _read_init(self):
+        self._buffer = buf = self._client.get_object(self._object_id)
+        self._mv = memoryview(buf)
+        self._size = len(buf)
 
-    @property
-    def object_id(self):
-        return self._object_id
+    def _write_close(self):
+        self._object_id = self._buffer.seal(self._client).id
 
-    @property
-    def closed(self):
-        return self._closed
+    def _read_close(self):
+        pass
 
-    def __enter__(self):
-        return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+class VineyardObjectInfo(ObjectInfo):
+    __slots__ = "buffer",
 
-    def read(self, size=-1):
-        if size < 0:
-            size = self._size
-        right_pos = min(self._size, self._offset + size)
-        ret = self._mv[self._offset:right_pos]
-        self._offset = right_pos
-        return ret
-
-    def write(self, d):
-        if self._is_writable:
-            return self._buf.write(d)
-        return
-
-    def close(self):
-        if self._closed:
-            return
-
-        self._closed = True
-        if self._is_writable:
-            self._object_id = self._blob.seal(self._client).id
-
-        self._mv = None
-        self._buf = None
+    def __init__(self,
+                 size: int = None,
+                 device: int = None,
+                 object_id: Any = None,
+                 buffer: memoryview = None):
+        super().__init__(size=size, device=device,
+                         object_id=object_id)
+        self.buffer = buffer
 
 
 class VineyardStorage(StorageBackend):
@@ -128,11 +101,15 @@ class VineyardStorage(StorageBackend):
         size = kwargs.get('size', '256M')
         socket = kwargs.get('socket', '/tmp/vineyard.sock')
         vineyardd_path = kwargs.get('vineyardd_path', '/usr/local/bin/vineyardd')
+
+        if kwargs:
+            raise TypeError(f'VineyardStorage got unexpected config: {",".join(kwargs)}')
+
         vineyard_store = start_vineyardd(etcd_endpoints, vineyardd_path, size, socket)
         return dict(vineyard_socket=vineyard_store.__enter__()[1]), dict(vineyard_store=vineyard_store)
 
     @staticmethod
-    async def teardown(**kwargs) -> None:
+    async def teardown(**kwargs):
         vineyard_store = kwargs.get('vineyard_store')
         vineyard_store.__exit__(None, None, None)
 
@@ -156,7 +133,10 @@ class VineyardStorage(StorageBackend):
         return ObjectInfo(size=size, object_id=object_id)
 
     async def create_writer(self, size=None) -> StorageFileObject:
-        vineyard_writer = VineyardFileObject(self._client, size=size, mode='w')
+        if size is None:  # pragma: no cover
+            raise ValueError('size must be provided for vineyard backend')
+
+        vineyard_writer = VineyardFileObject(self._client, None, size=size, mode='w')
         return StorageFileObject(vineyard_writer, object_id=None)
 
     async def open_reader(self, object_id) -> StorageFileObject:
