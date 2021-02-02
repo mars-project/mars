@@ -26,9 +26,10 @@ from mars.serialize import dataserializer
 from mars.storage.base import StorageLevel
 from mars.storage.filesystem import FileSystemStorage
 from mars.storage.plasma import PlasmaStorage
+from mars.storage.vineyard import VineyardStorage
 
 
-@pytest.fixture(params=['filesystem', 'plasma'])
+@pytest.fixture(params=['filesystem', 'plasma', 'vineyard'])
 @pytest.mark.asyncio
 async def storage_context(request):
     if request.param == 'filesystem':
@@ -56,6 +57,17 @@ async def storage_context(request):
 
         yield storage
         await PlasmaStorage.teardown(**teardown_params)
+    elif request.param == 'vineyard':
+        vineyard_size = '256M'
+        vineyard_socket = '/tmp/vineyard.sock'
+        params, teardown_params = await VineyardStorage.setup(
+            vineyard_size=vineyard_size,
+            vineyard_socket=vineyard_socket)
+        storage = VineyardStorage(**params)
+        assert storage.level == StorageLevel.MEMORY
+
+        yield storage
+        await VineyardStorage.teardown(**teardown_params)
 
 
 @pytest.mark.asyncio
@@ -80,9 +92,10 @@ async def test_base_operations(storage_context):
     info2 = await storage.object_info(put_info2.object_id)
     assert info2.size == put_info2.size
 
-    num = len(await storage.list())
-    assert num == 2
-    await storage.delete(info2.object_id)
+    if not isinstance(storage, VineyardStorage):
+        num = len(await storage.list())
+        assert num == 2
+        await storage.delete(info2.object_id)
 
     # test writer and reader
     t = np.random.random(10)

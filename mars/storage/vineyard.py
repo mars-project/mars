@@ -97,15 +97,19 @@ class VineyardStorage(StorageBackend):
 
     @classmethod
     async def setup(cls,**kwargs) -> Tuple[Dict, Dict]:
-        etcd_endpoints = kwargs.get('etcd_endpoints', None)
-        size = kwargs.get('size', '256M')
-        socket = kwargs.get('socket', '/tmp/vineyard.sock')
-        vineyardd_path = kwargs.get('vineyardd_path', '/usr/local/bin/vineyardd')
+        etcd_endpoints = kwargs.pop('etcd_endpoints', None)
+        vineyard_size = kwargs.pop('vineyard_size', '256M')
+        vineyard_socket = kwargs.pop('vineyard_socket', '/tmp/vineyard.sock')
+        vineyardd_path = kwargs.pop('vineyardd_path', '/usr/local/bin/vineyardd')
 
         if kwargs:
             raise TypeError(f'VineyardStorage got unexpected config: {",".join(kwargs)}')
 
-        vineyard_store = start_vineyardd(etcd_endpoints, vineyardd_path, size, socket)
+        vineyard_store = start_vineyardd(
+            etcd_endpoints,
+            vineyardd_path,
+            vineyard_size,
+            vineyard_socket)
         return dict(vineyard_socket=vineyard_store.__enter__()[1]), dict(vineyard_store=vineyard_store)
 
     @staticmethod
@@ -132,7 +136,7 @@ class VineyardStorage(StorageBackend):
         size = self._client.get_meta(object_id).nbytes
         return ObjectInfo(size=size, object_id=object_id)
 
-    async def create_writer(self, size=None) -> StorageFileObject:
+    async def open_writer(self, size=None) -> StorageFileObject:
         if size is None:  # pragma: no cover
             raise ValueError('size must be provided for vineyard backend')
 
