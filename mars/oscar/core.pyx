@@ -14,6 +14,7 @@
 
 import asyncio
 cimport cython
+import sys
 
 from .utils cimport is_async_generator
 from .utils import create_task
@@ -128,28 +129,40 @@ cdef class _Actor:
         return get_context().actor_ref(self._address, self._uid)
 
     async def _handle_actor_result(self, result):
+        cdef int result_pos
         cdef tuple res_tuple
-        cdef list results
+        cdef list tasks, values
+        cdef object coro
+        cdef bint extract_tuple = False
+        cdef set dones, pending
 
         if asyncio.iscoroutine(result):
             result = await result
         elif is_async_generator(result):
             result = (result,)
+            extract_tuple = True
 
         if isinstance(result, tuple):
             res_tuple = result
-            results = []
+            tasks = []
+            values = []
             for res_item in res_tuple:
                 if is_async_generator(res_item):
-                    results.append(self._run_actor_async_generator(res_item))
-                elif asyncio.iscoroutine(result):
-                    results.append(result)
+                    value = asyncio.create_task(self._run_actor_async_generator(res_item))
+                    tasks.append(value)
+                elif asyncio.iscoroutine(res_item):
+                    value = asyncio.create_task(res_item)
+                    tasks.append(value)
                 else:
-                    results.append(res_item)
+                    value = res_item
+                values.append(value)
 
-            await asyncio.wait([coro for coro in results if asyncio.iscoroutine(coro)])
-            result = tuple(await res if asyncio.iscoroutine(res) else res
-                           for res in results)
+            dones, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            if extract_tuple:
+                result = list(dones)[0].result()
+            else:
+                result = tuple(t.result() if t in dones else t for t in values)
+
         return result
 
     async def _run_actor_async_generator(self, gen):
@@ -161,11 +174,14 @@ cdef class _Actor:
 
         try:
             res = None
-
             while True:
                 async with self._lock:
                     res = await gen.asend(res)
-                res = await self._handle_actor_result(res)
+
+                try:
+                    res = await self._handle_actor_result(res)
+                except:
+                    res = await gen.athrow(*sys.exc_info())
         except StopAsyncIteration:
             pass
         return res

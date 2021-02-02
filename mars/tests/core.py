@@ -380,6 +380,7 @@ def aio_case(obj):
                 if 'no current event loop' in str(ex):
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
+                    loop.set_debug(True)
                 else:
                     raise
 
