@@ -20,7 +20,7 @@ from mars.tests.core import ExecutorForTest
 
 try:
     import lightgbm
-    from mars.learn.contrib.lightgbm import LGBMRanker, predict
+    from mars.learn.contrib.lightgbm import LGBMRanker
 except ImportError:
     lightgbm = LGBMRanker = None
 

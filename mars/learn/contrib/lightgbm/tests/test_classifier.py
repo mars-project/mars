@@ -28,9 +28,8 @@ from mars.tests.core import ExecutorForTest
 try:
     import lightgbm
     from mars.learn.contrib.lightgbm import LGBMClassifier
-    from mars.learn.contrib.lightgbm import predict, predict_proba
 except ImportError:
-    lightgbm = LGBMClassifier = predict = None
+    lightgbm = LGBMClassifier = None
 
 
 @unittest.skipIf(lightgbm is None, 'LightGBM not installed')

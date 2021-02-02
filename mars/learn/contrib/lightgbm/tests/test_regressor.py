@@ -22,7 +22,7 @@ from mars.tests.core import ExecutorForTest
 
 try:
     import lightgbm
-    from mars.learn.contrib.lightgbm import LGBMRegressor, predict
+    from mars.learn.contrib.lightgbm import LGBMRegressor
 except ImportError:
     lightgbm = LGBMRegressor = None
 
