@@ -70,6 +70,16 @@ jobs:
           fi
           conda list -n test
 
+          # install etcd
+          mkdir -p /tmp/etcd-download-test
+          export ETCD_VER=v3.4.13
+          export ETCD_DOWNLOAD_URL=https://github.com/etcd-io/etcd/releases/download
+          curl -L $"ETCD_DOWNLOAD_URL"/$"ETCD_VER"/etcd-$"ETCD_VER"-linux-amd64.tar.gz -o /tmp/etcd-$"ETCD_VER"-linux-amd64.tar.gz
+          tar xzvf /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz -C /tmp/etcd-download-test --strip-components=1
+          mv /tmp/etcd-download-test/etcd /usr/local/bin/
+          mv /tmp/etcd-download-test/etcdctl /usr/local/bin/
+          rm -fr /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz /tmp/etcd-download-test
+
       - name: Build cython extensions
         env:
           WITH_CYTHON: ${{ matrix.with-cython }}

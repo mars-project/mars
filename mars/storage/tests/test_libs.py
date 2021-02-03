@@ -29,7 +29,15 @@ from mars.storage.plasma import PlasmaStorage
 from mars.storage.vineyard import VineyardStorage
 
 
-@pytest.fixture(params=['filesystem', 'plasma', 'vineyard'])
+params = ['filesystem', 'plasma']
+try:
+    import vineyard
+    params.append('vineyard')
+except ImportError:
+    pass
+
+
+@pytest.fixture(params=params)
 @pytest.mark.asyncio
 async def storage_context(request):
     if request.param == 'filesystem':
