@@ -108,7 +108,7 @@ class VineyardStorage(StorageBackend):
     async def get(self, object_id, **kwarg) -> object:
         return self._client.get(object_id)
 
-    async def put(self, obj) -> ObjectInfo:
+    async def put(self, obj, importance=0) -> ObjectInfo:
         object_id = self._client.put(obj)
         size = self._client.get_meta(object_id).nbytes
         return ObjectInfo(size=size, device='memory', object_id=object_id)

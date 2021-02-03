@@ -61,7 +61,6 @@ jobs:
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
             fi
             if [ -n "$WITH_VINEYARD" ]; then
-              pip install vineyard==0.1.9
               sudo docker pull libvineyard/vineyardd:v0.1.9
 
               mkdir -p /tmp/etcd-download-test
