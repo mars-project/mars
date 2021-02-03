@@ -70,16 +70,6 @@ jobs:
           fi
           conda list -n test
 
-          # install etcd
-          mkdir -p /tmp/etcd-download-test
-          export ETCD_VER=v3.4.13
-          export ETCD_DOWNLOAD_URL=https://github.com/etcd-io/etcd/releases/download
-          curl -L $ETCD_DOWNLOAD_URL/$ETCD_VER/etcd-$ETCD_VER-linux-amd64.tar.gz -o /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz
-          tar xzvf /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz -C /tmp/etcd-download-test --strip-components=1
-          sudo mv /tmp/etcd-download-test/etcd /usr/local/bin/
-          sudo mv /tmp/etcd-download-test/etcdctl /usr/local/bin/
-          rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
-
       - name: Build cython extensions
         env:
           WITH_CYTHON: ${{ matrix.with-cython }}
@@ -137,6 +127,7 @@ jobs:
           fi
           if [ -n "$WITH_VINEYARD" ]; then
             export VINEYARD_IPC_SOCKET=/tmp/vineyard/vineyard.sock
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/storage/tests/test_libs.py
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datastore/tests/test_datastore_execute.py \
                                                                     mars/tensor/datastore/tests/test_datastore_execute.py -k "vineyard"
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/deploy/local/tests/test_cluster.py -k "VineyardEnabledTest"
