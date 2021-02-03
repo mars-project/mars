@@ -20,8 +20,10 @@ import pytest
 
 import numpy as np
 import pandas as pd
+import scipy.sparse as sps
 
 from mars.filesystem import LocalFileSystem
+from mars.lib.sparse import SparseNDArray, SparseMatrix
 from mars.serialize import dataserializer
 from mars.storage.base import StorageLevel
 from mars.storage.filesystem import FileSystemStorage
@@ -106,6 +108,15 @@ async def test_base_operations(storage_context):
         num = len(await storage.list())
         assert num == 2
         await storage.delete(info2.object_id)
+
+    # test SparseMatrix
+    s1 = sps.csr_matrix([[1, 0, 1], [0, 0, 1]])
+    s = SparseNDArray(s1)
+    put_info3 = await storage.put(s)
+    get_data3 = await storage.get(put_info3.object_id)
+    assert isinstance(get_data3, SparseMatrix)
+    np.testing.assert_array_equal(get_data3.toarray(), s1.A)
+    np.testing.assert_array_equal(get_data3.todense(), s1.A)
 
     # test writer and reader
     t = np.random.random(10)

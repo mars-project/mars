@@ -17,11 +17,14 @@
 from typing import Dict, List, Tuple
 
 import pyarrow as pa
-import vineyard
-from vineyard._C import ObjectMeta
-from vineyard.core import default_builder_context, default_resolver_context
-from vineyard.data.utils import from_json, to_json
-from vineyard.deploy.local import start_vineyardd
+try:
+    import vineyard
+    from vineyard._C import ObjectMeta
+    from vineyard.core import default_builder_context, default_resolver_context
+    from vineyard.data.utils import from_json, to_json
+    from vineyard.deploy.local import start_vineyardd
+except ImportError:
+    vineyard = None
 
 from ..lib import sparse
 from .base import StorageBackend, StorageLevel, ObjectInfo
