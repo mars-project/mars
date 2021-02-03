@@ -148,10 +148,10 @@ cdef class _Actor:
             values = []
             for res_item in res_tuple:
                 if is_async_generator(res_item):
-                    value = asyncio.create_task(self._run_actor_async_generator(res_item))
+                    value = create_task(self._run_actor_async_generator(res_item))
                     tasks.append(value)
                 elif asyncio.iscoroutine(res_item):
-                    value = asyncio.create_task(res_item)
+                    value = create_task(res_item)
                     tasks.append(value)
                 else:
                     value = res_item
@@ -181,7 +181,8 @@ cdef class _Actor:
                 try:
                     res = await self._handle_actor_result(res)
                 except:
-                    res = await gen.athrow(*sys.exc_info())
+                    async with self._lock:
+                        res = await gen.athrow(*sys.exc_info())
         except StopAsyncIteration:
             pass
         return res
