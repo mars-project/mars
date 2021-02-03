@@ -19,8 +19,9 @@ from collections import deque
 
 import pandas as pd
 
-from mars.tests.core import aio_case
 import mars.oscar as mo
+from mars.oscar.utils import create_task
+from mars.tests.core import aio_case
 
 
 class DummyActor(mo.Actor):
@@ -291,7 +292,7 @@ class Test(unittest.TestCase):
             event_list.append(('B', idx, time.time()))
             await ref.release()
 
-        tasks = [asyncio.create_task(test_task(idx)) for idx in range(4)]
+        tasks = [create_task(test_task(idx)) for idx in range(4)]
         await asyncio.wait(tasks)
 
         for idx in range(0, len(event_list), 2):
@@ -304,7 +305,7 @@ class Test(unittest.TestCase):
         promise_test_ref = await mo.create_actor(PromiseTestActor, lock_ref)
 
         start_time = time.time()
-        tasks = [asyncio.create_task(promise_test_ref.test_promise_call(idx, delay=0.1))
+        tasks = [create_task(promise_test_ref.test_promise_call(idx, delay=0.1))
                  for idx in range(4)]
         dones, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
         [t.result() for t in dones]
@@ -315,11 +316,10 @@ class Test(unittest.TestCase):
         max_apply_time = logs.query('group == "A" | group == "B"').groupby('idx') \
             .apply(lambda s: s.time.max() - s.time.min()).max()
         self.assertGreater(max_apply_time, 0.1)
-        self.assertLess(max_apply_time, 0.15)
         max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
             .apply(lambda s: s.time.max() - s.time.min()).max()
         self.assertGreater(max_delay_time, 0.1)
-        self.assertLess(max_delay_time, 0.15)
+        self.assertLess(max_delay_time, 0.2)
 
         start_time = time.time()
         ret = await promise_test_ref.test_yield_tuple()
@@ -331,11 +331,11 @@ class Test(unittest.TestCase):
         max_apply_time = logs.query('group == "A" | group == "B"').groupby('idx') \
             .apply(lambda s: s.time.max() - s.time.min()).max()
         self.assertGreater(max_apply_time, 0.1)
-        self.assertLess(max_apply_time, 0.15)
+        self.assertLess(max_apply_time, 0.2)
         max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
             .apply(lambda s: s.time.max() - s.time.min()).max()
         self.assertGreater(max_delay_time, 0.1)
-        self.assertLess(max_delay_time, 0.15)
+        self.assertLess(max_delay_time, 0.2)
 
         with self.assertRaises(ValueError):
             await promise_test_ref.test_exceptions()
