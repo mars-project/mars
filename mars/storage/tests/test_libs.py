@@ -27,14 +27,15 @@ from mars.storage.base import StorageLevel
 from mars.storage.filesystem import FileSystemStorage
 from mars.storage.plasma import PlasmaStorage
 from mars.storage.vineyard import VineyardStorage
+try:
+    import vineyard
+except ImportError:
+    vineyard = None
 
 
 params = ['filesystem', 'plasma']
-try:
-    import vineyard
+if vineyard:
     params.append('vineyard')
-except ImportError:
-    pass
 
 
 @pytest.fixture(params=params)
