@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 if [ -n "$WITH_CYTHON" ]; then
-  pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/actors mars/deploy/local mars/serialize \
-    mars/optimizes mars/scheduler mars/tests mars/web
+  pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/actors mars/oscar mars/deploy/local \
+    mars/serialize mars/optimizes mars/scheduler mars/tests mars/web
   coverage report
 fi
 if [ -z "$NO_COMMON_TESTS" ]; then
