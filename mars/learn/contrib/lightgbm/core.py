@@ -51,6 +51,28 @@ TrainTuple = namedtuple('TrainTuple', 'data label sample_weight init_score')
 
 
 class LGBMScikitLearnBase:
+    def __init__(self, *args, **kwargs):
+        if args and isinstance(args[0], self._get_lgbm_class()):
+            model = args[0]
+            super().__init__(**model.get_params())
+            self._copy_extra_params(model, self)
+        else:
+            super().__init__(*args, **kwargs)
+
+    @classmethod
+    def _get_lgbm_class(cls):
+        try:
+            return getattr(cls, '_lgbm_class')
+        except AttributeError:
+            lgbm_class = next(base for base in cls.__bases__
+                              if base.__module__.startswith('lightgbm'))
+            cls._lgbm_class = lgbm_class
+            return lgbm_class
+
+    @classmethod
+    def _get_param_names(cls):
+        return cls._get_lgbm_class()._get_param_names()
+
     @staticmethod
     def _copy_extra_params(source, dest):
         params = source.get_params()

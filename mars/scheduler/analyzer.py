@@ -359,9 +359,12 @@ class GraphAnalyzer(object):
         sorted_candidates = [v for v in chunks_to_assign]
         while max(worker_quotas.values()):
             worker = max(worker_quotas, key=lambda k: worker_quotas[k])
-            cur = sorted_candidates.pop()
-            while cur.op.key in cur_assigns:
+            try:
                 cur = sorted_candidates.pop()
+                while cur.op.key in cur_assigns:
+                    cur = sorted_candidates.pop()
+            except IndexError:  # pragma: no cover
+                break
             self._assign_by_bfs(cur, worker, worker_quotas, spread_ranges, op_keys,
                                 cur_assigns, graph=graph)
 
