@@ -241,8 +241,9 @@ class Test(TestBase):
         expected = s_raw.describe(percentiles=[])
         pd.testing.assert_series_equal(result, expected)
 
-        df_raw = pd.DataFrame(np.random.rand(10, 4), columns=list('abcd'))
-        df_raw['e'] = np.random.randint(100, size=10)
+        rs = np.random.RandomState(5)
+        df_raw = pd.DataFrame(rs.rand(10, 4), columns=list('abcd'))
+        df_raw['e'] = rs.randint(100, size=10)
 
         # test one chunk
         df = from_pandas_df(df_raw, chunk_size=10)
@@ -270,8 +271,19 @@ class Test(TestBase):
         expected = df_raw.describe(percentiles=[], include=np.float64)
         pd.testing.assert_frame_equal(result, expected)
 
+        # test skip percentiles
+        r = df.describe(percentiles=False, include=np.float64)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = df_raw.describe(percentiles=[], include=np.float64)
+        expected.drop(['50%'], axis=0, inplace=True)
+        pd.testing.assert_frame_equal(result, expected)
+
         with self.assertRaises(ValueError):
             df.describe(percentiles=[1.1])
+
+        with self.assertRaises(ValueError):
+            # duplicated values
+            df.describe(percentiles=[0.3, 0.5, 0.3])
 
         # test input dataframe which has unknown shape
         with self.ctx:
