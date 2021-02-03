@@ -122,6 +122,7 @@ class VineyardStorage(StorageBackend):
             raise ValueError('size must be provided for vineyard backend')
 
         vineyard_writer = VineyardFileObject(self._client, None, size=size, mode='w')
+        vineyard_writer.write(b'')  # initialize the object id
         return StorageFileObject(vineyard_writer, object_id=vineyard_writer._object_id)
 
     async def open_reader(self, object_id) -> StorageFileObject:
@@ -129,4 +130,5 @@ class VineyardStorage(StorageBackend):
         return StorageFileObject(vineyard_reader, object_id=object_id)
 
     async def list(self) -> List:
+        # FIXME: vineyard's list_objects not equal to plasma
         raise NotImplementedError

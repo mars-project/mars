@@ -8,3 +8,4 @@ protobuf>=3.6
 gevent>=1.2.0,<21.1.0
 bokeh>=1.0.0
 jinja2>=2.0
+vineyard==0.1.9

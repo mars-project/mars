@@ -92,6 +92,7 @@ async def test_base_operations(storage_context):
     info2 = await storage.object_info(put_info2.object_id)
     assert info2.size == put_info2.size
 
+    # FIXME: remove when list functionality is ready for vineyard.
     if not isinstance(storage, VineyardStorage):
         num = len(await storage.list())
         assert num == 2
