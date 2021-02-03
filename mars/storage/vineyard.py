@@ -56,6 +56,7 @@ class VineyardFileObject(BufferWrappedFileObject):
 
     def _write_init(self):
         self._buffer = buf = self._client.create_blob(self._size)
+        self._object_id = buf.id
         file = self._file = pa.FixedSizeBufferWriter(buf.buffer)
         file.set_memcopy_threads(6)
 
@@ -80,7 +81,7 @@ class VineyardStorage(StorageBackend):
         etcd_endpoints = kwargs.pop('etcd_endpoints', None)
         vineyard_size = kwargs.pop('vineyard_size', '256M')
         vineyard_socket = kwargs.pop('vineyard_socket', '/tmp/vineyard.sock')
-        vineyardd_path = kwargs.pop('vineyardd_path', '/usr/local/bin/vineyardd')
+        vineyardd_path = kwargs.pop('vineyardd_path', None)
 
         if kwargs:
             raise TypeError(f'VineyardStorage got unexpected config: {",".join(kwargs)}')
@@ -121,7 +122,7 @@ class VineyardStorage(StorageBackend):
             raise ValueError('size must be provided for vineyard backend')
 
         vineyard_writer = VineyardFileObject(self._client, None, size=size, mode='w')
-        return StorageFileObject(vineyard_writer, object_id=None)
+        return StorageFileObject(vineyard_writer, object_id=vineyard_writer._object_id)
 
     async def open_reader(self, object_id) -> StorageFileObject:
         vineyard_reader = VineyardFileObject(self._client, object_id, mode='r')

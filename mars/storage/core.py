@@ -28,12 +28,8 @@ class StorageFileObject(AioFileObject):
                  object_id: Any,
                  loop: asyncio.BaseEventLoop = None,
                  executor: Executor = None):
-        self._object_id = object_id
+        self.object_id = object_id
         super().__init__(file, loop=loop, executor=executor)
-
-    @property
-    def object_id(self):
-        return self._object_id or self._file.object_id
 
 
 class BufferWrappedFileObject(ABC):
