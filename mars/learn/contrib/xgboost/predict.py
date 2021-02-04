@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from .... import opcodes as OperandDef
-from ....serialize import KeyField, BytesField
+from ....serialize import KeyField, BytesField, DictField
 from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
 from ....dataframe.utils import parse_index
 from ....tensor.core import TENSOR_TYPE, TensorOrder
@@ -40,9 +40,12 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
 
     _data = KeyField('data')
     _model = BytesField('model', on_serialize=pickle.dumps, on_deserialize=pickle.loads)
+    _kwargs = DictField('kwargs')
 
-    def __init__(self, data=None, model=None, output_types=None, gpu=None, **kw):
-        super().__init__(_data=data, _model=model, _gpu=gpu, _output_types=output_types, **kw)
+    def __init__(self, data=None, model=None, kwargs=None,
+                 output_types=None, gpu=None, **kw):
+        super().__init__(_data=data, _model=model, _kwargs=kwargs,
+                         _gpu=gpu, _output_types=output_types, **kw)
 
     @property
     def data(self):
@@ -51,6 +54,10 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
     @property
     def model(self):
         return self._model
+
+    @property
+    def kwargs(self):
+        return self._kwargs
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -64,19 +71,20 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
             shape = (self._data.shape[0], num_class)
         else:
             shape = (self._data.shape[0],)
+        inputs = [self._data]
         if self.output_types[0] == OutputType.tensor:
             # tensor
-            return self.new_tileable([self._data], shape=shape, dtype=np.dtype(np.float32),
+            return self.new_tileable(inputs, shape=shape, dtype=np.dtype(np.float32),
                                      order=TensorOrder.C_ORDER)
         elif self.output_types[0] == OutputType.dataframe:
             # dataframe
             dtypes = pd.DataFrame(np.random.rand(0, num_class), dtype=np.float32).dtypes
-            return self.new_tileable([self._data], shape=shape, dtypes=dtypes,
+            return self.new_tileable(inputs, shape=shape, dtypes=dtypes,
                                      columns_value=parse_index(dtypes.index),
                                      index_value=self._data.index_value)
         else:
             # series
-            return self.new_tileable([self._data], shape=shape, index_value=self._data.index_value,
+            return self.new_tileable(inputs, shape=shape, index_value=self._data.index_value,
                                      name='predictions', dtype=np.dtype(np.float32))
 
     @classmethod
@@ -133,7 +141,11 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         else:
             data = data.spmatrix if hasattr(data, 'spmatrix') else data
             data = DMatrix(data)
-        result = op.model.predict(data)
+
+        # do not pass arguments that are None
+        kwargs = dict((k, v) for k, v in op.kwargs.items()
+                      if v is not None)
+        result = op.model.predict(data, **kwargs)
 
         if isinstance(op.outputs[0], DATAFRAME_CHUNK_TYPE):
             result = pd.DataFrame(result, index=raw_data.index)
@@ -143,7 +155,9 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         ctx[op.outputs[0].key] = result
 
 
-def predict(model, data, session=None, run_kwargs=None, run=True):
+def predict(model, data, output_margin=False, ntree_limit=None,
+            validate_features=True, base_margin=None,
+            session=None, run_kwargs=None, run=True):
     from xgboost import Booster
 
     data = check_data(data)
@@ -158,7 +172,14 @@ def predict(model, data, session=None, run_kwargs=None, run=True):
     else:
         output_types = [OutputType.series]
 
-    op = XGBPredict(data=data, model=model, gpu=data.op.gpu, output_types=output_types)
+    kwargs = {
+        'output_margin': output_margin,
+        'ntree_limit': ntree_limit,
+        'validate_features': validate_features,
+        'base_margin': base_margin
+    }
+    op = XGBPredict(data=data, model=model, kwargs=kwargs,
+                    gpu=data.op.gpu, output_types=output_types)
     result = op()
     if run:
         result.execute(session=session, **(run_kwargs or dict()))
