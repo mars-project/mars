@@ -1196,6 +1196,16 @@ class Test(TestBase):
         res = self.executor.execute_tensor(a, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(np.sort(raw, axis=1), axis=0))
 
+        # test with empty chunk
+        raw = np.random.rand(20, 10)
+        raw[:, :8] = 1
+        a = tensor(raw, chunk_size=5)
+        filtered = a[a < 1]
+        filtered.sort()
+
+        res = self.executor.execute_tensor(filtered, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw[raw < 1]))
+
     def testSortIndicesExecution(self):
         # only 1 chunk when axis = -1
         raw = np.random.rand(100, 10)
