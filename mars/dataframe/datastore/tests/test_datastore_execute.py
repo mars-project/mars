@@ -160,7 +160,6 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(raw.col1.to_frame(), written)
 
     @unittest.skipIf(vineyard is None, 'vineyard not installed')
-    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testToVineyard(self):
         def testWithGivenSession(session):
             ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
@@ -178,12 +177,9 @@ class Test(TestBase):
             testWithGivenSession(session)
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+                         shared_memory='20M', web=False) as cluster:
             with new_session(cluster.endpoint).as_default() as session:
                 testWithGivenSession(session)
-
-            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
-                testWithGivenSession(web_session)
 
     @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testToParquetArrowExecution(self):
