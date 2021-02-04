@@ -19,7 +19,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...tiles import TilesError
-from ...serialize import ValueType, Int32Field, Int64Field, \
+from ...serialize import ValueType, Int32Field, \
     ListField, StringField, BoolField, AnyField
 from ...operands import OperandStage
 from ...utils import get_shuffle_input_keys_idxes, flatten, stack_back
