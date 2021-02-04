@@ -18,7 +18,7 @@ jobs:
           - { os: ubuntu-16.04, python-version: 3.8-vineyard, no-common-tests: 1,
               no-deploy: 1, with-vineyard: "with vineyard" }
           - { os: ubuntu-16.04, python-version: 3.8-ray, no-common-tests: 1,
-              no-deploy: 1, with-ray: "with ray" }
+              no-deploy: 1, with-ray: "with ray", with-cython: 1 }
 
     steps:
       - name: Check out code
@@ -85,12 +85,16 @@ jobs:
         shell: bash
         run: |
           source ./.github/workflows/reload-env.sh
-          for cf in `ls .coveragerc*`; do
-            sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
-            sed -i.bak -e '/*\.pxd/ a\
-            \ \ \ \ *.pyx \
-            ' $cf
-          done
+          if [ -z "$WITH_CYTHON" ]; then
+            for cf in `ls .coveragerc*`; do
+              sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
+              sed -i.bak -e '/*\.pxd/ a\
+              \ \ \ \ *.pyx \
+              ' $cf
+            done
+          else
+            export CYTHON_TRACE=1
+          fi
           retry python setup.py build_ext -i -j 2
           pip install -e ".[dev]"
 
@@ -151,7 +155,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/ray
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray
             coverage report
           fi
           coverage xml

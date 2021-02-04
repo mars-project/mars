@@ -24,14 +24,17 @@ import pandas as pd
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
-from mars.tests.core import flaky
+from mars.tests.core import flaky, require_ray
 from mars.utils import lazy_import
 
-ray_installed = lazy_import('ray', globals=globals()) is not None
+ray = lazy_import('ray', globals=globals())
 
 
-@unittest.skipIf(not ray_installed, 'ray not installed')
+@require_ray
 class Test(unittest.TestCase):
+    def tearDown(self) -> None:
+        ray.shutdown()
+
     def testRayTask(self):
         with new_session(backend='ray').as_default():
             # test tensor task

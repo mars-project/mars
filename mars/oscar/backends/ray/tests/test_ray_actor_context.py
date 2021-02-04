@@ -14,10 +14,12 @@
 
 import asyncio
 import unittest
-import ray
 
-from mars.tests.core import aio_case
 import mars.oscar as mo
+from mars.tests.core import aio_case, require_ray
+from mars.utils import lazy_import
+
+ray = lazy_import('ray', globals=globals())
 
 RAY_TEST_ADDRESS = 'ray://test'
 
@@ -101,6 +103,7 @@ class EventActor(mo.Actor):
 
 
 @aio_case
+@require_ray
 class Test(unittest.TestCase):
     def setUp(self) -> None:
         ray.init()

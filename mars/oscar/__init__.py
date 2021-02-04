@@ -18,5 +18,10 @@ from .context import get_context
 from .errors import ActorNotExist, ActorAlreadyExist
 from .utils import create_actor_ref
 
-from .backends import mars
-del mars
+# make sure aio methods are patched
+from ..lib import aio
+del aio
+
+# make sure methods are registered
+from .backends import mars, ray
+del mars, ray

@@ -74,11 +74,3 @@ cdef bint is_async_generator(obj):
         return True
     else:
         return False
-
-
-try:
-    # This function has been added in Python 3.7. Prior to Python 3.7,
-    # the low-level asyncio.ensure_future() function can be used instead.
-    create_task = asyncio.create_task
-except AttributeError:
-    create_task = asyncio.ensure_future

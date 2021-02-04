@@ -85,7 +85,8 @@ jobs:
         mv .coverage build/.coverage.tensor.file
         if [[ $UNAME == "darwin" ]]; then
           python -m pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --timeout=1500 \
-            --ignore mars/tests/test_kvstore.py mars/deploy/local mars/web mars/lib mars/tests
+            --ignore mars/tests/test_kvstore.py mars/oscar mars/deploy/local mars/web \
+            mars/lib mars/tests
           mv .coverage build/.coverage.dist.file
         fi
         coverage combine build/ && coverage report

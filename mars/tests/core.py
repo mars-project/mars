@@ -57,6 +57,7 @@ _mock = mock
 
 cupy = lazy_import('cupy', globals=globals())
 cudf = lazy_import('cudf', globals=globals())
+ray = lazy_import('ray', globals=globals())
 
 logger = logging.getLogger(__name__)
 
@@ -351,6 +352,15 @@ def require_cudf(func):
         func = pytest.mark.cuda(func)
     func = unittest.skipIf(cudf is None, reason='cudf not installed')(func)
     return func
+
+
+def require_ray(func):
+    if pytest:
+        func = pytest.mark.ray(func)
+    func = unittest.skipIf(ray is None, reason='ray not installed')(func)
+    return func
+
+
 _aio_pid = os.getpid()
 
 
@@ -380,6 +390,7 @@ def aio_case(obj):
                 if 'no current event loop' in str(ex):
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
+                    loop.set_debug(True)
                 else:
                     raise
 
