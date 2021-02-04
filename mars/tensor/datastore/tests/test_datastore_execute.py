@@ -222,11 +222,12 @@ class Test(TestBase):
             result = zarr.open_array(path)
             np.testing.assert_array_equal(result, raw + 1)
 
-    @unittest.skip('the test is broken, need to fix.')
+    @unittest.skipIf(vineyard is None, 'vineyard not installed')
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testToVineyard(self):
         def testWithGivenSession(session):
-            with option_context({'vineyard.socket': '/tmp/vineyard/vineyard.sock'}):
+            ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
+            with option_context({'vineyard.socket': ipc_socket}):
                 tensor1 = tensor(np.arange(12).reshape(3, 4), chunk_size=2)
                 object_id = tovineyard(tensor1).execute(session=session).fetch()
                 tensor2 = from_vineyard(object_id)

@@ -159,11 +159,12 @@ class Test(TestBase):
                 .sort_index(ascending=False)
             pd.testing.assert_frame_equal(raw.col1.to_frame(), written)
 
-    @unittest.skip('the test is broken.')
+    @unittest.skipIf(vineyard is None, 'vineyard not installed')
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testToVineyard(self):
         def testWithGivenSession(session):
-            with option_context({'vineyard.socket': '/tmp/vineyard/vineyard.sock'}):
+            ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
+            with option_context({'vineyard.socket': ipc_socket}):
                 df1 = DataFrame(pd.DataFrame(np.arange(12).reshape(3, 4), columns=['a', 'b', 'c', 'd']),
                                 chunk_size=2)
                 object_id = df1.to_vineyard().execute(session=session).fetch()
@@ -177,7 +178,7 @@ class Test(TestBase):
             testWithGivenSession(session)
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+                         shared_memory='20M', web=False) as cluster:
             with new_session(cluster.endpoint).as_default() as session:
                 testWithGivenSession(session)
 

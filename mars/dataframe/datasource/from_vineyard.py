@@ -27,6 +27,7 @@ from ..utils import parse_index
 
 try:
     import vineyard
+    from vineyard.data.utils import normalize_dtype
 except ImportError:
     vineyard = None
 
@@ -86,15 +87,23 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
             workers = {client.instance_id: '127.0.0.1'}
 
         df_meta = client.get_meta(vineyard.ObjectID(op.object_id))
-        df = client.get(op.object_id)
-        chunks_meta = df_meta['objects_']
 
         chunk_map = {}
-        for idx in range(int(chunks_meta['num_of_objects'])):
-            chunk_meta = chunks_meta['object_%d' % idx]
+        df_columns, df_dtypes = [], []
+        for idx in range(int(df_meta['partitions_-size'])):
+            chunk_meta = df_meta['partitions_-%d' % idx]
             chunk_location = int(chunk_meta['instance_id'])
             columns = json.loads(chunk_meta['columns_'])
             shape = (np.nan, len(columns))
+            if not columns:
+                # note that in vineyard dataframe are splitted along the index axis.
+                df_columns = columns
+            if not df_dtypes:
+                for column_idx in range(len(columns)):
+                    column_meta = chunk_meta['__values_-value-%d' % column_idx]
+                    dtype = normalize_dtype(column_meta['value_type_'],
+                                            column_meta.get('value_type_meta_', None))
+                    df_dtypes.append(dtype)
             chunk_index = (int(chunk_meta['partition_index_row_']), int(chunk_meta['partition_index_column_']))
             chunk_map[chunk_index] = (chunk_location, chunk_meta['id'], shape, columns)
 
@@ -107,14 +116,17 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
             chunk_op._object_id = chunk_id
             chunk_op._expect_worker = workers[instance_id]
             out_chunks.append(chunk_op.new_chunk([], shape=shape, index=chunk_index,
-                              index_value=parse_index(pd.Index([])),
+                              # use the same value as `read_csv`
+                              index_value=parse_index(pd.RangeIndex(0, -1)),
                               columns_value=parse_index(pd.Index(columns))))
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, shape=df.shapes, dtypes=df.dtypes,
+        # n.b.: the `shape` will be filled by `_update_tileable_and_chunk_shape`.
+        return new_op.new_dataframes(op.inputs, shape=(np.nan, np.nan), dtypes=df_dtypes,
                                      chunks=out_chunks, nsplits=nsplits,
-                                     index_value=df.index_value,
-                                     columns_value=df.columns_value)
+                                     # use the same value as `read_csv`
+                                     index_value=parse_index(pd.RangeIndex(0, -1)),
+                                     columns_value=parse_index(pd.Index(df_columns)))
 
     @classmethod
     def execute(cls, ctx, op):
