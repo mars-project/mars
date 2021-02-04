@@ -24,7 +24,7 @@ from mars.config import option_context
 from mars.dataframe import DataFrame
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session
-from mars.tests.core import mock, TestBase
+from mars.tests.core import TestBase
 
 try:
     import vineyard

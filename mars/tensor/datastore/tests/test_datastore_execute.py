@@ -39,7 +39,7 @@ from mars.deploy.local.core import new_cluster
 from mars.session import new_session
 from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr, \
     from_vineyard, tovineyard
-from mars.tests.core import mock, TestBase, ExecutorForTest
+from mars.tests.core import TestBase, ExecutorForTest
 from mars.tiles import get_tiled
 
 try:
