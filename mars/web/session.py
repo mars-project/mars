@@ -149,7 +149,8 @@ class Session(object):
             resp = self._req_session.get(graph_url, params={'wait_timeout': timeout})
         except requests.ConnectionError as ex:
             err_msg = str(ex)
-            if 'ConnectionResetError' in err_msg or 'Connection refused' in err_msg:
+            if 'ConnectionResetError' in err_msg or 'Connection refused' in err_msg or \
+                    'Connection aborted' in err_msg:
                 return False
             raise
 
