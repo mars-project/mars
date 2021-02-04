@@ -19,7 +19,7 @@ import numpy as np
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import TestBase
 from mars.tiles import get_tiled
 from mars.learn.operands import OutputType
 from mars.learn.contrib.xgboost import train, MarsDMatrix
@@ -36,7 +36,7 @@ except ImportError:
 
 
 @unittest.skipIf(xgboost is None, 'XGBoost not installed')
-class Test(unittest.TestCase):
+class Test(TestBase):
     def setUp(self):
         n_rows = 1000
         n_columns = 10
@@ -53,8 +53,7 @@ class Test(unittest.TestCase):
 
         self.session = new_session().as_default()
         self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+        self.ctx, self.executor = self._create_test_context(self._old_executor)
 
     def tearDown(self) -> None:
         self.session._sess._executor = self._old_executor
@@ -80,6 +79,18 @@ class Test(unittest.TestCase):
             dmatrix = dmatrix.tiles()
 
             self.assertEqual(len(dmatrix.chunks), 1)
+
+    def testDmatrix(self):
+        x = self.X
+        cond = x[:, 0] < 1
+        x = x[cond]
+
+        y = self.y[cond]
+        # reset shape to mock the case that tileable's shape is doomed,
+        # but chunks do not
+        y._shape = self.y.shape
+        dmatrix = MarsDMatrix(x, y)
+        dmatrix.execute()
 
     def testLocalTrainTensor(self):
         dtrain = MarsDMatrix(self.X, self.y)
