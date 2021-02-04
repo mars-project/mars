@@ -138,7 +138,7 @@ jobs:
             export VINEYARD_IPC_SOCKET=/tmp/vineyard/vineyard.sock
             mkdir -p build
 
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/storage/tests/test_libs.py
+            pytest $PYTEST_CONFIG --cov-config .coveragerc mars/storage/tests/test_libs.py
             mv .coverage build/.coverage.test_lib.file
 
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datastore/tests/test_datastore_execute.py \
