@@ -177,6 +177,7 @@ class DataFrameToVinyardStoreGlobalMeta(DataFrameOperand, DataFrameOperandMixin)
         client = vineyard.connect(op.vineyard_socket)
 
         meta = vineyard.ObjectMeta()
+        meta.set_global(True)
         meta['typename'] = 'vineyard::GlobalDataFrame'
         meta['partition_shape_row_'] = op.shape[0]
         meta['partition_shape_column_'] = op.shape[1]

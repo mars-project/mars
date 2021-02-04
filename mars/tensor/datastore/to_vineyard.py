@@ -167,6 +167,7 @@ class TensorVineyardDataStoreGlobalMeta(TensorDataStore):
         client = vineyard.connect(op.vineyard_socket)
 
         meta = vineyard.ObjectMeta()
+        meta.set_global(True)
         meta['typename'] = 'vineyard::GlobalTensor'
         meta['shape_'] = json.dumps(op.shape)
         meta['partition_shape_'] = json.dumps(op.chunk_shape)
