@@ -136,12 +136,19 @@ jobs:
           fi
           if [ -n "$WITH_VINEYARD" ]; then
             export VINEYARD_IPC_SOCKET=/tmp/vineyard/vineyard.sock
+            mkdir -p build
+
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/storage/tests/test_libs.py
-            # FIXME: open the test when test cases fixed.
-            # pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datastore/tests/test_datastore_execute.py \
-            #                                                         mars/tensor/datastore/tests/test_datastore_execute.py -k "vineyard"
+            mv .coverage build/.coverage.test_lib.file
+
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datastore/tests/test_datastore_execute.py \
+                                                                    mars/tensor/datastore/tests/test_datastore_execute.py -k "vineyard"
+            mv .coverage build/.coverage.test_tensor.file
+
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/deploy/local/tests/test_cluster.py -k "VineyardEnabledTest"
-            coverage report
+            mv .coverage build/.coverage.test_cluster.file
+
+            coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/ray
