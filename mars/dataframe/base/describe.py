@@ -17,12 +17,16 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
+from ...operands import OperandStage
 from ...serialize import ValueType, KeyField, ListField
-from ...utils import recursive_tile
+from ...utils import recursive_tile, lazy_import
 from ..core import SERIES_TYPE
 from ..initializer import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_empty_df
+
+
+cudf = lazy_import('cudf')
 
 
 class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
@@ -34,9 +38,10 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
     _exclude = ListField('exclude')
 
     def __init__(self, percentiles=None, include=None, exclude=None,
-                 output_types=None, **kw):
+                 output_types=None, stage=None, **kw):
         super().__init__(_percentiles=percentiles, _include=include,
-                         _exclude=exclude, _output_types=output_types, **kw)
+                         _exclude=exclude, _output_types=output_types,
+                         _stage=stage, **kw)
 
     @property
     def input(self):
@@ -56,7 +61,8 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._input = self._inputs[0]
+        if self._stage != OperandStage.agg:
+            self._input = self._inputs[0]
 
     def __call__(self, df_or_series):
         if isinstance(df_or_series, SERIES_TYPE):
@@ -71,6 +77,12 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
             test_inp_df = build_empty_df(df_or_series.dtypes)
             test_df = test_inp_df.describe(
                 percentiles=self._percentiles, include=self._include, exclude=self._exclude)
+            if len(self.percentiles) == 0:
+                # specify percentiles=False
+                # Note: unlike pandas that False is illegal value for percentiles,
+                # Mars DataFrame allows user to specify percentiles=False
+                # to skip computation about percentiles
+                test_df.drop(['50%'], axis=0, inplace=True)
             for dtype in test_df.dtypes:
                 if not np.issubdtype(dtype, np.number):
                     raise NotImplementedError('non-numeric type is not supported for now')
@@ -127,42 +139,90 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
     def _tile_dataframe(cls, op):
         df = DataFrame(op.input)
         out = op.outputs[0]
-        index = out.index_value.to_pandas()
         dtypes = out.dtypes
         columns = dtypes.index.tolist()
-        # ['count', 'mean', 'std', 'min', {percentiles}, 'max']
-        names = index.tolist()
 
-        df = df[columns]
+        if df.chunk_shape[1] > 1:
+            df = df.rechunk({1: df.shape[1]})._inplace_tile()
 
-        values = [None] * 6
-        for i, agg in enumerate(names[:4]):
-            values[i] = getattr(df, agg)().to_tensor()[None, :]
-        values[-1] = getattr(df, names[-1])().to_tensor()[None, :]
-        values[4] = df.quantile(op.percentiles).to_tensor()
+        # check dtypes if selected all fields
+        # to reduce graph scale
+        if df.dtypes.index.tolist() != columns:
+            df = df[columns]
 
-        t = mt.concatenate(values).rechunk((len(index), len(columns)))
-        ret = DataFrame(t, index=index, columns=columns)
-        return [recursive_tile(ret)]
+        # perform aggregation together
+        aggregation = recursive_tile(df.agg(['count', 'mean', 'std', 'min', 'max']))
+        # calculate percentiles
+        percentiles = None
+        if len(op.percentiles) > 0:
+            percentiles = recursive_tile(df.quantile(op.percentiles))
+
+        chunk_op = DataFrameDescribe(output_types=op.output_types,
+                                     stage=OperandStage.agg,
+                                     percentiles=op.percentiles)
+        chunk_params = out.params.copy()
+        chunk_params['index'] = (0, 0)
+        in_chunks = aggregation.chunks
+        if percentiles is not None:
+            in_chunks += percentiles.chunks
+        out_chunk = chunk_op.new_chunk(in_chunks, kws=[chunk_params])
+
+        new_op = op.copy()
+        params = out.params.copy()
+        params['chunks'] = [out_chunk]
+        params['nsplits'] = tuple((s,) for s in out.shape)
+        return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
     def execute(cls, ctx, op):
-        df_or_series = ctx[op.input.key]
+        out = op.outputs[0]
+        if op.stage is None:  # 1 chunk
+            df_or_series = ctx[op.input.key]
 
-        ctx[op.outputs[0].key] = df_or_series.describe(
-            percentiles=op.percentiles, include=op.include, exclude=op.exclude)
+            ctx[out.key] = df_or_series.describe(
+                percentiles=op.percentiles, include=op.include, exclude=op.exclude)
+        else:
+            assert op.stage == OperandStage.agg
+
+            inputs = [ctx[inp.key] for inp in op.inputs]
+            xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series, pd.Index)) \
+                        or cudf is None else cudf
+
+            if len(inputs) == 1:
+                df = inputs[0]
+            else:
+                assert len(inputs) > 1
+                aggregations = inputs[0]
+                percentiles = xdf.concat(inputs[1:], axis=0)
+                df = xdf.concat([aggregations.iloc[:-1], percentiles,
+                                 aggregations.iloc[-1:]], axis=0)
+            # ['count', 'mean', 'std', 'min', {percentiles}, 'max']
+            df.index = out.index_value.to_pandas()
+            ctx[out.key] = df
 
 
 def describe(df_or_series, percentiles=None, include=None, exclude=None):
-    if percentiles is not None:
-        for p in percentiles:
-            if p < 0 or p > 1:
-                raise ValueError('percentiles should all be in the interval [0, 1]. '
-                                 'Try [{0:.3f}] instead.'.format(p / 100))
-    if percentiles is None:
+    if percentiles is False:
+        percentiles = []
+    elif percentiles is None:
         percentiles = [0.25, 0.5, 0.75]
-    if not percentiles:
-        percentiles = [0.5]
+    else:
+        percentiles = list(percentiles)
+        if percentiles is not None:
+            for p in percentiles:
+                if p < 0 or p > 1:
+                    raise ValueError('percentiles should all be in the interval [0, 1]. '
+                                     'Try [{0:.3f}] instead.'.format(p / 100))
+        # median should always be included
+        if 0.5 not in percentiles:
+            percentiles.append(0.5)
+        percentiles = np.asarray(percentiles)
+
+        # sort and check for duplicates
+        unique_pcts = np.unique(percentiles)
+        if len(unique_pcts) < len(percentiles):
+            raise ValueError("percentiles cannot contain duplicates")
+        percentiles = unique_pcts
 
     op = DataFrameDescribe(percentiles=percentiles, include=include, exclude=exclude)
     return op(df_or_series)
