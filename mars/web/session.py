@@ -198,36 +198,37 @@ class Session(object):
         graph = build_tileable_graph(run_tileables, set(self._executed_tileables.keys()))
         targets = [t.key for t in run_tileables]
 
-        targets_join = ','.join(targets)
-        session_url = self._endpoint + '/api/session/' + self._session_id
-        graph_json = graph.to_json(data_serial_type=self._serial_type, pickle_protocol=self._pickle_protocol)
+        if len(graph) > 0:
+            targets_join = ','.join(targets)
+            session_url = self._endpoint + '/api/session/' + self._session_id
+            graph_json = graph.to_json(data_serial_type=self._serial_type, pickle_protocol=self._pickle_protocol)
 
-        resp_json = self._submit_graph(graph_json, targets_join, names=name or '', compose=compose)
-        graph_key = resp_json['graph_key']
-        graph_url = f'{session_url}/graph/{graph_key}'
+            resp_json = self._submit_graph(graph_json, targets_join, names=name or '', compose=compose)
+            graph_key = resp_json['graph_key']
+            graph_url = f'{session_url}/graph/{graph_key}'
 
-        exec_start_time = time.time()
-        time_elapsed = 0
-        check_interval = options.check_interval
-        while timeout <= 0 or time_elapsed < timeout:
-            timeout_val = min(check_interval, timeout - time_elapsed) if timeout > 0 else check_interval
-            try:
-                if self._check_response_finished(graph_url, timeout_val):
-                    break
-            except KeyboardInterrupt:
-                resp = self._req_session.delete(graph_url)
-                if resp.status_code >= 400:
-                    raise ExecutionNotStopped(
-                        f'Failed to stop graph execution. Code: {resp.status_code}, '
-                        f'Reason: {resp.reason}, Content:\n{resp.text}')
-            finally:
-                time_elapsed = time.time() - exec_start_time
+            exec_start_time = time.time()
+            time_elapsed = 0
+            check_interval = options.check_interval
+            while timeout <= 0 or time_elapsed < timeout:
+                timeout_val = min(check_interval, timeout - time_elapsed) if timeout > 0 else check_interval
+                try:
+                    if self._check_response_finished(graph_url, timeout_val):
+                        break
+                except KeyboardInterrupt:
+                    resp = self._req_session.delete(graph_url)
+                    if resp.status_code >= 400:
+                        raise ExecutionNotStopped(
+                            f'Failed to stop graph execution. Code: {resp.status_code}, '
+                            f'Reason: {resp.reason}, Content:\n{resp.text}')
+                finally:
+                    time_elapsed = time.time() - exec_start_time
 
-        if 0 < timeout < time.time() - exec_start_time:
-            raise TimeoutError
+            if 0 < timeout < time.time() - exec_start_time:
+                raise TimeoutError
 
-        for t in tileables:
-            self._set_tileable_graph_key(t, graph_key)
+            for t in tileables:
+                self._set_tileable_graph_key(t, graph_key)
 
         if not fetch:
             return

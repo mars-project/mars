@@ -23,8 +23,9 @@ from ..operands import ShuffleProxy, FuseChunkMixin
 from ..tensor.core import TENSOR_TYPE
 from ..tensor.operands import TensorOperandMixin
 from ..utils import calc_nsplits
-from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, SERIES_TYPE, \
-    INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE, CATEGORICAL_TYPE
+from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
+    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, \
+    SERIES_GROUPBY_TYPE, CATEGORICAL_TYPE
 from .utils import parse_index
 
 
@@ -213,12 +214,17 @@ class DataFrameOperandMixin(TileableOperandMixin):
             params.update(kw)
             return op.new_dataframe(inputs, shape=shape, chunks=chunks,
                                     nsplits=nsplits, **params)
-        else:
-            assert isinstance(chunks[0], SERIES_CHUNK_TYPE)
-            params = cls._calc_series_params(chunks)
+        elif isinstance(chunks[0], SERIES_CHUNK_TYPE):
+            params = cls._calc_series_index_params(chunks)
             params.update(kw)
             return op.new_series(inputs, shape=shape, chunks=chunks,
                                  nsplits=nsplits, **params)
+        else:
+            assert isinstance(chunks[0], INDEX_CHUNK_TYPE)
+            params = cls._calc_series_index_params(chunks)
+            params.update(kw)
+            return op.new_index(inputs, shape=shape, chunks=chunks,
+                                nsplits=nsplits, **params)
 
     @classmethod
     def _calc_dataframe_params(cls, chunk_index_to_chunks, chunk_shape):
@@ -235,7 +241,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
                 'index_value': index_value}
 
     @classmethod
-    def _calc_series_params(cls, chunks):
+    def _calc_series_index_params(cls, chunks):
         pd_indexes = [c.index_value.to_pandas() for c in chunks]
         pd_index = reduce(lambda x, y: x.append(y), pd_indexes)
         index_value = parse_index(pd_index)
