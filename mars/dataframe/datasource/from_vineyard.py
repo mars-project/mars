@@ -86,6 +86,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
             workers = {client.instance_id: '127.0.0.1'}
 
         df_meta = client.get_meta(vineyard.ObjectID(op.object_id))
+        df = client.get(op.object_id)
         chunks_meta = df_meta['objects_']
 
         chunk_map = {}
@@ -110,10 +111,10 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
                               columns_value=parse_index(pd.Index(columns))))
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, shape=(np.nan, np.nan), dtypes=pd.Series([]),
+        return new_op.new_dataframes(op.inputs, shape=df.shapes, dtypes=df.dtypes,
                                      chunks=out_chunks, nsplits=nsplits,
-                                     index_value=parse_index(pd.Index([])),
-                                     columns_value=parse_index(pd.Index([])))
+                                     index_value=df.index_value,
+                                     columns_value=df.columns_value)
 
     @classmethod
     def execute(cls, ctx, op):
