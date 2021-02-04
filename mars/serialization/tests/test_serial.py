@@ -69,6 +69,8 @@ class Test(unittest.TestCase):
             deserialized = deserialize(*serialize(val))
             self.assertEqual(type(val), type(deserialized))
             np.testing.assert_equal(val, deserialized)
+            if val.flags.f_contiguous:
+                self.assertTrue(deserialized.flags.f_contiguous)
 
     def testPandas(self):
         val = pd.Series([1, 2, 3, 4])

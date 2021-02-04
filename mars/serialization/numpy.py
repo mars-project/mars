@@ -27,15 +27,19 @@ class NDArraySerializer(Serializer):
             buffers = pickle_buffers(obj)
             return header, buffers
 
-        if not obj.flags.c_contiguous:
+        order = 'C'
+        if obj.flags.f_contiguous:
+            order = 'F'
+        elif not obj.flags.c_contiguous:
             obj = np.ascontiguousarray(obj)
         header.update(dict(
             pickle=False,
             descr=np.lib.format.dtype_to_descr(obj.dtype),
             shape=list(obj.shape),
             strides=list(obj.strides),
+            order=order
         ))
-        return header, [memoryview(obj.view('uint8').data)]
+        return header, [memoryview(obj.ravel(order=order).view('uint8').data)]
 
     def deserialize(self, header, buffers):
         if header['pickle']:
@@ -45,6 +49,7 @@ class NDArraySerializer(Serializer):
         return np.ndarray(
             shape=tuple(header['shape']), dtype=dtype,
             buffer=buffers[0], strides=tuple(header['strides']),
+            order=header['order']
         )
 
 

@@ -17,7 +17,7 @@
 import asyncio
 from abc import ABC, abstractmethod
 from concurrent.futures import Executor
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from ..aio import AioFileObject
 
@@ -48,11 +48,8 @@ class BufferWrappedFileObject(ABC):
         self._initialized = False
         self._closed = False
 
-        self._buffer = None
-        # for read, must be initialized in _read_init
         self._mv = None
-        # for write, must be initialized in _write_init
-        self._file = None
+        self._buffer = None
 
     @abstractmethod
     def _read_init(self):
@@ -82,12 +79,16 @@ class BufferWrappedFileObject(ABC):
         self._offset = end
         return result
 
-    def write(self, content: bytes):
+    def write(self, content: Union[bytes, memoryview]):
         if not self._initialized:
             self._write_init()
             self._initialized = True
 
-        return self._file.write(content)
+        offset = self._offset
+        content_length = getattr(content, 'nbytes', len(content))
+        new_offset = offset + content_length
+        self._mv[offset: new_offset] = content
+        self._offset = new_offset
 
     @abstractmethod
     def _read_close(self):
@@ -107,8 +108,7 @@ class BufferWrappedFileObject(ABC):
 
         if self._mode == 'w':
             self._write_close()
-            self._file = None
         else:
             self._read_close()
-            self._mv = None
+        self._mv = None
         self._buffer = None

@@ -28,6 +28,7 @@ from mars.serialize import dataserializer
 from mars.storage.base import StorageLevel
 from mars.storage.filesystem import FileSystemStorage
 from mars.storage.plasma import PlasmaStorage
+from mars.storage.shared_memory import SharedMemoryStorage
 from mars.storage.vineyard import VineyardStorage
 try:
     import vineyard
@@ -38,6 +39,8 @@ except ImportError:
 params = ['filesystem', 'plasma']
 if vineyard:
     params.append('vineyard')
+if sys.version_info[:2] >= (3, 8):
+    params.append('shared_memory')
 
 
 @pytest.fixture(params=params)
@@ -51,7 +54,9 @@ async def storage_context(request):
             level=StorageLevel.DISK)
         storage = FileSystemStorage(**params)
         assert storage.level == StorageLevel.DISK
+
         yield storage
+
         await storage.teardown(**teardown_params)
     elif request.param == 'plasma':
         plasma_storage_size = 10 * 1024 * 1024
@@ -67,6 +72,7 @@ async def storage_context(request):
         assert storage.level == StorageLevel.MEMORY
 
         yield storage
+
         await PlasmaStorage.teardown(**teardown_params)
     elif request.param == 'vineyard':
         vineyard_size = '256M'
@@ -78,7 +84,17 @@ async def storage_context(request):
         assert storage.level == StorageLevel.MEMORY
 
         yield storage
+
         await VineyardStorage.teardown(**teardown_params)
+    elif request.param == 'shared_memory':
+        params, teardown_params = await SharedMemoryStorage.setup()
+        storage = SharedMemoryStorage(**params)
+        assert storage.level == StorageLevel.MEMORY
+
+        yield storage
+
+        teardown_params['object_ids'] = storage._object_ids
+        await SharedMemoryStorage.teardown(**teardown_params)
 
 
 @pytest.mark.asyncio
@@ -104,7 +120,7 @@ async def test_base_operations(storage_context):
     assert info2.size == put_info2.size
 
     # FIXME: remove when list functionality is ready for vineyard.
-    if not isinstance(storage, VineyardStorage):
+    if not isinstance(storage, (VineyardStorage, SharedMemoryStorage)):
         num = len(await storage.list())
         assert num == 2
         await storage.delete(info2.object_id)
