@@ -63,10 +63,7 @@ if xgboost:
             session = kw.pop('session', None)
             run_kwargs = kw.pop('run_kwargs', dict())
             run = kw.pop('run', True)
-            if kw:
-                raise TypeError("predict got an unexpected "
-                                f"keyword argument '{next(iter(kw))}'")
-            prob = predict(self.get_booster(), data, run=False)
+            prob = predict(self.get_booster(), data, run=False, **kw)
             if prob.ndim > 1:
                 prediction = mt.argmax(prob, axis=1)
             else:

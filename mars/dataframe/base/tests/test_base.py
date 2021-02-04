@@ -28,7 +28,7 @@ from mars.dataframe.datasource.index import from_pandas as from_pandas_index
 from mars.operands import OperandStage
 from mars.tensor.core import TENSOR_TYPE
 from mars.tests.core import TestBase
-from mars.tiles import get_tiled
+from mars.tiles import get_tiled, TilesError
 
 
 class Test(TestBase):
@@ -178,6 +178,13 @@ class Test(TestBase):
         series = get_tiled(series)
         self.assertEqual(series2.chunk_shape, series.chunk_shape)
         self.assertEqual(series2.nsplits, series.nsplits)
+
+        # test rechunk on DataFrame has known shape, but chunk's shape is unknown
+        data = pd.DataFrame({0: [1, 2], 1: [3, 4], 'a': [5, 6]})
+        df = from_pandas_df(data)
+        df = df[df[0] < 3]
+        with self.assertRaises(TilesError):
+            df.tiles().rechunk((np.nan, 3)).tiles()
 
     def testDataFrameApply(self):
         cols = [chr(ord('A') + i) for i in range(10)]
