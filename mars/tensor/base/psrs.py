@@ -19,8 +19,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...tiles import TilesError
-from ...serialize import ValueType, Int32Field, Int64Field, \
-    ListField, StringField, BoolField
+from ...serialize import ValueType, Int32Field, \
+    ListField, StringField, BoolField, AnyField
 from ...operands import OperandStage
 from ...utils import get_shuffle_input_keys_idxes, flatten, stack_back
 from ..core import TensorOrder
@@ -351,7 +351,7 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
     _kind = StringField('kind')
     _return_indices = BoolField('return_indices')
     _n_partition = Int32Field('n_partition')
-    _axis_offset = Int64Field('axis_offset')
+    _axis_offset = AnyField('axis_offset')
 
     def __init__(self, axis=None, order=None, kind=None, return_indices=None,
                  n_partition=None, axis_offset=None, dtype=None, gpu=None, **kw):
@@ -392,6 +392,11 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
     def execute(cls, ctx, op):
         (a,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        if len(a) == 0:
+            # when chunk is empty, return the empty chunk itself
+            ctx[op.outputs[0].key] = ctx[op.outputs[-1].key] = a
+            return
 
         with device(device_id):
             n = op.n_partition
@@ -453,12 +458,12 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs if len(ctx[c.key]) > 0], device=op.device, ret_extra=True)
 
         with device(device_id):
             a = xp.concatenate(inputs, axis=op.axis)
             p = len(inputs)
-            assert a.shape[op.axis] == p ** 2
+            assert a.shape[op.axis] == p * len(op.inputs)
 
             if op.kind is not None:
                 # sort
@@ -470,10 +475,9 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
                 a.partition(kth, axis=op.axis)
 
             select = xp.linspace(p - 1, a.shape[op.axis] - 1,
-                                 num=p - 1, endpoint=False).astype(int)
+                                 num=len(op.inputs) - 1, endpoint=False).astype(int)
             slc = (slice(None),) * op.axis + (select,)
-            ctx[op.outputs[0].key] = result = a[slc]
-            assert result.shape[op.axis] == p - 1
+            ctx[op.outputs[0].key] = a[slc]
 
 
 class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
