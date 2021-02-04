@@ -178,7 +178,7 @@ class Test(TestBase):
             testWithGivenSession(session)
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=False) as cluster:
+                         shared_memory='20M', web=True) as cluster:
             with new_session(cluster.endpoint).as_default() as session:
                 testWithGivenSession(session)
 
