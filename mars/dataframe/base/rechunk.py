@@ -82,7 +82,8 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
             return [a]
 
         out = op.outputs[0]
-        new_chunk_size = chunk_size
+        new_chunk_size = tuple(tuple(s for s in cs if s != 0)
+                               for cs in chunk_size)
         if isinstance(out, DATAFRAME_TYPE):
             itemsize = max(getattr(dt, 'itemsize', 8) for dt in out.dtypes)
         else:
