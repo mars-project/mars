@@ -20,15 +20,27 @@ import pytest
 
 import numpy as np
 import pandas as pd
+import scipy.sparse as sps
 
 from mars.filesystem import LocalFileSystem
+from mars.lib.sparse import SparseNDArray, SparseMatrix
 from mars.serialize import dataserializer
 from mars.storage.base import StorageLevel
 from mars.storage.filesystem import FileSystemStorage
 from mars.storage.plasma import PlasmaStorage
+from mars.storage.vineyard import VineyardStorage
+try:
+    import vineyard
+except ImportError:
+    vineyard = None
 
 
-@pytest.fixture(params=['filesystem', 'plasma'])
+params = ['filesystem', 'plasma']
+if vineyard:
+    params.append('vineyard')
+
+
+@pytest.fixture(params=params)
 @pytest.mark.asyncio
 async def storage_context(request):
     if request.param == 'filesystem':
@@ -56,6 +68,17 @@ async def storage_context(request):
 
         yield storage
         await PlasmaStorage.teardown(**teardown_params)
+    elif request.param == 'vineyard':
+        vineyard_size = '256M'
+        vineyard_socket = '/tmp/vineyard.sock'
+        params, teardown_params = await VineyardStorage.setup(
+            vineyard_size=vineyard_size,
+            vineyard_socket=vineyard_socket)
+        storage = VineyardStorage(**params)
+        assert storage.level == StorageLevel.MEMORY
+
+        yield storage
+        await VineyardStorage.teardown(**teardown_params)
 
 
 @pytest.mark.asyncio
@@ -80,9 +103,20 @@ async def test_base_operations(storage_context):
     info2 = await storage.object_info(put_info2.object_id)
     assert info2.size == put_info2.size
 
-    num = len(await storage.list())
-    assert num == 2
-    await storage.delete(info2.object_id)
+    # FIXME: remove when list functionality is ready for vineyard.
+    if not isinstance(storage, VineyardStorage):
+        num = len(await storage.list())
+        assert num == 2
+        await storage.delete(info2.object_id)
+
+    # test SparseMatrix
+    s1 = sps.csr_matrix([[1, 0, 1], [0, 0, 1]])
+    s = SparseNDArray(s1)
+    put_info3 = await storage.put(s)
+    get_data3 = await storage.get(put_info3.object_id)
+    assert isinstance(get_data3, SparseMatrix)
+    np.testing.assert_array_equal(get_data3.toarray(), s1.A)
+    np.testing.assert_array_equal(get_data3.todense(), s1.A)
 
     # test writer and reader
     t = np.random.random(10)

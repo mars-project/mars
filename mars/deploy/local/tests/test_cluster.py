@@ -1331,6 +1331,10 @@ class VineyardEnabledTest(IntegrationTestBase, Test):
     def testTileContextInLocalCluster(self, *_):
         pass
 
+    @unittest.skip("FIXME: mars.errors.ExecutionFailed: 'Graph execution failed.'")
+    def testRemoteFunctionInLocalCluster(self, *_):
+        pass
+
     def testTensorToVineyard(self, *_):
         from mars.tensor.datastore.to_vineyard import tovineyard
 

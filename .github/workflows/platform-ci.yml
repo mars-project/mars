@@ -61,8 +61,17 @@ jobs:
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
             fi
             if [ -n "$WITH_VINEYARD" ]; then
-              pip install vineyard==0.1.6
-              sudo docker pull libvineyard/vineyardd:v0.1.6
+              pip install vineyard==0.1.9
+              sudo docker pull libvineyard/vineyardd:v0.1.9
+
+              mkdir -p /tmp/etcd-download-test
+              export ETCD_VER=v3.4.13
+              export ETCD_DOWNLOAD_URL=https://github.com/etcd-io/etcd/releases/download
+              curl -L $ETCD_DOWNLOAD_URL/$ETCD_VER/etcd-$ETCD_VER-linux-amd64.tar.gz -o /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz
+              tar xzvf /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz -C /tmp/etcd-download-test --strip-components=1
+              sudo mv /tmp/etcd-download-test/etcd /usr/local/bin/
+              sudo mv /tmp/etcd-download-test/etcdctl /usr/local/bin/
+              rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
               pip install ray
@@ -92,7 +101,7 @@ jobs:
           source ./.github/workflows/reload-env.sh
 
           # launch vineyardd
-          sudo docker run --rm -d --name vineyard --shm-size=3072m -v /tmp/vineyard:/var/run libvineyard/vineyardd:v0.1.6
+          sudo docker run --rm -d --name vineyard --shm-size=3072m -v /tmp/vineyard:/var/run libvineyard/vineyardd:v0.1.9
 
           until [ -S /tmp/vineyard/vineyard.sock ]
           do
@@ -127,10 +136,19 @@ jobs:
           fi
           if [ -n "$WITH_VINEYARD" ]; then
             export VINEYARD_IPC_SOCKET=/tmp/vineyard/vineyard.sock
+            mkdir -p build
+
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/storage/tests/test_libs.py
+            mv .coverage build/.coverage.test_lib.file
+
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datastore/tests/test_datastore_execute.py \
                                                                     mars/tensor/datastore/tests/test_datastore_execute.py -k "vineyard"
+            mv .coverage build/.coverage.test_tensor.file
+
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/deploy/local/tests/test_cluster.py -k "VineyardEnabledTest"
-            coverage report
+            mv .coverage build/.coverage.test_cluster.file
+
+            coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/ray
