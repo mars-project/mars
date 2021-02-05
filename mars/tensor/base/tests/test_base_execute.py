@@ -1660,3 +1660,15 @@ class Test(TestBase):
             results = self.executor.execute_tensor(r)
             self.assertEqual(len(results), 2)
             np.testing.assert_array_equal(np.concatenate(results), raw)
+
+    def testMapChunkExecution(self):
+        raw = np.random.rand(20)
+        a = tensor(raw, chunk_size=10)
+
+        r = a.map_chunk(lambda x: x * 0.5)
+        results = self.executor.execute_tensor(r, concat=True)[0]
+        np.testing.assert_array_equal(raw * 0.5, results)
+
+        r = a.map_chunk(lambda x: x * 0.5, elementwise=True)
+        results = self.executor.execute_tensor(r, concat=True)[0]
+        np.testing.assert_array_equal(raw * 0.5, results)

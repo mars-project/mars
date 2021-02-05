@@ -820,3 +820,17 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             topk(a, 3, parallel_kind='unknown')
+
+    def testMapChunk(self):
+        raw = np.random.rand(20)
+        a = tensor(raw, chunk_size=10)
+
+        mapped = a.map_chunk(lambda x: x * 0.5).tiles()
+        self.assertTrue(np.issubdtype(mapped.dtype, np.floating))
+        self.assertEqual(mapped.shape, (np.nan,))
+        self.assertEqual(len(mapped.chunks), 2)
+
+        mapped = a.map_chunk(lambda x: x * 0.5, elementwise=True).tiles()
+        self.assertTrue(np.issubdtype(mapped.dtype, np.floating))
+        self.assertEqual(mapped.shape, (20,))
+        self.assertEqual(len(mapped.chunks), 2)

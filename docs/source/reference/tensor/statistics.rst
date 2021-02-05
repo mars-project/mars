@@ -52,3 +52,14 @@ Histograms
    mars.tensor.histogram
    mars.tensor.histogram_bin_edges
    mars.tensor.digitize
+
+
+Statistical tests
+-----------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   mars.tensor.stats.chisquare
+   mars.tensor.stats.power_divergence

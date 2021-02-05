@@ -19,9 +19,9 @@ from ... import opcodes
 from ...core import OutputType
 from ...custom_log import redirect_custom_log
 from ...serialize import BoolField, TupleField, DictField, AnyField, StringField
-from ...utils import enter_current_session
+from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand
-from ..utils import build_empty_df, build_empty_series, parse_index, quiet_stdio
+from ..utils import build_empty_df, build_empty_series, parse_index
 
 
 class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):

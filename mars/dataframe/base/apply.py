@@ -23,10 +23,10 @@ from ...core import OutputType
 from ...custom_log import redirect_custom_log
 from ...serialize import StringField, AnyField, BoolField, \
     TupleField, DictField, FunctionField
-from ...utils import enter_current_session
+from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_series, parse_index, validate_axis, \
-    validate_output_types, quiet_stdio, make_dtypes, make_dtype
+    validate_output_types, make_dtypes, make_dtype
 
 
 class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):

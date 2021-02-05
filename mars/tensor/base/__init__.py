@@ -59,6 +59,7 @@ from .shape import shape
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 from .rebalance import rebalance
+from .map_chunk import map_chunk
 
 
 def _install():
@@ -75,6 +76,7 @@ def _install():
         setattr(cls, 'to_gpu', to_gpu)
         setattr(cls, 'to_cpu', to_cpu)
         setattr(cls, 'rebalance', rebalance)
+        setattr(cls, 'map_chunk', map_chunk)
 
 
 _install()

@@ -157,7 +157,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
         if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return f'Tensor <op={type(self._op).__name__}, shape={self._shape}, key={self._key}'
+                return f'Tensor <op={type(self._op).__name__}, shape={self._shape}, key={self._key}>'
             else:
                 return f'Tensor(op={type(self._op).__name__}, shape={self._shape})'
         else:

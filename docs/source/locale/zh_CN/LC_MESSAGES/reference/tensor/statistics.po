@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"POT-Creation-Date: 2021-02-05 16:20+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.0\n"
 
 #: ../../source/reference/tensor/statistics.rst:2
 msgid "Statistics"
@@ -153,31 +153,43 @@ msgstr ""
 msgid "Histograms"
 msgstr "直方图"
 
-#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:56:<autosummary>:1
 msgid ":obj:`mars.tensor.histogram <mars.tensor.histogram>`"
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:56:<autosummary>:1
 msgid "Compute the histogram of a set of data."
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:56:<autosummary>:1
 msgid ":obj:`mars.tensor.histogram_bin_edges <mars.tensor.histogram_bin_edges>`"
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:56:<autosummary>:1
 msgid ""
 "Function to calculate only the edges of the bins used by the `histogram` "
 "function."
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:56:<autosummary>:1
 msgid ":obj:`mars.tensor.digitize <mars.tensor.digitize>`"
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:54:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:56:<autosummary>:1
 msgid ""
 "Return the indices of the bins to which each value in input tensor "
 "belongs."
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:58
+msgid "Statistical tests"
+msgstr "统计检验"
+
+#: ../../source/reference/tensor/statistics.rst:64:<autosummary>:1
+msgid ":obj:`mars.tensor.stats.chisquare <mars.tensor.stats.chisquare>`"
+msgstr ""
+
+#: ../../source/reference/tensor/statistics.rst:64:<autosummary>:1
+msgid "Calculate a one-way chi-square test."
 msgstr ""
 
