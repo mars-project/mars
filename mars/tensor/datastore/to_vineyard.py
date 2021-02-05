@@ -167,23 +167,16 @@ class TensorVineyardDataStoreGlobalMeta(TensorDataStore):
         client = vineyard.connect(op.vineyard_socket)
 
         meta = vineyard.ObjectMeta()
-        instances = set()
-        chunks = set()
-        for idx, in_chunk in enumerate(op.inputs):
-            instance_id, chunk_id = ctx[in_chunk.key]
-            instances.add(instance_id)
-            chunks.add(chunk_id)
-            meta.add_member('object_%d' % idx, vineyard.ObjectID(chunk_id))
-        meta['typename'] = 'vineyard::ObjectSet'
-        meta['num_of_instances'] = len(instances)
-        meta['num_of_objects'] = len(chunks)
-        object_set_id = client.create_metadata(meta)
-
-        meta = vineyard.ObjectMeta()
-        meta['typename'] = 'vineyard::GlobalTensor<%s>' % op.dtype.name
+        meta.set_global(True)
+        meta['typename'] = 'vineyard::GlobalTensor'
         meta['shape_'] = json.dumps(op.shape)
-        meta['chunk_shape_'] = json.dumps(op.chunk_shape)
-        meta.add_member('chunks_', object_set_id)
+        meta['partition_shape_'] = json.dumps(op.chunk_shape)
+
+        for idx, in_chunk in enumerate(op.inputs):
+            _, chunk_id = ctx[in_chunk.key]
+            meta.add_member('partitions_-%d' % idx, vineyard.ObjectID(chunk_id))
+        meta['partitions_-size'] = len(op.inputs)
+
         global_tensor_id = client.create_metadata(meta)
         client.persist(global_tensor_id)
 

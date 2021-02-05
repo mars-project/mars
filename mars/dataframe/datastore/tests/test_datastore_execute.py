@@ -24,7 +24,7 @@ from mars.config import option_context
 from mars.dataframe import DataFrame
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session
-from mars.tests.core import mock, TestBase
+from mars.tests.core import TestBase
 
 try:
     import vineyard
@@ -160,10 +160,10 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(raw.col1.to_frame(), written)
 
     @unittest.skipIf(vineyard is None, 'vineyard not installed')
-    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testToVineyard(self):
         def testWithGivenSession(session):
-            with option_context({'vineyard.socket': '/tmp/vineyard/vineyard.sock'}):
+            ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
+            with option_context({'vineyard.socket': ipc_socket}):
                 df1 = DataFrame(pd.DataFrame(np.arange(12).reshape(3, 4), columns=['a', 'b', 'c', 'd']),
                                 chunk_size=2)
                 object_id = df1.to_vineyard().execute(session=session).fetch()
@@ -177,12 +177,9 @@ class Test(TestBase):
             testWithGivenSession(session)
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+                         shared_memory='20M', web=False) as cluster:
             with new_session(cluster.endpoint).as_default() as session:
                 testWithGivenSession(session)
-
-            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
-                testWithGivenSession(web_session)
 
     @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testToParquetArrowExecution(self):

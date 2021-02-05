@@ -81,6 +81,10 @@ dev_requirements = []
 with open(os.path.join(repo_root, 'requirements-dev.txt'), 'r') as f:
     dev_requirements.extend(f.read().splitlines())
 
+vineyard_requirements = []
+with open(os.path.join(repo_root, 'requirements-vineyard.txt'), 'r') as f:
+    vineyard_requirements.extend(f.read().splitlines())
+
 long_description = None
 if os.path.exists(os.path.join(repo_root, 'README.rst')):
     with open(os.path.join(repo_root, 'README.rst'), encoding='utf-8') as f:
@@ -206,6 +210,7 @@ setup_options = dict(
     extras_require={
         'distributed': extra_requirements,
         'dev': extra_requirements + dev_requirements,
+        'vineyard': vineyard_requirements,
     }
 )
 setup(**setup_options)
