@@ -39,7 +39,7 @@ from mars.deploy.local.core import new_cluster
 from mars.session import new_session
 from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr, \
     from_vineyard, tovineyard
-from mars.tests.core import mock, TestBase, ExecutorForTest
+from mars.tests.core import TestBase, ExecutorForTest
 from mars.tiles import get_tiled
 
 try:
@@ -222,11 +222,11 @@ class Test(TestBase):
             result = zarr.open_array(path)
             np.testing.assert_array_equal(result, raw + 1)
 
-    @unittest.skip('the test is broken, need to fix.')
-    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
+    @unittest.skipIf(vineyard is None, 'vineyard not installed')
     def testToVineyard(self):
         def testWithGivenSession(session):
-            with option_context({'vineyard.socket': '/tmp/vineyard/vineyard.sock'}):
+            ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
+            with option_context({'vineyard.socket': ipc_socket}):
                 tensor1 = tensor(np.arange(12).reshape(3, 4), chunk_size=2)
                 object_id = tovineyard(tensor1).execute(session=session).fetch()
                 tensor2 = from_vineyard(object_id)
@@ -239,9 +239,6 @@ class Test(TestBase):
             testWithGivenSession(session)
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+                         shared_memory='20M', web=False) as cluster:
             with new_session(cluster.endpoint).as_default() as session:
                 testWithGivenSession(session)
-
-            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
-                testWithGivenSession(web_session)

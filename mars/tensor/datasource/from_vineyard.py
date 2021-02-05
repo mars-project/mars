@@ -24,6 +24,7 @@ from .core import TensorNoInput
 
 try:
     import vineyard
+    from vineyard.data.utils import normalize_dtype
 except ImportError:
     vineyard = None
 
@@ -69,11 +70,14 @@ class TensorFromVineyard(TensorNoInput):
             workers = {client.instance_id: '127.0.0.1'}
 
         tensor_meta = client.get_meta(vineyard.ObjectID(op.object_id))
-        chunks_meta = tensor_meta['chunks_']
 
         chunk_map = {}
-        for idx in range(int(chunks_meta['num_of_objects'])):
-            chunk_meta = chunks_meta['object_%d' % idx]
+        dtype = None
+        for idx in range(int(tensor_meta['partitions_-size'])):
+            chunk_meta = tensor_meta['partitions_-%d' % idx]
+            if dtype is None:
+                dtype = normalize_dtype(chunk_meta['value_type_'],
+                                        chunk_meta.get('value_type_meta_', None))
             chunk_location = int(chunk_meta['instance_id'])
             shape = tuple(json.loads(chunk_meta['shape_']))
             chunk_index = tuple(json.loads(chunk_meta['partition_index_']))
@@ -90,7 +94,7 @@ class TensorFromVineyard(TensorNoInput):
             out_chunks.append(chunk_op.new_chunk([], shape=shape, index=chunk_index))
 
         new_op = op.copy()
-        return new_op.new_tileables(op.inputs, chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tileables(op.inputs, dtype=dtype, chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
     def execute(cls, ctx, op):

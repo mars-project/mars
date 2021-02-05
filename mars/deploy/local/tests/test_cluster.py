@@ -1301,11 +1301,13 @@ class VineyardEnabledTest(IntegrationTestBase, Test):
 
     @property
     def _extra_worker_options(self):
-        return ['-Dvineyard.socket=/tmp/vineyard/vineyard.sock']
+        ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
+        return ['-Dvineyard.socket=%s' % ipc_socket]
 
     @property
     def _extra_scheduler_options(self):
-        return ['-Dvineyard.socket=/tmp/vineyard/vineyard.sock']
+        ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
+        return ['-Dvineyard.socket=%s' % ipc_socket]
 
     def new_cluster(self, *args, **kwargs):
         return IntegrationTestCluster('127.0.0.1:%s' % self.scheduler_port,
