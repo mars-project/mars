@@ -19,10 +19,10 @@ from ... import opcodes
 from ...core import OutputType
 from ...custom_log import redirect_custom_log
 from ...serialize import TupleField, DictField, FunctionField, StringField
-from ...utils import enter_current_session
+from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_empty_df, build_empty_series, parse_index, \
-    validate_output_types, make_dtypes, make_dtype, quiet_stdio
+    validate_output_types, make_dtypes, make_dtype
 
 
 class GroupByApply(DataFrameOperand, DataFrameOperandMixin):

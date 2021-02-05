@@ -19,5 +19,6 @@ try:
     from .erf import erf, TensorErf
     from .entr import entr, TensorEntr
     from .rel_entr import rel_entr, TensorRelEntr
+    from .xlogy import xlogy, TensorXLogY
 except ImportError:  # pragma: no cover
     pass

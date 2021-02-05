@@ -22,11 +22,11 @@ from ...config import options
 from ...core import OutputType
 from ...custom_log import redirect_custom_log
 from ...serialize import AnyField, BoolField, TupleField, DictField, StringField
-from ...utils import enter_current_session
+from ...utils import enter_current_session, quiet_stdio
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_series, validate_axis, \
-    parse_index, filter_dtypes_by_index, make_dtypes, quiet_stdio
+    parse_index, filter_dtypes_by_index, make_dtypes
 
 
 class TransformOperand(DataFrameOperand, DataFrameOperandMixin):

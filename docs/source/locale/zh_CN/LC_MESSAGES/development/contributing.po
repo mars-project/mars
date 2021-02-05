@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"POT-Creation-Date: 2021-02-02 15:49+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.0\n"
 
 #: ../../source/development/contributing.rst:4
 msgid "Contributing to Mars"
@@ -99,8 +99,8 @@ msgid ""
 "install Mars for you, you can add ``--user`` to the ``pip install`` "
 "commands."
 msgstr ""
-"如果你正在使用一个系统范围的 Python，且只想在这个账号里使用 Mars，"
-"可以在 ``pip install`` 命令上增加一个 ``--user`` 选项。"
+"如果你正在使用一个系统范围的 Python，且只想在这个账号里使用 Mars，可以在 "
+"``pip install`` 命令上增加一个 ``--user`` 选项。"
 
 #: ../../source/development/contributing.rst:58
 msgid "Verification"
@@ -146,16 +146,6 @@ msgstr ""
 
 #: ../../source/development/contributing.rst:88
 msgid ""
-"Note that besides files compiled by ``protoc``, Mars will also generate "
-"an ``opcodes.py`` given ``operand.proto``. You shall not edit the "
-"generated file."
-msgstr ""
-"注意，在使用上述命令时，除了使用 ``protoc`` 命令生成 Python 代码外，Mars "
-"还会根据 ``operand.proto`` 文件生成一个 ``opcodes.py``，你不应当手动修改"
-"此文件。"
-
-#: ../../source/development/contributing.rst:91
-msgid ""
 "Mars will download ``protoc`` for Win32, MacOS x64 and Linux x64 from "
 "Github if ``protoc`` cannot be found. If you need to specify a customized"
 " version of ``protoc``, you can use the environment variable ``PROTOC`` "
@@ -166,11 +156,11 @@ msgstr ""
 "`protoc`` 可执行文件，可以在调用上述命令前将环境变量 ``PROTOC`` 配置为"
 "可执行文件的路径。"
 
-#: ../../source/development/contributing.rst:97
+#: ../../source/development/contributing.rst:94
 msgid "Running Tests"
 msgstr "运行测试用例"
 
-#: ../../source/development/contributing.rst:98
+#: ../../source/development/contributing.rst:95
 msgid ""
 "It is recommended to use ``pytest`` to run Mars tests. A simple command "
 "below will run all the tests of Mars:"
@@ -178,15 +168,15 @@ msgstr ""
 "我们推荐使用 ``pytest`` 运行 Mars 测试用例。只需要一行命令即可运行 Mars "
 "的所有用例："
 
-#: ../../source/development/contributing.rst:105
+#: ../../source/development/contributing.rst:102
 msgid "If you want to generate a coverage report as well, you can run:"
 msgstr "如果你希望在运行的同时生成代码覆盖报告，可以运行："
 
-#: ../../source/development/contributing.rst:111
+#: ../../source/development/contributing.rst:108
 msgid "Coverage report will be put into the directory ``htmlcov``."
 msgstr "代码覆盖报告将会被放在 ``htmlcov`` 目录下。"
 
-#: ../../source/development/contributing.rst:113
+#: ../../source/development/contributing.rst:110
 msgid ""
 "The command above does not contain coverage data for Cython files by "
 "default. To obtain coverage data about Cython files, you can run"
@@ -194,7 +184,7 @@ msgstr ""
 "上面的命令默认不包含 Cython 文件的覆盖率。为获得 Cython 文件的覆盖数据，"
 "可以运行"
 
-#: ../../source/development/contributing.rst:120
+#: ../../source/development/contributing.rst:117
 msgid ""
 "before running the pytest command mentioned above. After report is "
 "generated, it it recommended to remove all generated C files and binaries"
@@ -205,11 +195,11 @@ msgstr ""
 "生成的 C 文件和二进制文件，此后重新使用不带 ``CYTHON_TRACE`` 环境变量的"
 "命令编译，因为该选项会降低 Mars 的性能。"
 
-#: ../../source/development/contributing.rst:125
+#: ../../source/development/contributing.rst:122
 msgid "Building Documentations"
 msgstr "编译文档"
 
-#: ../../source/development/contributing.rst:126
+#: ../../source/development/contributing.rst:123
 msgid ""
 "Mars uses ``sphinx`` to build documents. You need to install necessary "
 "packages with the command below to install these dependencies and build "
@@ -218,11 +208,11 @@ msgstr ""
 "Mars 使用 ``sphinx`` 编译文档。在编译 HTML 格式的文档前，你需要使用下面的"
 "命令安装必要的依赖包"
 
-#: ../../source/development/contributing.rst:136
+#: ../../source/development/contributing.rst:133
 msgid "The built documents are in ``docs/build/html`` directory."
 msgstr "编译完成的 HTML 文档位于 ``docs/build/html`` 目录下。"
 
-#: ../../source/development/contributing.rst:138
+#: ../../source/development/contributing.rst:135
 msgid ""
 "When you want to create translations of Mars documents, you may append "
 "``-l <locale>`` after the ``I18NSPHINXLANGS`` variable in ``Makefile``. "
@@ -235,7 +225,7 @@ msgstr ""
 "命令为文档生成翻译文件（``*.po``），生成后的文件位于 ``docs/source/locale"
 "/<locale>/LC_MESSAGES`` 下："
 
-#: ../../source/development/contributing.rst:149
+#: ../../source/development/contributing.rst:146
 msgid ""
 "After that you can translate Mars documents into your language. Note that"
 " when you run ``make gettext`` again, translations will be broken into a "
@@ -246,11 +236,11 @@ msgstr ""
 "make gettext``，翻译后的文字将被转为固定宽度文字。对于中文译者，为达到该"
 "效果，需要安装 ``jieba`` 分词包。"
 
-#: ../../source/development/contributing.rst:154
+#: ../../source/development/contributing.rst:151
 msgid "When you finish translation, you can run"
 msgstr "在完成翻译后，你可以执行"
 
-#: ../../source/development/contributing.rst:162
+#: ../../source/development/contributing.rst:159
 msgid "to build the document in the language you just translated into."
 msgstr "以使用你刚才翻译的语言编译文档。"
 

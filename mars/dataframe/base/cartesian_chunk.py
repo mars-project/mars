@@ -20,10 +20,10 @@ from ...custom_log import redirect_custom_log
 from ...serialize import KeyField, FunctionField, TupleField, \
     DictField, StringField
 from ...tiles import TilesError
-from ...utils import check_chunks_unknown_shape, enter_current_session
+from ...utils import check_chunks_unknown_shape, enter_current_session, quiet_stdio
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_df, build_series, build_empty_df, parse_index, \
-    validate_output_types, quiet_stdio
+    validate_output_types
 
 
 class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
