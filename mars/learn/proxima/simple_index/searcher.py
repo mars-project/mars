@@ -257,35 +257,24 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                 cur_out_chunks = [[], []]
                 for k in range(chunk_size):
                     to_combine_pks = tensor_out_chunks[0][k * combine_size: (k + 1) * combine_size]
-                    shape = (tensor_chunk.shape[0], topk * len(to_combine_pks))
-
-                    pk_merge_op = TensorConcatenate(axis=1)
-                    pk_merge_chunk = pk_merge_op.new_chunk(
-                        to_combine_pks, index=(to_combine_pks[0].index[0], 0), shape=shape,
-                        dtype=to_combine_pks[0].dtype, order=to_combine_pks[0].order)
-
                     to_combine_distances = tensor_out_chunks[1][k * combine_size: (k + 1) * combine_size]
-                    distance_merge_op = TensorConcatenate(axis=1)
-                    distance_merge_chunk = distance_merge_op.new_chunk(
-                        to_combine_distances, index=(to_combine_distances[0].index[0], 0), shape=shape,
-                        dtype=to_combine_distances[0].dtype, order=to_combine_distances[0].order)
 
                     chunk_op = op.copy().reset_key()
                     chunk_op._stage = OperandStage.agg
                     chunk_op._tensor = None
                     chunk_op._index = None
                     agg_chunk_kws = [
-                        {'index': pk_merge_chunk.index,
+                        {'index': (i, 0),
                          'dtype': outs[0].dtype,
                          'shape': (tensor_chunk.shape[0], topk),
                          'order': outs[0].order},
-                        {'index': pk_merge_chunk.index,
+                        {'index': (i, 0),
                          'dtype': outs[1].dtype,
                          'shape': (tensor_chunk.shape[0], topk),
                          'order': outs[1].order}
                     ]
                     pk_result_chunk, distance_result_chunk = chunk_op.new_chunks(
-                        [pk_merge_chunk, distance_merge_chunk],
+                        to_combine_pks + to_combine_distances,
                         kws=agg_chunk_kws)
                     cur_out_chunks[0].append(pk_result_chunk)
                     cur_out_chunks[1].append(distance_result_chunk)
@@ -409,7 +398,12 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def _execute_agg(cls, ctx, op: "ProximaSearcher"):
-        pks, distances = [ctx[inp.key] for inp in op.inputs]
+        inputs_data = [ctx[inp.key] for inp in op.inputs]
+
+        chunk_num = len(inputs_data) // 2
+        pks = np.concatenate(inputs_data[:chunk_num], axis=1)
+        distances = np.concatenate(inputs_data[chunk_num:], axis=1)
+
         n_doc = len(pks)
         topk = op.topk
 

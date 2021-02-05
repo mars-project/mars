@@ -17,7 +17,7 @@ import logging
 import time
 
 from ...config import options
-from ...errors import ExecutionInterrupted, DependencyMissing, WorkerDead
+from ...errors import ExecutionInterrupted, DependencyMissing, WorkerDead, PromiseTimeout
 from ...operands import Operand
 from ...utils import log_unhandled, insert_reversed_tuple
 from ..utils import GraphState, array_to_bytes
@@ -391,7 +391,8 @@ class OperandActor(BaseOperandActor):
         logger.exception('Attempt %s: Unexpected error %s occurred in executing operand %s in %s',
                          self.retries + 1, exc_info[0].__name__, self._op_key, self.worker, exc_info=exc_info)
         # increase retry times
-        self.retries += 1
+        if not isinstance(exc_info[1], PromiseTimeout):
+            self.retries += 1
         if not self._info['retryable'] or self.retries >= options.scheduler.retry_num:
             # no further trial
             self.state = OperandState.FATAL

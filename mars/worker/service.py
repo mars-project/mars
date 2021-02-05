@@ -81,7 +81,7 @@ class WorkerService(object):
             self._n_cuda_process = resource.cuda_count()
 
         self._n_cpu_process = int(kwargs.pop('n_cpu_process', None) or resource.cpu_count())
-        self._n_net_process = int(kwargs.pop('n_net_process', None) or '4')
+        self._n_net_process = int(kwargs.pop('n_net_process', None) or '8')
 
         self._spill_dirs = kwargs.pop('spill_dirs', None)
         if self._spill_dirs:
