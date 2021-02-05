@@ -13,3 +13,5 @@
 # limitations under the License.
 
 from .entropy import entropy
+from .chisquare import chisquare
+from .power_divergence import power_divergence

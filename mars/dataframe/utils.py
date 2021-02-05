@@ -15,8 +15,6 @@
 import functools
 import itertools
 import operator
-import sys
-import threading
 from contextlib import contextmanager
 from numbers import Integral
 
@@ -1093,38 +1091,3 @@ def make_dtypes(dtypes):
         else:
             dtypes = pd.Series(dtypes)
     return dtypes.apply(make_dtype)
-
-
-_io_quiet_local = threading.local()
-_io_quiet_lock = threading.Lock()
-
-
-class _QuietIOWrapper:
-    def __init__(self, wrapped):
-        self.wrapped = wrapped
-
-    def __getattr__(self, item):
-        return getattr(self.wrapped, item)
-
-    def write(self, d):
-        if getattr(_io_quiet_local, 'is_wrapped', False):
-            return 0
-        return self.wrapped.write(d)
-
-
-@contextmanager
-def quiet_stdio():
-    """Quiets standard outputs when inferring types of functions"""
-    with _io_quiet_lock:
-        _io_quiet_local.is_wrapped = True
-        sys.stdout = _QuietIOWrapper(sys.stdout)
-        sys.stderr = _QuietIOWrapper(sys.stderr)
-
-    try:
-        yield
-    finally:
-        with _io_quiet_lock:
-            sys.stdout = sys.stdout.wrapped
-            sys.stderr = sys.stderr.wrapped
-            if not isinstance(sys.stdout, _QuietIOWrapper):
-                _io_quiet_local.is_wrapped = False
