@@ -27,6 +27,7 @@ class TensorRelEntr(TensorSpecialBinOp):
     _op_type_ = OperandDef.REL_ENTR
     _func_name = 'rel_entr'
 
+    @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse():
             return True

@@ -611,7 +611,7 @@ class SparseArray(SparseNDArray):
     def entr(self):
         return self._scipy_unary('entr')
 
-    def rel_entr(self, other):
+    def _scipy_binary(self, func_name, other):
         try:
             naked_other = naked(other)
         except TypeError:  # pragma: no cover
@@ -620,20 +620,28 @@ class SparseArray(SparseNDArray):
         xp = get_array_module(self.spmatrix)
 
         if xp is np:
-            from scipy.special import rel_entr
+            from scipy import special
         else:  # pragma: no cover
-            from cupyx.scipy.special import rel_entr
+            from cupyx.scipy import special
+
+        func = getattr(special, func_name)
 
         if get_array_module(naked_other).isscalar(naked_other):  # pragma: no cover
-            return call_sparse_binary_scalar(rel_entr, self, naked_other)
+            return call_sparse_binary_scalar(func, self, naked_other)
         else:
             if issparse(naked_other):  # pragma: no cover
                 naked_other = other.toarray()
             x = get_sparse_module(self.spmatrix).csr_matrix(
-                rel_entr(self.toarray(), naked_other))
+                func(self.toarray(), naked_other))
         if issparse(x):
             return SparseNDArray(x, shape=self.shape)
         return get_array_module(x).asarray(x)
+
+    def rel_entr(self, other):
+        return self._scipy_binary('rel_entr', other)
+
+    def xlogy(self, other):
+        return self._scipy_binary('xlogy', other)
 
     def __eq__(self, other):
         try:

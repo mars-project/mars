@@ -21,7 +21,7 @@ from ...serialize import AnyField
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorChisquare(TensorDistribution, TensorRandomOperandMixin):
+class TensorChisquareDist(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_df', '_size'
     _input_fields_ = ['_df']
     _op_type_ = OperandDef.RAND_CHISQUARE
@@ -113,5 +113,5 @@ def chisquare(random_state, df, size=None, chunk_size=None, gpu=None, dtype=None
         dtype = np.random.RandomState().chisquare(
             handle_array(df), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorChisquare(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
+    op = TensorChisquareDist(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(df, chunk_size=chunk_size)

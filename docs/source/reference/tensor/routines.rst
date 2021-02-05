@@ -13,7 +13,6 @@ The following pages describe Numpy-compatible routines. These functions cover a 
 
    creation
    manipulation
-   math
    binary
    fft
    indexing
@@ -25,3 +24,4 @@ The following pages describe Numpy-compatible routines. These functions cover a 
    set
    sorting
    statistics
+   special
