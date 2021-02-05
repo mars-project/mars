@@ -202,6 +202,10 @@ class Test(TestBase):
         pd.testing.assert_index_equal(
             self.executor.execute_dataframe(index, concat=True)[0], data[selection])
 
+        index = md.Index(data)[mt.tensor(selection, chunk_size=4)]
+        pd.testing.assert_index_equal(
+            self.executor.execute_dataframe(index, concat=True)[0], data[selection])
+
     def testILocSetItem(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
