@@ -32,6 +32,7 @@ class PlasmaFileObject(BufferWrappedFileObject):
     def __init__(self, plasma_client, object_id, mode, size=None):
         self._plasma_client = plasma_client
         self._object_id = object_id
+        self._file = None
         super().__init__(mode, size=size)
 
     def _write_init(self):
@@ -44,8 +45,16 @@ class PlasmaFileObject(BufferWrappedFileObject):
         self._mv = memoryview(buf)
         self._size = len(buf)
 
+    def write(self, content: bytes):
+        if not self._initialized:
+            self._write_init()
+            self._initialized = True
+
+        return self._file.write(content)
+
     def _write_close(self):
         self._plasma_client.seal(self._object_id)
+        self._file = None
 
     def _read_close(self):
         pass

@@ -54,9 +54,16 @@ class Serializer:
 def pickle_buffers(obj):
     buffers = [None]
     if HAS_PICKLE_BUFFER:
+        def buffer_cb(x):
+            x = x.raw()
+            if x.ndim > 1:
+                # ravel n-d memoryview
+                x = x.cast(x.format)
+            buffers.append(memoryview(x))
+
         buffers[0] = pickle.dumps(
             obj,
-            buffer_callback=lambda x: buffers.append(memoryview(x)),
+            buffer_callback=buffer_cb,
             protocol=BUFFER_PICKLE_PROTOCOL,
         )
     else:  # pragma: no cover
@@ -280,3 +287,13 @@ class AioDeserializer:
 
     async def run(self):
         return await self._get_obj()
+
+    async def get_size(self):
+        header_bytes = bytes(await self._file.read(11))
+        # header length
+        header_length = struct.unpack('<Q', header_bytes[1:9])[0]
+        # extract header
+        header = pickle.loads(await self._file.read(header_length))
+        # get buffer size
+        buffer_sizes = header.pop(BUFFER_SIZES_NAME)
+        return 11 + header_length + sum(buffer_sizes)
