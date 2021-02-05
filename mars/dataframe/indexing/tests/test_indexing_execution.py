@@ -174,6 +174,38 @@ class Test(TestBase):
         pd.testing.assert_series_equal(
             self.executor.execute_dataframe(series, concat=True)[0], data.iloc[selection])
 
+        # test index
+        data = pd.Index(np.arange(10))
+        index = md.Index(data, chunk_size=3)[:3]
+        pd.testing.assert_index_equal(
+            self.executor.execute_dataframe(index, concat=True)[0], data[:3])
+
+        index = md.Index(data, chunk_size=3)[4]
+        self.assertEqual(
+            self.executor.execute_dataframe(index, concat=True)[0], data[4])
+
+        index = md.Index(data, chunk_size=3)[[2, 3, 4, 9]]
+        pd.testing.assert_index_equal(
+            self.executor.execute_dataframe(index, concat=True)[0], data[[2, 3, 4, 9]])
+
+        index = md.Index(data, chunk_size=3)[[4, 3, 9, 2]]
+        pd.testing.assert_index_equal(
+            self.executor.execute_dataframe(index, concat=True)[0], data[[4, 3, 9, 2]])
+
+        index = md.Index(data)[5:]
+        pd.testing.assert_index_equal(
+            self.executor.execute_dataframe(index, concat=True)[0], data[5:])
+
+        # bool index array
+        selection = np.random.RandomState(0).randint(2, size=10, dtype=bool)
+        index = md.Index(data)[selection]
+        pd.testing.assert_index_equal(
+            self.executor.execute_dataframe(index, concat=True)[0], data[selection])
+
+        index = md.Index(data)[mt.tensor(selection, chunk_size=4)]
+        pd.testing.assert_index_equal(
+            self.executor.execute_dataframe(index, concat=True)[0], data[selection])
+
     def testILocSetItem(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
@@ -232,6 +264,12 @@ class Test(TestBase):
         data.iloc[5:] = 4
         pd.testing.assert_series_equal(
             self.executor.execute_dataframe(series, concat=True)[0], data)
+
+        # test Index
+        data = pd.Index(np.arange(10))
+        index = md.Index(data, chunk_size=3)
+        with self.assertRaises(TypeError):
+            index[5:] = 4
 
     def testLocGetItem(self):
         rs = np.random.RandomState(0)
