@@ -134,8 +134,9 @@ class DataFrameIndexHandlerContext(IndexHandlerContext):
             chunk_op.output_types = [OutputType.scalar]
             kw['dtype'] = self.op.outputs[0].dtype
         elif len(shape) == 1:
-            # Series
-            chunk_op.output_types = [OutputType.series]
+            # Series or Index
+            chunk_op.output_types = [OutputType.index] if chunk_op._op_module_ == 'index' \
+                else [OutputType.series]
             kw['index_value'] = index_values[0]
             kw['dtype'] = self.op.outputs[0].dtype
             kw['name'] = getattr(self.op.outputs[0], 'name', None)

@@ -550,6 +550,76 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         ctx[chunk.key] = r
 
 
+class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
+    _op_module_ = 'index'
+    _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
+
+    _input = KeyField('input')
+    _indexes = ListField('indexes')
+
+    def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
+        super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
+        if not self.output_types:
+            self.output_types = [OutputType.index]
+
+    @property
+    def input(self):
+        return self._input
+
+    @property
+    def indexes(self):
+        return self._indexes
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+
+        inputs_iter = iter(self._inputs)
+        self._input = next(inputs_iter)
+
+        indexes = []
+        for index in self._indexes:
+            if isinstance(index, (Entity, Base)):
+                indexes.append(next(inputs_iter))
+            else:
+                indexes.append(index)
+        self._indexes = tuple(indexes)
+
+    @classmethod
+    def tile(cls, op):
+        handler = DataFrameIlocIndexesHandler()
+        return [handler.handle(op)]
+
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        idx = ctx[op.input.key]
+        if len(op.inputs) > 1:
+            indexes = tuple(ctx[index.key] if hasattr(index, 'key') else index
+                            for index in op.indexes)
+        else:
+            indexes = tuple(op.indexes)
+        ctx[chunk.key] = idx[indexes]
+
+    def __call__(self, idx):
+        if isinstance(self._indexes[0], Integral):
+            return self.new_scalar([idx], dtype=idx.dtype)
+        else:
+            shape = tuple(calc_shape(idx.shape, self.indexes))
+            index_value = indexing_index_value(idx.index_value, self.indexes[0])
+            inputs = [idx] + [index for index in self._indexes if isinstance(index, (Base, Entity))]
+            return self.new_index(inputs, shape=shape, dtype=idx.dtype,
+                                  index_value=index_value, name=idx.name)
+
+
+def index_getitem(idx, indexes):
+    op = IndexIlocGetItem(indexes=process_iloc_indexes(idx, indexes))
+    return op(idx)
+
+
+def index_setitem(_idx, *_):
+    raise TypeError('Index does not support mutable operations')
+
+
 def iloc(a):
     return DataFrameIloc(a)
 
