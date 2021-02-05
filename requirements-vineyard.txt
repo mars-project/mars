@@ -1,1 +1,1 @@
-vineyard==0.1.9; sys.platform != 'win32'
+vineyard==0.1.10; sys.platform != 'win32'
