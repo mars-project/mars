@@ -447,14 +447,14 @@ class TestWithMockServer(unittest.TestCase):
             with mock.patch(
                     'requests.Session.post', side_effect=lambda *_, **__: mock_resp):
                 with self.assertRaises(ResponseMalformed):
-                    sess.run(c, timeout=timeout)
+                    sess.run(c + 1, timeout=timeout)
 
             mock_resp = MockResponse(400, json_data=dict(
                 exc_info=base64.b64encode(pickle.dumps(build_exc_info(ValueError))).decode()))
             with mock.patch(
                     'requests.Session.post', side_effect=lambda *_, **__: mock_resp):
                 with self.assertRaises(ValueError):
-                    sess.run(c, timeout=timeout)
+                    sess.run(c + 2, timeout=timeout)
 
             d = a * 100
             self.assertIsNone(sess.run(d, fetch=False, timeout=120))

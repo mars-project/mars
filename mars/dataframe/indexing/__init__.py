@@ -19,7 +19,7 @@ def _install():
     from .at import at
     from .getitem import dataframe_getitem, series_getitem
     from .iat import iat
-    from .iloc import iloc, head, tail
+    from .iloc import iloc, head, tail, index_getitem, index_setitem
     from .insert import df_insert
     from .loc import loc
     from .rename import df_rename, series_rename, index_rename, index_set_names
@@ -59,6 +59,8 @@ def _install():
         setattr(cls, 'set_axis', series_set_axis)
 
     for cls in INDEX_TYPE:
+        setattr(cls, '__getitem__', index_getitem)
+        setattr(cls, '__setitem__', index_setitem)
         setattr(cls, 'rename', index_rename)
         setattr(cls, 'set_names', index_set_names)
 
