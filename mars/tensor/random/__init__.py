@@ -24,7 +24,7 @@ from .choice import choice, TensorChoice
 from .bytes import bytes
 from .beta import beta, TensorBeta
 from .binomial import binomial, TensorBinomial
-from .chisquare import chisquare, TensorChisquare
+from .chisquare import chisquare, TensorChisquareDist
 from .dirichlet import dirichlet, TensorDirichlet
 from .exponential import exponential, TensorExponential
 from .f import f, TensorF

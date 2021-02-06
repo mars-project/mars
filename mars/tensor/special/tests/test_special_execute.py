@@ -23,10 +23,9 @@ from mars.tests.core import ExecutorForTest
 try:
     import scipy
     import scipy.sparse as sps
-    from scipy.special import gammaln as scipy_gammaln, \
-        erf as scipy_erf, entr as scipy_entr, rel_entr as scipy_rel_entr
+    import scipy.special as spspecial
 
-    from mars.tensor.special import gammaln, erf, entr, rel_entr
+    from mars.tensor import special as mt_special
 except ImportError:
     scipy = None
 
@@ -36,100 +35,71 @@ class Test(unittest.TestCase):
     def setUp(self):
         self.executor = ExecutorForTest('numpy')
 
-    def testGammalnExecution(self):
-        raw = np.random.rand(10, 8, 6)
-        a = tensor(raw, chunk_size=3)
+    def testUnaryExecution(self):
+        funcs = [
+            'gammaln',
+            'erf',
+            'entr',
+        ]
 
-        r = gammaln(a)
+        for func in funcs:
+            sp_func = getattr(spspecial, func)
+            mt_func = getattr(mt_special, func)
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = scipy_gammaln(raw)
+            raw = np.random.rand(10, 8, 6)
+            a = tensor(raw, chunk_size=3)
 
-        np.testing.assert_array_equal(result, expected)
+            r = mt_func(a)
 
-        # test sparse
-        raw = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
-        a = tensor(raw, chunk_size=3)
+            result = self.executor.execute_tensor(r, concat=True)[0]
+            expected = sp_func(raw)
 
-        r = gammaln(a)
+            np.testing.assert_array_equal(result, expected)
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
+            # test sparse
+            raw = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
+            a = tensor(raw, chunk_size=3)
 
-        data = scipy_gammaln(raw.data)
-        expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
+            r = mt_func(a)
 
-        np.testing.assert_array_equal(result.toarray(), expected.toarray())
+            result = self.executor.execute_tensor(r, concat=True)[0]
 
-    def testErfExecution(self):
-        raw = np.random.rand(10, 8, 6)
-        a = tensor(raw, chunk_size=3)
+            data = sp_func(raw.data)
+            expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
 
-        r = erf(a)
+            np.testing.assert_array_equal(result.toarray(), expected.toarray())
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = scipy_erf(raw)
+    def testBinaryExecution(self):
+        funcs = [
+            'rel_entr',
+            'xlogy',
+        ]
 
-        np.testing.assert_array_equal(result, expected)
+        for func in funcs:
+            sp_func = getattr(spspecial, func)
+            mt_func = getattr(mt_special, func)
 
-        # test sparse
-        raw = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
-        a = tensor(raw, chunk_size=3)
+            raw1 = np.random.rand(4, 3, 2)
+            raw2 = np.random.rand(4, 3, 2)
+            a = tensor(raw1, chunk_size=3)
+            b = tensor(raw2, chunk_size=3)
 
-        r = erf(a)
+            r = mt_func(a, b)
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
+            result = self.executor.execute_tensor(r, concat=True)[0]
+            expected = sp_func(raw1, raw2)
 
-        data = scipy_erf(raw.data)
-        expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
+            np.testing.assert_array_equal(result, expected)
 
-        np.testing.assert_array_equal(result.toarray(), expected.toarray())
+            # test sparse
+            raw1 = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan] * 3).reshape(4, 3))
+            a = tensor(raw1, chunk_size=3)
+            raw2 = np.random.rand(4, 3)
+            b = tensor(raw2, chunk_size=3)
 
-    def testEntrExecution(self):
-        raw = np.random.rand(10, 8, 6)
-        a = tensor(raw, chunk_size=3)
+            r = mt_func(a, b)
 
-        r = entr(a)
+            result = self.executor.execute_tensor(r, concat=True)[0]
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = scipy_entr(raw)
-
-        np.testing.assert_array_equal(result, expected)
-
-        # test sparse
-        raw = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
-        a = tensor(raw, chunk_size=3)
-
-        r = entr(a)
-
-        result = self.executor.execute_tensor(r, concat=True)[0]
-
-        data = scipy_entr(raw.data)
-        expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
-
-        np.testing.assert_array_equal(result.toarray(), expected.toarray())
-
-    def testRelEntrExecution(self):
-        raw1 = np.random.rand(4, 3, 2)
-        raw2 = np.random.rand(4, 3, 2)
-        a = tensor(raw1, chunk_size=3)
-        b = tensor(raw2, chunk_size=3)
-
-        r = rel_entr(a, b)
-
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = scipy_rel_entr(raw1, raw2)
-
-        np.testing.assert_array_equal(result, expected)
-
-        # test sparse
-        raw1 = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan] * 3).reshape(4, 3))
-        a = tensor(raw1, chunk_size=3)
-        raw2 = np.random.rand(4, 3)
-        b = tensor(raw2, chunk_size=3)
-
-        r = rel_entr(a, b)
-
-        result = self.executor.execute_tensor(r, concat=True)[0]
-
-        expected = scipy_rel_entr(raw1.toarray(), raw2)
-        np.testing.assert_array_equal(result.toarray(), expected)
+            expected = sp_func(raw1.toarray(), raw2)
+            np.testing.assert_array_equal(result.toarray(), expected)

@@ -33,6 +33,7 @@ import time
 import warnings
 import weakref
 import zlib
+from contextlib import contextmanager
 from typing import List
 
 import numpy as np
@@ -1162,3 +1163,38 @@ class Timer:
     def __exit__(self, *_):
         end = time.time()
         self.duration = end - self._start
+
+
+_io_quiet_local = threading.local()
+_io_quiet_lock = threading.Lock()
+
+
+class _QuietIOWrapper:
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+
+    def __getattr__(self, item):
+        return getattr(self.wrapped, item)
+
+    def write(self, d):
+        if getattr(_io_quiet_local, 'is_wrapped', False):
+            return 0
+        return self.wrapped.write(d)
+
+
+@contextmanager
+def quiet_stdio():
+    """Quiets standard outputs when inferring types of functions"""
+    with _io_quiet_lock:
+        _io_quiet_local.is_wrapped = True
+        sys.stdout = _QuietIOWrapper(sys.stdout)
+        sys.stderr = _QuietIOWrapper(sys.stderr)
+
+    try:
+        yield
+    finally:
+        with _io_quiet_lock:
+            sys.stdout = sys.stdout.wrapped
+            sys.stderr = sys.stderr.wrapped
+            if not isinstance(sys.stdout, _QuietIOWrapper):
+                _io_quiet_local.is_wrapped = False

@@ -259,6 +259,10 @@ def rel_entr(x1, x2, **kw):
     return _call_bin('rel_entr', x1, x2, **kw)
 
 
+def xlogy(x1, x2, **kw):
+    return _call_bin('xlogy', x1, x2, **kw)
+
+
 def equal(a, b, **_):
     try:
         return a == b

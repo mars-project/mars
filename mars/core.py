@@ -726,9 +726,37 @@ class ChunksIndexer(object):
 
 
 class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
-    def __init__(self, *_):
+    def __init__(self, *args):
         super().__init__()
+
+        self._fields_to_idx = None
+        self._fields = None
+        self._raw_type = None
+
+        if len(args) == 1 and isinstance(args[0], tuple):
+            self._fields = getattr(args[0], '_fields', None)
+            if self._fields is not None:
+                self._raw_type = type(args[0])
+                self._fields_to_idx = {f: idx for idx, f in enumerate(self._fields)}
+
         self._executed_sessions = []
+
+    def __getattr__(self, item):
+        if self._fields_to_idx is None or item not in self._fields_to_idx:
+            raise AttributeError(item)
+        return self[self._fields_to_idx[item]]
+
+    def __dir__(self):
+        result = list(super().__dir__()) + list(self._fields or [])
+        return sorted(result)
+
+    def __repr__(self):
+        if not self._fields:
+            return super().__repr__()
+        items = []
+        for k, v in zip(self._fields, self):
+            items.append(f'{k}={v!r}')
+        return '%s(%s)' % (self._raw_type.__name__, ', '.join(items))
 
     def execute(self, session=None, **kw):
         if len(self) == 0:
@@ -738,7 +766,10 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
     def fetch(self, session=None, **kw):
         if len(self) == 0:
             return tuple()
-        return super().fetch(session=session, **kw)
+        ret = super().fetch(session=session, **kw)
+        if self._raw_type is not None:
+            ret = self._raw_type(*ret)
+        return ret
 
     def fetch_log(self, session=None, offsets=None, sizes=None):
         if len(self) == 0:

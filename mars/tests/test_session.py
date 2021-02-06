@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import unittest
+from collections import namedtuple
 
 import numpy as np
 import pandas as pd
@@ -30,6 +31,9 @@ from mars.tensor.core import TensorOrder
 from mars.tensor.datasource import ArrayDataSource
 from mars.tiles import get_tiled
 from mars.session import new_session, Session
+
+
+test_namedtuple_type = namedtuple('TestNamedTuple', 'a b')
 
 
 class Test(unittest.TestCase):
@@ -71,6 +75,28 @@ class Test(unittest.TestCase):
         res = res.result().fetch()
         pd.testing.assert_series_equal(raw_df.sum(), res[0])
         self.assertEqual(raw_a.sum(), res[1])
+
+    def testExecutableTupleExecute(self):
+        raw_a = np.random.RandomState(0).rand(10, 20)
+        a = mt.tensor(raw_a)
+
+        raw_df = pd.DataFrame(raw_a)
+        df = md.DataFrame(raw_df)
+
+        tp = test_namedtuple_type(a, df)
+        executable_tp = mt.ExecutableTuple(tp)
+
+        self.assertIn('a', dir(executable_tp))
+        self.assertIs(executable_tp.a, a)
+        self.assertIn(test_namedtuple_type.__name__, repr(executable_tp))
+        with self.assertRaises(AttributeError):
+            getattr(executable_tp, 'c')
+
+        res = mt.ExecutableTuple(tp).execute().fetch()
+        self.assertIs(test_namedtuple_type, type(res))
+
+        np.testing.assert_array_equal(raw_a, res.a)
+        pd.testing.assert_frame_equal(raw_df, res.b)
 
     def testMultipleOutputExecute(self):
         data = np.random.random((5, 9))

@@ -21,6 +21,7 @@ import tempfile
 import textwrap
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from io import BytesIO
 from enum import Enum
@@ -419,3 +420,44 @@ class Test(unittest.TestCase):
             time.sleep(0.1)
 
         self.assertGreaterEqual(timer.duration, 0.1)
+
+    def testQuietStdio(self):
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+
+        class _IOWrapper:
+            def __init__(self, name=None):
+                self.name = name
+                self.content = ''
+
+            @staticmethod
+            def writable():
+                return True
+
+            def write(self, d):
+                self.content += d
+                return len(d)
+
+        stdout_w = _IOWrapper('stdout')
+        stderr_w = _IOWrapper('stderr')
+        executor = ThreadPoolExecutor(1)
+        try:
+            sys.stdout = stdout_w
+            sys.stderr = stderr_w
+
+            with utils.quiet_stdio():
+                with utils.quiet_stdio():
+                    self.assertTrue(sys.stdout.writable())
+                    self.assertTrue(sys.stderr.writable())
+
+                    print('LINE 1', end='\n')
+                    print('LINE 2', file=sys.stderr, end='\n')
+                    executor.submit(print, 'LINE T').result()
+                print('LINE 3', end='\n')
+
+            print('LINE 1', end='\n')
+            print('LINE 2', file=sys.stderr, end='\n')
+        finally:
+            sys.stdout, sys.stderr = old_stdout, old_stderr
+
+        self.assertEqual(stdout_w.content, 'LINE T\nLINE 1\n')
+        self.assertEqual(stderr_w.content, 'LINE 2\n')
