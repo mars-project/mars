@@ -260,6 +260,14 @@ class Test(TestBase):
             expected = np.histogram(raw4[raw4 < 0.9])[0]
             np.testing.assert_array_equal(result, expected)
 
+            raw5 = np.arange(3, 10)
+            e = arange(10, chunk_size=3)
+            e = e[e >= 3]
+            hist = histogram(e)
+            result = executor.execute_tensors(hist)[0]
+            expected = np.histogram(raw5)[0]
+            np.testing.assert_array_equal(result, expected)
+
     def testQuantileExecution(self):
         # test 1 chunk, 1-d
         raw = np.random.rand(20)
