@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from urllib.parse import urlparse
 from typing import List, Dict, Union, Tuple, Iterator, BinaryIO, TextIO
 
 import pyarrow as pa
@@ -20,7 +21,7 @@ from pyarrow.fs import FileSystem as ArrowFileSystem, \
     HadoopFileSystem as ArrowHadoopFileSystem, \
     FileSelector, FileInfo, FileType
 
-from ...utils import implements
+from ...utils import implements, stringify_path
 from .core import FileSystem, path_type
 
 
@@ -32,18 +33,24 @@ class ArrowBasedFileSystem(FileSystem):
     FileSystem implemented with arrow fs API (>=2.0.0).
     """
 
-    def __init__(self, arrow_fs: ArrowFileSystem, sequential_read=True):
+    def __init__(self, arrow_fs: ArrowFileSystem, sequential_read=False):
         self._arrow_fs = arrow_fs
         # for open('rb'), open a sequential reading only or not
         self._sequential_read = sequential_read
 
+    @staticmethod
+    def _process_path(path):
+        return stringify_path(path)
+
     @implements(FileSystem.cat)
     def cat(self, path: path_type) -> bytes:
+        path = self._process_path(path)
         file: pa.NativeFile = self._arrow_fs.open_input_stream(path)
         return file.read()
 
     @implements(FileSystem.ls)
     def ls(self, path: path_type) -> List[path_type]:
+        path = self._process_path(path)
         file_selector: FileSelector = FileSelector(path)
         paths = []
         for file_info in self._arrow_fs.get_file_info(file_selector):
@@ -51,6 +58,7 @@ class ArrowBasedFileSystem(FileSystem):
         return paths
 
     def _get_file_info(self, path: path_type) -> FileInfo:
+        path = self._process_path(path)
         file_info: FileInfo = self._arrow_fs.get_file_info([path])[0]
         return file_info
 
@@ -58,6 +66,7 @@ class ArrowBasedFileSystem(FileSystem):
     def delete(self,
                path: path_type,
                recursive: bool = False):
+        path = self._process_path(path)
         info = self._get_file_info(path)
         if info.is_file:
             self._arrow_fs.delete_file(path)
@@ -73,10 +82,13 @@ class ArrowBasedFileSystem(FileSystem):
     def rename(self,
                path: path_type,
                new_path: path_type):
+        path = self._process_path(path)
+        new_path = self._process_path(new_path)
         self._arrow_fs.move(path, new_path)
 
     @implements(FileSystem.stat)
     def stat(self, path: path_type) -> Dict:
+        path = self._process_path(path)
         info = self._get_file_info(path)
         stat = dict(name=path, size=info.size, modified_time=info.mtime_ns / 1e9)
         if info.type == FileType.File:
@@ -91,15 +103,18 @@ class ArrowBasedFileSystem(FileSystem):
     def mkdir(self,
               path: path_type,
               create_parents: bool = True):
+        path = self._process_path(path)
         self._arrow_fs.create_dir(path, recursive=create_parents)
 
     @implements(FileSystem.isdir)
     def isdir(self, path: path_type) -> bool:
+        path = self._process_path(path)
         info = self._get_file_info(path)
         return info.type == FileType.Directory
 
     @implements(FileSystem.isfile)
     def isfile(self, path: path_type) -> bool:
+        path = self._process_path(path)
         info = self._get_file_info(path)
         return info.is_file
 
@@ -109,6 +124,7 @@ class ArrowBasedFileSystem(FileSystem):
 
     @implements(FileSystem.exists)
     def exists(self, path: path_type):
+        path = self._process_path(path)
         info = self._get_file_info(path)
         return info.type != FileType.NotFound
 
@@ -116,6 +132,7 @@ class ArrowBasedFileSystem(FileSystem):
     def open(self,
              path: path_type,
              mode: str = 'rb') -> Union[BinaryIO, TextIO]:
+        path = self._process_path(path)
         is_binary = mode.endswith('b')
         if not is_binary:  # pragma: no cover
             raise ValueError(f'mode can only be binary for '
@@ -133,6 +150,7 @@ class ArrowBasedFileSystem(FileSystem):
 
     @implements(FileSystem.walk)
     def walk(self, path: path_type) -> Iterator[Tuple[str, List[str], List[str]]]:
+        path = self._process_path(path)
         q = [path]
         while q:
             curr = q.pop(0)
@@ -154,12 +172,13 @@ class ArrowBasedFileSystem(FileSystem):
              recursive: bool = False) -> List[path_type]:
         from ._glob import FileSystemGlob
 
+        path = self._process_path(path)
         return FileSystemGlob(self).glob(path, recursive=recursive)
 
 
 class ArrowBasedLocalFileSystem(ArrowBasedFileSystem):
     def __init__(self):
-        super().__init__(ArrowLocalFileSystem(), sequential_read=False)
+        super().__init__(ArrowLocalFileSystem())
 
     _instance = None
 
@@ -178,3 +197,12 @@ class HadoopFileSystem(ArrowBasedFileSystem):
                                          kerb_ticket=kerb_ticket,
                                          extra_conf=extra_conf)
         super().__init__(arrow_fs)
+
+    @staticmethod
+    def _process_path(path):
+        path = ArrowBasedFileSystem._process_path(path)
+        # use urlparse to extract path from like:
+        # hdfs://localhost:8020/tmp/test/simple_test.csv,
+        # due to the reason that pa.fs.HadoopFileSystem cannot accept
+        # path with hdfs:// prefix
+        return urlparse(path).path

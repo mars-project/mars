@@ -17,7 +17,7 @@ if [ -z "$NO_COMMON_TESTS" ]; then
 
   export DEFAULT_VENV=$VIRTUAL_ENV
   source testenv/bin/activate
-  pytest --timeout=1500 mars/tests/test_session.py mars/tests/test_filesystem.py
+  pytest --timeout=1500 mars/tests/test_session.py mars/lib/filesystem/tests/test_filesystem.py
   if [ -z "$DEFAULT_VENV" ]; then
     deactivate
   else
