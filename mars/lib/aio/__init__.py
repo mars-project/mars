@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .aio import AioSerializer, AioDeserializer
-from .core import serialize, deserialize
+import asyncio
+import sys
 
-from . import arrow, cuda, numpy, scipy, mars_objects
-del arrow, cuda, numpy, scipy, mars_objects
+from .file import AioFileObject, AioFilesystem
+
+
+if sys.version_info[:2] < (3, 7):
+    # patch run and get_running_loop etc for python 3.6
+    from ._runners import get_running_loop, run
+
+    asyncio.run = run
+    asyncio.get_running_loop = get_running_loop
+    asyncio.create_task = asyncio.ensure_future

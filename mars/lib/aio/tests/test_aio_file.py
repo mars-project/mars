@@ -17,8 +17,8 @@ import tempfile
 
 import pytest
 
-from mars.filesystem import LocalFileSystem
-from mars.aio import AioFilesystem, AioFileObject
+from mars.lib.filesystem import LocalFileSystem
+from mars.lib.aio import AioFilesystem, AioFileObject
 
 
 @pytest.mark.asyncio

@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...filesystem import get_fs, open_file, file_size, glob
+from ...lib.filesystem import get_fs, open_file, file_size, glob
 from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, BoolField, AnyField
 from ...utils import parse_readable_size, lazy_import, FixedSizeFileObject
 from ..arrays import ArrowStringDtype

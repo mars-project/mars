@@ -4,3 +4,4 @@ pandas>=1.0.0; python_version>='3.7'
 requests>=2.4.0
 cloudpickle>=1.0.0
 pickle5; python_version<'3.8'
+async_generator; python_version<'3.7'

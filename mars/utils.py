@@ -34,7 +34,7 @@ import warnings
 import weakref
 import zlib
 from contextlib import contextmanager
-from typing import List
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
@@ -1199,3 +1199,25 @@ def quiet_stdio():
             sys.stderr = sys.stderr.wrapped
             if not isinstance(sys.stdout, _QuietIOWrapper):
                 _io_quiet_local.is_wrapped = False
+
+
+def implements(f):
+    def decorator(g):
+        g.__doc__ = f.__doc__
+        return g
+
+    return decorator
+
+
+def stringify_path(path: Union[str, os.PathLike]) -> str:
+    """
+    Convert *path* to a string or unicode path if possible.
+    """
+    if isinstance(path, str):
+        return path
+
+    # checking whether path implements the filesystem protocol
+    try:
+        return path.__fspath__()
+    except AttributeError:
+        raise TypeError("not a path-like object")

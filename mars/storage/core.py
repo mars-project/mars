@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import Executor
 from typing import Any, Optional, Union
 
-from ..aio import AioFileObject
+from ..lib.aio import AioFileObject
 
 
 class StorageFileObject(AioFileObject):

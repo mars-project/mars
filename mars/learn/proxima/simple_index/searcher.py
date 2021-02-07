@@ -26,7 +26,7 @@ from .... import opcodes
 from .... import tensor as mt
 from ....context import get_context, RunningMode
 from ....core import Base, Entity
-from ....filesystem import get_fs, FileSystem
+from ....lib.filesystem import get_fs, FileSystem
 from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, Int64Field, \
     DictField, AnyField, BytesField, BoolField

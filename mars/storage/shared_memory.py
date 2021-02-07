@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover
     SharedMemory = None
 
 from ..serialization import AioSerializer, AioDeserializer
+from ..utils import implements
 from .base import StorageBackend, StorageLevel, ObjectInfo
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -85,6 +86,7 @@ class SharedMemoryStorage(StorageBackend):
         self._object_ids = set()
 
     @classmethod
+    @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         if kwargs:  # pragma: no cover
             raise TypeError(f'SharedMemoryStorage got unexpected config: {",".join(kwargs)}')
@@ -92,6 +94,7 @@ class SharedMemoryStorage(StorageBackend):
         return dict(), dict()
 
     @staticmethod
+    @implements(StorageBackend.teardown)
     async def teardown(**kwargs):
         object_ids = kwargs.get('object_ids')
         for object_id in object_ids:
@@ -100,13 +103,15 @@ class SharedMemoryStorage(StorageBackend):
             await asyncio.sleep(0)
 
     @property
-    def level(self):
+    @implements(StorageBackend.level)
+    def level(self) -> StorageLevel:
         return StorageLevel.MEMORY
 
     @classmethod
     def _generate_object_id(cls):
         return ''.join(random.choice(ascii_letters + digits) for _ in range(30))
 
+    @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:
         shm_file = SharedMemoryFileObject(object_id, mode='r')
 
@@ -118,6 +123,7 @@ class SharedMemoryStorage(StorageBackend):
             _shared_memory_manager.register(object_id, shm_file.shm)
             return result
 
+    @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
         object_id = self._generate_object_id()
 
@@ -135,11 +141,13 @@ class SharedMemoryStorage(StorageBackend):
         self._object_ids.add(object_id)
         return ObjectInfo(size=buffer_size, object_id=object_id)
 
+    @implements(StorageBackend.delete)
     async def delete(self, object_id):
         shm = SharedMemory(name=object_id)
         shm.unlink()
         self._object_ids.remove(object_id)
 
+    @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:
         shm_file = SharedMemoryFileObject(object_id, mode='r')
 
@@ -148,6 +156,7 @@ class SharedMemoryStorage(StorageBackend):
             size = await deserializer.get_size()
         return ObjectInfo(size=size, object_id=object_id)
 
+    @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
         if size is None:  # pragma: no cover
             raise ValueError('size must be provided for shared memory backend')
@@ -156,9 +165,11 @@ class SharedMemoryStorage(StorageBackend):
         shm_file = SharedMemoryFileObject(new_id, size=size, mode='w')
         return StorageFileObject(shm_file, object_id=new_id)
 
+    @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
         shm_file = SharedMemoryFileObject(object_id, mode='r')
         return StorageFileObject(shm_file, object_id=object_id)
 
+    @implements(StorageBackend.list)
     async def list(self) -> List:  # pragma: no cover
         raise NotImplementedError("Shared memory storage does not support list")
