@@ -60,16 +60,13 @@ class ProximaArrayMmap(LearnOperand, LearnOperandMixin):
     _array_dtype = DataTypeField('array_dtype')
     _offset = Int64Field('offset')
     _partition_slice = SliceField('partition_slice')
-    _append_header = BoolField('append_header')
 
     def __init__(self, create_mmap_file=None, array_shape=None, array_dtype=None,
-                 prefix=None, offset=None, partition_slice=None, append_header=None,
-                 output_types=None, **kw):
+                 prefix=None, offset=None, partition_slice=None, output_types=None, **kw):
         super().__init__(_create_mmap_file=create_mmap_file,
                          _array_shape=array_shape,
                          _array_dtype=array_dtype,
                          _prefix=prefix, _offset=offset,
-                         _append_header=append_header,
                          _partition_slice=partition_slice,
                          _output_types=output_types, **kw)
         if self._output_types is None:
@@ -99,29 +96,16 @@ class ProximaArrayMmap(LearnOperand, LearnOperandMixin):
     def partition_slice(self):
         return self._partition_slice
 
-    @property
-    def append_header(self):
-        return self._append_header
-
     @classmethod
     def execute(cls, ctx, op):
         if op.create_mmap_file:
             path = tempfile.mkstemp(prefix=op.prefix, suffix='.dat')[1]
-            if op.append_header:
-                fp = np.memmap(path, dtype=op.array_dtype, mode='w+', shape=op.array_shape, offset=128)
-                header = np.lib.format.header_data_from_array_1_0(fp)
-                with open(path, 'r+b') as f:
-                    np.lib.format.write_array_header_1_0(f, header)
-            else:
-                np.memmap(path, dtype=op.array_dtype, mode='w+', shape=op.array_shape)
+            np.memmap(path, dtype=op.array_dtype, mode='w+', shape=op.array_shape)
             ctx[op.outputs[0].key] = path
         else:
             path = ctx[op.inputs[0].key]
             array = ctx[op.inputs[1].key]
-            if op.append_header:
-                fp = np.memmap(path, dtype=op.array_dtype, mode='r+', shape=op.array_shape, offset=128)
-            else:
-                fp = np.memmap(path, dtype=op.array_dtype, mode='r+', shape=op.array_shape)
+            fp = np.memmap(path, dtype=op.array_dtype, mode='r+', shape=op.array_shape)
             fp[op.partition_slice] = array
             ctx[op.outputs[0].key] = path
 
@@ -178,8 +162,7 @@ def rechunk_tensor(tensor, chunk_size):
     return out_groups
 
 
-def build_mmap_chunks(chunks, worker, file_prefix, offset=0,
-                      append_header=True):
+def build_mmap_chunks(chunks, worker, file_prefix, offset=0):
     write_mmap_chunks = []
     nrows = sum(c.shape[0] for c in chunks)
     array_shape = (nrows, chunks[0].shape[1])
@@ -188,7 +171,6 @@ def build_mmap_chunks(chunks, worker, file_prefix, offset=0,
                                       array_shape=array_shape,
                                       array_dtype=array_dtype,
                                       prefix=file_prefix,
-                                      append_header=append_header,
                                       offset=offset)
     create_mmap_op._expect_worker = worker
     create_mmap_chunk = create_mmap_op.new_chunk(
@@ -201,7 +183,6 @@ def build_mmap_chunks(chunks, worker, file_prefix, offset=0,
                                          array_shape=array_shape,
                                          array_dtype=array_dtype,
                                          offset=offset,
-                                         append_header=append_header,
                                          partition_slice=s)
         write_mmap_op._expect_worker = worker
         write_mmap_chunk = write_mmap_op.new_chunk([create_mmap_chunk, chk],

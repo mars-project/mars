@@ -293,7 +293,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                 def write_index():
                     with fs.open(out_path, 'wb') as out_f:
                         with open(path, 'rb') as in_f:
-                            # 32M
+                            # 128M
                             chunk_bytes = 128 * 1024 ** 2
                             while True:
                                 data = in_f.read(chunk_bytes)
