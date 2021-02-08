@@ -19,8 +19,16 @@ import tempfile
 import numpy as np
 import pytest
 
+try:
+    import pyarrow as pa
+except ImportError:  # pragma: no cover
+    pa = None
+
 from mars.lib.filesystem import glob, FileSystem, LocalFileSystem, FSMap
-from mars.lib.filesystem.arrow import ArrowBasedLocalFileSystem
+if pa is not None:
+    from mars.lib.filesystem.arrow import ArrowBasedLocalFileSystem
+else:  # pragma: no cover
+    ArrowBasedLocalFileSystem = None
 
 
 def test_path_parser():
@@ -49,7 +57,7 @@ def test_local_filesystem():
 
 @pytest.mark.parametrize(
     'fs_type',
-    [LocalFileSystem, ArrowBasedLocalFileSystem]
+    [LocalFileSystem, ArrowBasedLocalFileSystem] if pa is not None else [LocalFileSystem]
 )
 def test_filesystems(fs_type):
     fs = fs_type.get_instance()
