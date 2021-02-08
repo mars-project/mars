@@ -157,7 +157,7 @@ jobs:
           coverage xml
 
       - name: Stop vineyard runtime
-        if: ${{ always() }}
+        if: ${{ matrix.with-vineyard }}
         shell: bash
         run: |
           sudo docker stop vineyard || true

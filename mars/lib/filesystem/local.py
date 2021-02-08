@@ -32,19 +32,7 @@ class LocalFileSystem(FileSystem):
         return cls._instance
 
     @implements(FileSystem.cat)
-    def cat(self, path):
-        """
-        Return contents of file as a bytes object.
-
-        Parameters
-        ----------
-        path : str
-            File path to read content from.
-
-        Returns
-        -------
-        contents : bytes
-        """
+    def cat(self, path: path_type):
         with self.open(path, 'rb') as f:
             return f.read()
 

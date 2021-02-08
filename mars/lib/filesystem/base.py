@@ -32,6 +32,11 @@ class FileSystem(ABC):
         """
         Return contents of file as a bytes object
 
+        Parameters
+        ----------
+        path : str or path-like
+            File path to read content from.
+
         Returns
         -------
         contents : bytes

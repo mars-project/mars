@@ -20,9 +20,9 @@ from urllib.parse import urlparse
 import pandas as pd
 import numpy as np
 try:
-    from pyarrow import HdfsFile
+    from pyarrow import NativeFile
 except ImportError:  # pragma: no cover
-    HdfsFile = None
+    NativeFile = None
 
 from ... import opcodes as OperandDef
 from ...config import options
@@ -67,7 +67,7 @@ def _find_hdfs_start_end(f, offset, size):
 
 
 def _find_chunk_start_end(f, offset, size):
-    if HdfsFile is not None and isinstance(f, HdfsFile):
+    if NativeFile is not None and isinstance(f, NativeFile):
         return _find_hdfs_start_end(f, offset, size)
     f.seek(offset)
     if f.tell() == 0:

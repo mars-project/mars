@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import weakref
 from urllib.parse import urlparse
 from typing import List, Dict, Union, Tuple, Iterator, BinaryIO, TextIO
 
@@ -26,6 +27,13 @@ from .core import FileSystem, path_type
 
 
 __all__ = ('ArrowBasedLocalFileSystem', 'HadoopFileSystem')
+
+
+# When pyarrow.fs.FileSystem gc collected,
+# the underlying connection will be closed,
+# so we hold the reference to make sure
+# FileSystem will not be gc collected before file object
+_file_to_filesystems = weakref.WeakKeyDictionary()
 
 
 class ArrowBasedFileSystem(FileSystem):
@@ -139,14 +147,20 @@ class ArrowBasedFileSystem(FileSystem):
                              f'arrow based filesystem, got {mode}')
         mode = mode.rstrip('b')
         if mode == 'w':
-            return self._arrow_fs.open_output_stream(path)
+            file = self._arrow_fs.open_output_stream(path)
         elif mode == 'r':
             if self._sequential_read:
-                return self._arrow_fs.open_input_stream(path)
+                file = self._arrow_fs.open_input_stream(path)
             else:
-                return self._arrow_fs.open_input_file(path)
+                file = self._arrow_fs.open_input_file(path)
         elif mode == 'a':
-            return self._arrow_fs.open_append_stream(path)
+            file = self._arrow_fs.open_append_stream(path)
+        else:  # pragma: no cover
+            raise ValueError(f'mode can only be "wb", "rb" and "ab" for '
+                             f'arrow based filesystem, got {mode}')
+
+        _file_to_filesystems[file] = self._arrow_fs
+        return file
 
     @implements(FileSystem.walk)
     def walk(self, path: path_type) -> Iterator[Tuple[str, List[str], List[str]]]:
@@ -205,4 +219,7 @@ class HadoopFileSystem(ArrowBasedFileSystem):
         # hdfs://localhost:8020/tmp/test/simple_test.csv,
         # due to the reason that pa.fs.HadoopFileSystem cannot accept
         # path with hdfs:// prefix
-        return urlparse(path).path
+        if path.startswith('hdfs://'):
+            return urlparse(path).path
+        else:
+            return path
