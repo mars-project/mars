@@ -156,8 +156,8 @@ async def test_base_operations(storage_context):
     np.testing.assert_array_equal(t, t2)
 
 
-@pytest.mark.cuda
 @pytest.mark.asyncio
+@pytest.mark.skipif(cudf is None or cupy is None, reason='Cupy or cudf not installed')
 async def test_cuda_backend():
     params, teardown_params = await CudaStorage.setup()
     storage = CudaStorage(**params)
