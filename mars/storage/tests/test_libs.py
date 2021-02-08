@@ -26,6 +26,7 @@ from mars.lib.filesystem import LocalFileSystem
 from mars.lib.sparse import SparseNDArray, SparseMatrix
 from mars.serialize import dataserializer
 from mars.storage.base import StorageLevel
+from mars.storage.cuda import CudaStorage
 from mars.storage.filesystem import FileSystemStorage
 from mars.storage.plasma import PlasmaStorage
 from mars.storage.shared_memory import SharedMemoryStorage
@@ -34,6 +35,12 @@ try:
     import vineyard
 except ImportError:
     vineyard = None
+try:
+    import cupy
+    import cudf
+except ImportError:
+    cupy = None
+    cudf = None
 
 
 params = ['filesystem', 'plasma']
@@ -147,3 +154,31 @@ async def test_base_operations(storage_context):
         t2 = dataserializer.loads(content)
 
     np.testing.assert_array_equal(t, t2)
+
+
+@pytest.mark.cuda
+@pytest.mark.asyncio
+async def test_cuda_backend():
+    params, teardown_params = await CudaStorage.setup()
+    storage = CudaStorage(**params)
+    assert storage.level == StorageLevel.GPU
+
+    data1 = cupy.asarray(np.random.rand(10, 10))
+    put_info1 = await storage.put(data1)
+    get_data1 = await storage.get(put_info1.object_id)
+    cupy.testing.assert_array_equal(data1, get_data1)
+
+    info1 = await storage.object_info(put_info1.object_id)
+    assert info1.size == put_info1.size
+
+    data2 = cudf.DataFrame(pd.DataFrame({'col1': np.arange(10),
+                                         'col2': [f'str{i}' for i in range(10)],
+                                         'col3': np.random.rand(10)},))
+    put_info2 = await storage.put(data2)
+    get_data2 = await storage.get(put_info2.object_id)
+    cudf.testing.assert_frame_equal(data2, get_data2)
+
+    info2 = await storage.object_info(put_info2.object_id)
+    assert info2.size == put_info2.size
+
+    await CudaStorage.teardown(**teardown_params)
