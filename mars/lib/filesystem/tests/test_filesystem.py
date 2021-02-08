@@ -129,7 +129,7 @@ def test_filesystems(fs_type):
         fs.delete(test2_file)
         assert not fs.exists(test2_file)
 
-        assert fs._isfilestore
+        assert fs._isfilestore()
 
         with pytest.raises(OSError):
             fs.delete(test1_dir)

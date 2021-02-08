@@ -9,6 +9,7 @@ include =
     mars/*
 omit =
     mars/compat.py
+    mars/lib/aio/_runners.py
     mars/lib/functools32/*
     mars/lib/futures/*
     mars/lib/enum.py

@@ -54,7 +54,7 @@ class FSMap(MutableMapping):
 
     @staticmethod
     def _normalize_path(fs, path, lstrip=False, rstrip=False):
-        if fs.pathsep != '/':
+        if fs.pathsep != '/':  # pragma: no cover
             path = path.replace('/', fs.pathsep)
         if lstrip:
             path = path.lstrip(fs.pathsep)
@@ -80,7 +80,7 @@ class FSMap(MutableMapping):
         try:
             self.fs.rm(self.root, True)
             self.fs.mkdir(self.root)
-        except:  # noqa: E722
+        except:  # noqa: E722  # pragma: no cover
             pass
 
     def _key_to_str(self, key):
@@ -94,7 +94,7 @@ class FSMap(MutableMapping):
     def _str_to_key(self, s):
         """Strip path of to leave key name"""
         key = self._normalize_path(self.fs, s[len(self.root):], lstrip=True)
-        if self.fs.pathsep != '/':
+        if self.fs.pathsep != '/':  # pragma: no cover
             key = key.replace(self.fs.pathsep, '/')
         return key
 
@@ -122,7 +122,7 @@ class FSMap(MutableMapping):
         path = FSMap._get_path(fs, path.rstrip(fs.pathsep))
         if fs.pathsep in path:
             return path.rsplit(fs.pathsep, 1)[0]
-        else:
+        else:  # pragma: no cover
             return ''
 
     def __setitem__(self, key, value):

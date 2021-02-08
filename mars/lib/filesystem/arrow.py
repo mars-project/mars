@@ -149,7 +149,7 @@ class ArrowBasedFileSystem(FileSystem):
         if mode == 'w':
             file = self._arrow_fs.open_output_stream(path)
         elif mode == 'r':
-            if self._sequential_read:
+            if self._sequential_read:  # pragma: no cover
                 file = self._arrow_fs.open_input_stream(path)
             else:
                 file = self._arrow_fs.open_input_file(path)
