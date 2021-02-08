@@ -106,6 +106,13 @@ class Test(unittest.TestCase):
         a = tensor(list('abcdefghi'), dtype=object, chunk_size=2)
         self.assertEqual(self.executor.execute_tensor(a.max(), concat=True)[0], 'i')
 
+        # test empty chunks
+        raw = np.arange(3, 10)
+        arr = tensor(np.arange(0, 10), chunk_size=3)
+        arr = arr[arr >= 3]
+        self.assertEqual([raw.max()], self.executor.execute_tensor(arr.max()))
+        self.assertEqual([raw.min()], self.executor.execute_tensor(arr.min()))
+
     def testAllAnyExecution(self):
         raw1 = np.zeros((10, 15))
         raw2 = np.ones((10, 15))

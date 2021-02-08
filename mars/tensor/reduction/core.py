@@ -264,7 +264,10 @@ class TensorReductionMixin(TensorOperandMixin):
         reduce_func = getattr(xp, func_name)
         out = op.outputs[0]
         with device(device_id):
-            if "dtype" in inspect.getfullargspec(reduce_func).args:
+            if input_chunk.size == 0 and op.keepdims:
+                # input chunk is empty, when keepdims is True, return itself
+                ret = input_chunk
+            elif "dtype" in inspect.getfullargspec(reduce_func).args:
                 ret = reduce_func(input_chunk, axis=axis,
                                   dtype=op.dtype,
                                   keepdims=bool(op.keepdims))

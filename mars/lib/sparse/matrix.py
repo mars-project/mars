@@ -124,6 +124,10 @@ class SparseMatrix(SparseArray):
     def shape(self):
         return self.spmatrix.shape
 
+    @property
+    def size(self):
+        return int(np.prod(self.shape))
+
     def transpose(self, axes=None):
         assert axes is None or tuple(axes) == (1, 0)
         return SparseMatrix(self.spmatrix.transpose())
