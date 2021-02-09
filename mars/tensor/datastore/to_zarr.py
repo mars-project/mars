@@ -19,7 +19,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, StringField, BytesField, TupleField
-from ...filesystem import get_fs, FSMap
+from ...lib.filesystem import get_fs, FSMap
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from .core import TensorDataStore

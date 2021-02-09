@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from ...filesystem import get_fs, FSMap
+from ...lib.filesystem import get_fs, FSMap
 from ..core import TensorOrder
 from .core import TensorFromHDF5Like
 

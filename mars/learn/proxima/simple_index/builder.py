@@ -22,7 +22,7 @@ import numpy as np
 from .... import opcodes
 from .... import tensor as mt
 from ....context import get_context, RunningMode
-from ....filesystem import get_fs, LocalFileSystem
+from ....lib.filesystem import get_fs, LocalFileSystem
 from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, Int64Field, \
     DictField, BytesField

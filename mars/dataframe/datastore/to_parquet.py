@@ -17,7 +17,7 @@
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...filesystem import open_file, get_fs
+from ...lib.filesystem import open_file, get_fs
 from ...serialize import KeyField, AnyField, StringField, ListField, \
     BoolField, DictField
 from ...tiles import TilesError

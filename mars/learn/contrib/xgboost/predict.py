@@ -57,7 +57,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
 
     @property
     def kwargs(self):
-        return self._kwargs
+        return self._kwargs if self._kwargs is not None else dict()
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
