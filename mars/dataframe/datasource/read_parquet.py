@@ -34,7 +34,7 @@ except ImportError:
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...filesystem import file_size, get_fs, glob, open_file
+from ...lib.filesystem import file_size, get_fs, glob, open_file
 from ...serialize import AnyField, BoolField, DictField, ListField,\
     StringField, Int32Field, Int64Field, BytesField
 from ...utils import is_object_dtype

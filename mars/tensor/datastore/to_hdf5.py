@@ -17,7 +17,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, StringField, DictField, TupleField
 from ...context import RunningMode
-from ...filesystem import open_file
+from ...lib.filesystem import open_file
 from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ...operands import SuccessorsExclusive

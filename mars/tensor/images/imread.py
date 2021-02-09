@@ -21,7 +21,7 @@ except ImportError:
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
 from ...config import options
-from ...filesystem import open_file, glob, file_size
+from ...lib.filesystem import open_file, glob, file_size
 from ...utils import ceildiv
 from ..operands import TensorOperandMixin, TensorOperand
 
