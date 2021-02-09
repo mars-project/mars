@@ -19,7 +19,7 @@ import os
 from typing import Tuple, Dict, List, Union, Optional
 
 from ..serialization import serialize, deserialize
-from ..utils import lazy_import
+from ..utils import lazy_import, implements
 from .base import StorageBackend, StorageLevel, ObjectInfo
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -112,6 +112,7 @@ class CudaStorage(StorageBackend):
         self._id_to_buffers = dict()
 
     @classmethod
+    @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         if kwargs:  # pragma: no cover
             raise TypeError(f'CudaStorage got unexpected config: {",".join(kwargs)}')
@@ -119,10 +120,12 @@ class CudaStorage(StorageBackend):
         return dict(), dict()
 
     @staticmethod
+    @implements(StorageBackend.teardown)
     async def teardown(**kwargs):
         pass
 
     @property
+    @implements(StorageBackend.level)
     def level(self):
         return StorageLevel.GPU
 
@@ -136,6 +139,7 @@ class CudaStorage(StorageBackend):
             return cudf.Series.from_pandas(obj)
         return obj
 
+    @implements(StorageBackend.get)
     async def get(self, object_id: CudaObjectId, **kwargs) -> object:
         from cupy.cuda.memory import MemoryPointer, UnownedMemory
         from cudf.core.buffer import Buffer
@@ -164,6 +168,7 @@ class CudaStorage(StorageBackend):
         else:
             raise TypeError(f'Unknown data type {data_type}')
 
+    @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
         obj = self._to_cuda(obj)
         headers, buffers = serialize(obj)
@@ -184,13 +189,16 @@ class CudaStorage(StorageBackend):
         self._id_to_buffers[object_id] = buffers
         return ObjectInfo(size=size, object_id=object_id, device=device)
 
+    @implements(StorageBackend.delete)
     async def delete(self, object_id):
         del self._id_to_buffers[object_id]
 
+    @implements(StorageBackend.object_info)
     async def object_info(self, object_id: CudaObjectId) -> ObjectInfo:
         size = sum(object_id.headers['lengths'])
         return ObjectInfo(size=size, object_id=object_id, device=object_id.headers['device'])
 
+    @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
         from cudf.core.buffer import Buffer
 
@@ -201,9 +209,11 @@ class CudaStorage(StorageBackend):
         cuda_writer = CudaFileObject(object_id, cuda_buffer=cuda_buffer, mode='w', size=size)
         return StorageFileObject(cuda_writer, object_id=object_id)
 
+    @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
         cuda_reader = CudaFileObject(object_id, mode='r')
         return StorageFileObject(cuda_reader, object_id=object_id)
 
+    @implements(StorageBackend.list)
     async def list(self) -> List:  # pragma: no cover
         raise NotImplementedError("Cuda storage doesn't support `list` method.")
