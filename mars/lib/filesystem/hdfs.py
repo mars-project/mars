@@ -25,5 +25,5 @@ except ImportError:  # pragma: no cover
 from .core import register_filesystem
 
 
-if HadoopFileSystem is not None:
+if HadoopFileSystem is not None:  # pragma: no branch
     register_filesystem('hdfs', HadoopFileSystem)

@@ -25,8 +25,9 @@ except ImportError:  # pragma: no cover
     pa = None
 
 from mars.lib.filesystem import glob, FileSystem, LocalFileSystem, FSMap
+from mars.tests.core import require_hadoop
 if pa is not None:
-    from mars.lib.filesystem.arrow import ArrowBasedLocalFileSystem
+    from mars.lib.filesystem.arrow import ArrowBasedLocalFileSystem, HadoopFileSystem
 else:  # pragma: no cover
     ArrowBasedLocalFileSystem = None
 
@@ -135,6 +136,22 @@ def test_filesystems(fs_type):
             fs.delete(test1_dir)
         fs.delete(test1_dir, recursive=True)
         assert not fs.exists(test1_dir)
+
+
+@require_hadoop
+def test_hadoop_filesystem():
+    fs = HadoopFileSystem(host="localhost", port=8020)
+
+    test_dir = '/tmp/test/test_hadoop_fs'
+    fs.mkdir(test_dir)
+    test_file = f'{test_dir}/my_file.txt'
+    test_file_content = b'text for text'
+    with fs.open(test_file, 'wb') as f:
+        f.write(test_file_content)
+    with fs.open(test_file, 'rb') as f:
+        assert test_file_content == f.read()
+    # test file with hdfs:// prefix
+    assert fs.exists(f'hdfs://{test_dir}')
 
 
 def test_fsmap():
