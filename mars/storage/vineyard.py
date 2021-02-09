@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import pyarrow as pa
 try:
@@ -27,6 +27,7 @@ except ImportError:
     vineyard = None
 
 from ..lib import sparse
+from ..utils import implements
 from .base import StorageBackend, StorageLevel, ObjectInfo
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -39,7 +40,7 @@ def mars_sparse_matrix_builder(client, value, builder, **kw):
     return client.create_metadata(meta)
 
 
-def mars_sparse_matrix_resolver(obj, resolver):
+def mars_sparse_matrix_resolver(obj, resolver) -> sparse.SparseNDArray:
     meta = obj.meta
     shape = from_json(meta['shape_'])
     spmatrix = resolver.run(obj.member('spmatrix'))
@@ -52,7 +53,8 @@ if vineyard is not None:
 
 
 class VineyardFileObject(BufferWrappedFileObject):
-    def __init__(self, vineyard_client, object_id, mode, size=None):
+    def __init__(self, vineyard_client, object_id,
+                 mode: str, size: Optional[int] = None):
         self._client = vineyard_client
         self._object_id = object_id
         self._file = None
@@ -85,10 +87,11 @@ class VineyardFileObject(BufferWrappedFileObject):
 
 
 class VineyardStorage(StorageBackend):
-    def __init__(self, vineyard_socket=None):
+    def __init__(self, vineyard_socket: str = None):
         self._client = vineyard.connect(vineyard_socket)
 
     @classmethod
+    @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         etcd_endpoints = kwargs.pop('etcd_endpoints', None)
         vineyard_size = kwargs.pop('vineyard_size', '256M')
@@ -106,29 +109,36 @@ class VineyardStorage(StorageBackend):
         return dict(vineyard_socket=vineyard_store.__enter__()[1]), dict(vineyard_store=vineyard_store)
 
     @staticmethod
+    @implements(StorageBackend.teardown)
     async def teardown(**kwargs):
         vineyard_store = kwargs.get('vineyard_store')
         vineyard_store.__exit__(None, None, None)
 
     @property
-    def level(self):
+    @implements(StorageBackend.level)
+    def level(self) -> StorageLevel:
         return StorageLevel.MEMORY
 
+    @implements(StorageBackend.get)
     async def get(self, object_id, **kwarg) -> object:
         return self._client.get(object_id)
 
-    async def put(self, obj, importance=0) -> ObjectInfo:
+    @implements(StorageBackend.put)
+    async def put(self, obj, importance: int = 0) -> ObjectInfo:
         object_id = self._client.put(obj)
         size = self._client.get_meta(object_id).nbytes
-        return ObjectInfo(size=size, device='memory', object_id=object_id)
+        return ObjectInfo(size=size, object_id=object_id)
 
+    @implements(StorageBackend.delete)
     async def delete(self, object_id):
         self._client.delete([object_id], deep=True)
 
+    @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:
         size = self._client.get_meta(object_id).nbytes
         return ObjectInfo(size=size, object_id=object_id)
 
+    @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
         if size is None:  # pragma: no cover
             raise ValueError('size must be provided for vineyard backend')
@@ -137,10 +147,12 @@ class VineyardStorage(StorageBackend):
         vineyard_writer.write(b'')  # initialize the object id
         return StorageFileObject(vineyard_writer, object_id=vineyard_writer._object_id)
 
+    @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
         vineyard_reader = VineyardFileObject(self._client, object_id, mode='r')
         return StorageFileObject(vineyard_reader, object_id=object_id)
 
+    @implements(StorageBackend.list)
     async def list(self) -> List:
         # FIXME: vineyard's list_objects not equal to plasma
         raise NotImplementedError

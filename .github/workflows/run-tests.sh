@@ -8,7 +8,7 @@ fi
 if [ -z "$NO_COMMON_TESTS" ]; then
   mkdir -p build
   pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/tensor mars/dataframe mars/web \
-    mars/learn mars/remote mars/storage
+    mars/learn mars/remote mars/storage mars/lib
   mv .coverage build/.coverage.tensor.file
   pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --ignore mars/tensor --ignore mars/dataframe \
     --ignore mars/learn --ignore mars/remote mars
@@ -17,7 +17,7 @@ if [ -z "$NO_COMMON_TESTS" ]; then
 
   export DEFAULT_VENV=$VIRTUAL_ENV
   source testenv/bin/activate
-  pytest --timeout=1500 mars/tests/test_session.py mars/tests/test_filesystem.py
+  pytest --timeout=1500 mars/tests/test_session.py mars/lib/filesystem/tests/test_filesystem.py
   if [ -z "$DEFAULT_VENV" ]; then
     deactivate
   else

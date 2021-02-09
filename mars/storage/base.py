@@ -72,13 +72,13 @@ class StorageBackend(ABC):
 
     @property
     @abstractmethod
-    def level(self):
+    def level(self) -> StorageLevel:
         """
         Level of current storage backend.
 
         Returns
         -------
-        Level: str
+        Level: StorageLevel
             storage level.
         """
 
@@ -101,7 +101,7 @@ class StorageBackend(ABC):
         """
 
     @abstractmethod
-    async def put(self, obj, importance=0) -> ObjectInfo:
+    async def put(self, obj, importance: int = 0) -> ObjectInfo:
         """
         Put object into storage with object_id.
 

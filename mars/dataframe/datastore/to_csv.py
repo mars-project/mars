@@ -19,7 +19,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...filesystem import open_file
+from ...lib.filesystem import open_file
 from ...operands import OperandStage
 from ...serialize import KeyField, AnyField, StringField, ListField, \
     BoolField, Int32Field, Int64Field, DictField

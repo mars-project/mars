@@ -34,9 +34,6 @@ from mars.core import OBJECT_TYPE
 from mars.executor import Executor, GraphExecution
 from mars.graph import SerializableGraph
 from mars.optimizes.chunk_graph.fuse import Fusion
-from mars.serialize import serializes, deserializes, \
-    ProtobufSerializeProvider, JsonSerializeProvider
-from mars.serialize.core import get_serializables
 from mars.utils import lazy_import
 
 try:
@@ -115,6 +112,9 @@ def parameterized(defaults=None, **params):
 
 class TestBase(unittest.TestCase):
     def setUp(self):
+        from mars.serialize import serializes, deserializes, \
+            ProtobufSerializeProvider, JsonSerializeProvider
+
         self.pb_serialize = lambda *args, **kw: \
             serializes(ProtobufSerializeProvider(), *args, **kw)
         self.pb_deserialize = lambda *args, **kw: \
@@ -630,6 +630,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     _graph_execution_cls = GraphExecutionWithChunkCheck
 
     def __init__(self, *args, **kwargs):
+        from mars.serialize.core import get_serializables
+
         super().__init__(*args, **kwargs)
         self._raw_chunk_shapes = dict()
         self._tileable_checked = dict()
@@ -706,6 +708,8 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
         return super()._update_tileable_and_chunk_shape(tileable_graph, chunk_result, failed_ops)
 
     def _check_serializable_registration(self):
+        from mars.serialize.core import get_serializables
+
         cur_serializables = get_serializables()
         if len(cur_serializables) == len(self._serializables_snapshot):
             return

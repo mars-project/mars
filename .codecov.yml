@@ -18,6 +18,7 @@ comment: off
 # Matches 'omit:' in .coveragerc
 ignore:
   - "mars/compat.py"
+  - "mars/lib/aio/_runners.py"
   - "mars/lib/functools32"
   - "mars/lib/futures"
   - "mars/lib/enum.py"

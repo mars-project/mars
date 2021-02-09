@@ -20,6 +20,7 @@ coverage:
 # Matches 'omit:' in .coveragerc
 ignore:
   - "mars/compat.py"
+  - "mars/lib/aio/runner.py"
   - "mars/lib/functools32"
   - "mars/lib/futures"
   - "mars/lib/enum.py"

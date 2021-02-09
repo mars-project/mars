@@ -15,12 +15,13 @@
 # limitations under the License.
 
 import psutil
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 import pyarrow as pa
 from pyarrow import plasma
 
 from ..serialization import AioSerializer, AioDeserializer
+from ..utils import implements
 from .base import StorageBackend, StorageLevel, ObjectInfo
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -29,7 +30,11 @@ PAGE_SIZE = 64 * 1024
 
 
 class PlasmaFileObject(BufferWrappedFileObject):
-    def __init__(self, plasma_client, object_id, mode, size=None):
+    def __init__(self,
+                 plasma_client: plasma.PlasmaClient,
+                 object_id: Any,
+                 mode: str,
+                 size: Optional[int] = None):
         self._plasma_client = plasma_client
         self._object_id = object_id
         self._file = None
@@ -73,10 +78,19 @@ class PlasmaObjectInfo(ObjectInfo):
         self.buffer = buffer
 
 
-def get_actual_capacity(plasma_client):
+def get_actual_capacity(plasma_client: plasma.PlasmaClient) -> int:
     """
     Get actual capacity of plasma store
-    :return: actual storage size in bytes
+
+    Parameters
+    ----------
+    plasma_client: PlasmaClient
+        Plasma client.
+
+    Returns
+    -------
+    size: int
+        Actual storage size in bytes
     """
     store_limit = plasma_client.store_capacity()
 
@@ -98,14 +112,18 @@ def get_actual_capacity(plasma_client):
 
 
 class PlasmaStorage(StorageBackend):
-    def __init__(self, plasma_socket=None, plasma_directory=None,
-                 capacity=None, check_dir_size=True):
+    def __init__(self,
+                 plasma_socket: str = None,
+                 plasma_directory: str = None,
+                 capacity: int = None,
+                 check_dir_size: bool = True):
         self._client = plasma.connect(plasma_socket)
         self._plasma_directory = plasma_directory
         self._capacity = capacity
         self._check_dir_size = check_dir_size
 
     @classmethod
+    @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         store_memory = kwargs.pop('store_memory', None)
         plasma_directory = kwargs.pop('plasma_directory', None)
@@ -127,15 +145,17 @@ class PlasmaStorage(StorageBackend):
         return init_params, teardown_params
 
     @staticmethod
+    @implements(StorageBackend.teardown)
     async def teardown(**kwargs):
         plasma_store = kwargs.get('plasma_store')
         plasma_store.__exit__(None, None, None)
 
     @property
-    def level(self):
+    @implements(StorageBackend.level)
+    def level(self) -> StorageLevel:
         return StorageLevel.MEMORY
 
-    def _check_plasma_limit(self, size):
+    def _check_plasma_limit(self, size: int):
         used_size = psutil.disk_usage(self._plasma_directory).used
         totol = psutil.disk_usage(self._plasma_directory).total
         if used_size + size > totol * 0.95:  # pragma: no cover
@@ -147,6 +167,7 @@ class PlasmaStorage(StorageBackend):
             if not self._client.contains(new_id):
                 return new_id
 
+    @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:
         plasma_file = PlasmaFileObject(self._client, object_id, mode='r')
 
@@ -154,6 +175,7 @@ class PlasmaStorage(StorageBackend):
             deserializer = AioDeserializer(f)
             return await deserializer.run()
 
+    @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
         object_id = self._generate_object_id()
 
@@ -171,14 +193,17 @@ class PlasmaStorage(StorageBackend):
         return PlasmaObjectInfo(size=buffer_size, object_id=object_id,
                                 buffer=plasma_file.buffer)
 
+    @implements(StorageBackend.delete)
     async def delete(self, object_id):
         self._client.delete([object_id])
 
+    @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:
         buf = self._client.get_buffers([object_id])[0]
         return PlasmaObjectInfo(size=buf.size, object_id=object_id,
                                 buffer=buf)
 
+    @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
         if size is None:  # pragma: no cover
             raise ValueError('size must be provided for plasma backend')
@@ -187,9 +212,11 @@ class PlasmaStorage(StorageBackend):
         plasma_writer = PlasmaFileObject(self._client, new_id, size=size, mode='w')
         return StorageFileObject(plasma_writer, object_id=new_id)
 
+    @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
         plasma_reader = PlasmaFileObject(self._client, object_id, mode='r')
         return StorageFileObject(plasma_reader, object_id=object_id)
 
+    @implements(StorageBackend.list)
     async def list(self) -> List:
         return list(self._client.list())

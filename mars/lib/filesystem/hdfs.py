@@ -12,8 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .aio import AioSerializer, AioDeserializer
-from .core import serialize, deserialize
+try:
+    from pyarrow.fs import HadoopFileSystem
+    from .arrow import HadoopFileSystem
+except ImportError:  # pragma: no cover
+    try:
+        # pyarrow < 2.0.0
+        from pyarrow import HadoopFileSystem as HadoopFileSystem
+    except ImportError:
+        HadoopFileSystem = None
 
-from . import arrow, cuda, numpy, scipy, mars_objects
-del arrow, cuda, numpy, scipy, mars_objects
+from .core import register_filesystem
+
+
+if HadoopFileSystem is not None:  # pragma: no branch
+    register_filesystem('hdfs', HadoopFileSystem)

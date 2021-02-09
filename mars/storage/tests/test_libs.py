@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sps
 
-from mars.filesystem import LocalFileSystem
+from mars.lib.filesystem import LocalFileSystem
 from mars.lib.sparse import SparseNDArray, SparseMatrix
 from mars.serialize import dataserializer
 from mars.storage.base import StorageLevel

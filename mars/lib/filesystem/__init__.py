@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .aio import AioSerializer, AioDeserializer
-from .core import serialize, deserialize
-
-from . import arrow, cuda, numpy, scipy, mars_objects
-del arrow, cuda, numpy, scipy, mars_objects
+from .base import FileSystem
+from .core import file_size, glob, get_fs, open_file
+from .fsmap import FSMap
+from .local import LocalFileSystem
+# noinspection PyUnresolvedReferences
+from .hdfs import HadoopFileSystem
