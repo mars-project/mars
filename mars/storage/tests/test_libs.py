@@ -182,3 +182,18 @@ async def test_cuda_backend():
     assert info2.size == put_info2.size
 
     await CudaStorage.teardown(**teardown_params)
+
+    # test writer and reader
+    t = np.random.random(10)
+    b = dataserializer.dumps(t)
+    async with await storage.open_writer(size=len(b)) as writer:
+        split = len(b) // 2
+        await writer.write(b[:split])
+        await writer.write(b[split:])
+
+    async with await storage.open_reader(writer.object_id) as reader:
+        content = await reader.read()
+        b = content.to_host_array().tobytes()
+        t2 = dataserializer.loads(b)
+
+    np.testing.assert_array_equal(t, t2)
