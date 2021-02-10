@@ -291,6 +291,12 @@ def _on_deserialize_random_state(tup):
     return rs
 
 
+def RandomStateField(name, **kwargs):
+    kwargs.update(dict(on_serialize=_on_serialize_random_state,
+                       on_deserialize=_on_deserialize_random_state))
+    return TupleField(name, **kwargs)
+
+
 class TensorSeedOperandMixin(object):
     @property
     def state(self):
@@ -312,14 +318,12 @@ class TensorSeedOperandMixin(object):
 
 
 class TensorRandomOperand(TensorSeedOperandMixin, TensorOperand):
-    _state = TupleField('state', on_serialize=_on_serialize_random_state,
-                        on_deserialize=_on_deserialize_random_state)
+    _state = RandomStateField('state')
     _seed = Int32Field('seed')
 
 
 class TensorRandomMapReduceOperand(TensorSeedOperandMixin, TensorMapReduceOperand):
-    _state = TupleField('state', on_serialize=_on_serialize_random_state,
-                        on_deserialize=_on_deserialize_random_state)
+    _state = RandomStateField('state')
     _seed = Int32Field('seed')
 
 

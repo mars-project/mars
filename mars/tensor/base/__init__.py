@@ -59,7 +59,7 @@ from .shape import shape
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 from .rebalance import rebalance
-from .map_chunk import map_chunk
+from .map_chunk import map_chunk, TensorMapChunk
 
 
 def _install():

@@ -30,6 +30,7 @@ def _install():
     from .reindex import reindex
     from .where import mask, where
     from .set_axis import df_set_axis, series_set_axis
+    from .sample import sample
 
     for cls in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(cls, 'iloc', cache_readonly(iloc))
@@ -42,6 +43,7 @@ def _install():
         setattr(cls, 'tail', tail)
         setattr(cls, 'mask', mask)
         setattr(cls, 'where', where)
+        setattr(cls, 'sample', sample)
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'set_index', set_index)
