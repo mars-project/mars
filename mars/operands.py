@@ -36,6 +36,7 @@ from .utils import AttributeDict, to_str, calc_data_size, calc_object_overhead, 
 operand_type_to_oprand_cls = {}
 OP_TYPE_KEY = '_op_type_'
 OP_MODULE_KEY = '_op_module_'
+OP_REGISTER_CALLBACK = '_on_op_register_'
 T = TypeVar('T')
 
 
@@ -53,10 +54,16 @@ class OperandMetaclass(SerializableMetaclass):
                 kv[OP_TYPE_KEY] = getattr(base, OP_TYPE_KEY)
             if OP_MODULE_KEY not in kv and hasattr(base, OP_MODULE_KEY):
                 kv[OP_MODULE_KEY] = getattr(base, OP_MODULE_KEY)
+            if OP_REGISTER_CALLBACK not in kv and hasattr(base, OP_REGISTER_CALLBACK):
+                kv[OP_REGISTER_CALLBACK] = getattr(base, OP_REGISTER_CALLBACK)
 
         if kv.get(OP_TYPE_KEY) is not None and kv.get(OP_MODULE_KEY) is not None:
             # common operand can be inherited for different modules, like tensor or dataframe, so forth
             operand_type_to_oprand_cls[kv[OP_MODULE_KEY], kv[OP_TYPE_KEY]] = cls
+
+        reg_callback = getattr(cls, OP_REGISTER_CALLBACK, None)
+        if callable(reg_callback):
+            reg_callback()
 
         return cls
 

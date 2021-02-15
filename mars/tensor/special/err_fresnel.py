@@ -12,26 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    from scipy.special import erf as scipy_erf
-except ImportError:  # pragma: no cover
-    scipy_erf = None
-
-from ... import opcodes as OperandDef
 from ...utils import require_not_none
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype
-from .core import TensorSpecialUnaryOp
+from .core import spspecial, TensorSpecialUnaryOp
 
 
 @arithmetic_operand(sparse_mode='unary')
 class TensorErf(TensorSpecialUnaryOp):
-    _op_type_ = OperandDef.ERF
     _func_name = 'erf'
 
 
-@require_not_none(scipy_erf)
-@infer_dtype(scipy_erf)
+@require_not_none(spspecial.erf)
+@infer_dtype(spspecial.erf)
 def erf(x, out=None, where=None, **kwargs):
     """
     Returns the error function of complex argument.

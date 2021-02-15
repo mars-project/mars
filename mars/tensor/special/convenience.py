@@ -12,19 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    from scipy.special import xlogy as scipy_xlogy
-except ImportError:  # pragma: no cover
-    scipy_xlogy = None
-
-from ... import opcodes
 from ...utils import require_not_none
 from ..utils import infer_dtype
-from .core import TensorSpecialBinOp
+from .core import spspecial, TensorSpecialBinOp
 
 
 class TensorXLogY(TensorSpecialBinOp):
-    _op_type_ = opcodes.XLOGY
     _func_name = 'xlogy'
 
     @classmethod
@@ -34,8 +27,8 @@ class TensorXLogY(TensorSpecialBinOp):
         return False
 
 
-@require_not_none(scipy_xlogy)
-@infer_dtype(scipy_xlogy)
+@require_not_none(spspecial.xlogy)
+@infer_dtype(spspecial.xlogy)
 def xlogy(x1, x2, out=None, where=None, **kwargs):
     r"""
     Compute ``x*log(y)`` so that the result is 0 if ``x = 0``.
