@@ -824,3 +824,32 @@ def fetch_corner_data(tensor, session=None):
         return np.block(corners.tolist())
     else:
         return tensor.fetch(session=session)
+
+
+def implement_scipy(scipy_fun):
+    import re
+    import textwrap
+
+    def wrapper(fun):
+        if scipy_fun is None:
+            return None
+        if not fun.__doc__:
+            doc_str = textwrap.dedent(scipy_fun.__doc__)
+            lines = []
+            for line in doc_str.splitlines(keepends=False):
+                # skip function headers
+                if line.startswith(scipy_fun.__name__ + '('):
+                    continue
+                # skip version marks
+                if line.strip().startswith('.. versionadded::'):
+                    continue
+                # skip examples
+                if line.strip() == 'Examples':
+                    break
+                lines.append(line)
+            doc_str = '\n'.join(lines).strip()
+            # remove trailing empty sections
+            fun.__doc__ = re.sub(r'[A-Za-z]+\n-+$', '', doc_str).strip()
+        return fun
+
+    return wrapper

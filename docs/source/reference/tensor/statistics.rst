@@ -63,3 +63,7 @@ Statistical tests
 
    mars.tensor.stats.chisquare
    mars.tensor.stats.power_divergence
+   mars.tensor.stats.ttest_1samp
+   mars.tensor.stats.ttest_ind
+   mars.tensor.stats.ttest_ind_from_stats
+   mars.tensor.stats.ttest_rel

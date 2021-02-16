@@ -22,13 +22,13 @@ from .random_integers import random_integers, TensorRandomIntegers
 from .random_sample import random_sample, TensorRandomSample
 from .choice import choice, TensorChoice
 from .bytes import bytes
-from .beta import beta, TensorBeta
+from .beta import beta, TensorRandBeta
 from .binomial import binomial, TensorBinomial
 from .chisquare import chisquare, TensorChisquareDist
 from .dirichlet import dirichlet, TensorDirichlet
 from .exponential import exponential, TensorExponential
 from .f import f, TensorF
-from .gamma import gamma, TensorGamma
+from .gamma import gamma, TensorRandGamma
 from .geometric import geometric, TensorGeometric
 from .gumbel import gumbel, TensorGumbel
 from .hypergeometric import hypergeometric, TensorHypergeometric
