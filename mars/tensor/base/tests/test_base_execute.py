@@ -1672,3 +1672,8 @@ class Test(TestBase):
         r = a.map_chunk(lambda x: x * 0.5, elementwise=True)
         results = self.executor.execute_tensor(r, concat=True)[0]
         np.testing.assert_array_equal(raw * 0.5, results)
+
+        r = a.map_chunk(lambda x, chunk_index: x * 0.5 + chunk_index[0],
+                        with_chunk_index=True)
+        results = self.executor.execute_tensor(r, concat=True)[0]
+        np.testing.assert_array_equal(raw * 0.5 + np.arange(0, 20) // 10, results)
