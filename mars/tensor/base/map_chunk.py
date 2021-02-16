@@ -29,13 +29,14 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
     _elementwise = BoolField('elementwise')
     _args = TupleField('args')
     _kwargs = DictField('kwargs')
+    _with_chunk_index = BoolField('with_chunk_index')
     # for chunk
     _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, func=None, args=None, kwargs=None, tileable_op_key=None,
-                 elementwise=None, **kw):
-        super().__init__(_func=func, _args=args, _kwargs=kwargs,
-                         _elementwise=elementwise,
+                 elementwise=None, with_chunk_index=None, **kw):
+        super().__init__(_func=func, _args=args, _kwargs=kwargs, _elementwise=elementwise,
+                         _with_chunk_index=with_chunk_index,
                          _tileable_op_key=tileable_op_key, **kw)
 
     @property
@@ -58,11 +59,19 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
     def tileable_op_key(self):
         return self._tileable_op_key
 
+    @property
+    def with_chunk_index(self):
+        return self._with_chunk_index
+
     def __call__(self, t, dtype=None):
         if dtype is None:
             try:
-                with quiet_stdio():
-                    mock_result = np.random.rand(2, 2).astype(t.dtype)
+                kwargs = self.kwargs or dict()
+                if self.with_chunk_index:
+                    kwargs['chunk_index'] = (0,) * t.ndim
+                with np.errstate(all='ignore'), quiet_stdio():
+                    mock_result = self.func(np.random.rand(2, 2).astype(t.dtype),
+                                            *(self.args or ()), **kwargs)
             except:
                 raise TypeError('Cannot estimate output type of map_chunk call')
             dtype = mock_result.dtype
@@ -98,7 +107,12 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
     @enter_current_session
     def execute(cls, ctx, op: 'TensorMapChunk'):
         in_data = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = op.func(in_data, *op.args, **(op.kwargs or dict()))
+        out_chunk = op.outputs[0]
+
+        kwargs = op.kwargs or dict()
+        if op.with_chunk_index:
+            kwargs['chunk_index'] = out_chunk.index
+        ctx[op.outputs[0].key] = op.func(in_data, *(op.args or ()), **kwargs)
 
 
 def map_chunk(t, func, args=(), **kwargs):
@@ -139,6 +153,8 @@ def map_chunk(t, func, args=(), **kwargs):
     """
     elementwise = kwargs.pop('elementwise', None)
     dtype = np.dtype(kwargs.pop('dtype')) if 'dtype' in kwargs else None
+    with_chunk_index = kwargs.pop('with_chunk_index', False)
 
-    op = TensorMapChunk(func=func, args=args, kwargs=kwargs, elementwise=elementwise)
+    op = TensorMapChunk(func=func, args=args, kwargs=kwargs, elementwise=elementwise,
+                        with_chunk_index=with_chunk_index)
     return op(t, dtype=dtype)
