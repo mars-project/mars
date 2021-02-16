@@ -13,7 +13,9 @@
 # limitations under the License.
 
 
+import functools
 import unittest
+from distutils.version import LooseVersion
 
 import numpy as np
 
@@ -22,11 +24,20 @@ from mars.tests.core import TestBase
 
 try:
     import scipy
-    from scipy.stats import entropy as sp_entropy, \
-        power_divergence as sp_power_divergence, \
-        chisquare as sp_chisquare
+    from scipy.stats import (
+        entropy as sp_entropy,
+        power_divergence as sp_power_divergence,
+        chisquare as sp_chisquare,
+        ttest_rel as sp_ttest_rel,
+        ttest_ind as sp_ttest_ind,
+        ttest_ind_from_stats as sp_ttest_ind_from_stats,
+        ttest_1samp as sp_ttest_1samp,
+    )
 
-    from mars.tensor.stats import entropy, power_divergence, chisquare
+    from mars.tensor.stats import (
+        entropy, power_divergence, chisquare,
+        ttest_ind, ttest_rel, ttest_1samp, ttest_ind_from_stats,
+    )
 except ImportError:
     scipy = None
 
@@ -127,3 +138,69 @@ class Test(TestBase):
         expected = sp_chisquare(f_obs_raw, f_exp_raw)
         np.testing.assert_almost_equal(expected[0], result[0])
         np.testing.assert_almost_equal(expected[1], result[1])
+
+    def testTTestExecution(self):
+        if LooseVersion(scipy.__version__) >= '1.6.0':
+            alternatives = ['less', 'greater', 'two-sided']
+
+            mt_from_stats = lambda a, b, alternative=None, equal_var=True: ttest_ind_from_stats(
+                a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
+                alternative=alternative, equal_var=equal_var)
+            sp_from_stats = lambda a, b, alternative=None, equal_var=True: sp_ttest_ind_from_stats(
+                a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
+                alternative=alternative, equal_var=equal_var)
+        else:
+            alternatives = ['two-sided']
+
+            mt_from_stats = lambda a, b, equal_var=True: ttest_ind_from_stats(
+                a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
+                equal_var=equal_var)
+            sp_from_stats = lambda a, b, equal_var=True: sp_ttest_ind_from_stats(
+                a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
+                equal_var=equal_var)
+
+        funcs = [
+            (ttest_rel, sp_ttest_rel),
+            (
+                functools.partial(ttest_ind, equal_var=True),
+                functools.partial(sp_ttest_ind, equal_var=True),
+            ),
+            (
+                functools.partial(ttest_ind, equal_var=False),
+                functools.partial(sp_ttest_ind, equal_var=False),
+            ),
+            (
+                functools.partial(mt_from_stats, equal_var=True),
+                functools.partial(sp_from_stats, equal_var=True),
+            ),
+            (
+                functools.partial(mt_from_stats, equal_var=False),
+                functools.partial(sp_from_stats, equal_var=False),
+            ),
+            (ttest_1samp, sp_ttest_1samp),
+        ]
+
+        fa_raw = np.array([16, 18, 16, 14, 12, 12])
+        fb_raw = np.array([16, 16, 16, 16, 16, 8])
+
+        fa = tensor(fa_raw, chunk_size=4)
+        fb = tensor(fb_raw, chunk_size=4)
+
+        for mt_func, sp_func in funcs:
+            if LooseVersion(scipy.__version__) >= '1.6.0':
+                with self.assertRaises(ValueError):
+                    mt_func(fa, fb, alternative='illegal-alternative')
+
+            for alt in alternatives:
+                if LooseVersion(scipy.__version__) >= '1.6.0':
+                    r = mt_func(fa, fb, alternative=alt)
+                else:
+                    r = mt_func(fa, fb)
+                result = r.execute().fetch()
+
+                if LooseVersion(scipy.__version__) >= '1.6.0':
+                    expected = sp_func(fa_raw, fb_raw, alternative=alt)
+                else:
+                    expected = sp_func(fa_raw, fb_raw)
+                np.testing.assert_almost_equal(expected[0], result[0])
+                np.testing.assert_almost_equal(expected[1], result[1])

@@ -37,7 +37,13 @@ class Test(unittest.TestCase):
 
     def testUnaryExecution(self):
         funcs = [
+            'gamma',
             'gammaln',
+            'loggamma',
+            'gammasgn',
+            'psi',
+            'rgamma',
+            'digamma',
             'erf',
             'entr',
         ]
@@ -71,7 +77,16 @@ class Test(unittest.TestCase):
 
     def testBinaryExecution(self):
         funcs = [
+            'gammainc',
+            'gammaincinv',
+            'gammaincc',
+            'gammainccinv',
+            'beta',
+            'betaln',
+            'polygamma',
+            'poch',
             'rel_entr',
+            'kl_div',
             'xlogy',
         ]
 
@@ -102,4 +117,43 @@ class Test(unittest.TestCase):
             result = self.executor.execute_tensor(r, concat=True)[0]
 
             expected = sp_func(raw1.toarray(), raw2)
+            np.testing.assert_array_equal(result.toarray(), expected)
+
+    def testTripleExecution(self):
+        funcs = [
+            'betainc',
+            'betaincinv',
+        ]
+
+        for func in funcs:
+            sp_func = getattr(spspecial, func)
+            mt_func = getattr(mt_special, func)
+
+            raw1 = np.random.rand(4, 3, 2)
+            raw2 = np.random.rand(4, 3, 2)
+            raw3 = np.random.rand(4, 3, 2)
+            a = tensor(raw1, chunk_size=3)
+            b = tensor(raw2, chunk_size=3)
+            c = tensor(raw3, chunk_size=3)
+
+            r = mt_func(a, b, c)
+
+            result = self.executor.execute_tensor(r, concat=True)[0]
+            expected = sp_func(raw1, raw2, raw3)
+
+            np.testing.assert_array_equal(result, expected)
+
+            # test sparse
+            raw1 = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan] * 3).reshape(4, 3))
+            a = tensor(raw1, chunk_size=3)
+            raw2 = np.random.rand(4, 3)
+            b = tensor(raw2, chunk_size=3)
+            raw3 = np.random.rand(4, 3)
+            c = tensor(raw3, chunk_size=3)
+
+            r = mt_func(a, b, c)
+
+            result = self.executor.execute_tensor(r, concat=True)[0]
+
+            expected = sp_func(raw1.toarray(), raw2, raw3)
             np.testing.assert_array_equal(result.toarray(), expected)

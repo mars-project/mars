@@ -16,10 +16,10 @@
 
 import builtins
 import operator
-from functools import reduce
+from functools import partial, reduce
 from collections.abc import Iterable
 
-from .array import SparseNDArray
+from .array import SparseNDArray, call_sparse
 from .matrix import SparseMatrix
 from .vector import SparseVector
 from .core import issparse, get_sparse_module
@@ -110,14 +110,13 @@ def mod(a, b, **_):
 
 def _call_bin(method, a, b, **kwargs):
     from .core import get_array_module, cp, issparse
-    from .array import call_sparse_binary_scalar
 
     # order does not take effect for sparse
     kwargs.pop('order', None)
     if hasattr(a, method):
         res = getattr(a, method)(b, **kwargs)
     elif get_array_module(a).isscalar(a):
-        res = call_sparse_binary_scalar(method, a, b, **kwargs)
+        res = call_sparse(method, a, b, **kwargs)
     else:
         assert get_array_module(a) == get_array_module(b)
         xp = get_array_module(a)
@@ -183,8 +182,7 @@ def absolute(x, **_):
 abs = absolute
 
 
-def fabs(x, **kw):
-    return _call_unary('fabs', x, **kw)
+fabs = partial(_call_unary, 'fabs')
 
 
 def rint(x, **kw):
@@ -243,24 +241,32 @@ def reciprocal(x, **kw):
     return _call_unary('reciprocal', x, **kw)
 
 
-def gammaln(x, **kw):
-    return _call_unary('gammaln', x, **kw)
+gamma = partial(_call_unary, 'gamma')
+gammaln = partial(_call_unary, 'gammaln')
+loggamma = partial(_call_unary, 'loggamma')
+gammasgn = partial(_call_unary, 'gammasgn')
+gammainc = partial(_call_bin, 'gammainc')
+gammaincinv = partial(_call_bin, 'gammaincinv')
+gammaincc = partial(_call_bin, 'gammaincc')
+gammainccinv = partial(_call_bin, 'gammainccinv')
+beta = partial(_call_bin, 'beta')
+betaln = partial(_call_bin, 'betaln')
+betainc = partial(call_sparse, 'betainc')
+betaincinv = partial(call_sparse, 'betaincinv')
+psi = partial(_call_unary, 'psi')
+rgamma = partial(_call_unary, 'rgamma')
+polygamma = partial(_call_bin, 'polygamma')
+multigammaln = partial(_call_bin, 'multigammaln')
+digamma = partial(_call_unary, 'digamma')
+poch = partial(_call_bin, 'poch')
 
+entr = partial(_call_unary, 'entr')
+rel_entr = partial(_call_bin, 'rel_entr')
+kl_div = partial(_call_bin, 'kl_div')
 
-def erf(x, **kw):
-    return _call_unary('erf', x, **kw)
+xlogy = partial(_call_bin, 'xlogy')
 
-
-def entr(x, **kw):
-    return _call_unary('entr', x, **kw)
-
-
-def rel_entr(x1, x2, **kw):
-    return _call_bin('rel_entr', x1, x2, **kw)
-
-
-def xlogy(x1, x2, **kw):
-    return _call_bin('xlogy', x1, x2, **kw)
+erf = partial(_call_unary, 'erf')
 
 
 def equal(a, b, **_):

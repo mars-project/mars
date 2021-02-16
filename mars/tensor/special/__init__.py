@@ -15,10 +15,34 @@
 try:
     import scipy
 
-    from .gammaln import gammaln, TensorGammaln
-    from .erf import erf, TensorErf
-    from .entr import entr, TensorEntr
-    from .rel_entr import rel_entr, TensorRelEntr
-    from .xlogy import xlogy, TensorXLogY
+    from .err_fresnel import erf, TensorErf
+    from .gamma_funcs import (
+        gamma, TensorGamma,
+        gammaln, TensorGammaln,
+        loggamma, TensorLogGamma,
+        gammasgn, TensorGammaSgn,
+        gammainc, TensorGammaInc,
+        gammaincinv, TensorGammaIncInv,
+        gammaincc, TensorGammaIncc,
+        gammainccinv, TensorGammaInccInv,
+        beta, TensorBeta,
+        betaln, TensorBetaLn,
+        betainc, TensorBetaInc,
+        betaincinv, TensorBetaIncInv,
+        psi, TensorPsi,
+        rgamma, TensorRGamma,
+        polygamma, TensorPolyGamma,
+        multigammaln, TensorMultiGammaLn,
+        digamma, TensorDiGamma,
+        poch, TensorPoch,
+    )
+    from .info_theory import (
+        entr, TensorEntr,
+        rel_entr, TensorRelEntr,
+        kl_div, TensorKlDiv,
+    )
+    from .convenience import (
+        xlogy, TensorXLogY,
+    )
 except ImportError:  # pragma: no cover
     pass
