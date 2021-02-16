@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...utils import require_not_none
-from ..utils import infer_dtype
+from ..utils import infer_dtype, implement_scipy
 from .core import spspecial, TensorSpecialBinOp
 
 
@@ -27,23 +26,8 @@ class TensorXLogY(TensorSpecialBinOp):
         return False
 
 
-@require_not_none(spspecial.xlogy)
+@implement_scipy(spspecial.xlogy)
 @infer_dtype(spspecial.xlogy)
 def xlogy(x1, x2, out=None, where=None, **kwargs):
-    r"""
-    Compute ``x*log(y)`` so that the result is 0 if ``x = 0``.
-
-    Parameters
-    ----------
-    x : array_like
-        Multiplier
-    y : array_like
-        Argument
-
-    Returns
-    -------
-    z : array_like
-        Computed x*log(y)
-    """
     op = TensorXLogY(**kwargs)
     return op(x1, x2, out=out, where=where)

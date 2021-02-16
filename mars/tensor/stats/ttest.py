@@ -13,12 +13,9 @@
 # limitations under the License.
 
 from collections import namedtuple
+from distutils.version import LooseVersion
 
 import numpy as np
-try:
-    from scipy.stats import distributions as sp_distributions
-except ImportError:
-    sp_distributions = None
 
 from ...core import ExecutableTuple
 from ..arithmetic import (
@@ -29,6 +26,21 @@ from ..base import where as mt_where
 from ..reduction import (
     var as mt_var, mean as mt_mean,
 )
+from ..utils import implement_scipy
+
+try:
+    from scipy import __version__ as sp_version
+    from scipy.stats import (
+        ttest_ind as sp_ttest_ind,
+        ttest_ind_from_stats as sp_ttest_ind_from_stats,
+        ttest_rel as sp_ttest_rel,
+        ttest_1samp as sp_ttest_1samp,
+    )
+    from scipy.stats import distributions as sp_distributions
+except ImportError:
+    sp_version = None
+    sp_ttest_1samp = sp_ttest_ind = sp_ttest_ind_from_stats = sp_ttest_rel = None
+    sp_distributions = None
 
 
 def _equal_var_ttest_denom(v1, n1, v2, n2):
@@ -63,6 +75,9 @@ def _ttest_ind_from_stats(mean1, mean2, denom, df, alternative):
 
 def _ttest_finish(df, t, alternative):
     """Common code between all 3 t-test functions."""
+    if alternative != 'two-sided' and LooseVersion(sp_version) < '1.6.0':  # pragma: no cover
+        raise ValueError("alternative must be 'two-sided' with scipy prior to 1.6.0")
+
     if alternative == 'less':
         prob = t.map_chunk(sp_distributions.t.cdf, args=(df,))
     elif alternative == 'greater':
@@ -80,6 +95,7 @@ def _ttest_finish(df, t, alternative):
 Ttest_1sampResult = namedtuple('Ttest_1sampResult', ('statistic', 'pvalue'))
 
 
+@implement_scipy(sp_ttest_1samp)
 def ttest_1samp(a, popmean, axis=0, nan_policy="propagate", alternative="two-sided"):
     if nan_policy != "propagate":
         raise NotImplementedError(
@@ -101,6 +117,7 @@ def ttest_1samp(a, popmean, axis=0, nan_policy="propagate", alternative="two-sid
 Ttest_indResult = namedtuple('Ttest_indResult', ('statistic', 'pvalue'))
 
 
+@implement_scipy(sp_ttest_ind)
 def ttest_ind(a, b, axis=0, equal_var=True, alternative="two-sided"):
     v1 = mt_var(a, axis, ddof=1)
     v2 = mt_var(b, axis, ddof=1)
@@ -118,6 +135,7 @@ def ttest_ind(a, b, axis=0, equal_var=True, alternative="two-sided"):
     return ExecutableTuple(Ttest_indResult(*res))
 
 
+@implement_scipy(sp_ttest_ind_from_stats)
 def ttest_ind_from_stats(mean1, std1, nobs1, mean2, std2, nobs2,
                          equal_var=True, alternative="two-sided"):
     if equal_var:
@@ -133,6 +151,7 @@ def ttest_ind_from_stats(mean1, std1, nobs1, mean2, std2, nobs2,
 Ttest_relResult = namedtuple('Ttest_relResult', ('statistic', 'pvalue'))
 
 
+@implement_scipy(sp_ttest_rel)
 def ttest_rel(a, b, axis=0, nan_policy="propagate", alternative="two-sided"):
     if nan_policy != "propagate":
         raise NotImplementedError(

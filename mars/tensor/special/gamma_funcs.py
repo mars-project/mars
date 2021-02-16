@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...utils import require_not_none
 from ..arithmetic.utils import arithmetic_operand
-from ..utils import infer_dtype
+from ..utils import infer_dtype, implement_scipy
 from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialMultiOp, TensorSpecialBinOp
 
 
@@ -35,7 +34,7 @@ class TensorGamma(TensorSpecialUnaryOp):
     _func_name = 'gamma'
 
 
-@require_not_none(spspecial.gamma)
+@implement_scipy(spspecial.gamma)
 @infer_dtype(spspecial.gamma)
 def gamma(x, **kwargs):
     op = TensorGamma(**kwargs)
@@ -47,7 +46,7 @@ class TensorGammaln(TensorSpecialUnaryOp):
     _func_name = 'gammaln'
 
 
-@require_not_none(spspecial.gammaln)
+@implement_scipy(spspecial.gammaln)
 @infer_dtype(spspecial.gammaln)
 def gammaln(x, out=None, where=None, **kwargs):
     """
@@ -94,7 +93,7 @@ class TensorLogGamma(TensorSpecialUnaryOp):
     _func_name = 'loggamma'
 
 
-@require_not_none(spspecial.loggamma)
+@implement_scipy(spspecial.loggamma)
 @infer_dtype(spspecial.loggamma)
 def loggamma(x, **kwargs):
     op = TensorLogGamma(**kwargs)
@@ -106,7 +105,7 @@ class TensorGammaSgn(TensorSpecialUnaryOp):
     _func_name = 'gammasgn'
 
 
-@require_not_none(spspecial.gammasgn)
+@implement_scipy(spspecial.gammasgn)
 @infer_dtype(spspecial.gammasgn)
 def gammasgn(x, **kwargs):
     op = TensorGammaSgn(**kwargs)
@@ -118,7 +117,7 @@ class TensorGammaInc(TensorSpecialBinOp):
     _func_name = 'gammainc'
 
 
-@require_not_none(spspecial.gammainc)
+@implement_scipy(spspecial.gammainc)
 @infer_dtype(spspecial.gammainc)
 def gammainc(a, b, **kwargs):
     op = TensorGammaInc(**kwargs)
@@ -130,7 +129,7 @@ class TensorGammaIncInv(TensorSpecialBinOp):
     _func_name = 'gammaincinv'
 
 
-@require_not_none(spspecial.gammaincinv)
+@implement_scipy(spspecial.gammaincinv)
 @infer_dtype(spspecial.gammaincinv)
 def gammaincinv(a, b, **kwargs):
     op = TensorGammaIncInv(**kwargs)
@@ -142,7 +141,7 @@ class TensorGammaIncc(TensorSpecialBinOp):
     _func_name = 'gammaincc'
 
 
-@require_not_none(spspecial.gammainc)
+@implement_scipy(spspecial.gammainc)
 @infer_dtype(spspecial.gammainc)
 def gammaincc(a, b, **kwargs):
     op = TensorGammaIncc(**kwargs)
@@ -154,7 +153,7 @@ class TensorGammaInccInv(TensorSpecialBinOp):
     _func_name = 'gammainccinv'
 
 
-@require_not_none(spspecial.gammainccinv)
+@implement_scipy(spspecial.gammainccinv)
 @infer_dtype(spspecial.gammainccinv)
 def gammainccinv(a, b, **kwargs):
     op = TensorGammaInccInv(**kwargs)
@@ -166,7 +165,7 @@ class TensorBeta(TensorSpecialBinOp):
     _func_name = 'beta'
 
 
-@require_not_none(spspecial.beta)
+@implement_scipy(spspecial.beta)
 @infer_dtype(spspecial.beta)
 def beta(a, b, out=None, **kwargs):
     op = TensorBeta(**kwargs)
@@ -178,7 +177,7 @@ class TensorBetaLn(TensorSpecialBinOp):
     _func_name = 'betaln'
 
 
-@require_not_none(spspecial.betaln)
+@implement_scipy(spspecial.betaln)
 @infer_dtype(spspecial.betaln)
 def betaln(a, b, out=None, **kwargs):
     op = TensorBetaLn(**kwargs)
@@ -190,7 +189,7 @@ class TensorBetaInc(TensorSpecialMultiOp):
     _func_name = 'betainc'
 
 
-@require_not_none(spspecial.betainc)
+@implement_scipy(spspecial.betainc)
 @infer_dtype(spspecial.betainc)
 def betainc(a, b, x, out=None, **kwargs):
     op = TensorBetaInc(**kwargs)
@@ -202,7 +201,7 @@ class TensorBetaIncInv(TensorSpecialMultiOp):
     _func_name = 'betaincinv'
 
 
-@require_not_none(spspecial.betaincinv)
+@implement_scipy(spspecial.betaincinv)
 @infer_dtype(spspecial.betaincinv)
 def betaincinv(a, b, y, out=None, **kwargs):
     op = TensorBetaIncInv(**kwargs)
@@ -214,7 +213,7 @@ class TensorPsi(TensorSpecialUnaryOp):
     _func_name = 'psi'
 
 
-@require_not_none(spspecial.psi)
+@implement_scipy(spspecial.psi)
 @infer_dtype(spspecial.psi)
 def psi(x, out=None, **kwargs):
     op = TensorPsi(**kwargs)
@@ -226,7 +225,7 @@ class TensorRGamma(TensorSpecialUnaryOp):
     _func_name = 'rgamma'
 
 
-@require_not_none(spspecial.rgamma)
+@implement_scipy(spspecial.rgamma)
 @infer_dtype(spspecial.rgamma)
 def rgamma(x, out=None, **kwargs):
     op = TensorRGamma(**kwargs)
@@ -238,7 +237,7 @@ class TensorPolyGamma(NoOrderSpecialMixin, TensorSpecialBinOp):
     _func_name = 'polygamma'
 
 
-@require_not_none(spspecial.polygamma)
+@implement_scipy(spspecial.polygamma)
 @infer_dtype(spspecial.polygamma)
 def polygamma(a, b, **kwargs):
     op = TensorPolyGamma(**kwargs)
@@ -250,7 +249,7 @@ class TensorMultiGammaLn(NoOrderSpecialMixin, TensorSpecialBinOp):
     _func_name = 'multigammaln'
 
 
-@require_not_none(spspecial.multigammaln)
+@implement_scipy(spspecial.multigammaln)
 @infer_dtype(spspecial.multigammaln)
 def multigammaln(a, b, **kwargs):
     op = TensorMultiGammaLn(**kwargs)
@@ -262,7 +261,7 @@ class TensorDiGamma(TensorSpecialUnaryOp):
     _func_name = 'digamma'
 
 
-@require_not_none(spspecial.digamma)
+@implement_scipy(spspecial.digamma)
 @infer_dtype(spspecial.digamma)
 def digamma(x, out=None, **kwargs):
     op = TensorDiGamma(**kwargs)
@@ -274,7 +273,7 @@ class TensorPoch(TensorSpecialBinOp):
     _func_name = 'poch'
 
 
-@require_not_none(spspecial.poch)
+@implement_scipy(spspecial.poch)
 @infer_dtype(spspecial.poch)
 def poch(a, b, **kwargs):
     op = TensorPoch(**kwargs)

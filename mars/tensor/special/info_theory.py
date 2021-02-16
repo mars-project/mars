@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...utils import require_not_none
 from ..arithmetic.utils import arithmetic_operand
-from ..utils import infer_dtype
+from ..utils import infer_dtype, implement_scipy
 from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialBinOp
 
 
@@ -23,7 +22,7 @@ class TensorEntr(TensorSpecialUnaryOp):
     _func_name = 'entr'
 
 
-@require_not_none(spspecial.entr)
+@implement_scipy(spspecial.entr)
 @infer_dtype(spspecial.entr)
 def entr(x, out=None, where=None, **kwargs):
     r"""
@@ -63,7 +62,7 @@ class TensorRelEntr(TensorSpecialBinOp):
         return False
 
 
-@require_not_none(spspecial.rel_entr)
+@implement_scipy(spspecial.rel_entr)
 @infer_dtype(spspecial.rel_entr)
 def rel_entr(x, y, out=None, where=None, **kwargs):
     r"""
@@ -130,7 +129,7 @@ class TensorKlDiv(TensorSpecialBinOp):
         return False
 
 
-@require_not_none(spspecial.kl_div)
+@implement_scipy(spspecial.kl_div)
 @infer_dtype(spspecial.kl_div)
 def kl_div(x, y, out=None, where=None, **kwargs):
     r"""

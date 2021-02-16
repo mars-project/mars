@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...utils import require_not_none
 from ..arithmetic.utils import arithmetic_operand
-from ..utils import infer_dtype
+from ..utils import infer_dtype, implement_scipy
 from .core import spspecial, TensorSpecialUnaryOp
 
 
@@ -23,7 +22,7 @@ class TensorErf(TensorSpecialUnaryOp):
     _func_name = 'erf'
 
 
-@require_not_none(spspecial.erf)
+@implement_scipy(spspecial.erf)
 @infer_dtype(spspecial.erf)
 def erf(x, out=None, where=None, **kwargs):
     """

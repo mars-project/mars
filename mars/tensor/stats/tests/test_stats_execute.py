@@ -15,6 +15,7 @@
 
 import functools
 import unittest
+from distutils.version import LooseVersion
 
 import numpy as np
 
@@ -139,13 +140,24 @@ class Test(TestBase):
         np.testing.assert_almost_equal(expected[1], result[1])
 
     def testTTestExecution(self):
-        alternatives = ['less', 'greater', 'two-sided']
-        mt_from_stats = lambda a, b, alternative=None, equal_var=True: ttest_ind_from_stats(
-            a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
-            alternative=alternative, equal_var=equal_var)
-        sp_from_stats = lambda a, b, alternative=None, equal_var=True: sp_ttest_ind_from_stats(
-            a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
-            alternative=alternative, equal_var=equal_var)
+        if LooseVersion(scipy.__version__) >= '1.6.0':
+            alternatives = ['less', 'greater', 'two-sided']
+
+            mt_from_stats = lambda a, b, alternative=None, equal_var=True: ttest_ind_from_stats(
+                a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
+                alternative=alternative, equal_var=equal_var)
+            sp_from_stats = lambda a, b, alternative=None, equal_var=True: sp_ttest_ind_from_stats(
+                a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
+                alternative=alternative, equal_var=equal_var)
+        else:
+            alternatives = ['two-sided']
+
+            mt_from_stats = lambda a, b, equal_var=True: ttest_ind_from_stats(
+                a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
+                equal_var=equal_var)
+            sp_from_stats = lambda a, b, equal_var=True: sp_ttest_ind_from_stats(
+                a.mean(), a.std(), a.shape[0], b.mean(), b.std(), b.shape[0],
+                equal_var=equal_var)
 
         funcs = [
             (ttest_rel, sp_ttest_rel),
@@ -175,13 +187,20 @@ class Test(TestBase):
         fb = tensor(fb_raw, chunk_size=4)
 
         for mt_func, sp_func in funcs:
-            with self.assertRaises(ValueError):
-                mt_func(fa, fb, alternative='illegal-alternative')
+            if LooseVersion(scipy.__version__) >= '1.6.0':
+                with self.assertRaises(ValueError):
+                    mt_func(fa, fb, alternative='illegal-alternative')
 
             for alt in alternatives:
-                r = mt_func(fa, fb, alternative=alt)
+                if LooseVersion(scipy.__version__) >= '1.6.0':
+                    r = mt_func(fa, fb, alternative=alt)
+                else:
+                    r = mt_func(fa, fb)
                 result = r.execute().fetch()
 
-                expected = sp_func(fa_raw, fb_raw, alternative=alt)
+                if LooseVersion(scipy.__version__) >= '1.6.0':
+                    expected = sp_func(fa_raw, fb_raw, alternative=alt)
+                else:
+                    expected = sp_func(fa_raw, fb_raw)
                 np.testing.assert_almost_equal(expected[0], result[0])
                 np.testing.assert_almost_equal(expected[1], result[1])
