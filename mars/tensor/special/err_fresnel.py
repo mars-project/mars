@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from... import opcodes
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
 from .core import spspecial, TensorSpecialUnaryOp
@@ -19,6 +20,7 @@ from .core import spspecial, TensorSpecialUnaryOp
 
 @arithmetic_operand(sparse_mode='unary')
 class TensorErf(TensorSpecialUnaryOp):
+    _op_code_ = opcodes.ERF
     _func_name = 'erf'
 
 

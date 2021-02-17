@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ... import opcodes
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
 from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialBinOp
@@ -19,6 +20,7 @@ from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialBinOp
 
 @arithmetic_operand(sparse_mode='unary')
 class TensorEntr(TensorSpecialUnaryOp):
+    _op_code_ = opcodes.ENTR
     _func_name = 'entr'
 
 
@@ -53,6 +55,7 @@ def entr(x, out=None, where=None, **kwargs):
 
 
 class TensorRelEntr(TensorSpecialBinOp):
+    _op_code_ = opcodes.REL_ENTR
     _func_name = 'rel_entr'
 
     @classmethod

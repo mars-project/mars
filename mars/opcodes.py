@@ -218,6 +218,9 @@ SET_IMAG = 197
 
 # special
 SPECIAL = 200
+ERF = 201
+ENTR = 202
+REL_ENTR = 203
 
 # spatial
 PDIST = 231
