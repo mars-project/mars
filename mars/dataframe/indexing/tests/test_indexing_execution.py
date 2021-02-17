@@ -1295,7 +1295,7 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(self.executor.execute_dataframe(new_df, concat=True)[0],
                                       raw_df.mask(raw_df < 0))
 
-    def testSetAxis(self):
+    def testSetAxisExecution(self):
         raw_df = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
         df = md.DataFrame(raw_df, chunk_size=3)
 
@@ -1356,3 +1356,99 @@ class Test(TestBase):
         s1.index = new_idx
         pd.testing.assert_series_equal(self.executor.execute_dataframe(s1, concat=True)[0],
                                        raw_series.set_axis(idx_data))
+
+    def testSampleExecution(self):
+        rs = np.random.RandomState(0)
+
+        # test dataframe
+        raw_df = pd.DataFrame(rs.rand(100, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+
+        # test single chunk
+        df = md.DataFrame(raw_df)
+        r = df.sample(10, random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.sample(10, random_state=rs))
+        r = df.sample(frac=0.1, weights='c1', random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.sample(frac=0.1, weights='c1', random_state=rs))
+        r = df.sample(10, weights=df['c2'], random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw_df.sample(10, weights=raw_df['c2'], random_state=rs))
+
+        # test multinomial tile & execution
+        df = md.DataFrame(raw_df, chunk_size=13)
+        r1 = df.sample(10, replace=True, random_state=rs)
+        r2 = df[:].sample(10, replace=True, random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                      self.executor.execute_dataframe(r2, concat=True)[0])
+
+        r1 = df.sample(frac=0.1, weights='c2', always_multinomial=True, random_state=rs)
+        r2 = df[:].sample(frac=0.1, weights='c2', always_multinomial=True, random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                      self.executor.execute_dataframe(r2, concat=True)[0])
+
+        r1 = df.sample(frac=0.1, weights=df['c2'], always_multinomial=True, random_state=rs)
+        r2 = df[:].sample(frac=0.1, weights=df['c2'], always_multinomial=True, random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                      self.executor.execute_dataframe(r2, concat=True)[0])
+
+        # test reservoir tile & execution
+        df = md.DataFrame(raw_df, chunk_size=13)
+        r1 = df.sample(90, random_state=rs)
+        r2 = df[:].sample(90, random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                      self.executor.execute_dataframe(r2, concat=True)[0])
+
+        r1 = df.sample(10, random_state=rs)
+        r2 = df[:].sample(10, random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                      self.executor.execute_dataframe(r2, concat=True)[0])
+
+        r1 = df.sample(frac=0.1, weights='c2', random_state=rs)
+        r2 = df[:].sample(frac=0.1, weights='c2', random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                      self.executor.execute_dataframe(r2, concat=True)[0])
+
+        r1 = df.sample(frac=0.1, weights=df['c2'], random_state=rs)
+        r2 = df[:].sample(frac=0.1, weights=df['c2'], random_state=rs)
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                      self.executor.execute_dataframe(r2, concat=True)[0])
+
+        # test series
+        raw_series = pd.Series(rs.rand(100))
+        raw_weights = pd.Series(rs.rand(100))
+
+        # test single chunk
+        s = md.Series(raw_series)
+        r = s.sample(10, random_state=rs)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw_series.sample(10, random_state=rs))
+        weights = md.Series(raw_weights, chunk_size=13)
+        r = s.sample(10, weights=weights, random_state=rs)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw_series.sample(10, weights=raw_weights, random_state=rs))
+
+        # test multinomial tile & execution
+        s = md.Series(raw_series, chunk_size=13)
+        weights = md.Series(raw_weights, chunk_size=13)
+
+        r1 = s.sample(10, replace=True, random_state=rs)
+        r2 = s[:].sample(10, replace=True, random_state=rs)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                       self.executor.execute_dataframe(r2, concat=True)[0])
+
+        r1 = s.sample(frac=0.1, weights=weights, always_multinomial=True, random_state=rs)
+        r2 = s[:].sample(frac=0.1, weights=weights, always_multinomial=True, random_state=rs)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                       self.executor.execute_dataframe(r2, concat=True)[0])
+
+        # test reservoir tile & execution
+        r1 = s.sample(10, random_state=rs)
+        r2 = s[:].sample(10, random_state=rs)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                       self.executor.execute_dataframe(r2, concat=True)[0])
+
+        r1 = s.sample(frac=0.1, weights=weights, random_state=rs)
+        r2 = s[:].sample(frac=0.1, weights=weights, random_state=rs)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0],
+                                       self.executor.execute_dataframe(r2, concat=True)[0])

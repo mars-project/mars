@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import RandomState, _random_state
+from .core import RandomState, _random_state, RandomStateField
 from .rand import rand, TensorRand
 from .randn import randn, TensorRandn
 from .randint import randint, TensorRandint

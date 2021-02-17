@@ -151,6 +151,7 @@ Reindexing / selection / label manipulation
    DataFrame.rename
    DataFrame.rename_axis
    DataFrame.reset_index
+   DataFrame.sample
    DataFrame.set_axis
    DataFrame.set_index
    DataFrame.tail

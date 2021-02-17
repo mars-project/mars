@@ -1556,6 +1556,29 @@ class Test(TestBase):
         expected = raw2.apply(lambda x: x['a'], axis=1, result_type='expand')
         pd.testing.assert_frame_equal(result, expected)
 
+        raw = pd.DataFrame(np.random.rand(10, 5),
+                           columns=[f'col{i}' for i in range(5)])
+
+        df = from_pandas_df(raw, chunk_size=(5, 3))
+
+        def f5(pdf, chunk_index):
+            return pdf + 1 + chunk_index[0]
+
+        r = df.map_chunk(f5, with_chunk_index=True)
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = (raw + 1).add(np.arange(10) // 5, axis=0)
+        pd.testing.assert_frame_equal(result, expected)
+
+        raw_s = raw['col1']
+        series = from_pandas_series(raw_s, chunk_size=5)
+
+        r = series.map_chunk(f5, with_chunk_index=True)
+
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw_s + 1 + np.arange(10) // 5
+        pd.testing.assert_series_equal(result, expected)
+
     def testCartesianChunkExecution(self):
         rs = np.random.RandomState(0)
         raw1 = pd.DataFrame({'a': rs.randint(3, size=10),

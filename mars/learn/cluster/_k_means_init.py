@@ -17,11 +17,10 @@ import numpy as np
 from ... import opcodes
 from ... import tensor as mt
 from ...operands import OutputType, OperandStage
-from ...serialize import KeyField, Int32Field, TupleField
+from ...serialize import KeyField, Int32Field
 from ...tensor.array_utils import as_same_device, device
 from ...tensor.core import TensorOrder
-from ...tensor.random.core import _on_serialize_random_state, \
-    _on_deserialize_random_state
+from ...tensor.random import RandomStateField
 from ...tiles import TilesError
 from ...utils import recursive_tile, check_chunks_unknown_shape
 from ..metrics import euclidean_distances
@@ -101,8 +100,7 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
     _x = KeyField('x')
     _n_clusters = Int32Field('n_clusters')
     _x_squared_norms = KeyField('x_squared_norms')
-    _state = TupleField('state', on_serialize=_on_serialize_random_state,
-                        on_deserialize=_on_deserialize_random_state)
+    _state = RandomStateField('state')
     _n_local_trials = Int32Field('n_local_trials')
 
     def __init__(self, x=None, n_clusters=None, x_squared_norms=None,
@@ -256,8 +254,7 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
     _x = KeyField('x')
     _n_clusters = Int32Field('n_clusters')
     _x_squared_norms = KeyField('x_squared_norms')
-    _state = TupleField('state', on_serialize=_on_serialize_random_state,
-                        on_deserialize=_on_deserialize_random_state)
+    _state = RandomStateField('state')
     _init_iter = Int32Field('init_iter')
     _oversampling_factor = Int32Field('oversampling_factor')
 

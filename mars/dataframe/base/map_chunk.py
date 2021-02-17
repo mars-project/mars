@@ -17,7 +17,8 @@ import pandas as pd
 
 from ... import opcodes
 from ...custom_log import redirect_custom_log
-from ...serialize import KeyField, FunctionField, TupleField, DictField, StringField
+from ...serialize import KeyField, FunctionField, TupleField, DictField, StringField, \
+    BoolField
 from ...tiles import TilesError
 from ...utils import enter_current_session, check_chunks_unknown_shape, quiet_stdio
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
@@ -32,14 +33,15 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
     _func = FunctionField('func')
     _args = TupleField('args')
     _kwargs = DictField('kwargs')
+    _with_chunk_index = BoolField('with_chunk_index')
     # for chunk
     _tileable_op_key = StringField('tileable_op_key')
 
-    def __init__(self, input=None, func=None, args=None, kwargs=None,
-                 output_types=None, tileable_op_key=None, **kw):
+    def __init__(self, input=None, func=None, args=None, kwargs=None, output_types=None,
+                 tileable_op_key=None, with_chunk_index=None, **kw):
         super().__init__(_input=input, _func=func, _args=args, _kwargs=kwargs,
-                         _output_types=output_types,
-                         _tileable_op_key=tileable_op_key, **kw)
+                         _output_types=output_types, _tileable_op_key=tileable_op_key,
+                         _with_chunk_index=with_chunk_index, **kw)
 
     @property
     def input(self):
@@ -61,6 +63,10 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
     def tileable_op_key(self):
         return self._tileable_op_key
 
+    @property
+    def with_chunk_index(self):
+        return self._with_chunk_index
+
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
@@ -73,8 +79,11 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
 
         # try run to infer meta
         try:
+            kwargs = self.kwargs or dict()
+            if self.with_chunk_index:
+                kwargs['chunk_index'] = (0,) * df_or_series.ndim
             with np.errstate(all='ignore'), quiet_stdio():
-                obj = self._func(test_obj, *self._args, **self._kwargs)
+                obj = self._func(test_obj, *self._args, **kwargs)
         except:  # noqa: E722  # nosec
             if df_or_series.ndim == 1 or output_type == OutputType.series:
                 obj = pd.Series([], dtype=np.dtype(object))
@@ -171,7 +180,12 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
     @enter_current_session
     def execute(cls, ctx, op: "DataFrameMapChunk"):
         inp = ctx[op.input.key]
-        ctx[op.outputs[0].key] = op.func(inp, *op.args, **(op.kwargs or dict()))
+        out_chunk = op.outputs[0]
+
+        kwargs = op.kwargs or dict()
+        if op.with_chunk_index:
+            kwargs['chunk_index'] = out_chunk.index
+        ctx[out_chunk.key] = op.func(inp, *op.args, **kwargs)
 
 
 def map_chunk(df_or_series, func, args=(), **kwargs):
@@ -239,8 +253,8 @@ def map_chunk(df_or_series, func, args=(), **kwargs):
         output_types = [output_type]
     index = kwargs.pop('index', None)
     dtypes = kwargs.pop('dtypes', None)
+    with_chunk_index = kwargs.pop('with_chunk_index', False)
 
-    op = DataFrameMapChunk(input=df_or_series, func=func,
-                           args=args, kwargs=kwargs,
-                           output_types=output_types)
+    op = DataFrameMapChunk(input=df_or_series, func=func, args=args, kwargs=kwargs,
+                           output_types=output_types, with_chunk_index=with_chunk_index)
     return op(df_or_series, index=index, dtypes=dtypes)
