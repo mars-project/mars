@@ -98,7 +98,7 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
             try:
                 await asyncio.wait_for(future, timeout=timeout,
                                        loop=asyncio.get_running_loop())
-            except futures.TimeoutError:
+            except (futures.TimeoutError, asyncio.TimeoutError):
                 future.cancel()
 
     @implements(Server.on_connected)
