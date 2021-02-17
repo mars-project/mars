@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import asyncio
 import functools
 from concurrent.futures import Executor
@@ -80,66 +81,3 @@ class AioBase:
         self._file = file
         self._loop = loop
         self._executor = executor
-
-
-@delegate_to_executor(
-    "close",
-    "flush",
-    "isatty",
-    "read",
-    "read1",
-    "readinto",
-    "readline",
-    "readlines",
-    "seek",
-    "seekable",
-    "tell",
-    "truncate",
-    "writable",
-    "write",
-    "writelines",
-)
-@proxy_method_directly("fileno", "readable")
-@proxy_property_directly("closed", "name", "mode")
-class AioFileObject(AioBase):
-    def __aiter__(self):
-        return self
-
-    async def __anext__(self):
-        """Simulate normal file iteration."""
-        line = await self.readline()
-        if line:
-            return line
-        else:
-            raise StopAsyncIteration
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.close()
-        self._file = None
-
-
-@delegate_to_executor(
-    "cat",
-    "ls",
-    "delete",
-    "disk_usage",
-    "stat",
-    "rm",
-    "mv",
-    "rename",
-    "mkdir",
-    "exists",
-    "isdir",
-    "isfile",
-    "read_parquet",
-    "walk",
-)
-@proxy_property_directly("pathsep")
-class AioFilesystem(AioBase):
-    async def open(self, *args, **kwargs):
-        func = functools.partial(self._file.open, *args, **kwargs)
-        file = await self._loop.run_in_executor(self._executor, func)
-        return AioFileObject(file)

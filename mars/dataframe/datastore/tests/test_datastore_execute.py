@@ -159,7 +159,7 @@ class Test(TestBase):
                 .sort_index(ascending=False)
             pd.testing.assert_frame_equal(raw.col1.to_frame(), written)
 
-    @unittest.skip('the test is broken.')
+    @unittest.skipIf(vineyard is None, 'vineyard not installed')
     def testToVineyard(self):
         def testWithGivenSession(session):
             ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
