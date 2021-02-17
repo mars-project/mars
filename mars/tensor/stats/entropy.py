@@ -15,49 +15,29 @@
 from math import log
 
 from ... import tensor as mt
+from ...tensor import special as mt_special
 from ..core import TENSOR_TYPE
 from ..datasource import tensor as astensor
-from ..special import entr, rel_entr
+from ..utils import implement_scipy
+
+try:
+    from scipy.stats import entropy as sp_entropy
+except ImportError:
+    sp_entropy = None
 
 
+@implement_scipy(sp_entropy)
 def entropy(pk, qk=None, base=None):
-    """Calculate the entropy of a distribution for given probability values.
-
-    If only probabilities `pk` are given, the entropy is calculated as
-    ``S = -sum(pk * log(pk), axis=0)``.
-
-    If `qk` is not None, then compute the Kullback-Leibler divergence
-    ``S = sum(pk * log(pk / qk), axis=0)``.
-
-    This routine will normalize `pk` and `qk` if they don't sum to 1.
-
-    Parameters
-    ----------
-    pk : sequence
-        Defines the (discrete) distribution. ``pk[i]`` is the (possibly
-        unnormalized) probability of event ``i``.
-    qk : sequence, optional
-        Sequence against which the relative entropy is computed. Should be in
-        the same format as `pk`.
-    base : float, optional
-        The logarithmic base to use, defaults to ``e`` (natural logarithm).
-
-    Returns
-    -------
-    S : Tensor
-        The calculated entropy.
-
-    """
     pk = astensor(pk)
     pk = 1.0 * pk / mt.sum(pk, axis=0)
     if qk is None:
-        vec = entr(pk)
+        vec = mt_special.entr(pk)
     else:
         qk = astensor(qk)
         if len(qk) != len(pk):
             raise ValueError("qk and pk must have same length.")
         qk = 1.0 * qk / mt.sum(qk, axis=0)
-        vec = rel_entr(pk, qk)
+        vec = mt_special.rel_entr(pk, qk)
     S = mt.sum(vec, axis=0)
     if base is not None:
         if isinstance(base, TENSOR_TYPE):
