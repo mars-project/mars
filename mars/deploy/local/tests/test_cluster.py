@@ -1237,6 +1237,20 @@ class Test(unittest.TestCase):
             expected = (raw[raw < 0.5] * 3).sum()
             self.assertAlmostEqual(result, expected, places=5)
 
+            # test execution with unpickable errors
+            session6 = new_session(cluster.endpoint)
+
+            def f6():
+                class Unpickleable:
+                    def __reduce__(self):
+                        raise ValueError
+
+                raise KeyError(Unpickleable())
+
+            d = mr.spawn(f6, retry_when_fail=False)
+            with self.assertRaises(ExecutionFailed):
+                session6.run(d, timeout=_exec_timeout)
+
     @unittest.skipIf(sklearn is None, 'sklearn not installed')
     def testLearnInLocalCluster(self, *_):
         from mars.learn.cluster import KMeans
