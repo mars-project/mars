@@ -32,6 +32,7 @@ from mars.storage.filesystem import FileSystemStorage
 from mars.storage.plasma import PlasmaStorage
 from mars.storage.shared_memory import SharedMemoryStorage
 from mars.storage.vineyard import VineyardStorage
+from mars.storage.ray import RayStorage
 try:
     import vineyard
 except ImportError:
@@ -42,11 +43,17 @@ try:
 except ImportError:
     cupy = None
     cudf = None
+try:
+    import ray
+except ImportError:
+    ray = None
 
 
 params = ['filesystem', 'plasma']
 if vineyard:
     params.append('vineyard')
+if ray:
+    params.append('ray')
 if sys.version_info[:2] >= (3, 8):
     params.append('shared_memory')
 
@@ -103,6 +110,14 @@ async def storage_context(request):
 
         teardown_params['object_ids'] = storage._object_ids
         await SharedMemoryStorage.teardown(**teardown_params)
+    elif request.param == 'ray':
+        params, teardown_params = await RayStorage.setup()
+        storage = RayStorage(**params)
+        assert storage.level == StorageLevel.MEMORY
+
+        yield storage
+
+        await RayStorage.teardown(**teardown_params)
 
 
 @pytest.mark.asyncio
@@ -128,7 +143,7 @@ async def test_base_operations(storage_context):
     assert info2.size == put_info2.size
 
     # FIXME: remove when list functionality is ready for vineyard.
-    if not isinstance(storage, (VineyardStorage, SharedMemoryStorage)):
+    if not isinstance(storage, (VineyardStorage, SharedMemoryStorage, RayStorage)):
         num = len(await storage.list())
         assert num == 2
         await storage.delete(info2.object_id)
