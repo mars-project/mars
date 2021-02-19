@@ -21,7 +21,7 @@ from ..config import options
 from ..executor import Executor
 from ..serialize import dataserializer
 from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size, \
-    get_chunk_shuffle_key
+    get_chunk_shuffle_key, build_exc_info
 from ..context import DistributedDictContext
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .storage import DataStorageDevice
@@ -282,7 +282,13 @@ class BaseCalcActor(WorkerActor):
             if not exc_info:
                 self.tell_promise(callback, keys)
             else:
-                self.tell_promise(callback, *exc_info, _accept=False)
+                try:
+                    self.tell_promise(callback, *exc_info, _accept=False)
+                except:
+                    self.tell_promise(callback, *build_exc_info(
+                        SystemError, f'Failed to send errors to scheduler, type: {exc_info[0].__name__}, '
+                                     f'message: {str(exc_info[1])}'), _accept=False)
+                    raise
 
             keys_to_release = [k for k in keys_to_fetch if get_chunk_key(k) not in chunk_targets]
             if exc_info:

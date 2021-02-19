@@ -505,11 +505,11 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             inputs.append(weights)
         if (a.size > 0 or np.isnan(a.size)) and \
                 (isinstance(bins, str) or mt.ndim(bins) == 0) and not range:
-            # for bins that is str or integer,
-            # requires min max calculated first
-            input_min = self._input_min = a.min()
+            # for bins that is str or integer, requires min max calculated first
+            # dims need to be kept in case a is empty which causes errors in reduction
+            input_min = self._input_min = a.min(keepdims=True)
             inputs.append(input_min)
-            input_max = self._input_max = a.max()
+            input_max = self._input_max = a.max(keepdims=True)
             inputs.append(input_max)
 
         return self.new_tensor(inputs, shape=shape, order=TensorOrder.C_ORDER)
@@ -527,7 +527,10 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             metas = ctx.get_chunk_metas(min_max_chunk_keys)
             if any(meta is None for meta in metas):
                 raise TilesError('`input_min` or `input_max` need be executed first')
-            range_ = tuple(ctx.get_chunk_results(min_max_chunk_keys))
+            range_results = ctx.get_chunk_results(min_max_chunk_keys)
+            # make sure returned bounds are valid
+            if all(x.size > 0 for x in range_results):
+                range_ = tuple(x[0] for x in range_results)
         if isinstance(op.bins, TENSOR_TYPE):
             # `bins` is a Tensor, needs to be calculated first
             bins_chunk_keys = [c.key for c in op.bins.chunks]
