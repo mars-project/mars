@@ -25,7 +25,7 @@ from mars.oscar.backends.mars.communication.socket import \
 from mars.utils import get_next_port
 
 
-test_data = np.random.rand(10, 10)
+test_data = np.random.RandomState(0).rand(10, 10)
 port = get_next_port()
 
 
@@ -37,6 +37,8 @@ if sys.platform != 'win32':
     params.append((UnixSocketServer, dict(process_index='0'), f'unixsocket:///0'))
 
 
+@pytest.mark.skipif(sys.version_info < (3, 7),
+                    reason="requires Python3.7 or higher")
 @pytest.mark.parametrize(
     'server_type, config, con',
     params
@@ -70,6 +72,27 @@ async def test_comm(server_type, config, con):
     assert server.is_shutdown
 
 
+def _wrap_test(server_started_event, success_event, conf, tp):
+    async def _test():
+        async def check_data(chan: SocketChannel):
+            np.testing.assert_array_equal(test_data, await chan.recv())
+            success_event.set()
+
+        nonlocal conf
+        conf = conf.copy()
+        conf['handle_channel'] = check_data
+
+        # create server
+        server = await tp.create(conf)
+        await server.start()
+        server_started_event.set()
+        await server.join()
+
+    asyncio.run(_test())
+
+
+@pytest.mark.skipif(sys.version_info < (3, 7),
+                    reason="requires Python3.7 or higher")
 @pytest.mark.parametrize(
     'server_type, config, con',
     params
@@ -79,25 +102,8 @@ async def test_multiprocess_comm(server_type, config, con):
     success = multiprocessing.Event()
     server_started = multiprocessing.Event()
 
-    async def _test(service_started_event, success_event, conf):
-        async def check_data(chan: SocketChannel):
-            np.testing.assert_array_equal(test_data, await chan.recv())
-            success_event.set()
-
-        conf = conf.copy()
-        conf['handle_channel'] = check_data
-
-        # create server
-        server = await server_type.create(conf)
-        await server.start()
-        service_started_event.set()
-        await server.join()
-
-    def _wrap_test(server_started_event, success_event, conf):
-        asyncio.run(_test(server_started_event, success_event, conf))
-
     p = multiprocessing.Process(target=_wrap_test,
-                                args=(server_started, success, config))
+                                args=(server_started, success, config, server_type))
     p.daemon = True
     p.start()
 
