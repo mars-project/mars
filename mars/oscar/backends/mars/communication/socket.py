@@ -25,11 +25,11 @@ from urllib.parse import urlparse
 
 from .....utils import implements, to_binary, classproperty
 from .....serialization import AioSerializer, AioDeserializer
-from .base import Channel, Server, Client
+from .base import Channel, ChannelType, Server, Client
 
 
 class SocketChannel(Channel):
-    __slots__ = 'reader', 'writer'
+    __slots__ = 'reader', 'writer', '_channel_type'
 
     name = 'socket'
 
@@ -38,12 +38,19 @@ class SocketChannel(Channel):
                  writer: StreamWriter,
                  local_address: str = None,
                  dest_address: str = None,
-                 compression=None):
+                 compression: int = None,
+                 channel_type: ChannelType = None):
         super().__init__(local_address=local_address,
                          dest_address=dest_address,
                          compression=compression)
         self.reader = reader
         self.writer = writer
+        self._channel_type = channel_type
+
+    @property
+    @implements(Channel.type)
+    def type(self) -> ChannelType:
+        return self._channel_type
 
     @implements(Channel.send)
     async def send(self, message: Any):
@@ -107,7 +114,8 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
         if kwargs:  # pragma: no cover
             raise TypeError(f'{type(self).__name__} got unexpected '
                             f'arguments: {",".join(kwargs)}')
-        channel = SocketChannel(reader, writer)
+        channel = SocketChannel(reader, writer,
+                                channel_type=self.channel_type)
         # handle over channel to some handlers
         await self.handle_channel(channel)
 
@@ -139,6 +147,11 @@ class SocketServer(_BaseSocketServer):
     @implements(Server.client_type)
     def client_type(self) -> Type["Client"]:
         return SocketClient
+
+    @property
+    @implements(Server.channel_type)
+    def channel_type(self) -> ChannelType:
+        return ChannelType.remote
 
     @staticmethod
     @implements(Server.create)
@@ -206,6 +219,11 @@ class UnixSocketServer(_BaseSocketServer):
     @implements(Server.client_type)
     def client_type(self) -> Type["Client"]:
         return UnixSocketClient
+
+    @property
+    @implements(Server.channel_type)
+    def channel_type(self) -> ChannelType:
+        return ChannelType.ipc
 
     @staticmethod
     @implements(Server.create)

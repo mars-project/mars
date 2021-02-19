@@ -13,9 +13,16 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Any, Dict, Callable, Coroutine, Type
 
 from .....utils import classproperty
+
+
+class ChannelType(Enum):
+    dummy = 0   # for local communication
+    ipc = 1     # inproc
+    remote = 2  # remote
 
 
 class Channel(ABC):
@@ -70,10 +77,23 @@ class Channel(ABC):
         """
 
     @property
+    @abstractmethod
+    def type(self) -> ChannelType:
+        """
+        Channel is used for, can be dummy, ipc or remote.
+
+        Returns
+        -------
+        channel_type: ChannelType
+            type that can be dummy, ipc or remote.
+        """
+
+    @property
     def info(self) -> Dict:
         return {
             'name': self.name,
             'compression': self.compression,
+            'type': self.type,
             'local_address': self.local_address,
             'dest_address': self.dest_address
         }
@@ -106,6 +126,18 @@ class Server(ABC):
         -------
         client_type: type
             client type.
+        """
+
+    @property
+    @abstractmethod
+    def channel_type(self) -> ChannelType:
+        """
+        Channel type, can be dummy, ipc or remote.
+
+        Returns
+        -------
+        channel_type: ChannelType
+            type that can be dummy, ipc or remote.
         """
 
     @staticmethod
@@ -166,10 +198,12 @@ class Server(ABC):
            This server is shutdown or not.
         """
 
+    @property
     def info(self) -> Dict:
         return {
             'name': self.scheme,
-            'address': self.address
+            'address': self.address,
+            'channel_type': self.channel_type
         }
 
     async def __aenter__(self):
@@ -190,6 +224,18 @@ class Client(ABC):
         self.local_address = local_address
         self.dest_address = dest_address
         self.channel = channel
+
+    @property
+    def channel_type(self) -> ChannelType:
+        """
+        Channel type, can be dummy, ipc or remote.
+
+        Returns
+        -------
+        channel_type: ChannelType
+            type that can be dummy, ipc or remote.
+        """
+        return self.channel.type
 
     @staticmethod
     @abstractmethod
@@ -235,7 +281,8 @@ class Client(ABC):
         return {
             'local_address': self.local_address,
             'dest_address': self.dest_address,
-            'channel_name': self.channel.name
+            'channel_name': self.channel.name,
+            'channel_type': self.channel_type
         }
 
     async def __aenter__(self):

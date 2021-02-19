@@ -15,6 +15,7 @@
 import asyncio
 import sys
 import multiprocessing
+from typing import Union
 
 import numpy as np
 import pytest
@@ -22,6 +23,8 @@ import pytest
 from mars.lib.aio import AioEvent
 from mars.oscar.backends.mars.communication.socket import \
     SocketChannel, SocketServer, UnixSocketServer
+from mars.oscar.backends.mars.communication.dummy import \
+    DummyChannel, DummyServer
 from mars.utils import get_next_port
 
 
@@ -35,19 +38,21 @@ params = [
 ]
 if sys.platform != 'win32':
     params.append((UnixSocketServer, dict(process_index='0'), f'unixsocket:///0'))
+local_params = params.copy()
+local_params.append((DummyServer, dict(), 'dummy://'))
 
 
 @pytest.mark.skipif(sys.version_info < (3, 7),
                     reason="requires Python3.7 or higher")
 @pytest.mark.parametrize(
     'server_type, config, con',
-    params
+    local_params
 )
 @pytest.mark.asyncio
 async def test_comm(server_type, config, con):
     success = AioEvent()
 
-    async def check_data(chan: SocketChannel):
+    async def check_data(chan: Union[SocketChannel, DummyChannel]):
         np.testing.assert_array_equal(test_data, await chan.recv())
         success.set()
 
@@ -57,9 +62,12 @@ async def test_comm(server_type, config, con):
     # create server
     server = await server_type.create(config)
     await server.start()
+    assert isinstance(server.info, dict)
 
     # create client
     client = await server_type.client_type.connect(con)
+    assert isinstance(client.info, dict)
+    assert isinstance(client.channel.info, dict)
     await client.channel.send(test_data)
 
     assert success.wait(10)
