@@ -23,7 +23,8 @@ import pytest
 from mars.lib.aio import AioEvent
 from mars.oscar.backends.mars.communication import \
     SocketChannel, SocketServer, UnixSocketServer, \
-    DummyChannel, DummyServer
+    DummyChannel, DummyServer, get_client_type, \
+    SocketClient, UnixSocketClient, DummyClient
 from mars.utils import get_next_port
 
 
@@ -121,3 +122,9 @@ async def test_multiprocess_comm(server_type, config, con):
 
     await client.close()
     assert client.closed
+
+
+def test_get_client_type():
+    assert issubclass(get_client_type('127.0.0.1'), SocketClient)
+    assert issubclass(get_client_type('unixsocket:///1'), UnixSocketClient)
+    assert issubclass(get_client_type('dummy://'), DummyClient)

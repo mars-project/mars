@@ -28,6 +28,8 @@ def register_client(client_type: Type[Client]):
 
 def get_client_type(address: str):
     scheme = urlparse(address).scheme
+    if scheme == '':
+        scheme = None
     if scheme not in _scheme_to_client_types:  # pragma: no cover
         raise ValueError(f'address illegal, address scheme '
                          f'should be one of '
