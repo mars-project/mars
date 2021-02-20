@@ -163,6 +163,7 @@ class SocketServer(_BaseSocketServer):
     @staticmethod
     @implements(Server.create)
     async def create(config: Dict) -> "Server":
+        config = config.copy()
         host = config.pop('host')
         port = int(config.pop('port'))
         handle_channel = config.pop('handle_channel')
@@ -215,14 +216,12 @@ class UnixSocketServer(_BaseSocketServer):
     def __init__(self,
                  process_index: int,
                  aio_server: AbstractServer,
-                 path: str = None,
+                 path: str,
                  channel_handler: Callable[[Channel], Coroutine] = None):
         address = f'{self.scheme}:///{process_index}'
         super().__init__(address, aio_server,
                          channel_handler=channel_handler)
         self.process_index = process_index
-        if path is None:
-            path = _gen_unix_socket_default_path(process_index)
         self.path = path
 
     @classproperty
@@ -238,6 +237,7 @@ class UnixSocketServer(_BaseSocketServer):
     @staticmethod
     @implements(Server.create)
     async def create(config: Dict) -> "Server":
+        config = config.copy()
         process_index = config.pop('process_index')
         handle_channel = config.pop('handle_channel')
         path = config.pop('path', _gen_unix_socket_default_path(process_index))
@@ -255,7 +255,7 @@ class UnixSocketServer(_BaseSocketServer):
 
         aio_server = await asyncio.start_unix_server(
             handle_connection, path=path, **config)
-        server = UnixSocketServer(process_index, aio_server, path=path,
+        server = UnixSocketServer(process_index, aio_server, path,
                                   channel_handler=handle_channel)
         return server
 

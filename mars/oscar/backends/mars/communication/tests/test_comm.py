@@ -71,11 +71,21 @@ async def test_comm(server_type, config, con):
     assert 'success' == await client.recv()
 
     await client.close()
+    assert client.closed
+
+    # create client2
+    async with await server_type.client_type.connect(con) as client2:
+        assert not client2.closed
+    assert client2.closed
+
     await server.join(.001)
     await server.stop()
 
-    assert client.closed
     assert server.stopped
+
+    async with await server_type.create(config) as server2:
+        assert not server2.stopped
+    assert server2.stopped
 
 
 def _wrap_test(server_started_event, conf, tp):

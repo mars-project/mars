@@ -98,12 +98,6 @@ class Channel(ABC):
             'dest_address': self.dest_address
         }
 
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.close()
-
 
 class Server(ABC):
     __slots__ = 'address', 'channel_handler'

@@ -61,7 +61,11 @@ class DummyChannel(Channel):
     async def recv(self):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot write message')
-        return await self._in_queue.get()
+        try:
+            return await self._in_queue.get()
+        except RuntimeError:
+            if self._closed.is_set():
+                pass
 
     @implements(Channel.close)
     async def close(self):
@@ -102,6 +106,7 @@ class DummyServer(Server):
     @staticmethod
     @implements(Server.create)
     async def create(config: Dict) -> "DummyServer":
+        config = config.copy()
         # DummyServer is singleton
         if DummyServer._instance is not None:
             return DummyServer._instance
@@ -136,6 +141,7 @@ class DummyServer(Server):
     @implements(Server.stop)
     async def stop(self):
         self._closed.set()
+        DummyServer._instance = None
 
     @property
     @implements(Server.stopped)
@@ -145,17 +151,26 @@ class DummyServer(Server):
 
 @register_client
 class DummyClient(Client):
-    __slots__ = ()
+    __slots__ = '_task',
 
     _instance = None
     scheme = DummyServer.scheme
+
+    def __init__(self,
+                 local_address: str,
+                 dest_address: str,
+                 channel: Channel):
+        super().__init__(local_address,
+                         dest_address,
+                         channel)
+        self._task = None
 
     @staticmethod
     @implements(Client.connect)
     async def connect(dest_address: str,
                       local_address: str = None,
                       **kwargs) -> "Client":
-        if DummyClient._instance is not None:
+        if DummyClient._instance is not None:  # pragma: no cover
             # DummyClient is singleton
             return DummyClient._instance
 
@@ -172,7 +187,15 @@ class DummyClient(Client):
         server_channel = DummyChannel(q2, q1)
 
         conn_coro = server.on_connected(server_channel)
-        asyncio.create_task(conn_coro)
+        task = asyncio.create_task(conn_coro)
         client = DummyClient(local_address, dest_address, client_channel)
+        client._task = task
         DummyClient._instance = client
         return client
+
+    @implements(Client.close)
+    async def close(self):
+        await super().close()
+        DummyClient._instance = None
+        self._task.cancel()
+        self._task = None
