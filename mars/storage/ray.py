@@ -5,7 +5,6 @@ from .base import StorageBackend, StorageLevel, ObjectInfo
 from .core import BufferWrappedFileObject, StorageFileObject
 
 ray = lazy_import("ray")
-import ray
 
 
 class RayFileLikeObject:
@@ -42,7 +41,6 @@ class RayFileObject(BufferWrappedFileObject):
         self._buffer = RayFileLikeObject()
 
     def _read_init(self):
-        # This ray.get may block the main loop.
         self._buffer = ray.get(self._object_id)
         self._mv = memoryview(self._buffer)
         self._size = len(self._buffer)
