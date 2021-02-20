@@ -16,11 +16,11 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, Callable, Coroutine, Type
 
-from .....utils import classproperty
+from .....utils import classproperty, implements
 
 
 class ChannelType(Enum):
-    dummy = 0   # for local communication
+    local = 0   # for local communication
     ipc = 1     # inproc
     remote = 2  # remote
 
@@ -106,15 +106,15 @@ class Channel(ABC):
 
 
 class Server(ABC):
-    __slots__ = 'address', 'handle_channel'
+    __slots__ = 'address', 'channel_handler'
 
     scheme = None
 
     def __init__(self,
                  address: str,
-                 handle_channel: Callable[[Channel], Coroutine] = None):
+                 channel_handler: Callable[[Channel], Coroutine] = None):
         self.address = address
-        self.handle_channel = handle_channel
+        self.channel_handler = channel_handler
 
     @classproperty
     @abstractmethod
@@ -181,21 +181,21 @@ class Server(ABC):
         """
 
     @abstractmethod
-    async def shutdown(self):
+    async def stop(self):
         """
-        Shutdown the server.
+        Stop the server.
         """
 
     @property
     @abstractmethod
-    def is_shutdown(self) -> bool:
+    def stopped(self) -> bool:
         """
-        If this server is shutdown or not.
+        If this server is stopped or not.
 
         Returns
         -------
-        if_shutdown: bool
-           This server is shutdown or not.
+        if_stopped: bool
+           This server is stopped or not.
         """
 
     @property
@@ -211,11 +211,13 @@ class Server(ABC):
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.shutdown()
+        await self.stop()
 
 
 class Client(ABC):
     __slots__ = 'local_address', 'dest_address', 'channel'
+
+    scheme = None
 
     def __init__(self,
                  local_address: str,
@@ -257,6 +259,14 @@ class Client(ABC):
         client: Client
             Client that holds a channel to communicate.
         """
+
+    @implements(Channel.send)
+    async def send(self, message):
+        return await self.channel.send(message)
+
+    @implements(Channel.recv)
+    async def recv(self):
+        return await self.channel.recv()
 
     async def close(self):
         """

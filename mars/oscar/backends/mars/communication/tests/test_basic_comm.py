@@ -21,9 +21,8 @@ import numpy as np
 import pytest
 
 from mars.lib.aio import AioEvent
-from mars.oscar.backends.mars.communication.socket import \
-    SocketChannel, SocketServer, UnixSocketServer
-from mars.oscar.backends.mars.communication.dummy import \
+from mars.oscar.backends.mars.communication import \
+    SocketChannel, SocketServer, UnixSocketServer, \
     DummyChannel, DummyServer
 from mars.utils import get_next_port
 
@@ -50,11 +49,9 @@ local_params.append((DummyServer, dict(), 'dummy://'))
 )
 @pytest.mark.asyncio
 async def test_comm(server_type, config, con):
-    success = AioEvent()
-
     async def check_data(chan: Union[SocketChannel, DummyChannel]):
         np.testing.assert_array_equal(test_data, await chan.recv())
-        success.set()
+        await chan.send('success')
 
     config = config.copy()
     config['handle_channel'] = check_data
@@ -68,23 +65,23 @@ async def test_comm(server_type, config, con):
     client = await server_type.client_type.connect(con)
     assert isinstance(client.info, dict)
     assert isinstance(client.channel.info, dict)
-    await client.channel.send(test_data)
+    await client.send(test_data)
 
-    assert success.wait(10)
+    assert 'success' == await client.recv()
 
     await client.close()
     await server.join(.001)
-    await server.shutdown()
+    await server.stop()
 
     assert client.closed
-    assert server.is_shutdown
+    assert server.stopped
 
 
-def _wrap_test(server_started_event, success_event, conf, tp):
+def _wrap_test(server_started_event, conf, tp):
     async def _test():
         async def check_data(chan: SocketChannel):
             np.testing.assert_array_equal(test_data, await chan.recv())
-            success_event.set()
+            await chan.send('success')
 
         nonlocal conf
         conf = conf.copy()
@@ -107,11 +104,10 @@ def _wrap_test(server_started_event, success_event, conf, tp):
 )
 @pytest.mark.asyncio
 async def test_multiprocess_comm(server_type, config, con):
-    success = multiprocessing.Event()
     server_started = multiprocessing.Event()
 
     p = multiprocessing.Process(target=_wrap_test,
-                                args=(server_started, success, config, server_type))
+                                args=(server_started, config, server_type))
     p.daemon = True
     p.start()
 
@@ -121,7 +117,7 @@ async def test_multiprocess_comm(server_type, config, con):
     client = await server_type.client_type.connect(con)
     await client.channel.send(test_data)
 
-    assert success.wait(10)
+    assert 'success' == await client.recv()
 
     await client.close()
     assert client.closed

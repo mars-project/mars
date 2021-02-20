@@ -26,10 +26,11 @@ from urllib.parse import urlparse
 from .....utils import implements, to_binary, classproperty
 from .....serialization import AioSerializer, AioDeserializer
 from .base import Channel, ChannelType, Server, Client
+from .core import register_client
 
 
 class SocketChannel(Channel):
-    __slots__ = 'reader', 'writer', '_channel_type'
+    __slots__ = 'reader', 'writer', '_lock', '_channel_type'
 
     name = 'socket'
 
@@ -45,6 +46,7 @@ class SocketChannel(Channel):
                          compression=compression)
         self.reader = reader
         self.writer = writer
+        self._lock = asyncio.Lock()
         self._channel_type = channel_type
 
     @property
@@ -59,16 +61,18 @@ class SocketChannel(Channel):
         serializer = AioSerializer(message, compress=compress)
         buffers = await serializer.run()
 
-        # write buffers
-        for buffer in buffers:
-            self.writer.write(buffer)
+        async with self._lock:
+            # write buffers
+            for buffer in buffers:
+                self.writer.write(buffer)
 
         await self.writer.drain()
 
     @implements(Channel.recv)
     async def recv(self):
-        deserializer = AioDeserializer(self.reader)
-        return await deserializer.run()
+        async with self._lock:
+            deserializer = AioDeserializer(self.reader)
+            return await deserializer.run()
 
     @implements(Channel.close)
     async def close(self):
@@ -87,8 +91,8 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
     def __init__(self,
                  address: str,
                  aio_server: AbstractServer,
-                 handle_channel: Callable[[Channel], Coroutine] = None):
-        super().__init__(address, handle_channel)
+                 channel_handler: Callable[[Channel], Coroutine] = None):
+        super().__init__(address, channel_handler)
         # asyncio.Server
         self._aio_server = aio_server
 
@@ -117,29 +121,32 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
         channel = SocketChannel(reader, writer,
                                 channel_type=self.channel_type)
         # handle over channel to some handlers
-        await self.handle_channel(channel)
+        await self.channel_handler(channel)
 
-    @implements(Server.shutdown)
-    async def shutdown(self):
+    @implements(Server.stop)
+    async def stop(self):
         self._aio_server.close()
         await self._aio_server.wait_closed()
 
-    @implements(Server.is_shutdown)
-    def is_shutdown(self) -> bool:
+    @property
+    @implements(Server.stopped)
+    def stopped(self) -> bool:
         return not self._aio_server.is_serving()
 
 
 class SocketServer(_BaseSocketServer):
     __slots__ = 'host', 'port'
 
+    scheme = None
+
     def __init__(self,
                  host: str,
                  port: int,
                  aio_server: AbstractServer,
-                 handle_channel: Callable[[Channel], Coroutine] = None):
+                 channel_handler: Callable[[Channel], Coroutine] = None):
         address = f'{host}:{port}'
         super().__init__(address, aio_server,
-                         handle_channel=handle_channel)
+                         channel_handler=channel_handler)
         self.host = host
         self.port = port
 
@@ -169,12 +176,15 @@ class SocketServer(_BaseSocketServer):
         aio_server = await asyncio.start_server(
             handle_connection, host=host, port=port, **config)
         server = SocketServer(host, port, aio_server,
-                              handle_channel=handle_channel)
+                              channel_handler=handle_channel)
         return server
 
 
+@register_client
 class SocketClient(Client):
     __slots__ = ()
+
+    scheme = SocketServer.scheme
 
     @staticmethod
     @implements(Client.connect)
@@ -206,10 +216,10 @@ class UnixSocketServer(_BaseSocketServer):
                  process_index: int,
                  aio_server: AbstractServer,
                  path: str = None,
-                 handle_channel: Callable[[Channel], Coroutine] = None):
+                 channel_handler: Callable[[Channel], Coroutine] = None):
         address = f'{self.scheme}:///{process_index}'
         super().__init__(address, aio_server,
-                         handle_channel=handle_channel)
+                         channel_handler=channel_handler)
         self.process_index = process_index
         if path is None:
             path = _gen_unix_socket_default_path(process_index)
@@ -246,17 +256,20 @@ class UnixSocketServer(_BaseSocketServer):
         aio_server = await asyncio.start_unix_server(
             handle_connection, path=path, **config)
         server = UnixSocketServer(process_index, aio_server, path=path,
-                                  handle_channel=handle_channel)
+                                  channel_handler=handle_channel)
         return server
 
-    @implements(Server.shutdown)
-    async def shutdown(self):
-        await super().shutdown()
+    @implements(Server.stop)
+    async def stop(self):
+        await super().stop()
         os.remove(self.path)
 
 
+@register_client
 class UnixSocketClient(Client):
     __slots__ = ()
+
+    scheme = UnixSocketServer.scheme
 
     @staticmethod
     @lru_cache(100)

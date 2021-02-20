@@ -18,6 +18,7 @@ from typing import Any, Callable, Coroutine, Dict, Type
 
 from .....utils import implements, classproperty
 from .base import Channel, ChannelType, Server, Client
+from .core import register_client
 from .errors import ChannelClosed
 
 DUMMY_ADDRESS = 'dummy://'
@@ -27,40 +28,40 @@ class DummyChannel(Channel):
     """
     Channel for communications in same process.
     """
-    __slots__ = '_queue', '_closed'
+    __slots__ = '_in_queue', '_out_queue', '_closed'
 
     name = 'dummy'
 
     def __init__(self,
-                queue: asyncio.Queue = None,
-                local_address: str = None,
-                dest_address: str = None,
-                compression=None):
+                 in_queue: asyncio.Queue,
+                 out_queue: asyncio.Queue,
+                 local_address: str = None,
+                 dest_address: str = None,
+                 compression=None):
         super().__init__(local_address=local_address,
                          dest_address=dest_address,
                          compression=compression)
-        if queue is None:
-            queue = asyncio.Queue()
-        self._queue = queue
+        self._in_queue = in_queue
+        self._out_queue = out_queue
         self._closed = asyncio.Event()
 
     @property
     @implements(Channel.type)
     def type(self) -> ChannelType:
-        return ChannelType.dummy
+        return ChannelType.local
 
     @implements(Channel.send)
     async def send(self, message: Any):
-        if self._closed.is_set():
+        if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot send message')
         # put message directly into queue
-        await self._queue.put(message)
+        await self._out_queue.put(message)
 
     @implements(Channel.recv)
     async def recv(self):
-        if self._closed.is_set():
+        if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot write message')
-        return await self._queue.get()
+        return await self._in_queue.get()
 
     @implements(Channel.close)
     async def close(self):
@@ -76,11 +77,12 @@ class DummyServer(Server):
     __slots__ = '_closed',
 
     _instance = None
+    scheme = 'dummy'
 
     def __init__(self,
                  address: str,
-                 handle_channel: Callable[[Channel], Coroutine] = None):
-        super().__init__(address, handle_channel)
+                 channel_handler: Callable[[Channel], Coroutine] = None):
+        super().__init__(address, channel_handler)
         self._closed = asyncio.Event()
 
     @classmethod
@@ -95,7 +97,7 @@ class DummyServer(Server):
     @property
     @implements(Server.channel_type)
     def channel_type(self) -> ChannelType:
-        return ChannelType.dummy
+        return ChannelType.local
 
     @staticmethod
     @implements(Server.create)
@@ -129,21 +131,24 @@ class DummyServer(Server):
         if kwargs:  # pragma: no cover
             raise TypeError(f'{type(self).__name__} got unexpected '
                             f'arguments: {",".join(kwargs)}')
-        await self.handle_channel(channel)
+        await self.channel_handler(channel)
 
-    @implements(Server.shutdown)
-    async def shutdown(self):
+    @implements(Server.stop)
+    async def stop(self):
         self._closed.set()
 
-    @implements(Server.is_shutdown)
-    def is_shutdown(self) -> bool:
+    @property
+    @implements(Server.stopped)
+    def stopped(self) -> bool:
         return self._closed.is_set()
 
 
+@register_client
 class DummyClient(Client):
     __slots__ = ()
 
     _instance = None
+    scheme = DummyServer.scheme
 
     @staticmethod
     @implements(Client.connect)
@@ -162,9 +167,12 @@ class DummyClient(Client):
             raise RuntimeError('DummyServer needs to be created '
                                'first before DummyClient')
 
-        channel = DummyChannel()
-        conn_coro = server.on_connected(channel)
+        q1, q2 = asyncio.Queue(), asyncio.Queue()
+        client_channel = DummyChannel(q1, q2)
+        server_channel = DummyChannel(q2, q1)
+
+        conn_coro = server.on_connected(server_channel)
         asyncio.create_task(conn_coro)
-        client = DummyClient(local_address, dest_address, channel)
+        client = DummyClient(local_address, dest_address, client_channel)
         DummyClient._instance = client
         return client
