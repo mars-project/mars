@@ -355,13 +355,18 @@ class AssignEvaluationActor(SchedulerActor):
         reject_workers = reject_workers or set()
 
         op_io_meta = op_info.get('io_meta', {})
-        try:
-            input_metas = op_io_meta['input_data_metas']
-        except KeyError:
-            input_metas = self._get_chunks_meta(session_id, op_io_meta.get('input_chunks', {}))
-            missing_keys = [k for k, m in input_metas.items() if m is None]
-            if missing_keys:
-                raise DependencyMissing(f'Dependencies {missing_keys!r} missing for operand {op_key}')
+
+        input_metas = op_io_meta.get('input_data_metas', dict())
+        # mark virtual inputs as loaded
+        stored_meta_keys = set(k[0] if isinstance(k, tuple) else k for k in input_metas.keys()) \
+            | set(op_io_meta.get('virtual_chunk_keys', ()))
+        metas_to_fetch = [k for k in op_io_meta.get('input_chunks', []) if k not in stored_meta_keys]
+
+        input_metas.update(self._get_chunks_meta(session_id, metas_to_fetch))
+        missing_keys = [k for k, m in input_metas.items() if m is None]
+        if missing_keys:
+            print(op_io_meta)
+            raise DependencyMissing(f'Dependencies {missing_keys!r} missing for operand {op_key}')
 
         if target_worker is None:
             input_sizes = dict((k, v.chunk_size) for k, v in input_metas.items())

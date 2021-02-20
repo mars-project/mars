@@ -1,0 +1,464 @@
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import copy
+import itertools
+import random
+
+import numpy as np
+import pandas as pd
+
+from ... import opcodes
+from ...core import Base, Entity, OutputType, get_output_types
+from ...operands import OperandStage
+from ...serialize import BoolField, DictField, Float32Field, KeyField, \
+    Int32Field, Int64Field, NDArrayField
+from ...tensor.operands import TensorShuffleProxy
+from ...tensor.random import RandomStateField
+from ...tensor.utils import gen_random_seeds
+from ...tiles import TilesError
+from ...utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes
+from ..initializer import Series as asseries
+from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameMapReduceOperand
+from ..utils import parse_index
+
+
+_ILOC_COL_NAME = '_gsamp_iloc_col_%d' % random.randint(10000, 99999)
+_WEIGHT_COL_NAME = '_gsamp_weight_col_%d' % random.randint(10000, 99999)
+
+
+class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
+    _op_code_ = opcodes.GROUPBY_SAMPLE_ILOC
+    _op_module_ = 'dataframe.groupby'
+
+    _groupby_params = DictField('groupby_params')
+    _size = Int64Field('size')
+    _frac = Float32Field('frac')
+    _replace = BoolField('replace')
+    _weights = KeyField('weights')
+    _seed = Int32Field('seed')
+    _random_state = RandomStateField('random_state')
+
+    # for chunks
+    # num of instances for chunks
+    _left_iloc_bound = Int64Field('left_iloc_bound')
+
+    def __init__(self, groupby_params=None, size=None, frac=None, replace=None,
+                 weights=None, random_state=None, seed=None, left_iloc_bound=None,
+                 stage=None, **kw):
+        super().__init__(_groupby_params=groupby_params, _size=size, _frac=frac,
+                         _seed=seed, _replace=replace, _weights=weights, _stage=stage,
+                         _random_state=random_state, _left_iloc_bound=left_iloc_bound, **kw)
+
+    @property
+    def groupby_params(self):
+        return self._groupby_params
+
+    @property
+    def size(self):
+        return self._size
+
+    @property
+    def frac(self):
+        return self._frac
+
+    @property
+    def replace(self):
+        return self._replace
+
+    @property
+    def weights(self):
+        return self._weights
+
+    @property
+    def seed(self):
+        return self._seed
+
+    @property
+    def random_state(self):
+        if self._random_state is None:
+            self._random_state = np.random.RandomState(self.seed)
+        return self._random_state
+
+    @property
+    def left_iloc_bound(self):
+        return self._left_iloc_bound
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        input_iter = iter(inputs)
+        next(input_iter)
+        if isinstance(self.weights, (Base, Entity)):  # pragma: no cover
+            self._weights = next(input_iter)
+
+    def __call__(self, df):
+        self._output_types = [OutputType.tensor]
+        inp_tileables = [df]
+        if self.weights is not None:  # pragma: no cover
+            inp_tileables.append(self.weights)
+        return self.new_tileable(inp_tileables, dtype=np.dtype(np.int_),
+                                 shape=(np.nan,))
+
+    @classmethod
+    def tile(cls, op: 'GroupBySampleILoc'):
+        in_df = op.inputs[0]
+        out_tensor = op.outputs[0]
+
+        check_chunks_unknown_shape([in_df], TilesError)
+
+        if op.weights is None:
+            weights_iter = itertools.repeat(None)
+        else:  # pragma: no cover
+            weights_iter = iter(op.weights.chunks)
+
+        if isinstance(op.groupby_params['by'], list):
+            map_cols = list(op.groupby_params['by'])
+        else:
+            map_cols = []
+
+        dtypes = in_df.dtypes.copy()
+        dtypes.at[_ILOC_COL_NAME] = np.dtype(np.int_)
+        map_cols.append(_ILOC_COL_NAME)
+        if op.weights is not None:  # pragma: no cover
+            dtypes.at[_WEIGHT_COL_NAME] = op.weights.dtype
+            map_cols.append(_WEIGHT_COL_NAME)
+
+        new_dtypes = dtypes[map_cols]
+        new_columns_value = parse_index(new_dtypes.index, store_data=True)
+
+        map_chunks = []
+        left_ilocs = np.array((0,) + in_df.nsplits[0]).cumsum()
+        for inp_chunk, weight_chunk in zip(in_df.chunks, weights_iter):
+            new_op = op.copy().reset_key()
+            new_op._left_iloc_bound = int(left_ilocs[inp_chunk.index[0]])
+            new_op._stage = OperandStage.map
+            new_op._output_types = [OutputType.dataframe]
+
+            inp_chunks = [inp_chunk]
+            if weight_chunk is not None:  # pragma: no cover
+                inp_chunks.append(weight_chunk)
+            params = inp_chunk.params
+            params.update(dict(
+                dtypes=new_dtypes, columns_value=new_columns_value,
+                shape=(inp_chunk.shape[0], len(new_dtypes)),
+                index=inp_chunk.index,
+            ))
+            map_chunks.append(new_op.new_chunk(inp_chunks, **params))
+
+        new_op = op.copy().reset_key()
+        new_op._output_types = [OutputType.dataframe]
+        params = in_df.params
+        params.update(dict(
+            chunks=map_chunks,
+            nsplits=(in_df.nsplits[0], (len(new_dtypes),)),
+            dtypes=new_dtypes, columns_value=new_columns_value,
+            shape=(in_df.shape[0], len(new_dtypes)),
+        ))
+        map_df = new_op.new_tileable(op.inputs, **params)
+
+        groupby_params = op.groupby_params.copy()
+        groupby_params.pop('selection', None)
+        grouped = map_df.groupby(**groupby_params)._inplace_tile()
+
+        result_chunks = []
+        seeds = gen_random_seeds(len(grouped.chunks), op.random_state)
+        for group_chunk, seed in zip(grouped.chunks, seeds):
+            new_op = op.copy().reset_key()
+            new_op._stage = OperandStage.reduce
+            new_op._weights = None
+            new_op._random_state = None
+            new_op._seed = seed
+
+            result_chunks.append(new_op.new_chunk(
+                [group_chunk], shape=(np.nan,), index=(group_chunk.index[0],),
+                dtype=out_tensor.dtype
+            ))
+
+        new_op = op.copy().reset_key()
+        params = out_tensor.params
+        params.update(dict(
+            chunks=result_chunks, nsplits=((np.nan,) * len(result_chunks),)
+        ))
+        return new_op.new_tileables(op.inputs, **params)
+
+    @classmethod
+    def execute(cls, ctx, op: 'GroupBySampleILoc'):
+        in_data = ctx[op.inputs[0].key]
+        if op.stage == OperandStage.map:
+            if op.weights is not None:  # pragma: no cover
+                ret = pd.DataFrame({
+                    _ILOC_COL_NAME: np.arange(op.left_iloc_bound, op.left_iloc_bound + len(in_data)),
+                    _WEIGHT_COL_NAME: ctx[op.weights.key],
+                }, index=in_data.index)
+            else:
+                ret = pd.DataFrame({
+                    _ILOC_COL_NAME: np.arange(op.left_iloc_bound, op.left_iloc_bound + len(in_data)),
+                }, index=in_data.index)
+
+            if isinstance(op.groupby_params['by'], list):
+                ret = pd.concat([in_data[op.groupby_params['by']], ret], axis=1)
+
+            ctx[op.outputs[0].key] = ret
+        else:
+            if _WEIGHT_COL_NAME in in_data.obj.columns:  # pragma: no cover
+                weights = in_data.obj[_WEIGHT_COL_NAME]
+            else:
+                weights = None
+
+            if len(in_data.obj) == 0:
+                ctx[op.outputs[0].key] = np.array([], dtype=np.int_)
+            else:
+                sampled = in_data.sample(n=op.size, frac=op.frac, replace=op.replace, weights=weights,
+                                         random_state=op.random_state)
+                ctx[op.outputs[0].key] = sampled[_ILOC_COL_NAME].sort_values().to_numpy()
+
+
+class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
+    _op_code_ = opcodes.RAND_SAMPLE
+    _op_module_ = 'dataframe.groupby'
+
+    _groupby_params = DictField('groupby_params')
+    _size = Int64Field('size')
+    _frac = Float32Field('frac')
+    _replace = BoolField('replace')
+    _weights = KeyField('weights')
+    _seed = Int32Field('seed')
+    _random_state = RandomStateField('random_state')
+
+    # for chunks
+    # num of instances for chunks
+    _input_nsplits = NDArrayField('input_nsplits')
+
+    def __init__(self, groupby_params=None, size=None, frac=None, replace=None,
+                 weights=None, random_state=None, seed=None, stage=None,
+                 input_nsplits=None, shuffle_key=None, **kw):
+        super().__init__(_groupby_params=groupby_params, _size=size, _frac=frac,
+                         _seed=seed, _replace=replace, _weights=weights,
+                         _random_state=random_state, _stage=stage,
+                         _input_nsplits=input_nsplits, _shuffle_key=shuffle_key, **kw)
+
+    @property
+    def groupby_params(self):
+        return self._groupby_params
+
+    @property
+    def size(self):
+        return self._size
+
+    @property
+    def frac(self):
+        return self._frac
+
+    @property
+    def replace(self):
+        return self._replace
+
+    @property
+    def weights(self):
+        return self._weights
+
+    @property
+    def seed(self):
+        return self._seed
+
+    @property
+    def random_state(self):
+        return self._random_state
+
+    @property
+    def input_nsplits(self):
+        return self._input_nsplits
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        input_iter = iter(inputs)
+        next(input_iter)
+        if isinstance(self.weights, (Base, Entity)):
+            self._weights = next(input_iter)
+
+    def __call__(self, groupby):
+        df = groupby
+        while df.op.output_types[0] not in (OutputType.dataframe, OutputType.series):
+            df = df.inputs[0]
+
+        selection = groupby.op.groupby_params.pop('selection', None)
+        if df.ndim > 1 and selection:
+            if isinstance(selection, tuple) and selection not in df.dtypes:
+                selection = list(selection)
+            result_df = df[selection]
+        else:
+            result_df = df
+
+        params = result_df.params
+        params['shape'] = (np.nan,) if result_df.ndim == 1 else (np.nan, result_df.shape[-1])
+        params['index_value'] = parse_index(result_df.index_value.to_pandas()[:0])
+
+        input_dfs = [df]
+        if isinstance(self.weights, (Base, Entity)):
+            input_dfs.append(self.weights)
+
+        self._output_types = get_output_types(result_df)
+        return self.new_tileable(input_dfs, **params)
+
+    @classmethod
+    def _tile_one_chunk(cls, op: "GroupBySample", in_df, weights):
+        out = op.outputs[0]
+
+        input_dfs = [in_df]
+        if isinstance(weights, (Base, Entity)):
+            input_dfs.append(weights)
+
+        params = out.params
+        chunk_op = op.copy().reset_key()
+        if isinstance(weights, (Base, Entity)):
+            chunk_op._weights = weights
+        params['index'] = (0,) * out.ndim
+        chunk = chunk_op.new_chunk([c.chunks[0] for c in input_dfs], **params)
+
+        df_op = op.copy().reset_key()
+        return df_op.new_tileables(
+            input_dfs, chunks=[chunk], nsplits=((s,) for s in out.shape), **params)
+
+    @classmethod
+    def _tile_distributed(cls, op: "GroupBySample", in_df, weights):
+        out_df = op.outputs[0]
+        check_chunks_unknown_shape([in_df], TilesError)
+
+        sample_iloc_op = GroupBySampleILoc(
+            groupby_params=op.groupby_params, size=op.size, frac=op.frac, replace=op.replace,
+            weights=weights, random_state=op.random_state, seed=None, left_iloc_bound=None
+        )
+        sampled_iloc = sample_iloc_op(in_df)._inplace_tile()
+
+        map_chunks = []
+        for c in sampled_iloc.chunks:
+            new_op = op.copy().reset_key()
+            new_op._stage = OperandStage.map
+            new_op._weights = None
+            new_op._output_types = [OutputType.tensor]
+            new_op._input_nsplits = np.array(in_df.nsplits[0])
+
+            map_chunks.append(new_op.new_chunk(
+                [c], dtype=sampled_iloc.dtype, shape=(np.nan,), index=c.index))
+
+        proxy_chunk = TensorShuffleProxy(dtype=sampled_iloc.dtype, assign_reducers=False).new_chunk(
+            map_chunks, shape=())
+
+        reduce_chunks = []
+        for src_chunk in in_df.chunks:
+            new_op = op.copy().reset_key()
+            new_op._stage = OperandStage.reduce
+            new_op._weights = new_op._random_state = None
+            new_op._shuffle_key = str(src_chunk.index[0])
+            new_op._input_nsplits = np.array(in_df.nsplits[0])
+
+            params = src_chunk.params
+            if out_df.ndim == 2:
+                params.update(dict(
+                    index=src_chunk.index, dtypes=out_df.dtypes,
+                    shape=(np.nan, out_df.shape[1]),
+                    columns_value=out_df.columns_value,
+                ))
+            else:
+                params.update(dict(
+                    index=(src_chunk.index[0],), dtype=out_df.dtype,
+                    shape=(np.nan,), name=out_df.name,
+                ))
+            reduce_chunks.append(new_op.new_chunk([src_chunk, proxy_chunk], **params))
+
+        new_op = op.copy().reset_key()
+        if out_df.ndim == 2:
+            new_nsplits = ((np.nan,) * in_df.chunk_shape[0], (out_df.shape[1],))
+        else:
+            new_nsplits = ((np.nan,) * in_df.chunk_shape[0],)
+        return new_op.new_tileables(out_df.inputs, chunks=reduce_chunks, nsplits=new_nsplits,
+                                    **out_df.params)
+
+    @classmethod
+    def tile(cls, op: 'GroupBySample'):
+        in_df = op.inputs[0]
+        if in_df.ndim == 2:
+            in_df = in_df.rechunk({1: (in_df.shape[1],)})._inplace_tile()
+
+        weights = op.weights
+        if isinstance(weights, (Base, Entity)):
+            weights = weights.rechunk({0: in_df.nsplits[0]})._inplace_tile()
+
+        if len(in_df.chunks) == 1:
+            return cls._tile_one_chunk(op, in_df, weights)
+
+        if weights is not None:
+            raise ValueError('Cannot sample with weights due to bugs in pandas. '
+                             'See pandas-dev/pandas#39927 for more information.')
+        return cls._tile_distributed(op, in_df, weights)
+
+    @classmethod
+    def execute(cls, ctx, op: 'GroupBySample'):
+        in_data = ctx[op.inputs[0].key]
+        out_df = op.outputs[0]
+
+        if op.stage == OperandStage.map:
+            in_data = np.sort(in_data)
+            input_nsplits = np.copy(op.input_nsplits)
+            pos_array = np.cumsum(input_nsplits)
+            poses = [0] + np.searchsorted(in_data, pos_array).tolist()
+            for idx, (left, right) in enumerate(zip(poses, poses[1:])):
+                ctx[(op.outputs[0].key, str(idx))] = in_data[left:right]
+        elif op.stage == OperandStage.reduce:
+            selection = op.groupby_params.get('selection')
+            if selection:
+                in_data = in_data[selection]
+
+            in_indexes = []
+            input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[1])
+            for input_key in input_keys:
+                in_indexes.append(ctx[(input_key, op.shuffle_key)])
+            idx = np.sort(np.concatenate(in_indexes))
+            if op.inputs[0].index[0] > 0:
+                acc_nsplits = np.cumsum(op.input_nsplits)
+                idx -= acc_nsplits[op.inputs[0].index[0] - 1]
+            ctx[op.outputs[0].key] = in_data.iloc[idx]
+        else:
+            weights = op.weights
+            if isinstance(weights, (Base, Entity)):
+                weights = ctx[weights.key]
+            params = op.groupby_params.copy()
+            selection = params.pop('selection', None)
+
+            grouped = in_data.groupby(**params)
+            if selection is not None:
+                grouped = grouped[selection]
+
+            result = grouped.sample(n=op.size, frac=op.frac, replace=op.replace,
+                                    weights=weights, random_state=op.random_state)
+
+            if selection and out_df.ndim > 1 and len(result.columns) != len(out_df.dtypes):
+                # pandas-dev/pandas#39928
+                result = result[selection]
+            ctx[out_df.key] = result
+
+
+def groupby_sample(groupby, n=None, frac=None, replace=False, weights=None,
+                   random_state=None):
+    groupby_params = groupby.op.groupby_params.copy()
+    groupby_params.pop('as_index', None)
+
+    if weights is not None and not isinstance(weights, (Base, Entity)):
+        weights = asseries(weights)
+
+    rs = copy.deepcopy(
+        random_state.to_numpy() if hasattr(random_state, 'to_numpy') else random_state)
+    op = GroupBySample(size=n, frac=frac, replace=replace, weights=weights,
+                       random_state=rs, groupby_params=groupby_params)
+    return op(groupby)
