@@ -71,6 +71,7 @@ application to columns of a specific data type.
    DataFrameGroupBy.cummin
    DataFrameGroupBy.cumprod
    DataFrameGroupBy.cumsum
+   DataFrameGroupBy.sample
 
 The following methods are available only for ``SeriesGroupBy`` objects.
 

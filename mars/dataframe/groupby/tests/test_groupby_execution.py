@@ -626,6 +626,82 @@ class Test(TestBase):
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0].sort_index(),
                                        series1.groupby(lambda x: x % 2).head(1).sort_index())
 
+    def testGroupbySample(self):
+        rs = np.random.RandomState(0)
+        sample_count = 10
+        src_data_list = []
+        for b in range(5):
+            data_count = int(np.random.randint(20, 100))
+            src_data_list.append(pd.DataFrame({
+                'a': np.random.randint(0, 100, size=data_count),
+                'b': np.array([b] * data_count),
+                'c': np.random.randint(0, 100, size=data_count),
+                'd': np.random.randint(0, 100, size=data_count),
+            }))
+        df1 = pd.concat(src_data_list)
+        shuffle_idx = np.arange(len(df1))
+        np.random.shuffle(shuffle_idx)
+        df1 = df1.iloc[shuffle_idx].reset_index(drop=True)
+
+        # test single chunk
+        mdf = md.DataFrame(df1)
+
+        r1 = mdf.groupby('b').sample(sample_count, random_state=rs)
+        result1 = self.executor.execute_dataframe(r1, concat=True)[0]
+        r2 = mdf.groupby('b').sample(sample_count, random_state=rs)
+        result2 = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_frame_equal(result1, result2)
+        self.assertFalse((result1.groupby('b').count() - sample_count).any()[0])
+
+        r1 = mdf.groupby('b').sample(sample_count, weights=df1['c'] / df1['c'].sum(), random_state=rs)
+        result1 = self.executor.execute_dataframe(r1, concat=True)[0]
+        r2 = mdf.groupby('b').sample(sample_count, weights=df1['c'] / df1['c'].sum(), random_state=rs)
+        result2 = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_frame_equal(result1, result2)
+        self.assertFalse((result1.groupby('b').count() - sample_count).any()[0])
+
+        r1 = mdf.groupby('b')[['b', 'c']].sample(sample_count, random_state=rs)
+        result1 = self.executor.execute_dataframe(r1, concat=True)[0]
+        r2 = mdf.groupby('b')[['b', 'c']].sample(sample_count, random_state=rs)
+        result2 = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_frame_equal(result1, result2)
+        self.assertEqual(len(result1.columns), 2)
+        self.assertFalse((result1.groupby('b').count() - sample_count).any()[0])
+
+        r1 = mdf.groupby('b').c.sample(sample_count, random_state=rs)
+        result1 = self.executor.execute_dataframe(r1, concat=True)[0]
+        r2 = mdf.groupby('b').c.sample(sample_count, random_state=rs)
+        result2 = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_series_equal(result1, result2)
+
+        # test multiple chunks
+        mdf = md.DataFrame(df1, chunk_size=47)
+
+        r1 = mdf.groupby('b').sample(sample_count, random_state=rs)
+        result1 = self.executor.execute_dataframe(r1, concat=True)[0]
+        r2 = mdf.groupby('b').sample(sample_count, random_state=rs)
+        result2 = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_frame_equal(result1, result2)
+        self.assertFalse((result1.groupby('b').count() - sample_count).any()[0])
+
+        r1 = mdf.groupby('b')[['b', 'c']].sample(sample_count, random_state=rs)
+        result1 = self.executor.execute_dataframe(r1, concat=True)[0]
+        r2 = mdf.groupby('b')[['b', 'c']].sample(sample_count, random_state=rs)
+        result2 = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_frame_equal(result1, result2)
+        self.assertEqual(len(result1.columns), 2)
+        self.assertFalse((result1.groupby('b').count() - sample_count).any()[0])
+
+        r1 = mdf.groupby('b').c.sample(sample_count, random_state=rs)
+        result1 = self.executor.execute_dataframe(r1, concat=True)[0]
+        r2 = mdf.groupby('b').c.sample(sample_count, random_state=rs)
+        result2 = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_series_equal(result1, result2)
+
+        with self.assertRaises(ValueError):
+            r = mdf.groupby('b').sample(1, weights=mdf['c'] / mdf['c'].sum())
+            self.executor.execute_dataframe(r, concat=True)
+
     @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testGroupbyAggWithArrowDtype(self):
         df1 = pd.DataFrame({'a': [1, 2, 1],

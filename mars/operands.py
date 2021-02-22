@@ -605,6 +605,15 @@ class MapReduceOperand(Operand):
 class ShuffleProxy(VirtualOperand):
     _op_type_ = OperandDef.SHUFFLE_PROXY
 
+    _assign_reducers = BoolField('assign_reducers')
+
+    def __init__(self, assign_reducers=True, **kw):
+        super().__init__(_assign_reducers=assign_reducers, **kw)
+
+    @property
+    def assign_reducers(self) -> bool:
+        return self._assign_reducers
+
 
 class Fetch(Operand):
     _op_type_ = OperandDef.FETCH
