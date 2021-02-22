@@ -28,7 +28,7 @@ import pandas as pd
 try:
     from cupy.cuda import MemoryPointer
     from cudf.core import Buffer
-except ImportError:
+except ImportError:  # pragma: no cover
     MemoryPointer = None
     Buffer = None
 
@@ -37,17 +37,11 @@ cudf = lazy_import('cudf', globals=globals())
 
 
 class CudaObjectId:
+    __slots__ = 'headers', 'ptrs'
+
     def __init__(self, headers: Dict, ptrs: List[int]):
-        self._headers = headers
-        self._ptrs = ptrs
-
-    @property
-    def headers(self):
-        return self._headers
-
-    @property
-    def ptrs(self):
-        return self._ptrs
+        self.headers = headers
+        self.ptrs = ptrs
 
 
 class CudaFileObject(BufferWrappedFileObject):
@@ -130,7 +124,7 @@ class CudaStorage(StorageBackend):
         return StorageLevel.GPU
 
     @staticmethod
-    def _to_cuda(obj):
+    def _to_cuda(obj):  # pragma: no cover
         if isinstance(obj, np.ndarray):
             return cupy.asarray(obj)
         elif isinstance(obj, pd.DataFrame):
@@ -141,7 +135,6 @@ class CudaStorage(StorageBackend):
 
     @implements(StorageBackend.get)
     async def get(self, object_id: CudaObjectId, **kwargs) -> object:
-        from cupy.cuda.memory import MemoryPointer, UnownedMemory
         from cudf.core.buffer import Buffer
         from rmm import DeviceBuffer
 
@@ -151,22 +144,14 @@ class CudaStorage(StorageBackend):
         if data_type == 'cupy':
             ptr = ptrs[0]
             size = headers['lengths'][0]
-            device = headers.get('device', None)
             cuda_buf = DeviceBuffer(ptr=ptr, size=size)
-            cupy_mem_pointer = MemoryPointer(
-                UnownedMemory(ptr, size, cuda_buf, device_id=device), 0)
-            return cupy.ndarray(
-                shape=headers["shape"],
-                dtype=headers["typestr"],
-                memptr=cupy_mem_pointer,
-                strides=headers["strides"],
-            )
+            buffers = [cuda_buf]
         elif data_type == 'cudf':
             buffers = [Buffer(ptr, length, DeviceBuffer(ptr=ptr, size=length))
                        for ptr, length in zip(ptrs, headers['lengths'])]
-            return deserialize(headers, buffers)
         else:
             raise TypeError(f'Unknown data type {data_type}')
+        return deserialize(headers, buffers)
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:

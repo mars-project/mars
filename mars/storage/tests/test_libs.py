@@ -24,6 +24,7 @@ import scipy.sparse as sps
 
 from mars.lib.filesystem import LocalFileSystem
 from mars.lib.sparse import SparseNDArray, SparseMatrix
+from mars.serialization import serialize, deserialize
 from mars.serialize import dataserializer
 from mars.storage.base import StorageLevel
 from mars.storage.cuda import CudaStorage
@@ -171,6 +172,8 @@ async def test_cuda_backend():
     info1 = await storage.object_info(put_info1.object_id)
     assert info1.size == put_info1.size
 
+    await storage.delete(put_info1.object_id)
+
     data2 = cudf.DataFrame(pd.DataFrame({'col1': np.arange(10),
                                          'col2': [f'str{i}' for i in range(10)],
                                          'col3': np.random.rand(10)},))
@@ -195,5 +198,19 @@ async def test_cuda_backend():
         content = await reader.read()
         b = content.to_host_array().tobytes()
         t2 = dataserializer.loads(b)
-
     np.testing.assert_array_equal(t, t2)
+
+    # write cupy array
+    t = cupy.random.random((10,))
+    headers, buffers = serialize(t)
+    async with await storage.open_writer(size=len(b)) as writer:
+        for buffer in buffers:
+            await writer.write(buffer.data)
+
+    async with await storage.open_reader(writer.object_id) as reader:
+        b2 = await reader.read()
+        t2 = deserialize(headers, [b2])
+
+    cupy.testing.assert_array_equal(t, t2)
+
+    await CudaStorage.teardown(**teardown_params)
