@@ -497,7 +497,8 @@ def sample(df_or_series, n=None, frac=None, replace=False, weights=None, random_
     axis = validate_axis(axis or 0, df_or_series)
     if axis == 1:
         raise NotImplementedError('Currently cannot sample over columns')
+    rs = copy.deepcopy(
+        random_state.to_numpy() if hasattr(random_state, 'to_numpy') else random_state)
     op = DataFrameSample(size=n, frac=frac, replace=replace, weights=weights,
-                         random_state=copy.deepcopy(random_state), axis=axis,
-                         always_multinomial=always_multinomial)
+                         random_state=rs, axis=axis, always_multinomial=always_multinomial)
     return op(df_or_series)
