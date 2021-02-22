@@ -34,6 +34,8 @@ class ShuffleProxyActor(BaseOperandActor):
         self._shuffle_keys_to_op = dict(zip(io_meta['shuffle_keys'], io_meta['successors']))
         self._op_to_shuffle_keys = dict(zip(io_meta['successors'], io_meta['shuffle_keys']))
 
+        self._assign_reducers = io_meta.get('assign_reducers', False)
+
         self._worker_to_mappers = defaultdict(set)
         self._reducer_workers = dict()
 
@@ -54,7 +56,7 @@ class ShuffleProxyActor(BaseOperandActor):
 
         shuffle_keys_to_op = self._shuffle_keys_to_op
 
-        if not self._reducer_workers:
+        if self._assign_reducers and not self._reducer_workers:
             self._reducer_workers = self._graph_refs[0].assign_operand_workers(
                 self._succ_keys, input_chunk_metas=self._reducer_to_mapper)
         reducer_workers = self._reducer_workers
@@ -128,7 +130,10 @@ class ShuffleProxyActor(BaseOperandActor):
         workers_list = []
         for pred_key, meta in self._reducer_to_mapper[op_key].items():
             data_keys.append((self._mapper_op_to_chunk[pred_key], shuffle_key))
-            workers_list.append((self._reducer_workers[op_key],))
+            workers = (worker,)
+            if self._assign_reducers:
+                workers += (self._reducer_workers[op_key],)
+            workers_list.append(workers)
         self._free_data_in_worker(data_keys, workers_list)
 
         if all(k in self._finish_succs for k in self._succ_keys):
@@ -154,7 +159,10 @@ class ShuffleProxyActor(BaseOperandActor):
             shuffle_key = self._op_to_shuffle_keys[op_key]
             for pred_key, meta in self._reducer_to_mapper[op_key].items():
                 data_keys.append((self._mapper_op_to_chunk[pred_key], shuffle_key))
-                workers_list.append(tuple(set(meta.workers + (self._reducer_workers[op_key],))))
+                workers = meta.workers
+                if self._assign_reducers:
+                    workers = tuple(set(meta.workers + (self._reducer_workers[op_key],)))
+                workers_list.append(workers)
         self._free_data_in_worker(data_keys, workers_list)
 
         inp_chunk_keys = [self._mapper_op_to_chunk[k] for k in self._pred_keys
@@ -197,7 +205,7 @@ class ShuffleProxyActor(BaseOperandActor):
                 missing_succs.append(op)
         self._finish_succs.difference_update(missing_succs)
 
-        if missing_succs:
+        if self._assign_reducers and missing_succs:
             self._reducer_workers.update(self._graph_refs[0].assign_operand_workers(
                 missing_succs, input_chunk_metas=self._reducer_to_mapper))
 
