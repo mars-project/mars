@@ -151,7 +151,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/ray
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/ray mars/storage
             coverage report
           fi
           coverage xml
