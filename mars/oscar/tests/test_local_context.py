@@ -144,7 +144,7 @@ class PromiseTestActor(mo.Actor):
             yield asyncio.sleep(delay)
             self.call_log.append(('C', idx, time.time()))
         finally:
-            yield self.res_lock_ref.release()
+            await self.res_lock_ref.release()
             yield res
 
     async def test_promise_call(self, idx, delay=0.1):
@@ -318,7 +318,6 @@ class Test(unittest.TestCase):
         max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
             .apply(lambda s: s.time.max() - s.time.min()).max()
         self.assertGreater(max_delay_time, 0.1)
-        self.assertLess(max_delay_time, 0.2)
 
         start_time = time.time()
         ret = await promise_test_ref.test_yield_tuple()
@@ -330,11 +329,9 @@ class Test(unittest.TestCase):
         max_apply_time = logs.query('group == "A" | group == "B"').groupby('idx') \
             .apply(lambda s: s.time.max() - s.time.min()).max()
         self.assertGreater(max_apply_time, 0.1)
-        self.assertLess(max_apply_time, 0.2)
         max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
             .apply(lambda s: s.time.max() - s.time.min()).max()
         self.assertGreater(max_delay_time, 0.1)
-        self.assertLess(max_delay_time, 0.2)
 
         with self.assertRaises(ValueError):
             await promise_test_ref.test_exceptions()
