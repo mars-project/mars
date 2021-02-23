@@ -63,19 +63,19 @@ class DummyActor(mo.Actor):
         return await mo.has_actor(value)
 
     async def send(self, uid, method, *args):
-        actor_ref = mo.actor_ref(uid)
+        actor_ref = await mo.actor_ref(uid)
         return await getattr(actor_ref, method)(*args)
 
     async def tell(self, uid, method, *args):
-        actor_ref = mo.actor_ref(uid)
+        actor_ref = await mo.actor_ref(uid)
         return getattr(actor_ref, method).tell(*args)
 
     async def tell_delay(self, uid, method, *args, delay=None):
-        actor_ref = mo.actor_ref(uid)
+        actor_ref = await mo.actor_ref(uid)
         getattr(actor_ref, method).tell_delay(*args, delay=delay)
 
     async def send_unpickled(self, value):
-        actor_ref = mo.actor_ref(value)
+        actor_ref = await mo.actor_ref(value)
         return await actor_ref.send(lambda x: x)
 
     async def create_unpickled(self):
@@ -123,8 +123,8 @@ class Test(unittest.TestCase):
         self.assertEqual(actor_ref.address, ref2.address)
         self.assertEqual(actor_ref.uid, ref2.uid)
 
-        self.assertEqual(await mo.actor_ref(
-                uid=actor_ref.uid, address=actor_ref.address).add(2), 104)
+        self.assertEqual(await (await mo.actor_ref(
+                uid=actor_ref.uid, address=actor_ref.address)).add(2), 104)
 
     async def testRayPostCreatePreDestroy(self):
         actor_ref = await mo.create_actor(EventActor, address=RAY_TEST_ADDRESS)
@@ -133,8 +133,7 @@ class Test(unittest.TestCase):
     async def testRayCreateActor(self):
         actor_ref = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         # create actor inside on_receive
-        r = await actor_ref.create(DummyActor, 5, address=RAY_TEST_ADDRESS)
-        ref = mo.actor_ref(r)
+        ref = await actor_ref.create(DummyActor, 5, address=RAY_TEST_ADDRESS)
         self.assertEqual(await ref.add(10), 15)
         # create actor inside on_receive and send message
         r = await actor_ref.create_send(DummyActor, 5, method='add', method_args=(1,), address=RAY_TEST_ADDRESS)
@@ -155,7 +154,7 @@ class Test(unittest.TestCase):
 
     async def testRaySend(self):
         ref1 = await mo.create_actor(DummyActor, 1)
-        ref2 = mo.actor_ref(await ref1.create(DummyActor, 2))
+        ref2 = await ref1.create(DummyActor, 2)
         self.assertEqual(await ref1.send(ref2, 'add', 3), 5)
 
     async def testRaySendError(self):
@@ -166,11 +165,11 @@ class Test(unittest.TestCase):
         with self.assertRaises(TypeError):
             await ref1.send(ref2, 'add', 1.0)
         with self.assertRaises(mo.ActorNotExist):
-            await mo.actor_ref('fake_uid').add(1)
+            await (await mo.actor_ref('fake_uid')).add(1)
 
     async def testRayTell(self):
         ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-        ref2 = mo.actor_ref(await ref1.create(DummyActor, 2, address=RAY_TEST_ADDRESS))
+        ref2 = await ref1.create(DummyActor, 2, address=RAY_TEST_ADDRESS)
         self.assertIsNone(await ref1.tell(ref2, 'add', 3))
         self.assertEqual(await ref2.get_value(), 5)
 
@@ -181,7 +180,7 @@ class Test(unittest.TestCase):
 
         # error needed when illegal uids are passed
         with self.assertRaises(TypeError):
-            await ref1.tell(mo.actor_ref(set()), 'add', 3)
+            await ref1.tell(await mo.actor_ref(set()), 'add', 3)
 
     async def testRayDestroyHasActor(self):
         ref1 = await mo.create_actor(DummyActor, 1)
@@ -207,7 +206,7 @@ class Test(unittest.TestCase):
         self.assertFalse(await ref1.has(ref2))
 
         with self.assertRaises(mo.ActorNotExist):
-            await mo.destroy_actor(mo.actor_ref('fake_uid'))
+            await mo.destroy_actor(await mo.actor_ref('fake_uid'))
 
         ref1 = await mo.create_actor(DummyActor, 1)
         with self.assertRaises(mo.ActorNotExist):

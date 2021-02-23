@@ -59,3 +59,7 @@ def get_server_type(address: str) -> Type[Server]:
         scheme = urlparse(address).scheme
     scheme = _check_scheme(scheme, _scheme_to_server_types)
     return _scheme_to_server_types[scheme]
+
+
+def gen_internal_address(process_index: int) -> str:
+    return f'unixsocket:///{process_index}'

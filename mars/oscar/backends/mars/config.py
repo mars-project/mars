@@ -35,14 +35,16 @@ class ActorPoolConfig:
                       process_index: int,
                       label: str,
                       internal_address: str,
-                      external_address: Union[str, List[str]]):
+                      external_address: Union[str, List[str]],
+                      env: Dict = None):
         pools: Dict = self._conf['pools']
         if not isinstance(external_address, list):
             external_address = [external_address]
         pools[process_index] = {
             'label': label,
             'internal_address': internal_address,
-            'external_address': external_address
+            'external_address': external_address,
+            'env': env
         }
         for addr in external_address:
             mapping: Dict = self._conf['mapping']

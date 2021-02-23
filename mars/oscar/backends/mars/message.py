@@ -156,7 +156,7 @@ class CreateActorMessage(_MessageBase):
                  actor_id: bytes,
                  args: Tuple,
                  kwargs: Dict,
-                 allocate_strategy: "AllocateStrategy",
+                 allocate_strategy,
                  scoped_message_ids: List[bytes] = None,
                  protocol: int = None):
         super().__init__(message_id,

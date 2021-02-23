@@ -17,6 +17,7 @@ cimport cython
 import sys
 
 from .utils cimport is_async_generator
+from .utils import create_actor_ref
 
 
 cdef class ActorRef:
@@ -132,8 +133,7 @@ cdef class _Actor:
         self._address = addr
 
     cpdef ActorRef ref(self):
-        from .context import get_context
-        return get_context().actor_ref(self._address, self._uid)
+        return create_actor_ref(self._address, self._uid)
 
     async def _handle_actor_result(self, result):
         cdef int result_pos

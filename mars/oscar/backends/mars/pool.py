@@ -14,17 +14,19 @@
 
 import asyncio
 import concurrent.futures as futures
+import os
 import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Union, Type
 
-from ....utils import implements
+from ....utils import implements, get_next_port
 from ...api import Actor
 from ...core import ActorRef
 from ...errors import ActorAlreadyExist, ActorNotExist
 from ...utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
-from .communication import Channel, Client, Server, get_server_type
+from .communication import Channel, Client, Server, \
+    get_server_type, gen_internal_address
 from .config import ActorPoolConfig
 from .message import _MessageBase, new_message_id, DEFAULT_PROTOCOL, MessageType, \
     ResultMessage, ErrorMessage, CreateActorMessage, HasActorMessage, \
@@ -72,7 +74,7 @@ def _register_message_handler(pool_type: Type["AbstractActorPool"]):
 
 
 class AbstractActorPool(ABC):
-    __slots__ = 'process_index', 'label', 'external_address', 'internal_address', \
+    __slots__ = 'process_index', 'label', 'external_address', 'internal_address', 'env', \
                 '_servers', '_router', '_config', '_stopped', '_actors', \
                 '_message_futures', '_clients'
 
@@ -81,6 +83,7 @@ class AbstractActorPool(ABC):
                  label: str,
                  external_address: str,
                  internal_address: str,
+                 env: Dict,
                  router: Router,
                  config: ActorPoolConfig,
                  servers: List[Server]):
@@ -88,6 +91,7 @@ class AbstractActorPool(ABC):
         self.label = label
         self.external_address = external_address
         self.internal_address = internal_address
+        self.env = env
         self._router = router
         self._config = config
         self._servers = servers
@@ -230,8 +234,8 @@ class AbstractActorPool(ABC):
                 actor_pool_config: ActorPoolConfig = message.content
                 self._config = actor_pool_config
             else:  # pragma: no cover
-                 raise TypeError(f'Unable to handle control message '
-                                 f'with type {message.control_message_type}')
+                raise TypeError(f'Unable to handle control message '
+                                f'with type {message.control_message_type}')
             processor.result = ResultMessage(
                 message.message_id, True,
                 protocol=message.protocol)
@@ -292,6 +296,7 @@ class AbstractActorPool(ABC):
         kw['internal_address'] = curr_pool_config['internal_address']
         kw['router'] = Router(external_addresses,
                               actor_pool_config.external_to_internal_address_map)
+        kw['env'] = curr_pool_config['env']
 
         if config:  # pragma: no cover
             raise TypeError(f'Creating pool got unexpected '
@@ -501,6 +506,7 @@ class SubActorPool(ActorPoolBase):
                  label: str,
                  external_address: str,
                  internal_address: str,
+                 env: Dict,
                  router: Router,
                  config: ActorPoolConfig,
                  servers: List[Server],
@@ -508,7 +514,7 @@ class SubActorPool(ActorPoolBase):
         super().__init__(process_index, label,
                          external_address,
                          internal_address,
-                         router, config, servers)
+                         env, router, config, servers)
         self._main_address = main_address
 
     async def notify_main_pool_to_destroy(self, message: DestroyActorMessage):
@@ -535,6 +541,9 @@ async def _create_sub_pool(
         actor_config: ActorPoolConfig,
         process_index: int,
         started: multiprocessing.Event):
+    env = actor_config.get_pool_config(process_index)['env']
+    if env:
+        os.environ.update(env)
     pool = await SubActorPool.create({
         'actor_pool_config': actor_config,
         'process_index': process_index
@@ -565,6 +574,7 @@ def _start_sub_pool_in_process(
         args=(actor_config, process_index, started),
         name=f'MarsActorPool{process_index}'
     )
+    process.daemon = True
     process.start()
     # wait for sub actor pool to finish starting
     started.wait()
@@ -580,11 +590,12 @@ class MainActorPool(ActorPoolBase):
                  label: str,
                  external_address: str,
                  internal_address: str,
+                 env: Dict,
                  router: Router,
                  config: ActorPoolConfig,
                  servers: List[Server]):
         super().__init__(process_index, label, external_address,
-                         internal_address, router, config, servers)
+                         internal_address, env, router, config, servers)
         self._allocated_actors: allocated_type = \
             {addr: dict() for addr in self._config.get_external_addresses()}
         self._sub_processes: Dict[str, multiprocessing.Process] = dict()
@@ -656,6 +667,7 @@ class MainActorPool(ActorPoolBase):
         real_actor_ref = result.result
         if real_actor_ref.address == self.external_address:
             del self._actors[real_actor_ref.uid]
+            del self._allocated_actors[self.external_address][real_actor_ref]
             return ResultMessage(message.message_id, real_actor_ref.uid,
                                  protocol=message.protocol)
         # remove allocated actor ref
@@ -727,7 +739,7 @@ class MainActorPool(ActorPoolBase):
 
     @classmethod
     @implements(AbstractActorPool.create)
-    async def create(cls, config: Dict) -> "AbstractActorPool":
+    async def create(cls, config: Dict) -> "MainActorPool":
         config = config.copy()
         start_method = config.pop('start_method', None)
         if 'process_index' not in config:
@@ -794,3 +806,62 @@ class MainActorPool(ActorPoolBase):
     async def stop(self):
         await self._stop_sub_pools()
         await super().stop()
+
+
+async def create_actor_pool(address: str,
+                            n_process=None,
+                            labels: List[str] = None,
+                            ports: List[int] = None,
+                            envs: List[Dict] = None,
+                            subprocess_start_method: str = None) -> MainActorPool:
+    if n_process is None:
+        n_process = multiprocessing.cpu_count()
+    if labels and len(labels) != n_process + 1:
+        raise ValueError(f'`labels` should be of size {n_process + 1}, '
+                         f'got {len(labels)}')
+    if envs and len(envs) != n_process:
+        raise ValueError(f'`envs` should be of size {n_process}, '
+                         f'got {len(envs)}')
+    if ':' in address:
+        host, port = address.split(':', 1)
+        port = int(port)
+        if ports:
+            if len(ports) != n_process:
+                raise ValueError(f'`ports` specified, but its count '
+                                 f'is not equal to `n_process`, '
+                                 f'number of ports: {len(ports)}, '
+                                 f'n_process: {n_process}')
+            sub_ports = ports
+        else:
+            sub_ports = [get_next_port() for _ in range(n_process)]
+    else:
+        host = address
+        if ports and len(ports) != n_process + 1:
+            # ports specified, the first of which should be main port
+            raise ValueError(f'`ports` specified, but its count '
+                             f'is not equal to `n_process` + 1, '
+                             f'number of ports: {len(ports)}, '
+                             f'n_process + 1: {n_process + 1}')
+        ports = [get_next_port() for _ in range(n_process + 1)]
+        port = ports[0]
+        sub_ports = ports[1:]
+
+    actor_pool_config = ActorPoolConfig()
+    # add main config
+    actor_pool_config.add_pool_conf(
+        0, labels[0] if labels else None,
+        gen_internal_address(0), f'{host}:{port}')
+    # add sub configs
+    for i in range(n_process):
+        actor_pool_config.add_pool_conf(
+            i + 1, labels[i + 1] if labels else None,
+            gen_internal_address(i + 1), f'{host}:{sub_ports[i]}',
+            env=envs[i] if envs else None
+        )
+
+    pool = await MainActorPool.create({
+        'actor_pool_config': actor_pool_config,
+        'start_method': subprocess_start_method
+    })
+    await pool.start()
+    return pool

@@ -14,7 +14,7 @@
 
 from random import choice
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, List, Optional
+from typing import Dict, Tuple, Optional
 
 from ....utils import implements
 from ...core import ActorRef

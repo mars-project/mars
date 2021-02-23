@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 from unittest.mock import patch
 
 import pytest
 
 from mars.utils import get_next_port
 from mars.oscar import Actor
+from mars.oscar.context import get_context
+from mars.oscar.backends.mars import create_actor_pool
 from mars.oscar.backends.mars.allocate_strategy import \
-    AddressSpecified, IdleLabel, MainPool
+    AddressSpecified, IdleLabel, MainPool, RandomSubPool
 from mars.oscar.backends.mars.config import ActorPoolConfig
 from mars.oscar.backends.mars.message import new_message_id, \
     CreateActorMessage, DestroyActorMessage, HasActorMessage, \
@@ -210,3 +211,33 @@ async def test_main_actor_pool():
             assert result.result == actor_ref2.uid
 
     assert pool.stopped
+
+
+@pytest.mark.asyncio
+async def test_create_actor_pool():
+    pool = await create_actor_pool('127.0.0.1', n_process=2)
+
+    async with pool:
+        ctx = get_context()
+
+        # actor on main pool
+        actor_ref = await ctx.create_actor(TestActor, uid='test-1',
+                                           address=pool.external_address)
+        assert await actor_ref.add(3) == 3
+        assert await actor_ref.add(1) == 4
+        assert (await ctx.has_actor(actor_ref)) is True
+        assert (await ctx.actor_ref(actor_ref)) == actor_ref
+        await ctx.destroy_actor(actor_ref)
+        assert (await ctx.has_actor(actor_ref)) is False
+
+        # actor on main pool
+        actor_ref2 = await ctx.create_actor(TestActor, uid='test-2',
+                                           address=pool.external_address,
+                                           allocate_strategy=RandomSubPool())
+        assert actor_ref2.address != actor_ref.address
+        assert await actor_ref2.add(3) == 3
+        assert await actor_ref2.add(1) == 4
+        assert (await ctx.has_actor(actor_ref2)) is True
+        assert (await ctx.actor_ref(actor_ref2)) == actor_ref2
+        await ctx.destroy_actor(actor_ref2)
+        assert (await ctx.has_actor(actor_ref2)) is False

@@ -45,6 +45,11 @@ class Router:
         self._mapping = mapping
         self._cache: Dict[Tuple[str, Any], Client] = dict()
 
+    @property
+    def external_address(self):
+        if self._curr_external_addresses:
+            return self._curr_external_addresses[0]
+
     def get_internal_address(self, external_address: str) -> str:
         if external_address in self._curr_external_addresses:
             # local address, use dummy address
@@ -65,8 +70,10 @@ class Router:
             # no inner address, just use external address
             address = external_address
         client_type: Type[Client] = get_client_type(address)
+        local_address = self._curr_external_addresses[0] \
+            if self._curr_external_addresses else None
         client = await client_type.connect(
-            address, local_address=self._curr_external_addresses[0], **kw)
+            address, local_address=local_address, **kw)
         if cached:
             self._cache[external_address, from_who] = client
         return client
