@@ -12,20 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import aio to ensure patch enabled for Python 3.6
-from ..lib import aio
-del aio
-
-from .api import actor_ref, create_actor, has_actor, destroy_actor, Actor
-from .core import ActorRef
-from .context import get_context
-from .errors import ActorNotExist, ActorAlreadyExist
-from .utils import create_actor_ref
-
-# make sure aio methods are patched
-from ..lib import aio
-del aio
-
-# make sure methods are registered
-from .backends import mars, ray
-del mars, ray
+from .base import Client, Server, Channel
+from .core import get_client_type
+from .dummy import DummyClient, DummyServer, DummyChannel
+from .socket import SocketClient, SocketServer, UnixSocketClient, \
+    UnixSocketServer, SocketChannel
