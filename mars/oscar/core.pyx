@@ -62,6 +62,14 @@ cdef class ActorRef:
             method = self._methods[item] = ActorRefMethod(self, item)
             return method
 
+    def __hash__(self):
+        return hash((type(self), self.address, self.uid))
+
+    def __eq__(self, other):
+        return isinstance(other, ActorRef) and \
+               other.address == self.address and \
+               other.uid == self.uid
+
 
 cdef class ActorRefMethod:
     """

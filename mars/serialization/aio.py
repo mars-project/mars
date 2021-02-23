@@ -65,6 +65,8 @@ class AioDeserializer:
 
     async def _get_obj(self):
         header_bytes = bytes(await self._file.read(11))
+        if len(header_bytes) == 0:
+            raise EOFError('Received empty bytes')
         version = struct.unpack('B', header_bytes[:1])[0]
         # now we only have default version
         assert version == DEFAULT_SERIALIZATION_VERSION

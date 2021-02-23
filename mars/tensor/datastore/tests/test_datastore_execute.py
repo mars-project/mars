@@ -222,7 +222,7 @@ class Test(TestBase):
             result = zarr.open_array(path)
             np.testing.assert_array_equal(result, raw + 1)
 
-    @unittest.skip('the test is broken, need to fix.')
+    @unittest.skipIf(vineyard is None, 'vineyard not installed')
     def testToVineyard(self):
         def testWithGivenSession(session):
             ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')

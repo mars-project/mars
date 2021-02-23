@@ -14,7 +14,7 @@
 
 from ...backend import BaseActorBackend, register_backend
 from .driver import MarsActorDriver
-from .pool import MarsActorContext
+from .context import MarsActorContext
 
 
 __all__ = ['MarsActorBackend']
@@ -22,6 +22,8 @@ __all__ = ['MarsActorBackend']
 
 @register_backend
 class MarsActorBackend(BaseActorBackend):
+    support_allocate_strategy = True
+
     @staticmethod
     def name():
         # return None because Mars is default scheme

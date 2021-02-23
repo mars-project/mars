@@ -23,6 +23,9 @@ __all__ = ["BaseActorBackend", "register_backend"]
 
 
 class BaseActorBackend(ABC):
+    # allocate strategy is for Mars backend only
+    support_allocate_strategy = False
+
     @staticmethod
     @abstractmethod
     def name():

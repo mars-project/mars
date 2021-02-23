@@ -16,6 +16,7 @@ import asyncio
 import sys
 
 from .file import AioFileObject, AioFilesystem
+from .parallelism import AioEvent
 
 
 if sys.version_info[:2] < (3, 7):
