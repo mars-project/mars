@@ -15,6 +15,7 @@
 import copy
 import itertools
 import random
+from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
@@ -23,7 +24,7 @@ from ... import opcodes
 from ...core import Base, Entity, OutputType, get_output_types
 from ...operands import OperandStage
 from ...serialize import BoolField, DictField, Float32Field, KeyField, \
-    Int32Field, Int64Field, NDArrayField
+    Int32Field, Int64Field, NDArrayField, StringField
 from ...tensor.operands import TensorShuffleProxy
 from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds
@@ -37,6 +38,29 @@ _ILOC_COL_HEADER = '_gsamp_iloc_col_'
 _WEIGHT_COL_HEADER = '_gsamp_weight_col_'
 
 
+# code adapted from pandas.core.groupby.groupby.DataFrameGroupBy.sample
+def _sample_groupby_iter(groupby, obj_index, n, frac, replace, weights,
+                         random_state=None, errors='ignore'):
+    if weights is None:
+        ws = [None] * groupby.ngroups
+    elif not isinstance(weights, Iterable) or isinstance(weights, str):
+        ws = [weights] * groupby.ngroups
+    else:
+        weights = pd.Series(weights, index=obj_index)
+        ws = [weights.iloc[idx] for idx in groupby.indices.values()]
+
+    if not replace and errors == 'ignore':
+        for (_, obj), w in zip(groupby, ws):
+            yield obj.sample(
+                n=n, frac=frac, replace=replace, weights=w, random_state=random_state
+            ) if len(obj) > n else obj
+    else:
+        for (_, obj), w in zip(groupby, ws):
+            yield obj.sample(
+                n=n, frac=frac, replace=replace, weights=w, random_state=random_state
+            )
+
+
 class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
     _op_code_ = opcodes.GROUPBY_SAMPLE_ILOC
     _op_module_ = 'dataframe.groupby'
@@ -48,6 +72,7 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
     _weights = KeyField('weights')
     _seed = Int32Field('seed')
     _random_state = RandomStateField('random_state')
+    _errors = StringField('errors')
 
     _random_col_id = Int32Field('random_col_id')
 
@@ -56,11 +81,12 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
     _left_iloc_bound = Int64Field('left_iloc_bound')
 
     def __init__(self, groupby_params=None, size=None, frac=None, replace=None,
-                 weights=None, random_state=None, seed=None, left_iloc_bound=None,
-                 random_col_id=None, stage=None, **kw):
+                 weights=None, random_state=None, seed=None, errors=None,
+                 left_iloc_bound=None, random_col_id=None, stage=None, **kw):
         super().__init__(_groupby_params=groupby_params, _size=size, _frac=frac,
                          _seed=seed, _replace=replace, _weights=weights, _stage=stage,
-                         _random_state=random_state, _left_iloc_bound=left_iloc_bound,
+                         _random_state=random_state, _errors=errors,
+                         _left_iloc_bound=left_iloc_bound,
                          _random_col_id=random_col_id, **kw)
         if self._random_col_id is None:
             self._random_col_id = random.randint(10000, 99999)
@@ -96,6 +122,10 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
         return self._random_state
 
     @property
+    def errors(self):
+        return self._errors
+
+    @property
     def left_iloc_bound(self):
         return self._left_iloc_bound
 
@@ -107,13 +137,13 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
         super()._set_inputs(inputs)
         input_iter = iter(inputs)
         next(input_iter)
-        if isinstance(self.weights, (Base, Entity)):  # pragma: no cover
+        if isinstance(self.weights, (Base, Entity)):
             self._weights = next(input_iter)
 
     def __call__(self, df):
         self._output_types = [OutputType.tensor]
         inp_tileables = [df]
-        if self.weights is not None:  # pragma: no cover
+        if self.weights is not None:
             inp_tileables.append(self.weights)
         return self.new_tileable(inp_tileables, dtype=np.dtype(np.int_),
                                  shape=(np.nan,))
@@ -129,18 +159,18 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
 
         if op.weights is None:
             weights_iter = itertools.repeat(None)
-        else:  # pragma: no cover
+        else:
             weights_iter = iter(op.weights.chunks)
 
         if isinstance(op.groupby_params['by'], list):
             map_cols = list(op.groupby_params['by'])
-        else:
+        else:  # pragma: no cover
             map_cols = []
 
         dtypes = in_df.dtypes.copy()
         dtypes.at[iloc_col_header] = np.dtype(np.int_)
         map_cols.append(iloc_col_header)
-        if op.weights is not None:  # pragma: no cover
+        if op.weights is not None:
             dtypes.at[weight_col_header] = op.weights.dtype
             map_cols.append(weight_col_header)
 
@@ -156,7 +186,7 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
             new_op._output_types = [OutputType.dataframe]
 
             inp_chunks = [inp_chunk]
-            if weight_chunk is not None:  # pragma: no cover
+            if weight_chunk is not None:
                 inp_chunks.append(weight_chunk)
             params = inp_chunk.params
             params.update(dict(
@@ -205,17 +235,17 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op: 'GroupBySampleILoc'):
         in_data = ctx[op.inputs[0].key]
-        iloc_col_header = _ILOC_COL_HEADER + str(op.random_col_id)
-        weight_col_header = _WEIGHT_COL_HEADER + str(op.random_col_id)
+        iloc_col = _ILOC_COL_HEADER + str(op.random_col_id)
+        weight_col = _WEIGHT_COL_HEADER + str(op.random_col_id)
         if op.stage == OperandStage.map:
-            if op.weights is not None:  # pragma: no cover
+            if op.weights is not None:
                 ret = pd.DataFrame({
-                    iloc_col_header: np.arange(op.left_iloc_bound, op.left_iloc_bound + len(in_data)),
-                    weight_col_header: ctx[op.weights.key],
+                    iloc_col: np.arange(op.left_iloc_bound, op.left_iloc_bound + len(in_data)),
+                    weight_col: ctx[op.weights.key],
                 }, index=in_data.index)
             else:
                 ret = pd.DataFrame({
-                    iloc_col_header: np.arange(op.left_iloc_bound, op.left_iloc_bound + len(in_data)),
+                    iloc_col: np.arange(op.left_iloc_bound, op.left_iloc_bound + len(in_data)),
                 }, index=in_data.index)
 
             if isinstance(op.groupby_params['by'], list):
@@ -223,17 +253,19 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
 
             ctx[op.outputs[0].key] = ret
         else:
-            if weight_col_header in in_data.obj.columns:  # pragma: no cover
-                weights = in_data.obj[weight_col_header]
-            else:
-                weights = None
+            if weight_col not in in_data.obj.columns:
+                weight_col = None
 
-            if len(in_data.obj) == 0:
+            if len(in_data.obj) == 0 or in_data.ngroups == 0:
                 ctx[op.outputs[0].key] = np.array([], dtype=np.int_)
             else:
-                sampled = in_data.sample(n=op.size, frac=op.frac, replace=op.replace,
-                                         weights=weights, random_state=op.random_state)
-                ctx[op.outputs[0].key] = sampled[iloc_col_header].to_numpy()
+                ctx[op.outputs[0].key] = np.concatenate([
+                    sample_pd[iloc_col].to_numpy()
+                    for sample_pd in _sample_groupby_iter(
+                        in_data, in_data.obj.index, n=op.size, frac=op.frac, replace=op.replace,
+                        weights=weight_col, random_state=op.random_state, errors=op.errors
+                    )
+                ])
 
 
 class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
@@ -247,6 +279,7 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
     _weights = KeyField('weights')
     _seed = Int32Field('seed')
     _random_state = RandomStateField('random_state')
+    _errors = StringField('errors')
 
     # for chunks
     # num of instances for chunks
@@ -254,11 +287,12 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     def __init__(self, groupby_params=None, size=None, frac=None, replace=None,
                  weights=None, random_state=None, seed=None, stage=None,
-                 input_nsplits=None, shuffle_key=None, **kw):
+                 errors=None, input_nsplits=None, shuffle_key=None, **kw):
         super().__init__(_groupby_params=groupby_params, _size=size, _frac=frac,
                          _seed=seed, _replace=replace, _weights=weights,
                          _random_state=random_state, _stage=stage,
-                         _input_nsplits=input_nsplits, _shuffle_key=shuffle_key, **kw)
+                         _errors=errors, _input_nsplits=input_nsplits,
+                         _shuffle_key=shuffle_key, **kw)
 
     @property
     def groupby_params(self):
@@ -287,6 +321,10 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
     @property
     def random_state(self):
         return self._random_state
+
+    @property
+    def errors(self):
+        return self._errors
 
     @property
     def input_nsplits(self):
@@ -349,7 +387,8 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
         sample_iloc_op = GroupBySampleILoc(
             groupby_params=op.groupby_params, size=op.size, frac=op.frac, replace=op.replace,
-            weights=weights, random_state=op.random_state, seed=None, left_iloc_bound=None
+            weights=weights, random_state=op.random_state, errors=op.errors, seed=None,
+            left_iloc_bound=None
         )
         sampled_iloc = sample_iloc_op(in_df)._inplace_tile()
 
@@ -418,10 +457,6 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
         if len(in_df.chunks) == 1:
             return cls._tile_one_chunk(op, in_df, weights)
-
-        if weights is not None:
-            raise ValueError('Cannot sample with weights due to bugs in pandas. '
-                             'See pandas-dev/pandas#39927 for more information.')
         return cls._tile_distributed(op, in_df, weights)
 
     @classmethod
@@ -465,9 +500,12 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
             if selection is not None:
                 grouped = grouped[selection]
 
-            result = grouped.sample(n=op.size, frac=op.frac, replace=op.replace,
-                                    weights=weights, random_state=op.random_state)
-
+            result = pd.concat([
+                sample_df for sample_df in _sample_groupby_iter(
+                    grouped, in_data.index, n=op.size, frac=op.frac, replace=op.replace,
+                    weights=weights, random_state=op.random_state, errors=op.errors,
+                )
+            ])
             if selection and out_df.ndim > 1 and len(result.columns) != len(out_df.dtypes):
                 # pandas-dev/pandas#39928
                 result = result[selection]
@@ -475,7 +513,93 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
 
 def groupby_sample(groupby, n=None, frac=None, replace=False, weights=None,
-                   random_state=None):
+                   random_state=None, errors='ignore'):
+    """
+    Return a random sample of items from each group.
+
+    You can use `random_state` for reproducibility.
+
+    Parameters
+    ----------
+    n : int, optional
+        Number of items to return for each group. Cannot be used with
+        `frac` and must be no larger than the smallest group unless
+        `replace` is True. Default is one if `frac` is None.
+    frac : float, optional
+        Fraction of items to return. Cannot be used with `n`.
+    replace : bool, default False
+        Allow or disallow sampling of the same row more than once.
+    weights : list-like, optional
+        Default None results in equal probability weighting.
+        If passed a list-like then values must have the same length as
+        the underlying DataFrame or Series object and will be used as
+        sampling probabilities after normalization within each group.
+        Values must be non-negative with at least one positive element
+        within each group.
+    random_state : int, array-like, BitGenerator, np.random.RandomState, optional
+        If int, array-like, or BitGenerator (NumPy>=1.17), seed for
+        random number generator
+        If np.random.RandomState, use as numpy RandomState object.
+    errors : {'ignore', 'raise'}, default 'ignore'
+        If ignore, errors will not be raised when `replace` is False
+        and size of some group is less than `n`.
+
+    Returns
+    -------
+    Series or DataFrame
+        A new object of same type as caller containing items randomly
+        sampled within each group from the caller object.
+
+    See Also
+    --------
+    DataFrame.sample: Generate random samples from a DataFrame object.
+    numpy.random.choice: Generate a random sample from a given 1-D numpy
+        array.
+
+    Examples
+    --------
+    >>> import mars.dataframe as md
+    >>> df = md.DataFrame(
+    ...     {"a": ["red"] * 2 + ["blue"] * 2 + ["black"] * 2, "b": range(6)}
+    ... )
+    >>> df.execute()
+           a  b
+    0    red  0
+    1    red  1
+    2   blue  2
+    3   blue  3
+    4  black  4
+    5  black  5
+
+    Select one row at random for each distinct value in column a. The
+    `random_state` argument can be used to guarantee reproducibility:
+
+    >>> df.groupby("a").sample(n=1, random_state=1).execute()
+           a  b
+    4  black  4
+    2   blue  2
+    1    red  1
+
+    Set `frac` to sample fixed proportions rather than counts:
+
+    >>> df.groupby("a")["b"].sample(frac=0.5, random_state=2).execute()
+    5    5
+    2    2
+    0    0
+    Name: b, dtype: int64
+
+    Control sample probabilities within groups by setting weights:
+
+    >>> df.groupby("a").sample(
+    ...     n=1,
+    ...     weights=[1, 1, 1, 0, 0, 1],
+    ...     random_state=1,
+    ... ).execute()
+           a  b
+    5  black  5
+    2   blue  2
+    0    red  0
+    """
     groupby_params = groupby.op.groupby_params.copy()
     groupby_params.pop('as_index', None)
 
@@ -485,5 +609,6 @@ def groupby_sample(groupby, n=None, frac=None, replace=False, weights=None,
     rs = copy.deepcopy(
         random_state.to_numpy() if hasattr(random_state, 'to_numpy') else random_state)
     op = GroupBySample(size=n, frac=frac, replace=replace, weights=weights,
-                       random_state=rs, groupby_params=groupby_params)
+                       random_state=rs, groupby_params=groupby_params,
+                       errors=errors)
     return op(groupby)
