@@ -43,7 +43,7 @@ class DummyActor(mo.Actor):
         return self.value + value
 
     async def create(self, actor_cls, *args, **kw):
-        return await mo.create_actor(actor_cls, *args, **kw)
+        return await mo.create_actor(actor_cls, *args, address=RAY_TEST_ADDRESS, **kw)
 
     async def create_ignore(self, actor_cls, *args, **kw):
         try:
@@ -124,8 +124,8 @@ class Test:
         assert actor_ref.address == ref2.address
         assert actor_ref.uid == ref2.uid
 
-        assert await (await mo.actor_ref(
-                uid=actor_ref.uid, address=actor_ref.address)).add(2) == 104
+        ref = await mo.actor_ref(uid=actor_ref.uid, address=actor_ref.address)
+        assert await ref.add(2) == 104
 
     async def test_ray_post_create_pre_destroy(self):
         actor_ref = await mo.create_actor(EventActor, address=RAY_TEST_ADDRESS)
@@ -134,7 +134,7 @@ class Test:
     async def test_ray_create_actor(self):
         actor_ref = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         # create actor inside on_receive
-        ref = await actor_ref.create(DummyActor, 5, address=RAY_TEST_ADDRESS)
+        ref = await actor_ref.create(DummyActor, 5)
         assert await ref.add(10) == 15
         # create actor inside on_receive and send message
         r = await actor_ref.create_send(DummyActor, 5, method='add', method_args=(1,), address=RAY_TEST_ADDRESS)
@@ -154,23 +154,23 @@ class Test:
             await ref1.create(DummyActor, -2)
 
     async def test_ray_send(self):
-        ref1 = await mo.create_actor(DummyActor, 1)
+        ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         ref2 = await ref1.create(DummyActor, 2)
         assert await ref1.send(ref2, 'add', 3) == 5
 
     async def test_ray_send_error(self):
-        ref1 = await mo.create_actor(DummyActor, 1)
+        ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         with pytest.raises(TypeError):
             await ref1.add(1.0)
-        ref2 = await mo.create_actor(DummyActor, 2)
+        ref2 = await mo.create_actor(DummyActor, 2, address=RAY_TEST_ADDRESS)
         with pytest.raises(TypeError):
             await ref1.send(ref2, 'add', 1.0)
         with pytest.raises(mo.ActorNotExist):
-            await (await mo.actor_ref('fake_uid')).add(1)
+            await (await mo.actor_ref('fake_uid', address=RAY_TEST_ADDRESS)).add(1)
 
     async def test_ray_tell(self):
         ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-        ref2 = await ref1.create(DummyActor, 2, address=RAY_TEST_ADDRESS)
+        ref2 = await ref1.create(DummyActor, 2)
         assert await ref1.tell(ref2, 'add', 3) is None
         assert await ref2.get_value() == 5
 
@@ -180,25 +180,27 @@ class Test:
         assert await ref2.get_value() == 9
 
         # error needed when illegal uids are passed
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             await ref1.tell(await mo.actor_ref(set()), 'add', 3)
 
     async def test_ray_destroy_has_actor(self):
-        ref1 = await mo.create_actor(DummyActor, 1)
+        ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         assert await mo.has_actor(ref1)
 
         await mo.destroy_actor(ref1)
+        await asyncio.sleep(.5)
         assert not await mo.has_actor(ref1)
 
         # error needed when illegal uids are passed
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             await mo.has_actor(await mo.actor_ref(set()))
 
-        ref1 = await mo.create_actor(DummyActor, 1)
+        ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         await mo.destroy_actor(ref1)
+        await asyncio.sleep(.5)
         assert not await mo.has_actor(ref1)
 
-        ref1 = await mo.create_actor(DummyActor, 1)
+        ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         ref2 = await ref1.create(DummyActor, 2)
 
         assert await mo.has_actor(ref2)
@@ -207,13 +209,15 @@ class Test:
         assert not await ref1.has(ref2)
 
         with pytest.raises(mo.ActorNotExist):
-            await mo.destroy_actor(await mo.actor_ref('fake_uid'))
+            await mo.destroy_actor(
+                await mo.actor_ref('fake_uid', address=RAY_TEST_ADDRESS))
 
-        ref1 = await mo.create_actor(DummyActor, 1)
+        ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
         with pytest.raises(mo.ActorNotExist):
-            await ref1.delete(mo.actor_ref('fake_uid'))
+            await ref1.delete(await mo.actor_ref('fake_uid', address=RAY_TEST_ADDRESS))
 
         # test self destroy
-        ref1 = await mo.create_actor(DummyActor, 2)
+        ref1 = await mo.create_actor(DummyActor, 2, address=RAY_TEST_ADDRESS)
         await ref1.destroy()
+        await asyncio.sleep(.5)
         assert not await mo.has_actor(ref1)

@@ -108,8 +108,7 @@ cdef class BaseActorContext:
         -------
         ActorRef
         """
-        from .utils import create_actor_ref
-        return create_actor_ref(*args, **kwargs)
+        raise NotImplementedError
 
 
 cdef class ClientActorContext(BaseActorContext):
@@ -123,6 +122,8 @@ cdef class ClientActorContext(BaseActorContext):
         self._backend_contexts = dict()
 
     cdef inline object _get_backend_context(self, object address):
+        if address is None:
+            raise ValueError('address has to be provided')
         if '://' not in address:
             scheme = None
         else:

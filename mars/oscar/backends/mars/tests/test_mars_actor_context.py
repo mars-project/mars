@@ -270,7 +270,7 @@ async def test_mars_tell(actor_pool_context):
     assert await ref2.get_value() == 5
 
     # error needed when illegal uids are passed
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         await ref1.tell(await mo.actor_ref(set()), 'add', 3)
 
 
@@ -284,7 +284,7 @@ async def test_mars_destroy_has_actor(actor_pool_context):
     assert not await mo.has_actor(ref1)
 
     # error needed when illegal uids are passed
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         await mo.has_actor(await mo.actor_ref(set()))
 
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)

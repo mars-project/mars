@@ -51,7 +51,7 @@ cdef class RayActorContext(BaseActorContext):
     async def destroy_actor(self, ActorRef actor_ref):
         try:
             actor_handle = ray.get_actor(actor_ref.uid)
-        except KeyError:
+        except (KeyError, ValueError):
             raise ActorNotExist(f'Actor {actor_ref.uid} does not exist')
 
         await actor_handle.__pre_destroy__.remote()
@@ -65,3 +65,6 @@ cdef class RayActorContext(BaseActorContext):
             raise ActorNotExist(f'Actor {actor_ref.uid} does not exist')
         ret = await actor_handle.__on_receive__.remote(message)
         return ret if wait_response else None
+
+    async def actor_ref(self, ActorRef ref):
+        return ref

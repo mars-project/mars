@@ -30,20 +30,11 @@ from .router import Router
 
 class MarsActorContext(BaseActorContext):
     __slots__ = '_message_id_to_futures', '_client_to_task', \
-                '_router', '_address', '_stopped'
+                '_address', '_stopped'
 
     def __init__(self, address: str = None):
         self._message_id_to_futures: Dict[bytes, asyncio.Future] = dict()
         self._client_to_task: Dict[Client, asyncio.Task] = dict()
-
-        router = Router.get_instance()
-        if router is None:
-            # outside actor pool, just create a router without mapping
-            router = Router(list(), dict())
-            Router.set_instance(router)
-        self._router = router
-        if address is None:
-            address = router.external_address
         self._address = address
 
         self._stopped = asyncio.Event()
@@ -59,7 +50,8 @@ class MarsActorContext(BaseActorContext):
             self._message_id_to_futures.pop(message.message_id).set_result(message)
 
     async def _new_client(self, address: str) -> Client:
-        client = await self._router.get_client(address, from_who=self)
+        router = Router.get_instance_or_empty()
+        client = await router.get_client(address, from_who=self)
         if client not in self._client_to_task:
             self._client_to_task[client] = asyncio.create_task(self._listen(client))
         return client
@@ -81,7 +73,8 @@ class MarsActorContext(BaseActorContext):
 
     async def create_actor(self, actor_cls: Type[Actor], *args, uid=None,
                            address: str = None, **kwargs) -> ActorRef:
-        address = address or self._address
+        router = Router.get_instance_or_empty()
+        address = address or self._address or router.external_address
         allocate_strategy = kwargs.get('allocate_strategy', None)
         if isinstance(allocate_strategy, AllocateStrategy):
             allocate_strategy = kwargs.pop('allocate_strategy')

@@ -163,7 +163,6 @@ class DummyServer(Server):
 class DummyClient(Client):
     __slots__ = '_task',
 
-    _instance = None
     scheme = DummyServer.scheme
 
     def __init__(self,
@@ -180,10 +179,6 @@ class DummyClient(Client):
     async def connect(dest_address: str,
                       local_address: str = None,
                       **kwargs) -> "Client":
-        if DummyClient._instance is not None:  # pragma: no cover
-            # DummyClient is singleton
-            return DummyClient._instance
-
         if dest_address != DUMMY_ADDRESS:  # pragma: no cover
             raise ValueError(f'Destination address has to be "dummy://" '
                              f'for DummyClient, got {dest_address}')
@@ -200,7 +195,6 @@ class DummyClient(Client):
         task = asyncio.create_task(conn_coro)
         client = DummyClient(local_address, dest_address, client_channel)
         client._task = task
-        DummyClient._instance = client
         return client
 
     @implements(Client.close)

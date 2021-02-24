@@ -203,7 +203,7 @@ class SocketClient(Client):
         host, port = dest_address.split(':', 1)
         port = int(port)
         (reader, writer) = await asyncio.open_connection(
-            host=host, port=port, local_addr=local_address, **kwargs)
+            host=host, port=port, **kwargs)
         channel = SocketChannel(reader, writer,
                                 local_address=local_address,
                                 dest_address=dest_address)

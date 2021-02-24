@@ -100,8 +100,8 @@ class AbstractActorPool(ABC):
 
         # actor id -> actor
         self._actors: Dict[bytes, Actor] = dict()
-        # message id -> future
-        self._message_futures: Dict[bytes, futures.Future] = dict()
+        # client -> {message id -> future}
+        self._message_futures: Dict[Client, Dict[bytes, futures.Future]] = dict()
         # clients and its listening task
         self._clients: Dict[Client, asyncio.Task] = dict()
 

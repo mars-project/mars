@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Tuple, Type, Any
+from typing import Dict, List, Tuple, Type, Any, Optional
 
 from .communication import get_client_type, Client
 
@@ -28,13 +28,17 @@ class Router:
     _instance: "Router" = None
 
     @staticmethod
-    def set_instance(router: "Router"):
+    def set_instance(router: Optional["Router"]):
         # Default router is set when an actor pool started
         Router._instance = router
 
     @staticmethod
     def get_instance() -> "Router":
         return Router._instance
+
+    @staticmethod
+    def get_instance_or_empty() -> "Router":
+        return Router._instance or _empty_router
 
     def __init__(self,
                  external_addresses: List[str],
@@ -77,3 +81,6 @@ class Router:
         if cached:
             self._cache[external_address, from_who] = client
         return client
+
+
+_empty_router = Router(list(), dict())
