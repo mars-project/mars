@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import patch
-
 import pytest
 
 from mars.utils import get_next_port
@@ -29,6 +27,7 @@ from mars.oscar.backends.mars.message import new_message_id, \
 from mars.oscar.backends.mars.pool import SubActorPool, MainActorPool
 from mars.oscar.errors import NoIdleSlot
 from mars.oscar.utils import create_actor_ref
+from mars.tests.core import mock
 
 
 # test create actor
@@ -45,7 +44,7 @@ class TestActor(Actor):
 
 
 @pytest.mark.asyncio
-@patch('mars.oscar.backends.mars.pool.SubActorPool.notify_main_pool_to_destroy')
+@mock.patch('mars.oscar.backends.mars.pool.SubActorPool.notify_main_pool_to_destroy')
 async def test_sub_actor_pool(notify_main_pool):
     notify_main_pool.return_value = None
 
