@@ -538,15 +538,31 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
             ctx[(out.key, str(i))] = values
 
     @classmethod
+    def _calc_series_poses(cls, s, pivots, ascending=True):
+        if ascending:
+            poses = s.searchsorted(pivots, side='right')
+        else:
+            poses = len(s) - s.iloc[::-1].searchsorted(pivots, side='right')
+        return poses
+
+    @classmethod
     def _execute_series_map(cls, ctx, op):
         a, pivots = [ctx[c.key] for c in op.inputs]
         out = op.outputs[0]
 
+        if len(a) == 0:
+            # when the chunk is empty, no slices can be produced
+            for i in range(op.n_partition):
+                ctx[(out.key, str(i))] = a
+            return
+
         if isinstance(a, pd.Series):
-            if op.ascending:
-                poses = a.searchsorted(pivots, side='right')
-            else:
-                poses = len(a) - a.iloc[::-1].searchsorted(pivots, side='right')
+            try:
+                poses = cls._calc_series_poses(a, pivots, ascending=op.ascending)
+            except TypeError:
+                filled_a = a.fillna(_largest)
+                filled_pivots = pivots.fillna(_largest)
+                poses = cls._calc_series_poses(filled_a, filled_pivots, ascending=op.ascending)
             poses = (None,) + tuple(poses) + (None,)
             for i in range(op.n_partition):
                 values = a.iloc[poses[i]: poses[i + 1]]
