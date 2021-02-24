@@ -9,13 +9,37 @@ ray = lazy_import("ray")
 
 # TODO(fyrestone): make the SparseMatrix pickleable.
 
-def mars_sparse_matrix_serializer(value):
+def _mars_sparse_matrix_serializer(value):
     return [value.shape, value.spmatrix]
 
 
-def mars_sparse_matrix_deserializer(obj) -> sparse.SparseNDArray:
+def _mars_sparse_matrix_deserializer(obj) -> sparse.SparseNDArray:
     shape, spmatrix = obj
     return sparse.matrix.SparseMatrix(spmatrix, shape=shape)
+
+
+def _register_sparse_matrix_serializer():
+    # register a custom serializer for Mars SparseMatrix
+    try:
+        ray.register_custom_serializer(
+                sparse.matrix.SparseMatrix,
+                serializer=_mars_sparse_matrix_serializer,
+                deserializer=_mars_sparse_matrix_deserializer)
+    except AttributeError:  # ray >= 1.0
+        try:
+            from ray.worker import global_worker
+
+            global_worker.check_connected()
+            context = global_worker.get_serialization_context()
+            context.register_custom_serializer(
+                    sparse.matrix.SparseMatrix,
+                    serializer=_mars_sparse_matrix_serializer,
+                    deserializer=_mars_sparse_matrix_deserializer)
+        except AttributeError:  # ray >= 1.2.0
+            ray.util.register_serializer(
+                    sparse.matrix.SparseMatrix,
+                    serializer=_mars_sparse_matrix_serializer,
+                    deserializer=_mars_sparse_matrix_deserializer)
 
 
 class RayFileLikeObject:
@@ -81,9 +105,7 @@ class RayStorage(StorageBackend):
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         ray.init(ignore_reinit_error=True)
-        ray.util.register_serializer(sparse.matrix.SparseMatrix,
-                                     serializer=mars_sparse_matrix_serializer,
-                                     deserializer=mars_sparse_matrix_deserializer)
+        _register_sparse_matrix_serializer()
         return dict(), dict()
 
     @staticmethod
