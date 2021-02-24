@@ -231,8 +231,8 @@ async def test_create_actor_pool():
 
         # actor on main pool
         actor_ref2 = await ctx.create_actor(TestActor, uid='test-2',
-                                           address=pool.external_address,
-                                           allocate_strategy=RandomSubPool())
+                                            address=pool.external_address,
+                                            allocate_strategy=RandomSubPool())
         assert actor_ref2.address != actor_ref.address
         assert await actor_ref2.add(3) == 3
         assert await actor_ref2.add(1) == 4
