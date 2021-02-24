@@ -1,10 +1,21 @@
 from typing import Any, Dict, List, Tuple
-from ..serialization import AioSerializer, AioDeserializer
+from ..lib import sparse
 from ..utils import lazy_import, implements
 from .base import StorageBackend, StorageLevel, ObjectInfo
 from .core import BufferWrappedFileObject, StorageFileObject
 
 ray = lazy_import("ray")
+
+
+# TODO(fyrestone): make the SparseMatrix pickleable.
+
+def mars_sparse_matrix_serializer(value):
+    return [value.shape, value.spmatrix]
+
+
+def mars_sparse_matrix_deserializer(obj) -> sparse.SparseNDArray:
+    shape, spmatrix = obj
+    return sparse.matrix.SparseMatrix(spmatrix, shape=shape)
 
 
 class RayFileLikeObject:
@@ -70,6 +81,9 @@ class RayStorage(StorageBackend):
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         ray.init(ignore_reinit_error=True)
+        ray.util.register_serializer(sparse.matrix.SparseMatrix,
+                                     serializer=mars_sparse_matrix_serializer,
+                                     deserializer=mars_sparse_matrix_deserializer)
         return dict(), dict()
 
     @staticmethod
@@ -80,30 +94,19 @@ class RayStorage(StorageBackend):
     @property
     @implements(StorageBackend.level)
     def level(self) -> StorageLevel:
+        # TODO(fyrestone): return StorageLevel.MEMORY & StorageLevel.DISK
+        # if object spilling is available.
         return StorageLevel.MEMORY
 
     @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:
-        ray_file = RayFileObject(object_id, mode='r')
-
-        async with StorageFileObject(ray_file, object_id) as f:
-            deserializer = AioDeserializer(f)
-            return await deserializer.run()
+        return await object_id
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
-        serializer = AioSerializer(obj)
-        buffers = await serializer.run()
-        buffer_size = sum(getattr(buf, 'nbytes', len(buf))
-                          for buf in buffers)
-
-        object_id = ray.ObjectRef.from_random()
-        ray_file = RayFileObject(object_id, mode='w')
-        async with StorageFileObject(ray_file, object_id) as f:
-            for buffer in buffers:
-                await f.write(buffer)
-
-        return ObjectInfo(size=buffer_size, object_id=object_id)
+        object_id = ray.put(obj)
+        # We can't get the serialized bytes length from ray.put
+        return ObjectInfo(object_id=object_id)
 
     @implements(StorageBackend.delete)
     async def delete(self, object_id):
@@ -111,10 +114,8 @@ class RayStorage(StorageBackend):
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:
-        ray_file = RayFileObject(object_id, mode='r')
-        async with StorageFileObject(ray_file, object_id=object_id) as f:
-            buf = await f.read()
-            return ObjectInfo(size=len(buf), object_id=object_id)
+        # The performance of obtaining the object size is poor.
+        return ObjectInfo(object_id=object_id)
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
@@ -129,4 +130,4 @@ class RayStorage(StorageBackend):
 
     @implements(StorageBackend.list)
     async def list(self) -> List:
-        return []
+        raise NotImplementedError("Ray storage does not support list")
