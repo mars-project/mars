@@ -225,6 +225,14 @@ class Test(unittest.TestCase):
 
             pd.testing.assert_series_equal(result, expected)
 
+            # test empty series
+            series = pd.Series(list(range(10)), name='a')
+            mseries = Series(series, chunk_size=4)
+            filtered = mseries[mseries > 100]
+            result = self.executor.execute_dataframe(filtered.sort_values(), concat=True)[0]
+
+            pd.testing.assert_series_equal(result, series[series > 100].sort_values())
+
     def testSortIndexExecution(self):
         raw = pd.DataFrame(np.random.rand(100, 20), index=np.random.rand(100))
 

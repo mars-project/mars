@@ -542,11 +542,26 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         a, pivots = [ctx[c.key] for c in op.inputs]
         out = op.outputs[0]
 
+        if len(a) == 0:
+            # when the chunk is empty, no slices can be produced
+            for i in range(op.n_partition):
+                ctx[(out.key, str(i))] = a
+            return
+
         if isinstance(a, pd.Series):
-            if op.ascending:
-                poses = a.searchsorted(pivots, side='right')
-            else:
-                poses = len(a) - a.iloc[::-1].searchsorted(pivots, side='right')
+            try:
+                if op.ascending:
+                    poses = a.searchsorted(pivots, side='right')
+                else:
+                    poses = len(a) - a.iloc[::-1].searchsorted(pivots, side='right')
+            except TypeError:
+                filled_a = a.fillna(_largest)
+                filled_pivots = pivots.fillna(_largest)
+                if op.ascending:
+                    poses = filled_a.searchsorted(filled_pivots, side='right')
+                else:
+                    poses = len(filled_a) - filled_a.iloc[::-1].searchsorted(filled_pivots, side='right')
+
             poses = (None,) + tuple(poses) + (None,)
             for i in range(op.n_partition):
                 values = a.iloc[poses[i]: poses[i + 1]]
